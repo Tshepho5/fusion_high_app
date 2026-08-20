@@ -294,4 +294,25 @@ export const matricAnalyticsService = {
   getProjectorStats: () => api.get('/api/matric-analytics/projector').then(res => res.data),
 };
 
+// Homework & Digital Assignment Submission APIs
+export const assignmentService = {
+  createAssignment: (formData: FormData) =>
+    api.post('/api/assignments', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(res => res.data),
+  getTeacherAssignments: () =>
+    api.get('/api/assignments/teacher').then(res => res.data),
+  getLearnerAssignments: () =>
+    api.get('/api/assignments/learner').then(res => res.data),
+  getAssignmentSubmissions: (assignmentId: number | string) =>
+    api.get(`/api/assignments/${assignmentId}/submissions`).then(res => res.data),
+  submitHomework: (assignmentId: number | string, formData: FormData) =>
+    api.post(`/api/assignments/${assignmentId}/submit`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(res => res.data),
+  gradeSubmission: (submissionId: number | string, payload: { teacher_score: number | string; teacher_feedback?: string }) =>
+    api.post(`/api/assignments/submissions/${submissionId}/grade`, payload).then(res => res.data),
+};
+
+
 

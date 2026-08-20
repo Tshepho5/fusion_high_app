@@ -414,7 +414,95 @@ const emailService = {
       };
     },
 
-    // 6. Learner Admission / Enrollment Notification
+    // 6. New Homework Assignment Published
+    homeworkPublished: ({ recipientName, isParent, learnerName, title, subject, grade, dueDate, maxPoints, teacherName, baseUrl = 'https://educonnect-cmyh.onrender.com' }) => {
+      const emailTitle = `New Homework Published: ${subject}`;
+      const portalTab = isParent ? 'subjects' : 'subjects';
+      const ctaUrl = isParent ? `${baseUrl}/dashboard/parent?tab=subjects` : `${baseUrl}/dashboard/learner?tab=subjects`;
+
+      const contentHtml = `
+        <p style="font-size:15px; color:#ffffff; margin-top:0;">Dear <strong>${recipientName || (isParent ? 'Parent / Guardian' : 'Learner')}</strong>,</p>
+        <p style="color:#cbd5e1; font-size:14px; line-height:1.6;">
+          ${isParent ? `A new homework task has been assigned for your child <strong>${learnerName}</strong>` : `A new homework task has been published for your class`} by <strong>${teacherName || 'Subject Educator'}</strong>:
+        </p>
+        <div style="background:#0f172a; border:1px solid #334155; border-left:4px solid #6366f1; border-radius:10px; padding:16px 20px; margin:18px 0;">
+          <p style="margin:0; color:#818cf8; font-size:16px; font-weight:800;">
+            ${title}
+          </p>
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:12px; font-size:13px; color:#cbd5e1;">
+            <tr><td style="padding:4px 0; color:#94a3b8; width:130px;">Subject:</td><td style="color:#38bdf8; font-weight:700;">${subject} (Grade ${grade})</td></tr>
+            <tr><td style="padding:4px 0; color:#94a3b8;">Due Date:</td><td style="color:#f59e0b; font-weight:700;">${dueDate}</td></tr>
+            <tr><td style="padding:4px 0; color:#94a3b8;">Total Marks:</td><td style="color:#ffffff; font-weight:700;">${maxPoints} Marks</td></tr>
+            <tr><td style="padding:4px 0; color:#94a3b8;">Educator:</td><td style="color:#ffffff; font-weight:700;">${teacherName || 'Class Educator'}</td></tr>
+          </table>
+        </div>
+        <p style="font-size:13px; color:#94a3b8; line-height:1.5;">
+          Learners can download the task material, upload their completed solutions, and receive instant <strong>Fusion AI Subject Evaluation</strong> feedback before final educator sign-off.
+        </p>
+      `;
+
+      return {
+        subject: `[New Homework] ${subject}: ${title} (Due ${dueDate})`,
+        body: createBaseEmailTemplate({
+          preheader: `New ${subject} homework task: ${title}. Due ${dueDate}.`,
+          title: emailTitle,
+          subtitle: `Grade ${grade} Homework & Submission Portal`,
+          contentHtml,
+          ctaText: isParent ? 'View Child Subjects & Homework' : 'Open Assignment & Submit Solution',
+          ctaLink: ctaUrl
+        })
+      };
+    },
+
+    // 7. Homework Graded & Signed Off
+    homeworkGraded: ({ recipientName, isParent, learnerName, title, subject, score, totalMarks, percentage, feedback, teacherName, baseUrl = 'https://educonnect-cmyh.onrender.com' }) => {
+      const emailTitle = `Homework Marked: ${title}`;
+      const ctaUrl = isParent ? `${baseUrl}/dashboard/parent?tab=marks` : `${baseUrl}/dashboard/learner?tab=subjects`;
+
+      const contentHtml = `
+        <p style="font-size:15px; color:#ffffff; margin-top:0;">Dear <strong>${recipientName || (isParent ? 'Parent / Guardian' : 'Learner')}</strong>,</p>
+        <p style="color:#cbd5e1; font-size:14px; line-height:1.6;">
+          ${isParent ? `The homework submission for your child <strong>${learnerName}</strong>` : `Your homework submission`} has been reviewed and officially signed off by <strong>${teacherName || 'Subject Educator'}</strong>:
+        </p>
+        <div style="background:#0f172a; border:1px solid #334155; border-left:4px solid #10b981; border-radius:10px; padding:16px 20px; margin:18px 0;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td>
+                <h4 style="margin:0; color:#ffffff; font-size:16px; font-weight:800;">${title} (${subject})</h4>
+              </td>
+              <td align="right">
+                <span style="font-size:18px; font-weight:900; color:#34d399; font-family:monospace;">
+                  ${score} / ${totalMarks} (${percentage}%)
+                </span>
+              </td>
+            </tr>
+          </table>
+          ${feedback ? `
+            <div style="margin-top:12px; padding:10px 14px; background:rgba(15,23,42,0.6); border-radius:8px; border:1px solid #1e293b;">
+              <p style="margin:0; font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase;">Educator Feedback:</p>
+              <p style="margin:4px 0 0 0; font-size:13px; color:#e2e8f0; font-style:italic;">"${feedback}"</p>
+            </div>
+          ` : ''}
+        </div>
+        <p style="font-size:13px; color:#94a3b8; line-height:1.5;">
+          The mark has been recorded in the student's continuous assessment profile.
+        </p>
+      `;
+
+      return {
+        subject: `[Marks Recorded] ${subject}: ${title} - ${score}/${totalMarks} (${percentage}%)`,
+        body: createBaseEmailTemplate({
+          preheader: `Homework results for ${title}: ${score}/${totalMarks} (${percentage}%).`,
+          title: emailTitle,
+          subtitle: `Educator Assessment & Sign-Off Record`,
+          contentHtml,
+          ctaText: isParent ? 'View Academic Marks Profile' : 'View Full Homework Feedback',
+          ctaLink: ctaUrl
+        })
+      };
+    },
+
+    // 8. Learner Admission / Enrollment Notification
     learnerAdmission: (name, surname, learnerId, grade, password, registrarRole) => {
       const title = `Learner Admission Confirmed`;
       const contentHtml = `

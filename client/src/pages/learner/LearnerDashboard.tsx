@@ -14,6 +14,7 @@ import { LearnerCareerAdvisor } from '../../components/learner/LearnerCareerAdvi
 import { ExamSeatingManager } from '../../components/common/ExamSeatingManager';
 import { SportsExtracurriculars } from '../../components/common/SportsExtracurriculars';
 import { TextbookAssetTracker } from '../../components/common/TextbookAssetTracker';
+import { LearnerAssignments } from '../../components/learner/LearnerAssignments';
 
 export const LearnerDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -54,6 +55,7 @@ export const LearnerDashboard: React.FC = () => {
       case 'exam-seating': return 'Examination Seating & Candidate Slips';
       case 'sports': return 'Sports & Extracurricular Clubs';
       case 'textbooks': return 'My Issued Textbooks';
+      case 'assignments': return 'Homework & Digital Assignments Hub';
       case 'reports': return 'Official CAPS Term Report Card';
       case 'timetable': return 'Weekly Timetable';
       case 'calendar': return 'Academic & Events Calendar';
@@ -77,6 +79,7 @@ export const LearnerDashboard: React.FC = () => {
       {activeTab === 'subjects' && (
         <LearnerSubjects onStartAITopic={handleStartAITopic} />
       )}
+      {activeTab === 'assignments' && <LearnerAssignments />}
       {activeTab === 'ai-tutor' && (
         <LearnerAITutor
           initialSubject={tutorContext.subject}

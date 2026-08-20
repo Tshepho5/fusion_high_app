@@ -103,6 +103,7 @@ app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(normalizePayload);
 app.use(express.static('public'));
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/uploads', express.static('uploads'));
 
 // Auth & Profile
@@ -142,6 +143,7 @@ app.use('/api/leave-relief', require('./public/src/routes/leaveReliefRoutes'));
 app.use('/api/matric-analytics', require('./public/src/routes/matricAnalyticsRoutes'));
 app.use('/api/applications', applicationRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/assignments', require('./public/src/routes/assignmentRoutes'));
 app.use('/api', otherRoutes); // For progress, announcements etc.
 
 // Admin Routes (now imported from adminRoutes.js)

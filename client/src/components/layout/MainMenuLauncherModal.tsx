@@ -66,6 +66,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
         return [
           { id: 'overview', label: 'Educator Analytics', desc: 'Class performance metrics, daily pass rates & learner overview', category: 'academic', icon: LayoutDashboard, gradient: 'from-blue-600 to-indigo-600' },
           { id: 'subjects', label: 'My Subjects', desc: 'Subject curricula, CAPS past papers & learning resources', category: 'academic', icon: BookOpen, gradient: 'from-cyan-600 to-blue-600' },
+          { id: 'assignments', label: 'Homework & Submissions', desc: 'Publish homework briefs, review learner uploads & sign off marks', category: 'academic', icon: BookOpen, gradient: 'from-brand-600 to-indigo-600', badge: 'AI Live' },
           { id: 'classes', label: 'Class Registers & Marks', desc: '60fps continuous Camera QR scanner & mark entry registers', category: 'operations', icon: Users, gradient: 'from-emerald-600 to-teal-600', badge: 'QR LIVE' },
           { id: 'ai-tools', label: 'AI Lesson & Test Builder', desc: 'CAPS lesson plans & instant exam test papers with memorandums', category: 'academic', icon: FusionAIIcon, gradient: 'from-purple-600 to-pink-600', badge: 'AI' },
           { id: 'ptc', label: 'Parent Conferences (PTC)', desc: '15-minute educator consultation calendar & appointment slots', category: 'chat', icon: Users, gradient: 'from-amber-600 to-orange-600' },
@@ -111,6 +112,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
         return [
           { id: 'overview', label: 'Learner Home', desc: 'Daily academic schedule, tasks & achievements', category: 'academic', icon: Home, gradient: 'from-blue-600 to-indigo-600' },
           { id: 'subjects', label: 'My Subjects & AI Tutor', desc: 'Syllabus, topics, interactive AI tutor & study notes', category: 'academic', icon: BookOpen, gradient: 'from-cyan-600 to-blue-600', badge: 'AI' },
+          { id: 'assignments', label: 'Homework & Submissions', desc: 'Download worksheets, upload solutions & get AI concept pre-grading', category: 'academic', icon: BookOpen, gradient: 'from-brand-600 to-indigo-600', badge: 'AI Live' },
           { id: 'career-advisor', label: 'Matric APS & Careers', desc: 'APS point calculator, university requirements & fields', category: 'academic', icon: Compass, gradient: 'from-purple-600 to-pink-600', badge: 'Gr12 APS' },
           { id: 'reports', label: 'CAPS Report Cards', desc: 'Term mark sheets, subject levels & official transcripts', category: 'academic', icon: Award, gradient: 'from-emerald-600 to-teal-600', badge: 'PDF' },
           { id: 'exam-seating', label: 'Exam Seating & Card', desc: 'Personal exam hall allocation & student smart ID card', category: 'operations', icon: Grid, gradient: 'from-indigo-600 to-purple-600' },

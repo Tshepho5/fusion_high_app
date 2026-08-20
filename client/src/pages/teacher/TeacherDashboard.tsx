@@ -18,6 +18,7 @@ import { ExamSeatingManager } from '../../components/common/ExamSeatingManager';
 import { SportsExtracurriculars } from '../../components/common/SportsExtracurriculars';
 import { TextbookAssetTracker } from '../../components/common/TextbookAssetTracker';
 import { EducatorLeaveReliefManager } from '../../components/admin/EducatorLeaveReliefManager';
+import { TeacherAssignments } from '../../components/teacher/TeacherAssignments';
 
 export const TeacherDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -61,6 +62,7 @@ export const TeacherDashboard: React.FC = () => {
       case 'calendar': return 'Academic & Events Calendar';
       case 'attendance': return 'Class Attendance Register';
       case 'assessments': return 'Marks & Assessments';
+      case 'assignments': return 'Homework & Digital Assignment Submission Hub';
       case 'announcements': return 'School Notices & Broadcasts';
       case 'messages': return 'Communication Hub';
       case 'profile': return 'Teacher Profile';
@@ -81,6 +83,7 @@ export const TeacherDashboard: React.FC = () => {
       {(activeTab === 'subjects' || activeTab === 'classes' || activeTab === 'workload') && (
         <TeacherSubjects onNavigateTab={handleSelectTab} />
       )}
+      {activeTab === 'assignments' && <TeacherAssignments />}
       {activeTab === 'resources' && (
         <TeacherResources onNavigateTab={handleSelectTab} />
       )}

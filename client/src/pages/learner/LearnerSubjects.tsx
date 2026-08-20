@@ -8,6 +8,7 @@ import { SubjectPastPapers } from '../../components/subject/SubjectPastPapers';
 import { SubjectFocusTimer } from '../../components/subject/SubjectFocusTimer';
 import { FusionAIIcon } from '../../components/common/FusionAIIcon';
 import { LearnerAITutor } from './LearnerAITutor';
+import { LearnerAssignments } from '../../components/learner/LearnerAssignments';
 import {
   BookOpen,
   ArrowLeft,
@@ -49,7 +50,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
   const [searchParams] = useSearchParams();
   const [subjects, setSubjects] = useState<any[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState<'topics' | 'ai-tutor' | 'past-papers' | 'focus-timer' | 'resources' | 'grades'>('topics');
+  const [activeTab, setActiveTab] = useState<'topics' | 'homework' | 'ai-tutor' | 'past-papers' | 'focus-timer' | 'resources' | 'grades'>('topics');
   const [tutorTopic, setTutorTopic] = useState<{ id?: string; name?: string }>({ id: 'general', name: '' });
   const [isOfflineNotesOpen, setIsOfflineNotesOpen] = useState(false);
   
@@ -336,6 +337,19 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
               </button>
 
               <button
+                onClick={() => setActiveTab('homework')}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                  activeTab === 'homework'
+                    ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-glow-indigo'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5 text-brand-400" />
+                <span>Homework & Submissions</span>
+                <span className="px-1.5 py-0.5 rounded-full bg-brand-400/20 text-brand-300 text-[9px] font-extrabold border border-brand-400/30">AI Live</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('grades')}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
                   activeTab === 'grades'
@@ -356,6 +370,11 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
           <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 shadow-xl">
             {loadingContent ? (
               <LoadingSpinner size="md" text={`Loading ${selectedSubName} curriculum details...`} />
+            ) : activeTab === 'homework' ? (
+              /* Embedded Homework & Submissions Portal Tab */
+              <div className="space-y-4">
+                <LearnerAssignments filterSubject={selectedSubName} />
+              </div>
             ) : activeTab === 'ai-tutor' ? (
               /* Embedded AI Subject Tutor & Quizzes Tab */
               <div className="space-y-4">
