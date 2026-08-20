@@ -29,6 +29,7 @@ module.exports = {
     // Attendance Register
     getAttendanceRoster: attendanceController.getAttendanceRoster,
     submitAttendance: attendanceController.submitAttendance,
+    getAttendanceHistory: attendanceController.getAttendanceHistory,
 
     // Textbooks, Past Papers & Learning Resources
     getMyTextbooks: textbookController.getMyTextbooks,

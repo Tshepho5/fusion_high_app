@@ -132,6 +132,8 @@ export const teacherService = {
   getMyLearners: () => api.get('/api/teacher/my-learners').then(res => res.data),
   getAttendanceRoster: (params?: { grade?: number; class?: string; date?: string; subject?: string }) => 
     api.get(`/api/teacher/attendance-roster?grade=${params?.grade || ''}&class=${params?.class || ''}&date=${params?.date || ''}&subject=${params?.subject || ''}`).then(res => res.data),
+  getAttendanceHistory: (params?: { class?: string; class_id?: string; date?: string; startDate?: string; endDate?: string; status?: string }) =>
+    api.get('/api/teacher/attendance-history', { params }).then(res => res.data),
   submitAttendance: (payload: any) => api.post('/api/teacher/attendance', payload).then(res => res.data),
   saveAttendance: (payload: any) => api.post('/api/teacher/attendance', payload).then(res => res.data),
   saveClassMarks: (payload: any) => api.post('/api/teacher/marks/save', payload).then(res => res.data),

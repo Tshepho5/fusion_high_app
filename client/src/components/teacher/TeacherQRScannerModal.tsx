@@ -58,6 +58,8 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
   const [isFinalizing, setIsFinalizing] = useState<boolean>(false);
   const [dispatchSuccess, setDispatchSuccess] = useState<boolean>(false);
   const [scanStatusMessage, setScanStatusMessage] = useState<string>('Align Student QR code in viewfinder');
+  const [successScanPopup, setSuccessScanPopup] = useState<LearnerRecord | null>(null);
+  const successTimerRef = useRef<any>(null);
 
   const [barcodeInput, setBarcodeInput] = useState<string>('');
   const [photoScanning, setPhotoScanning] = useState<boolean>(false);
@@ -88,6 +90,7 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
       localRosterRef.current = initialRoster;
       setDispatchSuccess(false);
       setLastScannedLearner(null);
+      setSuccessScanPopup(null);
       setScanStatusMessage('Camera active — waiting for student QR code...');
       startCamera();
     } else {
@@ -138,6 +141,13 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
             scanMethod: 'qr'
           };
           setLastScannedLearner(updated);
+          setSuccessScanPopup(updated);
+          
+          if (successTimerRef.current) clearTimeout(successTimerRef.current);
+          successTimerRef.current = setTimeout(() => {
+            setSuccessScanPopup(null);
+          }, 3200);
+
           const studentDisplayName = updated.full_name || updated.name || customName || `Learner #${learnerId}`;
           setScanStatusMessage(`✓ Marked Present: ${studentDisplayName} at ${timeStr}`);
           return updated;
@@ -147,7 +157,7 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
     );
 
     playScanBeep();
-    confetti({ particleCount: 30, spread: 50, origin: { y: 0.6 } });
+    confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 } });
   }, []);
 
   // Process decoded QR payload string and automatically match with student
@@ -564,8 +574,50 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
                 <span className="truncate max-w-[200px] sm:max-w-xs">{scanStatusMessage}</span>
               </div>
 
+              {/* Centered Holographic Scan-Success Animation Pop-up */}
+              {successScanPopup && (
+                <div className="absolute inset-0 z-40 flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm animate-fade-in pointer-events-none">
+                  <div className="relative w-full max-w-xs rounded-3xl bg-slate-900/95 border-2 border-emerald-400 p-5 text-center shadow-2xl shadow-emerald-500/40 overflow-hidden transform animate-bounce-short">
+                    {/* Glowing Aura Rings */}
+                    <div className="absolute -top-10 -right-10 w-24 h-24 bg-emerald-500/30 rounded-full blur-xl animate-pulse" />
+                    <div className="absolute -bottom-10 -left-10 w-24 h-24 bg-cyan-500/30 rounded-full blur-xl animate-pulse" />
+
+                    <div className="relative z-10 flex flex-col items-center">
+                      {/* Pulse Shield */}
+                      <div className="relative mb-2.5">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white flex items-center justify-center shadow-lg shadow-emerald-500/50">
+                          <CheckCircle2 className="w-8 h-8 text-white" />
+                        </div>
+                        <div className="absolute -inset-1.5 rounded-2xl border-2 border-emerald-400/70 animate-ping pointer-events-none" />
+                      </div>
+
+                      <span className="px-3 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 text-[10px] font-black tracking-wider uppercase">
+                        ✓ VERIFIED & RECORDED
+                      </span>
+
+                      <h4 className="text-base font-extrabold text-white mt-1.5 leading-tight">
+                        {successScanPopup.full_name || successScanPopup.name} {successScanPopup.surname || ''}
+                      </h4>
+                      <p className="text-xs font-mono text-cyan-300 font-bold mt-0.5">
+                        {successScanPopup.learner_number}
+                      </p>
+
+                      <div className="mt-2.5 w-full py-1 px-3 rounded-xl bg-surface-dark border border-white/10 flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400 font-medium">Logged Time:</span>
+                        <span className="font-mono font-bold text-emerald-400">{successScanPopup.scannedAt}</span>
+                      </div>
+
+                      <div className="mt-2 flex items-center gap-1.5 text-[10px] text-emerald-400 font-bold">
+                        <Send className="w-3 h-3 text-cyan-400 animate-pulse" />
+                        <span>Parent confirmation email dispatched</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Last Scanned Student Banner */}
-              {lastScannedLearner && (
+              {lastScannedLearner && !successScanPopup && (
                 <div className="absolute bottom-3 left-3 right-3 p-3 rounded-2xl bg-surface-darker/95 border border-emerald-500/40 shadow-xl flex items-center justify-between animate-fade-in z-20">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">

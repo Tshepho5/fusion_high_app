@@ -36,6 +36,7 @@ router.delete('/resources/:id', teacherController.deleteResource);
 router.get('/messages', teacherController.getMessages);
 router.post('/reply', teacherController.replyToParent);
 router.get('/attendance-roster', teacherController.getAttendanceRoster);
+router.get('/attendance-history', teacherController.getAttendanceHistory);
 router.post('/attendance', teacherController.submitAttendance);
 router.post('/ai/generate-assignment-questions', teacherController.generateAIQuestions);
 router.post('/ai/generate-lesson-plan', teacherController.generateAILessonPlan);
