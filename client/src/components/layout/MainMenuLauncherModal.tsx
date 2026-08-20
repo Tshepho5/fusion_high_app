@@ -143,8 +143,8 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/85 backdrop-blur-xl animate-fade-in">
-      <div className="relative w-full max-w-5xl max-h-[92vh] rounded-3xl bg-surface-dark/95 border border-brand-500/30 p-5 md:p-7 shadow-2xl shadow-brand-500/10 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 md:left-72 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/80 backdrop-blur-xl animate-fade-in">
+      <div className="relative w-full max-w-5xl max-h-[92vh] rounded-3xl bg-surface-dark/95 border border-brand-500/30 p-5 md:p-7 shadow-2xl shadow-brand-500/10 flex flex-col overflow-hidden mx-auto">
         {/* Glow Auras */}
         <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-brand-500/20 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-cyan-500/20 blur-3xl pointer-events-none" />
