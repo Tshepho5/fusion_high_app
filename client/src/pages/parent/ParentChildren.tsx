@@ -957,7 +957,7 @@ export const ParentChildren: React.FC = () => {
                         <span>Automated Credential Generation</span>
                       </div>
                       <p className="text-slate-400 leading-relaxed">
-                        A sequential <strong>Learner Number (e.g. 202600XX)</strong> and password (<strong>FH@&lt;first-6-of-ID&gt;</strong>) will be generated automatically and dispatched to your email.
+                        A sequential <strong>Learner Number (e.g. 202600XX)</strong> and password (drawn systematically from the ID number) will be generated automatically and dispatched to your email.
                       </p>
                     </div>
 

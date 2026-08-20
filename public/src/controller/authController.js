@@ -198,7 +198,28 @@ async function generateOfficialLearnerNumber() {
     if (nextNum < 20260001) nextNum = 20260001;
     return nextNum.toString();
 }
+
+/**
+ * Generates initial learner password from South African ID Number:
+ * Takes 1st digit, skips 2 digits, takes following digit systematically (indices: 0, 3, 6, 9, 12).
+ */
+function generateLearnerPasswordFromID(idNumber) {
+    const cleanId = (idNumber || '').toString().replace(/\D/g, '').trim();
+    if (cleanId.length >= 13) {
+        return `${cleanId.charAt(0)}${cleanId.charAt(3)}${cleanId.charAt(6)}${cleanId.charAt(9)}${cleanId.charAt(12)}`;
+    }
+    if (cleanId.length >= 5) {
+        let result = '';
+        for (let i = 0; i < cleanId.length; i += 3) {
+            result += cleanId.charAt(i);
+        }
+        return result;
+    }
+    return cleanId && cleanId.length >= 3 ? cleanId : '123456';
+}
+
 exports.generateOfficialLearnerNumber = generateOfficialLearnerNumber;
+exports.generateLearnerPasswordFromID = generateLearnerPasswordFromID;
 
 /**
  * Registers parent user and links their child / children seamlessly.
@@ -281,7 +302,7 @@ exports.registerUser = async (req, res) => {
             if (cRes.rows.length > 0) {
                 const found = cRes.rows[0];
                 const cleanId = found.user_id_num || childIdNum || '202601';
-                const generatedPassword = `FH@${cleanId.slice(0, 6)}`;
+                const generatedPassword = generateLearnerPasswordFromID(cleanId);
                 const learnerEmail = found.learner_email || `${(found.learner_number || 'learner').toLowerCase().replace(/[\s-]/g, '')}@fusion.high`;
 
                 validatedChildren.push({
@@ -314,7 +335,7 @@ exports.registerUser = async (req, res) => {
                         lrnNumber = await generateOfficialLearnerNumber();
                     }
                     const cleanId = (appChild.id_number || childIdNum || '202601').toString().replace(/\D/g, '');
-                    const generatedPassword = `FH@${cleanId.slice(0, 6)}`;
+                    const generatedPassword = generateLearnerPasswordFromID(cleanId);
                     const learnerEmail = `${lrnNumber.toLowerCase().replace(/[\s-]/g, '')}@fusion.high`;
 
                     validatedChildren.push({
@@ -336,7 +357,7 @@ exports.registerUser = async (req, res) => {
                     // Dynamically register new learner record with official sequential number
                     const assignedNum = await generateOfficialLearnerNumber();
                     const cleanId = childIdNum || '202601';
-                    const generatedPassword = `FH@${cleanId.slice(0, 6)}`;
+                    const generatedPassword = generateLearnerPasswordFromID(cleanId);
                     const learnerEmail = `${assignedNum.toLowerCase().replace(/[\s-]/g, '')}@fusion.high`;
 
                     validatedChildren.push({

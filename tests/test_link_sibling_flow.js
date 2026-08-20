@@ -21,13 +21,13 @@ async function testLinkSiblingFlow() {
     const parent = parentRes.rows[0];
     console.log(`Parent: ${parent.full_name} ${parent.surname} (${parent.email}, ID ${parent.id})`);
 
-    // 2. Generate credentials using established old way generator
+    // 2. Generate credentials using established ID skip rule
     const lrnNumber = await generateOfficialLearnerNumber();
     const siblingFirstName = 'Lesedi';
     const siblingSurname = parent.surname || 'Makola';
     const sampleIdNumber = '0805145028082';
-    const cleanIdForPw = sampleIdNumber.slice(0, 6);
-    const generatedPassword = `FH@${cleanIdForPw}`;
+    // Index 0 ('0'), Index 3 ('5'), Index 6 ('5'), Index 9 ('2'), Index 12 ('2') -> '05522'
+    const generatedPassword = `${sampleIdNumber.charAt(0)}${sampleIdNumber.charAt(3)}${sampleIdNumber.charAt(6)}${sampleIdNumber.charAt(9)}${sampleIdNumber.charAt(12)}`;
     const learnerEmail = `${lrnNumber}@fusion.high`;
 
     console.log(`Generated Learner Number: ${lrnNumber}`);

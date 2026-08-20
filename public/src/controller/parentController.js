@@ -2,7 +2,7 @@ const db = require('../../../db/db');
 const bcrypt = require('bcryptjs');
 const emailService = require('../services/emailService');
 const NotificationService = require('../services/notificationService');
-const { validatePassword, generateOfficialLearnerNumber } = require('./authController');
+const { validatePassword, generateOfficialLearnerNumber, generateLearnerPasswordFromID } = require('./authController');
 const { validateSAID } = require('./saIDvalidations');
 const { withTransaction } = require('../../../db/transaction');
 const curriculumService = require('../services/curriculumService');
@@ -101,12 +101,8 @@ exports.activateChild = async (req, res) => {
 
             const { child_id, user_id, full_name: dbName, surname: dbSurname, grade, stream, subjects, id_number: rawIdNumber } = learnerData;
             
-            // Generate password drawn from the learner ID Number (first 6 digits of ID number)
-            const cleanIdStr = String(rawIdNumber || targetID).replace(/\D/g, '');
-            const learnerPassword = cleanIdStr.length >= 6 
-                ? cleanIdStr.substring(0, 6)
-                : (rawIdNumber && rawIdNumber.length >= 13 ? `${rawIdNumber.charAt(0)}${rawIdNumber.charAt(3)}${rawIdNumber.charAt(6)}${rawIdNumber.charAt(9)}${rawIdNumber.charAt(12)}` : '123456');
-                
+            // Generate password drawn from the learner ID Number (1st digit, skip 2, take next: indices 0,3,6,9,12)
+            const learnerPassword = generateLearnerPasswordFromID(rawIdNumber || targetID);
             const passwordHash = await bcrypt.hash(learnerPassword, 10);
 
             // Step 1: Update children and users tables
@@ -173,9 +169,8 @@ exports.linkSibling = async (req, res) => {
         // 1. Generate official sequential Learner Number
         const lrnNumber = await generateOfficialLearnerNumber();
 
-        // 2. Generate password: "FH@" + first 6 digits of ID number (or default '202601')
-        const cleanIdForPw = cleanIdNum.length >= 6 ? cleanIdNum.slice(0, 6) : (cleanIdNum || '202601');
-        const generatedPassword = `FH@${cleanIdForPw}`;
+        // 2. Generate password drawn from learner ID number (1st digit, skip 2, take next: indices 0,3,6,9,12)
+        const generatedPassword = generateLearnerPasswordFromID(cleanIdNum);
         const learnerEmail = `${lrnNumber.toLowerCase().replace(/[\s-]/g, '')}@fusion.high`;
         const childPwHash = await bcrypt.hash(generatedPassword, 10);
 
