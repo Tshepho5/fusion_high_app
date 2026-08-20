@@ -1,9 +1,11 @@
 const db = require('../../../db/db');
 const bcrypt = require('bcryptjs');
 const emailService = require('../services/emailService');
-const { validatePassword } = require('./authController');
+const NotificationService = require('../services/notificationService');
+const { validatePassword, generateOfficialLearnerNumber } = require('./authController');
 const { validateSAID } = require('./saIDvalidations');
 const { withTransaction } = require('../../../db/transaction');
+const curriculumService = require('../services/curriculumService');
 
 exports.getChildren = async (req, res) => {
     try {
@@ -134,6 +136,156 @@ exports.activateChild = async (req, res) => {
     } catch (err) {
         console.error('Error activating child:', err.message);
         res.status(err.statusCode || 500).json({ error: err.message || 'An internal error occurred while activating child account.' });
+    }
+};
+
+/**
+ * Link / Enroll Sibling:
+ * Internal application & instant registration for an existing parent's new child (e.g. Grade 8).
+ * Generates official Learner Number & password (FH@<first-6-of-ID>) using the established system generator.
+ */
+exports.linkSibling = async (req, res) => {
+    const parentId = req.user.id;
+    const {
+        first_name,
+        surname,
+        id_number,
+        dob,
+        gender = 'Other',
+        grade = 8,
+        stream = 'General',
+        home_language = 'isiZulu',
+        previous_school = ''
+    } = req.body;
+
+    if (!first_name || !surname) {
+        return res.status(400).json({ error: 'Sibling first name and surname are required.' });
+    }
+
+    const cleanFirstName = first_name.trim();
+    const cleanSurname = surname.trim();
+    const cleanIdNum = (id_number || '').toString().replace(/\D/g, '').trim();
+    const gradeInt = parseInt(grade, 10) || 8;
+    const streamVal = gradeInt >= 10 ? (stream || 'Science') : 'General';
+    const homeLangVal = home_language || 'isiZulu';
+
+    try {
+        // 1. Generate official sequential Learner Number
+        const lrnNumber = await generateOfficialLearnerNumber();
+
+        // 2. Generate password: "FH@" + first 6 digits of ID number (or default '202601')
+        const cleanIdForPw = cleanIdNum.length >= 6 ? cleanIdNum.slice(0, 6) : (cleanIdNum || '202601');
+        const generatedPassword = `FH@${cleanIdForPw}`;
+        const learnerEmail = `${lrnNumber.toLowerCase().replace(/[\s-]/g, '')}@fusion.high`;
+        const childPwHash = await bcrypt.hash(generatedPassword, 10);
+
+        // 3. Allocate CAPS curriculum subjects
+        const officialSubjects = curriculumService.getSubjectsForGradeAndStream(gradeInt, streamVal, homeLangVal);
+
+        // 4. Class allocation
+        const classRes = await db.query(
+            `SELECT id, name FROM classes WHERE grade = $1 ORDER BY id ASC LIMIT 1`,
+            [gradeInt]
+        );
+        const assignedClassId = classRes.rows[0]?.id || null;
+
+        // 5. Learner role ID
+        const roleRes = await db.query("SELECT id FROM roles WHERE LOWER(name) = 'learner'");
+        const learnerRoleId = roleRes.rows[0]?.id || 3;
+
+        // 6. Database transaction
+        const result = await withTransaction(async (client) => {
+            // Check if learner user account already exists with this email or ID
+            let learnerUserId;
+            const existingChildUser = await client.query(
+                'SELECT id FROM users WHERE LOWER(email) = LOWER($1) OR (id_number = $2 AND $2 != \'\')',
+                [learnerEmail, cleanIdNum]
+            );
+
+            if (existingChildUser.rows.length === 0) {
+                const newUserRes = await client.query(
+                    `INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+                    [learnerEmail, childPwHash, learnerRoleId, cleanFirstName, cleanSurname, cleanIdNum || null, dob || null, gender]
+                );
+                learnerUserId = newUserRes.rows[0].id;
+            } else {
+                learnerUserId = existingChildUser.rows[0].id;
+                await client.query('UPDATE users SET password_hash = $1 WHERE id = $2', [childPwHash, learnerUserId]);
+            }
+
+            // Insert into children table
+            const childRes = await client.query(
+                `INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, stream, subjects, class_id, home_language)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                 RETURNING *`,
+                [learnerUserId, cleanFirstName, cleanSurname, parentId, lrnNumber, gradeInt, streamVal, officialSubjects, assignedClassId, homeLangVal]
+            );
+            const newChild = childRes.rows[0];
+
+            // Insert into parent_children junction table
+            await client.query(
+                `INSERT INTO parent_children (parent_id, child_id, relationship, is_primary)
+                 VALUES ($1, $2, 'Parent', true)
+                 ON CONFLICT (parent_id, child_id) DO NOTHING`,
+                [parentId, newChild.id]
+            );
+
+            // Fetch parent email & name
+            const parentRes = await client.query('SELECT email, full_name, surname FROM users WHERE id = $1', [parentId]);
+            const parent = parentRes.rows[0];
+
+            return {
+                child: newChild,
+                parent,
+                credentials: {
+                    learner_name: `${cleanFirstName} ${cleanSurname}`,
+                    learner_number: lrnNumber,
+                    learner_email: learnerEmail,
+                    generated_password: generatedPassword,
+                    grade: gradeInt,
+                    stream: streamVal,
+                    subjects: officialSubjects
+                }
+            };
+        });
+
+        // 7. Send confirmation email with credentials to parent
+        if (result.parent && result.parent.email) {
+            try {
+                const emailTpl = emailService.templates.learnerAdmission(
+                    cleanFirstName,
+                    cleanSurname,
+                    lrnNumber,
+                    gradeInt,
+                    generatedPassword,
+                    'Parent Portal Internal Sibling Enrollment'
+                );
+                emailService.send(result.parent.email, emailTpl.subject, emailTpl.body).catch(e => console.warn('[SIBLING EMAIL]:', e.message));
+            } catch (e) {
+                console.warn('[SIBLING EMAIL ERROR]:', e.message);
+            }
+        }
+
+        // 8. In-app notification
+        NotificationService.sendToUsers({
+            userIds: [parentId],
+            title: `Sibling Enrolled: ${cleanFirstName} ${cleanSurname}`,
+            message: `${cleanFirstName} ${cleanSurname} has been enrolled into Grade ${gradeInt} and linked to your parent portal.`,
+            type: 'admission',
+            targetTab: 'children'
+        }).catch(e => console.warn('[SIBLING NOTIFY]:', e.message));
+
+        res.status(201).json({
+            success: true,
+            message: `Sibling ${cleanFirstName} ${cleanSurname} successfully enrolled in Grade ${gradeInt} and linked to your family profile!`,
+            child: result.child,
+            credentials: result.credentials
+        });
+
+    } catch (err) {
+        console.error('Error linking sibling:', err);
+        res.status(500).json({ error: 'Failed to link sibling: ' + err.message });
     }
 };
 

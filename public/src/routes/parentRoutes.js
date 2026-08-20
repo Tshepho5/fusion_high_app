@@ -8,6 +8,7 @@ router.use(auth, requireRole(['parent', 'admin']));
 
 router.get('/children', parentController.getChildren);
 router.post('/children/activate', parentController.activateChild);
+router.post('/children/link-sibling', parentController.linkSibling);
 router.post('/children/deactivate/:childId', parentController.deactivateChild);
 router.get('/assignments', parentController.getChildrensAssignments);
 router.get('/child-overview/:childId', parentController.getChildOverview);

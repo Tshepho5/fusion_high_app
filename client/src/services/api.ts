@@ -198,6 +198,23 @@ export const parentService = {
   getChildAttendance: (childId: string | number) => api.get(`/api/parent/child-attendance?childId=${childId}`).then(res => res.data),
   getChildTimetable: (childId?: string | number) => api.get(`/api/parent/child-timetable${childId ? `?child_id=${childId}` : ''}`).then(res => res.data),
   getChildProgress: (childId: string | number) => api.get(`/api/progress/${childId}`).then(res => res.data),
+  linkSibling: (payload: {
+    first_name: string;
+    surname: string;
+    id_number?: string;
+    dob?: string;
+    gender?: string;
+    grade: number | string;
+    stream?: string;
+    home_language?: string;
+    previous_school?: string;
+  }) => api.post('/api/parent/children/link-sibling', payload).then(res => res.data),
+  activateChild: (payload: {
+    learner_number?: string;
+    id_number?: string;
+    first_name: string;
+    surname: string;
+  }) => api.post('/api/parent/children/activate', payload).then(res => res.data),
 };
 
 // School & Class Event Calendar APIs

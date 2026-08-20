@@ -20,9 +20,21 @@ import {
   Users,
   Check,
   Trophy,
-  AlertTriangle
+  AlertTriangle,
+  UserPlus,
+  Link,
+  Plus,
+  Copy,
+  X,
+  Key,
+  Mail
 } from 'lucide-react';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
+
+const SA_OFFICIAL_LANGUAGES = [
+  'isiZulu', 'isiXhosa', 'Afrikaans', 'English', 'Sepedi',
+  'Setswana', 'Sesotho', 'Xitsonga', 'siSwati', 'Tshivenda', 'isiNdebele'
+];
 
 export const ParentChildren: React.FC = () => {
   const [children, setChildren] = useState<any[]>([]);
@@ -33,24 +45,139 @@ export const ParentChildren: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadingChildData, setLoadingChildData] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Link Sibling Modal States
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [linkTab, setLinkTab] = useState<'enroll_sibling' | 'activate_existing'>('enroll_sibling');
+  const [submittingLink, setSubmittingLink] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState<any | null>(null);
+
+  // Sibling Form Data
+  const [siblingForm, setSiblingForm] = useState({
+    first_name: '',
+    surname: '',
+    id_number: '',
+    dob: '',
+    gender: 'Male',
+    grade: '8',
+    stream: 'General',
+    home_language: 'isiZulu',
+    previous_school: ''
+  });
+
+  // Existing Learner Activation Form
+  const [activateForm, setActivateForm] = useState({
+    learner_number: '',
+    id_number: '',
+    first_name: '',
+    surname: ''
+  });
+
+  const fetchChildren = async () => {
     setLoading(true);
     setError(null);
-    parentService.getChildren()
-      .then((res) => {
-        const list = Array.isArray(res) ? res : res.children || [];
-        setChildren(list);
-        if (list.length > 0) {
+    try {
+      const res = await parentService.getChildren();
+      const list = Array.isArray(res) ? res : res.children || [];
+      setChildren(list);
+      if (list.length > 0) {
+        if (!selectedChild || !list.some((c: any) => c.id === selectedChild.id)) {
           setSelectedChild(list[0]);
         }
-      })
-      .catch((err) => {
-        console.error('Failed to load parent children from database:', err);
-        setError('Could not load linked learner records from database.');
-      })
-      .finally(() => setLoading(false));
+      }
+    } catch (err: any) {
+      console.error('Failed to load parent children from database:', err);
+      setError('Could not load linked learner records from database.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchChildren();
   }, []);
+
+  const handleEnrollSibling = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!siblingForm.first_name.trim() || !siblingForm.surname.trim()) {
+      setError('Sibling first name and surname are required.');
+      return;
+    }
+
+    setSubmittingLink(true);
+    setError(null);
+    setSuccessMsg(null);
+
+    try {
+      const res = await parentService.linkSibling(siblingForm);
+      setCreatedCredentials(res.credentials);
+      setSuccessMsg(res.message || 'Sibling successfully linked and enrolled!');
+      
+      // Refresh children list
+      const updated = await parentService.getChildren();
+      const list = Array.isArray(updated) ? updated : updated.children || [];
+      setChildren(list);
+      if (res.child) {
+        setSelectedChild(res.child);
+      }
+      
+      // Reset form
+      setSiblingForm({
+        first_name: '',
+        surname: '',
+        id_number: '',
+        dob: '',
+        gender: 'Male',
+        grade: '8',
+        stream: 'General',
+        home_language: 'isiZulu',
+        previous_school: ''
+      });
+    } catch (err: any) {
+      console.error('Error linking sibling:', err);
+      setError(err.response?.data?.error || 'Failed to link sibling. Please verify information.');
+    } finally {
+      setSubmittingLink(false);
+    }
+  };
+
+  const handleActivateExisting = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activateForm.first_name.trim() || !activateForm.surname.trim() || (!activateForm.learner_number && !activateForm.id_number)) {
+      setError('Please provide Child Name, Surname, and Learner/ID Number.');
+      return;
+    }
+
+    setSubmittingLink(true);
+    setError(null);
+    setSuccessMsg(null);
+
+    try {
+      const res = await parentService.activateChild(activateForm);
+      setSuccessMsg(res.message || 'Learner successfully linked to your parent portal!');
+      setIsLinkModalOpen(false);
+      fetchChildren();
+      setActivateForm({
+        learner_number: '',
+        id_number: '',
+        first_name: '',
+        surname: ''
+      });
+    } catch (err: any) {
+      console.error('Error activating learner:', err);
+      setError(err.response?.data?.error || 'Failed to link learner. Please verify details with school.');
+    } finally {
+      setSubmittingLink(false);
+    }
+  };
+
+  const handleCopyCredentials = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(true);
+    setTimeout(() => setCopiedKey(false), 2000);
+  };
 
   useEffect(() => {
     if (!selectedChild) return;
@@ -209,21 +336,53 @@ export const ParentChildren: React.FC = () => {
           </p>
         </div>
 
-        {selectedChild && progressRecords.length > 0 && (
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
           <button
-            onClick={handlePrintOfficialReport}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-brand-600 hover:from-amber-500 text-white font-bold text-xs shadow-md transition-all self-start sm:self-auto"
+            onClick={() => {
+              setIsLinkModalOpen(true);
+              setCreatedCredentials(null);
+              setError(null);
+              setSuccessMsg(null);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all"
           >
-            <Printer className="w-4 h-4" />
-            <span>Download Signed Report (PDF)</span>
+            <UserPlus className="w-4 h-4" />
+            <span>Link / Enroll Sibling</span>
           </button>
-        )}
+
+          {selectedChild && progressRecords.length > 0 && (
+            <button
+              onClick={handlePrintOfficialReport}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-brand-600 hover:from-amber-500 text-white font-bold text-xs shadow-md transition-all"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Download Report</span>
+            </button>
+          )}
+        </div>
       </div>
 
+      {successMsg && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center justify-between animate-fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{successMsg}</span>
+          </div>
+          <button onClick={() => setSuccessMsg(null)} className="text-slate-400 hover:text-white">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {error && (
-        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{error}</span>
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center justify-between animate-fade-in">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button onClick={() => setError(null)} className="text-slate-400 hover:text-white">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
@@ -568,6 +727,323 @@ export const ParentChildren: React.FC = () => {
           </div>
         </>
       ) : null}
+
+      {/* 🌟 LINK & ENROLL SIBLING MODAL */}
+      {isLinkModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
+          <div className="relative w-full max-w-2xl rounded-3xl bg-surface-dark border border-brand-500/30 shadow-2xl p-6 sm:p-7 max-h-[92vh] overflow-y-auto space-y-5 animate-fade-in">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-600 text-white flex items-center justify-center shadow-glow-indigo">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Link & Enroll Sibling</h3>
+                  <p className="text-[11px] text-slate-400">Add an incoming Grade 8 learner or link an existing child to your parent profile.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsLinkModalOpen(false);
+                  setCreatedCredentials(null);
+                }}
+                className="p-1 rounded-lg text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* CREATED CREDENTIALS CELEBRATION CARD */}
+            {createdCredentials ? (
+              <div className="p-6 rounded-2xl bg-gradient-to-br from-indigo-950/80 to-surface-darker border border-emerald-500/40 space-y-4 animate-fade-in">
+                <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+                  <CheckCircle2 className="w-5 h-5" />
+                  <span>Sibling Successfully Enrolled & Linked!</span>
+                </div>
+
+                <p className="text-xs text-slate-300">
+                  <strong>{createdCredentials.learner_name}</strong> is now enrolled in <strong>Grade {createdCredentials.grade}</strong>. Login credentials have been generated using the official school format and dispatched to your email.
+                </p>
+
+                <div className="p-4 rounded-xl bg-surface-dark border border-white/10 space-y-2.5 font-mono text-xs">
+                  <div className="flex items-center justify-between text-slate-300">
+                    <span className="text-slate-400">Learner Number:</span>
+                    <span className="text-cyan-400 font-bold">{createdCredentials.learner_number}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-300">
+                    <span className="text-slate-400">Portal Email:</span>
+                    <span className="text-white font-bold">{createdCredentials.learner_email}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-300">
+                    <span className="text-slate-400">Initial Password:</span>
+                    <span className="text-amber-300 font-bold">{createdCredentials.generated_password}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    onClick={() => handleCopyCredentials(`Email: ${createdCredentials.learner_email}\nPassword: ${createdCredentials.generated_password}\nLearner Number: ${createdCredentials.learner_number}`)}
+                    className="flex-1 py-2.5 rounded-xl bg-surface-dark hover:bg-white/10 text-white font-bold text-xs border border-white/10 flex items-center justify-center gap-1.5 transition-all"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>{copiedKey ? 'Credentials Copied!' : 'Copy Login Details'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsLinkModalOpen(false);
+                      setCreatedCredentials(null);
+                    }}
+                    className="flex-1 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all"
+                  >
+                    Done & View Child
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Tab Switcher */}
+                <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-surface-darker border border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setLinkTab('enroll_sibling')}
+                    className={`py-2 rounded-xl text-xs font-bold transition-all ${
+                      linkTab === 'enroll_sibling'
+                        ? 'bg-brand-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Enroll New Sibling (Grade 8 / Other)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLinkTab('activate_existing')}
+                    className={`py-2 rounded-xl text-xs font-bold transition-all ${
+                      linkTab === 'activate_existing'
+                        ? 'bg-brand-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Link Existing Learner ID
+                  </button>
+                </div>
+
+                {/* FORM TAB 1: ENROLL SIBLING INTERNALLY */}
+                {linkTab === 'enroll_sibling' ? (
+                  <form onSubmit={handleEnrollSibling} className="space-y-4 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">Sibling First Name *</label>
+                        <input
+                          type="text"
+                          required
+                          value={siblingForm.first_name}
+                          onChange={(e) => setSiblingForm({ ...siblingForm, first_name: e.target.value })}
+                          placeholder="e.g. Lesedi"
+                          className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">Sibling Surname *</label>
+                        <input
+                          type="text"
+                          required
+                          value={siblingForm.surname}
+                          onChange={(e) => setSiblingForm({ ...siblingForm, surname: e.target.value })}
+                          placeholder="e.g. Makola"
+                          className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">SA ID Number / Birth Certificate No</label>
+                        <input
+                          type="text"
+                          maxLength={13}
+                          value={siblingForm.id_number}
+                          onChange={(e) => setSiblingForm({ ...siblingForm, id_number: e.target.value })}
+                          placeholder="13-digit ID (used for password)"
+                          className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white font-mono placeholder-slate-500 focus:ring-2 focus:ring-brand-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">Date of Birth</label>
+                        <input
+                          type="date"
+                          value={siblingForm.dob}
+                          onChange={(e) => setSiblingForm({ ...siblingForm, dob: e.target.value })}
+                          className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white font-mono focus:ring-2 focus:ring-brand-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">Grade Level *</label>
+                        <select
+                          value={siblingForm.grade}
+                          onChange={(e) => {
+                            const gr = e.target.value;
+                            setSiblingForm({
+                              ...siblingForm,
+                              grade: gr,
+                              stream: parseInt(gr, 10) >= 10 ? 'Science' : 'General'
+                            });
+                          }}
+                          className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500"
+                        >
+                          <option value="8">Grade 8 (Incoming)</option>
+                          <option value="9">Grade 9</option>
+                          <option value="10">Grade 10</option>
+                          <option value="11">Grade 11</option>
+                          <option value="12">Grade 12</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">Curriculum Stream</label>
+                        <select
+                          disabled={parseInt(siblingForm.grade, 10) < 10}
+                          value={siblingForm.stream}
+                          onChange={(e) => setSiblingForm({ ...siblingForm, stream: e.target.value })}
+                          className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
+                        >
+                          {parseInt(siblingForm.grade, 10) < 10 ? (
+                            <option value="General">General (Gr 8-9 CAPS)</option>
+                          ) : (
+                            <>
+                              <option value="Science">Science Stream</option>
+                              <option value="Commerce">Commerce Stream</option>
+                              <option value="Tourism">Tourism / Humanities</option>
+                            </>
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">Home Language</label>
+                        <select
+                          value={siblingForm.home_language}
+                          onChange={(e) => setSiblingForm({ ...siblingForm, home_language: e.target.value })}
+                          className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500"
+                        >
+                          {SA_OFFICIAL_LANGUAGES.map((lang) => (
+                            <option key={lang} value={lang}>{lang} Home Lang</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">Previous School / Primary School Name</label>
+                      <input
+                        type="text"
+                        value={siblingForm.previous_school}
+                        onChange={(e) => setSiblingForm({ ...siblingForm, previous_school: e.target.value })}
+                        placeholder="e.g. Fusion Primary / Sunnyside Primary"
+                        className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500"
+                      />
+                    </div>
+
+                    {/* Generator Notice */}
+                    <div className="p-3.5 rounded-2xl bg-brand-950/40 border border-brand-500/30 text-[11px] text-slate-300 space-y-1">
+                      <div className="flex items-center gap-1.5 text-brand-300 font-bold">
+                        <Key className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Automated Credential Generation</span>
+                      </div>
+                      <p className="text-slate-400 leading-relaxed">
+                        A sequential <strong>Learner Number (e.g. 202600XX)</strong> and password (<strong>FH@&lt;first-6-of-ID&gt;</strong>) will be generated automatically and dispatched to your email.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                      <button
+                        type="button"
+                        onClick={() => setIsLinkModalOpen(false)}
+                        className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={submittingLink}
+                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 text-white font-bold shadow-glow-indigo transition-all disabled:opacity-50 flex items-center gap-2"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        <span>{submittingLink ? 'Enrolling Sibling...' : 'Enroll & Link Sibling'}</span>
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  /* FORM TAB 2: LINK EXISTING LEARNER BY ID */
+                  <form onSubmit={handleActivateExisting} className="space-y-4 text-xs">
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">Learner Number or SA ID Number *</label>
+                      <input
+                        type="text"
+                        required
+                        value={activateForm.learner_number}
+                        onChange={(e) => setActivateForm({ ...activateForm, learner_number: e.target.value })}
+                        placeholder="e.g. 2026-FHS-024 or 13-digit ID"
+                        className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white font-mono placeholder-slate-500 focus:ring-2 focus:ring-brand-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">Child First Name *</label>
+                        <input
+                          type="text"
+                          required
+                          value={activateForm.first_name}
+                          onChange={(e) => setActivateForm({ ...activateForm, first_name: e.target.value })}
+                          placeholder="e.g. Prince"
+                          className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">Child Surname *</label>
+                        <input
+                          type="text"
+                          required
+                          value={activateForm.surname}
+                          onChange={(e) => setActivateForm({ ...activateForm, surname: e.target.value })}
+                          placeholder="e.g. Makola"
+                          className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                      <button
+                        type="button"
+                        onClick={() => setIsLinkModalOpen(false)}
+                        className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={submittingLink}
+                        className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold shadow-glow-indigo transition-all disabled:opacity-50 flex items-center gap-2"
+                      >
+                        <Link className="w-3.5 h-3.5" />
+                        <span>{submittingLink ? 'Linking...' : 'Link Child Profile'}</span>
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
