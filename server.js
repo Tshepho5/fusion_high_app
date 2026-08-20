@@ -38,7 +38,9 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 if (!fs.existsSync(pfpDir)) fs.mkdirSync(pfpDir, { recursive: true });
 if (!fs.existsSync(appUploadDir)) fs.mkdirSync(appUploadDir, { recursive: true });
 
-// Initialize application, multi-parent, and notification tables
+// Initialize all 40 database tables, multi-parent, and notification schemas on server startup
+const initializeAllDatabaseTables = require('./db/init_full_schema');
+initializeAllDatabaseTables();
 initApplicationTables();
 NotificationService.initSchema();
 

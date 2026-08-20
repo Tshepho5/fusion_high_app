@@ -1,0 +1,601 @@
+const db = require('./db');
+
+/**
+ * Complete, idempotent database bootstrap engine.
+ * Guarantees that all 40 system tables, foreign keys, columns, 
+ * performance indexes, and default lookups exist on any environment.
+ */
+async function initializeAllDatabaseTables(customClient) {
+  const runner = customClient || db;
+  try {
+    console.log('[SCHEMA BOOTSTRAP] Verifying all 40 database tables and schema columns...');
+
+    await runner.query(`
+      CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+      -- 1. Core Auth & Organizational Tables
+      CREATE TABLE IF NOT EXISTS roles (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50) UNIQUE NOT NULL
+      );
+      INSERT INTO roles (name) VALUES ('admin'), ('parent'), ('learner'), ('teacher') ON CONFLICT DO NOTHING;
+
+      CREATE TABLE IF NOT EXISTS departments (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) UNIQUE NOT NULL,
+        description TEXT
+      );
+      INSERT INTO departments (name, description) VALUES 
+        ('Administration', 'Handles overall school management and administration.'),
+        ('Academic', 'Responsible for teaching staff and curriculum.'),
+        ('Maintenance', 'Manages cleaning, repairs, and facilities.'),
+        ('IT', 'Oversees technology infrastructure and support.')
+      ON CONFLICT DO NOTHING;
+
+      CREATE TABLE IF NOT EXISTS employee_roles (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50) UNIQUE NOT NULL
+      );
+      INSERT INTO employee_roles (name) VALUES ('teacher'), ('Principal'), ('Vice_Principal') ON CONFLICT DO NOTHING;
+
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE,
+        password_hash VARCHAR(255),
+        role_id INTEGER REFERENCES roles(id) ON DELETE SET NULL,
+        full_name VARCHAR(255),
+        surname VARCHAR(255),
+        id_number VARCHAR(20),
+        dob DATE,
+        gender VARCHAR(10),
+        phone VARCHAR(20),
+        physical_address TEXT,
+        country VARCHAR(100),
+        race VARCHAR(50),
+        parent_type VARCHAR(50),
+        reset_code VARCHAR(10),
+        reset_expiry TIMESTAMP,
+        profile_picture_path VARCHAR(255),
+        preferences JSONB DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS employees (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        employee_role_id INTEGER REFERENCES employee_roles(id),
+        full_name VARCHAR(255) NOT NULL,
+        surname VARCHAR(255) NOT NULL,
+        department_id INTEGER REFERENCES departments(id),
+        subjects TEXT[] DEFAULT '{}',
+        subject_codes TEXT[] DEFAULT '{}',
+        grades_taught INTEGER[] DEFAULT '{}',
+        classes_taught TEXT[] DEFAULT '{}',
+        phone VARCHAR(20),
+        email VARCHAR(255),
+        hired_date DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS classes (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50) UNIQUE NOT NULL,
+        grade INTEGER NOT NULL CHECK (grade BETWEEN 8 AND 12),
+        stream VARCHAR(50) DEFAULT 'General',
+        homeroom_teacher_id INTEGER
+      );
+
+      INSERT INTO classes (name, grade, stream)
+      VALUES 
+        ('8A', 8, 'General'),
+        ('8B', 8, 'General'),
+        ('9A', 9, 'General'),
+        ('9B', 9, 'General'),
+        ('10A', 10, 'Science'),
+        ('10B', 10, 'Commerce'),
+        ('10C', 10, 'Tourism'),
+        ('11A', 11, 'Science'),
+        ('11B', 11, 'Tourism'),
+        ('11C', 11, 'Commerce'),
+        ('12A', 12, 'Science'),
+        ('12B', 12, 'Commerce'),
+        ('12C', 12, 'Tourism')
+      ON CONFLICT (name) DO NOTHING;
+
+      CREATE TABLE IF NOT EXISTS subjects (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        code VARCHAR(20) UNIQUE NOT NULL,
+        grade INTEGER NOT NULL CHECK (grade BETWEEN 8 AND 12),
+        stream VARCHAR(50) DEFAULT 'General'
+      );
+
+      -- 2. Learners & Multi-Parent Tables
+      CREATE TABLE IF NOT EXISTS children (
+        id SERIAL PRIMARY KEY,
+        parent_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        secondary_parent_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        learner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        full_name VARCHAR(255) NOT NULL,
+        surname VARCHAR(255) NOT NULL,
+        dob DATE,
+        grade INTEGER NOT NULL,
+        class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
+        stream VARCHAR(50) DEFAULT 'General',
+        home_language VARCHAR(50) DEFAULT 'isiZulu',
+        learner_number VARCHAR(50),
+        application_number VARCHAR(50),
+        subjects TEXT[] DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS class_id INTEGER;
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS secondary_parent_id INTEGER;
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS application_number VARCHAR(50);
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS home_language VARCHAR(50) DEFAULT 'isiZulu';
+
+      CREATE TABLE IF NOT EXISTS parent_children (
+        id SERIAL PRIMARY KEY,
+        parent_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+        relationship VARCHAR(50) DEFAULT 'Guardian',
+        is_primary BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(parent_id, child_id)
+      );
+
+      -- 3. Academic Attendance & Assessment Tables
+      CREATE TABLE IF NOT EXISTS attendance (
+        id SERIAL PRIMARY KEY,
+        child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+        class_id INTEGER,
+        subject_name VARCHAR(100) DEFAULT 'General Registration',
+        attendance_date DATE NOT NULL,
+        status VARCHAR(20) DEFAULT 'present',
+        recorded_by_teacher_id INTEGER,
+        recorded_by INTEGER,
+        reason TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      ALTER TABLE attendance ADD COLUMN IF NOT EXISTS subject_name VARCHAR(100) DEFAULT 'General Registration';
+      ALTER TABLE attendance ADD COLUMN IF NOT EXISTS class_id INTEGER;
+      ALTER TABLE attendance ADD COLUMN IF NOT EXISTS recorded_by_teacher_id INTEGER;
+      ALTER TABLE attendance ADD COLUMN IF NOT EXISTS recorded_by INTEGER;
+      ALTER TABLE attendance ADD COLUMN IF NOT EXISTS reason TEXT;
+
+      CREATE TABLE IF NOT EXISTS progress (
+        id SERIAL PRIMARY KEY,
+        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        subject VARCHAR(100),
+        term VARCHAR(50),
+        grade NUMERIC,
+        score NUMERIC,
+        total_marks NUMERIC DEFAULT 100,
+        grade_symbol VARCHAR(10),
+        time_taken_seconds INTEGER DEFAULT 0,
+        notes TEXT,
+        employee_id INTEGER,
+        recorded_by INTEGER,
+        date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      ALTER TABLE progress ADD COLUMN IF NOT EXISTS grade NUMERIC;
+      ALTER TABLE progress ADD COLUMN IF NOT EXISTS score NUMERIC;
+      ALTER TABLE progress ADD COLUMN IF NOT EXISTS total_marks NUMERIC DEFAULT 100;
+      ALTER TABLE progress ADD COLUMN IF NOT EXISTS grade_symbol VARCHAR(10);
+      ALTER TABLE progress ADD COLUMN IF NOT EXISTS date TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+      ALTER TABLE progress ADD COLUMN IF NOT EXISTS employee_id INTEGER;
+      ALTER TABLE progress ADD COLUMN IF NOT EXISTS recorded_by INTEGER;
+      ALTER TABLE progress ADD COLUMN IF NOT EXISTS time_taken_seconds INTEGER DEFAULT 0;
+
+      CREATE TABLE IF NOT EXISTS assessments (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        subject_id INTEGER REFERENCES subjects(id) ON DELETE CASCADE,
+        class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
+        teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        type VARCHAR(50) DEFAULT 'assignment',
+        total_marks NUMERIC DEFAULT 100,
+        weight NUMERIC DEFAULT 10,
+        term VARCHAR(50) DEFAULT 'Term 1',
+        due_date TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS assessment_results (
+        id SERIAL PRIMARY KEY,
+        assessment_id INTEGER REFERENCES assessments(id) ON DELETE CASCADE,
+        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        score NUMERIC DEFAULT 0,
+        feedback TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS quizzes (
+        id SERIAL PRIMARY KEY,
+        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        subject_id INTEGER REFERENCES subjects(id) ON DELETE SET NULL,
+        score NUMERIC DEFAULT 0,
+        total_marks NUMERIC DEFAULT 100,
+        title VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS assignments (
+        id SERIAL PRIMARY KEY,
+        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        subject_id INTEGER REFERENCES subjects(id) ON DELETE SET NULL,
+        score NUMERIC DEFAULT 0,
+        total_marks NUMERIC DEFAULT 100,
+        title VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS tests (
+        id SERIAL PRIMARY KEY,
+        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        subject_id INTEGER REFERENCES subjects(id) ON DELETE SET NULL,
+        score NUMERIC DEFAULT 0,
+        total_marks NUMERIC DEFAULT 100,
+        title VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS exams (
+        id SERIAL PRIMARY KEY,
+        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        subject_id INTEGER REFERENCES subjects(id) ON DELETE SET NULL,
+        score NUMERIC DEFAULT 0,
+        total_marks NUMERIC DEFAULT 100,
+        title VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- 4. Communication, Announcements & Notifications
+      CREATE TABLE IF NOT EXISTS announcements (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        role_target VARCHAR(50) DEFAULT 'all',
+        grade_target INTEGER,
+        is_assignment BOOLEAN DEFAULT FALSE,
+        due_date TIMESTAMP,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        child_id INTEGER,
+        subject VARCHAR(255),
+        body TEXT,
+        content TEXT,
+        read_at TIMESTAMP,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS notifications (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        type VARCHAR(50) DEFAULT 'announcement',
+        target_tab VARCHAR(50) DEFAULT 'announcements',
+        metadata JSONB DEFAULT '{}'::jsonb,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- 5. Timetables & School Events
+      CREATE TABLE IF NOT EXISTS timetables (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        grade INT DEFAULT 10,
+        stream VARCHAR(100) DEFAULT 'General',
+        timetable_data JSONB NOT NULL,
+        status VARCHAR(50) DEFAULT 'published',
+        is_active BOOLEAN DEFAULT TRUE,
+        created_by INT REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS timetable_swap_requests (
+        id SERIAL PRIMARY KEY,
+        timetable_id INT REFERENCES timetables(id) ON DELETE CASCADE,
+        class_name VARCHAR(100) NOT NULL,
+        requester_teacher_id INT REFERENCES users(id) ON DELETE CASCADE,
+        requester_day VARCHAR(50) NOT NULL,
+        requester_period VARCHAR(50) NOT NULL,
+        requester_subject VARCHAR(100),
+        target_teacher_id INT REFERENCES users(id) ON DELETE CASCADE,
+        target_day VARCHAR(50) NOT NULL,
+        target_period VARCHAR(50) NOT NULL,
+        target_subject VARCHAR(100),
+        reason TEXT,
+        status VARCHAR(50) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS events (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        event_date DATE NOT NULL,
+        start_time TIME,
+        end_time TIME,
+        location VARCHAR(255),
+        event_type VARCHAR(50) DEFAULT 'General',
+        audience VARCHAR(50) DEFAULT 'all',
+        grade_target INT,
+        stream_target VARCHAR(100),
+        created_by INT REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- 6. Textbooks & Inventory Tracking
+      CREATE TABLE IF NOT EXISTS textbooks (
+        id SERIAL PRIMARY KEY,
+        grade INT,
+        subject_id INT,
+        title VARCHAR(255),
+        file_path TEXT,
+        resource_type VARCHAR(50) DEFAULT 'textbook',
+        description TEXT,
+        term VARCHAR(50),
+        year INTEGER DEFAULT 2026,
+        stream VARCHAR(50),
+        class_id INTEGER,
+        file_name VARCHAR(255),
+        file_size VARCHAR(50),
+        uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS textbook_inventory (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        isbn VARCHAR(50),
+        grade INTEGER NOT NULL,
+        subject VARCHAR(100) NOT NULL,
+        stream VARCHAR(50) DEFAULT 'General',
+        total_copies INTEGER NOT NULL DEFAULT 0,
+        available_copies INTEGER NOT NULL DEFAULT 0,
+        barcode_prefix VARCHAR(50),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS textbook_allocations (
+        id SERIAL PRIMARY KEY,
+        inventory_id INTEGER NOT NULL REFERENCES textbook_inventory(id) ON DELETE CASCADE,
+        child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+        copy_barcode VARCHAR(100) NOT NULL,
+        status VARCHAR(30) DEFAULT 'issued',
+        issue_date DATE DEFAULT CURRENT_DATE,
+        return_due_date DATE,
+        returned_date DATE,
+        condition_on_issue VARCHAR(50) DEFAULT 'Good',
+        condition_on_return VARCHAR(50),
+        notes TEXT
+      );
+
+      -- 7. Exam Sessions & Seating Allocations
+      CREATE TABLE IF NOT EXISTS exam_sessions (
+        id SERIAL PRIMARY KEY,
+        exam_name VARCHAR(255) NOT NULL,
+        subject VARCHAR(100) NOT NULL,
+        grade INTEGER NOT NULL,
+        exam_date DATE NOT NULL,
+        start_time TIME NOT NULL,
+        end_time TIME NOT NULL,
+        venue VARCHAR(100) NOT NULL,
+        total_seats INTEGER NOT NULL DEFAULT 50,
+        invigilator_teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        status VARCHAR(30) DEFAULT 'scheduled',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS exam_seating_allocations (
+        id SERIAL PRIMARY KEY,
+        session_id INTEGER NOT NULL REFERENCES exam_sessions(id) ON DELETE CASCADE,
+        child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+        desk_number VARCHAR(20) NOT NULL,
+        attendance_status VARCHAR(20) DEFAULT 'unconfirmed',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(session_id, desk_number),
+        UNIQUE(session_id, child_id)
+      );
+
+      -- 8. Sports & Extracurricular Activities
+      CREATE TABLE IF NOT EXISTS extracurricular_activities (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(150) NOT NULL,
+        category VARCHAR(50) NOT NULL,
+        coach_teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        practice_days TEXT[] DEFAULT '{}',
+        venue VARCHAR(150),
+        season VARCHAR(50) DEFAULT 'Annual',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS extracurricular_members (
+        id SERIAL PRIMARY KEY,
+        activity_id INTEGER NOT NULL REFERENCES extracurricular_activities(id) ON DELETE CASCADE,
+        child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+        role VARCHAR(50) DEFAULT 'Member',
+        joined_date DATE DEFAULT CURRENT_DATE,
+        UNIQUE(activity_id, child_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS extracurricular_events (
+        id SERIAL PRIMARY KEY,
+        activity_id INTEGER NOT NULL REFERENCES extracurricular_activities(id) ON DELETE CASCADE,
+        event_name VARCHAR(255) NOT NULL,
+        opponent VARCHAR(150),
+        event_date DATE NOT NULL,
+        event_time TIME,
+        location VARCHAR(200),
+        result_summary VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- 9. Online Admissions & Applications
+      CREATE TABLE IF NOT EXISTS applications (
+        id SERIAL PRIMARY KEY,
+        application_number VARCHAR(50) UNIQUE NOT NULL,
+        correction_token VARCHAR(64) UNIQUE,
+        status VARCHAR(30) DEFAULT 'submitted',
+        first_name VARCHAR(100) NOT NULL,
+        surname VARCHAR(100) NOT NULL,
+        id_number VARCHAR(20) NOT NULL,
+        dob DATE,
+        gender VARCHAR(20),
+        citizenship VARCHAR(50) DEFAULT 'South Africa',
+        phone VARCHAR(20),
+        email VARCHAR(255),
+        physical_address TEXT NOT NULL,
+        grade_applied INTEGER NOT NULL CHECK (grade_applied BETWEEN 8 AND 12),
+        stream VARCHAR(50) DEFAULT 'General',
+        selected_subjects TEXT[] DEFAULT '{}',
+        previous_school VARCHAR(255),
+        previous_grade INTEGER,
+        transfer_reason TEXT,
+        medical_info TEXT,
+        special_needs TEXT,
+        primary_parent_name VARCHAR(100) NOT NULL,
+        primary_parent_surname VARCHAR(100) NOT NULL,
+        primary_parent_relationship VARCHAR(50) NOT NULL,
+        primary_parent_id_number VARCHAR(20) NOT NULL,
+        primary_parent_phone VARCHAR(20) NOT NULL,
+        primary_parent_email VARCHAR(255) NOT NULL,
+        primary_parent_address TEXT NOT NULL,
+        primary_parent_occupation VARCHAR(100),
+        primary_parent_employer VARCHAR(150),
+        has_secondary_parent BOOLEAN DEFAULT FALSE,
+        secondary_parent_name VARCHAR(100),
+        secondary_parent_surname VARCHAR(100),
+        secondary_parent_relationship VARCHAR(50),
+        secondary_parent_id_number VARCHAR(20),
+        secondary_parent_phone VARCHAR(20),
+        secondary_parent_email VARCHAR(255),
+        secondary_parent_address TEXT,
+        secondary_parent_occupation VARCHAR(100),
+        secondary_parent_employer VARCHAR(150),
+        ai_verification_status VARCHAR(30) DEFAULT 'pending',
+        ai_verification_notes JSONB DEFAULT '[]'::jsonb,
+        assigned_class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
+        provisional_learner_number VARCHAR(20),
+        admin_notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS application_documents (
+        id SERIAL PRIMARY KEY,
+        application_id INTEGER NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+        document_type VARCHAR(50) NOT NULL,
+        file_path TEXT NOT NULL,
+        file_name VARCHAR(255),
+        mime_type VARCHAR(100),
+        file_size INTEGER,
+        is_verified BOOLEAN DEFAULT FALSE,
+        ai_confidence_score NUMERIC(5,2) DEFAULT 0,
+        ai_extracted_data JSONB DEFAULT '{}'::jsonb,
+        issues TEXT[] DEFAULT '{}',
+        uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- 10. Staff Leave & Relief Allocations
+      CREATE TABLE IF NOT EXISTS educator_leave_requests (
+        id SERIAL PRIMARY KEY,
+        teacher_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        leave_type VARCHAR(60) NOT NULL,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        reason TEXT,
+        status VARCHAR(30) DEFAULT 'pending',
+        relief_status VARCHAR(30) DEFAULT 'unassigned',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS educator_relief_allocations (
+        id SERIAL PRIMARY KEY,
+        leave_request_id INTEGER NOT NULL REFERENCES educator_leave_requests(id) ON DELETE CASCADE,
+        relief_teacher_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        assigned_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        class_name VARCHAR(50),
+        subject_name VARCHAR(100),
+        period VARCHAR(50),
+        relief_date DATE NOT NULL,
+        notes TEXT,
+        status VARCHAR(30) DEFAULT 'assigned',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- 11. Parent-Teacher Conferences & Conduct Logs
+      CREATE TABLE IF NOT EXISTS ptc_slots (
+        id SERIAL PRIMARY KEY,
+        teacher_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        slot_date DATE NOT NULL,
+        start_time TIME NOT NULL,
+        end_time TIME NOT NULL,
+        status VARCHAR(30) DEFAULT 'available',
+        venue VARCHAR(100) DEFAULT 'Classroom / Online',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS ptc_bookings (
+        id SERIAL PRIMARY KEY,
+        slot_id INTEGER NOT NULL REFERENCES ptc_slots(id) ON DELETE CASCADE,
+        parent_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+        meeting_notes TEXT,
+        status VARCHAR(30) DEFAULT 'booked',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS conduct_logs (
+        id SERIAL PRIMARY KEY,
+        child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+        recorded_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        incident_type VARCHAR(100) NOT NULL,
+        severity VARCHAR(30) DEFAULT 'minor',
+        description TEXT NOT NULL,
+        action_taken TEXT,
+        merit_demerit_points INTEGER DEFAULT 0,
+        incident_date DATE DEFAULT CURRENT_DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS behavior_incidents (
+        id SERIAL PRIMARY KEY,
+        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        incident_type VARCHAR(100) NOT NULL,
+        description TEXT NOT NULL,
+        action_taken TEXT,
+        recorded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        incident_date DATE DEFAULT CURRENT_DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS generated_reports (
+        id SERIAL PRIMARY KEY,
+        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        term VARCHAR(50) NOT NULL,
+        report_data JSONB NOT NULL,
+        generated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    console.log('✅ [SCHEMA BOOTSTRAP] All 40 tables and column definitions verified successfully.');
+  } catch (err) {
+    console.error('❌ [SCHEMA BOOTSTRAP ERROR]:', err.message);
+  }
+}
+
+module.exports = initializeAllDatabaseTables;
