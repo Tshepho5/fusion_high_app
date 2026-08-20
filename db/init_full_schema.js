@@ -129,10 +129,17 @@ async function initializeAllDatabaseTables(customClient) {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_picture_path VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_picture VARCHAR(255);
+      UPDATE users SET profile_picture_path = profile_picture WHERE profile_picture_path IS NULL AND profile_picture IS NOT NULL;
+      UPDATE users SET profile_picture = profile_picture_path WHERE profile_picture IS NULL AND profile_picture_path IS NOT NULL;
+
       ALTER TABLE children ADD COLUMN IF NOT EXISTS class_id INTEGER;
       ALTER TABLE children ADD COLUMN IF NOT EXISTS secondary_parent_id INTEGER;
       ALTER TABLE children ADD COLUMN IF NOT EXISTS application_number VARCHAR(50);
       ALTER TABLE children ADD COLUMN IF NOT EXISTS home_language VARCHAR(50) DEFAULT 'isiZulu';
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS profile_picture_path VARCHAR(255);
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS profile_picture VARCHAR(255);
 
       CREATE TABLE IF NOT EXISTS parent_children (
         id SERIAL PRIMARY KEY,
