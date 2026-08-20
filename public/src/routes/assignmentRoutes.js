@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const assignmentController = require('../controller/assignmentController');
-const { verifyToken, requireRole } = require('../middleware/authMiddleware');
+const { auth: verifyToken, requireRole } = require('../../../authMiddleware');
 
 // Authenticated Routes
 router.use(verifyToken);
