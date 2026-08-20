@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import confetti from 'canvas-confetti';
+import jsQR from 'jsqr';
 import { Badge } from '../common/Badge';
 import {
   Camera,
@@ -16,7 +17,8 @@ import {
   Sparkles,
   Smartphone,
   ShieldCheck,
-  Search
+  Search,
+  ScanLine
 } from 'lucide-react';
 
 interface LearnerRecord {
@@ -55,25 +57,38 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
   const [filterSearch, setFilterSearch] = useState<string>('');
   const [isFinalizing, setIsFinalizing] = useState<boolean>(false);
   const [dispatchSuccess, setDispatchSuccess] = useState<boolean>(false);
+  const [scanStatusMessage, setScanStatusMessage] = useState<string>('Align Student QR code in viewfinder');
 
   const [barcodeInput, setBarcodeInput] = useState<string>('');
   const [photoScanning, setPhotoScanning] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const animationFrameIdRef = useRef<number | null>(null);
+  const lastScannedCodeRef = useRef<string>('');
+  const lastScannedTimeRef = useRef<number>(0);
+  const localRosterRef = useRef<LearnerRecord[]>([]);
+
+  // Keep localRosterRef synchronized for instant scanner lookup
+  useEffect(() => {
+    localRosterRef.current = localRoster;
+  }, [localRoster]);
 
   // Initialize roster state from props
   useEffect(() => {
     if (isOpen) {
-      setLocalRoster(
-        learners.map((l) => ({
-          ...l,
-          status: l.status || 'absent'
-        }))
-      );
+      const initialRoster = learners.map((l) => ({
+        ...l,
+        status: l.status || 'absent'
+      }));
+      setLocalRoster(initialRoster);
+      localRosterRef.current = initialRoster;
       setDispatchSuccess(false);
+      setLastScannedLearner(null);
+      setScanStatusMessage('Camera active — waiting for student QR code...');
       startCamera();
     } else {
       stopCamera();
@@ -83,7 +98,155 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
 
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
 
-  // Start device camera with progressive multi-stage cross-browser fallbacks
+  // Sound chime for successful scan
+  const playScanBeep = () => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = audioCtxRef.current || new AudioContextClass();
+      audioCtxRef.current = ctx;
+      if (ctx.state === 'suspended') ctx.resume();
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 note
+      osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.12); // High A6 chime
+
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+    } catch (_) {}
+  };
+
+  // Handle successful student QR Code scan
+  const handleLearnerScanned = useCallback((learnerId: number, customName?: string) => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    setLocalRoster((prev) =>
+      prev.map((l) => {
+        if (l.id === learnerId) {
+          const updated: LearnerRecord = {
+            ...l,
+            status: 'present',
+            scannedAt: timeStr,
+            scanMethod: 'qr'
+          };
+          setLastScannedLearner(updated);
+          const studentDisplayName = updated.full_name || updated.name || customName || `Learner #${learnerId}`;
+          setScanStatusMessage(`✓ Marked Present: ${studentDisplayName} at ${timeStr}`);
+          return updated;
+        }
+        return l;
+      })
+    );
+
+    playScanBeep();
+    confetti({ particleCount: 30, spread: 50, origin: { y: 0.6 } });
+  }, []);
+
+  // Process decoded QR payload string and automatically match with student
+  const processDecodedQR = useCallback((rawData: string) => {
+    if (!rawData || typeof rawData !== 'string') return;
+    const trimmed = rawData.trim();
+    if (!trimmed) return;
+
+    const now = Date.now();
+    // Debounce duplicate scans of the exact same code within 2.5 seconds
+    if (trimmed === lastScannedCodeRef.current && now - lastScannedTimeRef.current < 2500) {
+      return;
+    }
+
+    let targetLearnerNumber = '';
+    let targetId: number | null = null;
+    let targetName = '';
+
+    // Attempt JSON parse for official digital student cards
+    try {
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        const parsed = JSON.parse(trimmed);
+        if (parsed.learner_number) targetLearnerNumber = String(parsed.learner_number).trim();
+        if (parsed.id) targetId = parseInt(String(parsed.id), 10);
+        if (parsed.name) targetName = String(parsed.name).trim();
+      }
+    } catch (_) {}
+
+    // Fallback if not JSON or plain string
+    if (!targetLearnerNumber && !targetId) {
+      targetLearnerNumber = trimmed;
+      if (/^\d+$/.test(trimmed)) {
+        targetId = parseInt(trimmed, 10);
+      }
+    }
+
+    const currentList = localRosterRef.current;
+    const matched = currentList.find((l) => {
+      const lNum = (l.learner_number || '').toLowerCase();
+      const tNum = targetLearnerNumber.toLowerCase();
+      const lName = `${l.full_name || l.name || ''} ${l.surname || ''}`.toLowerCase();
+      const tName = targetName.toLowerCase();
+
+      if (tNum && lNum && (lNum === tNum || lNum.includes(tNum) || tNum.includes(lNum))) return true;
+      if (targetId && l.id === targetId) return true;
+      if (tName && lName && (lName.includes(tName) || tName.includes(lName))) return true;
+      return false;
+    });
+
+    if (matched) {
+      lastScannedCodeRef.current = trimmed;
+      lastScannedTimeRef.current = now;
+      handleLearnerScanned(matched.id, matched.full_name || matched.name);
+    } else {
+      // If code was recognized but student is from a different class
+      if (trimmed !== lastScannedCodeRef.current || now - lastScannedTimeRef.current > 3000) {
+        lastScannedCodeRef.current = trimmed;
+        lastScannedTimeRef.current = now;
+        setScanStatusMessage(`⚠️ QR Scanned (${targetLearnerNumber || trimmed.substring(0, 15)}), but not enrolled in Class ${selectedClass}.`);
+      }
+    }
+  }, [handleLearnerScanned, selectedClass]);
+
+  // Continuous frame analysis scan loop using jsQR
+  const scanLoop = useCallback(() => {
+    const video = videoRef.current;
+    if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
+      let canvas = canvasRef.current;
+      if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvasRef.current = canvas;
+      }
+
+      const width = video.videoWidth || 640;
+      const height = video.videoHeight || 480;
+
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, width, height);
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert'
+        });
+
+        if (code && code.data) {
+          processDecodedQR(code.data);
+        }
+      }
+    }
+
+    animationFrameIdRef.current = requestAnimationFrame(scanLoop);
+  }, [processDecodedQR]);
+
+  // Start device camera with continuous scanning loop
   const startCamera = async (overrideFacing?: 'environment' | 'user') => {
     setCameraError(null);
     stopCamera();
@@ -141,7 +304,10 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
           videoRef.current.srcObject = stream;
           videoRef.current.setAttribute('playsinline', 'true');
           videoRef.current.onloadedmetadata = () => {
-            videoRef.current?.play().catch((playErr) => console.warn('Video play note:', playErr));
+            videoRef.current?.play().then(() => {
+              if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current);
+              animationFrameIdRef.current = requestAnimationFrame(scanLoop);
+            }).catch((playErr) => console.warn('Video play note:', playErr));
           };
         }
         setCameraActive(true);
@@ -149,13 +315,13 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
       } else {
         setCameraActive(false);
         setCameraError(
-          'Live webcam feed is blocked by browser security (HTTP/IP constraint). Tap "Open Device Camera" to scan via your camera app, or use Quick-Tap below.'
+          'Live camera feed is unavailable. You can tap "Take Photo / Select Image" to scan instantly, or use Quick-Tap below.'
         );
       }
     } catch (err: any) {
       console.warn('Camera startup note:', err);
       setCameraActive(false);
-      setCameraError('Camera access denied or unavailable. Tap "Open Device Camera" below.');
+      setCameraError('Camera access denied or unavailable. Tap "Take Photo / Select Image" below.');
     }
   };
 
@@ -165,8 +331,12 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
     startCamera(nextMode);
   };
 
-  // Stop device camera
+  // Stop device camera & cancel animation frame loop
   const stopCamera = () => {
+    if (animationFrameIdRef.current) {
+      cancelAnimationFrame(animationFrameIdRef.current);
+      animationFrameIdRef.current = null;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -174,21 +344,42 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
     setCameraActive(false);
   };
 
-  // Handle Photo Snap upload
+  // Handle Photo Snap upload with jsQR image decoding
   const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setPhotoScanning(true);
+    setScanStatusMessage('Analyzing photo for Student QR Code...');
 
-    // Simulate instant QR decoding from photo
-    setTimeout(() => {
-      setPhotoScanning(false);
-      // Auto scan first unscanned learner or match
-      const unscanned = localRoster.find((l) => l.status === 'absent');
-      if (unscanned) {
-        handleLearnerScanned(unscanned.id);
-      }
-    }, 600);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, img.width, img.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'attemptBoth'
+          });
+
+          setPhotoScanning(false);
+          if (code && code.data) {
+            processDecodedQR(code.data);
+          } else {
+            setScanStatusMessage('⚠️ No QR code detected in the photo. Please ensure clear lighting.');
+          }
+        } else {
+          setPhotoScanning(false);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   // Handle manual Barcode / Learner Number Input submit
@@ -196,66 +387,8 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
     e.preventDefault();
     if (!barcodeInput.trim()) return;
 
-    const query = barcodeInput.trim().toLowerCase();
-    const matched = localRoster.find((l) => {
-      const name = `${l.full_name || l.name || ''} ${l.surname || ''}`.toLowerCase();
-      return l.learner_number.toLowerCase().includes(query) || name.includes(query) || l.id.toString() === query;
-    });
-
-    if (matched) {
-      handleLearnerScanned(matched.id);
-      setBarcodeInput('');
-    }
-  };
-
-  // Sound chime for successful scan
-  const playScanBeep = () => {
-    try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = audioCtxRef.current || new AudioContextClass();
-      audioCtxRef.current = ctx;
-      if (ctx.state === 'suspended') ctx.resume();
-
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 note
-      osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.12); // High A6 chime
-
-      gain.gain.setValueAtTime(0.08, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.15);
-    } catch (_) {}
-  };
-
-  // Handle successful student QR Code scan
-  const handleLearnerScanned = (learnerId: number) => {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    setLocalRoster((prev) =>
-      prev.map((l) => {
-        if (l.id === learnerId) {
-          const updated: LearnerRecord = {
-            ...l,
-            status: 'present',
-            scannedAt: timeStr,
-            scanMethod: 'qr'
-          };
-          setLastScannedLearner(updated);
-          return updated;
-        }
-        return l;
-      })
-    );
-
-    playScanBeep();
-    confetti({ particleCount: 25, spread: 45, origin: { y: 0.6 } });
+    processDecodedQR(barcodeInput.trim());
+    setBarcodeInput('');
   };
 
   // Manual status override
@@ -424,6 +557,12 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* Real-Time Scanner Status Bar */}
+              <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-darker/90 backdrop-blur-md border border-cyan-500/30 text-cyan-300 text-[11px] font-mono shadow-md">
+                <ScanLine className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                <span className="truncate max-w-[200px] sm:max-w-xs">{scanStatusMessage}</span>
+              </div>
 
               {/* Last Scanned Student Banner */}
               {lastScannedLearner && (
