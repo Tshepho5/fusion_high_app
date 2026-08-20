@@ -38,12 +38,46 @@ export const NotificationDropdown: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const prevCountRef = useRef<number | null>(null);
+
+  // Play portal notification alert chime
+  const playNotificationChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = audioCtxRef.current || new AudioCtx();
+      audioCtxRef.current = ctx;
+      if (ctx.state === 'suspended') ctx.resume();
+
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523.25, now); // C5
+      osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.12); // G5
+      osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.24); // C6
+
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    } catch (_) {}
+  };
 
   const fetchUnreadCount = async () => {
     try {
       const res = await notificationService.getUnreadCount();
       if (res && res.unreadCount !== undefined) {
-        setUnreadCount(res.unreadCount);
+        const count = res.unreadCount;
+        if (prevCountRef.current !== null && count > prevCountRef.current) {
+          playNotificationChime();
+        }
+        prevCountRef.current = count;
+        setUnreadCount(count);
       }
     } catch {
       // Quiet fail on network polling
@@ -65,10 +99,10 @@ export const NotificationDropdown: React.FC = () => {
     }
   };
 
-  // Poll unread count every 20 seconds
+  // Poll unread count every 15 seconds
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 20000);
+    const interval = setInterval(fetchUnreadCount, 15000);
     return () => clearInterval(interval);
   }, []);
 

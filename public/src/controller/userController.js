@@ -1,5 +1,6 @@
 const db = require('../../../db/db');
 const emailService = require('../services/emailService');
+const NotificationService = require('../services/notificationService');
 const bcrypt = require('bcryptjs');
 const { validatePassword } = require('./authController');
 
@@ -278,21 +279,41 @@ exports.getMessages = async (req, res) => {
  */
 exports.sendMessage = async (req, res) => {
     const senderId = req.user.id;
-    const recipientId = req.body.recipientId || req.body.receiver_id || req.body.recipient_id || req.body.recipient;
+    const rawRecipientId = req.body.recipientId || req.body.receiver_id || req.body.recipient_id || req.body.recipient;
+    const recipientId = rawRecipientId ? parseInt(rawRecipientId, 10) : null;
     const subject = req.body.subject || 'Direct Message';
     const body = req.body.body || req.body.content || req.body.message;
-    const childId = req.body.childId || req.body.child_id;
+    const childId = req.body.childId || req.body.child_id ? parseInt(req.body.childId || req.body.child_id, 10) : null;
 
-    if (!recipientId || !body) {
+    if (!recipientId || !body || !body.trim()) {
         return res.status(400).json({ success: false, error: 'Recipient ID and message content are required.' });
     }
 
     try {
+        const textContent = body.trim();
         const result = await db.query(
-            `INSERT INTO messages (sender_id, recipient_id, child_id, subject, body) 
-             VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-            [senderId, recipientId, childId || null, subject, body]
+            `INSERT INTO messages (sender_id, recipient_id, child_id, subject, body, content, created_at) 
+             VALUES ($1, $2, $3, $4, $5, $5, NOW()) RETURNING *`,
+            [senderId, recipientId, childId || null, subject, textContent]
         );
+
+        // Fetch sender's name for instant push notification
+        try {
+            const senderRes = await db.query('SELECT full_name, surname FROM users WHERE id = $1', [senderId]);
+            const senderName = senderRes.rows[0] ? `${senderRes.rows[0].full_name} ${senderRes.rows[0].surname}` : 'A user';
+            
+            await NotificationService.sendToUsers({
+                userIds: [recipientId],
+                title: `💬 New Message from ${senderName}`,
+                message: textContent.length > 80 ? textContent.substring(0, 77) + '...' : textContent,
+                type: 'message',
+                targetTab: 'messages',
+                metadata: { senderId, senderName, messageId: result.rows[0].id }
+            });
+        } catch (notifErr) {
+            console.warn('[MESSAGE NOTIFICATION NOTICE]:', notifErr.message);
+        }
+
         res.json({ success: true, message: 'Message sent successfully.', messageRecord: result.rows[0] });
     } catch (err) {
         console.error('Error sending message:', err);
