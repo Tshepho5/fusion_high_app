@@ -118,18 +118,80 @@ pool.connect(async (err, client, release) => {
                 hired_date DATE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS attendance (
+                id SERIAL PRIMARY KEY,
+                child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+                class_id INTEGER,
+                subject_name VARCHAR(100) DEFAULT 'General Registration',
+                attendance_date DATE NOT NULL,
+                status VARCHAR(20) DEFAULT 'present',
+                recorded_by_teacher_id INTEGER,
+                recorded_by INTEGER,
+                reason TEXT,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+
+            ALTER TABLE attendance ADD COLUMN IF NOT EXISTS subject_name VARCHAR(100) DEFAULT 'General Registration';
+            ALTER TABLE attendance ADD COLUMN IF NOT EXISTS class_id INTEGER;
+            ALTER TABLE attendance ADD COLUMN IF NOT EXISTS recorded_by_teacher_id INTEGER;
+            ALTER TABLE attendance ADD COLUMN IF NOT EXISTS recorded_by INTEGER;
+            ALTER TABLE attendance ADD COLUMN IF NOT EXISTS reason TEXT;
+
+            UPDATE attendance SET subject_name = 'General Registration' WHERE subject_name IS NULL;
+            UPDATE attendance SET recorded_by_teacher_id = recorded_by WHERE recorded_by_teacher_id IS NULL AND recorded_by IS NOT NULL;
+            UPDATE attendance SET recorded_by = recorded_by_teacher_id WHERE recorded_by IS NULL AND recorded_by_teacher_id IS NOT NULL;
+
+            -- Messages table support
+            CREATE TABLE IF NOT EXISTS messages (
+                id SERIAL PRIMARY KEY,
+                sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                child_id INTEGER,
+                subject VARCHAR(255),
+                body TEXT,
+                content TEXT,
+                read_at TIMESTAMP,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+
+            ALTER TABLE messages ADD COLUMN IF NOT EXISTS child_id INTEGER;
+            ALTER TABLE messages ADD COLUMN IF NOT EXISTS subject VARCHAR(255);
+            ALTER TABLE messages ADD COLUMN IF NOT EXISTS body TEXT;
+            ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMP;
+            ALTER TABLE messages ADD COLUMN IF NOT EXISTS content TEXT;
+
+            UPDATE messages SET body = content WHERE body IS NULL AND content IS NOT NULL;
+            UPDATE messages SET content = body WHERE content IS NULL AND body IS NOT NULL;
         `);
 
-        // 2. Initialize performance indexes
+        // 2. Initialize unique attendance constraints & performance indexes
+        try {
+            await client.query(`
+                DELETE FROM attendance a USING attendance b
+                WHERE a.id < b.id 
+                  AND a.child_id = b.child_id 
+                  AND a.attendance_date = b.attendance_date 
+                  AND COALESCE(a.subject_name, 'General Registration') = COALESCE(b.subject_name, 'General Registration');
+
+                ALTER TABLE attendance DROP CONSTRAINT IF EXISTS attendance_child_date_subj_key;
+                ALTER TABLE attendance ADD CONSTRAINT attendance_child_date_subj_key UNIQUE (child_id, attendance_date, subject_name);
+            `);
+        } catch (constraintErr) {
+            console.warn('[DATABASE WARNING] Attendance constraint notice:', constraintErr.message);
+        }
+
         await client.query(`
             CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email));
             CREATE INDEX IF NOT EXISTS idx_users_id_number ON users(id_number);
             CREATE INDEX IF NOT EXISTS idx_children_learner_number ON children(learner_number);
             CREATE INDEX IF NOT EXISTS idx_children_parent_id ON children(parent_id);
             CREATE INDEX IF NOT EXISTS idx_employees_user_id ON employees(user_id);
+            CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(attendance_date);
+            CREATE INDEX IF NOT EXISTS idx_attendance_child_id ON attendance(child_id);
         `);
 
-        console.log('[DATABASE] Core tables and performance indexes verified.');
+        console.log('[DATABASE] Core tables, attendance schema, and performance indexes verified.');
     } catch (indexErr) {
         console.warn('[DATABASE WARNING] Schema verification warning:', indexErr.message);
     } finally {
