@@ -48,12 +48,12 @@ export const authService = {
     api.post('/api/check-email', { email }).then(res => res.data),
   verifyLearner: (data: { learner_number?: string; first_name?: string; surname?: string; id_number?: string; grade?: number | string; stream?: string }) => 
     api.post('/api/verify-learner', data).then(res => res.data),
-  forgotPassword: (data: { email: string }) => 
-    api.post('/api/forgot-password', data).then(res => res.data),
-  verifyOtp: (data: { email: string; otp?: string; code?: string }) => 
-    api.post('/api/verify-otp', { email: data.email, code: data.code || data.otp }).then(res => res.data),
-  resetPassword: (data: { email: string; otp?: string; code?: string; newPassword?: string; new_password?: string }) => 
-    api.post('/api/reset-password', { email: data.email, code: data.code || data.otp, new_password: data.newPassword || data.new_password }).then(res => res.data),
+  forgotPassword: (data: { email?: string; identifier?: string }) => 
+    api.post('/api/forgot-password', { email: data.email || data.identifier, identifier: data.identifier || data.email }).then(res => res.data),
+  verifyOtp: (data: { email?: string; identifier?: string; otp?: string; code?: string }) => 
+    api.post('/api/verify-otp', { email: data.email || data.identifier, identifier: data.identifier || data.email, code: data.code || data.otp, otp: data.otp || data.code }).then(res => res.data),
+  resetPassword: (data: { email?: string; identifier?: string; otp?: string; code?: string; newPassword?: string; new_password?: string }) => 
+    api.post('/api/reset-password', { email: data.email || data.identifier, identifier: data.identifier || data.email, code: data.code || data.otp, otp: data.otp || data.code, new_password: data.newPassword || data.new_password, newPassword: data.newPassword || data.new_password }).then(res => res.data),
 };
 
 // User Profile & Messages APIs (users, messages tables)

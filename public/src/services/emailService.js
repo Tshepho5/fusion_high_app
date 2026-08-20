@@ -5,23 +5,19 @@ if (dns.setDefaultResultOrder) {
 }
 const nodemailer = require('nodemailer');
 
-const smtpUser = (process.env.SMTP_USER || '').trim().replace(/^["']|["']$/g, '');
-const smtpPass = (process.env.SMTP_PASS || '').trim().replace(/^["']|["']$/g, '');
+const getSmtpUser = () => (process.env.SMTP_USER || 'tshepomakola23@gmail.com').trim().replace(/^["']|["']$/g, '');
+const getSmtpPass = () => (process.env.SMTP_PASS || '').trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '');
 
-// Configure the transporter with resilient Gmail / SMTP credentials
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: smtpUser,
-    pass: smtpPass,
-  },
-  connectionTimeout: 25000,
-  greetingTimeout: 25000,
-  socketTimeout: 25000,
-  tls: {
-    rejectUnauthorized: false
-  }
-});
+function createTransporter() {
+  const user = getSmtpUser();
+  const pass = getSmtpPass();
+  
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user, pass },
+    tls: { rejectUnauthorized: false }
+  });
+}
 
 /**
  * Modern HTML Email Base Layout Wrapper
@@ -106,7 +102,6 @@ function createBaseEmailTemplate({ preheader, title, subtitle, contentHtml, ctaT
           </tr>
 
           <!-- Security & Help Note -->
-          <!-- Security & Help Note -->
           <tr>
             <td style="padding: 0 32px 24px 32px;">
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; border-radius: 10px; padding: 14px 18px;">
@@ -148,11 +143,12 @@ function createBaseEmailTemplate({ preheader, title, subtitle, contentHtml, ctaT
 
 const emailService = {
   /**
-   * Real email sender using Nodemailer.
+   * Real email sender using Nodemailer with automatic TLS fallback.
    */
   send: async (to, subject, body, replyTo = null) => {
+    const senderUser = getSmtpUser();
     const mailOptions = {
-      from: `"Fusion High School" <${process.env.SMTP_USER || 'admin@fusionhigh.co.za'}>`,
+      from: `"Fusion High School" <${senderUser}>`,
       to,
       subject,
       html: body,
@@ -160,12 +156,27 @@ const emailService = {
     };
 
     try {
+      const transporter = createTransporter();
       const info = await transporter.sendMail(mailOptions);
-      console.log(`[EMAIL] Sent to ${to}: ${info.messageId}`);
-      return true;
+      console.log(`[EMAIL SUCCESS] Dispatched to ${to}: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
     } catch (error) {
-      console.error('[EMAIL ERROR] Failed to send email:', error);
-      return false;
+      console.warn('[EMAIL PRIMARY RETRY] Primary transport failed (' + (error.message || error) + '), attempting direct SMTP 465 fallback...');
+      try {
+        const fallbackTransporter = nodemailer.createTransport({
+          host: 'smtp.gmail.com',
+          port: 465,
+          secure: true,
+          auth: { user: getSmtpUser(), pass: getSmtpPass() },
+          tls: { rejectUnauthorized: false }
+        });
+        const fallbackInfo = await fallbackTransporter.sendMail(mailOptions);
+        console.log(`[EMAIL SUCCESS - Fallback 465] Dispatched to ${to}: ${fallbackInfo.messageId}`);
+        return { success: true, messageId: fallbackInfo.messageId };
+      } catch (fallbackError) {
+        console.error('[EMAIL ERROR - Both Transporters Failed]:', fallbackError.message || fallbackError);
+        return { success: false, error: error.message || fallbackError.message };
+      }
     }
   },
 
