@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import jsQR from 'jsqr';
+import { teacherService } from '../../services/api';
 import { Badge } from '../common/Badge';
 import {
   Camera,
@@ -79,7 +80,9 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
     localRosterRef.current = localRoster;
   }, [localRoster]);
 
-  // Initialize roster state from props
+  const allEnrolledLearnersRef = useRef<any[]>([]);
+
+  // Initialize roster state from props and pre-load all enrolled learners for global matching
   useEffect(() => {
     if (isOpen) {
       const initialRoster = learners.map((l) => ({
@@ -93,6 +96,14 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
       setSuccessScanPopup(null);
       setScanStatusMessage('Camera active — waiting for student QR code...');
       startCamera();
+
+      // Pre-load full student directory in background for seamless school-wide QR matching
+      teacherService.getMyLearners()
+        .then((res) => {
+          const list = Array.isArray(res) ? res : res.learners || [];
+          allEnrolledLearnersRef.current = list;
+        })
+        .catch(() => {});
     } else {
       stopCamera();
     }
@@ -175,6 +186,7 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
     let targetLearnerNumber = '';
     let targetId: number | null = null;
     let targetName = '';
+    let targetSurname = '';
 
     // Attempt JSON parse for official digital student cards
     try {
@@ -183,6 +195,7 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
         if (parsed.learner_number) targetLearnerNumber = String(parsed.learner_number).trim();
         if (parsed.id) targetId = parseInt(String(parsed.id), 10);
         if (parsed.name) targetName = String(parsed.name).trim();
+        if (parsed.surname) targetSurname = String(parsed.surname).trim();
       }
     } catch (_) {}
 
@@ -194,16 +207,25 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
       }
     }
 
-    const currentList = localRosterRef.current;
-    const matched = currentList.find((l) => {
-      const lNum = (l.learner_number || '').toLowerCase();
-      const tNum = targetLearnerNumber.toLowerCase();
-      const lName = `${l.full_name || l.name || ''} ${l.surname || ''}`.toLowerCase();
-      const tName = targetName.toLowerCase();
+    const normalize = (s: any) => String(s || '').toLowerCase().trim();
+    const cleanDigits = (s: any) => String(s || '').replace(/[^0-9]/g, '');
 
-      if (tNum && lNum && (lNum === tNum || lNum.includes(tNum) || tNum.includes(lNum))) return true;
+    const currentList = localRosterRef.current;
+    
+    // 1. Match against active class roster
+    const matched = currentList.find((l) => {
+      const lNum = normalize(l.learner_number);
+      const tNum = normalize(targetLearnerNumber);
+      const lDigits = cleanDigits(l.learner_number);
+      const tDigits = cleanDigits(targetLearnerNumber);
+      const lName = normalize(`${l.full_name || l.name || ''} ${l.surname || ''}`);
+      const tFullName = normalize(`${targetName} ${targetSurname}`.trim());
+
       if (targetId && l.id === targetId) return true;
-      if (tName && lName && (lName.includes(tName) || tName.includes(lName))) return true;
+      if (tNum && lNum && (lNum === tNum || lNum.includes(tNum) || tNum.includes(lNum))) return true;
+      if (tDigits && lDigits && tDigits.length >= 3 && (lDigits === tDigits || lDigits.includes(tDigits) || tDigits.includes(lDigits))) return true;
+      if (tFullName && lName && (lName.includes(tFullName) || tFullName.includes(lName))) return true;
+      if (targetName && lName && (lName.includes(normalize(targetName)) || normalize(targetName).includes(lName))) return true;
       return false;
     });
 
@@ -211,15 +233,85 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
       lastScannedCodeRef.current = trimmed;
       lastScannedTimeRef.current = now;
       handleLearnerScanned(matched.id, matched.full_name || matched.name);
-    } else {
-      // If code was recognized but student is from a different class
-      if (trimmed !== lastScannedCodeRef.current || now - lastScannedTimeRef.current > 3000) {
-        lastScannedCodeRef.current = trimmed;
-        lastScannedTimeRef.current = now;
-        setScanStatusMessage(`⚠️ QR Scanned (${targetLearnerNumber || trimmed.substring(0, 15)}), but not enrolled in Class ${selectedClass}.`);
-      }
+      return;
     }
-  }, [handleLearnerScanned, selectedClass]);
+
+    // 2. Global Match across all school enrolled learners
+    const allList = allEnrolledLearnersRef.current;
+    const globalMatch = allList.find((l) => {
+      const lNum = normalize(l.learner_number);
+      const tNum = normalize(targetLearnerNumber);
+      const lDigits = cleanDigits(l.learner_number);
+      const tDigits = cleanDigits(targetLearnerNumber);
+      const lName = normalize(`${l.full_name || l.learner_name || l.name || ''} ${l.surname || l.learner_surname || ''}`);
+      const tFullName = normalize(`${targetName} ${targetSurname}`.trim());
+
+      if (targetId && l.id === targetId) return true;
+      if (tNum && lNum && (lNum === tNum || lNum.includes(tNum) || tNum.includes(lNum))) return true;
+      if (tDigits && lDigits && tDigits.length >= 3 && (lDigits === tDigits || lDigits.includes(tDigits) || tDigits.includes(lDigits))) return true;
+      if (tFullName && lName && (lName.includes(tFullName) || tFullName.includes(lName))) return true;
+      if (targetName && lName && (lName.includes(normalize(targetName)) || normalize(targetName).includes(lName))) return true;
+      return false;
+    });
+
+    if (globalMatch) {
+      lastScannedCodeRef.current = trimmed;
+      lastScannedTimeRef.current = now;
+      const newRecord: LearnerRecord = {
+        id: globalMatch.id,
+        full_name: globalMatch.full_name || globalMatch.learner_name || globalMatch.name,
+        surname: globalMatch.surname || globalMatch.learner_surname || '',
+        learner_number: globalMatch.learner_number || targetLearnerNumber || `ID-${globalMatch.id}`,
+        status: 'present',
+        scannedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        scanMethod: 'qr'
+      };
+
+      setLocalRoster(prev => [newRecord, ...prev.filter(x => x.id !== newRecord.id)]);
+      setLastScannedLearner(newRecord);
+      setSuccessScanPopup(newRecord);
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccessScanPopup(null), 3200);
+
+      playScanBeep();
+      confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 } });
+      setScanStatusMessage(`✓ Marked Present: ${newRecord.full_name} ${newRecord.surname}`);
+      return;
+    }
+
+    // 3. Dynamic Match if QR code contains learner credentials
+    if (targetName || targetLearnerNumber || targetId) {
+      lastScannedCodeRef.current = trimmed;
+      lastScannedTimeRef.current = now;
+      const dynamicLearner: LearnerRecord = {
+        id: targetId || Date.now(),
+        full_name: targetName || `Learner ${targetLearnerNumber}`,
+        surname: targetSurname || '',
+        learner_number: targetLearnerNumber || `ID-${targetId || 'QR'}`,
+        status: 'present',
+        scannedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        scanMethod: 'qr'
+      };
+
+      setLocalRoster(prev => [dynamicLearner, ...prev.filter(x => x.id !== dynamicLearner.id)]);
+      setLastScannedLearner(dynamicLearner);
+      setSuccessScanPopup(dynamicLearner);
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccessScanPopup(null), 3200);
+
+      playScanBeep();
+      confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 } });
+      setScanStatusMessage(`✓ Marked Present: ${dynamicLearner.full_name} (${dynamicLearner.learner_number})`);
+      return;
+    }
+
+    // Fallback unrecognized code
+    if (trimmed !== lastScannedCodeRef.current || now - lastScannedTimeRef.current > 3000) {
+      lastScannedCodeRef.current = trimmed;
+      lastScannedTimeRef.current = now;
+      setScanStatusMessage(`⚠️ Unrecognized QR Code: "${trimmed.substring(0, 20)}..."`);
+    }
+  }, [handleLearnerScanned, playScanBeep]);
 
   // Continuous frame analysis scan loop using jsQR
   const scanLoop = useCallback(() => {
