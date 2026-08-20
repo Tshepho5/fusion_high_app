@@ -47,8 +47,8 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
   }, []);
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 max-w-[92vw] select-none animate-bounce-in">
-      <div className="relative flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-full bg-surface-darker/90 backdrop-blur-2xl border border-white/15 shadow-2xl shadow-black/80 ring-1 ring-white/10">
+    <div className="fixed bottom-4 inset-x-0 md:left-72 z-40 flex justify-center items-center pointer-events-none select-none animate-bounce-in px-4">
+      <div className="pointer-events-auto relative flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-full bg-surface-darker/90 backdrop-blur-2xl border border-white/15 shadow-2xl shadow-black/80 ring-1 ring-white/10 max-w-full">
         {/* Subtle glowing underlay */}
         <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-brand-500/20 via-cyan-500/20 to-brand-500/20 blur-md -z-10 pointer-events-none" />
 
