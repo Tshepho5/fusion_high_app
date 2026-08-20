@@ -1,0 +1,134 @@
+/*
+* Styles for the Teacher Dashboard Schedule Timeline and Widgets
+*/
+
+.timeline {
+    position: relative;
+    padding-left: 30px;
+    border-left: 2px solid #e5e7eb;
+    /* gray-200 */
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 1.5rem;
+    /* 24px */
+}
+
+.timeline-item:last-child {
+    margin-bottom: 0;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -42px;
+    top: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    /* 24px */
+    line-height: 1;
+}
+
+.timeline-content {
+    transition: opacity 0.3s;
+}
+
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.action-buttons button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background-color: #f3f4f6;
+    /* gray-100 */
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    transition: background-color 0.2s;
+    border: none;
+    cursor: pointer;
+}
+
+.action-buttons button:hover {
+    background-color: #ebe9e5;
+    /* gray-200 */
+}
+
+.action-buttons .ai-button {
+    background-color: #ede9fe;
+    /* purple-100 */
+    color: #5b21b6;
+    /* purple-700 */
+}
+
+.action-buttons .ai-button:hover {
+    background-color: #ddd6fe;
+    /* purple-200 */
+}
+
+/* Utility classes used in JS (if not using a framework like Tailwind) */
+.opacity-60 {
+    opacity: 0.6;
+}
+
+.text-gray-500 {
+    color: #6b7280;
+}
+
+.text-green-500 {
+    color: #22c55e; /* Corrected from purple to green */
+}
+
+.text-blue-500 {
+    color: #3b82f6;
+}
+
+.text-yellow-400 {
+    color: #facc15;
+}
+
+.bg-blue-50 {
+    background-color: #1e293b;
+}
+
+/* Darker background for the 'Up Next' box */
+.border-blue-200 {
+    border-color: #475569;
+}
+
+.text-blue-800 {
+    color: #93c5fd;
+}
+
+/* Lighter blue text */
+.text-blue-600 {
+    color: #60a5fa;
+}
+
+/* Lighter blue text */
+.bg-green-50 {
+    background-color: #080808;
+}
+
+/* Darker green for the 'no more classes' box */
+.text-gray-600 {
+    color: #4b5563;
+}
+
+.space-y-2>*+* {
+    margin-top: 0.5rem;
+}
+
+.space-y-6>*+* {
+    margin-top: 1.5rem;
+}

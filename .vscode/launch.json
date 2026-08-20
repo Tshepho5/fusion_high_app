@@ -1,0 +1,11 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Fusion High App (Flutter)",
+      "request": "launch",
+      "type": "dart",
+      "program": "flutter_app/lib/main.dart"
+    }
+  ]
+}

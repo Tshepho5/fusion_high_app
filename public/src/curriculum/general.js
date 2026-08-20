@@ -1,0 +1,37 @@
+module.exports = {
+  'Natural Sciences': [
+    { id: 'ns8_photo', grade: 8, stream: 'General', topic: 'Photosynthesis & Respiration', tutoringPrompt: 'Explain the processes of photosynthesis and respiration in plants for Grade 8. Return JSON: {"explanation": "text", "formula": "LaTeX"}.', questionPrompt: 'Generate 3 questions. Return JSON array: [{"question": "string", "answer": "string"}].' },
+    { id: 'ns8_atoms', grade: 8, stream: 'General', topic: 'Atoms and the Periodic Table', tutoringPrompt: 'Explain the structure of an atom and the layout of the periodic table for Grade 8. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'ns9_cells', grade: 9, stream: 'General', topic: 'Cells as the Basic Units of Life', tutoringPrompt: 'Explain plant and animal cell organelles for Grade 9. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'ns9_circuits', grade: 9, stream: 'General', topic: 'Series and Parallel Circuits', tutoringPrompt: 'Explain voltage and current in series vs parallel circuits for Grade 9. Return JSON: {"explanation": "text", "formula": "LaTeX"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'ns9_reactions', grade: 9, stream: 'General', topic: 'Chemical Reactions & pH', tutoringPrompt: 'Explain acids, bases and the pH scale for Grade 9. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' }
+  ],
+  'EMS': [
+    { id: 'ems8_accounting', grade: 8, stream: 'General', topic: 'The Accounting Equation', tutoringPrompt: 'Explain Assets = Liabilities + Equity for Grade 8. Return JSON: {"explanation": "text", "formula": "LaTeX"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'ems8_economy', grade: 8, stream: 'General', topic: 'Government and the Economy', tutoringPrompt: 'Explain the role of government in the economic cycle for Grade 8. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'ems9_journals', grade: 9, stream: 'General', topic: 'Cash Receipts and Payment Journals', tutoringPrompt: 'Explain recording transactions in CRJ and CPJ for Grade 9. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'ems9_ledger', grade: 9, stream: 'General', topic: 'The General Ledger', tutoringPrompt: 'Explain posting from journals to the general ledger for Grade 9. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'ems9_trial', grade: 9, stream: 'General', topic: 'Trial Balance', tutoringPrompt: 'Explain preparing a Trial Balance from ledger accounts for Grade 9. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' }
+  ],
+  'Technology': [
+    { id: 'tech8_structures', grade: 8, stream: 'General', topic: 'Structural Strength & Stability', tutoringPrompt: 'Explain types of loads and structural reinforcement for Grade 8. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'tech8_gears', grade: 8, stream: 'General', topic: 'Mechanical Systems: Gears', tutoringPrompt: 'Explain spur gears and gear ratios for Grade 8. Return JSON: {"explanation": "text", "formula": "LaTeX"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'tech9_hydraulics', grade: 9, stream: 'General', topic: 'Pneumatic and Hydraulic Systems', tutoringPrompt: 'Explain Pascals Principle and fluid pressure for Grade 9. Return JSON: {"explanation": "text", "formula": "LaTeX"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'tech9_electronics', grade: 9, stream: 'General', topic: 'Electronic Components (LEDs, Resistors)', tutoringPrompt: 'Explain basic electronic circuits and component symbols for Grade 9. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'tech9_processing', grade: 9, stream: 'General', topic: 'Processing Materials (Preservation)', tutoringPrompt: 'Explain methods of preserving wood, metal, and food for Grade 9. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' }
+  ],
+  'Social Sciences': [
+    { id: 'ss8_maps', grade: 8, stream: 'General', topic: 'Topographic Maps & Contours', tutoringPrompt: 'Explain how to read contour lines and heights on a map for Grade 8. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'ss8_industrial', grade: 8, stream: 'General', topic: 'Industrial Revolution in Britain', tutoringPrompt: 'Explain the impact of the Industrial Revolution on society for Grade 8. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'ss9_ww2', grade: 9, stream: 'General', topic: 'World War II: Causes & Impact', tutoringPrompt: 'Explain main causes and consequences of WWII for Grade 9. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'ss9_apartheid', grade: 9, stream: 'General', topic: 'Apartheid in South Africa', tutoringPrompt: 'Explain rise of Apartheid and resistance movements for Grade 9. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'ss9_development', grade: 9, stream: 'General', topic: 'Development Issues & Wealth', tutoringPrompt: 'Explain indicators of development and wealth for Grade 9. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' }
+  ],
+  'English FAL': [
+    { id: 'eng8_grammar', grade: 8, stream: 'General', topic: 'Nouns, Verbs and Adjectives', tutoringPrompt: 'Explain parts of speech for Grade 8. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'eng8_punctuation', grade: 8, stream: 'General', topic: 'Punctuation Rules', tutoringPrompt: 'Explain usage of commas and colons for Grade 8. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'eng9_tenses', grade: 9, stream: 'General', topic: 'Advanced Verb Tenses', tutoringPrompt: 'Explain present perfect and past continuous for Grade 9. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'eng9_visual', grade: 9, stream: 'General', topic: 'Visual Literacy & Advertising', tutoringPrompt: 'Explain analyzing ads and cartoons for Grade 9. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' },
+    { id: 'eng8_reading', grade: 8, stream: 'General', topic: 'Reading for Information', tutoringPrompt: 'Explain skimming and scanning for Grade 8. Return JSON: {"explanation": "text", "formula": "none"}.', questionPrompt: 'Generate 3 questions. Return JSON array.' }
+  ]
+};

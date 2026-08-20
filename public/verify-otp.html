@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify OTP</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        input {
+            padding: 0.5rem;
+            margin-top: 1rem;
+            width: 150px;
+            text-align: center;
+            font-size: 1.2rem;
+        }
+
+        button {
+            padding: 0.7rem 1.5rem;
+            margin-top: 1rem;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+        }
+
+        #timer {
+            margin-top: 1rem;
+            font-size: 1.1rem;
+            color: #dc3545;
+        }
+
+        #message {
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h2>Enter OTP</h2>
+        <p>An OTP has been sent to your email. Please enter it below.</p>
+        <form id="otpForm">
+            <input type="text" id="otpInput" placeholder="_ _ _ _" maxlength="4" required>
+            <br>
+            <button type="submit">Verify</button>
+        </form>
+        <div id="timer"></div>
+        <div id="message"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const otpForm = document.getElementById('otpForm');
+            const otpInput = document.getElementById('otpInput');
+            const timerEl = document.getElementById('timer');
+            const messageEl = document.getElementById('message');
+            const submitButton = otpForm.querySelector('button');
+
+            let timeLeft = 90; // 90 seconds
+
+            const countdown = setInterval(() => {
+                if (timeLeft <= 0) {
+                    clearInterval(countdown);
+                    timerEl.textContent = "OTP has expired!";
+                    submitButton.disabled = true;
+                    otpInput.disabled = true;
+                } else {
+                    const minutes = Math.floor(timeLeft / 60);
+                    const seconds = timeLeft % 60;
+                    timerEl.textContent = `Expires in: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                }
+                timeLeft -= 1;
+            }, 1000);
+
+            otpForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const urlParams = new URLSearchParams(window.location.search);
+                const email = urlParams.get('email');
+                const code = otpInput.value;
+
+                try {
+                    const response = await fetch('/api/verify-otp', { // Adjust this URL to your API endpoint
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, code })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        messageEl.textContent = 'OTP Verified! You can now reset your password.';
+                        // Redirect to the password reset page, passing the email and code
+                        window.location.href = `/reset-password.html?email=${encodeURIComponent(email)}&code=${code}`;
+                    } else {
+                        messageEl.textContent = `Error: ${data.error}`;
+                    }
+                } catch (error) {
+                    messageEl.textContent = 'An unexpected error occurred.';
+                }
+            });
+        });
+    </script>
+
+</body>
+
+</html>

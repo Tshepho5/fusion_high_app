@@ -1,0 +1,44 @@
+{
+  "name": "fusion-high-app",
+  "version": "1.0.0",
+  "description": "School Management System (SMS) - FUSION_HIGH_APP",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon --delay 1 server.js",
+    "dev:client": "npm --prefix client run dev",
+    "build:client": "npm --prefix client install && npm --prefix client run build",
+    "build": "npm run build:client",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.7.2",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.6.2",
+    "express-session": "^1.18.0",
+    "helmet": "^8.3.0",
+    "http-errors": "^2.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^8.0.5",
+    "pdf-parse": "^1.1.4",
+    "pg": "^8.12.0",
+    "selfsigned": "^5.5.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  },
+  "keywords": [
+    "sms",
+    "school",
+    "management",
+    "postgres"
+  ],
+  "author": "BLACKBOXAI",
+  "license": "ISC"
+}

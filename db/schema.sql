@@ -1,0 +1,1334 @@
+-- Drop tables in an order that respects dependencies
+DROP TABLE IF EXISTS assessment_results CASCADE;
+DROP TABLE IF EXISTS quizzes CASCADE;
+DROP TABLE IF EXISTS assignments CASCADE;
+DROP TABLE IF EXISTS tests CASCADE;
+DROP TABLE IF EXISTS exams CASCADE;
+DROP TABLE IF EXISTS attendance CASCADE;
+DROP TABLE IF EXISTS progress CASCADE;
+DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS announcements CASCADE;
+DROP TABLE IF EXISTS timetables CASCADE;
+DROP TABLE IF EXISTS textbooks CASCADE;
+DROP TABLE IF EXISTS children CASCADE;
+DROP TABLE IF EXISTS classes CASCADE;
+DROP TABLE IF EXISTS employees CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS subjects CASCADE;
+DROP TABLE IF EXISTS employee_roles CASCADE;
+DROP TABLE IF EXISTS departments CASCADE;
+DROP TABLE IF EXISTS roles CASCADE;
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+
+CREATE TABLE roles (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(50) UNIQUE NOT NULL);
+
+
+INSERT INTO roles (name)
+VALUES ('admin'),
+       ('parent'),
+       ('learner'),
+       ('teacher') ON CONFLICT DO NOTHING;
+
+
+CREATE TABLE departments (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) UNIQUE NOT NULL,
+  description TEXT
+);
+
+
+INSERT INTO departments (name, description)
+VALUES ('Administration', 'Handles overall school management and administration.'),
+       ('Academic', 'Responsible for teaching staff and curriculum.'),
+       ('Maintenance', 'Manages cleaning, repairs, and facilities.'),
+       ('IT', 'Oversees technology infrastructure and support.') ON CONFLICT DO NOTHING;
+
+
+CREATE TABLE employee_roles (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(50) UNIQUE NOT NULL
+);
+
+
+INSERT INTO employee_roles (name)
+VALUES ('teacher'),
+       ('Principal'),
+       ('Vice_Principal') ON CONFLICT DO NOTHING;
+
+
+CREATE TABLE employees
+  (id SERIAL PRIMARY KEY,
+   user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+   employee_role_id INTEGER REFERENCES employee_roles(id),
+   full_name VARCHAR(255) NOT NULL,
+   surname VARCHAR(255) NOT NULL,
+   department_id INTEGER REFERENCES departments(id),
+   subjects TEXT[] DEFAULT '{}',
+   subject_codes TEXT[] DEFAULT '{}',
+   grades_taught INTEGER[] DEFAULT '{}',
+   classes_taught TEXT[] DEFAULT '{}',
+   phone VARCHAR(20),
+   email VARCHAR(255),
+   hired_date DATE,
+   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+CREATE TABLE classes
+  (id SERIAL PRIMARY KEY,
+  name VARCHAR(50) UNIQUE NOT NULL, -- e.g., '10A', '11B Science'
+  grade INTEGER NOT NULL CHECK (grade BETWEEN 8 AND 12), 
+  stream VARCHAR(50) CHECK (stream IN ('General','Science','Commerce','Tourism')), 
+  homeroom_teacher_id INTEGER REFERENCES employees(user_id) ON DELETE SET NULL
+);
+
+-- Seed sample classes
+
+INSERT INTO classes (name, grade, stream)
+VALUES ('10A', 10, 'Science'),
+       ('10B', 10, 'Commerce'),
+       ('11A', 11, 'Science'),
+       ('11B', 11, 'Tourism'),
+       ('12A', 12, 'Science'),
+       ('12B', 12, 'Commerce') ON CONFLICT DO NOTHING;
+
+
+SELECT *
+FROM classes;
+
+
+CREATE TABLE users
+  (id SERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE,
+  password_hash VARCHAR(255),
+  role_id INTEGER REFERENCES roles(id) ON DELETE SET NULL, 
+  full_name VARCHAR(255),
+  surname VARCHAR(255),
+  id_number VARCHAR(20),
+  dob DATE, 
+  gender VARCHAR(10),
+  phone VARCHAR(20),
+  physical_address TEXT, 
+  country VARCHAR(100),
+  race VARCHAR(50),
+  parent_type VARCHAR(50),
+  reset_code VARCHAR(10),
+  reset_expiry TIMESTAMP, 
+  profile_picture_path VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE users ADD COLUMN preferences JSONB;
+
+
+select *
+from users;
+
+
+CREATE TABLE subjects (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  code VARCHAR(20) UNIQUE NOT NULL,
+  grade INTEGER NOT NULL CHECK (grade BETWEEN 8 AND 12), 
+  stream VARCHAR(50) DEFAULT 'General' CHECK (stream IN ('General','Science','Commerce','Tourism'))
+);
+
+-- Seed CAPS Subjects (Abbreviated Sample)
+
+INSERT INTO subjects (name, code, grade, stream)
+VALUES -- Science Stream (Grade 10-12)
+('Mathematics', 'MATH10S', 10, 'Science'),
+('Physical Sciences', 'PHSC10', 10, 'Science'),
+('Life Sciences', 'LFSC10', 10, 'Science'),
+('Mathematics', 'MATH11S', 11, 'Science'),
+('Physical Sciences', 'PHSC11', 11, 'Science'),
+('Life Sciences', 'LFSC11', 11, 'Science'),
+('Mathematics', 'MATH12S', 12, 'Science'),
+('Physical Sciences', 'PHSC12', 12, 'Science'),
+('Life Sciences', 'LFSC12', 12, 'Science'),
+('Accounting', 'ACC10', 10, 'Commerce'),
+('Business Studies', 'BUSS10', 10, 'Commerce'),
+('Economics', 'ECON10', 10, 'Commerce'),
+('Accounting', 'ACC11', 11, 'Commerce'),
+('Business Studies', 'BUSS11', 11, 'Commerce'),
+('Economics', 'ECON11', 11, 'Commerce'),
+('Accounting', 'ACC12', 12, 'Commerce'),
+('Business Studies', 'BUSS12', 12, 'Commerce'),
+('Economics', 'ECON12', 12, 'Commerce'),
+('Tourism', 'TOUR10', 10, 'Tourism'),
+('Mathematical Literacy', 'MLIT10', 10, 'Tourism'),
+('Tourism', 'TOUR11', 11, 'Tourism'),
+('Mathematical Literacy', 'MLIT11', 11, 'Tourism'),
+('Tourism', 'TOUR12', 12, 'Tourism'),
+('Mathematical Literacy', 'MLIT12', 12, 'Tourism'),
+-- Compulsory Subjects (All Streams)
+('English FAL', 'ENGF10', 10, 'General'),
+('Home Language', 'HMLG10', 10, 'General'),
+('Life Orientation', 'LFOR10', 10, 'General'),
+('English FAL', 'ENGF11', 11, 'General'),
+('Home Language', 'HMLG11', 11, 'General'),
+('Life Orientation', 'LFOR11', 11, 'General'),
+('English FAL', 'ENGF12', 12, 'General'),
+('Home Language', 'HMLG12', 12, 'General'),
+('Life Orientation', 'LFOR12', 12, 'General'),
+-- Grade 8-9 General Curriculum
+('Natural Sciences', 'NSCI08', 8, 'General'),
+('EMS', 'EMSC08', 8, 'General'),
+('Technology', 'TECH08', 8, 'General'),
+('Social Sciences', 'SSCI08', 8, 'General'),
+('Natural Sciences', 'NSCI09', 9, 'General'),
+('EMS', 'EMSC09', 9, 'General'),
+('Technology', 'TECH09', 9, 'General'),
+('Social Sciences', 'SSCI09', 9, 'General') ON CONFLICT DO NOTHING;
+
+
+SELECT *
+FROM subjects;
+
+
+CREATE TABLE children
+  (id SERIAL PRIMARY KEY,
+   learner_user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+   full_name VARCHAR(255),
+   surname VARCHAR(255),
+   parent_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+   learner_number VARCHAR(20) UNIQUE NOT NULL,
+   grade INTEGER NOT NULL CHECK (grade BETWEEN 8 AND 12), 
+   class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
+   stream VARCHAR(50) CHECK (grade < 10 OR stream IN ('Science','Commerce','Tourism')), 
+   subjects TEXT[] NOT NULL DEFAULT '{}',
+   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+CREATE TABLE IF NOT EXISTS timetables (
+   id SERIAL PRIMARY KEY,
+   name VARCHAR(255) NOT NULL,
+   grade INT DEFAULT 10,
+   stream VARCHAR(100) DEFAULT 'General',
+   timetable_data JSONB NOT NULL,
+   status VARCHAR(50) DEFAULT 'draft_teachers',
+   is_active BOOLEAN DEFAULT TRUE,
+   created_by INT REFERENCES users(id) ON DELETE SET NULL,
+   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS timetable_swap_requests (
+   id SERIAL PRIMARY KEY,
+   timetable_id INT REFERENCES timetables(id) ON DELETE CASCADE,
+   class_name VARCHAR(100) NOT NULL,
+   requester_teacher_id INT REFERENCES users(id) ON DELETE CASCADE,
+   requester_day VARCHAR(50) NOT NULL,
+   requester_period VARCHAR(50) NOT NULL,
+   requester_subject VARCHAR(100),
+   target_teacher_id INT REFERENCES users(id) ON DELETE CASCADE,
+   target_day VARCHAR(50) NOT NULL,
+   target_period VARCHAR(50) NOT NULL,
+   target_subject VARCHAR(100),
+   reason TEXT,
+   status VARCHAR(50) DEFAULT 'pending',
+   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS events (
+   id SERIAL PRIMARY KEY,
+   title VARCHAR(255) NOT NULL,
+   description TEXT,
+   event_date DATE NOT NULL,
+   start_time TIME,
+   end_time TIME,
+   location VARCHAR(255),
+   event_type VARCHAR(50) DEFAULT 'General',
+   audience VARCHAR(50) DEFAULT 'all',
+   grade_target INT,
+   stream_target VARCHAR(100),
+   created_by INT REFERENCES users(id) ON DELETE SET NULL,
+   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+SELECT *
+FROM users;
+
+select * from employees;
+
+
+-- SEEDING SAMPLE DATA (Employees & Workload)
+-- 1. Create a Teacher User (Auth Record)
+
+INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, phone, physical_address, country, race, parent_type)
+VALUES
+       ('202247878@myturf.ul.ac.za', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'admin'), 'Tshepho Letlalo', 'Makula', '0209205494088', '2002-09-20', 'male', '0692606618', '556 Mokgobu street, Maknweng A, Polokwane', 'South Africa', 'Black', 'Father'),
+       ('tbjmaetane1010@gmail.com', '$2a$10$xZ.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 'Thabang', 'Maetane', '0208285930086', '2002-08-28', 'male', '0827637087', '123 maetane street', 'South Sudan', 'Black', 'father'),
+       ('thapeloleshabane05@gmail.com', '$2a$10$yB.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 'Thapelo', 'Leshabane', '0504225825083', '2005-05-22', 'male', '0661420527', '243 Rabothata street', 'South Africa', 'Black', 'Father'),
+       ('202256986@myturf.ul.ac.za', '$2a$10$zC.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 'Minenhle', 'Dlungwane', '0205101032085', '2002-05-10', 'female', '0711943962', 'PV 8364, Atteridgeville, Pretoria', 'South Africa', 'Black', 'Mother'),
+       ('mini.dludlu@gmail.com', '$2a$10$1C.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 'Putla', 'Dludlu', '9907311032084', '2002-05-10', 'female', '0711943962', 'PV 8364, Atteridgeville, Pretoria', 'South Africa', 'Black', 'Mother'),
+       ('mapula@gmail.com', '$2a$10$2C.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 'Mapula', 'Modiba', '9907311032084', '2002-05-10', 'female', '0711943962', 'PV 8364, Atteridgeville, Pretoria', 'South Africa', 'Black', 'Mother') ON CONFLICT DO NOTHING;
+
+
+Select *
+from users; -- 2. Create the Employee Profile (Professional Workload)
+
+
+INSERT INTO employees (user_id, employee_role_id, full_name, surname, department_id, subjects, subject_codes, grades_taught, classes_taught, phone, email, hired_date)
+SELECT u.id, -- user_id
+ er.id, -- employee_role_id
+ u.full_name, -- full_name (from users)
+ u.surname, -- surname (from users)
+ d.id, -- department_id
+ ARRAY['Physical Sciences'], -- subjects
+ ARRAY['PHSC10', 'PHSC11', 'PHSC12'], -- subject_codes
+ ARRAY[10, 11, 12], -- grades_taught
+ ARRAY['10A', '11A', '12A'], -- classes_taught
+ u.phone, -- phone (from users)
+ u.email, -- email (from users)
+ '2026-01-15'::DATE -- hired_date
+FROM users u
+JOIN employee_roles er ON er.name = 'teacher'
+JOIN departments d ON d.name = 'Academic'
+WHERE u.email = 'tbjmaetane1010@gmail.com' ON CONFLICT (user_id) DO NOTHING;
+
+
+select *
+from employees;
+
+--want to insert the principal in the employee table and he does not teach any subject
+
+INSERT INTO employees (user_id, employee_role_id, full_name, surname, department_id, subjects, subject_codes, grades_taught, classes_taught, phone, email, hired_date)
+SELECT u.id,
+       er.id,
+       u.full_name,
+       u.surname,
+       d.id, -- No academic subjects for the Principal
+ '{}', 
+ ARRAY[]::TEXT[],
+ ARRAY[]::INTEGER[], 
+ ARRAY[]::TEXT[], 
+ u.phone,
+ u.email,
+ '2024-01-15'::DATE
+FROM users u
+JOIN employee_roles er ON er.name = 'Principal'
+JOIN departments d ON d.name = 'Administration'
+WHERE u.email = '202247878@myturf.ul.ac.za' ON CONFLICT (user_id) DO NOTHING;
+
+-- Insert Thapelo Leshabane as the Mathematics (Science Stream) teacher
+
+INSERT INTO employees (user_id, employee_role_id, full_name, surname, department_id, subjects, subject_codes, grades_taught, classes_taught, phone, email, hired_date)
+SELECT u.id,
+       er.id,
+       u.full_name,
+       u.surname,
+       d.id, 
+       ARRAY['Mathematics'], 
+       ARRAY['MATH10S','MATH11S','MATH12S'], 
+       ARRAY[10,11,12], 
+       ARRAY['10A','11A','12A'], 
+       u.phone,
+       u.email,
+       '2025-07-20'::DATE
+FROM users u
+JOIN employee_roles er ON er.name = 'teacher'
+JOIN departments d ON d.name = 'Academic'
+WHERE u.email = 'thapeloleshabane05@gmail.com' ON CONFLICT (user_id) DO NOTHING;
+
+-- Insert Minenhle Dlungwane as the Life Sciences teacher
+INSERT INTO employees (user_id, employee_role_id, full_name, surname, department_id, subjects, subject_codes, grades_taught, classes_taught, phone, email, hired_date)
+SELECT u.id,
+       er.id,
+       u.full_name,
+       u.surname,
+       d.id, 
+       ARRAY['Life Sciences'], 
+       ARRAY['LFSC10','LFSC11','LFSC12'], 
+       ARRAY[10,11,12], 
+       ARRAY['10A','11A','12A'], 
+       u.phone,
+       u.email,
+       '2024-05-10'::DATE
+FROM users u
+JOIN employee_roles er ON er.name = 'teacher'
+JOIN departments d ON d.name = 'Academic'
+WHERE u.email = '202256986@myturf.ul.ac.za' ON CONFLICT (user_id) DO NOTHING;
+
+
+SELECT *
+FROM users;
+
+
+--SEEDING SAMPLE DATA (Unclaimed Learners for Activation)
+
+INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, phone, country, race)
+VALUES --('20250001@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Jane', 'Walters', '0501014089081', '2005-01-01', 'Female', '0820000001','South Africa', 'White'),
+       --('20250002@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/B.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'David', 'Walters', '0502155099082', '2005-02-15', 'Male', '0820000002', 'South Africa', 'White'),
+       --('20250003@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/C.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Sarah', 'Walters', '05063003909083', '2005-06-30', 'Female', '0820000003', 'South Africa', 'White'),
+       --('20250004@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/D.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Thabelo', 'Ravhura', '0512254109084 ', '2005-12-22', 'Male', '0820000004', 'South Africa', 'Black'),
+       --('20250005@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/E.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Lufuno', 'Ravhura', '0603104989085', '2006-03-10', 'Female', '0820000005', 'South Africa', 'Black'),
+       --('20250006@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/F.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Don', 'Walters', '0607225119086', '2006-07-22', 'Male', '0820000006', 'South Africa', 'White'),
+       --('20250007@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/G.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Thato', 'Leshabane', '0701083809087', '2007-01-08', 'Female', '0820000007', 'South Africa', 'Black'),
+       --('20250008@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/H.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Thabang', 'Leshabane', '0709155209088', '2007-09-15', 'Male', '0820000008', 'South Africa', 'Black'),
+       --('20250009@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/I.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Tshegofatso', 'Leshabane', '0811185139080', '2008-11-18', 'Male', '0820000009', 'South Africa', 'Black'),
+       --('20250010@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/J.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Mpho', 'Ravhura', '0905053919081', '2009-05-05', 'Female', '0820000010', 'South Africa', 'Black'),
+       --('20250011@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/K.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Tumi', 'Leshabane', '0912315149082', '2009-12-31', 'Male', '0820000011', 'South Africa', 'Black'),
+       --('20250012@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/L.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Ditebogo', 'Ravhura', '1007154039083', '2010-07-15', 'Female', '0820000012', 'South Africa', 'Black'),
+       --('20250013@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/M.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Tumelo', 'Makola', '1103013929085', '2011-03-01', 'Female', '0820000013', 'South Africa', 'Black'),
+       --('20250014@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/N.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Neo', 'Makola', '1112255169086', '2011-12-25', 'Male', '0820000014', 'South Africa', 'Black'),
+       --('20250015@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/O.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Thabo', 'Makola', '1201015189088', '2012-01-01', 'Male', '0820000015', 'South Africa', 'Black'),
+       --('20250016@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Neo', 'Makola', '1209255199087', '2012-09-25', 'Male', '0820000016', 'South Africa', 'Black'),
+       --('20250017@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Junior', 'Tlhaka', '0503124123083', '2005-03-12', 'Female', '0820000016', 'South Africa', 'Black'),
+       --('20250018@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Lesedi', 'Tlhaka', '0607285782084', '2006-07-28', 'male', '0820000016', 'South Africa', 'Black'),
+       --('20250019@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Lethabo', 'Tlhaka', '0811041245081', '2008-11-04', 'Female', '0820000017', 'South Africa', 'Black'),
+       --('20250020@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Boitumelo', 'Tlhaka', '1001196321087', '2010-01-19', 'male', '0820000086', 'South Africa', 'Black'),
+       --('20250021@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Tebogo', 'Tlhaka', '1209230451089', '2012-09-23', 'Female', '0820000087', 'South Africa', 'Black'),
+         ('20250022@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Prince', 'Makola', '0503124123083', '2005-03-12', 'Male', '0729391381', 'South Africa', 'Black')
+        ON CONFLICT (email) DO NOTHING;
+ 
+      
+ 
+
+SELECT *
+FROM users;
+
+
+SELECT DISTINCT name 
+FROM subjects 
+WHERE grade = $1 AND (stream ILIKE $2 OR stream = 'General') 
+ORDER BY name; 
+
+
+-- Create the corresponding child record, with parent_id as NULL
+
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Jane',
+       'Walters',
+       NULL,
+       '20250001',
+       10,
+  (SELECT id
+   FROM classes
+   WHERE name = '10A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250001@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 10;
+
+
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'David',
+       'Walters',
+       NULL,
+       '20250002',
+       11,
+  (SELECT id
+   FROM classes
+   WHERE name = '11A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250002@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 11;
+
+
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Sarah',
+       'Walters',
+       NULL,
+       '20250003',
+       12,
+  (SELECT id
+   FROM classes
+   WHERE name = '12A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250003@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 12;
+
+
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Thabelo',
+       'Ravhura',
+       NULL,
+       '20250004',
+       10,
+  (SELECT id
+   FROM classes
+   WHERE name = '10A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250004@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 10;
+
+
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Lufuno',
+       'Ravhura',
+       NULL,
+       '20250005',
+       11,
+  (SELECT id
+   FROM classes
+   WHERE name = '11A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250005@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 11;
+
+
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Don',
+       'Walters',
+       NULL,
+       '20250006',
+       12,
+  (SELECT id
+   FROM classes
+   WHERE name = '12A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250006@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 12;
+
+
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Thato',
+       'Leshabane',
+       NULL,
+       '20250007',
+       10,
+  (SELECT id
+   FROM classes
+   WHERE name = '10A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250007@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 10;
+
+
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Thabang',
+       'Leshabane',
+       NULL,
+       '20250008',
+       11,
+  (SELECT id
+   FROM classes
+   WHERE name = '11A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250008@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 11;
+
+
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Tshegofatso',
+       'Leshabane',
+       NULL,
+       '20250009',
+       12,
+  (SELECT id
+   FROM classes
+   WHERE name = '12A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250009@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 12;
+
+
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Mpho',
+       'Ravhura',
+       NULL,
+       '20250010',
+       10,
+  (SELECT id
+   FROM classes
+   WHERE name = '10A'),'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250010@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 10;
+
+
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Tumi',
+       'Leshabane',
+       NULL,
+       '20250011',
+       11,
+  (SELECT id
+   FROM classes
+   WHERE name = '11A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250011@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 11;
+
+
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Ditebogo',
+       'Ravhura',
+       NULL,
+       '20250012',
+       12,
+  (SELECT id
+   FROM classes
+   WHERE name = '12A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250012@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 12;
+
+
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Tumelo',
+       'Makola',
+       NULL,
+       '20250013',
+       10,
+  (SELECT id
+   FROM classes
+   WHERE name = '10A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250013@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 10;
+
+
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Neo',
+       'Makola',
+       NULL,
+       '20250014',
+       11,
+  (SELECT id
+   FROM classes
+   WHERE name = '11A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250014@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 11;
+
+
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Thabo',
+       'Makola',
+       NULL,
+       '20250015',
+       12,
+  (SELECT id
+   FROM classes
+   WHERE name = '12A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250015@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 12;
+
+
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Neo',
+       'Makola',
+       NULL,
+       '20250016',
+       10,
+  (SELECT id
+   FROM classes
+   WHERE name = '10A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250016@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 10;
+
+  INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Junior',
+       'Tlhaka',
+       NULL,
+       '20250017',
+       11,
+  (SELECT id
+   FROM classes
+   WHERE name = '11A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250017@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 11;
+
+  INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Lesedi',
+       'Tlhaka',
+       NULL,
+       '20250018',
+       12,
+  (SELECT id
+   FROM classes
+   WHERE name = '12A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250018@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 12;
+
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Lethabo',
+       'Tlhaka',
+       NULL,
+       '20250019',
+       10,
+  (SELECT id
+   FROM classes
+   WHERE name = '10A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250019@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 10;
+
+  INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Boitumelo',
+       'Tlhaka',
+       NULL,
+       '20250020',
+       11,
+  (SELECT id
+   FROM classes
+   WHERE name = '11A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250020@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 11;
+
+  INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Tebogo',
+       'Tlhaka',
+       NULL,
+       '20250021',
+       12,
+  (SELECT id
+   FROM classes
+   WHERE name = '12A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '20250021@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 12;
+
+
+SELECT *
+FROM users;
+
+
+select *
+from children;
+
+
+select *
+from users;
+
+
+-- Link sample children to sample parents by surname or role
+UPDATE children c
+SET parent_id = p.id
+ALTER TABLE users ADD COLUMN parent_id VARCHAR(20);
+FROM users p
+WHERE p.role_id = (SELECT id FROM roles WHERE name = 'parent')
+  AND LOWER(c.surname) = LOWER(p.surname)
+  AND c.parent_id IS NULL;
+
+-- ==========================================
+
+CREATE TABLE progress
+  (id SERIAL PRIMARY KEY,
+  child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+  subject VARCHAR(100) NOT NULL,
+  term VARCHAR(20) DEFAULT 'Term 1',
+  grade DECIMAL(5, 2), -- Represents score/percentage
+  time_taken_seconds INTEGER, 
+  notes TEXT,   
+  employee_id INTEGER REFERENCES employees(id) ON DELETE SET NULL, 
+  date TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+
+SELECT *
+FROM progress;
+
+-- Seed sample progress records across Tests, Quizzes, Assignments, Exams
+INSERT INTO progress (child_id, subject, term, grade, time_taken_seconds, notes, date)
+SELECT child_id, subject, term, grade, time_taken_seconds, notes, date FROM (VALUES
+    ((SELECT id FROM children WHERE learner_number = '20250001'), 'Mathematics', 'Term 2', 88.0, 1800, 'Test: Trigonometry & Equations', NOW() - INTERVAL '4 days'),
+    ((SELECT id FROM children WHERE learner_number = '20250001'), 'Physical Sciences', 'Term 2', 92.5, 1200, 'Quiz: Kinematics & Motion', NOW() - INTERVAL '2 days'),
+    ((SELECT id FROM children WHERE learner_number = '20250001'), 'Life Sciences', 'Term 2', 85.0, 1500, 'Assignment: Cell Structure Research', NOW() - INTERVAL '6 days'),
+    ((SELECT id FROM children WHERE learner_number = '20250001'), 'English FAL', 'Term 2', 82.0, 2400, 'Exam: Literature & Essay', NOW() - INTERVAL '8 days'),
+    ((SELECT id FROM children WHERE learner_number = '20250001'), 'Home Language', 'Term 2', 89.0, 1900, 'Test: Language Mechanics', NOW() - INTERVAL '10 days'),
+    ((SELECT id FROM children WHERE learner_number = '20250001'), 'Life Orientation', 'Term 2', 95.0, 900, 'Assignment: Physical Fitness Log', NOW() - INTERVAL '12 days'),
+
+    ((SELECT id FROM children WHERE learner_number = '20250013'), 'Mathematics', 'Term 2', 80.0, 1800, 'Test: Algebra & Functions', NOW() - INTERVAL '3 days'),
+    ((SELECT id FROM children WHERE learner_number = '20250013'), 'Physical Sciences', 'Term 2', 78.5, 1400, 'Quiz: Matter and Materials', NOW() - INTERVAL '5 days'),
+    ((SELECT id FROM children WHERE learner_number = '20250013'), 'Life Sciences', 'Term 2', 84.0, 1600, 'Assignment: Ecosystem Diversity', NOW() - INTERVAL '7 days'),
+    ((SELECT id FROM children WHERE learner_number = '20250013'), 'English FAL', 'Term 2', 88.0, 2100, 'Exam: Comprehension & Grammar', NOW() - INTERVAL '9 days'),
+
+    ((SELECT id FROM children WHERE learner_number = '20250014'), 'Mathematics', 'Term 2', 75.0, 1800, 'Test: Analytical Geometry', NOW() - INTERVAL '4 days'),
+    ((SELECT id FROM children WHERE learner_number = '20250014'), 'Physical Sciences', 'Term 2', 82.0, 1500, 'Test: Chemical Change', NOW() - INTERVAL '2 days'),
+    ((SELECT id FROM children WHERE learner_number = '20250014'), 'Life Sciences', 'Term 2', 86.0, 1300, 'Quiz: Biodiversity & Classification', NOW() - INTERVAL '6 days'),
+    ((SELECT id FROM children WHERE learner_number = '20250014'), 'English FAL', 'Term 2', 90.0, 2200, 'Assignment: Creative Writing Essay', NOW() - INTERVAL '8 days')
+) AS v(child_id, subject, term, grade, time_taken_seconds, notes, date)
+ON CONFLICT DO NOTHING;
+
+
+
+
+CREATE TABLE announcements
+  (id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  content TEXT NOT NULL,
+  grade_target INTEGER, 
+  stream_target VARCHAR(50),
+  subject_target VARCHAR(255),
+  class_target VARCHAR(50),
+  role_target VARCHAR(50) DEFAULT 'all' CHECK (role_target IN ('all', 'admin', 'parent', 'learner')), 
+  is_assignment BOOLEAN DEFAULT FALSE,
+  assignment_data JSONB,
+  author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+
+CREATE TABLE timetables (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    timetable_data JSONB NOT NULL,
+    is_active BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE messages (
+    id SERIAL PRIMARY KEY,
+    sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    recipient_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    child_id INTEGER REFERENCES children(id) ON DELETE SET NULL,
+    subject VARCHAR(255) NOT NULL,
+    body TEXT NOT NULL,
+    read_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Optional: Add an index for faster message lookups
+CREATE INDEX idx_messages_participants ON messages (sender_id, recipient_id);
+ALTER TABLE users ADD COLUMN preferences JSONB;
+
+
+SELECT *
+FROM announcements;
+
+
+CREATE TABLE textbooks
+  (id SERIAL PRIMARY KEY,
+  subject VARCHAR(100) NOT NULL,
+  grade INTEGER NOT NULL,
+  file_path TEXT NOT NULL,
+  teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  is_published BOOLEAN DEFAULT FALSE);
+
+
+select *
+from textbooks;
+
+
+CREATE TABLE attendance (
+    id SERIAL PRIMARY KEY,
+    child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
+    subject_name VARCHAR(100),
+    attendance_date DATE NOT NULL,
+    status VARCHAR(10) NOT NULL CHECK (status IN ('present', 'absent', 'late', 'excused')),
+    recorded_by_teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(child_id, attendance_date, subject_name) -- Ensures one record per learner per date per subject
+);
+
+CREATE INDEX idx_attendance_child_id ON attendance (child_id);
+
+-- Seed sample per-subject period attendance logs
+INSERT INTO attendance (child_id, class_id, subject_name, attendance_date, status, recorded_by_teacher_id)
+SELECT child_id, class_id, subject_name, attendance_date, status, recorded_by_teacher_id FROM (VALUES
+    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT class_id FROM children WHERE learner_number = '20250001'), 'Mathematics', CURRENT_DATE, 'present', (SELECT id FROM users WHERE email = 'thapeloleshabane05@gmail.com')),
+    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT class_id FROM children WHERE learner_number = '20250001'), 'Physical Sciences', CURRENT_DATE, 'present', (SELECT id FROM users WHERE email = 'tbjmaetane1010@gmail.com')),
+    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT class_id FROM children WHERE learner_number = '20250001'), 'Life Sciences', CURRENT_DATE - INTERVAL '1 day', 'late', (SELECT id FROM users WHERE email = '202256986@myturf.ul.ac.za')),
+    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT class_id FROM children WHERE learner_number = '20250001'), 'English FAL', CURRENT_DATE - INTERVAL '2 days', 'present', (SELECT id FROM users WHERE email = 'thapeloleshabane05@gmail.com')),
+
+    ((SELECT id FROM children WHERE learner_number = '20250013'), (SELECT class_id FROM children WHERE learner_number = '20250013'), 'Mathematics', CURRENT_DATE, 'present', (SELECT id FROM users WHERE email = 'thapeloleshabane05@gmail.com')),
+    ((SELECT id FROM children WHERE learner_number = '20250013'), (SELECT class_id FROM children WHERE learner_number = '20250013'), 'Physical Sciences', CURRENT_DATE, 'absent', (SELECT id FROM users WHERE email = 'tbjmaetane1010@gmail.com')),
+
+    ((SELECT id FROM children WHERE learner_number = '20250014'), (SELECT class_id FROM children WHERE learner_number = '20250014'), 'Mathematics', CURRENT_DATE, 'present', (SELECT id FROM users WHERE email = 'thapeloleshabane05@gmail.com')),
+    ((SELECT id FROM children WHERE learner_number = '20250014'), (SELECT class_id FROM children WHERE learner_number = '20250014'), 'Physical Sciences', CURRENT_DATE, 'late', (SELECT id FROM users WHERE email = 'tbjmaetane1010@gmail.com'))
+) AS v(child_id, class_id, subject_name, attendance_date, status, recorded_by_teacher_id)
+ON CONFLICT DO NOTHING;
+
+
+
+CREATE TABLE assessment_results (
+    id SERIAL PRIMARY KEY,
+    assessment_id INTEGER NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
+    child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    score DECIMAL(5, 2) NOT NULL CHECK (score >= 0 AND score <= 100),
+    submission_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    feedback TEXT,
+    recorded_by_teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(assessment_id, child_id) -- Ensures a learner has only one result per assessment
+);
+
+
+create table assessments(
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    subject VARCHAR(100) NOT NULL,
+    grade INTEGER NOT NULL,
+    class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
+    stream VARCHAR(50),
+    total_marks DECIMAL(5, 2) NOT NULL CHECK (total_marks > 0),   
+    date_created TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(10) NOT NULL CHECK (status IN ('open', 'closed')) DEFAULT 'open',
+    recorded_by_teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    instructions TEXT,
+    date_due TIMESTAMP WITH TIME ZONE    
+);
+
+CREATE INDEX idx_assessment_results_child_id ON assessment_results (child_id);
+
+
+
+-- Add an index for faster lookups
+CREATE INDEX idx_attendance_date_class ON attendance (attendance_date, class_id);
+
+
+-- Logic-supporting Indexes
+
+CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users (LOWER(email));
+
+
+CREATE INDEX IF NOT EXISTS idx_users_id_number ON users (id_number);
+
+
+CREATE INDEX IF NOT EXISTS idx_children_learner_number ON children (learner_number);
+
+
+CREATE INDEX IF NOT EXISTS idx_progress_child_id ON progress (child_id);
+
+
+CREATE INDEX IF NOT EXISTS idx_children_parent ON children (parent_id);
+
+
+CREATE INDEX IF NOT EXISTS idx_children_learner_user ON children (learner_user_id);
+
+
+CREATE INDEX IF NOT EXISTS idx_children_subjects ON children USING GIN (subjects);
+
+
+CREATE INDEX IF NOT EXISTS idx_employees_user ON employees (user_id);
+
+
+CREATE INDEX IF NOT EXISTS idx_employees_grades ON employees USING GIN (grades_taught);
+
+
+CREATE INDEX IF NOT EXISTS idx_announcements_target ON announcements (role_target);
+
+
+CREATE TABLE quizzes (
+    id SERIAL PRIMARY KEY,
+    child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    subject_id INTEGER REFERENCES subjects(id) ON DELETE SET NULL,
+    score DECIMAL(5, 2) NOT NULL CHECK (score >= 0),
+    total_marks DECIMAL(5, 2) NOT NULL CHECK (total_marks > 0),
+    submission_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    feedback TEXT,
+    recorded_by_teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+); 
+
+SELECT * FROM quizzes;
+
+CREATE INDEX idx_quizzes_child_id ON quizzes (child_id);
+CREATE INDEX idx_quizzes_subject_id ON quizzes (subject_id);
+
+
+CREATE TABLE assignments (
+    id SERIAL PRIMARY KEY,
+    child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    subject_id INTEGER REFERENCES subjects(id) ON DELETE SET NULL,
+    score DECIMAL(5, 2) NOT NULL CHECK (score >= 0),
+    total_marks DECIMAL(5, 2) NOT NULL CHECK (total_marks > 0),
+    submission_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    feedback TEXT,
+    recorded_by_teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_assignments_child_id ON assignments (child_id);
+CREATE INDEX idx_assignments_subject_id ON assignments (subject_id);
+
+
+CREATE TABLE tests (
+    id SERIAL PRIMARY KEY,
+    child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    subject_id INTEGER REFERENCES subjects(id) ON DELETE SET NULL,
+    score DECIMAL(5, 2) NOT NULL CHECK (score >= 0),
+    total_marks DECIMAL(5, 2) NOT NULL CHECK (total_marks > 0),
+    submission_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    feedback TEXT,
+    recorded_by_teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_tests_child_id ON tests (child_id);
+CREATE INDEX idx_tests_subject_id ON tests (subject_id);
+
+
+CREATE TABLE exams (
+    id SERIAL PRIMARY KEY,
+    child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    subject_id INTEGER REFERENCES subjects(id) ON DELETE SET NULL,
+    score DECIMAL(5, 2) NOT NULL CHECK (score >= 0),
+    total_marks DECIMAL(5, 2) NOT NULL CHECK (total_marks > 0),
+    submission_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    feedback TEXT,
+    recorded_by_teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_exams_child_id ON exams (child_id);
+CREATE INDEX idx_exams_subject_id ON exams (subject_id);
+
+
+-- ==========================================
+-- SEEDING SAMPLE ASSESSMENT RESULTS
+-- ==========================================
+
+-- Insert sample quiz results for a few learners
+INSERT INTO quizzes (child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback)
+
+SELECT child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback FROM (VALUES
+    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 8.5, 10, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Good effort on algebra.'),
+    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT id FROM subjects WHERE code = 'PHSC10'), 7, 10, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Well done on the practical.'),
+    ((SELECT id FROM children WHERE learner_number = '20250002'), (SELECT id FROM subjects WHERE code = 'MATH11S'), 6, 10, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Good start.'),
+    ((SELECT id FROM children WHERE learner_number = '20250003'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 9, 10, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Excellent.'),
+    ((SELECT id FROM children WHERE learner_number = '20250004'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 9, 10, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Excellent work!'),
+    ((SELECT id FROM children WHERE learner_number = '20250005'), (SELECT id FROM subjects WHERE code = 'PHSC11'), 7.5, 10, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Good.'),
+    ((SELECT id FROM children WHERE learner_number = '20250006'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 8, 10, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Well done.'),
+    ((SELECT id FROM children WHERE learner_number = '20250007'), (SELECT id FROM subjects WHERE code = 'LFSC10'), 6, 10, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Needs more attention to detail.'),
+    ((SELECT id FROM children WHERE learner_number = '20250008'), (SELECT id FROM subjects WHERE code = 'MATH11S'), 4, 10, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Please review the material.'),
+    ((SELECT id FROM children WHERE learner_number = '20250009'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 9.5, 10, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Outstanding!'),
+    ((SELECT id FROM children WHERE learner_number = '20250010'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 5.5, 10, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Struggling with trigonometry.'),
+    ((SELECT id FROM children WHERE learner_number = '20250011'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 8, 10, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good work.'),
+    ((SELECT id FROM children WHERE learner_number = '20250012'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 7, 10, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Solid effort.'),
+    ((SELECT id FROM children WHERE learner_number = '20250013'), (SELECT id FROM subjects WHERE code = 'PHSC10'), 8, 10, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Good understanding of concepts.'),
+    ((SELECT id FROM children WHERE learner_number = '20250014'), (SELECT id FROM subjects WHERE code = 'PHSC11'), 6.5, 10, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Room for improvement.'),
+    ((SELECT id FROM children WHERE learner_number = '20250015'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 7, 10, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good.'),
+    ((SELECT id FROM children WHERE learner_number = '20250016'), (SELECT id FROM subjects WHERE code = 'LFSC10'), 9.5, 10, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Outstanding!'),
+    ((SELECT id FROM children WHERE learner_number = '20250019'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 7, 10, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Solid performance.')
+) AS data(child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback)
+ON CONFLICT DO NOTHING;
+
+
+-- Insert sample assignment results
+INSERT INTO assignments (child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback)
+
+SELECT child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback FROM (VALUES
+    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT id FROM subjects WHERE code = 'LFSC10'), 35, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good, but could use more detail in the conclusion.'),
+    ((SELECT id FROM children WHERE learner_number = '20250002'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 42, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'A well-researched assignment. Please check your referencing.'),
+    ((SELECT id FROM children WHERE learner_number = '20250003'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 40, 50, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Good work.'),
+    ((SELECT id FROM children WHERE learner_number = '20250004'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 45, 50, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Excellent.'),
+    ((SELECT id FROM children WHERE learner_number = '20250005'), (SELECT id FROM subjects WHERE code = 'PHSC11'), 38, 50, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Good analysis, but submitted late.'),
+    ((SELECT id FROM children WHERE learner_number = '20250006'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 33, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Please follow the rubric more closely.'),
+    ((SELECT id FROM children WHERE learner_number = '20250007'), (SELECT id FROM subjects WHERE code = 'LFSC10'), 28, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'More detail needed.'),
+    ((SELECT id FROM children WHERE learner_number = '20250008'), (SELECT id FROM subjects WHERE code = 'MATH11S'), 25, 50, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Please see me for extra help.'),
+    ((SELECT id FROM children WHERE learner_number = '20250009'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 48, 50, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Outstanding.'),
+    ((SELECT id FROM children WHERE learner_number = '20250010'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 31, 50, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Showing improvement.'),
+    ((SELECT id FROM children WHERE learner_number = '20250011'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 48, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Exceptional work.'),
+    ((SELECT id FROM children WHERE learner_number = '20250012'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 39, 50, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Good.'),
+    ((SELECT id FROM children WHERE learner_number = '20250013'), (SELECT id FROM subjects WHERE code = 'PHSC10'), 41, 50, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Well done.'),
+    ((SELECT id FROM children WHERE learner_number = '20250014'), (SELECT id FROM subjects WHERE code = 'PHSC11'), 33, 50, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Average submission.'),
+    ((SELECT id FROM children WHERE learner_number = '20250015'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 37, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good.'),
+    ((SELECT id FROM children WHERE learner_number = '20250016'), (SELECT id FROM subjects WHERE code = 'LFSC10'), 44, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Excellent.'),
+    ((SELECT id FROM children WHERE learner_number = '20250017'), (SELECT id FROM subjects WHERE code = 'MATH11S'), 45, 50, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Very well done.'),
+    ((SELECT id FROM children WHERE learner_number = '20250020'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 30, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Incomplete. Please resubmit the missing sections.'),
+    ((SELECT id FROM children WHERE learner_number = '20250018'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 42, 50, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Good.'),
+    ((SELECT id FROM children WHERE learner_number = '20250019'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 36, 50, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Solid work.'),
+    ((SELECT id FROM children WHERE learner_number = '20250020'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 30, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Incomplete. Please resubmit the missing sections.'),
+    ((SELECT id FROM children WHERE learner_number = '20250021'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 43, 50, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Very good.')
+) AS data(child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback) ON CONFLICT DO NOTHING;
+
+-- Insert sample test results
+INSERT INTO tests (child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback)
+
+SELECT child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback FROM (VALUES
+    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 78, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Great improvement in geometry.'),
+    ((SELECT id FROM children WHERE learner_number = '20250002'), (SELECT id FROM subjects WHERE code = 'MATH11S'), 65, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Struggled with calculus, let''s review in class.'),
+    ((SELECT id FROM children WHERE learner_number = '20250003'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 88, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Excellent performance.'),
+    ((SELECT id FROM children WHERE learner_number = '20250004'), (SELECT id FROM subjects WHERE code = 'PHSC10'), 72, 100, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Good.'),
+    ((SELECT id FROM children WHERE learner_number = '20250005'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 68, 100, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Solid pass.'),
+    ((SELECT id FROM children WHERE learner_number = '20250006'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 55, 100, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Needs to work on exam technique.'),
+    ((SELECT id FROM children WHERE learner_number = '20250007'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 61, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Passed. Review algebra section.'),
+    ((SELECT id FROM children WHERE learner_number = '20250008'), (SELECT id FROM subjects WHERE code = 'PHSC11'), 59, 100, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Just below 60%. More practice needed.'),
+    ((SELECT id FROM children WHERE learner_number = '20250009'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 92, 100, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Top of the class!'),
+    ((SELECT id FROM children WHERE learner_number = '20250010'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 52, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Passed. Keep practicing.'),
+    ((SELECT id FROM children WHERE learner_number = '20250011'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 85, 100, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Excellent.'),
+    ((SELECT id FROM children WHERE learner_number = '20250012'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 75, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Good, consistent work.'),
+    ((SELECT id FROM children WHERE learner_number = '20250013'), (SELECT id FROM subjects WHERE code = 'PHSC10'), 80, 100, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Very good.'),
+    ((SELECT id FROM children WHERE learner_number = '20250014'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 71, 100, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good work.'),
+    ((SELECT id FROM children WHERE learner_number = '20250015'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 68, 100, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'A solid pass.'),
+    ((SELECT id FROM children WHERE learner_number = '20250016'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 90, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Fantastic!'),
+    ((SELECT id FROM children WHERE learner_number = '20250017'), (SELECT id FROM subjects WHERE code = 'PHSC11'), 77, 100, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Well done.'),
+    ((SELECT id FROM children WHERE learner_number = '20250018'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 81, 100, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Very good understanding.'),
+    ((SELECT id FROM children WHERE learner_number = '20250019'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 68, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Good pass.'),
+    ((SELECT id FROM children WHERE learner_number = '20250020'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 63, 100, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Passed.'),
+    ((SELECT id FROM children WHERE learner_number = '20250021'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 49, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Just missed the 50% mark. Let''s work on it.')
+) 
+ AS data(child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback) ON CONFLICT DO NOTHING;
+
+-- Insert sample exam results
+INSERT INTO exams (child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback)
+SELECT child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback FROM (VALUES
+    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 120, 150, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Excellent final mark.'),
+    ((SELECT id FROM children WHERE learner_number = '20250002'), (SELECT id FROM subjects WHERE code = 'PHSC11'), 95, 150, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Good pass.'),
+    ((SELECT id FROM children WHERE learner_number = '20250003'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 72, 150, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Solid understanding of mechanics.'),
+    ((SELECT id FROM children WHERE learner_number = '20250003'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 110, 150, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Very strong on genetics.'),
+    ((SELECT id FROM children WHERE learner_number = '20250004'), (SELECT id FROM subjects WHERE code = 'LFSC10'), 105, 150, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good result.'),
+    ((SELECT id FROM children WHERE learner_number = '20250005'), (SELECT id FROM subjects WHERE code = 'MATH11S'), 88, 150, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Passed well.'),
+    ((SELECT id FROM children WHERE learner_number = '20250006'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 95, 150, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Good result.'),
+    ((SELECT id FROM children WHERE learner_number = '20250007'), (SELECT id FROM subjects WHERE code = 'PHSC10'), 85, 150, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'A comfortable pass.'),
+    ((SELECT id FROM children WHERE learner_number = '20250008'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 75, 150, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Passed. Can improve.'),
+    ((SELECT id FROM children WHERE learner_number = '20250009'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 125, 150, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Distinction. Well done.'),
+    ((SELECT id FROM children WHERE learner_number = '20250010'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 80, 150, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Good pass.'),
+    ((SELECT id FROM children WHERE learner_number = '20250011'), (SELECT id FROM subjects WHERE code = 'PHSC11'), 110, 150, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Very good.'),
+    ((SELECT id FROM children WHERE learner_number = '20250012'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 100, 150, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good performance.'),
+    ((SELECT id FROM children WHERE learner_number = '20250013'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 115, 150, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Great work.'),
+    ((SELECT id FROM children WHERE learner_number = '20250014'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 99, 150, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good.'),
+    ((SELECT id FROM children WHERE learner_number = '20250015'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 80, 150, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Passed comfortably.'),
+    ((SELECT id FROM children WHERE learner_number = '20250016'), (SELECT id FROM subjects WHERE code = 'PHSC10'), 122, 150, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Excellent.'),
+    ((SELECT id FROM children WHERE learner_number = '20250017'), (SELECT id FROM subjects WHERE code = 'MATH11S'), 130, 150, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Outstanding result.'),
+    ((SELECT id FROM children WHERE learner_number = '20250018'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 115, 150, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Excellent application of formulas.'),
+    ((SELECT id FROM children WHERE learner_number = '20250019'), (SELECT id FROM subjects WHERE code = 'LFSC10'), 92, 150, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good pass.'),
+    ((SELECT id FROM children WHERE learner_number = '20250020'), (SELECT id FROM subjects WHERE code = 'MATH11S'), 78, 150, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Passed.'),
+    ((SELECT id FROM children WHERE learner_number = '20250021'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 98, 150, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'A good final result.')
+
+) AS data(child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback) ON CONFLICT DO NOTHING;
+
+
+-- ==========================================
+-- VERIFYING ASSESSMENT RESULTS
+-- ==========================================
+
+-- Verify Quizzes
+SELECT
+    q.id,
+    c.full_name AS learner_name,
+    s.name AS subject_name,
+    q.score,
+    q.total_marks,
+    u.full_name AS teacher_name
+FROM quizzes q
+JOIN children c ON q.child_id = c.id
+JOIN subjects s ON q.subject_id = s.id
+JOIN users u ON q.recorded_by_teacher_id = u.id;
+
+-- Verify Assignments
+SELECT
+    a.id,
+    c.full_name AS learner_name,
+    s.name AS subject_name,
+    a.score,
+    a.total_marks
+FROM assignments a
+JOIN children c ON a.child_id = c.id
+JOIN subjects s ON a.subject_id = s.id;
+
+-- Verify Tests
+SELECT
+    t.id,
+    c.full_name AS learner_name,
+    s.name AS subject_name,
+    t.score,
+    t.total_marks
+FROM tests t
+JOIN children c ON t.child_id = c.id
+JOIN subjects s ON t.subject_id = s.id;
+
+-- Verify Exams
+SELECT
+    e.id,
+    c.full_name AS learner_name,
+    s.name AS subject_name,
+    e.score,
+    e.total_marks
+FROM exams e
+JOIN children c ON e.child_id = c.id
+JOIN subjects s ON e.subject_id = s.id;
+
+-- ==========================================
+-- BEHAVIOR INCIDENTS & DISCIPLINARY LOGS
+-- ==========================================
+CREATE TABLE IF NOT EXISTS behavior_incidents (
+    id SERIAL PRIMARY KEY,
+    child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    incident_type VARCHAR(100) NOT NULL,
+    severity VARCHAR(20) DEFAULT 'Low' CHECK (severity IN ('Low', 'Medium', 'High', 'Critical')),
+    description TEXT NOT NULL,
+    action_taken TEXT,
+    recorded_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    incident_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_behavior_incidents_child ON behavior_incidents(child_id);
+CREATE INDEX IF NOT EXISTS idx_behavior_incidents_date ON behavior_incidents(incident_date);
+
+-- Seed sample behavior incidents
+INSERT INTO behavior_incidents (child_id, incident_type, severity, description, action_taken, recorded_by_user_id, incident_date)
+SELECT child_id, incident_type, severity, description, action_taken, recorded_by_user_id, incident_date::DATE FROM (VALUES
+    ((SELECT id FROM children WHERE learner_number = '20250001'), 'Classroom Disruption', 'Low', 'Talking during test', 'Verbal warning given by teacher.', (SELECT id FROM users WHERE email = 'tbjmaetane1010@gmail.com'), '2026-03-01'),
+    ((SELECT id FROM children WHERE learner_number = '20250008'), 'Chronic Late Arrival', 'Medium', 'Late to period 1 three times this week', 'Parent notification sent', (SELECT id FROM users WHERE email = 'thapeloleshabane05@gmail.com'), '2026-03-05'),
+    ((SELECT id FROM children WHERE learner_number = '20250010'), 'Incomplete Homework', 'Low', 'Failed to submit Mathematics assignment', 'After school study hall assigned', (SELECT id FROM users WHERE email = 'thapeloleshabane05@gmail.com'), '2026-03-06')
+) AS data(child_id, incident_type, severity, description, action_taken, recorded_by_user_id, incident_date)
+ON CONFLICT DO NOTHING;
+
+-- GENERATED REPORTS HISTORY TABLE
+CREATE TABLE IF NOT EXISTS generated_reports (
+    id SERIAL PRIMARY KEY,
+    report_name VARCHAR(255) NOT NULL,
+    report_type VARCHAR(100) NOT NULL,
+    generated_by VARCHAR(255) DEFAULT 'Principal Admin',
+    generated_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    parameters JSONB DEFAULT '{}',
+    file_path TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Seed sample recent reports
+INSERT INTO generated_reports (report_name, report_type, generated_by, created_at)
+VALUES
+    ('Generate Class Mark Sheets', 'class_mark_sheets', 'Principal Admin', '2026-03-07 17:35:29'),
+    ('Subject Performance Summaries', 'subject_performance', 'Principal Admin', '2026-03-07 12:17:12'),
+    ('Generate Daily Attendance Logs', 'daily_attendance', 'Principal Admin', '2026-03-06 09:14:05'),
+    ('Behavior Incident Summary', 'behavior_summary', 'Principal Admin', '2026-03-05 14:22:00')
+ON CONFLICT DO NOTHING;
+
+SELECT r.name as role_name 
+FROM users u 
+JOIN roles r ON u.role_id = r.id 
+WHERE u.id = $1;
+
+-- ==========================================================
+-- ADMISSIONS & APPLICATIONS MANAGEMENT SYSTEM
+-- ==========================================================
+
+CREATE TABLE IF NOT EXISTS applications (
+  id SERIAL PRIMARY KEY,
+  application_number VARCHAR(50) UNIQUE NOT NULL,
+  correction_token VARCHAR(64) UNIQUE,
+  status VARCHAR(30) DEFAULT 'submitted' CHECK (status IN ('submitted', 'under_ai_review', 'action_required', 'approved', 'rejected', 'enrolled', 'waitlisted')),
+  
+  -- Learner Information
+  first_name VARCHAR(100) NOT NULL,
+  surname VARCHAR(100) NOT NULL,
+  id_number VARCHAR(20) NOT NULL,
+  dob DATE,
+  gender VARCHAR(20),
+  citizenship VARCHAR(50) DEFAULT 'South Africa',
+  phone VARCHAR(20),
+  email VARCHAR(255),
+  physical_address TEXT NOT NULL,
+  grade_applied INTEGER NOT NULL CHECK (grade_applied BETWEEN 8 AND 12),
+  stream VARCHAR(50) DEFAULT 'General',
+  selected_subjects TEXT[] DEFAULT '{}',
+  previous_school VARCHAR(255),
+  previous_grade INTEGER,
+  transfer_reason TEXT,
+  medical_info TEXT,
+  special_needs TEXT,
+
+  -- Primary Parent / Guardian (Next of Kin 1)
+  primary_parent_name VARCHAR(100) NOT NULL,
+  primary_parent_surname VARCHAR(100) NOT NULL,
+  primary_parent_relationship VARCHAR(50) NOT NULL,
+  primary_parent_id_number VARCHAR(20) NOT NULL,
+  primary_parent_phone VARCHAR(20) NOT NULL,
+  primary_parent_email VARCHAR(255) NOT NULL,
+  primary_parent_address TEXT NOT NULL,
+  primary_parent_occupation VARCHAR(100),
+  primary_parent_employer VARCHAR(150),
+
+  -- Secondary Parent / Guardian (Next of Kin 2 - Optional)
+  has_secondary_parent BOOLEAN DEFAULT FALSE,
+  secondary_parent_name VARCHAR(100),
+  secondary_parent_surname VARCHAR(100),
+  secondary_parent_relationship VARCHAR(50),
+  secondary_parent_id_number VARCHAR(20),
+  secondary_parent_phone VARCHAR(20),
+  secondary_parent_email VARCHAR(255),
+  secondary_parent_address TEXT,
+  secondary_parent_occupation VARCHAR(100),
+  secondary_parent_employer VARCHAR(150),
+
+  -- AI Review & Capacity Tracking
+  ai_verification_status VARCHAR(30) DEFAULT 'pending',
+  ai_verification_notes JSONB DEFAULT '[]'::jsonb,
+  assigned_class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
+  provisional_learner_number VARCHAR(20),
+  admin_notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+SELECT  * FROM applications;
+
+CREATE TABLE IF NOT EXISTS application_documents (
+  id SERIAL PRIMARY KEY,
+  application_id INTEGER NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+  document_type VARCHAR(50) NOT NULL,
+  file_path TEXT NOT NULL,
+  file_name VARCHAR(255),
+  mime_type VARCHAR(100),
+  file_size INTEGER,
+  is_verified BOOLEAN DEFAULT FALSE,
+  ai_confidence_score NUMERIC(5,2) DEFAULT 0,
+  ai_extracted_data JSONB DEFAULT '{}'::jsonb,
+  issues TEXT[] DEFAULT '{}',
+  uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE children ADD COLUMN IF NOT EXISTS secondary_parent_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE children ADD COLUMN IF NOT EXISTS application_number VARCHAR(50);
+
+CREATE TABLE IF NOT EXISTS parent_children (
+  id SERIAL PRIMARY KEY,
+  parent_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+  relationship VARCHAR(50) DEFAULT 'Guardian',
+  is_primary BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(parent_id, child_id)
+);
+
+SELECT * FROM users;
+SELECT * FROM children;
+SELECT * FROM parent_children;
+SELECT * FROM parent_children

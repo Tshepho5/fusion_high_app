@@ -1,0 +1,24 @@
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <i class="fas fa-graduation-cap"></i>
+    <span>Fusion High 2.0</span>
+  </div>
+  <div class="user-profile">
+    <img src="/assets/profile-placeholder.png" alt="Profile" id="top-teacher-avatar" class="avatar">
+    <div class="user-info">
+      <h4 id="top-teacher-name">Loading...</h4>
+      <p class="role">Teacher Portal</p>
+    </div>
+  </div>
+  <ul class="sidebar-nav">
+    <li class="active"><a href="#overview" onclick="switchTab('overview')"><i class="fas fa-chart-line"></i> Dashboard Overview</a></li>
+    <li><a href="#workload" onclick="switchTab('workload')"><i class="fas fa-book-open"></i> My Workload & Subjects</a></li>
+    <li><a href="#learners" onclick="switchTab('learners')"><i class="fas fa-user-graduate"></i> My Learners</a></li>
+    <li><a href="#attendance" onclick="switchTab('attendance')"><i class="fas fa-clipboard-check"></i> Attendance Register</a></li>
+    <li><a href="#schedule" onclick="switchTab('schedule')"><i class="fas fa-calendar-alt"></i> Class Schedule</a></li>
+    <li><a href="#messages" onclick="switchTab('messages')"><i class="fas fa-comments"></i> Parent Communication <span class="badge hidden" id="unread-messages-badge">0</span></a></li>
+    <li><a href="#textbooks" onclick="switchTab('textbooks')"><i class="fas fa-book-reader"></i> CAPS Textbooks</a></li>
+    <li><a href="#profile" onclick="switchTab('profile')"><i class="fas fa-user-cog"></i> Profile Settings</a></li>
+    <li><a href="javascript:void(0)" onclick="logout()"><i class="fas fa-sign-out-alt"></i> End Session</a></li>
+  </ul>
+</aside>

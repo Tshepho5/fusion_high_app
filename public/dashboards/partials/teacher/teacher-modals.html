@@ -1,0 +1,79 @@
+<!-- Class Mark Sheet Modal -->
+<div id="classMarkSheetModal" class="modal" style="display:none;">
+  <div class="modal-content modal-dark-content">
+    <span class="close-btn" onclick="document.getElementById('classMarkSheetModal').style.display='none'">&times;</span>
+    <h3 class="card-title modal-header-title" id="marksheet-modal-title"><i class="fas fa-edit"></i> Class Mark Sheet</h3>
+    
+    <div class="modal-scroll-area" style="margin-top: 1rem; max-height: 400px; overflow-y: auto;">
+      <table class="table dark-modal-table" style="width: 100%; color: #fff;">
+        <thead>
+          <tr class="dark-table-header">
+            <th style="padding: 10px; text-align: left;">Learner Name</th>
+            <th style="padding: 10px; text-align: left;">Learner Number</th>
+            <th style="padding: 10px; text-align: center;">Grade / Class</th>
+            <th style="padding: 10px; text-align: center;">Term Mark (%)</th>
+          </tr>
+        </thead>
+        <tbody id="marksheet-tbody">
+          <!-- Populated dynamically by JS -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="modal-actions-right">
+      <button type="button" class="btn btn-secondary" onclick="document.getElementById('classMarkSheetModal').style.display='none'">Cancel</button>
+      <button type="button" class="btn btn-primary-cta" onclick="window.saveClassMarkSheet()"><i class="fas fa-save"></i> Save Mark Sheet</button>
+    </div>
+  </div>
+</div>
+
+<!-- Learner Progress History Report Modal -->
+<div id="learnerProgressModal" class="modal" style="display:none;">
+  <div class="modal-content modal-dark-content" style="max-width: 750px;">
+    <span class="close-btn" onclick="document.getElementById('learnerProgressModal').style.display='none'">&times;</span>
+    <h3 class="card-title modal-header-title" id="learner-progress-modal-title"><i class="fas fa-chart-line"></i> Academic Progress History</h3>
+    <div id="learner-progress-modal-body" class="modal-scroll-area" style="margin-top: 1rem; max-height: 450px; overflow-y: auto;">
+      <!-- Populated dynamically -->
+    </div>
+    <div class="modal-actions-right">
+      <button type="button" class="btn btn-secondary" onclick="document.getElementById('learnerProgressModal').style.display='none'">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- CAPS Textbook Manager Modal -->
+<div id="textbookManagerModal" class="modal" style="display:none;">
+  <div class="modal-content modal-dark-content" style="max-width: 700px;">
+    <span class="close-btn" onclick="document.getElementById('textbookManagerModal').style.display='none'">&times;</span>
+    <h3 class="card-title modal-header-title" id="textbook-modal-title"><i class="fas fa-book-open"></i> Manage CAPS Textbooks</h3>
+    
+    <div style="margin-top: 1rem;">
+      <form id="textbookModalUploadForm" onsubmit="window.handleTextbookModalUpload(event)">
+        <input type="hidden" id="tb-modal-subject">
+        <input type="hidden" id="tb-modal-grade">
+        <div class="form-group">
+          <label style="color:#cbd5e1; font-size:0.85rem;">Select CAPS PDF Textbook File:</label>
+          <input type="file" id="tb-modal-file" class="form-control att-select-input" accept="application/pdf" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:0.5rem;"><i class="fas fa-upload"></i> Upload & Index Textbook</button>
+      </form>
+    </div>
+
+    <h4 class="modal-header-title" style="margin-top: 1.5rem; font-size: 0.95rem;">Current Uploaded Textbooks</h4>
+    <div id="tb-modal-list" class="modal-scroll-area" style="margin-top: 0.5rem; max-height: 200px; overflow-y: auto;">
+      <!-- Populated dynamically -->
+    </div>
+  </div>
+</div>
+
+<!-- Logout Confirmation Modal -->
+<div id="logoutConfirmModal" class="modal" style="display:none;">
+  <div class="modal-content modal-dark-content" style="max-width: 420px; text-align:center;">
+    <h3 style="color:#f8fafc; font-size:1.2rem; margin-bottom:0.75rem;"><i class="fas fa-sign-out-alt text-warning"></i> Confirm Session End</h3>
+    <p style="color:#94a3b8; font-size:0.9rem; margin-bottom:1.5rem;">Are you sure you want to log out of the Teacher Portal?</p>
+    <div style="display:flex; justify-content:center; gap:1rem;">
+      <button type="button" class="btn btn-secondary" onclick="document.getElementById('logoutConfirmModal').style.display='none'">Cancel</button>
+      <button type="button" class="btn btn-danger" onclick="window.executeLogout()">End Session</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>FUSION_HIGH_APP - School Management System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/login.css">
+  <link rel="stylesheet" href="/css/auth.css">
+  <style>
+    /* Responsive styles for auth pages */
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem;
+      }
+
+      .form-container {
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>FUSION_HIGH_APP</h1>
+      <p>The Future SMS</p>
+    </header>
+
+    <!-- Login Form -->
+    <div id="login-form" class="form-container active">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <input type="text" id="loginEmail" placeholder="Email or Learner Number" required autocomplete="username">
+        <div class="password-wrapper">
+          <input type="password" id="loginPassword" placeholder="Password" required autocomplete="current-password">
+          <i class="fas fa-eye eye" id="toggleLoginPassword"></i>
+        </div>
+
+        <button type="submit">Login</button>
+      </form>
+      <a href="/forgot-password">Forgot Password?</a>
+
+      <p>Don't have an account? <a href="/register">Register here</a></p>
+      <div id="loginError" class="error"></div>
+    </div>
+
+  </div>
+
+  <!-- Load the main authentication script which includes login and UI logic -->
+  <script type="module" src="/js/auth.js"></script>
+
+</body>
+
+</html>

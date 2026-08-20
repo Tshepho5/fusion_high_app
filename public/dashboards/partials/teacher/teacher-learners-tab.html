@@ -1,0 +1,15 @@
+<div id="learners" class="dashboard-tab" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.5rem; background:#1e293b; padding:1rem 1.5rem; border-radius:12px; border:1px solid #334155;">
+    <div>
+      <h3 style="color:#ffffff; margin:0; font-size:1.25rem;"><i class="fas fa-user-graduate me-2 text-info"></i> My Learners Directory</h3>
+      <small style="color:#94a3b8;">Consolidated learner list across your assigned grades, classes, and subjects.</small>
+    </div>
+    <div style="display:flex; gap:1rem;">
+      <input type="text" id="learner-search-input" class="form-control" placeholder="Search learner name or ID..." style="background:#0f172a; color:#fff; width:250px; font-size:0.85rem;">
+    </div>
+  </div>
+
+  <div id="my-learners-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+    <!-- Populated dynamically by JS -->
+  </div>
+</div>

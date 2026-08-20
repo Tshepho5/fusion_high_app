@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FUSION_HIGH_APP - Register</title>
+  <link rel="stylesheet" href="/css/auth.css">
+  <script src="/src/controller/saIDvalidations.js"></script>
+  <script src="/js/id-autofill.js"></script>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>FUSION_HIGH_APP</h1>
+      <p>The Future SMS</p>
+    </header>
+
+    <!-- Register Form -->
+    <div id="register-form" class="form-container active">
+      <h2>Parent Registration</h2>
+      <form id="registerForm">
+
+        <div id="parentFields" class="parent-fields">
+
+          <label>Surname:</label>
+          <input type="text" id="surname" placeholder="Surname" required pattern="^[A-Za-z\s\-']+$"
+            title="Surname should only contain letters, spaces, hyphens, or apostrophes.">
+
+          <label>Full Name:</label>
+          <input type="text" id="fullName" placeholder="Full Name" required pattern="^[A-Za-z\s\-']+$"
+            title="Full Name should only contain letters, spaces, hyphens, or apostrophes.">
+
+          <label>ID Number:</label>
+          <input type="text" id="idNumber" placeholder="ID Number" required maxlength="13">
+
+          <label>Date of Birth (DD/MM/YYYY):</label>
+          <input type="text" id="dob" name="dob" class="form-control" placeholder="DD/MM/YYYY" required
+            onfocus="(this.type='date')" onblur="if(!this.value)this.type='text'">
+
+          <label>Gender:</label>
+          <select id="gender" required>
+            <option value="" disabled selected>Select Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+
+          <label>Phone Number:</label>
+          <input type="tel" id="phone" placeholder="Phone Number" required pattern="^(\+27|0)[0-9]{9}$"
+            title="Phone number must start with +27 or 0, followed by 9 digits.">
+
+          <label>Email:</label>
+          <input type="email" id="regEmail" placeholder="Email" required>
+
+          <div class="password-wrapper">
+            <label>Password:</label>
+            <input type="password" id="regPassword" placeholder="Password" required>
+            <span class="eye" id="toggleRegPassword">👁</span>
+          </div>
+
+          <div class="password-wrapper">
+            <label>Confirm Password:</label>
+            <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+            <span class="eye" id="toggleConfirmPassword">👁</span>
+          </div>
+
+          <label>Physical Address:</label>
+          <input type="text" id="physicalAddress" placeholder="Physical Address" required>
+
+          <label>Country:</label>
+          <select id="country" required>
+            <option value="" disabled selected>Select Country</option>
+            <option value="South Africa">South Africa</option>
+            <option value="Zimbabwe">Zimbabwe</option>
+            <option value="Namibia">Namibia</option>
+            <option value="Botswana">Botswana</option>
+            <option value="Lesotho">Lesotho</option>
+            <option value="Eswatini">Eswatini</option>
+            <option value="Mozambique">Mozambique</option>
+          </select>
+
+          <label>Race:</label>
+          <input type="text" id="race" placeholder="Race" required>
+
+          <label>Parent Type:</label>
+          <select id="parentType" required>
+            <option value="" disabled selected>Select Parent Type</option>
+            <option value="mother">Mother</option>
+            <option value="father">Father</option>
+            <option value="guardian">Guardian</option>
+          </select>
+
+          <!-- Child Linkage Field -->
+          <div id="childLinkageSection" style="margin-top: 14px; border-top: 1px dashed #475569; padding-top: 10px;">
+            <label>Child Learner Number / Application Ref / ID Number:</label>
+            <input type="text" id="learnerNumberToLink" placeholder="e.g. 20268041 or FHS-2026-..." required>
+            <div id="linkageStatus" style="font-size: 0.8rem; color: #38bdf8; margin-top: 4px;"></div>
+          </div>
+        </div>
+
+        <button type="submit">Register & Link Child</button>
+      </form>
+      <div style="margin-top: 14px; text-align: center; font-size: 0.85rem; color: #cbd5e1;">
+        <p>New Student? <a href="/application.html" style="color: #38bdf8; font-weight: bold; text-decoration: underline;">Apply for Learner Admission &rarr;</a></p>
+        <p style="margin-top: 6px;">Have an account? <a href="/">Login here</a></p>
+      </div>
+      <div id="regError" class="error"></div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const registerForm = document.getElementById('registerForm');
+      const regError = document.getElementById('regError');
+
+      const parentFields = document.getElementById('parentFields');
+      parentFields.classList.remove('hidden');
+
+      // Password eye toggles
+      const setupToggle = (toggleId, inputId) => {
+        const toggle = document.getElementById(toggleId);
+        const input = document.getElementById(inputId);
+        if (toggle && input) {
+          toggle.addEventListener('click', () => {
+            input.type = input.type === 'password' ? 'text' : 'password';
+            toggle.textContent = input.type === 'password' ? '👁' : '🙈';
+          });
+        }
+      };
+
+      setupToggle('toggleRegPassword', 'regPassword');
+      setupToggle('toggleConfirmPassword', 'confirmPassword');
+
+      // --- Real-time input filtering with Immediate Error Popups ---
+
+      const showInlineError = (input, msg) => {
+        let err = input.parentElement.querySelector('.input-live-error');
+        if (!err) {
+          err = document.createElement('div');
+          err.className = 'input-live-error';
+          err.style.color = '#f87171';
+          err.style.fontSize = '0.78rem';
+          err.style.marginTop = '2px';
+          err.style.marginBottom = '6px';
+          input.parentElement.insertBefore(err, input.nextSibling);
+        }
+        err.textContent = msg;
+        input.style.borderColor = '#ef4444';
+        registerForm.querySelector('button[type="submit"]').disabled = true;
+      };
+
+      const clearInlineError = (input) => {
+        const err = input.parentElement.querySelector('.input-live-error');
+        if (err) err.remove();
+        input.style.borderColor = '';
+        const allErrors = registerForm.querySelectorAll('.input-live-error');
+        if (allErrors.length === 0) {
+          registerForm.querySelector('button[type="submit"]').disabled = false;
+        }
+      };
+
+      // Function to filter input to allow only letters, spaces, hyphens, and apostrophes
+      const filterLettersOnly = (event) => {
+        const input = event.target;
+        const orig = input.value;
+        if (/\d/.test(orig)) {
+          showInlineError(input, '❌ Numbers are not allowed here. Please enter letters only.');
+          input.value = orig.replace(/\d/g, '');
+        } else if (/[^A-Za-z\s\-']/.test(orig)) {
+          showInlineError(input, '❌ Special symbols are not allowed. Letters and hyphens only.');
+          input.value = orig.replace(/[^A-Za-z\s\-']/g, '');
+        } else {
+          clearInlineError(input);
+        }
+      };
+
+      // Function to filter input to allow only numbers
+      const filterNumbersOnly = (event) => {
+        const input = event.target;
+        const orig = input.value;
+        const maxLength = parseInt(input.getAttribute('maxlength'));
+        if (/[^\d]/.test(orig)) {
+          showInlineError(input, '❌ Letters and words are not allowed in this field. Numbers only.');
+        } else {
+          clearInlineError(input);
+        }
+        let value = orig.replace(/[^0-9]/g, '');
+        if (maxLength && value.length > maxLength) {
+          value = value.slice(0, maxLength);
+        }
+        input.value = value;
+      };
+
+      // Apply filters to the respective input fields
+      document.getElementById('surname').addEventListener('input', filterLettersOnly);
+      document.getElementById('fullName').addEventListener('input', filterLettersOnly);
+      document.getElementById('race').addEventListener('input', filterLettersOnly);
+      document.getElementById('idNumber').addEventListener('input', filterNumbersOnly);
+      
+      // Applying to phone number as well
+      document.getElementById('phone').addEventListener('input', (e) => {
+        const orig = e.target.value;
+        if (/[a-zA-Z]/.test(orig)) {
+          showInlineError(e.target, '❌ Letters are not allowed in phone numbers. Numbers only.');
+        } else {
+          clearInlineError(e.target);
+        }
+        e.target.value = orig.replace(/[^\d+]/g, '');
+      });
+
+      // Register submit
+      registerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearError(regError);
+
+        const password = document.getElementById('regPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        if (password !== confirmPassword) {
+          showError(regError, 'Passwords do not match');
+          return;
+        }
+
+        // Custom Regex Validations
+        const nameRegex = /^[A-Za-z\s\-']+$/;
+        const phoneRegex = /^(\+27|0)[0-9]{9}$/;
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+        if (!nameRegex.test(document.getElementById('fullName').value) || !nameRegex.test(document.getElementById('surname').value)) {
+          return showError(regError, 'Names and Surnames cannot contain numbers.');
+        }
+        if (!phoneRegex.test(document.getElementById('phone').value)) {
+          return showError(regError, 'Invalid phone number format. Use +27XXXXXXXXX or 0XXXXXXXXX.');
+        }
+
+        const userData = {
+          // username generated from full_name + surname or email prefix if needed; backend handles
+          email: document.getElementById('regEmail').value,
+          password,
+          confirm_password: confirmPassword,
+          role: 'parent'
+        };
+
+        const dob = document.getElementById('dob').value;
+        if (!dob.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+          showError(regError, 'DOB format: DD/MM/YYYY');
+          return;
+        }
+        userData.full_name = document.getElementById('fullName').value;
+        userData.surname = document.getElementById('surname').value;
+        userData.id_number = document.getElementById('idNumber').value;
+        userData.gender = document.getElementById('gender').value;
+        userData.dob = dob;
+        userData.phone = document.getElementById('phone').value;
+        userData.physical_address = document.getElementById('physicalAddress').value;
+        userData.country = document.getElementById('country').value;
+        userData.race = document.getElementById('race').value;
+        userData.parent_type = document.getElementById('parentType').value;
+
+        const childLinkVal = (document.getElementById('learnerNumberToLink')?.value || '').trim();
+        if (childLinkVal) {
+          userData.children_to_link = [childLinkVal];
+        }
+
+        if (!userData.full_name || !userData.surname || !userData.id_number || !userData.dob || !userData.phone ||
+          !userData.physical_address || !userData.country || !userData.race || !userData.parent_type) {
+          showError(regError, 'All parent fields required');
+          return;
+        }
+
+        try {
+          registerForm.querySelector('button').textContent = 'Registering...';
+          const response = await fetch('/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData)
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Registration failed');
+          }
+
+          const data = await response.json();
+          alert('Registration successful! Your child has been linked. Please login to continue.');
+          window.location.href = '/';
+        } catch (error) {
+          showError(regError, error.message);
+        } finally {
+          registerForm.querySelector('button').textContent = 'Register & Link Child';
+        }
+      });
+
+      // Handle URL Parameters (from acceptance email)
+      const urlParams = new URLSearchParams(window.location.search);
+      const emailParam = urlParams.get('email');
+      const learnerNumParam = urlParams.get('learnerNumber') || urlParams.get('appRef');
+
+      if (emailParam) {
+        document.getElementById('regEmail').value = decodeURIComponent(emailParam);
+      }
+      if (learnerNumParam) {
+        const linkInput = document.getElementById('learnerNumberToLink');
+        const statusDiv = document.getElementById('linkageStatus');
+        if (linkInput) linkInput.value = learnerNumParam;
+        if (statusDiv) {
+          statusDiv.innerHTML = `&#10004; Linked to Approved Admission: <strong>${learnerNumParam}</strong>`;
+        }
+      }
+
+      function clearError(errorEl) {
+        errorEl.textContent = '';
+        errorEl.classList.remove('show');
+      }
+
+      function showError(errorEl, message) {
+        errorEl.textContent = message;
+        errorEl.classList.add('show');
+      }
+    });
+  </script>
+</body>
+
+</html>

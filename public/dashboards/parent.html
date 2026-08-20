@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parent Dashboard - Fusion High</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link rel="stylesheet" href="/css/parent.css">
+    <link rel="stylesheet" href="/css/responsive-sidebar.css">
+    <link rel="stylesheet" href="/css/chat-center.css">
+
+    <style>
+        /* Responsive Styles for Parent Dashboard */
+        @media (max-width: 768px) {
+            .main-content-flex {
+                padding-left: 0;
+            }
+
+            .sidebar {
+                transform: translateX(-100%);
+                z-index: 1000;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .hamburger {
+                display: flex;
+            }
+
+            .grid-stats,
+            .at-a-glance-grid,
+            .overview-grid-feeds,
+            .child-grid,
+            .profile-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .top-bar {
+                padding-left: 50px;
+                /* Space for hamburger */
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Hamburger Menu for Mobile -->
+    <div class="hamburger">
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+
+    <nav class="sidebar">
+        <div class="sidebar-brand">FUSION HIGH</div>
+        <ul class="nav-list">
+            <li class="nav-item active" onclick="switchTab('overview', this)"><i class="fas fa-home"></i> Overview</li>
+            <li class="nav-item" onclick="switchTab('children', this)"><i class="fas fa-users"></i> My Children</li>
+            <li class="nav-item" onclick="switchTab('announcements', this)"><i class="fas fa-bullhorn"></i> School News</li>
+            <li class="nav-item" onclick="switchTab('performance', this)"><i class="fas fa-chart-line"></i> Performance</li>
+            <li class="nav-item" onclick="switchTab('attendance', this)"><i class="fas fa-calendar-check"></i> Attendance</li>
+            <li class="nav-item" onclick="switchTab('timetable', this)"><i class="fas fa-clock"></i> Timetable</li>
+            <li class="nav-item" onclick="switchTab('messages', this)"><i class="fas fa-envelope"></i> Messages <span id="unread-messages-badge" class="notification-badge hidden"></span></li>
+            <li class="nav-item" onclick="switchTab('resources', this)"><i class="fas fa-book-open"></i> Resources</li>
+            <li class="nav-item" onclick="switchTab('settings', this)"><i class="fas fa-cog"></i> Settings</li>
+            <li class="nav-item logout-item" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</li>
+        </ul>
+    </nav>
+
+    <main class="content main-content-flex">
+        <header class="top-bar" style="display:flex; justify-content:space-between; align-items:center; padding:1rem 1.5rem; background:#0F172A; border-bottom:1px solid #1E293B;">
+            <div>
+                <h1 id="view-title" style="margin:0; font-size:1.4rem; color:#f8fafc;">Parent Dashboard</h1>
+                <p style="margin:2px 0 0 0; font-size:0.8rem; color:#94a3b8;">Stay informed. Support success.</p>
+            </div>
+            <div class="user-menu" style="display:flex; align-items:center; gap:1.25rem;">
+                <select id="parent-term-select" style="background:#1E293B; color:#F8FAFC; border:1px solid #334155; border-radius:6px; padding:0.45rem 0.75rem; font-size:0.85rem; cursor:pointer;" onchange="if(window.loadParentOverview) window.loadParentOverview(this.value);">
+                    <option value="This Term (May 5 – Aug 30, 2026)">This Term (May 5 – Aug 30, 2026)</option>
+                    <option value="Term 1">Term 1</option>
+                    <option value="Term 2">Term 2</option>
+                    <option value="Term 3">Term 3</option>
+                    <option value="Term 4">Term 4</option>
+                </select>
+                <div style="position:relative; cursor:pointer;" onclick="switchTab('messages')">
+                    <i class="fas fa-bell" style="font-size:1.2rem; color:#94a3b8;"></i>
+                    <span id="header-unread-badge" style="position:absolute; top:-5px; right:-6px; background:#EF4444; color:#FFF; font-size:0.65rem; font-weight:700; width:16px; height:16px; border-radius:50%; display:none; align-items:center; justify-content:center;"></span>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <img src="/assets/default-pfp.png" style="width:36px; height:36px; border-radius:50%; object-fit:cover;">
+                    <div>
+                        <span id="user-name" style="font-size:0.85rem; font-weight:600; color:#f8fafc; display:block;">Loading...</span>
+                        <span style="font-size:0.7rem; color:#94a3b8;">Parent</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="dashboard-body">
+            <!-- Overview View (Image 2) -->
+            <div id="overview" class="section active">
+                <div id="parent-overview-children-cards" class="multi-child-cards-container">
+                    <!-- Dynamic multi-child pills cards rendered by JS -->
+                </div>
+            </div>
+
+            <!-- My Children View (Image 3) -->
+            <div id="children" class="section">
+                <div id="children-list" class="child-grid">
+                    <!-- Dynamic detailed child cards rendered by JS -->
+                </div>
+            </div>
+
+            <!-- Performance View (Image 4) -->
+            <div id="performance" class="section">
+                <div id="parent-performance-child-selector-container"></div>
+                <div class="parent-top-stats-grid">
+                    <div class="parent-stat-card">
+                        <div class="parent-stat-icon icon-blue"><i class="fas fa-chart-bar"></i></div>
+                        <div class="parent-stat-val">
+                            <p>Average Mark</p>
+                            <h2 id="parent-perf-avg-mark">78%</h2>
+                            <span class="parent-stat-subtext sub-success">Good</span>
+                        </div>
+                    </div>
+                    <div class="parent-stat-card">
+                        <div class="parent-stat-icon icon-purple"><i class="fas fa-trophy"></i></div>
+                        <div class="parent-stat-val">
+                            <p>Class Rank</p>
+                            <h2 id="parent-perf-rank">6 / 42</h2>
+                            <span class="parent-stat-subtext sub-success">Top 15%</span>
+                        </div>
+                    </div>
+                    <div class="parent-stat-card">
+                        <div class="parent-stat-icon icon-green"><i class="fas fa-book"></i></div>
+                        <div class="parent-stat-val">
+                            <p>Total Subjects</p>
+                            <h2 id="parent-perf-subjects">8</h2>
+                            <span class="parent-stat-subtext" style="color:#94a3b8;">Active Subjects</span>
+                        </div>
+                    </div>
+                    <div class="parent-stat-card">
+                        <div class="parent-stat-icon icon-yellow"><i class="fas fa-tasks"></i></div>
+                        <div class="parent-stat-val">
+                            <p>Assessments</p>
+                            <h2 id="parent-perf-assessments">12</h2>
+                            <span class="parent-stat-subtext" style="color:#94a3b8;">Completed</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="parent-card" style="margin-bottom:1.5rem;">
+                    <div class="parent-card-header">
+                        <h3 class="parent-card-title">Subject Performance</h3>
+                    </div>
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead>
+                            <tr style="border-bottom:1px solid #334155; text-align:left; color:#94a3b8; font-size:0.85rem;">
+                                <th style="padding:0.75rem 1rem;">Subject</th>
+                                <th style="padding:0.75rem 1rem;">Average %</th>
+                                <th style="padding:0.75rem 1rem;">Grade</th>
+                            </tr>
+                        </thead>
+                        <tbody id="parent-subject-perf-tbody">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Attendance View (Image 1) -->
+            <div id="attendance" class="section">
+                <div id="parent-attendance-child-selector-container"></div>
+                <div class="parent-top-stats-grid">
+                    <div class="parent-stat-card">
+                        <div class="parent-stat-icon icon-green"><i class="fas fa-calendar-check"></i></div>
+                        <div class="parent-stat-val">
+                            <p>Overall Attendance</p>
+                            <h2 id="parent-att-overall">92%</h2>
+                            <span class="parent-stat-subtext sub-success">Excellent</span>
+                        </div>
+                    </div>
+                    <div class="parent-stat-card">
+                        <div class="parent-stat-icon icon-blue"><i class="fas fa-clock"></i></div>
+                        <div class="parent-stat-val">
+                            <p>Days Present</p>
+                            <h2 id="parent-att-present">46</h2>
+                            <span class="parent-stat-subtext" style="color:#94a3b8;">out of 50 days</span>
+                        </div>
+                    </div>
+                    <div class="parent-stat-card">
+                        <div class="parent-stat-icon icon-yellow"><i class="fas fa-user-slash"></i></div>
+                        <div class="parent-stat-val">
+                            <p>Days Absent</p>
+                            <h2 id="parent-att-absent">4</h2>
+                            <span class="parent-stat-subtext" style="color:#94a3b8;">out of 50 days</span>
+                        </div>
+                    </div>
+                    <div class="parent-stat-card">
+                        <div class="parent-stat-icon icon-purple"><i class="fas fa-stopwatch"></i></div>
+                        <div class="parent-stat-val">
+                            <p>Punctuality Rate</p>
+                            <h2 id="parent-att-punctuality">95%</h2>
+                            <span class="parent-stat-subtext sub-success">Excellent</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="parent-card" style="margin-bottom:1.5rem;">
+                    <div class="parent-card-header">
+                        <h3 class="parent-card-title">Recent Attendance Records</h3>
+                    </div>
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead>
+                            <tr style="border-bottom:1px solid #334155; text-align:left; color:#94a3b8; font-size:0.85rem;">
+                                <th style="padding:0.75rem 1rem;">Date</th>
+                                <th style="padding:0.75rem 1rem;">Day</th>
+                                <th style="padding:0.75rem 1rem;">Status</th>
+                                <th style="padding:0.75rem 1rem;">Time In</th>
+                                <th style="padding:0.75rem 1rem;">Time Out</th>
+                                <th style="padding:0.75rem 1rem;">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="parent-att-records-tbody">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Timetable View -->
+            <div id="timetable" class="section">
+                <div class="parent-card">
+                    <div class="parent-card-header">
+                        <h3 class="parent-card-title"><i class="fas fa-clock"></i> Weekly Class Timetable</h3>
+                    </div>
+                    <div id="parent-timetable-schedule" style="color:#f8fafc; padding: 1rem 0;">
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
+                            <div style="background:#1E293B; border-radius:8px; padding:1rem;">
+                                <h4 style="margin:0 0 0.5rem 0; color:#38BDF8;">Monday</h4>
+                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">08:00 AM – 09:00 AM: Mathematics</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">09:15 AM – 10:15 AM: Physical Sciences</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">10:30 AM – 11:30 AM: Life Sciences</p>
+                            </div>
+                            <div style="background:#1E293B; border-radius:8px; padding:1rem;">
+                                <h4 style="margin:0 0 0.5rem 0; color:#38BDF8;">Tuesday</h4>
+                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">08:00 AM – 09:00 AM: English FAL</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">09:15 AM – 10:15 AM: Home Language</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">10:30 AM – 11:30 AM: Life Orientation</p>
+                            </div>
+                            <div style="background:#1E293B; border-radius:8px; padding:1rem;">
+                                <h4 style="margin:0 0 0.5rem 0; color:#38BDF8;">Wednesday</h4>
+                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">08:00 AM – 09:00 AM: Mathematics</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">09:15 AM – 10:15 AM: Physical Sciences Lab</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">10:30 AM – 11:30 AM: Geography</p>
+                            </div>
+                            <div style="background:#1E293B; border-radius:8px; padding:1rem;">
+                                <h4 style="margin:0 0 0.5rem 0; color:#38BDF8;">Thursday</h4>
+                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">08:00 AM – 09:00 AM: Life Sciences</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">09:15 AM – 10:15 AM: English FAL</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">10:30 AM – 11:30 AM: Mathematics Tutorial</p>
+                            </div>
+                            <div style="background:#1E293B; border-radius:8px; padding:1rem;">
+                                <h4 style="margin:0 0 0.5rem 0; color:#38BDF8;">Friday</h4>
+                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">08:00 AM – 09:00 AM: Physical Sciences</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">09:15 AM – 10:15 AM: Life Orientation</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">10:30 AM – 11:30 AM: Assembly & Sports</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resources View -->
+            <div id="resources" class="section">
+                <div class="parent-card">
+                    <div class="parent-card-header">
+                        <h3 class="parent-card-title"><i class="fas fa-file-invoice"></i> Academic Report Cards & Learning Resources</h3>
+                    </div>
+                    <div id="parent-resources-list" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1.25rem; margin-top:1rem;">
+                        <!-- Dynamically populated by window.loadParentResources() -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Register Child View -->
+            <div id="register-child" class="section"></div>
+
+            <!-- Activate Child View -->
+            <div id="activate-child" class="section">
+                <div class="data-card max-w-800">
+                    <div class="card-header"><i class="fas fa-user-check"></i> Link an Existing Learner</div>
+                    <form id="activationForm" class="p-1_5rem">
+                        <p class="form-description">If your child is already registered at the school, you can link
+                            their profile to yours by entering their details below.</p>
+                        <div class="form-group">
+                            <label for="learnerNumber">Learner Number</label>
+                            <input type="text" id="learnerNumber" name="learnerNumber" class="form-control" required>
+                        </div>
+                        <div class="form-group mt-1rem">
+                            <label for="learnerDOB">Date of Birth <small class="text-muted">(YYYY-MM-DD)</small></label>
+                            <input type="date" id="learnerDOB" name="learnerDOB" class="form-control" required>
+                        </div>
+                        <button id="activateLearnerBtn" type="submit" class="btn btn-primary">Activate
+                            Learner</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Announcements View -->
+            <div id="announcements" class="section">
+                <div class="data-card">
+                    <div class="card-header">Official Communication Hub</div>
+                    <div id="news-feed"></div>
+                </div>
+            </div>
+
+            <!-- Message Center View -->
+            <div id="messages" class="section">
+                <div class="chat-center-container">
+                    <!-- Left Conversations Panel -->
+                    <div class="conversations-panel">
+                        <div class="conversations-header">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                                <h3 style="margin:0;"><i class="fas fa-envelope"></i> Message Center</h3>
+                                <button type="button" class="btn btn-primary" style="padding:0.4rem 0.75rem; font-size:0.8rem; border-radius:6px;" onclick="window.openParentComposeModal()"><i class="fas fa-paper-plane me-1"></i> Compose</button>
+                            </div>
+                            <div style="display:flex; gap:0.4rem; margin-bottom:0.75rem;">
+                                <button class="btn btn-sm msg-filter-btn active" style="padding:0.25rem 0.6rem; font-size:0.75rem; background:#334155; color:#fff; border:none; border-radius:4px; cursor:pointer;" onclick="window.filterParentMessages('all', this)">All</button>
+                                <button class="btn btn-sm msg-filter-btn" style="padding:0.25rem 0.6rem; font-size:0.75rem; background:#1e293b; color:#94a3b8; border:1px solid #334155; border-radius:4px; cursor:pointer;" onclick="window.filterParentMessages('unread', this)">Unread</button>
+                                <button class="btn btn-sm msg-filter-btn" style="padding:0.25rem 0.6rem; font-size:0.75rem; background:#1e293b; color:#94a3b8; border:1px solid #334155; border-radius:4px; cursor:pointer;" onclick="window.filterParentMessages('read', this)">Viewed</button>
+                            </div>
+                            <input type="text" class="chat-search-input" placeholder="Search contact or role..." oninput="window.filterChatContacts(this.value)">
+                        </div>
+                        <div id="chat-contacts-list" class="contacts-list-scroll">
+                            <!-- Contacts rendered by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Right Chat Window Panel -->
+                    <div class="chat-window-panel">
+                        <div class="chat-header-bar">
+                            <div id="chat-active-avatar">
+                                <div class="contact-avatar">?</div>
+                            </div>
+                            <div class="chat-header-title">
+                                <h4 id="chat-active-name">Select a Conversation</h4>
+                                <p id="chat-active-tag">Message Center</p>
+                            </div>
+                        </div>
+
+                        <div id="chat-stream-body" class="chat-stream-container">
+                            <!-- Chat bubbles rendered by JavaScript -->
+                        </div>
+
+                        <div class="composition-bar-container">
+                            <input type="text" id="chat-input-box" class="composition-input-box" placeholder="Composition..." onkeydown="if(event.key==='Enter') window.sendChatMessage()">
+                            <button type="button" class="chat-action-btn" title="Attach file"><i class="fas fa-paperclip"></i></button>
+                            <button type="button" class="chat-send-btn" onclick="window.sendChatMessage()"><i class="fas fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Resources View (Academic Report Cards) -->
+            <div id="resources" class="section">
+                <div class="data-card" style="background:#1E293B; border:1px solid #334155; border-radius:12px; padding:1.25rem;">
+                    <div class="card-header" style="background:#0F172A; color:#F8FAFC; padding:1rem 1.25rem; font-weight:700; font-size:1.05rem; display:flex; justify-content:space-between; align-items:center;">
+                        <span><i class="fas fa-file-invoice style-color:#38bdf8 me-2"></i> Academic Report Cards & Resources</span>
+                        <small style="color:#94a3b8; font-weight:500;">Official CAPS Quarterly Report Cards</small>
+                    </div>
+                    <div id="parent-resources-list" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:1.25rem; margin-top:1.25rem;">
+                        <!-- Rendered dynamically by window.loadParentResources() -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile View -->
+            <div id="profile" class="section">
+                <div class="profile-grid">
+                    <div class="data-card">
+                        <div class="card-header">Profile Picture</div>
+                        <form id="pfpUploadForm" class="p-1_5rem profile-picture-form">
+                            <img id="pfp-preview" src="/assets/default-pfp.png" alt="Profile Picture Preview"
+                                class="profile-picture-preview">
+                            <label for="pfp-input" class="btn btn-secondary mt-1rem">Choose Image</label>
+                            <input type="file" id="pfp-input" accept="image/*" class="hidden">
+                            <button type="submit" class="btn btn-primary mt-1rem">Upload & Save</button>
+                            <div id="pfp-upload-status" class="upload-status mt-1rem"></div>
+                        </form>
+                    </div>
+                    <div class="data-card">
+                        <div class="card-header">Profile Settings</div>
+                        <form id="updateProfileForm" onsubmit="handleUpdateProfile(event)" class="p-1_5rem">
+                            <div class="form-grid-2col">
+                                <div class="form-group">
+                                    <label>Full Name</label>
+                                    <input type="text" id="prof-name" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Surname</label>
+                                    <input type="text" id="prof-surname" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Email Address</label>
+                                    <input type="email" id="prof-email" class="form-control" required>
+                                    <small class="text-muted">Changing your email will require verification.</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>Phone Number</label>
+                                    <input type="text" id="prof-phone" class="form-control">
+                                </div>
+                            </div>
+                            <div class="form-group mt-1rem">
+                                <label>Physical Address</label>
+                                <textarea id="prof-address" class="form-control" rows="3"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary mt-1rem">Save Changes</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div id="settings" class="section">
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap:1.5rem;">
+                    
+                    <!-- 1. Profile Information & Picture Upload Card -->
+                    <div class="data-card" style="background:#1E293B; border:1px solid #334155; border-radius:12px;">
+                        <div class="card-header" style="background:#0F172A; color:#F8FAFC; padding:1rem 1.25rem; font-weight:700; font-size:1.05rem;">
+                            <i class="fas fa-user-edit style-color:#38bdf8 me-2"></i> Edit Personal Profile
+                        </div>
+                        <div style="padding:1.25rem;">
+                            <!-- Profile Picture Form -->
+                            <form id="pfpUploadForm" style="margin-bottom:1.5rem; text-align:center; padding:1rem; background:#0F172A; border-radius:10px; border:1px solid #334155;">
+                                <img id="pfp-preview" src="/assets/default-pfp.png" alt="Profile Picture Preview" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid #38bdf8; margin-bottom:0.75rem;">
+                                <div>
+                                    <label for="pfp-input" class="btn btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.8rem; cursor:pointer;"><i class="fas fa-camera me-1"></i> Choose Image</label>
+                                    <input type="file" id="pfp-input" accept="image/*" class="hidden">
+                                    <button type="submit" class="btn btn-primary" style="padding:0.4rem 0.8rem; font-size:0.8rem; margin-left:0.5rem;"><i class="fas fa-upload me-1"></i> Save Picture</button>
+                                </div>
+                                <div id="pfp-upload-status" class="upload-status" style="margin-top:0.5rem; font-size:0.8rem;"></div>
+                            </form>
+
+                            <!-- Profile Details Form -->
+                            <form id="settingsProfileForm" onsubmit="handleUpdateProfile(event)">
+                                <div class="form-group" style="margin-bottom:0.75rem;">
+                                    <label style="color:#CBD5E1; font-size:0.85rem; font-weight:600;">Full Name</label>
+                                    <input type="text" id="prof-name" class="form-control" required style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.55rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0.75rem;">
+                                    <label style="color:#CBD5E1; font-size:0.85rem; font-weight:600;">Surname</label>
+                                    <input type="text" id="prof-surname" class="form-control" required style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.55rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0.75rem;">
+                                    <label style="color:#CBD5E1; font-size:0.85rem; font-weight:600;">Email Address</label>
+                                    <input type="email" id="prof-email" class="form-control" required style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.55rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0.75rem;">
+                                    <label style="color:#CBD5E1; font-size:0.85rem; font-weight:600;">Phone Number</label>
+                                    <input type="text" id="prof-phone" class="form-control" placeholder="+27..." style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.55rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:1rem;">
+                                    <label style="color:#CBD5E1; font-size:0.85rem; font-weight:600;">Physical Address</label>
+                                    <textarea id="prof-address" class="form-control" rows="2" style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.55rem;"></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary" style="width:100%; padding:0.65rem; font-weight:700;"><i class="fas fa-save me-1"></i> Save Profile Details</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- 2. Activate & Deactivate Child Account Card -->
+                    <div class="data-card" style="background:#1E293B; border:1px solid #334155; border-radius:12px;">
+                        <div class="card-header" style="background:#0F172A; color:#F8FAFC; padding:1rem 1.25rem; font-weight:700; font-size:1.05rem;">
+                            <i class="fas fa-user-plus style-color:#4ade80 me-2"></i> Manage Child Accounts
+                        </div>
+                        <div style="padding:1.25rem;">
+                            <!-- Activate Child Form -->
+                            <div style="background:#0F172A; padding:1rem; border-radius:10px; border:1px solid #334155; margin-bottom:1.5rem;">
+                                <h4 style="margin:0 0 0.5rem 0; color:#38BDF8; font-size:0.95rem;"><i class="fas fa-link me-1"></i> Activate & Link Child</h4>
+                                <p style="color:#94A3B8; font-size:0.8rem; margin-bottom:1rem;">Link your child's profile by entering their details provided by the school.</p>
+                                <form id="activationForm">
+                                    <div class="form-group" style="margin-bottom:0.75rem;">
+                                        <label style="color:#CBD5E1; font-size:0.8rem;">Learner ID / Number</label>
+                                        <input type="text" id="learnerIDNumber" name="learnerIDNumber" class="form-control" placeholder="e.g. 0504125890088 or 20250001" required style="background:#1E293B; color:#FFF; border:1px solid #475569; padding:0.5rem;">
+                                    </div>
+                                    <div class="form-group" style="margin-bottom:0.75rem;">
+                                        <label style="color:#CBD5E1; font-size:0.8rem;">Learner First Name</label>
+                                        <input type="text" id="learnerFirstName" name="learnerFirstName" class="form-control" placeholder="e.g. Sipho" required style="background:#1E293B; color:#FFF; border:1px solid #475569; padding:0.5rem;">
+                                    </div>
+                                    <div class="form-group" style="margin-bottom:1rem;">
+                                        <label style="color:#CBD5E1; font-size:0.8rem;">Learner Surname</label>
+                                        <input type="text" id="learnerSurname" name="learnerSurname" class="form-control" placeholder="e.g. Nkosi" required style="background:#1E293B; color:#FFF; border:1px solid #475569; padding:0.5rem;">
+                                    </div>
+                                    <div id="activation-error" class="hidden" style="padding:0.5rem; background:rgba(239,68,68,0.2); border:1px solid #ef4444; color:#ef4444; border-radius:6px; margin-bottom:0.75rem; font-size:0.8rem;"></div>
+                                    <div id="activation-success" class="hidden" style="padding:0.5rem; background:rgba(34,197,94,0.2); border:1px solid #22c55e; color:#4ade80; border-radius:6px; margin-bottom:0.75rem; font-size:0.8rem;"></div>
+                                    <button id="activateLearnerBtn" type="submit" class="btn btn-primary" style="width:100%; padding:0.6rem; font-size:0.85rem; font-weight:700;"><i class="fas fa-check-circle me-1"></i> Activate & Link Child Account</button>
+                                </form>
+                            </div>
+
+                            <!-- Deactivate Child Form -->
+                            <div style="background:#0F172A; padding:1rem; border-radius:10px; border:1px solid #334155;">
+                                <h4 style="margin:0 0 0.5rem 0; color:#EF4444; font-size:0.95rem;"><i class="fas fa-unlink me-1"></i> Deactivate / Unlink Child</h4>
+                                <p style="color:#94A3B8; font-size:0.8rem; margin-bottom:1rem;">Select an active child account to unlink from your parent portal.</p>
+                                <div id="deactivate-child-container">
+                                    <div class="form-group" style="margin-bottom:1rem;">
+                                        <label style="color:#CBD5E1; font-size:0.8rem;">Select Active Child</label>
+                                        <select id="deactivate-child-select" class="form-control" style="background:#1E293B; color:#FFF; border:1px solid #475569; padding:0.5rem;">
+                                            <option value="">Loading linked children...</option>
+                                        </select>
+                                    </div>
+                                    <button type="button" class="btn btn-secondary" style="width:100%; padding:0.6rem; font-size:0.85rem; background:#7f1d1d; color:#fca5a5; border:1px solid #ef4444; font-weight:700; cursor:pointer;" onclick="window.handleDeactivateChildFromSettings()"><i class="fas fa-user-minus me-1"></i> Deactivate Selected Child</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Account Security & Preferences Card -->
+                    <div class="data-card" style="background:#1E293B; border:1px solid #334155; border-radius:12px;">
+                        <div class="card-header" style="background:#0F172A; color:#F8FAFC; padding:1rem 1.25rem; font-weight:700; font-size:1.05rem;">
+                            <i class="fas fa-lock style-color:#a855f7 me-2"></i> Security & Preferences
+                        </div>
+                        <div style="padding:1.25rem;">
+                            <!-- Account Security Form -->
+                            <form onsubmit="handleChangePassword(event)" style="margin-bottom:1.5rem;">
+                                <h4 style="margin:0 0 0.75rem 0; color:#F8FAFC; font-size:0.95rem;">Change Password</h4>
+                                <div class="form-group" style="margin-bottom:0.75rem;">
+                                    <label style="color:#CBD5E1; font-size:0.8rem;">Current Password</label>
+                                    <input type="password" id="sett-curr-pass" class="form-control" required autocomplete="current-password" style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.5rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:0.75rem;">
+                                    <label style="color:#CBD5E1; font-size:0.8rem;">New Password</label>
+                                    <input type="password" id="sett-new-pass" class="form-control" required autocomplete="new-password" style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.5rem;">
+                                </div>
+                                <div class="form-group" style="margin-bottom:1rem;">
+                                    <label style="color:#CBD5E1; font-size:0.8rem;">Confirm New Password</label>
+                                    <input type="password" id="sett-conf-pass" class="form-control" required autocomplete="new-password" style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.5rem;">
+                                </div>
+                                <button type="submit" class="btn btn-primary" style="width:100%; padding:0.6rem; font-weight:700;"><i class="fas fa-key me-1"></i> Update Password</button>
+                            </form>
+
+                            <!-- Preferences Card -->
+                            <div style="background:#0F172A; padding:1rem; border-radius:10px; border:1px solid #334155;">
+                                <h4 style="margin:0 0 0.75rem 0; color:#F8FAFC; font-size:0.95rem;">Notification Alerts</h4>
+                                <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                                    <label class="flex-label" style="display:flex; align-items:center; gap:0.5rem; color:#cbd5e1; font-size:0.8rem;">
+                                        <input type="checkbox" id="email-reports-toggle" checked> Automated learner progress & CAPS report card alerts
+                                    </label>
+                                    <label class="flex-label" style="display:flex; align-items:center; gap:0.5rem; color:#cbd5e1; font-size:0.8rem;">
+                                        <input type="checkbox" id="email-att-toggle" checked> Real-time attendance check-in & check-out alerts
+                                    </label>
+                                    <label class="flex-label" style="display:flex; align-items:center; gap:0.5rem; color:#cbd5e1; font-size:0.8rem;">
+                                        <input type="checkbox" id="email-ann-toggle" checked> School news & principal announcement digests
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <footer class="dashboard-footer">
+            &copy; 2024 FUSION_HIGH_APP. All rights reserved. | <a href="#" class="footer-link">Privacy Policy</a>
+        </footer>
+    </main>
+
+    <!-- Messaging Modal -->
+    <div id="messageModal" class="modal-container hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Send Message</h3>
+                <button onclick="closeMessageModal()" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="messageForm">
+                    <input type="hidden" id="msg-teacher-email">
+                    <div class="form-group">
+                        <label>To:</label>
+                        <input type="text" id="msg-teacher-name" class="form-control" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="msg-subject">Subject</label>
+                        <input type="text" id="msg-subject" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="msg-body">Message</label>
+                        <textarea id="msg-body" class="form-control" rows="6" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Send Message</button>
+                </form>
+            </div>
+        </div>
+    <!-- Add / Activate Child Modal -->
+    <div id="addChildModal" class="modal-container hidden">
+        <div class="modal-content" style="max-width:500px;">
+            <div class="modal-header">
+                <h3 style="margin:0; font-size:1.1rem; color:#f8fafc;"><i class="fas fa-user-plus me-2" style="color:#38bdf8;"></i> Activate & Link Child Account</h3>
+                <button type="button" onclick="window.closeAddChildModal()" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:1.5rem;">
+                <p style="color:#CBD5E1; font-size:0.85rem; margin-bottom:1.25rem; line-height:1.4;">
+                    Enter your child's Learner ID Number, First Name, and Surname to link their academic record to your parent account.
+                </p>
+                <form id="modalActivationForm">
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label style="color:#CBD5E1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Learner ID / Number</label>
+                        <input type="text" id="modalLearnerIDNumber" class="form-control" placeholder="e.g. 0504125890088 or 20250001" required style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.6rem; border-radius:6px; width:100%;">
+                    </div>
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label style="color:#CBD5E1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Learner First Name</label>
+                        <input type="text" id="modalLearnerFirstName" class="form-control" placeholder="e.g. Sipho" required style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.6rem; border-radius:6px; width:100%;">
+                    </div>
+                    <div class="form-group" style="margin-bottom:1.25rem;">
+                        <label style="color:#CBD5E1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Learner Surname</label>
+                        <input type="text" id="modalLearnerSurname" class="form-control" placeholder="e.g. Nkosi" required style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.6rem; border-radius:6px; width:100%;">
+                    </div>
+                    <div id="modal-activation-error" class="hidden" style="padding:0.6rem; background:rgba(239,68,68,0.2); border:1px solid #ef4444; color:#ef4444; border-radius:6px; margin-bottom:1rem; font-size:0.85rem;"></div>
+                    <div id="modal-activation-success" class="hidden" style="padding:0.6rem; background:rgba(34,197,94,0.2); border:1px solid #22c55e; color:#4ade80; border-radius:6px; margin-bottom:1rem; font-size:0.85rem;"></div>
+                    <button type="submit" class="btn btn-primary" style="width:100%; padding:0.75rem; font-size:0.95rem; font-weight:700;"><i class="fas fa-check-circle me-1"></i> Activate & Link Child Account</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/';
+
+        function switchTab(tabId, el) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+
+            const targetSection = document.getElementById(tabId);
+            if (targetSection) targetSection.classList.add('active');
+
+            if (el) el.classList.add('active');
+            const titleEl = document.getElementById('view-title');
+            if (titleEl && el) titleEl.textContent = el.innerText.trim();
+            location.hash = tabId;
+
+            // Trigger view loaders
+            if (tabId === 'overview' && window.loadParentOverview) window.loadParentOverview();
+            if (tabId === 'children' && window.loadParentChildrenDetailed) window.loadParentChildrenDetailed();
+            if (tabId === 'performance' && window.loadParentPerformance) window.loadParentPerformance();
+            if (tabId === 'attendance' && window.loadParentAttendance) window.loadParentAttendance();
+            if (tabId === 'messages' && window.initMessageCenter) window.initMessageCenter();
+            if (tabId === 'resources' && window.loadParentResources) window.loadParentResources();
+            if (tabId === 'settings' && window.loadParentSettings) window.loadParentSettings();
+        }
+        window.switchTab = switchTab;
+
+        async function handleUpdateProfile(e) {
+            e.preventDefault();
+            const form = e.target;
+            const payload = {
+                full_name: document.getElementById('prof-name').value,
+                surname: document.getElementById('prof-surname').value,
+                email: document.getElementById('prof-email').value,
+                phone: document.getElementById('prof-phone').value,
+                physical_address: document.getElementById('prof-address').value
+            };
+
+            const btn = form.querySelector('button');
+            btn.disabled = true;
+            btn.innerText = "Saving...";
+
+            try {
+                const response = await fetch('/api/profile', {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error);
+                }
+                alert('Profile updated successfully! Check your email if you changed your address.');
+                window.loadParentDashboard();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Save Changes";
+            }
+        }
+
+        async function handleChangePassword(e) {
+            e.preventDefault();
+            const form = e.target;
+            const payload = {
+                currentPassword: document.getElementById('sett-curr-pass').value,
+                newPassword: document.getElementById('sett-new-pass').value,
+                confirmPassword: document.getElementById('sett-conf-pass').value
+            };
+
+            try {
+                const response = await fetch('/api/change-password', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    alert('Password changed successfully!');
+                    form.reset();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                alert('Connection error.');
+            }
+        }
+
+    </script>
+    <script type="module" src="/js/chat-center.js"></script>
+    <script type="module" src="/js/parent-dashboard.js"></script>
+    <script src="/js/sidebar-toggle.js"></script>
+</body>
+
+</html>

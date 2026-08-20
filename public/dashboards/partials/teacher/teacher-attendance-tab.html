@@ -1,0 +1,56 @@
+<div id="attendance" class="dashboard-tab" style="display:none;">
+  <div style="background:#1e293b; border-radius:12px; padding:1.5rem; border:1px solid #334155; margin-bottom:1.5rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem;">
+      <div>
+        <h3 style="color:#ffffff; margin:0; font-size:1.25rem;"><i class="fas fa-clipboard-check me-2 text-emerald"></i> Attendance Register</h3>
+        <small style="color:#94a3b8;">Record daily CAPS class attendance registers for your assigned classes.</small>
+      </div>
+
+      <div style="display:flex; gap:1rem; align-items:center;">
+        <div>
+          <label style="color:#cbd5e1; font-size:0.8rem; display:block; margin-bottom:0.25rem;">Select Class:</label>
+          <select id="att-class-select" class="form-control" onchange="window.loadAttendanceRegister()" style="background:#0f172a; color:#fff; font-size:0.85rem; min-width:140px;">
+            <option value="10A">Grade 10A</option>
+            <option value="11A">Grade 11A</option>
+            <option value="12A">Grade 12A</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="color:#cbd5e1; font-size:0.8rem; display:block; margin-bottom:0.25rem;">Register Date:</label>
+          <input type="date" id="att-date-picker" class="form-control" onchange="window.loadAttendanceRegister()" style="background:#0f172a; color:#fff; font-size:0.85rem;">
+        </div>
+
+        <div style="align-self:flex-end;">
+          <button type="button" class="btn btn-primary-cta" onclick="window.submitAttendanceRegister()"><i class="fas fa-save me-1"></i> Submit Register</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Attendance Summary Badges -->
+    <div style="display:flex; gap:1.5rem; background:#0f172a; padding:0.75rem 1.25rem; border-radius:8px; font-size:0.85rem;">
+      <span style="color:#4ade80;">Present: <strong id="att-count-present">0</strong></span>
+      <span style="color:#f87171;">Absent: <strong id="att-count-absent">0</strong></span>
+      <span style="color:#fbbf24;">Late: <strong id="att-count-late">0</strong></span>
+      <span style="color:#60a5fa;">Excused: <strong id="att-count-excused">0</strong></span>
+    </div>
+  </div>
+
+  <!-- Attendance Table Container -->
+  <div style="background:#1e293b; border-radius:12px; border:1px solid #334155; overflow:hidden;">
+    <table class="table" style="width:100%; color:#fff; margin:0;">
+      <thead>
+        <tr style="border-bottom:1px solid #334155; background:#0f172a; color:#cbd5e1; font-size:0.85rem;">
+          <th style="padding:12px; text-align:left;">Learner Name</th>
+          <th style="padding:12px; text-align:left;">Learner ID</th>
+          <th style="padding:12px; text-align:left;">Class</th>
+          <th style="padding:12px; text-align:center;">Attendance Status</th>
+          <th style="padding:12px; text-align:left;">Optional Remark</th>
+        </tr>
+      </thead>
+      <tbody id="attendance-roster-tbody">
+        <!-- Populated dynamically by JS -->
+      </tbody>
+    </table>
+  </div>
+</div>

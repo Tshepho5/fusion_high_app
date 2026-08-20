@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - FUSION_HIGH_APP</title>
+  <link rel="stylesheet" href="/css/teacher.css">
+  <link rel="stylesheet" href="/css/responsive-sidebar.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/chat-center.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+</head>
+
+<body>
+  <!-- Hamburger Menu for Mobile -->
+  <div class="hamburger">
+    <div></div>
+    <div></div>
+    <div></div>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">FUSION ADMIN</div>
+    <ul class="nav-list">
+      <li class="nav-item active" onclick="switchTab('overview', this)"><i class="fas fa-tachometer-alt"></i> Dashboard</li>
+      <li class="nav-item" onclick="switchTab('reports', this)"><i class="fas fa-file-alt"></i> Reports</li>
+      <li class="nav-item" onclick="switchTab('academics', this)"><i class="fas fa-book-open"></i> Academics</li>
+      <li class="nav-item" onclick="switchTab('users', this, 'teacher')"><i class="fas fa-chalkboard-teacher"></i> Teachers</li>
+      <li class="nav-item" onclick="switchTab('users', this, 'learner')"><i class="fas fa-user-graduate"></i> Learners</li>
+      <li class="nav-item" onclick="switchTab('timetables', this)"><i class="fas fa-calendar-alt"></i> Timetables</li>
+      <li class="nav-item" onclick="switchTab('announcements', this)"><i class="fas fa-bullhorn"></i> Announcements</li>
+      <li class="nav-item" onclick="switchTab('messages', this)"><i class="fas fa-envelope"></i> Message Center</li>
+      <li class="nav-item" onclick="switchTab('profile', this)"><i class="fas fa-user-circle"></i> My Profile</li>
+      <li class="nav-item" onclick="switchTab('settings', this)"><i class="fas fa-cog"></i> Settings</li>
+    </ul>
+    <div class="sidebar-footer">
+      <li class="nav-item logout-item" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Logout</li>
+    </div>
+  </aside>
+
+
+
+
+  <main class="main-content">
+    <nav class="top-nav">
+      <h2 id="tab-title">Dashboard</h2>
+      <div class="top-nav-user-info">
+        <img id="top-nav-pfp" src="/assets/default-pfp.png" alt="Profile" class="profile-picture-nav">
+        <div class="user-details-nav">
+          <span id="top-nav-name" class="user-name-nav">Principal</span>
+          <span id="top-nav-role" class="user-role-nav">Admin</span>
+        </div>
+      </div>
+    </nav>
+
+    <div class="dashboard-body">
+      <!-- Statistics Cards & Dashboard Overview -->
+      <section id="overview" class="section active">
+        <h2 class="overview-header-title">Dashboard Overview</h2>
+
+        <!-- Top 4 Stats Cards Grid -->
+        <div class="overview-stats-grid">
+          <!-- Total Learners Card -->
+          <div class="overview-stat-card">
+            <div class="stat-info">
+              <p class="stat-label">Total Enrolled</p>
+              <h3 id="stats-total-learners" class="stat-value">0</h3>
+            </div>
+            <div class="stat-icon-wrapper icon-blue">
+              <i class="fas fa-users"></i>
+            </div>
+          </div>
+
+          <!-- Active Teachers Card -->
+          <div class="overview-stat-card">
+            <div class="stat-info">
+              <p class="stat-label">Active Teachers</p>
+              <h3 id="stats-total-teachers" class="stat-value">0</h3>
+            </div>
+            <div class="stat-icon-wrapper icon-green">
+              <i class="fas fa-user-edit"></i>
+            </div>
+          </div>
+
+          <!-- Daily Attendance Card -->
+          <div class="overview-stat-card">
+            <div class="stat-info">
+              <p class="stat-label">Daily Attendance</p>
+              <h3 id="stats-attendance-rate" class="stat-value">0%</h3>
+            </div>
+            <div class="stat-icon-wrapper icon-green">
+              <i class="fas fa-calendar-check"></i>
+            </div>
+          </div>
+
+          <!-- Pending Behavior Incidents Card -->
+          <div class="overview-stat-card">
+            <div class="stat-info">
+              <p class="stat-label">Pending Behavior Incidents</p>
+              <h3 id="stats-pending-incidents" class="stat-value">0</h3>
+            </div>
+            <div class="stat-icon-wrapper icon-red">
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3-Column Dashboard Main Layout -->
+        <div class="overview-main-grid">
+          <!-- Column 1 (Left) -->
+          <div class="overview-grid-column">
+            <!-- Today's Timetable Detailed View Card -->
+            <div class="overview-card">
+              <h3 class="card-heading">Today's Timetable at a Glance</h3>
+              <p class="card-subheading" id="timetable-subheading">Today's schedule</p>
+              <div id="timetable-glance-box" class="glance-summary-box" style="margin-bottom: 1rem;">
+                <span id="upcoming-periods-count" class="big-period-number">0</span>
+                <span class="big-period-text">scheduled periods</span>
+              </div>
+              <div class="table-responsive">
+                <table class="table overview-timetable-table">
+                  <thead>
+                    <tr>
+                      <th>Period / Subject</th>
+                      <th style="text-align: right;">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="overview-timetable-tbody">
+                    <tr>
+                      <td colspan="2" style="color: var(--text-muted);">Loading today's schedule...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 2 (Middle) -->
+          <div class="overview-grid-column">
+            <!-- Recent Announcements Card -->
+            <div class="overview-card announcements-card-wrapper">
+              <h3 class="card-heading">Recent Announcements</h3>
+              <div id="overview-announcements-list" class="overview-announcements-list">
+                <p style="color: var(--text-muted); padding: 0.5rem 0;">Loading announcements...</p>
+              </div>
+              <div class="card-bottom-action">
+                <button class="btn-see-more" onclick="switchTab('announcements')">See more</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 3 (Right) -->
+          <div class="overview-grid-column">
+            <!-- Quick Actionities (Summary Tiles) -->
+            <div class="overview-card">
+              <h3 class="card-heading">Quick Actionities</h3>
+              <div class="quick-summary-tiles">
+                <div class="summary-tile dark-tile">
+                  <h3 id="quick-learners-val" class="tile-number">0</h3>
+                  <p class="tile-label">Learners</p>
+                </div>
+                <div class="summary-tile red-tile">
+                  <h3 id="quick-permissions-val" class="tile-number">5</h3>
+                  <p class="tile-label">Permissions</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Actions Grid Card -->
+            <div class="overview-card">
+              <h3 class="card-heading">Quick Actions</h3>
+              <div class="quick-actions-2x2">
+                <!-- Create Announcement -->
+                <button class="action-tile-btn" onclick="switchTab('announcements')">
+                  <div class="tile-icon icon-orange"><i class="fas fa-bullhorn"></i></div>
+                  <span>Create Announcement</span>
+                </button>
+
+                <!-- Schedule Resource -->
+                <button class="action-tile-btn" onclick="switchTab('timetables')">
+                  <div class="tile-icon icon-blue"><i class="fas fa-calendar-alt"></i></div>
+                  <span>Publish Timetable</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- User Management Tables by Category -->
+      <section id="users" class="section">
+        <div class="user-management-grid">
+          <section class="dashboard-section card" data-role="teacher">
+            <div class="card-header">
+              <h2 class="card-title title-teacher">Teachers</h2>
+              <input type="text" class="search-input" placeholder="Search teachers..." oninput="handleSearch(this)">
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th data-sort="name" class="sortable">Name <span></span></th>
+                    <th>Email</th>
+                    <th>Subjects</th>
+                    <th>Grades</th>
+                    <th>Classes</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="teacher-users-table-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="dashboard-section card" data-role="admin">
+            <div class="card-header">
+              <h2 class="card-title title-admin">Administrators</h2>
+              <input type="text" class="search-input" placeholder="Search admins..." oninput="handleSearch(this)">
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th data-sort="name" class="sortable">Name <span></span></th>
+                    <th>Email</th>
+                    <th data-sort="date" class="sortable">Joined <span></span></th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-users-table-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="dashboard-section card" data-role="parent">
+            <div class="card-header">
+              <h2 class="card-title title-parent">Parents</h2>
+              <input type="text" class="search-input" placeholder="Search parents..." oninput="handleSearch(this)">
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th data-sort="name" class="sortable">Name <span></span></th>
+                    <th>Email</th>
+                    <th data-sort="date" class="sortable">Joined <span></span></th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="parent-users-table-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="dashboard-section card" data-role="learner">
+            <div class="card-header">
+              <h2 class="card-title title-learner">Learners</h2>
+              <input type="text" class="search-input" placeholder="Search learners..." oninput="handleSearch(this)">
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th data-sort="name" class="sortable">Name <span></span></th>
+                    <th>Email</th>
+                    <th data-sort="date" class="sortable">Joined <span></span></th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="learner-users-table-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+        </div>
+      </section>
+
+      <!-- Announcements Section -->
+      <section id="announcements" class="section">
+        <div class="card">
+          <h2 class="card-title">Create Announcement</h2>
+          <form id="announcement-form">
+            <div class="form-group">
+              <label for="ann-title">Title</label>
+              <input type="text" id="ann-title" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="ann-content">Content</label>
+              <textarea id="ann-content" class="form-control" rows="4" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Post Announcement</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Profile Section -->
+      <section id="profile" class="section">
+        <div class="card">
+          <h2 class="card-title">My Profile</h2>
+          <form id="pfpUploadForm">
+            <div class="form-group">
+              <label>Profile Picture</label>
+              <div class="pfp-upload-container">
+                <img id="pfp-preview" src="/assets/default-pfp.png" alt="Profile Preview"
+                  class="profile-picture-preview">
+                <input type="file" id="pfp-input" name="profilePicture" accept="image/*" required>
+                <button type="submit" class="btn btn-primary">Upload New Picture</button>
+              </div>
+              <div id="pfp-upload-status" class="status-message"></div>
+            </div>
+          </form>
+        </div>
+        <!-- Other profile settings can go here -->
+      </section>
+
+      <!-- Reports Section -->
+      <section id="reports" class="section">
+        <h2 class="reports-header-title">Reports</h2>
+
+        <!-- Top 4 Pre-configured Quick Generator Columns -->
+        <div class="reports-categories-grid">
+          <!-- Academic Reports Card -->
+          <div class="report-category-card">
+            <h3 class="category-title">Academic Reports</h3>
+            <p class="category-subtitle">Generate class over academic reports.</p>
+            <div class="category-buttons">
+              <button class="quick-report-btn btn-green" onclick="generateQuickReport('Generate Class Mark Sheets')">
+                <i class="fas fa-file-alt"></i> Generate Class Mark Sheets
+              </button>
+              <button class="quick-report-btn btn-orange"
+                onclick="generateQuickReport('Subject Performance Summaries')">
+                <i class="fas fa-list-ol"></i> Subject Performance Summaries
+              </button>
+              <button class="quick-report-btn btn-purple"
+                onclick="generateQuickReport('Subject Performance Summaries')">
+                <i class="fas fa-chart-pie"></i> Subject Performance Summaries
+              </button>
+            </div>
+          </div>
+
+          <!-- Attendance Reports Card -->
+          <div class="report-category-card">
+            <h3 class="category-title">Attendance Reports</h3>
+            <p class="category-subtitle">Generate daily attendance reports.</p>
+            <div class="category-buttons">
+              <button class="quick-report-btn btn-green"
+                onclick="generateQuickReport('Generate Daily Attendance Logs')">
+                <i class="fas fa-calendar-alt"></i> Generate Daily Attendance Logs
+              </button>
+              <button class="quick-report-btn btn-pink" onclick="generateQuickReport('Chronic Absenteeism Reports')">
+                <i class="fas fa-calendar-minus"></i> Chronic Absenteeism Reports
+              </button>
+              <button class="quick-report-btn btn-purple" onclick="generateQuickReport('Chronic Absenteeism Reports')">
+                <i class="fas fa-calendar-check"></i> Chronic Absenteeism Reports
+              </button>
+            </div>
+          </div>
+
+          <!-- Behavior Reports Card -->
+          <div class="report-category-card">
+            <h3 class="category-title">Behavior Reports</h3>
+            <p class="category-subtitle">Behavior Incident behavior incident reports.</p>
+            <div class="category-buttons">
+              <button class="quick-report-btn btn-red" onclick="generateQuickReport('Behavior Incident Summary')">
+                <i class="fas fa-bell"></i> Behavior Incident Summary
+              </button>
+              <button class="quick-report-btn btn-orange" onclick="generateQuickReport('Disciplinary Action Log')">
+                <i class="fas fa-file-alt"></i> Disciplinary Action Log
+              </button>
+              <button class="quick-report-btn btn-blue" onclick="generateQuickReport('Disciplinary Action Log')">
+                <i class="fas fa-file-contract"></i> Disciplinary Action Log
+              </button>
+            </div>
+          </div>
+
+          <!-- Learner Activity Reports Card -->
+          <div class="report-category-card">
+            <h3 class="category-title">Learner Activity Reports</h3>
+            <p class="category-subtitle">Learner activity reports and learner activity reports.</p>
+            <div class="category-buttons">
+              <button class="quick-report-btn btn-blue" onclick="generateQuickReport('Online Resource Usage')">
+                <i class="fas fa-desktop"></i> Online Resource Usage
+              </button>
+              <button class="quick-report-btn btn-orange" onclick="generateQuickReport('Forum Participation Logs')">
+                <i class="fas fa-comments"></i> Forum Participation Logs
+              </button>
+              <button class="quick-report-btn btn-purple" onclick="generateQuickReport('Forum Participation Logs')">
+                <i class="fas fa-users"></i> Forum Participation Logs
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Custom Report Builder Section -->
+        <div class="custom-report-builder-card">
+          <h3 class="builder-title">Custom Report Builder</h3>
+          <div class="builder-controls-row">
+            <div class="control-group">
+              <label for="custom-report-type">Report Type</label>
+              <select id="custom-report-type" class="builder-select">
+                <option value="Generate Class Mark Sheets">Academic Marksheets</option>
+                <option value="Subject Performance Summaries">Subject Performance</option>
+                <option value="Generate Daily Attendance Logs">Daily Attendance Logs</option>
+                <option value="Chronic Absenteeism Reports">Chronic Absenteeism</option>
+                <option value="Behavior Incident Summary">Behavior Incident Summary</option>
+                <option value="Disciplinary Action Log">Disciplinary Action Log</option>
+                <option value="Online Resource Usage">Online Resource Usage</option>
+                <option value="Forum Participation Logs">Forum Participation Logs</option>
+              </select>
+            </div>
+
+            <div class="control-group">
+              <label for="custom-data-range">Data Range</label>
+              <select id="custom-data-range" class="builder-select">
+                <option value="all">Data Range</option>
+                <option value="today">Today</option>
+                <option value="7days">Last 7 Days</option>
+                <option value="30days">Last 30 Days</option>
+              </select>
+            </div>
+
+            <div class="control-group">
+              <label for="custom-class-filter">Filter by Class/Grade</label>
+              <select id="custom-class-filter" class="builder-select">
+                <option value="All">All</option>
+                <option value="Grade 8">Grade 8</option>
+                <option value="Grade 9">Grade 9</option>
+                <option value="Grade 10">Grade 10</option>
+                <option value="Grade 11">Grade 11</option>
+                <option value="Grade 12">Grade 12</option>
+                <option value="10A">Class 10A</option>
+                <option value="10B">Class 10B</option>
+                <option value="11A">Class 11A</option>
+                <option value="11B">Class 11B</option>
+                <option value="12A">Class 12A</option>
+                <option value="12B">Class 12B</option>
+              </select>
+            </div>
+
+            <div class="control-group btn-group">
+              <button class="btn-build-report" onclick="buildCustomReport()">Build Report</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Generated Report Result View Container -->
+        <div id="report-output-container" class="report-output-card hidden">
+          <div class="report-output-header">
+            <div>
+              <h3 id="report-output-title" class="report-output-name">Report Title</h3>
+              <p id="report-output-summary" class="report-output-meta">Report summary...</p>
+            </div>
+            <div class="report-export-buttons">
+              <button class="btn btn-danger btn-sm" onclick="exportCurrentReport('pdf')"><i class="fas fa-file-pdf"></i>
+                Download PDF</button>
+              <button class="btn btn-success btn-sm" onclick="exportCurrentReport('csv')"><i
+                  class="fas fa-file-csv"></i> Download CSV</button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table" id="report-output-table">
+              <thead id="report-output-thead"></thead>
+              <tbody id="report-output-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Recent Reports Table Section -->
+        <div class="recent-reports-card">
+          <h3 class="recent-reports-title">Recent Reports</h3>
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Report Name</th>
+                  <th>Generated By</th>
+                  <th>Date</th>
+                  <th>Download Link</th>
+                </tr>
+              </thead>
+              <tbody id="admin-reports-table-body">
+                <!-- Populated via JavaScript from database -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings Section -->
+      <section id="settings" class="section">
+        <h2 class="card-title" style="margin-bottom:1.5rem; color:#ffffff; font-size:1.5rem;"><i class="fas fa-cog" style="color:#6366f1; margin-right:0.5rem;"></i> System & School Settings</h2>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:1.5rem;">
+          
+          <!-- 1. School Information Card -->
+          <div class="card" style="background:#1e293b; border:1px solid #334155; padding:1.5rem; border-radius:12px;">
+            <h3 style="color:#f8fafc; font-size:1.1rem; margin-bottom:1rem; border-bottom:1px solid #334155; padding-bottom:0.75rem;"><i class="fas fa-school" style="color:#38bdf8; margin-right:0.5rem;"></i> School Information</h3>
+            <form id="school-settings-form" onsubmit="event.preventDefault(); alert('School information settings updated successfully!');">
+              <div class="form-group mb-3">
+                <label style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">School Name</label>
+                <input type="text" class="form-control" value="Fusion High School" style="background:#0f172a; color:#fff; border:1px solid #334155; padding:0.6rem; border-radius:8px;">
+              </div>
+              <div class="form-group mb-3">
+                <label style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Academic Year / CAPS Term</label>
+                <input type="text" class="form-control" value="2026 Academic Year - Term 3" style="background:#0f172a; color:#fff; border:1px solid #334155; padding:0.6rem; border-radius:8px;">
+              </div>
+              <div class="form-group mb-3">
+                <label style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Admin Support Email</label>
+                <input type="email" class="form-control" value="admin@fusionhigh.ac.za" style="background:#0f172a; color:#fff; border:1px solid #334155; padding:0.6rem; border-radius:8px;">
+              </div>
+              <button type="submit" class="btn btn-primary" style="background:#6366f1; border:none; color:#fff; padding:8px 16px; border-radius:8px; font-weight:600;"><i class="fas fa-save me-1"></i> Save School Details</button>
+            </form>
+          </div>
+
+          <!-- 2. Security & Password Card -->
+          <div class="card" style="background:#1e293b; border:1px solid #334155; padding:1.5rem; border-radius:12px;">
+            <h3 style="color:#f8fafc; font-size:1.1rem; margin-bottom:1rem; border-bottom:1px solid #334155; padding-bottom:0.75rem;"><i class="fas fa-lock" style="color:#f59e0b; margin-right:0.5rem;"></i> Admin Security & Password</h3>
+            <form id="adminPasswordForm" onsubmit="event.preventDefault(); alert('Admin password updated successfully!');">
+              <div class="form-group mb-3">
+                <label style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Current Password</label>
+                <input type="password" id="admin-curr-pass" class="form-control" placeholder="Enter current password..." required style="background:#0f172a; color:#fff; border:1px solid #334155; padding:0.6rem; border-radius:8px;">
+              </div>
+              <div class="form-group mb-3">
+                <label style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">New Password</label>
+                <input type="password" id="admin-new-pass" class="form-control" placeholder="Enter new password..." required style="background:#0f172a; color:#fff; border:1px solid #334155; padding:0.6rem; border-radius:8px;">
+              </div>
+              <div class="form-group mb-3">
+                <label style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Confirm New Password</label>
+                <input type="password" id="admin-conf-pass" class="form-control" placeholder="Confirm new password..." required style="background:#0f172a; color:#fff; border:1px solid #334155; padding:0.6rem; border-radius:8px;">
+              </div>
+              <button type="submit" class="btn btn-primary" style="background:#10b981; border:none; color:#fff; padding:8px 16px; border-radius:8px; font-weight:600;"><i class="fas fa-key me-1"></i> Update Security Credentials</button>
+            </form>
+          </div>
+
+          <!-- 3. System Backups & Maintenance Card -->
+          <div class="card" style="background:#1e293b; border:1px solid #334155; padding:1.5rem; border-radius:12px;">
+            <h3 style="color:#f8fafc; font-size:1.1rem; margin-bottom:1rem; border-bottom:1px solid #334155; padding-bottom:0.75rem;"><i class="fas fa-database" style="color:#a855f7; margin-right:0.5rem;"></i> Database Backups & Maintenance</h3>
+            <p style="color:#94a3b8; font-size:0.88rem; margin-bottom:1.25rem;">Perform PostgreSQL database snapshots, export audit logs, or manage system maintenance mode.</p>
+            <div style="display:flex; flex-direction:column; gap:0.75rem;">
+              <button type="button" class="btn" onclick="alert('PostgreSQL database backup snapshot generated successfully!');" style="background:#3b82f6; color:#fff; border:none; padding:10px 16px; border-radius:8px; font-weight:600; text-align:left;"><i class="fas fa-download me-2"></i> Create Database Snapshot</button>
+              <button type="button" class="btn" onclick="alert('System audit logs exported to CSV!');" style="background:#334155; color:#cbd5e1; border:none; padding:10px 16px; border-radius:8px; font-weight:600; text-align:left;"><i class="fas fa-file-export me-2"></i> Export Audit Logs</button>
+            </div>
+          </div>
+
+          <!-- 4. Notification Preferences Card -->
+          <div class="card" style="background:#1e293b; border:1px solid #334155; padding:1.5rem; border-radius:12px;">
+            <h3 style="color:#f8fafc; font-size:1.1rem; margin-bottom:1rem; border-bottom:1px solid #334155; padding-bottom:0.75rem;"><i class="fas fa-bell" style="color:#ec4899; margin-right:0.5rem;"></i> Platform Preferences</h3>
+            <div style="display:flex; flex-direction:column; gap:1rem;">
+              <label style="display:flex; align-items:center; gap:10px; color:#cbd5e1; font-size:0.9rem; cursor:pointer;">
+                <input type="checkbox" checked style="width:18px; height:18px; accent-color:#6366f1;"> Send automatic SMS/Email alerts to parents for absent learners
+              </label>
+              <label style="display:flex; align-items:center; gap:10px; color:#cbd5e1; font-size:0.9rem; cursor:pointer;">
+                <input type="checkbox" checked style="width:18px; height:18px; accent-color:#6366f1;"> Notify administrators when new teachers register
+              </label>
+              <label style="display:flex; align-items:center; gap:10px; color:#cbd5e1; font-size:0.9rem; cursor:pointer;">
+                <input type="checkbox" checked style="width:18px; height:18px; accent-color:#6366f1;"> Enable CAPS AI quiz & lesson paper generator for teachers
+              </label>
+              <label style="display:flex; align-items:center; gap:10px; color:#cbd5e1; font-size:0.9rem; cursor:pointer;">
+                <input type="checkbox" checked style="width:18px; height:18px; accent-color:#6366f1;"> Enforce dark mode design theme across all portals
+              </label>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+
+      <!-- Academics Section -->
+      <section id="academics" class="section">
+        <!-- Top Action Tiles (4 Cards) -->
+        <div class="academics-action-grid">
+          <div class="academics-action-card" onclick="switchTab('users', null, 'teacher')">
+            <div class="action-icon-box purple-bg"><i class="fas fa-chalkboard"></i></div>
+            <div class="action-card-text">
+              <h4>Manage Classes</h4>
+              <p>View and organize classes</p>
+            </div>
+          </div>
+
+          <div class="academics-action-card" onclick="switchTab('academics', null)">
+            <div class="action-icon-box green-bg"><i class="fas fa-file-code"></i></div>
+            <div class="action-card-text">
+              <h4>Manage Subjects</h4>
+              <p>View and manage subjects</p>
+            </div>
+          </div>
+
+          <div class="academics-action-card" onclick="switchTab('reports', null)">
+            <div class="action-icon-box red-bg"><i class="fas fa-calculator"></i></div>
+            <div class="action-card-text">
+              <h4>Gradebook</h4>
+              <p>Manage grades and marks</p>
+            </div>
+          </div>
+
+          <div class="academics-action-card" onclick="alert('Academic Settings module ready.')">
+            <div class="action-icon-box blue-bg"><i class="fas fa-cog"></i></div>
+            <div class="action-card-text">
+              <h4>Academic Settings</h4>
+              <p>Configure academic years</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Middle 3-Column Layout -->
+        <div class="overview-main-grid mt-1-5">
+          <!-- Column 1: Class Overview -->
+          <div class="overview-col card">
+            <div class="card-header-flex">
+              <h3 class="card-title">Class Overview</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-clean">
+                <thead>
+                  <tr>
+                    <th>Class</th>
+                    <th>Teacher</th>
+                    <th>Learners</th>
+                    <th>Subjects</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="academics-classes-tbody">
+                  <!-- Loaded dynamically from database -->
+                </tbody>
+              </table>
+            </div>
+            <div class="card-footer-link">
+              <a href="#" onclick="switchTab('users', null, 'learner'); return false;">View all classes</a>
+            </div>
+          </div>
+
+          <!-- Column 2: Academic Summary & Recent Activities -->
+          <div class="overview-col flex-col-gap">
+            <!-- Academic Summary Card -->
+            <div class="card">
+              <h3 class="card-title">Academic Summary</h3>
+              <div class="summary-tiles-2x2 mt-1">
+                <div class="summary-stat-item">
+                  <div class="stat-value-box"><span id="acad-total-classes">0</span> <i
+                      class="fas fa-users icon-purple"></i></div>
+                  <div class="stat-label">Total Classes</div>
+                  <div class="stat-trend positive">↑ 8.2% vs last term</div>
+                </div>
+
+                <div class="summary-stat-item">
+                  <div class="stat-value-box"><span id="acad-total-subjects">0</span> <i
+                      class="fas fa-book icon-green"></i></div>
+                  <div class="stat-label">Subjects</div>
+                  <div class="stat-trend positive">↑ 5.1% vs last term</div>
+                </div>
+
+                <div class="summary-stat-item">
+                  <div class="stat-value-box"><span id="acad-total-learners">0</span> <i
+                      class="fas fa-user-graduate icon-blue"></i></div>
+                  <div class="stat-label">Learners</div>
+                  <div class="stat-trend positive">↑ 6.7% vs last term</div>
+                </div>
+
+                <div class="summary-stat-item">
+                  <div class="stat-value-box"><span id="acad-pass-rate">0%</span> <i
+                      class="fas fa-chart-line icon-orange"></i></div>
+                  <div class="stat-label">Average Pass Rate</div>
+                  <div class="stat-trend positive">↑ 4.3% vs last term</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recent Academic Activities -->
+            <div class="card">
+              <h3 class="card-title">Recent Academic Activities</h3>
+              <div id="academics-activities-list" class="activities-timeline-list">
+                <!-- Loaded dynamically -->
+              </div>
+              <div class="card-footer-link">
+                <a href="#" onclick="switchTab('reports', null); return false;">View all activities</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 3: Performance Overview & Top Performing Classes -->
+          <div class="overview-col flex-col-gap">
+            <!-- Performance Overview Line Chart -->
+            <div class="card">
+              <div class="card-header-flex">
+                <h3 class="card-title">Performance Overview</h3>
+                <select id="admin-perf-term-select" class="form-control-sm" style="background:#0f172a; color:#fff; border:1px solid #334155; padding:0.35rem 0.6rem; border-radius:6px; font-size:0.85rem;" onchange="window.updateAdminPerformanceTerm(this.value)">
+                  <option value="all_terms" selected>All Terms Average</option>
+                  <option value="term1">Term 1 (Grades 8 - 12)</option>
+                  <option value="term2">Term 2 (Grades 8 - 12)</option>
+                  <option value="term3">Term 3 (Grades 8 - 12)</option>
+                  <option value="term4">Term 4 (Grades 8 - 12)</option>
+                </select>
+              </div>
+              <div class="chart-container-sm" style="height: 160px; position: relative;">
+                <canvas id="academicPerformanceTrendChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Top Performing Classes -->
+            <div class="card">
+              <h3 class="card-title">Top Performing Classes</h3>
+              <div id="academics-top-classes-list" class="top-classes-ranked-list">
+                <!-- Loaded dynamically -->
+              </div>
+              <div class="card-footer-link">
+                <a href="#" onclick="switchTab('reports', null); return false;">View full performance</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom 2-Column Layout -->
+        <div class="overview-main-grid mt-1-5" style="grid-template-columns: 2fr 1fr;">
+          <!-- Subject Performance Overview Card -->
+          <div class="card">
+            <div class="card-header-flex">
+              <h3 class="card-title">Subject Performance Overview</h3>
+              <select class="form-control-sm" style="background:#0f172a; color:#fff; border:1px solid #334155;">
+                <option>This Term</option>
+              </select>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; align-items:center;" class="mt-1">
+              <div style="height: 200px; position: relative;">
+                <canvas id="subjectPerformanceBarChart"></canvas>
+              </div>
+
+              <div id="subject-performance-legend-list" class="subject-legend-list">
+                <!-- Loaded dynamically -->
+              </div>
+            </div>
+
+            <div class="card-footer-link">
+              <a href="#" onclick="switchTab('reports', null); return false;">View all subjects</a>
+            </div>
+          </div>
+
+          <!-- Upcoming Academic Events Card -->
+          <div class="card">
+            <h3 class="card-title">Upcoming Academic Events</h3>
+            <div id="academics-upcoming-events-list" class="events-date-list mt-1">
+              <!-- Loaded dynamically -->
+            </div>
+            <div class="card-footer-link">
+              <a href="#" onclick="switchTab('announcements', null); return false;">View calendar</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- Timetables Section -->
+      <section id="timetables" class="section">
+        <!-- Generate & Auto-Schedule Control Card -->
+        <div class="card mb-1rem"
+          style="background:#1e293b; border:1px solid #334155; padding:1.5rem; border-radius:12px; margin-bottom:1.5rem;">
+          <h2 class="card-title" style="color:#ffffff; font-size:1.3rem; margin-bottom:0.5rem;"><i class="fas fa-magic"
+              style="color:#6366f1;"></i> AI Timetable Auto-Scheduling & Publishing</h2>
+          <p style="color:#94a3b8; font-size:0.88rem; margin-bottom:1.25rem;">Generate multi-subject weekly schedules
+            for classes with collision-free teacher assignment. Automatically publish and dispatch notifications to
+            teachers, parents, and learners.</p>
+
+          <div style="display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap;">
+            <div style="flex:1; min-width:180px;">
+              <label style="color:#94a3b8; font-size:0.85rem; display:block; margin-bottom:0.35rem;">Select
+                Grade</label>
+              <select id="timetable-gen-grade" class="form-control"
+                style="background:#0f172a; color:#fff; border:1px solid #334155;">
+                <option value="10">Grade 10</option>
+                <option value="11">Grade 11</option>
+                <option value="12">Grade 12</option>
+                <option value="8">Grade 8</option>
+                <option value="9">Grade 9</option>
+              </select>
+            </div>
+
+            <div style="flex:1; min-width:180px;">
+              <label style="color:#94a3b8; font-size:0.85rem; display:block; margin-bottom:0.35rem;">Select Academic
+                Stream</label>
+              <select id="timetable-gen-stream" class="form-control"
+                style="background:#0f172a; color:#fff; border:1px solid #334155;">
+                <option value="Science">Science Stream</option>
+                <option value="Commerce">Commerce Stream</option>
+                <option value="Tourism">Tourism Stream</option>
+                <option value="General">General Stream</option>
+              </select>
+            </div>
+
+            <div>
+              <button class="btn btn-primary" onclick="generateFullTimetableUI()"
+                style="height:42px; padding:0 1.5rem; font-weight:600;"><i class="fas fa-play"></i> Generate &
+                Auto-Schedule Full Timetable</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="main-grid">
+          <div class="card">
+            <h2 class="card-title">Active School Timetables</h2>
+            <div id="timetables-list-container" class="table-responsive">
+              <!-- List of timetables loaded dynamically -->
+            </div>
+          </div>
+          <div id="timetable-view-container" class="card hidden">
+            <!-- Selected timetable grid matrix rendered here -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Announcements & School Notices Section -->
+      <section id="announcements" class="section">
+        <div class="view-header-bar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:1rem;">
+          <div>
+            <h2 class="card-title" style="color:#ffffff; font-size:1.4rem; margin:0;"><i class="fas fa-bullhorn" style="color:#6366f1;"></i> School Announcements & Notices Hub</h2>
+            <p style="color:#94a3b8; font-size:0.88rem; margin:0.2rem 0 0 0;">Create, broadcast, and manage school-wide announcements for teachers, parents, and learners.</p>
+          </div>
+          <button class="btn btn-primary" onclick="window.openCreateAnnouncementModal()" style="background:#6366f1; border:none; padding:10px 18px; border-radius:8px; font-weight:600; cursor:pointer;">
+            <i class="fas fa-plus me-1"></i> Create New Announcement
+          </button>
+        </div>
+
+        <!-- Top Stats Cards Bar -->
+        <div class="overview-stats-grid mb-1-5" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+          <div class="overview-stat-card" style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:1.25rem; display:flex; align-items:center; justify-content:space-between;">
+            <div>
+              <p class="stat-label" style="font-size:0.8rem; color:#94a3b8; margin:0;">Total Published</p>
+              <h3 id="admin-ann-stat-total" class="stat-value" style="font-size:1.4rem; color:#ffffff; margin:0.2rem 0 0 0; font-weight:800;">0</h3>
+            </div>
+            <div class="stat-icon-wrapper icon-blue" style="width:44px; height:44px; border-radius:10px; background:rgba(99,102,241,0.2); color:#818cf8; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+              <i class="fas fa-bullhorn"></i>
+            </div>
+          </div>
+          <div class="overview-stat-card" style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:1.25rem; display:flex; align-items:center; justify-content:space-between;">
+            <div>
+              <p class="stat-label" style="font-size:0.8rem; color:#94a3b8; margin:0;">Important Notices</p>
+              <h3 id="admin-ann-stat-important" class="stat-value" style="font-size:1.4rem; color:#fbbf24; margin:0.2rem 0 0 0; font-weight:800;">0</h3>
+            </div>
+            <div class="stat-icon-wrapper icon-orange" style="width:44px; height:44px; border-radius:10px; background:rgba(245,158,11,0.2); color:#fbbf24; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+          </div>
+          <div class="overview-stat-card" style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:1.25rem; display:flex; align-items:center; justify-content:space-between;">
+            <div>
+              <p class="stat-label" style="font-size:0.8rem; color:#94a3b8; margin:0;">Learner Notices</p>
+              <h3 id="admin-ann-stat-learners" class="stat-value" style="font-size:1.4rem; color:#34d399; margin:0.2rem 0 0 0; font-weight:800;">0</h3>
+            </div>
+            <div class="stat-icon-wrapper icon-green" style="width:44px; height:44px; border-radius:10px; background:rgba(16,185,129,0.2); color:#34d399; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+              <i class="fas fa-user-graduate"></i>
+            </div>
+          </div>
+          <div class="overview-stat-card" style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:1.25rem; display:flex; align-items:center; justify-content:space-between;">
+            <div>
+              <p class="stat-label" style="font-size:0.8rem; color:#94a3b8; margin:0;">Teacher Broadcasts</p>
+              <h3 id="admin-ann-stat-teachers" class="stat-value" style="font-size:1.4rem; color:#c084fc; margin:0.2rem 0 0 0; font-weight:800;">0</h3>
+            </div>
+            <div class="stat-icon-wrapper icon-purple" style="width:44px; height:44px; border-radius:10px; background:rgba(168,85,247,0.2); color:#c084fc; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+              <i class="fas fa-chalkboard-teacher"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter & Search Controls -->
+        <div class="card mb-1-5" style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <div style="position:relative; flex:1; min-width:240px;">
+              <i class="fas fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#64748b;"></i>
+              <input type="text" id="admin-ann-search-box" placeholder="Search announcements by title or content..." oninput="window.filterAdminAnnouncements(this.value)" style="width:100%; padding:0.55rem 1rem 0.55rem 2.4rem; background:#1e293b; border:1px solid #334155; border-radius:8px; color:#fff; font-size:0.88rem;">
+            </div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+              <select id="admin-ann-role-filter" onchange="window.filterAdminAnnouncementsRole(this.value)" style="background:#1e293b; border:1px solid #334155; color:#cbd5e1; padding:0.55rem 0.9rem; border-radius:8px; font-size:0.88rem;">
+                <option value="all">Target: All Roles</option>
+                <option value="learner">Target: Learners</option>
+                <option value="teacher">Target: Teachers</option>
+                <option value="parent">Target: Parents</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Published Announcements Management Table Card -->
+        <div class="card" style="background:#0f172a; border:1px solid #334155; border-radius:14px; padding:1.5rem;">
+          <h3 class="card-title" style="color:#f8fafc; margin-bottom:1rem; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem;">
+            <i class="fas fa-list-alt" style="color:#6366f1;"></i> Published Announcements & Notices History
+          </h3>
+          <div class="table-responsive">
+            <table class="table" style="width:100%; border-collapse:collapse;">
+              <thead>
+                <tr style="border-bottom:1px solid #334155; color:#94a3b8; text-align:left; font-size:0.85rem;">
+                  <th style="padding:10px;">Title & Details</th>
+                  <th style="padding:10px;">Target Audience</th>
+                  <th style="padding:10px;">Category</th>
+                  <th style="padding:10px;">Author</th>
+                  <th style="padding:10px;">Date Created</th>
+                  <th style="padding:10px; text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-announcements-tbody">
+                <tr><td colspan="6" style="padding:1.5rem; text-align:center; color:#94a3b8;"><i class="fas fa-spinner fa-spin me-2"></i> Loading announcements...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Message Center Section -->
+      <section id="messages" class="section">
+        <div class="chat-center-container">
+          <!-- Left Conversations Panel -->
+          <div class="conversations-panel">
+            <div class="conversations-header">
+              <h3><i class="fas fa-envelope"></i> Message Center</h3>
+              <input type="text" class="chat-search-input" placeholder="Search contact or role..."
+                oninput="window.filterChatContacts(this.value)">
+            </div>
+            <div id="chat-contacts-list" class="contacts-list-scroll">
+              <!-- Contacts rendered by JavaScript -->
+            </div>
+          </div>
+
+          <!-- Right Chat Window Panel -->
+          <div class="chat-window-panel">
+            <div class="chat-header-bar">
+              <div id="chat-active-avatar">
+                <div class="contact-avatar">?</div>
+              </div>
+              <div class="chat-header-title">
+                <h4 id="chat-active-name">Select a Conversation</h4>
+                <p id="chat-active-tag">Message Center</p>
+              </div>
+            </div>
+
+            <div id="chat-stream-body" class="chat-stream-container">
+              <!-- Chat bubbles rendered by JavaScript -->
+            </div>
+
+            <div class="composition-bar-container">
+              <input type="text" id="chat-input-box" class="composition-input-box" placeholder="Composition..."
+                onkeydown="if(event.key==='Enter') window.sendChatMessage()">
+              <button type="button" class="chat-action-btn" title="Attach file"><i
+                  class="fas fa-paperclip"></i></button>
+              <button type="button" class="chat-send-btn" onclick="window.sendChatMessage()"><i
+                  class="fas fa-paper-plane"></i></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Class Performance Modal -->
+  <div id="classPerformanceModal" class="modal">
+    <div class="modal-content large">
+      <span class="close-btn" onclick="closeModal('classPerformanceModal')">&times;</span>
+      <h2 id="performance-modal-title" class="card-title">Class Performance</h2>
+      <div id="performance-modal-body">
+        <!-- Performance chart and table will be rendered here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit User Modal -->
+  <div id="editUserModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModal('editUserModal')">&times;</span>
+      <h2 class="card-title">Edit User</h2>
+      <form id="editUserForm">
+        <input type="hidden" id="edit-user-id">
+        <div class="form-group">
+          <label for="edit-full_name">Full Name</label>
+          <input type="text" id="edit-full_name" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-surname">Surname</label>
+          <input type="text" id="edit-surname" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-email">Email</label>
+          <input type="email" id="edit-email" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-role">Role</label>
+          <select id="edit-role" class="form-control" required>
+            <option value="admin">Admin</option>
+            <option value="teacher">Teacher</option>
+            <option value="parent">Parent</option>
+            <option value="learner">Learner</option>
+          </select>
+        </div>
+        <div id="edit-error" class="error hidden"></div>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Log Behavior Incident Modal -->
+  <div id="logIncidentModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="color:#ffffff;">Log Behavior Incident</h3>
+        <span class="close-btn"
+          onclick="document.getElementById('logIncidentModal').style.display='none'">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="logIncidentForm" onsubmit="handleLogIncidentSubmit(event)">
+          <div class="form-group">
+            <label for="incident-learner-id">Select Learner Number or ID</label>
+            <select id="incident-learner-id" class="form-control" required style="background:#0f172a; color:#fff;">
+              <option value="1">20250001 - Jane Walters (Grade 10)</option>
+              <option value="2">20250002 - David Walters (Grade 11)</option>
+              <option value="3">20250003 - Sarah Walters (Grade 12)</option>
+              <option value="4">20250004 - Thabelo Ravhura (Grade 10)</option>
+              <option value="8">20250008 - Thabang Leshabane (Grade 11)</option>
+              <option value="10">20250010 - Mpho Ravhura (Grade 10)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="incident-type">Incident Type</label>
+            <input type="text" id="incident-type" class="form-control"
+              placeholder="e.g. Classroom Disruption, Late Arrival" required style="background:#0f172a; color:#fff;">
+          </div>
+          <div class="form-group">
+            <label for="incident-severity">Severity Level</label>
+            <select id="incident-severity" class="form-control" style="background:#0f172a; color:#fff;">
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Critical">Critical</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="incident-description">Description</label>
+            <textarea id="incident-description" class="form-control" rows="3" placeholder="Describe the incident..."
+              required style="background:#0f172a; color:#fff;"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="incident-action">Action Taken</label>
+            <input type="text" id="incident-action" class="form-control"
+              placeholder="e.g. Parent notified, Detention assigned" style="background:#0f172a; color:#fff;">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">Log Incident</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Timetable Editor Modal -->
+  <div id="adminEditTimetableModal" class="modal">
+
+    <div class="modal-content large">
+      <div class="modal-header">
+        <h3>Edit & Publish Timetable</h3>
+        <span class="close-btn"
+          onclick="this.parentElement.parentElement.parentElement.style.display='none'">&times;</span>
+      </div>
+      <div class="modal-body" id="admin-edit-timetable-body">
+        <!-- The visual editor grid will be injected here by JavaScript -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary"
+          onclick="this.parentElement.parentElement.parentElement.style.display='none'">Cancel</button>
+        <button class="btn btn-primary" onclick="saveAndPublishAdminTimetable()">Save & Publish</button>
+      </div>
+    </div>
+  <!-- Create Announcement Modal -->
+  <div id="createAnnouncementModal" class="modal">
+    <div class="modal-content" style="background:#0f172a; border:1px solid #334155; color:#fff; border-radius:14px; max-width:550px;">
+      <div class="modal-header" style="border-bottom:1px solid #334155; padding-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="color:#ffffff; margin:0; font-size:1.15rem;"><i class="fas fa-bullhorn" style="color:#6366f1;"></i> Create School Announcement</h3>
+        <span class="close-btn" onclick="document.getElementById('createAnnouncementModal').style.display='none'" style="color:#94a3b8; font-size:1.5rem; cursor:pointer;">&times;</span>
+      </div>
+      <div class="modal-body" style="padding-top:1rem;">
+        <form id="createAnnouncementForm" onsubmit="window.handleCreateAnnouncement(event)">
+          <div class="form-group mb-3">
+            <label for="ann-title" style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Announcement Title</label>
+            <input type="text" id="ann-title" class="form-control" placeholder="e.g. End of Term Examination Schedule 2026" required style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;">
+          </div>
+          
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;" class="mb-3">
+            <div>
+              <label for="ann-role-target" style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Target Audience</label>
+              <select id="ann-role-target" class="form-control" style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;">
+                <option value="all">All Roles (School Wide)</option>
+                <option value="learner">Learners Only</option>
+                <option value="teacher">Teachers Only</option>
+                <option value="parent">Parents Only</option>
+              </select>
+            </div>
+            <div>
+              <label for="ann-grade-target" style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Grade Target (Optional)</label>
+              <select id="ann-grade-target" class="form-control" style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;">
+                <option value="">All Grades</option>
+                <option value="8">Grade 8</option>
+                <option value="9">Grade 9</option>
+                <option value="10">Grade 10</option>
+                <option value="11">Grade 11</option>
+                <option value="12">Grade 12</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;" class="mb-3">
+            <div>
+              <label for="ann-stream-target" style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Stream Target (Optional)</label>
+              <select id="ann-stream-target" class="form-control" style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;">
+                <option value="">All Streams</option>
+                <option value="Science">Science Stream</option>
+                <option value="Commerce">Commerce Stream</option>
+                <option value="Tourism">Tourism Stream</option>
+                <option value="General">General Stream</option>
+              </select>
+            </div>
+            <div>
+              <label for="ann-category" style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Category</label>
+              <select id="ann-category" class="form-control" style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;">
+                <option value="General">General Notice</option>
+                <option value="Important">Important / Urgent</option>
+                <option value="Event">School Event</option>
+                <option value="Exam">Examination</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="ann-content" style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Notice Content & Details</label>
+            <textarea id="ann-content" class="form-control" rows="4" placeholder="Write full announcement content..." required style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;"></textarea>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.25rem;">
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('createAnnouncementModal').style.display='none'" style="background:#334155; border:none; color:#cbd5e1; padding:8px 16px; border-radius:8px; font-weight:600;">Cancel</button>
+            <button type="submit" class="btn btn-primary" style="background:#6366f1; border:none; color:#fff; padding:8px 18px; border-radius:8px; font-weight:600;"><i class="fas fa-paper-plane me-1"></i> Publish Announcement</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function handleLogout() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = '/';
+    }
+    window.logout = handleLogout;
+
+    // When the page loads, call the main dashboard loader
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.loadAdminDashboard) {
+        window.loadAdminDashboard();
+      }
+    });
+  </script>
+  <script type="module" src="/js/admin-dashboard.js"></script>
+  <script src="/js/sidebar-toggle.js"></script>
+</body>
+
+</html>

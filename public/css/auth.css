@@ -1,0 +1,165 @@
+/* Styles for authentication pages (login, registration) */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    max-width: 500px;
+    width: 100%;
+    margin: 0 auto;
+    background-image: url('/assets/Landing page.png');
+    background-size: cover;
+}
+
+a {
+    color: #ef4444 !important;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+/* Card styles for auth pages */
+.card,
+.form-container {
+    background: rgba(51, 65, 85, 0.8);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Header styles for auth pages */
+h1,
+h2 {
+    text-align: center;
+    color: #ffffff;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+}
+
+/* registration form labels and text */
+p,
+label {
+    color: #ffffff;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+    display: block;
+    font-weight: 500;
+}
+
+/* Form styles */
+input,
+select,
+textarea {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    border: 1px solid #475569;
+    background: #1e293b;
+    color: #f1f5f9;
+    border-radius: 6px;
+    box-sizing: border-box;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* Add padding to the right of the password input to make space for the icon */
+.password-wrapper input[type="password"],
+.password-wrapper input[type="text"] {
+    padding-right: 40px;
+    /* Space for the icon */
+}
+
+/* Button styles from the form for small screens */
+button {
+    width: 100%;
+    padding: 12px;
+    background: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: background 0.3s;
+    margin-top: 10px;
+}
+
+/* Hover effect for buttons on small screens */
+button:hover {
+    background: #991b1b;
+}
+
+.error {
+    color: #e74c3c;
+    font-size: 0.85rem;
+    margin-top: 10px;
+    text-align: center;
+    display: none;
+}
+
+/* Responsive adjustments for small screens on the form */
+.error.show {
+    display: block;
+}
+
+.hidden {
+    display: none;
+}
+
+.nav-link {
+    display: block;
+    text-align: center;
+    padding: 12px;
+    margin-top: 20px;
+    color: #ef4444 !important;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+/* Layout for parent fields on small screens for the form */
+.parent-fields {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.parent-fields label,
+.parent-fields input {
+    margin: 4px 0;
+}
+
+/* Eye toggle for password */
+.password-wrapper {
+    position: relative;
+    margin-bottom: 8px;
+    width: 100%;
+}
+
+.eye {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    user-select: none;
+    color: #999;
+}
+
+/* Header branding */
+header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 2rem;
+    color: #ef4444;
+}
+
+header p {
+    margin: 5px 0 0;
+    color: #7f8c8d;
+    font-weight: 500;
+}

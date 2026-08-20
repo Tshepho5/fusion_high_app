@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Online Learner Admissions | Fusion High School</title>
+  <link rel="stylesheet" href="/css/application.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎓</text></svg>">
+</head>
+<body>
+
+  <div class="portal-container">
+    <!-- Header -->
+    <header class="portal-header">
+      <div class="brand-badge">⚡ Fusion High School Admissions</div>
+      <h1>Learner Admission Application</h1>
+      <p>Official application portal for incoming Grade 8 learners and Grade 9–12 transfer candidates. Featuring real-time capacity monitoring and automated AI document verification.</p>
+    </header>
+
+    <!-- School Capacity Banner -->
+    <div class="capacity-banner">
+      <div class="capacity-item">
+        <span>🏛️ School Capacity:</span>
+        <span id="school-capacity-badge"><strong>Checking live enrollment...</strong> (< 500 limit)</span>
+      </div>
+      <div class="capacity-item">
+        <span>👥 Class Size Policy:</span>
+        <span class="badge-pill badge-info">Strict Max < 30 Learners / Class</span>
+      </div>
+    </div>
+
+    <!-- Resumption Notice (Hidden by default, shown if ?resume=token) -->
+    <div id="resume-alert-banner" class="resume-banner" style="display: none;">
+      <h3>⚠️ Action Required: Correcting Your Application</h3>
+      <p>Our AI document review detected item(s) that require your attention. Please correct the highlighted details or upload replacement documents below:</p>
+      <ul id="resume-issues-list" style="margin-top: 8px;"></ul>
+    </div>
+
+    <!-- Stepper Navigation -->
+    <div class="stepper-nav">
+      <div class="stepper-progress-fill"></div>
+
+      <div class="step-item active" id="step-nav-1">
+        <div class="step-circle">1</div>
+        <div class="step-label">Learner Info</div>
+      </div>
+
+      <div class="step-item" id="step-nav-2">
+        <div class="step-circle">2</div>
+        <div class="step-label">Next of Kin</div>
+      </div>
+
+      <div class="step-item" id="step-nav-3">
+        <div class="step-circle">3</div>
+        <div class="step-label">Academic & Health</div>
+      </div>
+
+      <div class="step-item" id="step-nav-4">
+        <div class="step-circle">4</div>
+        <div class="step-label">Documents & AI</div>
+      </div>
+    </div>
+
+    <!-- Main Application Form -->
+    <form id="admissionApplicationForm" enctype="multipart/form-data" novalidate>
+
+      <!-- ================= STEP 1: LEARNER INFORMATION ================= -->
+      <div class="form-step-card active" id="step-1">
+        <div class="step-header">
+          <h2>Step 1: Learner Information</h2>
+          <p>Please enter the personal details of the student applying for admission.</p>
+        </div>
+
+        <div class="grid-2">
+          <!-- First Names -->
+          <div class="form-group">
+            <label for="first_name">First Name(s) <span class="required">*</span></label>
+            <input type="text" id="first_name" name="first_name" placeholder="e.g., Thabo Samuel (letters only)" required
+                   data-type="text-only" autocomplete="given-name">
+            <div class="hint">Letters, spaces, and hyphens only (numbers strictly blocked).</div>
+            <div class="field-error"></div>
+          </div>
+
+          <!-- Surname -->
+          <div class="form-group">
+            <label for="surname">Surname <span class="required">*</span></label>
+            <input type="text" id="surname" name="surname" placeholder="e.g., Molefe (letters only)" required
+                   data-type="text-only" autocomplete="family-name">
+            <div class="hint">Letters, spaces, and hyphens only (numbers strictly blocked).</div>
+            <div class="field-error"></div>
+          </div>
+
+          <!-- SA ID / Passport -->
+          <div class="form-group full-width">
+            <label for="id_number">South African ID Number <span class="required">*</span></label>
+            <input type="text" id="id_number" name="id_number" placeholder="e.g., 0805155000088 (13 digits only)" required
+                   maxlength="13" data-type="numeric-only" inputmode="numeric">
+            <div class="hint">Numbers only (letters strictly blocked). Autofills birth date and gender.</div>
+            <div class="field-error"></div>
+            <div id="id-validation-status" class="id-status-box" style="display: none;"></div>
+          </div>
+
+          <!-- Date of Birth (Autofilled) -->
+          <div class="form-group">
+            <label for="dob">Date of Birth <span class="required">*</span></label>
+            <input type="date" id="dob" name="dob" required>
+            <div class="hint">Auto-extracted from ID number or choose manually.</div>
+            <div class="field-error"></div>
+          </div>
+
+          <!-- Gender (Autofilled) -->
+          <div class="form-group">
+            <label for="gender">Gender <span class="required">*</span></label>
+            <select id="gender" name="gender" required>
+              <option value="" disabled selected>Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+            <div class="field-error"></div>
+          </div>
+
+          <!-- Citizenship / Country of Birth (Autofilled) -->
+          <div class="form-group">
+            <label for="citizenship">Citizenship / Country of Birth <span class="required">*</span></label>
+            <input type="text" id="citizenship" name="citizenship" value="South Africa" required data-type="text-only" placeholder="e.g. South Africa (letters only)">
+            <div class="field-error"></div>
+          </div>
+
+          <!-- Calculated Age and Document Requirement Pill -->
+          <div class="form-group full-width" id="age-requirement-container" style="display: none;">
+            <div id="learner-age-pill" class="id-status-box valid" style="display: flex; align-items: center; gap: 8px;">
+              <span id="age-pill-icon">ℹ️</span>
+              <span id="age-pill-text"></span>
+            </div>
+          </div>
+
+          <!-- Grade Applied For -->
+          <div class="form-group">
+            <label for="grade_applied">Grade Applying For <span class="required">*</span></label>
+            <select id="grade_applied" name="grade_applied" required>
+              <option value="" disabled selected>Select Grade</option>
+              <option value="8">Grade 8 (New High School Entry)</option>
+              <option value="9">Grade 9 (Senior Phase)</option>
+              <option value="10">Grade 10 (FET Phase - Stream Selection)</option>
+              <option value="11">Grade 11 (FET Phase)</option>
+              <option value="12">Grade 12 (Matric Candidate)</option>
+            </select>
+            <div id="grade-capacity-indicator" class="hint" style="color: #38bdf8; display: none;"></div>
+            <div class="field-error"></div>
+          </div>
+
+          <!-- Stream Selection (Grades 10-12 only) -->
+          <div class="form-group full-width" id="stream-selection-group" style="display: none;">
+            <label for="stream">Curriculum Academic Stream <span class="required">*</span></label>
+            <select id="stream" name="stream">
+              <option value="Science">Science Stream (Mathematics, Physical Sciences, Life Sciences)</option>
+              <option value="Commerce">Commerce Stream (Accounting, Business Studies, Economics)</option>
+              <option value="Tourism">Tourism & Services Stream (Tourism, Mathematical Literacy, Business Studies)</option>
+            </select>
+            <div class="hint">Compulsory Core: English First Additional Language, Home Language, Life Orientation.</div>
+          </div>
+
+          <!-- Learner Contact Number (Optional) -->
+          <div class="form-group">
+            <label for="learner_phone">Learner Phone Number (Optional)</label>
+            <input type="tel" id="learner_phone" name="phone" placeholder="e.g., 0712345678 or +27712345678 (numbers only)"
+                   data-type="phone-only" inputmode="tel">
+            <div class="hint">Numbers and leading + only (letters strictly blocked).</div>
+            <div class="field-error"></div>
+          </div>
+
+          <!-- Learner Email (Optional) -->
+          <div class="form-group">
+            <label for="learner_email">Learner Email Address (Optional)</label>
+            <input type="email" id="learner_email" name="email" placeholder="e.g., learner@gmail.com">
+            <div class="hint">Official school email will be provisioned upon acceptance.</div>
+            <div class="field-error"></div>
+          </div>
+
+          <!-- Physical Residential Address -->
+          <div class="form-group full-width">
+            <label for="physical_address">Learner Physical Residential Address <span class="required">*</span></label>
+            <textarea id="physical_address" name="physical_address" rows="2" required
+                      placeholder="e.g., Stand 402, Ext 4, Soshanguve, Pretoria, 0152"></textarea>
+            <div class="hint">Include House/Stand number, Street Name, Suburb, City, and Postal Code.</div>
+            <div class="field-error"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= STEP 2: NEXT OF KIN (PARENTS / GUARDIANS) ================= -->
+      <div class="form-step-card" id="step-2">
+        <div class="step-header">
+          <h2>Step 2: Next of Kin / Parents & Guardians</h2>
+          <p>Provide contact details for the primary parent/guardian. You can also link a second parent.</p>
+        </div>
+
+        <!-- PRIMARY PARENT / NEXT OF KIN 1 -->
+        <h3 style="font-size: 1.1rem; color: #38bdf8; margin-bottom: 16px; border-bottom: 1px dashed #334155; padding-bottom: 6px;">
+          Primary Parent / Legal Guardian Details (Main Contact)
+        </h3>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="primary_parent_name">Parent First Name(s) <span class="required">*</span></label>
+            <input type="text" id="primary_parent_name" name="primary_parent_name" placeholder="e.g., Lerato Grace (letters only)" required
+                   data-type="text-only">
+            <div class="hint">Letters, spaces, and hyphens only (numbers strictly blocked).</div>
+            <div class="field-error"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="primary_parent_surname">Parent Surname <span class="required">*</span></label>
+            <input type="text" id="primary_parent_surname" name="primary_parent_surname" placeholder="e.g., Molefe (letters only)" required
+                   data-type="text-only">
+            <div class="hint">Letters, spaces, and hyphens only (numbers strictly blocked).</div>
+            <div class="field-error"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="primary_parent_relationship">Relationship to Learner <span class="required">*</span></label>
+            <select id="primary_parent_relationship" name="primary_parent_relationship" required>
+              <option value="" disabled selected>Select Relationship</option>
+              <option value="Mother">Mother</option>
+              <option value="Father">Father</option>
+              <option value="Legal Guardian">Legal Guardian</option>
+              <option value="Grandparent">Grandparent</option>
+              <option value="Foster Parent">Foster Parent</option>
+              <option value="Other">Other</option>
+            </select>
+            <div class="field-error"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="primary_parent_id_number">Parent ID / Passport Number <span class="required">*</span></label>
+            <input type="text" id="primary_parent_id_number" name="primary_parent_id_number" placeholder="e.g. 8001010000081 (numbers only)" required
+                   maxlength="13" data-type="numeric-only" inputmode="numeric">
+            <div class="hint">Numbers only (letters strictly blocked). Must match parent ID copy.</div>
+            <div class="field-error"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="primary_parent_phone">Mobile Phone Number <span class="required">*</span></label>
+            <input type="tel" id="primary_parent_phone" name="primary_parent_phone" placeholder="e.g., 0823456789 or +27823456789 (numbers only)" required
+                   data-type="phone-only" inputmode="tel">
+            <div class="hint">Numbers and leading + only (letters strictly blocked).</div>
+            <div class="field-error"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="primary_parent_email">Email Address <span class="required">*</span></label>
+            <input type="email" id="primary_parent_email" name="primary_parent_email" placeholder="e.g., lerato.molefe@gmail.com" required>
+            <div class="hint">Important: Acceptance letters and correction resumption links are sent here.</div>
+            <div class="field-error"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="primary_parent_occupation">Occupation (Optional)</label>
+            <input type="text" id="primary_parent_occupation" name="primary_parent_occupation" placeholder="e.g., Educator / Accountant (letters only)"
+                   data-type="text-only">
+            <div class="field-error"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="primary_parent_employer">Employer Name (Optional)</label>
+            <input type="text" id="primary_parent_employer" name="primary_parent_employer" placeholder="e.g., Dept of Health / Private Sector">
+            <div class="field-error"></div>
+          </div>
+
+          <!-- Address Checkbox -->
+          <div class="form-group full-width">
+            <label class="checkbox-container">
+              <input type="checkbox" id="same_as_learner_address" name="same_as_learner_address" checked>
+              <span>Primary Parent physical address is the <strong>same as learner's address</strong></span>
+            </label>
+          </div>
+
+          <!-- Parent Address -->
+          <div class="form-group full-width">
+            <label for="primary_parent_address">Primary Parent Physical Address <span class="required">*</span></label>
+            <textarea id="primary_parent_address" name="primary_parent_address" rows="2" required
+                      placeholder="e.g., Stand 402, Ext 4, Soshanguve, Pretoria, 0152"></textarea>
+            <div class="field-error"></div>
+          </div>
+        </div>
+
+        <!-- SECONDARY PARENT / NEXT OF KIN 2 (OPTIONAL) -->
+        <div style="margin-top: 24px; border-top: 1px solid #334155; padding-top: 16px;">
+          <label class="checkbox-container">
+            <input type="checkbox" id="has_secondary_parent" name="has_secondary_parent">
+            <span>+ Link a <strong>Secondary Parent / Guardian / Next of Kin</strong> (Optional)</span>
+          </label>
+
+          <div id="secondary-parent-section" style="display: none; margin-top: 16px; background: rgba(15, 23, 42, 0.4); padding: 18px; border-radius: 10px; border: 1px solid #334155;">
+            <h4 style="font-size: 1rem; color: #a78bfa; margin-bottom: 14px;">Secondary Parent / Guardian Details</h4>
+            
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="secondary_parent_name">First Name(s)</label>
+                <input type="text" id="secondary_parent_name" name="secondary_parent_name" placeholder="e.g., Sipho (letters only)"
+                       data-type="text-only">
+                <div class="field-error"></div>
+              </div>
+
+              <div class="form-group">
+                <label for="secondary_parent_surname">Surname</label>
+                <input type="text" id="secondary_parent_surname" name="secondary_parent_surname" placeholder="e.g., Molefe (letters only)"
+                       data-type="text-only">
+                <div class="field-error"></div>
+              </div>
+
+              <div class="form-group">
+                <label for="secondary_parent_relationship">Relationship</label>
+                <select id="secondary_parent_relationship" name="secondary_parent_relationship">
+                  <option value="" disabled selected>Select Relationship</option>
+                  <option value="Father">Father</option>
+                  <option value="Mother">Mother</option>
+                  <option value="Legal Guardian">Legal Guardian</option>
+                  <option value="Emergency Contact">Emergency Contact</option>
+                </select>
+                <div class="field-error"></div>
+              </div>
+
+              <div class="form-group">
+                <label for="secondary_parent_id_number">ID / Passport Number</label>
+                <input type="text" id="secondary_parent_id_number" name="secondary_parent_id_number" placeholder="Enter numbers only"
+                       maxlength="13" data-type="numeric-only" inputmode="numeric">
+                <div class="field-error"></div>
+              </div>
+
+              <div class="form-group">
+                <label for="secondary_parent_phone">Mobile Phone</label>
+                <input type="tel" id="secondary_parent_phone" name="secondary_parent_phone" placeholder="e.g., 0729876543 (numbers only)"
+                       data-type="phone-only" inputmode="tel">
+                <div class="field-error"></div>
+              </div>
+
+              <div class="form-group">
+                <label for="secondary_parent_email">Email Address</label>
+                <input type="email" id="secondary_parent_email" name="secondary_parent_email" placeholder="e.g., sipho.molefe@gmail.com">
+                <div class="field-error"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= STEP 3: ACADEMIC & MEDICAL INFO ================= -->
+      <div class="form-step-card" id="step-3">
+        <div class="step-header">
+          <h2>Step 3: Academic History & Medical Details</h2>
+          <p>Provide information about the previous school and any health or learning accommodations.</p>
+        </div>
+
+        <div class="grid-2">
+          <!-- Previous School -->
+          <div class="form-group">
+            <label for="previous_school">Previous School Attended</label>
+            <input type="text" id="previous_school" name="previous_school" placeholder="e.g., Pretoria Primary School / Sunnyside High">
+            <div class="hint">Mandatory for Grade 9–12 transfer learners.</div>
+          </div>
+
+          <!-- Previous Grade Passed -->
+          <div class="form-group">
+            <label for="previous_grade">Highest Grade Passed</label>
+            <select id="previous_grade" name="previous_grade">
+              <option value="" disabled selected>Select Grade</option>
+              <option value="7">Grade 7 (Primary School Completed)</option>
+              <option value="8">Grade 8</option>
+              <option value="9">Grade 9</option>
+              <option value="10">Grade 10</option>
+              <option value="11">Grade 11</option>
+            </select>
+          </div>
+
+          <!-- Transfer Reason -->
+          <div class="form-group full-width">
+            <label for="transfer_reason">Reason for Admission / Transfer</label>
+            <input type="text" id="transfer_reason" name="transfer_reason" placeholder="e.g., Relocation to area / Academic stream change / Starting Grade 8">
+          </div>
+
+          <!-- Medical Info -->
+          <div class="form-group full-width">
+            <label for="medical_info">Medical Conditions / Allergies / Medical Aid (Optional)</label>
+            <textarea id="medical_info" name="medical_info" rows="2" placeholder="e.g., Asthmatic (inhaler carried), Penicillin allergy. Medical Aid: Discovery Health #1234567"></textarea>
+            <div class="hint">Used by the school nurse and during emergency response.</div>
+          </div>
+
+          <!-- Special Educational Needs -->
+          <div class="form-group full-width">
+            <label for="special_needs">Special Educational Accommodations / Disability (Optional)</label>
+            <textarea id="special_needs" name="special_needs" rows="2" placeholder="e.g., Extra time for examinations, visual accommodation, wheelchair access"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= STEP 4: DOCUMENT UPLOADS & AI VERIFICATION ================= -->
+      <div class="form-step-card" id="step-4">
+        <div class="step-header">
+          <h2>Step 4: Document Uploads & AI Verification</h2>
+          <p>Please upload certified copies of required documents. Our automated AI system verifies clarity and authenticity.</p>
+        </div>
+
+        <!-- Age Document Requirement Notice -->
+        <div id="step4-age-guideline" style="background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; display: flex; gap: 12px; align-items: center;">
+          <div style="font-size: 1.5rem;" id="step4-age-icon">🪪</div>
+          <div style="font-size: 0.85rem; color: #e0f2fe;" id="step4-age-text">
+            <strong>South African Identification Rule:</strong> Learners <strong>aged 16 and above</strong> are legally required to provide an official <strong>Smart ID Card / Green ID Book</strong>. Learners <strong>under 16</strong> must provide an official <strong>Birth Certificate</strong>.
+          </div>
+        </div>
+
+        <!-- Document 1: Learner ID Document (Mandatory for 16+) -->
+        <div class="upload-card" id="card-learner-id">
+          <input type="file" id="learner_id_doc" name="learner_id_doc" accept=".pdf,.jpg,.jpeg,.png">
+          <div class="upload-icon">🪪</div>
+          <div class="upload-title" id="title-learner-id">Learner South African ID Card / Document <span class="required" id="tag-learner-id">*</span></div>
+          <div class="upload-desc" id="desc-learner-id">Certified copy of Smart ID Card (Front & Back) or Green Barcoded ID Book (Required for age 16+)</div>
+          <div class="upload-preview"></div>
+        </div>
+
+        <!-- Document 2: Learner Birth Certificate (Mandatory for Under 16) -->
+        <div class="upload-card" id="card-birth-cert">
+          <input type="file" id="birth_certificate" name="birth_certificate" accept=".pdf,.jpg,.jpeg,.png">
+          <div class="upload-icon">📄</div>
+          <div class="upload-title" id="title-birth-cert">Learner Official Birth Certificate <span class="required" id="tag-birth-cert">*</span></div>
+          <div class="upload-desc" id="desc-birth-cert">Official Unabridged or Abridged Birth Certificate (Required for learners under 16)</div>
+          <div class="upload-preview"></div>
+        </div>
+
+        <!-- Document 3: Parent ID -->
+        <div class="upload-card" id="card-parent-id">
+          <input type="file" id="parent_id_doc" name="parent_id_doc" accept=".pdf,.jpg,.jpeg,.png">
+          <div class="upload-icon">🪪</div>
+          <div class="upload-title">Parent / Legal Guardian Certified ID Copy <span class="required">*</span></div>
+          <div class="upload-desc">Click or drag & drop certified copy of primary parent SA ID Document or Passport</div>
+          <div class="upload-preview"></div>
+        </div>
+
+        <!-- Document 4: Proof of Residence -->
+        <div class="upload-card" id="card-proof-residence">
+          <input type="file" id="proof_of_residence" name="proof_of_residence" accept=".pdf,.jpg,.jpeg,.png">
+          <div class="upload-icon">🏠</div>
+          <div class="upload-title">Proof of Residential Address <span class="required">*</span></div>
+          <div class="upload-desc">Utility Bill, Municipal Account, or Valid Lease Agreement (Less than 3 months old)</div>
+          <div class="upload-preview"></div>
+        </div>
+
+        <!-- Document 5: Report Card -->
+        <div class="upload-card" id="card-report-card">
+          <input type="file" id="report_card" name="report_card" accept=".pdf,.jpg,.jpeg,.png">
+          <div class="upload-icon">📊</div>
+          <div class="upload-title">Latest Academic Report Card / Transfer Card <span class="required" id="report-required-tag">*</span></div>
+          <div class="upload-desc">Compulsory for Grades 9–12 (or Grade 7 Final Report for Grade 8 applicants)</div>
+          <div class="upload-preview"></div>
+        </div>
+
+        <!-- Document 6: Clinic / Immunization Card (Optional) -->
+        <div class="upload-card" id="card-clinic-card">
+          <input type="file" id="clinic_card" name="clinic_card" accept=".pdf,.jpg,.jpeg,.png">
+          <div class="upload-icon">💉</div>
+          <div class="upload-title">Clinic Card / Immunization Certificate (Recommended for Grade 8)</div>
+          <div class="upload-desc">Optional health records file</div>
+          <div class="upload-preview"></div>
+        </div>
+
+        <!-- AI Verification Guarantee Notice -->
+        <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 10px; padding: 14px 18px; margin-top: 18px; display: flex; gap: 12px; align-items: center;">
+          <div style="font-size: 1.5rem;">🤖</div>
+          <div style="font-size: 0.85rem; color: #cbd5e1;">
+            <strong>Automated AI Verification Engine:</strong> Upon submission, our AI model instantly validates document clarity, checksum matches, and verifies that class capacity is within the strict &lt; 30 learners/class limit.
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation & Action Buttons -->
+      <div class="step-actions">
+        <button type="button" id="btn-prev" class="btn btn-secondary" style="display: none;">&larr; Back</button>
+        <div style="flex: 1;"></div>
+        <button type="button" id="btn-next" class="btn btn-primary">Next Step &rarr;</button>
+        <button type="submit" id="btn-submit" class="btn btn-success" style="display: none;">Submit Application & Verify</button>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Result Modal -->
+  <div id="resultModal" class="modal-overlay">
+    <div class="modal-content">
+      <div id="modalIcon" class="modal-icon">🎉</div>
+      <h2 id="modalTitle" class="modal-title">Application Submitted</h2>
+      <div id="modalRef" class="ref-box" style="display: none;"></div>
+      <p id="modalBody" class="modal-body">Processing your admission application...</p>
+      <div style="display: flex; justify-content: center; gap: 12px;">
+        <a id="modalCta" href="/register" class="btn btn-primary" style="display: none;">Continue to Registration & Link Child</a>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('resultModal').classList.remove('active');">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/src/controller/saIDvalidations.js"></script>
+  <script src="/js/application.js"></script>
+</body>
+</html>

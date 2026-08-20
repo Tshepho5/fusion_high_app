@@ -1,0 +1,70 @@
+<div id="overview" class="dashboard-tab">
+  <div class="welcome-banner welcome-card-banner">
+    <h2 id="teach-welcome-title" class="modal-header-title"><i class="fas fa-spinner fa-spin"></i> Loading welcome details...</h2>
+    <p class="text-muted">Here is your live CAPS academic overview, learner progress metrics, and upcoming tasks.</p>
+  </div>
+
+  <div class="overview-stats-grid">
+    <div class="stat-card stat-metric-card">
+      <div class="stat-label"><i class="fas fa-book me-1"></i> Subjects Assigned</div>
+      <div class="stat-value" id="teach-stat-subjects"><i class="fas fa-spinner fa-spin"></i></div>
+    </div>
+    <div class="stat-card stat-metric-card">
+      <div class="stat-label"><i class="fas fa-users me-1"></i> Total Learners</div>
+      <div class="stat-value" id="teach-stat-learners"><i class="fas fa-spinner fa-spin"></i></div>
+    </div>
+    <div class="stat-card stat-metric-card">
+      <div class="stat-label"><i class="fas fa-clock me-1"></i> Classes Today</div>
+      <div class="stat-value" id="teach-stat-classes-today"><i class="fas fa-spinner fa-spin"></i></div>
+    </div>
+    <div class="stat-card stat-metric-card">
+      <div class="stat-label"><i class="fas fa-clipboard-list me-1"></i> Attendance Outstanding</div>
+      <div class="stat-value" id="teach-stat-att-outstanding"><i class="fas fa-spinner fa-spin"></i></div>
+    </div>
+    <div class="stat-card stat-metric-card">
+      <div class="stat-label"><i class="fas fa-tasks me-1"></i> Awaiting Marking</div>
+      <div class="stat-value" id="teach-stat-awaiting-marking"><i class="fas fa-spinner fa-spin"></i></div>
+    </div>
+    <div class="stat-card stat-metric-card">
+      <div class="stat-label"><i class="fas fa-file-alt me-1"></i> Upcoming Tests</div>
+      <div class="stat-value" id="teach-stat-upcoming-tests"><i class="fas fa-spinner fa-spin"></i></div>
+    </div>
+    <div class="stat-card stat-metric-card">
+      <div class="stat-label"><i class="fas fa-envelope me-1"></i> Recent Messages</div>
+      <div class="stat-value" id="teach-stat-messages"><i class="fas fa-spinner fa-spin"></i></div>
+    </div>
+    <div class="stat-card stat-metric-card">
+      <div class="stat-label"><i class="fas fa-bullhorn me-1"></i> Announcements</div>
+      <div class="stat-value" id="teach-stat-announcements"><i class="fas fa-spinner fa-spin"></i></div>
+    </div>
+  </div>
+
+  <!-- Performance Analytics & Leaderboards Grid -->
+  <div class="analytics-leaderboard-wrapper" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+    <div class="card stat-metric-card">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="card-title modal-header-title m-0"><i class="fas fa-chart-bar"></i> Subject Performance Analytics</h3>
+        <select id="perfSubject" class="form-control att-select-input" onchange="loadPerformanceOverview()">
+          <option value="">All Assigned Subjects</option>
+          <option value="Physical Sciences">Physical Sciences</option>
+          <option value="Mathematics">Mathematics</option>
+          <option value="Life Sciences">Life Sciences</option>
+        </select>
+      </div>
+      <div class="stats-mini-summary" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; text-align: center; margin-bottom: 1rem; background: #0f172a; padding: 1rem; border-radius: 8px;">
+        <div><small class="text-muted">Class Average</small><div class="metric-score" style="font-size: 1.25rem; font-weight: 700; color: #38bdf8;" id="perf-stat-class-avg"><i class="fas fa-spinner fa-spin"></i></div></div>
+        <div><small class="text-muted">Highest Mark</small><div class="metric-score" style="font-size: 1.25rem; font-weight: 700; color: #4ade80;" id="perf-stat-highest"><i class="fas fa-spinner fa-spin"></i></div></div>
+        <div><small class="text-muted">Lowest Mark</small><div class="metric-score" style="font-size: 1.25rem; font-weight: 700; color: #f87171;" id="perf-stat-lowest"><i class="fas fa-spinner fa-spin"></i></div></div>
+        <div><small class="text-muted">Pass Rate</small><div class="metric-score" style="font-size: 1.25rem; font-weight: 700; color: #a855f7;" id="perf-stat-pass-rate"><i class="fas fa-spinner fa-spin"></i></div></div>
+      </div>
+    </div>
+
+    <div class="card stat-metric-card">
+      <h3 class="card-title modal-header-title mb-3"><i class="fas fa-trophy text-warning"></i> Top Performers</h3>
+      <div id="teacherLeaderboard">
+        <!-- Dynamic leaderboard content -->
+        <p style="color: #94a3b8; text-align: center; padding: 1rem;"><i class="fas fa-spinner fa-spin"></i> Loading top performers...</p>
+      </div>
+    </div>
+  </div>
+</div>

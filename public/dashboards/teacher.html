@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher Portal - Fusion High</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="/css/teacher.css">
+  <link rel="stylesheet" href="/css/responsive-sidebar.css">
+  <link rel="stylesheet" href="/css/chat-center.css">
+
+  <style>
+    /* Responsive Styles for Teacher Dashboard */
+    @media (max-width: 768px) {
+      .main-content-flex {
+        padding-left: 0;
+      }
+
+      .sidebar {
+        transform: translateX(-100%);
+        z-index: 1000;
+      }
+
+      .sidebar.active {
+        transform: translateX(0);
+      }
+
+      .hamburger {
+        display: flex;
+      }
+
+      .grid-fit-300,
+      .grid-fit-280 {
+        grid-template-columns: 1fr;
+      }
+
+      .top-nav {
+        padding-left: 50px;
+        /* Space for hamburger */
+      }
+    }
+  </style>
+  <script>
+    function switchTab(tabId, el) {
+      const tab = tabId || 'overview';
+      let resolvedTabId = tab;
+      if (tab === 'workload' || tab === 'subjects') resolvedTabId = 'my-subjects';
+      if (tab === 'learners') resolvedTabId = 'my-learners';
+
+      const sections = document.querySelectorAll('.section, .dashboard-tab');
+      const navItems = document.querySelectorAll('.nav-item, .sidebar-nav li, .nav-list li');
+
+      sections.forEach(s => {
+        s.classList.remove('active');
+        s.style.display = 'none';
+      });
+      navItems.forEach(n => n.classList.remove('active'));
+
+      const targetSection = document.getElementById(resolvedTabId) || document.getElementById(tab);
+      if (targetSection) {
+        targetSection.classList.add('active');
+        targetSection.style.display = 'block';
+      }
+
+      const activeNav = el || Array.from(navItems).find(n => 
+        n.getAttribute('onclick')?.includes("'" + tab + "'") || 
+        n.getAttribute('onclick')?.includes("'" + resolvedTabId + "'")
+      );
+
+      if (activeNav) {
+        const targetEl = activeNav.tagName === 'A' ? activeNav.parentElement : activeNav;
+        targetEl.classList.add('active');
+        const titleEl = document.getElementById('tab-title');
+        if (titleEl) titleEl.innerText = targetEl.innerText.trim();
+      }
+
+      location.hash = resolvedTabId;
+
+      const mainContent = document.querySelector('.main-content');
+      if (mainContent) mainContent.scrollTop = 0;
+      window.scrollTo(0, 0);
+
+      if (window.handleTabSwitch) {
+        window.handleTabSwitch(resolvedTabId);
+      }
+    }
+    window.switchTab = switchTab;
+
+    function logout() {
+      const modal = document.getElementById('logoutConfirmModal');
+      if (modal) modal.style.display = 'flex';
+      else {
+        executeLogout();
+      }
+    }
+    window.logout = logout;
+
+    function executeLogout() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = '/';
+    }
+    window.executeLogout = executeLogout;
+  </script>
+</head>
+
+<body>
+  <!-- Unified Mobile Navigation -->
+  <div class="hamburger">
+    <div></div>
+    <div></div>
+    <div></div>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">FUSION TEACHER</div>
+    <ul class="nav-list">
+      <li class="nav-item active" onclick="switchTab('overview', this)"><i class="fas fa-th-large"></i> Overview</li>
+      <li class="nav-item" onclick="switchTab('my-subjects', this)"><i class="fas fa-book"></i> My Subjects</li>
+      <li class="nav-item" onclick="switchTab('performance', this)"><i class="fas fa-chart-bar"></i> Performance</li>
+      <li class="nav-item" onclick="switchTab('my-learners', this)"><i class="fas fa-users"></i> My Learners</li>
+      <li class="nav-item" onclick="switchTab('attendance', this)"><i class="fas fa-user-check"></i> Attendance</li>
+      <li class="nav-item" onclick="switchTab('messages', this)"><i class="fas fa-envelope"></i> Message Center
+        <span id="unread-messages-badge" class="notification-badge hidden"></span>
+      </li>
+      <li class="nav-item" onclick="switchTab('announcements', this)"><i class="fas fa-bullhorn"></i> Announcements</li>
+      <li class="nav-item" onclick="switchTab('profile', this)"><i class="fas fa-user-circle"></i> My Profile</li>
+      <li class="nav-item" onclick="switchTab('settings', this)"><i class="fas fa-cog"></i> Settings</li>
+      <li class="nav-item logout-item" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</li>
+    </ul>
+  </aside>
+
+  <main class="main-content main-content-flex">
+    <nav class="top-nav">
+      <h2 id="tab-title">Teacher Dashboard</h2>
+      <div class="top-nav-user-details">
+        <i class="fas fa-user-tie"></i> <span id="top-teacher-name">Loading...</span>
+      </div>
+    </nav>
+
+    <div class="dashboard-body">
+      <!-- Overview Section -->
+      <div id="overview" class="section active">
+        <div class="overview-welcome-header" style="margin-bottom: 1.5rem; background: #0f172a; padding: 1.5rem; border-radius: 12px; border: 1px solid #334155;">
+          <h1 style="margin: 0 0 6px 0; color: #f8fafc; font-size: 1.5rem;" id="teach-welcome-title">Welcome, Teacher</h1>
+          <p style="margin: 0; color: #94a3b8; font-size: 0.9rem;">Here is your live daily academic summary powered by your database.</p>
+        </div>
+
+        <h3 style="color: #f8fafc; margin-bottom: 1rem; font-size: 1.1rem;"><i class="fas fa-chart-pie" style="color: #6366f1;"></i> Today's Summary</h3>
+        <div class="stats-row-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+          <div class="card summary-stat-btn" onclick="switchTab('my-subjects')" style="background: #0f172a; border-left: 4px solid #6366f1; border-color: #334155; padding: 1.25rem; cursor: pointer; transition: transform 0.2s, border-color 0.2s;" title="Click to view My Subjects">
+            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; display:flex; justify-content:space-between; align-items:center;">
+              <span>Subjects Assigned</span>
+              <i class="fas fa-chevron-right" style="font-size:0.75rem; color:#6366f1;"></i>
+            </div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: #f8fafc; margin-top: 4px;" id="teach-stat-subjects">0</div>
+            <div style="font-size: 0.75rem; color: #a5b4fc; margin-top: 4px;">Assigned curriculum &bull; Click to open</div>
+          </div>
+
+          <div class="card summary-stat-btn" onclick="switchTab('my-learners')" style="background: #0f172a; border-left: 4px solid #3b82f6; border-color: #334155; padding: 1.25rem; cursor: pointer; transition: transform 0.2s, border-color 0.2s;" title="Click to view My Learners">
+            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; display:flex; justify-content:space-between; align-items:center;">
+              <span>Total Learners</span>
+              <i class="fas fa-chevron-right" style="font-size:0.75rem; color:#3b82f6;"></i>
+            </div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: #f8fafc; margin-top: 4px;" id="teach-stat-learners">0</div>
+            <div style="font-size: 0.75rem; color: #93c5fd; margin-top: 4px;">Across all classes &bull; Click to open</div>
+          </div>
+
+          <div class="card" style="background: #0f172a; border-left: 4px solid #22c55e; border-color: #334155; padding: 1.25rem;">
+            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Classes Today</div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: #f8fafc; margin-top: 4px;" id="teach-stat-classes-today">0</div>
+            <div style="font-size: 0.75rem; color: #86efac; margin-top: 4px;">Today's schedule</div>
+          </div>
+
+          <div class="card summary-stat-btn" onclick="switchTab('attendance')" style="background: #0f172a; border-left: 4px solid #f59e0b; border-color: #334155; padding: 1.25rem; cursor: pointer; transition: transform 0.2s, border-color 0.2s;" title="Click to open Class Attendance">
+            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; display:flex; justify-content:space-between; align-items:center;">
+              <span>Attendance Outstanding</span>
+              <i class="fas fa-chevron-right" style="font-size:0.75rem; color:#f59e0b;"></i>
+            </div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: #f8fafc; margin-top: 4px;" id="teach-stat-att-outstanding">0 Classes</div>
+            <div style="font-size: 0.75rem; color: #fde047; margin-top: 4px;">Requires register entry &bull; Click to open</div>
+          </div>
+
+          <div class="card" style="background: #0f172a; border-left: 4px solid #ef4444; border-color: #334155; padding: 1.25rem;">
+            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Awaiting Marking</div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: #f8fafc; margin-top: 4px;" id="teach-stat-awaiting-marking">0</div>
+            <div style="font-size: 0.75rem; color: #fca5a5; margin-top: 4px;">Submissions pending</div>
+          </div>
+
+          <div class="card" style="background: #0f172a; border-left: 4px solid #8b5cf6; border-color: #334155; padding: 1.25rem;">
+            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Upcoming Tests</div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: #f8fafc; margin-top: 4px;" id="teach-stat-upcoming-tests">0</div>
+            <div style="font-size: 0.75rem; color: #c4b5fd; margin-top: 4px;">Scheduled tests</div>
+          </div>
+
+          <div class="card" style="background: #0f172a; border-left: 4px solid #06b6d4; border-color: #334155; padding: 1.25rem;">
+            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Recent Messages</div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: #f8fafc; margin-top: 4px;" id="teach-stat-messages">0</div>
+            <div style="font-size: 0.75rem; color: #67e8f9; margin-top: 4px;">Unread messages</div>
+          </div>
+
+          <div class="card" style="background: #0f172a; border-left: 4px solid #10b981; border-color: #334155; padding: 1.25rem;">
+            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Announcements</div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: #f8fafc; margin-top: 4px;" id="teach-stat-announcements">0</div>
+            <div style="font-size: 0.75rem; color: #6ee7b7; margin-top: 4px;">School updates</div>
+          </div>
+        </div>
+
+        <div class="grid-fit-300">
+          <div class="card">
+            <div class="card-title"><i class="fas fa-briefcase"></i> Current Workload Details</div>
+            <div id="workload-summary">Loading workload...</div>
+          </div>
+          <div class="card">
+            <div class="card-title"><i class="fas fa-bolt"></i> Quick Actions</div>
+            <div class="flex-column-gap-10">
+              <button type="button" class="btn btn-primary"
+                onclick="switchTab('my-subjects', document.querySelectorAll('.nav-item')[1])"><i class="fas fa-book"></i> Manage My Subjects</button>
+              <button type="button" class="btn btn-info"
+                onclick="switchTab('announcements', document.querySelectorAll('.nav-item')[6])"><i class="fas fa-bullhorn"></i> Post School Announcement</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- My Subjects Section -->
+      <div id="my-subjects" class="section">
+        <div id="subjects-list-view">
+          <!-- Top Search & View Control Bar -->
+          <div class="subjects-filter-bar">
+            <div class="search-input-wrapper">
+              <i class="fas fa-search search-icon"></i>
+              <input type="text" id="subject-search-box" class="subject-search-input" placeholder="Search subjects..." oninput="window.filterTeacherSubjects(this.value)">
+            </div>
+            <div class="filter-controls-right">
+              <select id="subject-term-select" class="subject-term-select">
+                <option value="Term 3 2026">Term 3 2026</option>
+                <option value="Term 2 2026">Term 2 2026</option>
+                <option value="Term 1 2026">Term 1 2026</option>
+              </select>
+              <div class="view-toggle-group">
+                <span class="view-label">Grid / List View</span>
+                <button type="button" class="view-toggle-btn active" id="btn-grid-view" onclick="window.setSubjectView('grid')" title="Grid View"><i class="fas fa-th-large"></i></button>
+                <button type="button" class="view-toggle-btn" id="btn-list-view" onclick="window.setSubjectView('list')" title="List View"><i class="fas fa-list"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Assigned Subjects Container Card -->
+          <div class="assigned-subjects-container-card">
+            <div class="container-card-title">
+              <i class="fas fa-layer-group"></i> Your Assigned Subjects
+            </div>
+
+            <!-- 3-Column Subject Cards Grid -->
+            <div id="subjects-grid" class="subjects-cards-3col-grid">
+              <!-- Dynamically populated from database by JavaScript -->
+            </div>
+
+            <div class="sync-timestamp-footer">
+              Last synced: Just now
+            </div>
+          </div>
+        </div>
+
+
+        <!-- AI Workspace inside Subject -->
+        <div id="subject-ai-workspace" style="display: none;">
+          <button type="button" class="btn btn-outline" onclick="backToSubjects()" style="margin-bottom: 1.5rem;">
+            <i class="fas fa-arrow-left"></i> Back to All Subjects
+          </button>
+
+          <div class="card" style="background: #1e293b; border: 1px solid #334155;">
+            <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+              <span><i class="fas fa-robot" style="color:#6366f1;"></i> AI CAPS Assistant: <span id="active-subject-display"></span></span>
+            </div>
+
+            <!-- Mode Selector Pills -->
+            <div style="display:flex; gap:0.5rem; margin:1rem 0 1.25rem 0; flex-wrap:wrap; background:#0f172a; padding:0.5rem; border-radius:8px; border:1px solid #334155;">
+              <button type="button" class="ai-mode-btn active" id="ai-mode-quiz" onclick="window.setAIMode('quiz')" style="padding:8px 16px; border-radius:6px; border:none; background:#6366f1; color:#fff; font-weight:600; cursor:pointer;">
+                <i class="fas fa-file-signature me-1"></i> Interactive Quiz
+              </button>
+              <button type="button" class="ai-mode-btn" id="ai-mode-mcq" onclick="window.setAIMode('mcq')" style="padding:8px 16px; border-radius:6px; border:none; background:transparent; color:#94a3b8; font-weight:600; cursor:pointer;">
+                <i class="fas fa-list-check me-1"></i> Multiple Choice Quiz
+              </button>
+              <button type="button" class="ai-mode-btn" id="ai-mode-lesson" onclick="window.setAIMode('lesson')" style="padding:8px 16px; border-radius:6px; border:none; background:transparent; color:#94a3b8; font-weight:600; cursor:pointer;">
+                <i class="fas fa-book-reader me-1"></i> CAPS Lesson Plan
+              </button>
+              <button type="button" class="ai-mode-btn" id="ai-mode-test" onclick="window.setAIMode('test')" style="padding:8px 16px; border-radius:6px; border:none; background:transparent; color:#94a3b8; font-weight:600; cursor:pointer;">
+                <i class="fas fa-print me-1"></i> Test Paper & Memo
+              </button>
+            </div>
+
+            <div id="genInputStep">
+              <input type="hidden" id="asSubject">
+              <input type="hidden" id="asGrade">
+              <div class="form-group">
+                <label style="color:#f8fafc; font-weight:600;"><i class="fas fa-list-ul me-1" style="color:#6366f1;"></i> Select CAPS Syllabus Topic</label>
+                <select id="asTopicSelect" class="form-control" onchange="window.selectCAPSTopic(this.value)" style="background:#0f172a; color:#fff; font-weight:600; border:1px solid #334155; margin-bottom:0.75rem; padding:8px 12px;">
+                  <option value="">-- Loading CAPS Syllabus Topics --</option>
+                </select>
+
+                <label style="color:#94a3b8; font-size:0.85rem; font-weight:600;">Or Enter Custom Topic</label>
+                <div class="flex-gap-10 mb-10" style="display:flex; gap:0.5rem;">
+                  <input type="text" id="asTopic" class="form-control" placeholder="Select from dropdown above or type custom topic..." style="background:#0f172a; color:#fff;">
+                </div>
+
+                <div id="discoveredTopics" class="discovered-topics-box" style="margin-top:0.75rem;">
+                  <p style="font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 8px;"><i class="fas fa-layer-group me-1" style="color:#6366f1;"></i> CAPS Syllabus Topics (Click to Select):</p>
+                  <div id="topicsList" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                </div>
+                <small style="color:#94a3b8;">Pre-loaded CAPS South African curriculum topics & indexed PDF textbook topics.</small>
+              </div>
+
+              <!-- Quiz/Assessment Custom Controls -->
+              <div id="quiz-config-controls" style="display:flex; gap:1rem; flex-wrap:wrap; margin:1rem 0; background:#0f172a; padding:1rem; border-radius:8px; border:1px solid #334155;">
+                <div style="flex:1; min-width:180px;">
+                  <label style="color:#cbd5e1; font-weight:600; font-size:0.85rem;"><i class="fas fa-list-ol me-1" style="color:#6366f1;"></i> Number of Questions</label>
+                  <select id="asQuestionCount" class="form-control" style="background:#1e293b; color:#fff; font-weight:600; border:1px solid #475569; margin-top:4px;">
+                    <option value="3">3 Questions</option>
+                    <option value="5" selected>5 Questions</option>
+                    <option value="10">10 Questions</option>
+                    <option value="15">15 Questions</option>
+                    <option value="20">20 Questions</option>
+                  </select>
+                </div>
+                <div style="flex:1; min-width:180px;">
+                  <label style="color:#cbd5e1; font-weight:600; font-size:0.85rem;"><i class="fas fa-award me-1" style="color:#f59e0b;"></i> Marks per Question</label>
+                  <input type="number" id="asMarksPerQuestion" class="form-control" value="2" min="1" max="20" style="background:#1e293b; color:#fff; font-weight:600; border:1px solid #475569; margin-top:4px;">
+                </div>
+              </div>
+
+              <button type="button" class="btn btn-primary" id="btn-generate-ai-action" onclick="window.executeAIGeneration()" style="background:#6366f1; border:none; padding:10px 24px; font-weight:700;">
+                <i class="fas fa-magic me-1"></i> Generate AI Content
+              </button>
+            </div>
+
+            <div id="genLoading" class="loading-indicator" style="display:none; text-align:center; padding:2rem;">
+              <i class="fas fa-brain fa-spin" style="font-size: 2.5rem; color: #6366f1; margin-bottom: 1rem;"></i>
+              <p style="color:#f8fafc; font-weight:600;" id="ai-loading-text">AI is analyzing CAPS curriculum context and generating content...</p>
+            </div>
+
+            <!-- Quiz Preview -->
+            <div id="genReviewStep" style="display: none;">
+              <h3 style="margin-bottom: 1rem; color:#f8fafc;">Review AI Generated Quiz Questions</h3>
+              <div id="questionsPreview" class="questions-preview-box"></div>
+              <div class="form-group" style="margin-top:1rem;">
+                <label style="color:#f8fafc;">Assignment Title</label>
+                <input type="text" id="asTitle" class="form-control" placeholder="e.g. Week 4 Physical Sciences Quiz" style="background:#0f172a; color:#fff;">
+              </div>
+              <div class="flex-gap-10" style="display:flex; gap:0.5rem; margin-top:1rem;">
+                <button type="button" class="btn btn-primary" onclick="publishAssignment()"><i class="fas fa-paper-plane me-1"></i> Publish Assignment to Students</button>
+                <button type="button" class="btn btn-outline" onclick="backToGen()">Regenerate / Edit Topic</button>
+              </div>
+            </div>
+
+            <!-- Lesson Plan Preview -->
+            <div id="lessonPlanReviewStep" style="display: none;">
+              <div id="lessonPlanPreview" style="background:#0f172a; padding:1.5rem; border-radius:10px; border:1px solid #334155; margin-bottom:1rem; color:#f8fafc;"></div>
+              <div style="display:flex; gap:0.5rem;">
+                <button type="button" class="btn btn-primary" onclick="window.printAILessonPlan()"><i class="fas fa-print me-1"></i> Print / Save Lesson Plan (PDF)</button>
+                <button type="button" class="btn btn-outline" onclick="backToGen()">Create Another Lesson Plan</button>
+              </div>
+            </div>
+
+            <!-- Test Paper & Memo Preview -->
+            <div id="testPaperReviewStep" style="display: none;">
+              <div id="testPaperPreview" style="background:#0f172a; padding:1.5rem; border-radius:10px; border:1px solid #334155; margin-bottom:1rem; color:#f8fafc;"></div>
+              <div style="display:flex; gap:0.5rem;">
+                <button type="button" class="btn btn-primary" onclick="window.printAITestPaper()"><i class="fas fa-print me-1"></i> Print Test Paper & Memo (PDF)</button>
+                <button type="button" class="btn btn-outline" onclick="backToGen()">Generate Another Test Paper</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Textbook Workspace inside Subject -->
+        <div id="subject-textbook-workspace" style="display: none;">
+          <button type="button" class="btn btn-outline" onclick="backToSubjects()" style="margin-bottom: 1.5rem;">
+            <i class="fas fa-arrow-left"></i> Back to All Subjects
+          </button>
+          <div class="card">
+            <div class="card-title"><i class="fas fa-file-upload"></i> Upload Textbook for <span
+                id="active-textbook-subject-display"></span></div>
+            <form id="textbookForm" onsubmit="uploadTextbook(event)">
+              <input type="hidden" id="tbSubject">
+              <input type="hidden" id="tbGrade">
+              <div class="form-group">
+                <label>PDF Textbook File</label>
+                <input type="file" id="tbFile" class="form-control" accept="application/pdf" required>
+              </div>
+              <button type="submit" class="btn btn-primary">Upload & Index Content</button>
+            </form>
+          </div>
+
+          <div class="card mt-1_5rem">
+            <div class="card-title"><i class="fas fa-layer-group"></i> My Uploaded Textbooks</div>
+            <p class="text-muted">This list shows all textbooks you have uploaded across all subjects.</p>
+            <div id="myTextbooksList">Loading textbooks...</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- My Learners Section -->
+      <div id="my-learners" class="section">
+        <div class="card" style="margin-bottom: 1.5rem;">
+          <div class="card-title"><i class="fas fa-users" style="color:#6366f1;"></i> My Learners Roster</div>
+          <p class="text-muted">Browse learner profiles across your assigned subjects, classes, and grades.</p>
+
+          <div style="display:flex; flex-wrap:wrap; gap:1rem; margin-top:1rem; align-items:center;">
+            <div style="flex:1; min-width:240px; position:relative;">
+              <i class="fas fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8;"></i>
+              <input type="text" id="learner-search-box" class="form-control" placeholder="Search learner name or admission #..." style="padding-left:36px;" oninput="window.filterLearnerCards()">
+            </div>
+
+            <select id="learner-grade-filter" class="form-control w-auto" onchange="window.filterLearnerCards()">
+              <option value="All">All Grades</option>
+              <option value="10">Grade 10</option>
+              <option value="11">Grade 11</option>
+              <option value="12">Grade 12</option>
+            </select>
+
+            <select id="learner-class-filter" class="form-control w-auto" onchange="window.filterLearnerCards()">
+              <option value="All">All Classes</option>
+            </select>
+
+            <select id="learner-subject-filter" class="form-control w-auto" onchange="window.filterLearnerCards()">
+              <option value="All">All Subjects</option>
+              <option value="Mathematics">Mathematics</option>
+              <option value="Physical Sciences">Physical Sciences</option>
+              <option value="Life Sciences">Life Sciences</option>
+              <option value="English FAL">English FAL</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="my-learners-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+          <div style="padding:2rem; text-align:center; color:#94a3b8; grid-column:1/-1;">Loading learner cards...</div>
+        </div>
+      </div>
+
+      <!-- Performance Section -->
+      <div id="performance" class="section">
+        <div class="card" style="margin-bottom: 1.5rem; background: #1e293b; border: 1px solid #334155;">
+          <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <span><i class="fas fa-chart-line" style="color:#6366f1;"></i> Class Performance Analytics & Subject Insights</span>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <label style="font-size:0.85rem; color:#cbd5e1; font-weight:600;">Active Subject:</label>
+              <select id="perfSubject" class="form-control w-auto" style="background:#0f172a; color:#fff;" onchange="window.loadPerformanceOverview()"></select>
+            </div>
+          </div>
+
+          <!-- 4 KPI Metrics Header Cards -->
+          <div class="stats-row-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.25rem 0 1.5rem 0;">
+            <div class="card" style="background: #0f172a; border-left: 4px solid #6366f1; border-color: #334155; padding: 1.2rem;">
+              <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Class Average</div>
+              <div style="font-size: 1.8rem; font-weight: 700; color: #f8fafc; margin-top: 4px;" id="perf-stat-class-avg">0%</div>
+            </div>
+            <div class="card" style="background: #0f172a; border-left: 4px solid #22c55e; border-color: #334155; padding: 1.2rem;">
+              <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Highest Mark</div>
+              <div style="font-size: 1.8rem; font-weight: 700; color: #34d399; margin-top: 4px;" id="perf-stat-highest">0%</div>
+            </div>
+            <div class="card" style="background: #0f172a; border-left: 4px solid #ef4444; border-color: #334155; padding: 1.2rem;">
+              <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Lowest Mark</div>
+              <div style="font-size: 1.8rem; font-weight: 700; color: #f87171; margin-top: 4px;" id="perf-stat-lowest">0%</div>
+            </div>
+            <div class="card" style="background: #0f172a; border-left: 4px solid #3b82f6; border-color: #334155; padding: 1.2rem;">
+              <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Pass Rate (>=50%)</div>
+              <div style="font-size: 1.8rem; font-weight: 700; color: #60a5fa; margin-top: 4px;" id="perf-stat-pass-rate">0%</div>
+            </div>
+          </div>
+
+          <!-- Subject Comparison & Grade Distribution Grid -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem; margin-bottom: 1rem;">
+            <div style="background: #0f172a; padding: 1.25rem; border-radius: 10px; border: 1px solid #334155;">
+              <h4 style="color: #f8fafc; font-size: 0.95rem; font-weight: 700; margin: 0 0 1rem 0;"><i class="fas fa-chart-bar" style="color: #6366f1;"></i> Subject Performance Comparison</h4>
+              <div id="perf-subject-comparison-bars" style="display:flex; flex-direction:column; gap:0.85rem;">
+                <!-- Populated dynamically with visual progress bars -->
+              </div>
+            </div>
+
+            <div style="background: #0f172a; padding: 1.25rem; border-radius: 10px; border: 1px solid #334155;">
+              <h4 style="color: #f8fafc; font-size: 0.95rem; font-weight: 700; margin: 0 0 1rem 0;"><i class="fas fa-layer-group" style="color: #38bdf8;"></i> CAPS Grade Symbol Distribution</h4>
+              <div id="perf-grade-symbol-distribution" style="display:flex; flex-direction:column; gap:0.75rem;">
+                <!-- Populated dynamically with grade symbol breakdown -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+          <div class="card" style="background: #1e293b; border: 1px solid #334155;">
+            <div class="card-title" style="color: #4ade80;"><i class="fas fa-trophy"></i> Top Performing Learners</div>
+            <div id="teacherLeaderboard">Loading leaderboard...</div>
+          </div>
+
+          <div class="card" style="background: #1e293b; border: 1px solid #334155;">
+            <div class="card-title" style="color: #f87171;"><i class="fas fa-exclamation-triangle"></i> Learners At Risk (<50%)</div>
+            <div id="perf-at-risk-list">Loading at-risk learners...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Announcements Section -->
+      <div id="announcements" class="section">
+        <div class="card">
+          <div class="card-title">New Announcement</div>
+          <form id="annForm">
+            <div class="form-group">
+              <label>Title</label>
+              <input type="text" id="annTitle" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label>Content</label>
+              <textarea id="annContent" class="form-control" rows="4" required></textarea>
+            </div>
+            <div class="form-group">
+              <label>Target Audience</label>
+              <select id="annTarget" class="form-control">
+                <option value="all">Everyone</option>
+                <option value="parent">Parents Only</option>
+                <option value="learner">Learners Only</option>
+              </select>
+            </div>
+            <div id="annFilters" class="announcement-filters">
+              <select id="annGrade" class="form-control w-auto"></select>
+              <select id="annStream" class="form-control w-auto">
+                <option value="">All Streams</option>
+                <option value="Science">Science</option>
+                <option value="Commerce">Commerce</option>
+                <option value="Tourism">Tourism</option>
+              </select>
+              <select id="annSubject" class="form-control w-auto"></select>
+            </div>
+            <button type="submit" class="btn btn-primary">Post Announcement</button>
+          </form>
+        </div>
+        <div class="card">
+          <div class="card-title">Recent Posts</div>
+          <div id="announcementsList">Loading...</div>
+        </div>
+      </div>
+
+      <!-- Attendance Section -->
+      <div id="attendance" class="section">
+        <div class="card" style="margin-bottom: 1.5rem;">
+          <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <span><i class="fas fa-user-check" style="color:#6366f1;"></i> Class Attendance Register</span>
+            <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline btn-sm" onclick="window.exportAttendanceRegisterCSV()"><i class="fas fa-file-csv"></i> Export Register</button>
+            </div>
+          </div>
+          <p class="text-muted">Take attendance for today's classes or view previous historical registers.</p>
+
+          <div style="display:flex; flex-wrap:wrap; gap:1rem; margin-top:1rem; align-items:center;">
+            <select id="att-class-select" class="form-control w-auto" onchange="window.loadAttendanceRegister()" style="background:#0f172a; color:#fff;">
+              <option value="">Select Class / Grade...</option>
+              <optgroup label="Grades">
+                <option value="8">Grade 8</option>
+                <option value="9">Grade 9</option>
+                <option value="10">Grade 10</option>
+                <option value="11">Grade 11</option>
+                <option value="12">Grade 12</option>
+              </optgroup>
+              <optgroup label="Assigned Classes">
+                <option value="10A">Class 10A (Science)</option>
+                <option value="10B">Class 10B (Commerce)</option>
+                <option value="11A">Class 11A (Science)</option>
+                <option value="11B">Class 11B (Tourism)</option>
+                <option value="12A">Class 12A (Science)</option>
+                <option value="12B">Class 12B (Commerce)</option>
+              </optgroup>
+            </select>
+
+            <input type="date" id="att-date-picker" class="form-control w-auto" onchange="window.loadAttendanceRegister()">
+
+            <button type="button" class="btn btn-primary" onclick="window.loadAttendanceRegister()"><i class="fas fa-sync"></i> Fetch Register</button>
+          </div>
+        </div>
+
+        <div class="stats-row-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;" id="att-summary-box">
+          <div class="card" style="background:#0f172a; padding:1rem; border-left:4px solid #22c55e;">
+            <span style="font-size:0.75rem; color:#94a3b8; font-weight:600;">PRESENT</span>
+            <div style="font-size:1.5rem; font-weight:700; color:#f8fafc;" id="att-count-present">0</div>
+          </div>
+          <div class="card" style="background:#0f172a; padding:1rem; border-left:4px solid #ef4444;">
+            <span style="font-size:0.75rem; color:#94a3b8; font-weight:600;">ABSENT</span>
+            <div style="font-size:1.5rem; font-weight:700; color:#f8fafc;" id="att-count-absent">0</div>
+          </div>
+          <div class="card" style="background:#0f172a; padding:1rem; border-left:4px solid #f59e0b;">
+            <span style="font-size:0.75rem; color:#94a3b8; font-weight:600;">LATE</span>
+            <div style="font-size:1.5rem; font-weight:700; color:#f8fafc;" id="att-count-late">0</div>
+          </div>
+          <div class="card" style="background:#0f172a; padding:1rem; border-left:4px solid #3b82f6;">
+            <span style="font-size:0.75rem; color:#94a3b8; font-weight:600;">EXCUSED</span>
+            <div style="font-size:1.5rem; font-weight:700; color:#f8fafc;" id="att-count-excused">0</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="table-responsive">
+            <table style="width:100%; border-collapse:collapse; color:#f8fafc;">
+              <thead>
+                <tr style="border-bottom:1px solid #334155; text-align:left; color:#94a3b8; font-size:0.85rem;">
+                  <th style="padding:12px;">Learner Name</th>
+                  <th style="padding:12px;">Admission #</th>
+                  <th style="padding:12px;">Class</th>
+                  <th style="padding:12px; text-align:center;">Attendance Status</th>
+                  <th style="padding:12px;">Notes / Reason</th>
+                </tr>
+              </thead>
+              <tbody id="attendance-roster-tbody">
+                <tr>
+                  <td colspan="5" style="text-align:center; padding:2rem; color:#94a3b8;">Select a class above to take attendance.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; margin-top:1.5rem;">
+            <button type="button" class="btn btn-primary" onclick="window.submitAttendanceRegister()"><i class="fas fa-save"></i> Save Attendance Register</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Message Center Section -->
+      <div id="messages" class="section">
+        <div class="chat-center-container">
+          <!-- Left Conversations Panel -->
+          <div class="conversations-panel">
+            <div class="conversations-header">
+              <h3><i class="fas fa-envelope"></i> Message Center</h3>
+              <input type="text" class="chat-search-input" placeholder="Search contact or role..." oninput="window.filterChatContacts(this.value)">
+            </div>
+            <div id="chat-contacts-list" class="contacts-list-scroll">
+              <!-- Contacts rendered by JavaScript -->
+            </div>
+          </div>
+
+          <!-- Right Chat Window Panel -->
+          <div class="chat-window-panel">
+            <div class="chat-header-bar">
+              <div id="chat-active-avatar">
+                <div class="contact-avatar">?</div>
+              </div>
+              <div class="chat-header-title">
+                <h4 id="chat-active-name">Select a Conversation</h4>
+                <p id="chat-active-tag">Message Center</p>
+              </div>
+            </div>
+
+            <div id="chat-stream-body" class="chat-stream-container">
+              <!-- Chat bubbles rendered by JavaScript -->
+            </div>
+
+            <div class="composition-bar-container">
+              <input type="text" id="chat-input-box" class="composition-input-box" placeholder="Composition..." onkeydown="if(event.key==='Enter') window.sendChatMessage()">
+              <button type="button" class="chat-action-btn" title="Attach file"><i class="fas fa-paperclip"></i></button>
+              <button type="button" class="chat-send-btn" onclick="window.sendChatMessage()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Register Learner Section -->
+      <div id="register-learner" class="section"></div>
+
+      <!-- Profile Section -->
+      <div id="profile" class="section">
+        <div class="card" style="margin-bottom:1.5rem; background:#0f172a; display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap; padding:1.5rem; border:1px solid #334155;">
+          <div style="width:72px; height:72px; border-radius:50%; background:#312e81; color:#a5b4fc; display:flex; align-items:center; justify-content:center; font-size:2rem; font-weight:700;">
+            <i class="fas fa-user-tie"></i>
+          </div>
+          <div>
+            <h2 style="margin:0 0 4px 0; color:#f8fafc;" id="prof-display-name">Loading...</h2>
+            <p style="margin:0; color:#94a3b8; font-size:0.9rem;" id="prof-display-emp">Employee Number: --</p>
+            <div id="prof-display-subjects" style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="fas fa-id-card"></i> My Profile Information</div>
+          <form id="updateProfileForm" class="form-padding" onsubmit="window.handleProfileFormSubmit(event)">
+            <div class="form-grid-2col" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:1rem;">
+              <div class="form-group">
+                <label style="color:#cbd5e1;">First Name</label>
+                <input type="text" id="prof-name" class="form-control" required style="background:#0f172a; color:#fff;">
+              </div>
+              <div class="form-group">
+                <label style="color:#cbd5e1;">Surname</label>
+                <input type="text" id="prof-surname" class="form-control" required style="background:#0f172a; color:#fff;">
+              </div>
+              <div class="form-group">
+                <label style="color:#cbd5e1;">Email Address</label>
+                <input type="email" id="prof-email" class="form-control" required style="background:#0f172a; color:#fff;" disabled>
+              </div>
+              <div class="form-group">
+                <label style="color:#cbd5e1;">Phone Number</label>
+                <input type="text" id="prof-phone" class="form-control" style="background:#0f172a; color:#fff;">
+              </div>
+              <div class="form-group">
+                <label style="color:#cbd5e1;">Qualifications</label>
+                <input type="text" id="prof-qualifications" class="form-control" placeholder="e.g. B.Ed Mathematics, HDE" style="background:#0f172a; color:#fff;">
+              </div>
+            </div>
+            <div class="form-group mt-1rem">
+              <label style="color:#cbd5e1;">Physical Address</label>
+              <textarea id="prof-address" class="form-control" rows="3" style="background:#0f172a; color:#fff;"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Profile Details</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Settings Section -->
+      <div id="settings" class="section">
+        <div class="card" style="margin-bottom:1.5rem;">
+          <div class="card-title"><i class="fas fa-lock"></i> Security & Password</div>
+          <form id="changePasswordForm" class="form-padding" onsubmit="window.handlePasswordChangeSubmit(event)">
+            <div class="form-group">
+              <label style="color:#cbd5e1;">Current Password</label>
+              <input type="password" id="sett-curr-pass" class="form-control" required style="background:#0f172a; color:#fff;">
+            </div>
+            <div class="form-group">
+              <label style="color:#cbd5e1;">New Password</label>
+              <input type="password" id="sett-new-pass" class="form-control" required style="background:#0f172a; color:#fff;">
+            </div>
+            <div class="form-group">
+              <label style="color:#cbd5e1;">Confirm New Password</label>
+              <input type="password" id="sett-conf-pass" class="form-control" required style="background:#0f172a; color:#fff;">
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-key"></i> Update Password</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="fas fa-sliders-h"></i> Teacher Preferences</div>
+          <div style="display:flex; flex-direction:column; gap:1rem; margin-top:1rem;">
+            <label style="display:flex; align-items:center; gap:10px; color:#cbd5e1; cursor:pointer;">
+              <input type="checkbox" checked style="width:18px; height:18px;"> Email notifications when parents send messages
+            </label>
+            <label style="display:flex; align-items:center; gap:10px; color:#cbd5e1; cursor:pointer;">
+              <input type="checkbox" checked style="width:18px; height:18px;"> Notify me when a student completes an AI assessment
+            </label>
+            <label style="display:flex; align-items:center; gap:10px; color:#cbd5e1; cursor:pointer;">
+              <input type="checkbox" checked style="width:18px; height:18px;"> Dark Mode Theme
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <footer class="dashboard-footer">
+        &copy; 2026 FUSION_HIGH_APP. All rights reserved. | <a href="#"
+          style="color: var(--secondary); text-decoration: none;">Privacy Policy</a>
+      </footer>
+    </div>
+  </main>
+
+  <!-- Logout Confirmation Modal -->
+  <div id="logoutConfirmModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 450px; background: #0f172a; color: #fff; text-align: center; padding: 2rem;">
+      <i class="fas fa-sign-out-alt" style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem;"></i>
+      <h3 style="margin: 0 0 8px 0; color: #ffffff;">Confirm Logout</h3>
+      <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.5rem;">Are you sure you want to end your current session and exit the Teacher Portal?</p>
+      
+      <div style="display:flex; justify-content: center; gap: 1rem;">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('logoutConfirmModal').style.display='none'">Cancel</button>
+        <button type="button" class="btn btn-danger" style="background:#ef4444; color:#fff;" onclick="window.executeLogout()">End Session & Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Viewing Progress -->
+  <div id="viewProgressModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 800px;">
+      <span class="close-btn" onclick="closeModal('viewProgressModal')">&times;</span>
+      <h3 class="card-title" id="progress-modal-title">Learner Progress</h3>
+      <div id="progress-modal-body" class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
+        <!-- Progress table will be injected here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Recording Marks -->
+  <div id="recordMarkModal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModal('recordMarkModal')">&times;</span>
+      <h3 class="card-title">Record Assessment Mark</h3>
+      <form id="recordMarkForm">
+        <input type="hidden" id="modal-child-id">
+        <input type="hidden" id="modal-subject">
+        <div class="form-group">
+          <label>Learner</label>
+          <input type="text" id="modal-learner-name" class="form-control" disabled>
+        </div>
+        <div class="form-group">
+          <label for="modal-assessment-title">Assessment Title</label>
+          <input type="text" id="modal-assessment-title" class="form-control" placeholder="e.g., Term 1 Test" required>
+        </div>
+        <div class="form-group">
+          <label for="modal-mark">Mark (%)</label>
+          <input type="number" id="modal-mark" class="form-control" min="0" max="100" required>
+        </div>
+        <div class="form-group">
+          <label for="modal-notes">Remarks (Optional)</label>
+          <textarea id="modal-notes" class="form-control" rows="3"
+            placeholder="e.g., Excellent work on algebra."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Save Mark</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal for Class Mark Register (Primary CTA) -->
+  <div id="classMarkSheetModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 950px; background: #0f172a; color: #fff;">
+      <span class="close-btn" onclick="document.getElementById('classMarkSheetModal').style.display='none'">&times;</span>
+      <h3 class="card-title" id="marksheet-modal-title" style="color: #ffffff;"><i class="fas fa-file-signature" style="color: #6366f1;"></i> Official Class Mark Register</h3>
+      <p id="marksheet-modal-subtitle" style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 1rem;">Record, edit, and export term assessment marks for all enrolled learners in this class.</p>
+      
+      <!-- Mark Register Controls & Summary Stats Bar -->
+      <div style="display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; background: #1e293b; padding: 1rem; border-radius: 10px; border: 1px solid #334155; margin-bottom: 1.25rem;">
+        <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; flex: 1;">
+          <div>
+            <label style="font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 2px;">Academic Term</label>
+            <select id="marksheet-term-select" class="form-control w-auto" style="background: #0f172a; color: #fff; font-size: 0.85rem;">
+              <option value="Term 4 2026">Term 4 2026</option>
+              <option value="Term 3 2026">Term 3 2026</option>
+              <option value="Term 2 2026">Term 2 2026</option>
+              <option value="Term 1 2026">Term 1 2026</option>
+              
+            </select>
+          </div>
+          <div style="flex: 1; min-width: 180px;">
+            <label style="font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 2px;">Assessment Name / Title</label>
+            <input type="text" id="marksheet-name-input" class="form-control" placeholder="e.g., Test 1: Organic Chemistry" style="background: #0f172a; color: #fff; font-size: 0.85rem;">
+          </div>
+          <div style="width: 110px;">
+            <label style="font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 2px;">Total Mark</label>
+            <input type="number" id="marksheet-total-mark" class="form-control" value="100" min="1" max="500" style="background: #0f172a; color: #fff; font-size: 0.85rem; text-align: center; font-weight: 700;" oninput="window.updateMarkSheetStats()">
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; align-items: center;">
+          <div style="text-align: right;">
+            <span style="font-size: 0.75rem; color: #94a3b8; display: block;">CLASS AVERAGE</span>
+            <strong id="marksheet-stat-avg" style="font-size: 1.3rem; color: #34d399;">--%</strong>
+          </div>
+          <div style="text-align: right; border-left: 1px solid #334155; padding-left: 1rem;">
+            <span style="font-size: 0.75rem; color: #94a3b8; display: block;">PASS RATE</span>
+            <strong id="marksheet-stat-pass" style="font-size: 1.3rem; color: #60a5fa;">--%</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-responsive" style="max-height: 55vh; overflow-y: auto;">
+        <table style="width:100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 1px solid #334155; color: #cbd5e1; font-size: 0.85rem; background: #1e293b;">
+              <th style="padding: 10px; text-align: left;">Learner Name</th>
+              <th style="padding: 10px; text-align: left;">Admission Number</th>
+              <th style="padding: 10px; text-align: center;">Grade & Class</th>
+              <th style="padding: 10px; text-align: center;">Score (out of Total)</th>
+              <th style="padding: 10px; text-align: center;">Percentage %</th>
+              <th style="padding: 10px; text-align: center;">Status</th>
+              <th style="padding: 10px; text-align: center;">Report Card</th>
+            </tr>
+          </thead>
+          <tbody id="marksheet-tbody">
+            <!-- Populated dynamically by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <button type="button" class="btn btn-outline" onclick="window.exportClassMarkSheetCSV()"><i class="fas fa-file-csv me-1" style="color: #34d399;"></i> Export CSV</button>
+          <button type="button" class="btn btn-outline" onclick="document.getElementById('csv-import-file-input').click()"><i class="fas fa-file-upload me-1" style="color: #60a5fa;"></i> Bulk Import CSV</button>
+          <input type="file" id="csv-import-file-input" accept=".csv" style="display:none;" onchange="window.importClassMarkSheetCSV(event)">
+        </div>
+        <div style="display: flex; gap: 1rem;">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('classMarkSheetModal').style.display='none'">Cancel</button>
+          <button type="button" class="btn btn-primary-cta" onclick="window.saveClassMarkSheet()"><i class="fas fa-save me-1"></i> Save Mark Register</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Manage Textbooks -->
+  <div id="textbookManagerModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 700px; background: #0f172a; color: #fff;">
+      <span class="close-btn" onclick="document.getElementById('textbookManagerModal').style.display='none'">&times;</span>
+      <h3 class="card-title" id="textbook-modal-title" style="color: #ffffff;"><i class="fas fa-book-open"></i> Manage CAPS Textbooks</h3>
+      
+      <div style="margin-top: 1rem;">
+        <form id="textbookModalUploadForm" onsubmit="window.handleTextbookModalUpload(event)">
+          <input type="hidden" id="tb-modal-subject">
+          <input type="hidden" id="tb-modal-grade">
+          <div class="form-group">
+            <label style="color:#cbd5e1;">Select CAPS PDF Textbook</label>
+            <input type="file" id="tb-modal-file" class="form-control" accept="application/pdf" required style="background:#1e293b; color:#fff;">
+          </div>
+          <button type="submit" class="btn btn-primary" style="margin-top:0.5rem;"><i class="fas fa-upload"></i> Upload & Index Textbook</button>
+        </form>
+      </div>
+
+      <h4 style="color:#ffffff; margin-top: 1.5rem; font-size: 0.95rem;">Current Uploaded Textbooks</h4>
+      <div id="tb-modal-list" style="margin-top: 0.5rem; max-height: 200px; overflow-y: auto;">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Viewing Class Learners inside My Subjects -->
+  <div id="subjectLearnersModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 950px; background: #0f172a; color: #fff;">
+      <span class="close-btn" onclick="document.getElementById('subjectLearnersModal').style.display='none'">&times;</span>
+      <h3 class="card-title" id="subject-learners-modal-title" style="color: #ffffff;"><i class="fas fa-users" style="color: #6366f1;"></i> Enrolled Class Learners</h3>
+      <p id="subject-learners-modal-subtitle" style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 1rem;">Browsing learner cards for this subject and grade class roster.</p>
+      
+      <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap;">
+        <div style="flex: 1; position: relative; min-width: 240px;">
+          <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+          <input type="text" id="subj-learner-search" class="form-control" placeholder="Search learner name or admission #..." style="padding-left: 36px; background: #1e293b; color: #fff;" oninput="window.filterSubjectLearnerCards(this.value)">
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" id="btn-open-full-roster" onclick="window.openFullLearnersTab()"><i class="fas fa-external-link-alt"></i> Open in My Learners Tab</button>
+      </div>
+
+      <div id="subject-learners-modal-cards" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; max-height: 65vh; overflow-y: auto; padding-right: 4px;">
+        <!-- Populated dynamically with learner cards -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Marking Attendance inside My Subjects -->
+  <div id="subjectAttendanceModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 950px; background: #0f172a; color: #fff;">
+      <span class="close-btn" onclick="document.getElementById('subjectAttendanceModal').style.display='none'">&times;</span>
+      <h3 class="card-title" id="subj-attendance-modal-title" style="color: #ffffff;"><i class="fas fa-user-check" style="color: #22c55e;"></i> Daily Attendance Register</h3>
+      <p id="subj-attendance-modal-subtitle" style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 1rem;">Record attendance status for learners in this class.</p>
+      
+      <!-- Date Selector and Attendance Summary Pill Bar -->
+      <div style="display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; background: #1e293b; padding: 0.85rem 1rem; border-radius: 10px; border: 1px solid #334155; margin-bottom: 1.25rem;">
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+          <label style="font-size: 0.85rem; color: #cbd5e1; font-weight: 600;">Date:</label>
+          <input type="date" id="subj-att-date" class="form-control w-auto" style="background: #0f172a; color: #fff;" onchange="window.loadSubjectAttendanceData(document.getElementById('subjectAttendanceModal').getAttribute('data-subject'), document.getElementById('subjectAttendanceModal').getAttribute('data-grade'), this.value)">
+        </div>
+
+        <div style="display: flex; gap: 1rem; font-size: 0.82rem; flex-wrap: wrap;">
+          <span style="color: #4ade80;">Present: <strong id="subj-att-count-present" style="font-size: 1.1rem; color: #fff;">0</strong></span>
+          <span style="color: #f87171;">Absent: <strong id="subj-att-count-absent" style="font-size: 1.1rem; color: #fff;">0</strong></span>
+          <span style="color: #fbbf24;">Late: <strong id="subj-att-count-late" style="font-size: 1.1rem; color: #fff;">0</strong></span>
+          <span style="color: #60a5fa;">Excused: <strong id="subj-att-count-excused" style="font-size: 1.1rem; color: #fff;">0</strong></span>
+        </div>
+      </div>
+
+      <div class="table-responsive" style="max-height: 55vh; overflow-y: auto;">
+        <table style="width:100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 1px solid #334155; color: #cbd5e1; font-size: 0.85rem; background: #1e293b;">
+              <th style="padding: 10px; text-align: left;">Learner Name</th>
+              <th style="padding: 10px; text-align: left;">Admission Number</th>
+              <th style="padding: 10px; text-align: center;">Grade</th>
+              <th style="padding: 10px; text-align: center;">Attendance Status</th>
+              <th style="padding: 10px; text-align: left;">Remark</th>
+            </tr>
+          </thead>
+          <tbody id="subj-attendance-tbody">
+            <!-- Populated dynamically by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('subjectAttendanceModal').style.display='none'">Cancel</button>
+        <button type="button" class="btn btn-primary-cta" onclick="window.submitSubjectAttendanceModal()"><i class="fas fa-check-circle me-1"></i> Submit Attendance</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/sidebar-toggle.js"></script>
+  <script type="module" src="/js/teacher-message-center.js"></script>
+  <script type="module" src="/js/teacher-dashboard.js"></script>
+</body>
+
+</html>
