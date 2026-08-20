@@ -292,3 +292,40 @@ body, html {
 .animate-fade-in {
   animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Global Interactive Click Feedback & Smooth Micro-Animations */
+button, [role="button"], a, input[type="button"], input[type="submit"] {
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+button:active:not(:disabled), [role="button"]:active:not(:disabled), a:active {
+  transform: scale(0.97);
+}
+
+.interactive-card {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.interactive-card:hover {
+  transform: translateY(-2px);
+}
+
+.interactive-card:active {
+  transform: scale(0.985);
+}
+
+.tab-transition {
+  animation: tabFadeSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes tabFadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
