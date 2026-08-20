@@ -19,7 +19,9 @@ import {
   Check,
   Type,
   Search,
-  Command
+  Command,
+  FileText,
+  Download
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -230,6 +232,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
                 <UserIcon className="w-4 h-4 text-slate-400" />
                 Profile Settings
               </Link>
+              <a
+                href="/api/documentation/download"
+                download="Fusion_High_System_Architecture_and_Development_Documentation.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setShowProfileMenu(false)}
+                className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-xs text-amber-400 hover:bg-amber-500/10 transition-colors"
+              >
+                <FileText className="w-4 h-4 text-amber-400" />
+                System Docs (PDF)
+              </a>
               <button
                 onClick={() => {
                   setShowProfileMenu(false);

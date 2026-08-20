@@ -105,6 +105,17 @@ app.use(normalizePayload);
 app.use(express.static('public'));
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/uploads', express.static('uploads'));
+app.use('/downloads', express.static(path.join(__dirname, 'public', 'downloads')));
+
+// Comprehensive System Documentation Download Endpoint
+app.get('/api/documentation/download', (req, res) => {
+  const pdfPath = path.join(__dirname, 'public', 'downloads', 'Fusion_High_System_Architecture_and_Development_Documentation.pdf');
+  if (fs.existsSync(pdfPath)) {
+    res.download(pdfPath, 'Fusion_High_System_Architecture_and_Development_Documentation.pdf');
+  } else {
+    res.status(404).json({ error: 'System documentation PDF not found.' });
+  }
+});
 
 // Auth & Profile
 app.use('/api', authRoutes);
