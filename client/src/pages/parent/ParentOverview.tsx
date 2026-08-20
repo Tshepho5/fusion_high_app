@@ -171,8 +171,19 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-brand-600 flex items-center justify-center text-white font-bold text-base shadow-sm">
-                        {childName.charAt(0)}
+                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-brand-600 flex items-center justify-center text-white font-bold text-lg shadow-md overflow-hidden ring-2 ring-amber-500/30 shrink-0">
+                        {child.profile_picture || child.profile_picture_path ? (
+                          <img
+                            src={getProfilePictureUrl(child.profile_picture || child.profile_picture_path)}
+                            alt={childName}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <span>{childName.charAt(0).toUpperCase()}</span>
+                        )}
                       </div>
                       <div>
                         <h4 className="text-sm font-bold text-white">{childName}</h4>

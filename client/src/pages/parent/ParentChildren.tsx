@@ -392,18 +392,30 @@ export const ParentChildren: React.FC = () => {
           {children.map((child) => {
             const isSelected = selectedChild?.id === child.id;
             const cName = `${child.full_name || ''} ${child.surname || ''}`.trim() || 'Learner';
+            const pic = child.profile_picture || child.profile_picture_path;
             return (
               <button
                 key={child.id}
                 onClick={() => setSelectedChild(child)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                className={`flex items-center gap-2.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
                   isSelected
-                    ? 'bg-gradient-to-r from-amber-600 to-brand-600 text-white shadow-md'
+                    ? 'bg-gradient-to-r from-amber-600 to-brand-600 text-white shadow-md ring-2 ring-amber-400/40'
                     : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">
-                  {cName.charAt(0)}
+                <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-amber-500 to-brand-600 flex items-center justify-center text-[11px] font-bold overflow-hidden ring-1 ring-white/20 shrink-0">
+                  {pic ? (
+                    <img
+                      src={getProfilePictureUrl(pic)}
+                      alt={cName}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <span>{cName.charAt(0).toUpperCase()}</span>
+                  )}
                 </div>
                 <span>{cName} (Grade {child.grade})</span>
               </button>
@@ -416,6 +428,64 @@ export const ParentChildren: React.FC = () => {
         <LoadingSpinner text={`Analyzing ${childName}'s performance records...`} />
       ) : selectedChild ? (
         <>
+          {/* 🌟 HERO CHILD PROFILE BANNER (Shows when clicked) */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-brand-950/70 via-surface-dark to-surface-dark border border-brand-500/30 p-6 md:p-7 shadow-2xl animate-fade-in">
+            <div className="absolute top-0 right-0 w-72 h-72 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              {/* Profile Photo & Personal Info */}
+              <div className="flex items-center gap-5">
+                <div className="relative shrink-0 group">
+                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-3xl border-2 border-brand-400/50 bg-gradient-to-tr from-amber-500 via-brand-600 to-indigo-600 shadow-glow-indigo overflow-hidden flex items-center justify-center text-white font-black text-2xl md:text-3xl ring-4 ring-brand-500/20">
+                    {selectedChild.profile_picture || selectedChild.profile_picture_path || performanceData?.profile_picture ? (
+                      <img
+                        src={getProfilePictureUrl(selectedChild.profile_picture || selectedChild.profile_picture_path || performanceData?.profile_picture)}
+                        alt={childName}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <span>{childName.charAt(0).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-2 border-surface-dark rounded-full shadow-sm flex items-center justify-center text-white" title="Enrolled & Active">
+                    <Check className="w-3 h-3" />
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="indigo" size="sm">Grade {selectedChild.grade || 10} • {selectedChild.stream || 'General'}</Badge>
+                    <Badge variant="cyan" size="sm">Learner No: {selectedChild.learner_number || `2026-FHS-${selectedChild.id}`}</Badge>
+                    {selectedChild.home_language && (
+                      <Badge variant="amber" size="sm">{selectedChild.home_language} HL</Badge>
+                    )}
+                  </div>
+                  <h3 className="text-xl md:text-2xl font-extrabold text-white tracking-tight font-display flex items-center gap-2">
+                    <span>{childName}</span>
+                    <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Enrolled at Fusion High School • CAPS Curriculum • {subjectsList.length || selectedChild.subjects?.length || 9} Registered Subjects
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick Action Badges / Summary */}
+              <div className="flex flex-wrap md:flex-col items-start md:items-end gap-2 shrink-0 border-t md:border-t-0 md:border-l border-white/10 pt-4 md:pt-0 md:pl-6">
+                <div className="text-left md:text-right">
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Current Average</span>
+                  <p className="text-2xl font-extrabold text-amber-400 font-display">{overallAvg}%</p>
+                </div>
+                <div className="text-left md:text-right">
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Attendance Rate</span>
+                  <p className="text-sm font-bold font-mono text-emerald-400">{attendanceStats.attendance_pct}% Present</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Child Identity and AI Overall Predictions (3-Card Summary Strip) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Card 1: Current Overall Average */}

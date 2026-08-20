@@ -21,13 +21,17 @@ exports.getChildren = async (req, res) => {
                 c.id, c.full_name, c.surname, c.grade, c.stream, c.subjects, 
                 COALESCE(c.learner_number, CONCAT('2026-FHS-', LPAD(c.id::text, 3, '0'))) as learner_number,
                 c.home_language,
-                u.email AS learner_email, u.profile_picture_path,
+                u.email AS learner_email, 
+                COALESCE(u.profile_picture_path, u.profile_picture) as profile_picture,
+                COALESCE(u.profile_picture_path, u.profile_picture) as profile_picture_path,
+                COALESCE(u.gender, c.gender, 'Male') as gender,
+                c.dob,
                 COALESCE(json_agg(json_build_object('subject', rp.subject, 'mark', rp.mark)) FILTER (WHERE rp.child_id IS NOT NULL), '[]') AS recent_marks
             FROM children c
             LEFT JOIN users u ON c.learner_user_id = u.id
             LEFT JOIN RankedProgress rp ON c.id = rp.child_id AND rp.rn <= 3
             WHERE c.parent_id = $1 OR c.secondary_parent_id = $1 OR EXISTS (SELECT 1 FROM parent_children pc WHERE pc.child_id = c.id AND pc.parent_id = $1)
-            GROUP BY c.id, u.id, u.email, u.profile_picture_path
+            GROUP BY c.id, u.id, u.email, u.profile_picture_path, u.profile_picture, u.gender, c.gender, c.dob
             ORDER BY c.full_name;
         `;
         const result = await db.query(query, [req.user.id]);
@@ -530,7 +534,10 @@ async function fetchParentChildren(parentId) {
             c.subjects, 
             c.class_id, 
             COALESCE(c.learner_number, CONCAT('2026-FHS-', LPAD(c.id::text, 3, '0'))) as learner_number,
-            u.profile_picture_path
+            COALESCE(u.profile_picture_path, u.profile_picture) as profile_picture,
+            COALESCE(u.profile_picture_path, u.profile_picture) as profile_picture_path,
+            COALESCE(u.gender, c.gender, 'Male') as gender,
+            c.dob
          FROM children c
          LEFT JOIN users u ON c.learner_user_id = u.id
          LEFT JOIN parent_children pc ON pc.child_id = c.id
@@ -781,7 +788,11 @@ exports.getChildPerformanceOverview = async (req, res) => {
         }
 
         const childRes = await db.query(
-            `SELECT c.id, c.full_name, c.surname, c.grade, c.stream, c.subjects, c.learner_number, u.profile_picture_path
+            `SELECT c.id, c.full_name, c.surname, c.grade, c.stream, c.subjects, c.learner_number, c.home_language,
+                    COALESCE(u.profile_picture_path, u.profile_picture) as profile_picture,
+                    COALESCE(u.profile_picture_path, u.profile_picture) as profile_picture_path,
+                    COALESCE(u.gender, c.gender, 'Male') as gender,
+                    c.dob
              FROM children c
              LEFT JOIN users u ON c.learner_user_id = u.id
              WHERE c.id = $1`,
@@ -1008,7 +1019,9 @@ exports.getChildPerformanceOverview = async (req, res) => {
             first_name: child.full_name,
             grade: child.grade,
             stream: child.stream || 'General',
-            profile_picture: child.profile_picture_path,
+            profile_picture: child.profile_picture || child.profile_picture_path,
+            gender: child.gender,
+            home_language: child.home_language,
             average_mark: overallCurrentAvg,
             predicted_final_mark: predictedOverallMark,
             total_subjects: subjectsList.length,
