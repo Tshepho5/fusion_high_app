@@ -182,7 +182,6 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search modules..."
                 className="w-full pl-9 pr-3 py-1.5 bg-surface-darker/90 border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
-                autoFocus
               />
               {searchQuery && (
                 <button
