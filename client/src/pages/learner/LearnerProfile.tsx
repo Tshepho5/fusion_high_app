@@ -133,14 +133,14 @@ export const LearnerProfile: React.FC = () => {
   const initial = fullName.charAt(0).toUpperCase();
 
   return (
-    <div className="space-y-6 max-w-4xl animate-fade-in">
+    <div className="space-y-6 max-w-4xl mx-auto w-full animate-fade-in">
       <div>
         <h2 className="text-xl md:text-2xl font-extrabold font-display text-white tracking-tight flex items-center gap-2">
           <User className="w-6 h-6 text-brand-400" />
-          Account & Profile Settings
+          {role === 'teacher' ? 'Educator Profile & Settings' : role === 'parent' ? 'Parent Account & Settings' : role === 'admin' ? 'Administrator Settings' : 'Account & Profile Settings'}
         </h2>
         <p className="text-xs text-slate-400 mt-1">
-          Review your official student identification, security settings, and contact information.
+          Review your official profile identification, security credentials, and contact information.
         </p>
       </div>
 
@@ -197,21 +197,23 @@ export const LearnerProfile: React.FC = () => {
               {fullName} {surname}
             </h3>
             <Badge variant="cyan" size="sm">
-              STUDENT PROFILE
+              {(role || 'user').toUpperCase()} PROFILE
             </Badge>
-            <Badge variant="indigo" size="sm">
-              Grade {grade}
-            </Badge>
+            {role === 'learner' && (
+              <Badge variant="indigo" size="sm">
+                Grade {grade}
+              </Badge>
+            )}
           </div>
           <p className="text-xs text-slate-400 font-mono">{email}</p>
           <p className="text-[11px] text-slate-500 pt-1">
-            Click the camera icon to upload a personal photo. It will appear across your student ID card, class registers, and messages.
+            Click the camera icon to upload a personal photo. It will appear across your identification, registers, and messages.
           </p>
         </div>
       </div>
 
-      {/* Official Digital Student Smart Card Section - Restricted to Learner & Teacher Dashboards */}
-      {(role === 'learner' || role === 'teacher') && (
+      {/* Official Digital Student Smart Card Section - Restricted to Learner */}
+      {role === 'learner' && (
         <div className="p-6 rounded-3xl bg-surface-dark border border-cyan-500/30 shadow-2xl space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
             <div className="flex items-center gap-2.5">
@@ -241,7 +243,7 @@ export const LearnerProfile: React.FC = () => {
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-cyan-400" />
               <h3 className="text-sm font-bold font-display text-white">
-                Learner Profile & Credentials
+                {role === 'teacher' ? 'Educator Credentials & Information' : role === 'parent' ? 'Parent Information & Contact' : role === 'admin' ? 'Administrator Account Details' : 'Learner Profile & Credentials'}
               </h3>
             </div>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20">
