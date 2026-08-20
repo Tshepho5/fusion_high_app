@@ -683,7 +683,7 @@ exports.login = async (req, res) => {
 };
 
 /**
- * Generates password reset OTP code immediately with a strict 60-second validity window.
+ * Generates password reset OTP code immediately with a strict 2-minute validity window.
  */
 exports.forgotPassword = async (req, res) => {
     const { email } = req.body;
@@ -692,9 +692,9 @@ exports.forgotPassword = async (req, res) => {
         if (!normalizedEmail) return res.status(400).json({ error: 'Email address is required.' });
 
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
-        // Set OTP expiry strictly to 60 seconds from generation
+        // Set OTP expiry strictly to 2 minutes from generation
         const result = await db.query(
-            "UPDATE users SET reset_code = $1, reset_expiry = NOW() + INTERVAL '60 seconds' WHERE LOWER(email) = LOWER($2) RETURNING id",
+            "UPDATE users SET reset_code = $1, reset_expiry = NOW() + INTERVAL '2 minutes' WHERE LOWER(email) = LOWER($2) RETURNING id",
             [otp, normalizedEmail]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'No account found with this email address.' });
@@ -720,12 +720,11 @@ exports.forgotPassword = async (req, res) => {
             console.error('[EMAIL ERROR] Failed to send OTP email:', err);
         });
 
-        console.log(`[AUTH] Generated 60s Password Reset OTP for ${normalizedEmail}: ${otp}`);
+        console.log(`[AUTH] Generated 2-Minute Password Reset OTP for ${normalizedEmail}: ${otp}`);
 
         res.json({ 
-            message: 'A 4-digit reset code has been sent immediately to your email (valid for 60 seconds).',
-            otp: otp,
-            expires_in: 60
+            message: 'A 4-digit reset code has been sent immediately to your email (valid for 2 minutes).',
+            expires_in: 120
         });
     } catch (err) { res.status(500).json({ error: err.message }); }
 };
@@ -748,12 +747,12 @@ exports.verifyOTP = async (req, res) => {
                 [normalizedEmail, rawCode]
             );
             if (expiredCheck.rows.length > 0) {
-                return res.status(400).json({ error: 'OTP code has expired (60-second limit). Please click Resend Code to receive a new OTP.' });
+                return res.status(400).json({ error: 'OTP code has expired (2-minute limit). Please click Resend Code to receive a new OTP.' });
             }
             return res.status(400).json({ error: 'Invalid 4-digit OTP code. Please check and try again.' });
         }
         
-        // Once verified within 60s, extend reset_expiry so user has sufficient time (15 mins) to enter new password
+        // Once verified within 2m, extend reset_expiry so user has sufficient time (15 mins) to enter new password
         await db.query("UPDATE users SET reset_expiry = NOW() + INTERVAL '15 minutes' WHERE LOWER(email) = LOWER($1)", [normalizedEmail]);
         res.json({ message: 'Code verified successfully. You can now set your new password.' });
     } catch (err) { res.status(500).json({ error: err.message }); }

@@ -294,7 +294,7 @@ const emailService = {
           </span>
           <div style="margin-top: 10px; display: inline-block; padding: 4px 12px; border-radius: 20px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);">
             <span style="font-size: 11px; color: #f87171; font-weight: 700; letter-spacing: 0.2px;">
-              ⏱️ VALID FOR 60 SECONDS
+              ⏱️ VALID FOR 2 MINUTES
             </span>
           </div>
         </div>
@@ -305,11 +305,11 @@ const emailService = {
       `;
 
       return {
-        subject: `Verification Code: ${otp} (Expires in 60s) - Password Reset`,
+        subject: `Verification Code: ${otp} (Valid for 2 Minutes) - Password Reset`,
         body: createBaseEmailTemplate({
-          preheader: `Your verification code is ${otp}. Valid for 60 seconds. Click to enter OTP directly.`,
+          preheader: `Your verification code is ${otp}. Valid for 2 minutes. Click to enter OTP directly.`,
           title,
-          subtitle: 'One-time security recovery code (60s limit)',
+          subtitle: 'One-time security recovery code (2-minute limit)',
           contentHtml,
           ctaText: 'Enter OTP & Reset Password',
           ctaLink: resetLink
