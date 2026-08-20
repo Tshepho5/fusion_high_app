@@ -85,11 +85,26 @@ async function initApplicationTables() {
 
     // 3. Multi-Parent Support: Ensure secondary_parent_id in children and parent_children table
     await db.query(`
+      CREATE TABLE IF NOT EXISTS children (
+        id SERIAL PRIMARY KEY,
+        parent_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        secondary_parent_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        learner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        full_name VARCHAR(255) NOT NULL,
+        surname VARCHAR(255) NOT NULL,
+        dob DATE,
+        grade INTEGER NOT NULL,
+        stream VARCHAR(50) DEFAULT 'General',
+        home_language VARCHAR(50) DEFAULT 'isiZulu',
+        learner_number VARCHAR(50),
+        application_number VARCHAR(50),
+        subjects TEXT[] DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       ALTER TABLE children ADD COLUMN IF NOT EXISTS secondary_parent_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
       ALTER TABLE children ADD COLUMN IF NOT EXISTS application_number VARCHAR(50);
-    `);
 
-    await db.query(`
       CREATE TABLE IF NOT EXISTS parent_children (
         id SERIAL PRIMARY KEY,
         parent_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -99,10 +114,15 @@ async function initApplicationTables() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(parent_id, child_id)
       );
-    `);
 
-    // 4. Ensure classes exist for all grades 8-12 with standard capacity
-    await db.query(`
+      CREATE TABLE IF NOT EXISTS classes (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50) UNIQUE NOT NULL,
+        grade INTEGER NOT NULL CHECK (grade BETWEEN 8 AND 12),
+        stream VARCHAR(50) DEFAULT 'General',
+        homeroom_teacher_id INTEGER
+      );
+
       INSERT INTO classes (name, grade, stream)
       VALUES 
         ('8A', 8, 'General'),

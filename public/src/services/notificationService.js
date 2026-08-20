@@ -25,6 +25,16 @@ class NotificationService {
         CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, is_read);
         CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC);
 
+        -- Ensure textbooks table exists before adding columns
+        CREATE TABLE IF NOT EXISTS textbooks (
+          id SERIAL PRIMARY KEY,
+          grade INT,
+          subject_id INT,
+          title VARCHAR(255),
+          file_path TEXT,
+          uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
         -- Enhance textbooks/resources table with metadata columns
         ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS resource_type VARCHAR(50) DEFAULT 'textbook';
         ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS title VARCHAR(255);
@@ -32,13 +42,13 @@ class NotificationService {
         ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS term VARCHAR(50);
         ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS year INTEGER DEFAULT 2026;
         ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS stream VARCHAR(50);
-        ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL;
+        ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS class_id INTEGER;
         ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS file_name VARCHAR(255);
         ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS file_size VARCHAR(50);
       `);
       console.log('[NOTIFICATION SERVICE] Notifications table and schema verified.');
     } catch (err) {
-      console.error('[NOTIFICATION SERVICE] Schema init warning:', err.message);
+      console.warn('[NOTIFICATION SERVICE] Schema init notice:', err.message);
     }
   }
 
