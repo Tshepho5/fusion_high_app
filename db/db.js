@@ -163,6 +163,47 @@ pool.connect(async (err, client, release) => {
 
             UPDATE messages SET body = content WHERE body IS NULL AND content IS NOT NULL;
             UPDATE messages SET content = body WHERE content IS NULL AND body IS NOT NULL;
+
+            -- Homework & Digital Submissions
+            CREATE TABLE IF NOT EXISTS homework_assignments (
+                id SERIAL PRIMARY KEY,
+                teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                title VARCHAR(255) NOT NULL,
+                description TEXT,
+                subject VARCHAR(150) NOT NULL,
+                grade INTEGER NOT NULL,
+                stream VARCHAR(100) DEFAULT 'General',
+                due_date DATE NOT NULL,
+                due_time VARCHAR(20) DEFAULT '23:59',
+                total_marks NUMERIC DEFAULT 50,
+                file_url TEXT,
+                file_name VARCHAR(255),
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            );
+
+            CREATE TABLE IF NOT EXISTS homework_submissions (
+                id SERIAL PRIMARY KEY,
+                assignment_id INTEGER NOT NULL REFERENCES homework_assignments(id) ON DELETE CASCADE,
+                child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+                learner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                file_url TEXT,
+                file_name VARCHAR(255),
+                submission_text TEXT,
+                submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                status VARCHAR(50) DEFAULT 'submitted',
+                ai_score NUMERIC,
+                ai_percentage NUMERIC,
+                ai_feedback TEXT,
+                ai_strengths TEXT,
+                ai_areas_for_improvement TEXT,
+                teacher_score NUMERIC,
+                teacher_percentage NUMERIC,
+                teacher_feedback TEXT,
+                signed_by_teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                signed_at TIMESTAMP WITH TIME ZONE,
+                UNIQUE (assignment_id, child_id)
+            );
         `);
 
         // 2. Initialize unique attendance constraints & performance indexes
