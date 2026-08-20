@@ -13,9 +13,14 @@ function createTransporter() {
   const pass = getSmtpPass();
   
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: { user, pass },
-    tls: { rejectUnauthorized: false }
+    tls: { rejectUnauthorized: false },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000
   });
 }
 
@@ -164,9 +169,7 @@ const emailService = {
       console.warn('[EMAIL PRIMARY RETRY] Primary transport failed (' + (error.message || error) + '), attempting direct SMTP 465 fallback...');
       try {
         const fallbackTransporter = nodemailer.createTransport({
-          host: 'smtp.gmail.com',
-          port: 465,
-          secure: true,
+          service: 'gmail',
           auth: { user: getSmtpUser(), pass: getSmtpPass() },
           tls: { rejectUnauthorized: false }
         });
@@ -363,7 +366,55 @@ const emailService = {
       };
     },
 
-    // 5. Learner Admission / Enrollment Notification
+    // 5. Attendance Alert for Present, Late, or Absent
+    attendanceNotification: ({ parentName, learnerName, learnerNumber, status, subject, date, time, baseUrl = 'https://educonnect-cmyh.onrender.com' }) => {
+      const statusUpper = (status || 'present').toUpperCase();
+      let statusColor = '#10b981';
+      let statusTitle = 'Present & Verified';
+      if (status === 'late') {
+        statusColor = '#f59e0b';
+        statusTitle = 'Marked Late';
+      } else if (status === 'absent') {
+        statusColor = '#f43f5e';
+        statusTitle = 'Marked Absent';
+      }
+
+      const title = `Attendance Alert: ${learnerName} - ${statusTitle}`;
+      const contentHtml = `
+        <p style="font-size:15px; color:#ffffff; margin-top:0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color:#cbd5e1; font-size:14px; line-height:1.6;">
+          This is an official automated attendance record notification regarding your child at Fusion High School:
+        </p>
+        <div style="background:#0f172a; border:1px solid #334155; border-left:4px solid ${statusColor}; border-radius:10px; padding:16px 20px; margin:18px 0;">
+          <p style="margin:0; color:${statusColor}; font-size:16px; font-weight:800; text-transform:uppercase;">
+            ${statusTitle}
+          </p>
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:12px; font-size:13px; color:#cbd5e1;">
+            <tr><td style="padding:4px 0; color:#94a3b8; width:130px;">Learner:</td><td style="color:#ffffff; font-weight:700;">${learnerName} (${learnerNumber || 'N/A'})</td></tr>
+            <tr><td style="padding:4px 0; color:#94a3b8;">Subject / Class:</td><td style="color:#38bdf8; font-weight:700;">${subject}</td></tr>
+            <tr><td style="padding:4px 0; color:#94a3b8;">Date Recorded:</td><td style="color:#ffffff; font-weight:700;">${date}</td></tr>
+            <tr><td style="padding:4px 0; color:#94a3b8;">Logged Time:</td><td style="color:#ffffff; font-weight:700;">${time}</td></tr>
+          </table>
+        </div>
+        <p style="font-size:13px; color:#94a3b8; line-height:1.5;">
+          You can track this and past attendance records under the <strong>School Calendar</strong> and Attendance tabs in your Parent Portal.
+        </p>
+      `;
+
+      return {
+        subject: `[Attendance Notice] ${learnerName} marked ${statusUpper} on ${date}`,
+        body: createBaseEmailTemplate({
+          preheader: `${learnerName} marked ${statusTitle} for ${subject} on ${date}.`,
+          title,
+          subtitle: 'Official School Attendance Register',
+          contentHtml,
+          ctaText: 'Open Parent Portal Calendar',
+          ctaLink: `${baseUrl}/dashboard/parent?tab=calendar`
+        })
+      };
+    },
+
+    // 6. Learner Admission / Enrollment Notification
     learnerAdmission: (name, surname, learnerId, grade, password, registrarRole) => {
       const title = `Learner Admission Confirmed`;
       const contentHtml = `

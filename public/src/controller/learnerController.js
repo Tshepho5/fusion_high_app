@@ -1051,13 +1051,25 @@ exports.getAttendanceOverview = async (req, res) => {
             });
         }
 
+        const mappedLogs = logs.map(l => {
+            const isoDate = l.attendance_date instanceof Date ? l.attendance_date.toISOString().split('T')[0] : String(l.attendance_date).split('T')[0];
+            return {
+                ...l,
+                date: isoDate,
+                attendance_date: isoDate,
+                status: (l.status || 'present').toLowerCase()
+            };
+        });
+
         res.json({
             overall_attendance: total > 0 ? overallRate : 0,
             classes_attended: attended,
             classes_missed: missed,
             total_classes: total,
             this_week_rate: total > 0 ? overallRate : 0,
-            calendar_logs: logs,
+            calendar_logs: mappedLogs,
+            daily_records: mappedLogs,
+            records: mappedLogs,
             attendance_by_class: attendanceByClass,
             recent_absences_lates: recentAbsencesLates
         });

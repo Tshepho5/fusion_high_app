@@ -46,13 +46,18 @@ const formatLocalDate = (d: Date): string => {
 
 const normalizeDateStr = (dateVal: any): string => {
   if (!dateVal) return '';
-  if (typeof dateVal === 'string') {
-    return dateVal.split('T')[0];
-  }
   if (dateVal instanceof Date) {
     return formatLocalDate(dateVal);
   }
-  return String(dateVal);
+  const str = String(dateVal).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    return str.split('T')[0].substring(0, 10);
+  }
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    return formatLocalDate(parsed);
+  }
+  return str;
 };
 
 export const SchoolCalendar: React.FC = () => {
@@ -69,13 +74,17 @@ export const SchoolCalendar: React.FC = () => {
 
   // Parent & Learner Attendance State (ZERO DUMMY DATA)
   const [attendanceData, setAttendanceData] = useState<{
-    total_recorded: number;
-    present_count: number;
-    absent_count: number;
-    late_count: number;
-    attendance_rate: number;
-    daily_records: any[];
+    total_recorded?: number;
+    present_count?: number;
+    absent_count?: number;
+    late_count?: number;
+    attendance_rate?: number;
+    daily_records?: any[];
+    records?: any[];
+    recent_attendance_records?: any[];
+    calendar_logs?: any[];
     children?: any[];
+    child?: any;
     child_id?: number;
     learner_name?: string;
   } | null>(null);
@@ -222,15 +231,17 @@ export const SchoolCalendar: React.FC = () => {
   };
 
   const getAttendanceForDay = (day: number) => {
-    if (!attendanceData || !attendanceData.daily_records) return [];
+    const list: any[] = attendanceData?.daily_records || attendanceData?.records || attendanceData?.recent_attendance_records || attendanceData?.calendar_logs || [];
+    if (!list || list.length === 0) return [];
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return attendanceData.daily_records.filter(r => normalizeDateStr(r.date) === dateStr);
+    return list.filter((r: any) => normalizeDateStr(r.date || r.attendance_date) === dateStr);
   };
 
   const selectedDateStr = formatLocalDate(selectedDay);
   const selectedDayEvents = filteredEvents.filter(e => normalizeDateStr(e.event_date) === selectedDateStr);
-  const selectedDayAttendance = attendanceData?.daily_records
-    ? attendanceData.daily_records.filter(r => normalizeDateStr(r.date) === selectedDateStr)
+  const attendanceList: any[] = attendanceData?.daily_records || attendanceData?.records || attendanceData?.recent_attendance_records || attendanceData?.calendar_logs || [];
+  const selectedDayAttendance = attendanceList.length > 0
+    ? attendanceList.filter((r: any) => normalizeDateStr(r.date || r.attendance_date) === selectedDateStr)
     : [];
 
   const getEventTypeBadge = (type: string) => {

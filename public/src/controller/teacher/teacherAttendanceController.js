@@ -90,10 +90,16 @@ exports.submitAttendance = async (req, res) => {
             // Automated Attendance Alert Message & Email to Parent for Present, Late, and Absent
             try {
                 const childInfoRes = await client.query(
-                    `SELECT c.full_name, c.surname, c.learner_number, c.parent_id, u.email as parent_email, u.full_name as parent_name 
+                    `SELECT c.full_name, c.surname, c.learner_number, 
+                            COALESCE(c.parent_id, pc.parent_id) as parent_id,
+                            COALESCE(u.email, pu.email) as parent_email,
+                            COALESCE(u.full_name, pu.full_name) as parent_name
                      FROM children c 
                      LEFT JOIN users u ON c.parent_id = u.id 
-                     WHERE c.id = $1`,
+                     LEFT JOIN parent_children pc ON pc.child_id = c.id
+                     LEFT JOIN users pu ON pc.parent_id = pu.id
+                     WHERE c.id = $1
+                     LIMIT 1`,
                     [childId]
                 );
                 if (childInfoRes.rows[0] && childInfoRes.rows[0].parent_id) {
@@ -101,16 +107,6 @@ exports.submitAttendance = async (req, res) => {
                     const learnerFullName = `${childInfo.full_name} ${childInfo.surname}`;
                     const statusText = status.toUpperCase();
                     const scanTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-                    let statusColor = '#10b981'; // Green for present
-                    let statusTitle = `✅ Present & Verified`;
-                    if (status === 'late') {
-                        statusColor = '#f59e0b';
-                        statusTitle = `⏰ Marked Late`;
-                    } else if (status === 'absent') {
-                        statusColor = '#f43f5e';
-                        statusTitle = `⚠️ Marked Absent`;
-                    }
 
                     // 1. In-App Notification (Rings notification bell & alerts parent in header)
                     await NotificationService.sendToUsers({
@@ -135,32 +131,24 @@ exports.submitAttendance = async (req, res) => {
                         ]
                     );
 
-                    // Direct Email Notification to Parent
+                    // 3. Direct Styled HTML Email Notification to Parent
                     if (childInfo.parent_email) {
-                        const emailHtml = `
-                          <p style="font-size:15px; color:#ffffff; margin-top:0;">Dear <strong>${childInfo.parent_name || 'Parent/Guardian'}</strong>,</p>
-                          <p style="color:#cbd5e1; font-size:14px; line-height:1.6;">
-                            This is an official automated attendance notification regarding your enrolled learner at Fusion High School:
-                          </p>
-                          <div style="background:#0f172a; border:1px solid #334155; border-left:4px solid ${statusColor}; border-radius:10px; padding:16px 20px; margin:18px 0;">
-                            <p style="margin:0; color:${statusColor}; font-size:15px; font-weight:800; text-transform:uppercase;">
-                              ${statusTitle}
-                            </p>
-                            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:10px; font-size:13px; color:#cbd5e1;">
-                              <tr><td style="padding:4px 0; color:#94a3b8; width:130px;">Learner:</td><td style="color:#ffffff; font-weight:700;">${learnerFullName} (${childInfo.learner_number || 'N/A'})</td></tr>
-                              <tr><td style="padding:4px 0; color:#94a3b8;">Subject / Period:</td><td style="color:#38bdf8; font-weight:700;">${subject}</td></tr>
-                              <tr><td style="padding:4px 0; color:#94a3b8;">Date Recorded:</td><td style="color:#ffffff; font-weight:700;">${attendanceDate}</td></tr>
-                              <tr><td style="padding:4px 0; color:#94a3b8;">Logged Time:</td><td style="color:#ffffff; font-weight:700;">${scanTimeStr}</td></tr>
-                            </table>
-                          </div>
-                          <p style="font-size:13px; color:#94a3b8; line-height:1.5;">
-                            You can log in to your Parent Portal at any time to review real-time academic records, timetable updates, and communicate with subject teachers.
-                          </p>
-                        `;
+                        const template = emailService.templates.attendanceNotification({
+                            parentName: childInfo.parent_name || 'Parent / Guardian',
+                            learnerName: learnerFullName,
+                            learnerNumber: childInfo.learner_number || 'N/A',
+                            status,
+                            subject,
+                            date: attendanceDate,
+                            time: scanTimeStr,
+                            baseUrl: 'https://educonnect-cmyh.onrender.com'
+                        });
+
+                        console.log(`[ATTENDANCE EMAIL] Dispatching attendance notice to parent: ${childInfo.parent_email} for ${learnerFullName}`);
                         emailService.send(
                             childInfo.parent_email,
-                            `[Attendance Notice] ${learnerFullName} marked ${statusText} on ${attendanceDate}`,
-                            emailHtml
+                            template.subject,
+                            template.body
                         ).catch(e => console.warn('[ATTENDANCE EMAIL NOTICE]:', e.message));
                     }
                 }

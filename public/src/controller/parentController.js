@@ -949,12 +949,17 @@ exports.getChildAttendanceOverview = async (req, res) => {
 
         const recentLogsTable = logs.map(l => {
             const dateObj = new Date(l.attendance_date);
+            const isoDate = l.attendance_date instanceof Date ? l.attendance_date.toISOString().split('T')[0] : String(l.attendance_date).split('T')[0];
             const timeInFormatted = l.status === 'absent' ? '—' : (l.created_at ? new Date(l.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (l.status === 'late' ? '08:15 AM' : '07:45 AM'));
             const timeOutFormatted = l.status === 'absent' ? '—' : '02:30 PM';
             return {
-                date: dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                date: isoDate,
+                attendance_date: isoDate,
+                formatted_date: dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                 day: dateObj.toLocaleDateString('en-US', { weekday: 'long' }),
-                status: l.status.charAt(0).toUpperCase() + l.status.slice(1),
+                status: (l.status || 'present').toLowerCase(),
+                subject_name: l.subject_name || 'General Registration',
+                subject: l.subject_name || 'General Registration',
                 time_in: timeInFormatted,
                 time_out: timeOutFormatted,
                 teacher: l.teacher_name ? `${l.teacher_name} ${l.teacher_surname || ''}` : 'Class Teacher',
@@ -982,6 +987,7 @@ exports.getChildAttendanceOverview = async (req, res) => {
             late_days: daysLate,
             punctuality_rate: punctualityRate,
             stats: statsObj,
+            daily_records: recentLogsTable,
             records: recentLogsTable,
             recent_attendance_records: recentLogsTable
         });
