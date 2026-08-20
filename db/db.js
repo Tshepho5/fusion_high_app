@@ -35,36 +35,104 @@ pool.on('error', (err) => {
 // Test the database connection and initialize performance indexes on startup
 pool.connect(async (err, client, release) => {
     if (err) {
-        console.error('FATAL: Could not connect to the database. Please check your connection settings in the .env file.');
+        console.error('FATAL: Could not connect to the database. Connection Error:', err.message);
         console.error(err.stack);
-        process.exit(1);
+        // Do not immediately exit so container restart backoff doesn't hard-crash
+        return;
     }
     console.log('Database connection successful.');
 
-    // Initialize database indexes for performance optimization
     try {
+        // 1. Ensure core schema tables exist
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS roles (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(50) UNIQUE NOT NULL
+            );
+            INSERT INTO roles (name) VALUES ('admin'), ('parent'), ('learner'), ('teacher') ON CONFLICT DO NOTHING;
+
+            CREATE TABLE IF NOT EXISTS departments (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) UNIQUE NOT NULL,
+                description TEXT
+            );
+            INSERT INTO departments (name, description) VALUES ('Administration', 'School administration.'), ('Academic', 'Curriculum.') ON CONFLICT DO NOTHING;
+
+            CREATE TABLE IF NOT EXISTS employee_roles (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(50) UNIQUE NOT NULL
+            );
+            INSERT INTO employee_roles (name) VALUES ('teacher'), ('Principal'), ('Vice_Principal') ON CONFLICT DO NOTHING;
+
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                email VARCHAR(255) UNIQUE,
+                password_hash VARCHAR(255),
+                role_id INTEGER REFERENCES roles(id) ON DELETE SET NULL,
+                full_name VARCHAR(255),
+                surname VARCHAR(255),
+                id_number VARCHAR(20),
+                dob DATE,
+                gender VARCHAR(10),
+                phone VARCHAR(20),
+                physical_address TEXT,
+                country VARCHAR(100),
+                race VARCHAR(50),
+                parent_type VARCHAR(50),
+                reset_code VARCHAR(10),
+                reset_expiry TIMESTAMP,
+                profile_picture_path VARCHAR(255),
+                preferences JSONB DEFAULT '{}'::jsonb,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS children (
+                id SERIAL PRIMARY KEY,
+                parent_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                secondary_parent_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                learner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                full_name VARCHAR(255) NOT NULL,
+                surname VARCHAR(255) NOT NULL,
+                dob DATE,
+                grade INTEGER NOT NULL,
+                stream VARCHAR(50) DEFAULT 'General',
+                home_language VARCHAR(50) DEFAULT 'isiZulu',
+                learner_number VARCHAR(50),
+                application_number VARCHAR(50),
+                subjects TEXT[] DEFAULT '{}',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS employees (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                employee_role_id INTEGER REFERENCES employee_roles(id),
+                full_name VARCHAR(255) NOT NULL,
+                surname VARCHAR(255) NOT NULL,
+                department_id INTEGER REFERENCES departments(id),
+                subjects TEXT[] DEFAULT '{}',
+                subject_codes TEXT[] DEFAULT '{}',
+                grades_taught INTEGER[] DEFAULT '{}',
+                classes_taught TEXT[] DEFAULT '{}',
+                phone VARCHAR(20),
+                email VARCHAR(255),
+                hired_date DATE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // 2. Initialize performance indexes
         await client.query(`
             CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email));
             CREATE INDEX IF NOT EXISTS idx_users_id_number ON users(id_number);
             CREATE INDEX IF NOT EXISTS idx_children_learner_number ON children(learner_number);
             CREATE INDEX IF NOT EXISTS idx_children_parent_id ON children(parent_id);
-            CREATE INDEX IF NOT EXISTS idx_parent_children_parent ON parent_children(parent_id);
-            CREATE INDEX IF NOT EXISTS idx_parent_children_child ON parent_children(child_id);
-            CREATE INDEX IF NOT EXISTS idx_attendance_child_date ON attendance(child_id, attendance_date);
             CREATE INDEX IF NOT EXISTS idx_employees_user_id ON employees(user_id);
-            CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department_id);
-            CREATE INDEX IF NOT EXISTS idx_timetables_grade_stream ON timetables(grade, stream);
-            CREATE INDEX IF NOT EXISTS idx_messages_participants ON messages(sender_id, recipient_id);
-            CREATE INDEX IF NOT EXISTS idx_announcements_created ON announcements(created_at DESC);
         `);
-        // Clean up any historical dummy baseline assessment scores from database
-        const cleanRes = await client.query(`DELETE FROM progress WHERE notes ILIKE '%baseline assessment score%'`);
-        if (cleanRes.rowCount > 0) {
-            console.log(`[DATABASE] Removed ${cleanRes.rowCount} dummy baseline assessment marks.`);
-        }
-        console.log('[DATABASE] Performance indexes verified.');
+
+        console.log('[DATABASE] Core tables and performance indexes verified.');
     } catch (indexErr) {
-        console.warn('[DATABASE WARNING] Index verification warning:', indexErr.message);
+        console.warn('[DATABASE WARNING] Schema verification warning:', indexErr.message);
     } finally {
         release();
     }
