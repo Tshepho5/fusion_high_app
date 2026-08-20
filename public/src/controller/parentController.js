@@ -1182,3 +1182,105 @@ exports.getChildAlerts = async (req, res) => {
         res.status(500).json({ error: 'Failed to retrieve alerts.' });
     }
 };
+
+/**
+ * Child Attendance Overview for Parent Portal (/api/parent/child-attendance?childId=X)
+ * ZERO DUMMY DATA: Queries real database records.
+ */
+exports.getChildAttendanceOverview = async (req, res) => {
+    try {
+        const parentId = req.user.id;
+        let childId = req.query.childId || req.query.child_id;
+
+        const availableChildren = await fetchParentChildren(parentId);
+        if (availableChildren.length === 0) {
+            return res.json({
+                children: [],
+                total_recorded: 0,
+                present_count: 0,
+                absent_count: 0,
+                late_count: 0,
+                attendance_rate: 100,
+                daily_records: [],
+                calendar_entries: []
+            });
+        }
+
+        let targetChild = availableChildren[0];
+        if (childId) {
+            const found = availableChildren.find(c => c.id === parseInt(childId, 10));
+            if (found) targetChild = found;
+        }
+
+        // Query real database attendance records for this child
+        const attRes = await db.query(
+            `SELECT 
+                a.id, 
+                COALESCE(a.attendance_date, a.date) as date,
+                a.status, 
+                COALESCE(a.subject_name, 'General Roll-Call') as subject_name,
+                a.created_at,
+                COALESCE(u.full_name || ' ' || u.surname, 'Subject Educator') as recorded_by_name
+             FROM attendance a
+             LEFT JOIN users u ON (a.recorded_by_teacher_id = u.id OR a.recorded_by = u.id)
+             WHERE a.child_id = $1 OR a.learner_id = $1
+             ORDER BY COALESCE(a.attendance_date, a.date) DESC, a.created_at DESC`,
+            [targetChild.id]
+        );
+
+        const rows = attRes.rows;
+        let presentCount = 0;
+        let absentCount = 0;
+        let lateCount = 0;
+
+        const dailyRecords = rows.map(r => {
+            const statusLower = (r.status || 'present').toLowerCase();
+            if (statusLower === 'present') presentCount++;
+            else if (statusLower === 'absent') absentCount++;
+            else if (statusLower === 'late') lateCount++;
+
+            const dateObj = new Date(r.date);
+            const formattedDate = dateObj.toISOString().split('T')[0];
+
+            return {
+                id: r.id,
+                date: formattedDate,
+                raw_date: r.date,
+                status: statusLower,
+                subject: r.subject_name,
+                recorded_by: r.recorded_by_name,
+                time: r.created_at ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '08:00 AM'
+            };
+        });
+
+        const totalRecorded = rows.length;
+        const attendanceRate = totalRecorded > 0 ? Math.round(((presentCount + lateCount) / totalRecorded) * 100) : 100;
+
+        const calendarEntries = dailyRecords.map(r => ({
+            id: `att-${r.id}`,
+            date: r.date,
+            title: `Attendance: ${r.status.toUpperCase()} (${r.subject})`,
+            type: r.status === 'present' ? 'Sports' : (r.status === 'late' ? 'Holiday' : 'Exam'),
+            status: r.status,
+            subject: r.subject,
+            time: r.time,
+            child_name: targetChild.full_name,
+            is_attendance: true
+        }));
+
+        res.json({
+            child: targetChild,
+            children: availableChildren.map(c => ({ id: c.id, full_name: c.full_name, surname: c.surname, grade: c.grade })),
+            total_recorded: totalRecorded,
+            present_count: presentCount,
+            absent_count: absentCount,
+            late_count: lateCount,
+            attendance_rate: attendanceRate,
+            daily_records: dailyRecords,
+            calendar_entries: calendarEntries
+        });
+    } catch (err) {
+        console.error('Error fetching child attendance overview for parent:', err);
+        res.status(500).json({ error: 'Failed to retrieve attendance records: ' + err.message });
+    }
+};

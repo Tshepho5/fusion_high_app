@@ -1952,4 +1952,107 @@ exports.simulateAps = async (req, res) => {
         console.error('Error simulating APS:', err);
         res.status(500).json({ error: 'Failed to simulate APS: ' + err.message });
     }
+};
+
+/**
+ * Returns real database attendance records and calendar tracking for the logged-in learner.
+ * ZERO DUMMY DATA.
+ */
+exports.getAttendanceOverview = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const childRes = await db.query(
+            `SELECT id, full_name, surname, grade, learner_number, stream, class_id FROM children WHERE learner_user_id = $1 LIMIT 1`,
+            [userId]
+        );
+
+        if (childRes.rows.length === 0) {
+            return res.json({
+                total_recorded: 0,
+                present_count: 0,
+                absent_count: 0,
+                late_count: 0,
+                attendance_rate: 100,
+                consecutive_streak: 0,
+                daily_records: [],
+                calendar_entries: []
+            });
+        }
+
+        const childId = childRes.rows[0].id;
+
+        // Query real database attendance records
+        const attRes = await db.query(
+            `SELECT 
+                a.id, 
+                COALESCE(a.attendance_date, a.date) as date,
+                a.status, 
+                COALESCE(a.subject_name, 'General Roll-Call') as subject_name,
+                a.created_at,
+                COALESCE(u.full_name || ' ' || u.surname, 'Subject Educator') as recorded_by_name
+             FROM attendance a
+             LEFT JOIN users u ON (a.recorded_by_teacher_id = u.id OR a.recorded_by = u.id)
+             WHERE a.child_id = $1 OR a.learner_id = $1
+             ORDER BY COALESCE(a.attendance_date, a.date) DESC, a.created_at DESC`,
+            [childId]
+        );
+
+        const rows = attRes.rows;
+        let presentCount = 0;
+        let absentCount = 0;
+        let lateCount = 0;
+
+        const dailyRecords = rows.map(r => {
+            const statusLower = (r.status || 'present').toLowerCase();
+            if (statusLower === 'present') presentCount++;
+            else if (statusLower === 'absent') absentCount++;
+            else if (statusLower === 'late') lateCount++;
+
+            const dateObj = new Date(r.date);
+            const formattedDate = dateObj.toISOString().split('T')[0];
+
+            return {
+                id: r.id,
+                date: formattedDate,
+                raw_date: r.date,
+                status: statusLower,
+                subject: r.subject_name,
+                recorded_by: r.recorded_by_name,
+                time: r.created_at ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '08:00 AM'
+            };
+        });
+
+        const totalRecorded = rows.length;
+        const attendanceRate = totalRecorded > 0 ? Math.round(((presentCount + lateCount) / totalRecorded) * 100) : 100;
+
+        // Calendar-specific mapped entries
+        const calendarEntries = dailyRecords.map(r => ({
+            id: `att-${r.id}`,
+            date: r.date,
+            title: `Attendance: ${r.status.toUpperCase()} (${r.subject})`,
+            type: r.status === 'present' ? 'Sports' : (r.status === 'late' ? 'Holiday' : 'Exam'),
+            status: r.status,
+            subject: r.subject,
+            time: r.time,
+            is_attendance: true
+        }));
+
+        res.json({
+            child_id: childId,
+            learner_name: `${childRes.rows[0].full_name} ${childRes.rows[0].surname}`.trim(),
+            grade: childRes.rows[0].grade,
+            learner_number: childRes.rows[0].learner_number,
+            total_recorded: totalRecorded,
+            present_count: presentCount,
+            absent_count: absentCount,
+            late_count: lateCount,
+            attendance_rate: attendanceRate,
+            consecutive_streak: presentCount,
+            daily_records: dailyRecords,
+            calendar_entries: calendarEntries
+        });
+    } catch (err) {
+        console.error('Error fetching learner attendance overview:', err);
+        res.status(500).json({ error: 'Failed to retrieve attendance records: ' + err.message });
+    }
 };

@@ -416,10 +416,14 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                 </div>
 
                 {/* KPI Metrics */}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div className="p-3 rounded-2xl bg-surface-darker border border-white/5 text-center">
                     <p className="text-[10px] uppercase font-bold text-slate-400">Enrolled</p>
                     <p className="text-base font-bold font-mono text-cyan-400 mt-0.5">{card.learner_count} Learners</p>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-surface-darker border border-white/5 text-center">
+                    <p className="text-[10px] uppercase font-bold text-slate-400">Attendance</p>
+                    <p className="text-base font-bold font-mono text-emerald-400 mt-0.5">{card.attendance_rate !== undefined ? card.attendance_rate : 100}%</p>
                   </div>
                   <div className="p-3 rounded-2xl bg-surface-darker border border-white/5 text-center">
                     <p className="text-[10px] uppercase font-bold text-slate-400">Pending</p>
@@ -427,7 +431,7 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                   </div>
                   <div className="p-3 rounded-2xl bg-surface-darker border border-white/5 text-center">
                     <p className="text-[10px] uppercase font-bold text-slate-400">Assessments</p>
-                    <p className="text-base font-bold font-mono text-emerald-400 mt-0.5">{card.upcoming_tests || 1} Tests</p>
+                    <p className="text-base font-bold font-mono text-indigo-300 mt-0.5">{card.upcoming_tests || 0} Tests</p>
                   </div>
                 </div>
 

@@ -1,5 +1,6 @@
 const db = require('../../../../db/db');
 const emailService = require('../../services/emailService');
+const NotificationService = require('../../services/notificationService');
 
 /**
  * Gets attendance roster for a class on a specific date.
@@ -111,7 +112,17 @@ exports.submitAttendance = async (req, res) => {
                         statusTitle = `⚠️ Marked Absent`;
                     }
 
-                    // In-app portal message
+                    // 1. In-App Notification (Rings notification bell & alerts parent in header)
+                    await NotificationService.sendToUsers({
+                        userIds: [childInfo.parent_id],
+                        title: `Attendance: ${learnerFullName} marked ${statusText}`,
+                        message: `${learnerFullName} was marked ${statusText} for ${subject} on ${attendanceDate} at ${scanTimeStr}.`,
+                        type: 'attendance',
+                        targetTab: 'calendar',
+                        metadata: { child_id: childId, status, date: attendanceDate, subject }
+                    }).catch(e => console.warn('[NOTIFICATION SERVICE ATTENDANCE NOTICE]:', e.message));
+
+                    // 2. In-app portal message
                     await client.query(
                         `INSERT INTO messages (sender_id, recipient_id, child_id, subject, body, content, read_at, created_at)
                          VALUES ($1, $2, $3, $4, $5, $5, NULL, NOW())`,

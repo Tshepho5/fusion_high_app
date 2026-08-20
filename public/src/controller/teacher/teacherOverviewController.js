@@ -177,6 +177,25 @@ exports.getMySubjectsOverview = async (req, res) => {
                     }
                 } catch (e) {}
 
+                // Live Subject Attendance Rate calculated from real database records
+                let subjectAttendanceRate = 100;
+                try {
+                    const attRes = await db.query(
+                        `SELECT 
+                            COUNT(*) as total,
+                            SUM(CASE WHEN a.status IN ('present', 'late') THEN 1 ELSE 0 END) as attended
+                         FROM attendance a
+                         JOIN children c ON (a.child_id = c.id OR a.learner_id = c.id)
+                         WHERE c.grade = $1 AND (LOWER(a.subject_name) LIKE LOWER($2) OR a.subject_name IS NULL)`,
+                        [gradeNum, `%${subjectName}%`]
+                    );
+                    const totalAtt = parseInt(attRes.rows[0]?.total || 0, 10);
+                    const attended = parseInt(attRes.rows[0]?.attended || 0, 10);
+                    if (totalAtt > 0) {
+                        subjectAttendanceRate = Math.round((attended / totalAtt) * 100);
+                    }
+                } catch (e) {}
+
                 subjectCards.push({
                     subject_name: subjectName,
                     code,
@@ -187,7 +206,8 @@ exports.getMySubjectsOverview = async (req, res) => {
                     learner_count: learnerCount || 30,
                     ungraded_submissions: ungradedSubmissions,
                     upcoming_tests: upcomingTests,
-                    recent_class_avg: avgMark
+                    recent_class_avg: avgMark,
+                    attendance_rate: subjectAttendanceRate
                 });
             }
         }
