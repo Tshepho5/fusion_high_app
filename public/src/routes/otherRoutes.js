@@ -5,15 +5,12 @@ const progressController = require('../controller/progressController');
 const taskController = require('../controller/taskController');
 const scheduleController = require('../controller/schedule');
 const learnerController = require('../controller/learnerController');
-const { auth } = require('../../../authMiddleware');
-
-// These routes are protected but accessible by various roles.
-// Role-specific logic is handled within the controllers.
+const { auth, requireRole } = require('../../../authMiddleware');
 
 // Announcements
-router.post('/announcements', auth, announcementController.createAnnouncement);
+router.post('/announcements', auth, requireRole(['admin', 'teacher']), announcementController.createAnnouncement);
 router.get('/announcements', auth, announcementController.getAnnouncements);
-router.delete('/announcements/:id', auth, announcementController.deleteAnnouncement);
+router.delete('/announcements/:id', auth, requireRole(['admin', 'teacher']), announcementController.deleteAnnouncement);
 
 // Progress & Official Reports
 router.get('/learner/progress', auth, progressController.getLearnerProgress);

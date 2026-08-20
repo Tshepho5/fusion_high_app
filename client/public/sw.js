@@ -42,8 +42,8 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // Skip non-GET and API mutation requests from cache
-  if (req.method !== 'GET' || url.pathname.startsWith('/api/auth') || url.pathname.startsWith('/api/messages')) {
+  // CRITICAL: Always bypass Service Worker caching for all API endpoints and non-GET requests
+  if (req.method !== 'GET' || url.pathname.startsWith('/api')) {
     return;
   }
 
