@@ -274,7 +274,7 @@ exports.cancelBooking = async (req, res) => {
 
     NotificationService.sendToUsers({
       userIds: [recipientId],
-      title: '❌ PTC Consultation Cancelled',
+      title: 'PTC Consultation Cancelled',
       message: `The consultation for ${booking.learner_name} (${booking.subject}) scheduled for ${new Date(booking.date).toLocaleDateString()} at ${booking.start_time} was cancelled by ${cancellerName}.`,
       type: 'ptc',
       targetTab: 'ptc'

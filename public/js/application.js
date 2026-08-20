@@ -102,7 +102,7 @@ function initRealtimeInputEnforcement() {
       const originalValue = input.value;
       
       if (/\d/.test(originalValue)) {
-        showError(input.id, '❌ Numbers are not allowed in this field. Please use letters only.');
+        showError(input.id, 'Numbers are not allowed in this field. Please use letters only.');
         input.value = originalValue.replace(/\d/g, '');
         shakeElement(input);
         checkStepFormValidity();
@@ -110,7 +110,7 @@ function initRealtimeInputEnforcement() {
       }
 
       if (/[^A-Za-z\s\-']/.test(originalValue)) {
-        showError(input.id, '❌ Special symbols are not allowed. Letters, spaces, and hyphens only.');
+        showError(input.id, 'Special symbols are not allowed. Letters, spaces, and hyphens only.');
         input.value = originalValue.replace(/[^A-Za-z\s\-']/g, '');
         shakeElement(input);
         checkStepFormValidity();
@@ -138,7 +138,7 @@ function initRealtimeInputEnforcement() {
       const originalValue = input.value;
 
       if (/[^\d]/.test(originalValue)) {
-        showError(input.id, '❌ Letters and words are not allowed in this field. Numbers only.');
+        showError(input.id, 'Letters and words are not allowed in this field. Numbers only.');
         input.value = originalValue.replace(/\D/g, '');
         shakeElement(input);
         checkStepFormValidity();
@@ -148,7 +148,7 @@ function initRealtimeInputEnforcement() {
       if (input.value.length === 13) {
         const val = validateSAIDClient(input.value);
         if (!val.isValid) {
-          showError(input.id, `⚠️ ${val.error}`);
+          showError(input.id, val.error);
         } else {
           clearFieldError(input.id);
         }
@@ -169,7 +169,7 @@ function initRealtimeInputEnforcement() {
       const originalValue = input.value;
 
       if (/[a-zA-Z]/.test(originalValue)) {
-        showError(input.id, '❌ Letters and words are not allowed in phone numbers. Numbers only.');
+        showError(input.id, 'Letters and words are not allowed in phone numbers. Numbers only.');
         input.value = originalValue.replace(/[a-zA-Z]/g, '');
         shakeElement(input);
         checkStepFormValidity();
@@ -344,51 +344,51 @@ function validateStep(step) {
     const dob = document.getElementById('dob');
 
     if (!firstName.value.trim() || !NAME_PATTERN.test(firstName.value.trim())) {
-      showError('first_name', '❌ Please enter a valid first name (letters only, no numbers).');
+      showError('first_name', 'Please enter a valid first name (letters only, no numbers).');
       if (!firstInvalidElement) firstInvalidElement = firstName;
       isValid = false;
     }
 
     if (!surname.value.trim() || !NAME_PATTERN.test(surname.value.trim())) {
-      showError('surname', '❌ Please enter a valid surname (letters only, no numbers).');
+      showError('surname', 'Please enter a valid surname (letters only, no numbers).');
       if (!firstInvalidElement) firstInvalidElement = surname;
       isValid = false;
     }
 
     const cleanId = (idNumber.value || '').replace(/\D/g, '');
     if (!cleanId || cleanId.length !== 13) {
-      showError('id_number', '❌ Please enter a complete 13-digit South African ID number.');
+      showError('id_number', 'Please enter a complete 13-digit South African ID number.');
       if (!firstInvalidElement) firstInvalidElement = idNumber;
       isValid = false;
     } else {
       const saVal = validateSAIDClient(cleanId);
       if (!saVal.isValid) {
-        showError('id_number', `❌ ${saVal.error}`);
+        showError('id_number', saVal.error);
         if (!firstInvalidElement) firstInvalidElement = idNumber;
         isValid = false;
       }
     }
 
     if (!dob.value) {
-      showError('dob', '❌ Date of Birth is required.');
+      showError('dob', 'Date of Birth is required.');
       if (!firstInvalidElement) firstInvalidElement = dob;
       isValid = false;
     }
 
     if (!grade.value) {
-      showError('grade_applied', '❌ Please select the grade you are applying for.');
+      showError('grade_applied', 'Please select the grade you are applying for.');
       if (!firstInvalidElement) firstInvalidElement = grade;
       isValid = false;
     }
 
     if (!address.value.trim() || address.value.trim().length < 6) {
-      showError('physical_address', '❌ Please provide a complete physical residential address.');
+      showError('physical_address', 'Please provide a complete physical residential address.');
       if (!firstInvalidElement) firstInvalidElement = address;
       isValid = false;
     }
 
     if (phone.value.trim() && !PHONE_PATTERN.test(phone.value.trim().replace(/[\s-]/g, ''))) {
-      showError('learner_phone', '❌ Invalid phone number. Must start with +27 or 0, followed by 9 digits.');
+      showError('learner_phone', 'Invalid phone number. Must start with +27 or 0, followed by 9 digits.');
       if (!firstInvalidElement) firstInvalidElement = phone;
       isValid = false;
     }
@@ -404,38 +404,38 @@ function validateStep(step) {
     const pAddress = document.getElementById('primary_parent_address');
 
     if (!pName.value.trim() || !NAME_PATTERN.test(pName.value.trim())) {
-      showError('primary_parent_name', '❌ Primary parent name must only contain letters (no numbers).');
+      showError('primary_parent_name', 'Primary parent name must only contain letters (no numbers).');
       if (!firstInvalidElement) firstInvalidElement = pName;
       isValid = false;
     }
     if (!pSurname.value.trim() || !NAME_PATTERN.test(pSurname.value.trim())) {
-      showError('primary_parent_surname', '❌ Primary parent surname must only contain letters (no numbers).');
+      showError('primary_parent_surname', 'Primary parent surname must only contain letters (no numbers).');
       if (!firstInvalidElement) firstInvalidElement = pSurname;
       isValid = false;
     }
     if (!pRel.value) {
-      showError('primary_parent_relationship', '❌ Please select the parent/guardian relationship.');
+      showError('primary_parent_relationship', 'Please select the parent/guardian relationship.');
       if (!firstInvalidElement) firstInvalidElement = pRel;
       isValid = false;
     }
     if (!pId.value.trim() || pId.value.trim().length < 6) {
-      showError('primary_parent_id_number', '❌ Please enter a valid parent ID number (numbers only).');
+      showError('primary_parent_id_number', 'Please enter a valid parent ID number (numbers only).');
       if (!firstInvalidElement) firstInvalidElement = pId;
       isValid = false;
     }
     const cleanPhone = (pPhone.value || '').replace(/[\s-]/g, '');
     if (!cleanPhone || !PHONE_PATTERN.test(cleanPhone)) {
-      showError('primary_parent_phone', '❌ Phone must start with +27 or 0 followed by 9 digits.');
+      showError('primary_parent_phone', 'Phone must start with +27 or 0 followed by 9 digits.');
       if (!firstInvalidElement) firstInvalidElement = pPhone;
       isValid = false;
     }
     if (!pEmail.value.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pEmail.value.trim())) {
-      showError('primary_parent_email', '❌ Please enter a valid email address.');
+      showError('primary_parent_email', 'Please enter a valid email address.');
       if (!firstInvalidElement) firstInvalidElement = pEmail;
       isValid = false;
     }
     if (!pAddress.value.trim() || pAddress.value.trim().length < 6) {
-      showError('primary_parent_address', '❌ Primary parent physical address is required.');
+      showError('primary_parent_address', 'Primary parent physical address is required.');
       if (!firstInvalidElement) firstInvalidElement = pAddress;
       isValid = false;
     }
@@ -446,7 +446,7 @@ function validateStep(step) {
     const prevSchool = document.getElementById('previous_school');
 
     if (gradeVal > 8 && (!prevSchool.value.trim() || prevSchool.value.trim().length < 3)) {
-      showError('previous_school', `❌ Previous school name is required for Grade ${gradeVal} transfer admission.`);
+      showError('previous_school', `Previous school name is required for Grade ${gradeVal} transfer admission.`);
       if (!firstInvalidElement) firstInvalidElement = prevSchool;
       isValid = false;
     }
@@ -465,7 +465,7 @@ function validateStep(step) {
     // 16+ Strict SA ID requirement vs Under 16 Birth Certificate
     if (age !== null && age >= 16) {
       if (!learnerIdDoc.files || learnerIdDoc.files.length === 0) {
-        alert(`❌ Learner is ${age} years old (16+). South African law requires an official ID Document (Smart ID Card or Green Book), not a Birth Certificate.`);
+        showModal('error', 'Document Required', `Learner is ${age} years old (16+). South African law requires an official ID Document (Smart ID Card or Green Book), not a Birth Certificate.`);
         const cardLearnerId = document.getElementById('card-learner-id');
         cardLearnerId.scrollIntoView({ behavior: 'smooth' });
         shakeElement(cardLearnerId);
@@ -473,7 +473,7 @@ function validateStep(step) {
       }
     } else {
       if ((!birthCertDoc.files || birthCertDoc.files.length === 0) && (!learnerIdDoc.files || learnerIdDoc.files.length === 0)) {
-        alert(`❌ Learner is under 16 years old. An official Birth Certificate is required.`);
+        showModal('error', 'Document Required', `Learner is under 16 years old. An official Birth Certificate is required.`);
         const cardBirthCert = document.getElementById('card-birth-cert');
         cardBirthCert.scrollIntoView({ behavior: 'smooth' });
         shakeElement(cardBirthCert);
@@ -482,7 +482,7 @@ function validateStep(step) {
     }
 
     if (!parentIdDoc.files || parentIdDoc.files.length === 0) {
-      alert('❌ Parent / Legal Guardian certified ID document is required.');
+      showModal('error', 'Document Required', 'Parent / Legal Guardian certified ID document is required.');
       const cardParentId = document.getElementById('card-parent-id');
       cardParentId.scrollIntoView({ behavior: 'smooth' });
       shakeElement(cardParentId);
@@ -490,7 +490,7 @@ function validateStep(step) {
     }
 
     if (!proofResDoc.files || proofResDoc.files.length === 0) {
-      alert('❌ Proof of Residential Address (< 3 months old) is required.');
+      showModal('error', 'Document Required', 'Proof of Residential Address (< 3 months old) is required.');
       const cardProofRes = document.getElementById('card-proof-residence');
       cardProofRes.scrollIntoView({ behavior: 'smooth' });
       shakeElement(cardProofRes);
@@ -498,7 +498,7 @@ function validateStep(step) {
     }
 
     if (gradeVal > 8 && (!reportCardDoc.files || reportCardDoc.files.length === 0)) {
-      alert(`❌ Latest Academic Report Card is required for Grade ${gradeVal} transfer admission.`);
+      showModal('error', 'Document Required', `Latest Academic Report Card is required for Grade ${gradeVal} transfer admission.`);
       const cardReportCard = document.getElementById('card-report-card');
       cardReportCard.scrollIntoView({ behavior: 'smooth' });
       shakeElement(cardReportCard);
@@ -526,8 +526,13 @@ function showError(fieldId, message) {
         errSpan.className = 'field-error';
         group.appendChild(errSpan);
       }
-      errSpan.textContent = message;
-      errSpan.style.display = 'block';
+      
+      const cleanText = (message || '').replace(/^[❌⚠️✖🚫]\s*/, '');
+      const forbiddenIconSvg = `<svg class="error-icon" style="width:13px;height:13px;display:inline-block;vertical-align:-1.5px;margin-right:6px;flex-shrink:0;color:#ef4444;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`;
+      
+      errSpan.innerHTML = `${forbiddenIconSvg}<span>${cleanText}</span>`;
+      errSpan.style.display = 'flex';
+      errSpan.style.alignItems = 'center';
     }
   }
 }
@@ -938,7 +943,7 @@ function handleSubmissionResult(result) {
     modalRef.style.display = 'block';
     modalCta.style.display = 'none';
   } else if (result.status === 'waitlisted') {
-    modalIcon.innerHTML = '⏳';
+    modalIcon.innerHTML = `<svg style="width:48px;height:48px;color:#f59e0b;margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
     modalTitle.textContent = 'Application Placed on Waiting List';
     modalBody.innerHTML = `
       ${result.message}
@@ -949,8 +954,8 @@ function handleSubmissionResult(result) {
     modalRef.style.display = 'block';
     modalCta.style.display = 'none';
   } else {
-    modalIcon.innerHTML = '❌';
-    modalTitle.textContent = 'Validation Error';
+    modalIcon.innerHTML = `<svg style="width:48px;height:48px;color:#ef4444;margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`;
+    modalTitle.textContent = 'Validation Notice';
     modalBody.innerHTML = result.error || 'Please correct errors on the form.';
     modalRef.style.display = 'none';
     modalCta.style.display = 'none';

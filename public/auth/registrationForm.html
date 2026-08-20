@@ -142,11 +142,16 @@
           err.className = 'input-live-error';
           err.style.color = '#f87171';
           err.style.fontSize = '0.78rem';
-          err.style.marginTop = '2px';
+          err.style.marginTop = '4px';
           err.style.marginBottom = '6px';
+          err.style.display = 'flex';
+          err.style.alignItems = 'center';
+          err.style.gap = '5px';
           input.parentElement.insertBefore(err, input.nextSibling);
         }
-        err.textContent = msg;
+        const cleanMsg = (msg || '').replace(/^[❌⚠️✖🚫]\s*/, '');
+        const forbiddenIcon = `<svg style="width:13px;height:13px;flex-shrink:0;color:#ef4444;display:inline-block;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`;
+        err.innerHTML = `${forbiddenIcon}<span>${cleanMsg}</span>`;
         input.style.borderColor = '#ef4444';
         registerForm.querySelector('button[type="submit"]').disabled = true;
       };
@@ -166,10 +171,10 @@
         const input = event.target;
         const orig = input.value;
         if (/\d/.test(orig)) {
-          showInlineError(input, '❌ Numbers are not allowed here. Please enter letters only.');
+          showInlineError(input, 'Numbers are not allowed here. Please enter letters only.');
           input.value = orig.replace(/\d/g, '');
         } else if (/[^A-Za-z\s\-']/.test(orig)) {
-          showInlineError(input, '❌ Special symbols are not allowed. Letters and hyphens only.');
+          showInlineError(input, 'Special symbols are not allowed. Letters and hyphens only.');
           input.value = orig.replace(/[^A-Za-z\s\-']/g, '');
         } else {
           clearInlineError(input);
@@ -182,7 +187,7 @@
         const orig = input.value;
         const maxLength = parseInt(input.getAttribute('maxlength'));
         if (/[^\d]/.test(orig)) {
-          showInlineError(input, '❌ Letters and words are not allowed in this field. Numbers only.');
+          showInlineError(input, 'Letters and words are not allowed in this field. Numbers only.');
         } else {
           clearInlineError(input);
         }
@@ -203,7 +208,7 @@
       document.getElementById('phone').addEventListener('input', (e) => {
         const orig = e.target.value;
         if (/[a-zA-Z]/.test(orig)) {
-          showInlineError(e.target, '❌ Letters are not allowed in phone numbers. Numbers only.');
+          showInlineError(e.target, 'Letters are not allowed in phone numbers. Numbers only.');
         } else {
           clearInlineError(e.target);
         }
