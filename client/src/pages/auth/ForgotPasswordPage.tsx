@@ -42,21 +42,20 @@ export const ForgotPasswordPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  // Auto-fill OTP ONLY if the user clicked the direct email verification link
+  // Enforce Zero-Trust: Load email and transition to verify screen, but NEVER autofill OTP
   useEffect(() => {
     const urlEmail = searchParams.get('email');
-    const urlOtp = searchParams.get('otp');
     const urlStep = searchParams.get('step');
 
-    if (urlEmail && urlOtp && (urlStep === 'verify' || urlOtp)) {
+    if (urlEmail) {
       setEmail(urlEmail);
-      setOtp(urlOtp); // Only auto-fills because the user securely clicked the link from their email
-      setStep('verify');
-      setTimeLeft(120);
-      setTimerActive(true);
-      setMessage('Opened from your recovery email. Click Verify OTP to proceed:');
-    } else if (urlEmail) {
-      setEmail(urlEmail);
+      if (urlStep === 'verify') {
+        setStep('verify');
+        setOtp(''); // Strict zero-trust: User must manually enter the 4 digits from their email
+        setTimeLeft(120);
+        setTimerActive(true);
+        setMessage('Opened from your recovery email. Please enter the 4-digit code sent to your inbox:');
+      }
     }
   }, [searchParams]);
 

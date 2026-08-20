@@ -278,18 +278,18 @@ const emailService = {
       const title = 'Password Reset Verification Code';
       const encodedEmail = encodeURIComponent(email || '');
       const cleanBaseUrl = (baseUrl || 'http://localhost:4000').replace(/\/+$/, '');
-      const resetLink = `${cleanBaseUrl}/forgot-password?email=${encodedEmail}&step=verify&otp=${otp}`;
+      const resetLink = `${cleanBaseUrl}/forgot-password?email=${encodedEmail}&step=verify`;
 
       const contentHtml = `
         <p style="font-size: 14px; color: #cbd5e1; margin-top: 0;">
-          We received a request to reset your password for your Fusion High account. Click the button below to directly open the verification & password reset page:
+          We received a request to reset your password for your Fusion High account. Please use the 4-digit verification code below:
         </p>
 
         <div style="background: #0f172a; border: 1px dashed #6366f1; border-radius: 12px; padding: 22px; text-align: center; margin: 20px 0;">
           <p style="margin: 0 0 6px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; font-weight: 700;">
-            Your One-Time Security Code
+            Your 4-Digit Security Code
           </p>
-          <span style="font-size: 34px; font-weight: 900; letter-spacing: 8px; color: #818cf8; font-family: monospace; display: inline-block;">
+          <span style="font-size: 36px; font-weight: 900; letter-spacing: 8px; color: #818cf8; font-family: monospace; display: inline-block;">
             ${otp}
           </span>
           <div style="margin-top: 10px; display: inline-block; padding: 4px 12px; border-radius: 20px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);">
@@ -300,18 +300,18 @@ const emailService = {
         </div>
 
         <p style="font-size: 13px; color: #cbd5e1; line-height: 1.5;">
-          Click the button below to immediately open the password reset page with your email and OTP code pre-filled before it expires:
+          Click the button below to open the verification screen and manually enter your 4-digit OTP code before it expires:
         </p>
       `;
 
       return {
         subject: `Verification Code: ${otp} (Valid for 2 Minutes) - Password Reset`,
         body: createBaseEmailTemplate({
-          preheader: `Your verification code is ${otp}. Valid for 2 minutes. Click to enter OTP directly.`,
+          preheader: `Your verification code is ${otp}. Valid for 2 minutes. Click to enter your OTP code.`,
           title,
           subtitle: 'One-time security recovery code (2-minute limit)',
           contentHtml,
-          ctaText: 'Enter OTP & Reset Password',
+          ctaText: 'Verify OTP & Reset Password',
           ctaLink: resetLink
         })
       };
