@@ -85,15 +85,16 @@ export const ForgotPasswordPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      await authService.forgotPassword({ email: email.trim().toLowerCase() });
+      const res = await authService.forgotPassword({ email: email.trim() });
+      if (res.email) setEmail(res.email);
       // Keep OTP input empty so user enters it manually from their email
       setOtp('');
-      setMessage('A 4-digit security code has been sent to your email. Please check your inbox or spam folder (valid for 2 minutes).');
+      setMessage(res.message || 'A 4-digit security code has been sent to your email. Please check your inbox or spam folder (valid for 2 minutes).');
       setStep('verify');
       setTimeLeft(120);
       setTimerActive(true);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to send recovery code. Please check your email.');
+      setError(err.response?.data?.error || 'Failed to send recovery code. Please check your email or learner details.');
     } finally {
       setLoading(false);
     }
@@ -102,15 +103,16 @@ export const ForgotPasswordPage: React.FC = () => {
   // Resend OTP Code (Restarts 2-minute countdown, leaves input for manual entry)
   const handleResendOtp = async () => {
     if (!email) {
-      setError('Please enter your email address.');
+      setError('Please enter your email, learner number, or ID number.');
       return;
     }
     setResending(true);
     setError(null);
     try {
-      await authService.forgotPassword({ email: email.trim().toLowerCase() });
+      const res = await authService.forgotPassword({ email: email.trim() });
+      if (res.email) setEmail(res.email);
       setOtp(''); // User must enter the fresh code manually
-      setMessage('A fresh 4-digit code has been dispatched to your email (valid for 2 minutes).');
+      setMessage(res.message || 'A fresh 4-digit code has been dispatched to your email (valid for 2 minutes).');
       setTimeLeft(120);
       setTimerActive(true);
     } catch (err: any) {
@@ -258,17 +260,17 @@ export const ForgotPasswordPage: React.FC = () => {
           <form onSubmit={handleRequestOtp} className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                Registered Email Address
+                Registered Email, Learner Number, or ID Number
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                   <Mail className="w-4 h-4" />
                 </div>
                 <input
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g. parent@gmail.com"
+                  placeholder="e.g. parent@gmail.com, 20262246, or 0309106133080"
                   required
                   className="w-full rounded-xl bg-surface-darker border border-white/10 pl-10 pr-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />

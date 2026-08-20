@@ -684,20 +684,47 @@ exports.login = async (req, res) => {
 
 /**
  * Generates password reset OTP code immediately with a strict 2-minute validity window.
+ * Supports searching by Email, Learner Number, or South African ID Number.
+ * Automatically routes internal learner accounts to their verified parent's email.
  */
 exports.forgotPassword = async (req, res) => {
-    const { email } = req.body;
+    const { email, identifier } = req.body;
     try {
-        const normalizedEmail = email?.toLowerCase().trim();
-        if (!normalizedEmail) return res.status(400).json({ error: 'Email address is required.' });
+        const queryInput = (email || identifier || '').toString().trim();
+        if (!queryInput) return res.status(400).json({ error: 'Email address, Learner Number, or ID Number is required.' });
+
+        const userLookup = await db.query(`
+            SELECT u.id, u.email, u.full_name, u.surname, r.name as role_name, u.id_number, c.learner_number,
+                   pu.email as parent_user_email
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            LEFT JOIN children c ON c.learner_user_id = u.id
+            LEFT JOIN users pu ON c.parent_id = pu.id
+            WHERE LOWER(u.email) = LOWER($1)
+               OR LOWER(u.email) = LOWER($1) || '@fusion.high'
+               OR (u.id_number IS NOT NULL AND u.id_number = $1)
+               OR (c.learner_number IS NOT NULL AND c.learner_number = $1)
+            LIMIT 1
+        `, [queryInput]);
+
+        if (userLookup.rows.length === 0) {
+            return res.status(404).json({ error: 'No account found matching this Email, Learner Number, or ID Number.' });
+        }
+
+        const user = userLookup.rows[0];
+
+        // Resolve real destination email (if learner account is @fusion.high, deliver to registered parent email)
+        let targetDeliveryEmail = user.email;
+        if (user.email.endsWith('@fusion.high') && user.parent_user_email) {
+            targetDeliveryEmail = user.parent_user_email;
+        }
 
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
-        // Set OTP expiry strictly to 2 minutes from generation
-        const result = await db.query(
-            "UPDATE users SET reset_code = $1, reset_expiry = NOW() + INTERVAL '2 minutes' WHERE LOWER(email) = LOWER($2) RETURNING id",
-            [otp, normalizedEmail]
+        // Set OTP expiry strictly to 2 minutes from generation on the user record
+        await db.query(
+            "UPDATE users SET reset_code = $1, reset_expiry = NOW() + INTERVAL '2 minutes' WHERE id = $2",
+            [otp, user.id]
         );
-        if (result.rows.length === 0) return res.status(404).json({ error: 'No account found with this email address.' });
 
         // Dynamically determine baseUrl from request headers
         let baseUrl = req.get('origin');
@@ -713,71 +740,99 @@ exports.forgotPassword = async (req, res) => {
             baseUrl = `${protocol}://${host}`;
         }
 
-        const tpl = emailService.templates.forgotPassword(otp, normalizedEmail, baseUrl);
+        const tpl = emailService.templates.forgotPassword(otp, targetDeliveryEmail, baseUrl);
         
-        // Dispatch email immediately
-        emailService.send(normalizedEmail, tpl.subject, tpl.body).catch(err => {
-            console.error('[EMAIL ERROR] Failed to send OTP email:', err);
+        // Dispatch email immediately with robust error logging
+        console.log(`[AUTH] Dispatching OTP [${otp}] to destination email: ${targetDeliveryEmail} for user ID ${user.id} (${user.email})`);
+        emailService.send(targetDeliveryEmail, tpl.subject, tpl.body).catch(err => {
+            console.error('[EMAIL ERROR] Failed to send OTP email to ' + targetDeliveryEmail + ':', err);
         });
 
-        console.log(`[AUTH] Generated 2-Minute Password Reset OTP for ${normalizedEmail}: ${otp}`);
+        // Create a helpful masked email (e.g. ts***@gmail.com)
+        const parts = targetDeliveryEmail.split('@');
+        const masked = parts[0].length > 2 
+            ? `${parts[0].slice(0, 2)}***@${parts[1]}` 
+            : `${parts[0].slice(0, 1)}***@${parts[1]}`;
 
         res.json({ 
-            message: 'A 4-digit reset code has been sent immediately to your email (valid for 2 minutes).',
+            message: `A 4-digit reset code has been sent immediately to your registered email (${masked}). Valid for 2 minutes.`,
+            email: user.email,
+            delivery_email: masked,
             expires_in: 120
         });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { 
+        console.error('[AUTH FORGOT PW ERROR]:', err);
+        res.status(500).json({ error: err.message }); 
+    }
 };
 
 exports.verifyOTP = async (req, res) => {
-    const { email, code, otp } = req.body;
+    const { email, identifier, code, otp } = req.body;
     try {
-        const normalizedEmail = email ? email.toLowerCase().trim() : '';
+        const queryInput = (email || identifier || '').toString().trim();
         const rawCode = (code || otp || '').toString().trim();
-        if (!normalizedEmail || !rawCode) return res.status(400).json({ error: 'Email and OTP code are required.' });
+        if (!queryInput || !rawCode) return res.status(400).json({ error: 'Email/Identifier and OTP code are required.' });
 
-        const result = await db.query(
-            "SELECT id, reset_code FROM users WHERE LOWER(email) = LOWER($1) AND reset_code = $2 AND reset_expiry >= NOW()",
-            [normalizedEmail, rawCode]
-        );
+        const result = await db.query(`
+            SELECT u.id, u.email, u.reset_code, u.reset_expiry
+            FROM users u
+            LEFT JOIN children c ON c.learner_user_id = u.id
+            WHERE (LOWER(u.email) = LOWER($1)
+               OR LOWER(u.email) = LOWER($1) || '@fusion.high'
+               OR (u.id_number IS NOT NULL AND u.id_number = $1)
+               OR (c.learner_number IS NOT NULL AND c.learner_number = $1))
+              AND u.reset_code = $2
+            LIMIT 1
+        `, [queryInput, rawCode]);
 
         if (result.rows.length === 0) {
-            const expiredCheck = await db.query(
-                "SELECT id FROM users WHERE LOWER(email) = LOWER($1) AND reset_code = $2",
-                [normalizedEmail, rawCode]
-            );
-            if (expiredCheck.rows.length > 0) {
-                return res.status(400).json({ error: 'OTP code has expired (2-minute limit). Please click Resend Code to receive a new OTP.' });
-            }
-            return res.status(400).json({ error: 'Invalid 4-digit OTP code. Please check and try again.' });
+            return res.status(400).json({ error: 'Invalid 4-digit OTP code or identifier. Please check and try again.' });
+        }
+
+        const user = result.rows[0];
+        const now = new Date();
+        if (user.reset_expiry && new Date(user.reset_expiry) < now) {
+            return res.status(400).json({ error: 'OTP code has expired (2-minute limit). Please click Resend Code to receive a new OTP.' });
         }
         
         // Once verified within 2m, extend reset_expiry so user has sufficient time (15 mins) to enter new password
-        await db.query("UPDATE users SET reset_expiry = NOW() + INTERVAL '15 minutes' WHERE LOWER(email) = LOWER($1)", [normalizedEmail]);
-        res.json({ message: 'Code verified successfully. You can now set your new password.' });
+        await db.query("UPDATE users SET reset_expiry = NOW() + INTERVAL '15 minutes' WHERE id = $1", [user.id]);
+        res.json({ message: 'Code verified successfully. You can now set your new password.', email: user.email });
     } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
 exports.resetPassword = async (req, res) => {
-    const { email, code, otp, new_password, newPassword } = req.body;
+    const { email, identifier, code, otp, new_password, newPassword } = req.body;
     try {
-        const normalizedEmail = email ? email.toLowerCase().trim() : '';
+        const queryInput = (email || identifier || '').toString().trim();
         const rawCode = (code || otp || '').toString().trim();
         const targetPassword = new_password || newPassword || '';
 
-        if (!normalizedEmail || !rawCode || !targetPassword) {
-            return res.status(400).json({ error: 'Email, OTP code, and new password are required.' });
+        if (!queryInput || !rawCode || !targetPassword) {
+            return res.status(400).json({ error: 'Email/Identifier, OTP code, and new password are required.' });
         }
 
-        const userRes = await db.query(
-            'SELECT id, password_hash FROM users WHERE LOWER(email) = LOWER($1) AND reset_code = $2 AND (reset_expiry > NOW() OR reset_expiry IS NULL)',
-            [normalizedEmail, rawCode]
-        );
+        const userRes = await db.query(`
+            SELECT u.id, u.email, u.password_hash, u.reset_expiry
+            FROM users u
+            LEFT JOIN children c ON c.learner_user_id = u.id
+            WHERE (LOWER(u.email) = LOWER($1)
+               OR LOWER(u.email) = LOWER($1) || '@fusion.high'
+               OR (u.id_number IS NOT NULL AND u.id_number = $1)
+               OR (c.learner_number IS NOT NULL AND c.learner_number = $1))
+              AND u.reset_code = $2
+            LIMIT 1
+        `, [queryInput, rawCode]);
+
         if (userRes.rows.length === 0) {
             return res.status(400).json({ error: 'Invalid or expired OTP code. Please request a new code.' });
         }
 
         const user = userRes.rows[0];
+        const now = new Date();
+        if (user.reset_expiry && new Date(user.reset_expiry) < now) {
+            return res.status(400).json({ error: 'Reset session has expired. Please request a new code.' });
+        }
 
         // 1. Password Complexity & Format Validation
         const pwError = validatePassword(targetPassword);
