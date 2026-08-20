@@ -180,6 +180,10 @@ app.get('/dashboard/:role', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboards', fileName));
 });
 
+// Health check endpoint for Render/Cloud load balancers
+app.get('/healthz', (req, res) => res.status(200).send('OK'));
+app.get('/api/health', (req, res) => res.status(200).json({ status: 'healthy', uptime: process.uptime() }));
+
 // SPA Catch-all route (supports React Router client-side routes)
 app.use((req, res) => {
   const spaIndex = path.join(clientDistPath, 'index.html');
@@ -197,44 +201,45 @@ const http = require('http');
 const https = require('https');
 const selfsigned = require('selfsigned');
 
-// Generate or load local SSL certificate for universal device camera support over HTTPS
-const sslDir = path.join(__dirname, '.ssl');
-if (!fs.existsSync(sslDir)) fs.mkdirSync(sslDir, { recursive: true });
-
-const certPath = path.join(sslDir, 'cert.pem');
-const keyPath = path.join(sslDir, 'key.pem');
+const isProduction = process.env.NODE_ENV === 'production';
 
 let sslOptions = null;
-try {
-  const certValid = fs.existsSync(certPath) && fs.statSync(certPath).size > 0;
-  const keyValid = fs.existsSync(keyPath) && fs.statSync(keyPath).size > 0;
+if (!isProduction) {
+  try {
+    const sslDir = path.join(__dirname, '.ssl');
+    if (!fs.existsSync(sslDir)) fs.mkdirSync(sslDir, { recursive: true });
 
-  if (!certValid || !keyValid) {
-    const attrs = [
-      { name: 'commonName', value: 'FusionHighApp' },
-      { name: 'organizationName', value: 'Fusion High School' }
-    ];
-    const pems = selfsigned.generate(attrs, { days: 365, keySize: 2048 });
-    const certData = pems.cert || pems.certificate;
-    const keyData = pems.private || pems.key || pems.clientprivate;
+    const certPath = path.join(sslDir, 'cert.pem');
+    const keyPath = path.join(sslDir, 'key.pem');
 
-    if (certData && keyData) {
-      fs.writeFileSync(certPath, certData);
-      fs.writeFileSync(keyPath, keyData);
+    const certValid = fs.existsSync(certPath) && fs.statSync(certPath).size > 0;
+    const keyValid = fs.existsSync(keyPath) && fs.statSync(keyPath).size > 0;
+
+    if (!certValid || !keyValid) {
+      const attrs = [
+        { name: 'commonName', value: 'FusionHighApp' },
+        { name: 'organizationName', value: 'Fusion High School' }
+      ];
+      const pems = selfsigned.generate(attrs, { days: 365, keySize: 2048 });
+      const certData = pems.cert || pems.certificate;
+      const keyData = pems.private || pems.key || pems.clientprivate;
+
+      if (certData && keyData) {
+        fs.writeFileSync(certPath, certData);
+        fs.writeFileSync(keyPath, keyData);
+      }
     }
-  }
 
-  if (fs.existsSync(certPath) && fs.existsSync(keyPath) && fs.statSync(certPath).size > 0 && fs.statSync(keyPath).size > 0) {
-    sslOptions = {
-      key: fs.readFileSync(keyPath),
-      cert: fs.readFileSync(certPath)
-    };
+    if (fs.existsSync(certPath) && fs.existsSync(keyPath) && fs.statSync(certPath).size > 0 && fs.statSync(keyPath).size > 0) {
+      sslOptions = {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath)
+      };
+    }
+  } catch (sslErr) {
+    console.warn('[SSL] Could not initialize local HTTPS certificate:', sslErr.message);
   }
-} catch (sslErr) {
-  console.warn('[SSL] Could not initialize local HTTPS certificate:', sslErr.message);
 }
-
-const HTTPS_PORT = process.env.HTTPS_PORT || (parseInt(PORT, 10) + 1); // 4001
 
 const httpServer = http.createServer(app);
 let retryCount = 0;
@@ -249,10 +254,10 @@ httpServer.on('error', (err) => {
         try {
           httpServer.close();
         } catch {}
-        httpServer.listen(PORT);
+        httpServer.listen(PORT, '0.0.0.0');
       }, 1000);
     } else {
-      console.warn(`[SERVER] Port ${PORT} is already running in an active terminal session. Please close the duplicate terminal or use the existing active server on http://localhost:${PORT}`);
+      console.warn(`[SERVER] Port ${PORT} is already running. Exiting retry loop.`);
       process.exit(0);
     }
   } else {
@@ -260,23 +265,23 @@ httpServer.on('error', (err) => {
   }
 });
 
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running successfully!`);
+  console.log(`- Listening on 0.0.0.0:${PORT}`);
   console.log(`- HTTP Local:     http://localhost:${PORT}`);
-  console.log(`- HTTP Network:   http://${IP}:${PORT}`);
 });
 
 let httpsServer = null;
-if (sslOptions) {
+if (sslOptions && !isProduction) {
+  const HTTPS_PORT = process.env.HTTPS_PORT || (parseInt(PORT, 10) + 1);
   httpsServer = https.createServer(sslOptions, app);
   httpsServer.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
-      console.warn(`[SSL WARNING] HTTPS Port ${HTTPS_PORT} is in use, HTTPS camera server will retry.`);
+      console.warn(`[SSL WARNING] HTTPS Port ${HTTPS_PORT} is in use.`);
     }
   });
-  httpsServer.listen(HTTPS_PORT, IP, () => {
-    console.log(`- HTTPS Secure (Camera Enabled): https://localhost:${HTTPS_PORT}`);
-    console.log(`- HTTPS Network (Mobile Camera): https://${IP}:${HTTPS_PORT}`);
+  httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
+    console.log(`- Local HTTPS (Camera Enabled): https://localhost:${HTTPS_PORT}`);
   });
 }
 
