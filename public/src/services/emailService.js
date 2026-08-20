@@ -1,19 +1,26 @@
 require('dotenv').config();
+const dns = require('dns');
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 const nodemailer = require('nodemailer');
 
-// Configure the transporter with Gmail / SMTP credentials
+const smtpUser = (process.env.SMTP_USER || '').trim().replace(/^["']|["']$/g, '');
+const smtpPass = (process.env.SMTP_PASS || '').trim().replace(/^["']|["']$/g, '');
+
+// Configure the transporter with resilient Gmail / SMTP credentials
 const transporter = nodemailer.createTransport({
   service: 'gmail',
-  pool: true,
-  maxConnections: 3,
-  maxMessages: 50,
-  connectionTimeout: 5000,
-  greetingTimeout: 5000,
-  socketTimeout: 5000,
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    user: smtpUser,
+    pass: smtpPass,
   },
+  connectionTimeout: 25000,
+  greetingTimeout: 25000,
+  socketTimeout: 25000,
+  tls: {
+    rejectUnauthorized: false
+  }
 });
 
 /**
