@@ -182,10 +182,15 @@ app.get('/dashboard/:role', (req, res) => {
 
 // SPA Catch-all route (supports React Router client-side routes)
 app.use((req, res) => {
-  if (fs.existsSync(path.join(clientDistPath, 'index.html'))) {
-    return res.sendFile(path.join(clientDistPath, 'index.html'));
+  const spaIndex = path.join(clientDistPath, 'index.html');
+  if (fs.existsSync(spaIndex)) {
+    return res.sendFile(spaIndex);
   }
-  res.status(404).redirect('/');
+  const authIndex = path.join(__dirname, 'public', 'auth', 'index.html');
+  if (fs.existsSync(authIndex)) {
+    return res.sendFile(authIndex);
+  }
+  res.status(200).send('Fusion High School Management System backend is active.');
 });
 
 const http = require('http');
