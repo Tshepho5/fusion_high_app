@@ -28,8 +28,7 @@ const poolConfig = process.env.DATABASE_URL
 const pool = new Pool(poolConfig);
 
 pool.on('error', (err) => {
-    console.error('Unexpected error on idle client', err);
-    process.exit(-1);
+    console.warn('[DATABASE WARNING] Idle client connection reset/error (reconnecting):', err.message);
 });
 
 // Test the database connection and initialize performance indexes on startup
