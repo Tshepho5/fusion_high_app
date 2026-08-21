@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { learnerService } from '../../services/api';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Badge } from '../../components/common/Badge';
@@ -47,6 +48,9 @@ const SA_OFFICIAL_LANGUAGES = [
 ];
 
 export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic }) => {
+  const { user } = useAuth();
+  const learnerEnrolledGrade = Number(user?.grade) || 11;
+
   const [searchParams] = useSearchParams();
   const [subjects, setSubjects] = useState<any[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<any | null>(null);
@@ -94,11 +98,11 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
     const targetViewParam = searchParams.get('view');
 
     const defaultLearnerSubjects = [
-      { name: 'Mathematics', code: 'MATH10', grade: 10, teacher: 'Subject Specialist', curriculum_progress: 50, progress: 75, assignments_due: 0, classmates_count: 32, resources_count: 4 },
-      { name: 'Physical Sciences', code: 'PHSC10', grade: 10, teacher: 'Subject Specialist', curriculum_progress: 45, progress: 72, assignments_due: 0, classmates_count: 32, resources_count: 3 },
-      { name: 'Life Sciences', code: 'LFSC10', grade: 10, teacher: 'Subject Specialist', curriculum_progress: 60, progress: 78, assignments_due: 0, classmates_count: 32, resources_count: 5 },
-      { name: 'English FAL', code: 'ENGF10', grade: 10, teacher: 'Subject Specialist', curriculum_progress: 70, progress: 80, assignments_due: 0, classmates_count: 32, resources_count: 6 },
-      { name: 'isiZulu Home Language', code: 'ZULH10', grade: 10, teacher: 'Subject Specialist', curriculum_progress: 65, progress: 82, assignments_due: 0, classmates_count: 32, resources_count: 4 }
+      { name: 'Mathematics', code: `MATH${learnerEnrolledGrade}`, grade: learnerEnrolledGrade, teacher: 'Subject Specialist', curriculum_progress: 50, progress: 75, assignments_due: 0, classmates_count: 32, resources_count: 4 },
+      { name: 'Physical Sciences', code: `PHYS${learnerEnrolledGrade}`, grade: learnerEnrolledGrade, teacher: 'Subject Specialist', curriculum_progress: 45, progress: 72, assignments_due: 0, classmates_count: 32, resources_count: 3 },
+      { name: 'Life Sciences', code: `LIFE${learnerEnrolledGrade}`, grade: learnerEnrolledGrade, teacher: 'Subject Specialist', curriculum_progress: 60, progress: 78, assignments_due: 0, classmates_count: 32, resources_count: 5 },
+      { name: 'English FAL', code: `ENGL${learnerEnrolledGrade}`, grade: learnerEnrolledGrade, teacher: 'Subject Specialist', curriculum_progress: 70, progress: 80, assignments_due: 0, classmates_count: 32, resources_count: 6 },
+      { name: 'isiZulu Home Language', code: `ISIZ${learnerEnrolledGrade}`, grade: learnerEnrolledGrade, teacher: 'Subject Specialist', curriculum_progress: 65, progress: 82, assignments_due: 0, classmates_count: 32, resources_count: 4 }
     ];
 
     learnerService.getMySubjectsOverview()
@@ -116,7 +120,8 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
           if (match) {
             setSelectedSubject(match);
           } else {
-            setSelectedSubject({ name: targetSubParam, subject: targetSubParam, grade: 10 });
+            const fallbackGrade = list[0]?.grade || learnerEnrolledGrade;
+            setSelectedSubject({ name: targetSubParam, subject: targetSubParam, grade: fallbackGrade });
           }
           if (targetViewParam === 'past-papers' || targetViewParam === 'resources') {
             setActiveTab(targetViewParam);
@@ -142,13 +147,13 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
           });
       })
       .finally(() => setLoadingSubjects(false));
-  }, [searchParams]);
+  }, [searchParams, learnerEnrolledGrade]);
 
   useEffect(() => {
     if (!selectedSubject) return;
     setLoadingContent(true);
     const subName = selectedSubject.name || selectedSubject.subject || selectedSubject.id;
-    const subGrade = selectedSubject.grade || 10;
+    const subGrade = Number(selectedSubject.grade) || learnerEnrolledGrade;
 
     Promise.allSettled([
       learnerService.getTopics(subName, subGrade),
@@ -176,14 +181,14 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
         setAssignments([]);
       }
     }).finally(() => setLoadingContent(false));
-  }, [selectedSubject]);
+  }, [selectedSubject, learnerEnrolledGrade]);
 
   const filteredTopics = topics.filter(t => 
     (t.name || t.topic_name || t.title || t.topic || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const selectedSubName = selectedSubject?.name || selectedSubject?.subject || 'Subject';
-  const selectedGrade = selectedSubject?.grade || 10;
+  const selectedGrade = Number(selectedSubject?.grade) || learnerEnrolledGrade;
 
   return (
     <div className="space-y-6">

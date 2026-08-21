@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Badge } from '../common/Badge';
 import confetti from 'canvas-confetti';
+import { learnerService } from '../../services/api';
 import {
   FileText,
   Download,
@@ -17,13 +18,29 @@ import {
   ChevronDown,
   ChevronUp,
   Flame,
-  Check
+  Check,
+  FolderDown,
+  Layers
 } from 'lucide-react';
 
 interface SubjectPastPapersProps {
   subject: string;
   grade: number;
   onSolveWithAI?: (prompt: string) => void;
+}
+
+interface DbeResource {
+  id: number;
+  subject: string;
+  grade: number;
+  title: string;
+  resource_type: string;
+  term?: string;
+  year?: number;
+  file_path?: string;
+  file_name?: string;
+  file_size?: string;
+  description?: string;
 }
 
 interface ExamPaper {
@@ -138,24 +155,136 @@ const getSubjectPastPapers = (subjectName: string, gradeNum: number): ExamPaper[
 
   // Physical Sciences dataset
   if (s.includes('physic') || s.includes('science')) {
+    if (gradeNum === 10) {
+      return [
+        {
+          id: 'phys-gr10-2024-nov-p1',
+          year: 2024,
+          season: 'November Final (NSC)',
+          paperNumber: 'Paper 1',
+          title: 'Grade 10 Physical Sciences Paper 1 (Physics)',
+          marks: 100,
+          durationMinutes: 120,
+          curriculum: 'CAPS Physics Mechanics, Waves & Electricity',
+          topicsCovered: ['Vectors & Scalars in 1D', 'Motion in 1D & Equations of Motion', 'Gravitational Potential & Kinetic Energy', 'Transverse & Longitudinal Waves', 'Electric Circuits & Ohm\'s Law'],
+          sampleQuestions: [
+            {
+              questionNumber: 'Question 2.1',
+              topic: 'Equations of Motion (1D)',
+              marks: 4,
+              questionText: 'A car accelerates uniformly from rest to a velocity of 20 m·s⁻¹ in 8 seconds. Calculate the acceleration of the car and the total distance covered.',
+              memoSnippet: 'v_f = v_i + a·Δt ⇒ 20 = 0 + a(8) ⇒ a = 2.5 m·s⁻². Δx = v_i·Δt + ½a·(Δt)² = 0 + ½(2.5)(8)² = 80 m.'
+            },
+            {
+              questionNumber: 'Question 4.2',
+              topic: 'Mechanical Waves',
+              marks: 3,
+              questionText: 'A sound wave has a frequency of 500 Hz and travels through air at 340 m·s⁻¹. Calculate the wavelength of this wave.',
+              memoSnippet: 'v = f·λ ⇒ 340 = 500·λ ⇒ λ = 340 / 500 = 0.68 m (68 cm).'
+            }
+          ]
+        },
+        {
+          id: 'phys-gr10-2024-nov-p2',
+          year: 2024,
+          season: 'November Final (NSC)',
+          paperNumber: 'Paper 2',
+          title: 'Grade 10 Physical Sciences Paper 2 (Chemistry)',
+          marks: 100,
+          durationMinutes: 120,
+          curriculum: 'CAPS Chemistry Matter & Chemical Change',
+          topicsCovered: ['States of Matter & Kinetic Theory', 'Atomic Structure & Isotopes', 'Periodic Table & Electron Configuration', 'Chemical Bonding (Ionic, Covalent & Metallic)', 'Balancing Chemical Equations'],
+          sampleQuestions: [
+            {
+              questionNumber: 'Question 3.1',
+              topic: 'Atomic Structure & Electron Config',
+              marks: 4,
+              questionText: 'Write down the sp-notation electron configuration for a chlorine atom (Cl, Z = 17) and draw its Aufbau diagram.',
+              memoSnippet: 'Chlorine (17 e⁻): 1s² 2s² 2p⁶ 3s² 3p⁵. Valence electrons = 7 (Group 17 / VII halogen).'
+            }
+          ]
+        }
+      ];
+    }
+
+    if (gradeNum === 11) {
+      return [
+        {
+          id: 'phys-gr11-2024-nov-p1',
+          year: 2024,
+          season: 'November Final (NSC)',
+          paperNumber: 'Paper 1',
+          title: 'Grade 11 Physical Sciences Paper 1 (Physics)',
+          marks: 150,
+          durationMinutes: 180,
+          curriculum: 'CAPS Physics Mechanics, Optics & Electrostatics',
+          topicsCovered: ['Vectors in 2D & Resolving Components', "Newton's 1st, 2nd & 3rd Laws of Motion", "Newton's Law of Universal Gravitation", 'Geometrical Optics & Snell\'s Law', 'Coulomb\'s Law & Electric Fields'],
+          sampleQuestions: [
+            {
+              questionNumber: 'Question 2.1',
+              topic: "Newton's Second Law of Motion",
+              marks: 5,
+              questionText: 'A 5 kg block on a rough horizontal surface is pulled with a 40 N force acting at an angle of 30° above the horizontal. If μ_k = 0.2, calculate the acceleration.',
+              memoSnippet: 'F_x = 40·cos(30°) = 34.64 N. N = mg - 40·sin(30°) = 5(9.8) - 20 = 29 N. f_k = 0.2(29) = 5.8 N. F_net = F_x - f_k = 28.84 N. a = F_net / m = 28.84 / 5 = 5.77 m·s⁻².'
+            },
+            {
+              questionNumber: 'Question 5.2',
+              topic: "Coulomb's Law (Electrostatics)",
+              marks: 4,
+              questionText: 'Two point charges of +4 μC and -6 μC are placed 0.3 m apart in a vacuum. Calculate the magnitude of the electrostatic force between them.',
+              memoSnippet: 'F = k·|q₁·q₂| / r² = (9.0 × 10⁹)(4 × 10⁻⁶)(6 × 10⁻⁶) / (0.3)² = 0.216 / 0.09 = 2.4 N (attractive).'
+            }
+          ]
+        },
+        {
+          id: 'phys-gr11-2024-nov-p2',
+          year: 2024,
+          season: 'November Final (NSC)',
+          paperNumber: 'Paper 2',
+          title: 'Grade 11 Physical Sciences Paper 2 (Chemistry)',
+          marks: 150,
+          durationMinutes: 180,
+          curriculum: 'CAPS Chemistry Molecular Structure & Stoichiometry',
+          topicsCovered: ['Atomic Combinations & VSEPR Models', 'Intermolecular Forces & Physical Properties', 'Ideal Gases & Gas Laws (PV = nRT)', 'Stoichiometry & Quantitative Chemistry', 'Energy & Chemical Change (Enthalpy ΔH)'],
+          sampleQuestions: [
+            {
+              questionNumber: 'Question 3.2',
+              topic: 'Intermolecular Forces',
+              marks: 4,
+              questionText: 'Explain why water (H₂O) has a significantly higher boiling point (100°C) than hydrogen sulfide (H₂S, -60°C) by referring to intermolecular forces.',
+              memoSnippet: 'H₂O forms strong hydrogen bonds due to highly electronegative Oxygen atoms with lone pairs. H₂S only forms weaker dipole-dipole forces. Significantly more energy is required to overcome the hydrogen bonds in H₂O.'
+            },
+            {
+              questionNumber: 'Question 6.1',
+              topic: 'Ideal Gas Laws (PV = nRT)',
+              marks: 5,
+              questionText: 'Calculate the volume occupied by 0.5 moles of oxygen gas (O₂) at a temperature of 27°C and a pressure of 101.3 kPa. (R = 8.314 J·K⁻¹·mol⁻¹)',
+              memoSnippet: 'T = 27 + 273.15 = 300.15 K. P = 101300 Pa. PV = nRT ⇒ V = (0.5 × 8.314 × 300.15) / 101300 = 0.0123 m³ (12.3 dm³).'
+            }
+          ]
+        }
+      ];
+    }
+
+    // Grade 12 (Matric NSC)
     return [
       {
-        id: 'phys-2024-nov-p1',
+        id: 'phys-gr12-2024-nov-p1',
         year: 2024,
         season: 'November Final (NSC)',
         paperNumber: 'Paper 1',
-        title: `Physical Sciences Grade ${gradeNum} Paper 1 (Physics)`,
+        title: 'Grade 12 Physical Sciences Paper 1 (Physics NSC)',
         marks: 150,
         durationMinutes: 180,
-        curriculum: 'CAPS Physics Mechanics & Electricity',
-        topicsCovered: ["Newton's Laws of Motion", 'Work, Energy & Power', 'Doppler Effect', 'Electric Circuits', 'Photoelectric Effect'],
+        curriculum: 'CAPS Physics Mechanics, Waves & Electrodynamics',
+        topicsCovered: ['Momentum & Impulse', 'Vertical Projectile Motion', 'Work-Energy Theorem & Power', 'Doppler Effect (Sound)', 'Electrodynamics & AC Motors', 'Photoelectric Effect'],
         sampleQuestions: [
           {
-            questionNumber: 'Question 2.1',
-            topic: "Newton's Second Law",
+            questionNumber: 'Question 3.1',
+            topic: 'Vertical Projectile Motion',
             marks: 5,
-            questionText: 'A 5 kg block on a rough horizontal surface is pulled with a 40 N force at 30° to the horizontal. If μ_k = 0.2, calculate the acceleration.',
-            memoSnippet: 'F_x = 40·cos(30°) = 34.64 N. N = mg - 40·sin(30°) = 5(9.8) - 20 = 29 N. f_k = 0.2(29) = 5.8 N. a = (34.64 - 5.8)/5 = 5.77 m·s⁻².'
+            questionText: 'A ball is projected vertically upwards with a speed of 15 m·s⁻¹ from the edge of a roof 30 m high. Calculate maximum height and time taken to hit the ground.',
+            memoSnippet: 'At max height v_f = 0: v_f² = v_i² + 2g·Δy ⇒ 0 = (15)² + 2(-9.8)Δy ⇒ Δy = 11.48 m above roof (41.48 m from ground). Total time t = 4.49 s.'
           },
           {
             questionNumber: 'Question 6.2',
@@ -167,18 +296,18 @@ const getSubjectPastPapers = (subjectName: string, gradeNum: number): ExamPaper[
         ]
       },
       {
-        id: 'phys-2024-nov-p2',
+        id: 'phys-gr12-2024-nov-p2',
         year: 2024,
         season: 'November Final (NSC)',
         paperNumber: 'Paper 2',
-        title: `Physical Sciences Grade ${gradeNum} Paper 2 (Chemistry)`,
+        title: 'Grade 12 Physical Sciences Paper 2 (Chemistry NSC)',
         marks: 150,
         durationMinutes: 180,
-        curriculum: 'CAPS Chemistry Matter & Reaction Rates',
-        topicsCovered: ['Organic Chemistry IUPAC', 'Rates of Reaction', 'Chemical Equilibrium (Kc)', 'Acids & Bases', 'Galvanic & Electrolytic Cells'],
+        curriculum: 'CAPS Chemistry Organic, Equilibrium & Electrochemistry',
+        topicsCovered: ['Organic Chemistry IUPAC & Reactions', 'Rates of Reaction & Maxwell-Boltzmann', 'Chemical Equilibrium (Kc)', 'Acids & Bases (Ka/Kb & Titrations)', 'Galvanic & Electrolytic Cells'],
         sampleQuestions: [
           {
-            questionNumber: 'Question 3.1',
+            questionNumber: 'Question 2.1',
             topic: 'Organic Chemistry IUPAC',
             marks: 3,
             questionText: 'Write down the IUPAC name for CH₃-CH(CH₃)-CH₂-COOH and identify its homologous series.',
@@ -341,10 +470,29 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedYear, setSelectedYear] = useState<string>('all');
   const [selectedSeason, setSelectedSeason] = useState<string>('all');
+  const [selectedDocType, setSelectedDocType] = useState<string>('all'); // 'all', 'past_paper', 'exam_memo'
   const [expandedPaperId, setExpandedPaperId] = useState<string | null>(null);
   const [activeQuestionIndex, setActiveQuestionIndex] = useState<{ [paperId: string]: number }>({});
   const [revealedMemos, setRevealedMemos] = useState<{ [key: string]: boolean }>({});
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  
+  const [dbeResources, setDbeResources] = useState<DbeResource[]>([]);
+  const [loadingDbe, setLoadingDbe] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!subject) return;
+    setLoadingDbe(true);
+    learnerService.getSubjectResources(subject, grade)
+      .then((data: any) => {
+        const list = Array.isArray(data) ? data : data.resources || data.textbooks || [];
+        setDbeResources(list);
+      })
+      .catch((err: any) => {
+        console.error('Failed to load DBE past papers for subject:', err);
+        setDbeResources([]);
+      })
+      .finally(() => setLoadingDbe(false));
+  }, [subject, grade]);
 
   const papers = getSubjectPastPapers(subject, grade);
 
@@ -357,6 +505,16 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
     return matchesSearch && matchesYear && matchesSeason;
   });
 
+  const filteredDbeResources = dbeResources.filter((r) => {
+    const rTitle = r.title || r.file_name || '';
+    const matchesSearch = rTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (r.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (r.term || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesYear = selectedYear === 'all' || (r.year ? r.year.toString() === selectedYear : true);
+    const matchesType = selectedDocType === 'all' || r.resource_type === selectedDocType;
+    return matchesSearch && matchesYear && matchesType;
+  });
+
   const handleToggleMemo = (paperId: string, qIdx: number) => {
     const key = `${paperId}-${qIdx}`;
     setRevealedMemos((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -367,7 +525,6 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
     setTimeout(() => {
       setDownloadingId(null);
       confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
-      // Create simulated PDF download
       const element = document.createElement('a');
       const file = new Blob([
         `DEPARTMENT OF BASIC EDUCATION - SOUTH AFRICA\n` +
@@ -395,25 +552,100 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-mono font-bold uppercase border border-purple-500/40 flex items-center gap-1">
               <BookOpen className="w-3 h-3 text-purple-400" />
-              CAPS EXAM ARCHIVE
+              CAPS DBE ARCHIVE
             </span>
             <Badge variant="indigo" size="sm">Grade {grade}</Badge>
           </div>
           <h3 className="text-xl md:text-2xl font-extrabold font-display text-white">
-            {subject} Past Exam Papers & Question Bank
+            {subject} Official Past Examination Papers & Question Bank
           </h3>
           <p className="text-xs text-slate-300 max-w-xl">
-            Access official National Senior Certificate examination papers, question-by-question solutions, and marking memoranda.
+            Access official National Department of Basic Education examination question papers, marking guidelines, and interactive problem solutions for Grade {grade} {subject}.
           </p>
         </div>
 
         <div className="flex items-center gap-3 z-10">
           <div className="p-3 rounded-2xl bg-surface-darker/90 border border-white/10 text-center">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase">Available Series</p>
-            <p className="text-base font-extrabold text-purple-400 font-mono">{papers.length} Papers</p>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase">Available Documents</p>
+            <p className="text-base font-extrabold text-purple-400 font-mono">
+              {dbeResources.length > 0 ? `${dbeResources.length} Official Files` : `${papers.length} Series`}
+            </p>
           </div>
         </div>
       </div>
+
+      {/* Official DBE Exam Documents Section (PDF Download Archive) */}
+      {dbeResources.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-2">
+              <FolderDown className="w-4 h-4 text-purple-400" />
+              Official DBE Past Question Papers & Memorandums (Grade {grade})
+            </h4>
+            <span className="text-[11px] text-slate-400 font-mono">
+              {filteredDbeResources.length} matching files
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredDbeResources.map((res) => {
+              const fileHref = res.file_path ? (res.file_path.startsWith('/') ? res.file_path : `/${res.file_path}`) : '#';
+              const isMemo = res.resource_type === 'exam_memo' || /memo/i.test(res.title);
+
+              return (
+                <div
+                  key={res.id}
+                  className="p-5 rounded-2xl bg-surface-darker/95 border border-white/10 hover:border-purple-500/40 transition-all flex flex-col justify-between gap-4 shadow-lg group"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`p-3 rounded-2xl shrink-0 ${isMemo ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+                      {isMemo ? <CheckCircle2 className="w-6 h-6" /> : <FileText className="w-6 h-6" />}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <Badge variant={isMemo ? 'emerald' : 'rose'} size="sm">
+                          {isMemo ? 'Marking Memo' : 'Exam Question Paper'}
+                        </Badge>
+                        {res.year && (
+                          <span className="px-2 py-0.5 rounded-md bg-white/5 text-[10px] text-slate-300 font-mono font-bold">
+                            {res.year}
+                          </span>
+                        )}
+                        {res.term && (
+                          <span className="text-[10px] text-slate-400 truncate max-w-[150px]">
+                            {res.term}
+                          </span>
+                        )}
+                      </div>
+
+                      <h5 className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors line-clamp-2" title={res.title}>
+                        {res.title}
+                      </h5>
+
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Grade {res.grade || grade} • {res.subject} • {res.file_size || '1.25 MB'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/5">
+                    <a
+                      href={fileHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition-all hover:scale-105"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download PDF Document</span>
+                    </a>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-surface-darker/80 p-3 rounded-2xl border border-white/10">
@@ -423,12 +655,22 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search topics (e.g. Calculus, Newton)..."
+            placeholder="Search topics (e.g. Paper 1, Memo, Newton)..."
             className="w-full pl-10 pr-4 py-2 bg-surface-dark border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
+          <select
+            value={selectedDocType}
+            onChange={(e) => setSelectedDocType(e.target.value)}
+            className="px-3 py-2 rounded-xl bg-surface-dark border border-white/10 text-xs text-slate-300 focus:outline-none"
+          >
+            <option value="all">All Document Types</option>
+            <option value="past_paper">Question Papers Only</option>
+            <option value="exam_memo">Marking Memos Only</option>
+          </select>
+
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
@@ -438,6 +680,9 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
             <option value="2024">2024 Exams</option>
             <option value="2023">2023 Exams</option>
             <option value="2022">2022 Exams</option>
+            <option value="2018">2018 Exams</option>
+            <option value="2017">2017 Exams</option>
+            <option value="2016">2016 Exams</option>
           </select>
 
           <select

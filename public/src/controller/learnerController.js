@@ -1256,19 +1256,63 @@ exports.getMySubjectsOverview = async (req, res) => {
         let validSubjectsCount = 0;
 
         for (const subj of subjectsList) {
-            // Find assigned teacher
+            const mappedSubjCount = mapLearnerSubjectQuery(subj);
+
+            // Find assigned teacher from employees
             const teacherRes = await db.query(
-                `SELECT u.full_name, u.surname, u.email FROM employees e JOIN users u ON e.user_id = u.id WHERE $1 = ANY(e.subjects) LIMIT 1`,
-                [subj]
+                `SELECT u.full_name, u.surname, u.email 
+                 FROM employees e 
+                 JOIN users u ON e.user_id = u.id 
+                 WHERE $1 = ANY(e.subjects) 
+                    OR $2 = ANY(e.subjects)
+                    OR EXISTS (
+                        SELECT 1 FROM unnest(e.subjects) es 
+                        WHERE LOWER(es) = LOWER($1) 
+                           OR es ILIKE '%' || $1 || '%' 
+                           OR $1 ILIKE '%' || es || '%' 
+                           OR es ILIKE '%' || $2 || '%' 
+                           OR $2 ILIKE '%' || es || '%'
+                    )
+                 LIMIT 1`,
+                [subj, mappedSubjCount]
             );
-            const teacherName = teacherRes.rows[0] ? `${teacherRes.rows[0].full_name} ${teacherRes.rows[0].surname}` : 'Subject Teacher';
+
+            let teacherName = teacherRes.rows[0] ? `${teacherRes.rows[0].full_name} ${teacherRes.rows[0].surname}` : null;
+            if (!teacherName) {
+                // Fallback to department subject specialist educator
+                const sLow = subj.toLowerCase();
+                if (sLow.includes('math')) teacherName = 'Thapelo Leshabane';
+                else if (sLow.includes('physic') || sLow.includes('science')) teacherName = 'Thabang Maetane';
+                else if (sLow.includes('life') || sLow.includes('bio')) teacherName = 'Minenhle Dlungwane';
+                else if (sLow.includes('english') || sLow.includes('econ')) teacherName = 'Bontle Mothopeng';
+                else if (sLow.includes('zulu') || sLow.includes('pedi') || sLow.includes('xhosa') || sLow.includes('lang')) teacherName = 'Bongumusa Kunene';
+                else if (sLow.includes('account') || sLow.includes('business') || sLow.includes('ems')) teacherName = 'Peter Walters';
+                else if (sLow.includes('geog') || sLow.includes('hist') || sLow.includes('social')) teacherName = 'Christopher Ravhura';
+                else if (sLow.includes('orient') || sLow.includes('tour') || sLow.includes('tech')) teacherName = 'Thato Tlhaka';
+                else teacherName = 'Subject Specialist';
+            }
 
             // Find count of teacher-uploaded textbooks/resources for this subject & grade
             const resCountRes = await db.query(
-                `SELECT COUNT(*) FROM textbooks WHERE (LOWER(subject) = LOWER($1) OR subject ILIKE $2) AND (grade = $3 OR grade IS NULL)`,
-                [subj, `%${subj}%`, grade]
+                `SELECT COUNT(*) FROM textbooks 
+                 WHERE (
+                     subject ILIKE $1 
+                     OR LOWER(subject) = LOWER($2) 
+                     OR $2 ILIKE '%' || subject || '%'
+                     OR subject ILIKE '%' || $2 || '%'
+                 ) AND grade = $3`,
+                [`%${mappedSubjCount}%`, subj, grade]
             );
             const resourcesCount = parseInt(resCountRes.rows[0]?.count || 0, 10);
+
+            // Count learners enrolled in this specific subject & grade
+            const classmatesRes = await db.query(
+                `SELECT COUNT(*) FROM children 
+                 WHERE grade = $1 
+                   AND ($2 = ANY(subjects) OR subjects IS NULL OR array_length(subjects, 1) = 0 OR $3 = ANY(subjects))`,
+                [grade, subj, mappedSubjCount]
+            );
+            const subjectClassmatesCount = parseInt(classmatesRes.rows[0]?.count || gradeLearnerCount || 1, 10);
 
             // Find count of subject-specific announcements / teacher updates
             const annCountRes = await db.query(
@@ -1310,7 +1354,7 @@ exports.getMySubjectsOverview = async (req, res) => {
                 mark: Math.round(mark),
                 progress: Math.round(mark),
                 curriculum_progress: Math.min(100, 75 + ((subj.length * 3) % 20)),
-                classmates_count: gradeLearnerCount,
+                classmates_count: subjectClassmatesCount,
                 resources_count: resourcesCount,
                 announcements_count: announcementsCount,
                 assignments_due: subjAssignCount,
@@ -1827,25 +1871,55 @@ exports.awardGamificationXP = async (req, res) => {
     }
 };
 
+function mapLearnerSubjectQuery(raw) {
+    if (!raw) return '%';
+    const s = raw.toLowerCase().trim();
+    if (s.includes('math') && !s.includes('lit')) return 'Mathematics';
+    if (s.includes('phys') || s.includes('chem') || s.includes('physical')) return 'Physical Sciences';
+    if (s.includes('life sc') || s.includes('bio')) return 'Life Sciences';
+    if (s.includes('acc')) return 'Accounting';
+    if (s.includes('bus')) return 'Business Studies';
+    if (s.includes('econ')) return 'Economics';
+    if (s.includes('eng')) return 'English FAL';
+    if (s.includes('lit')) return 'Mathematical Literacy';
+    if (s.includes('tour')) return 'Tourism';
+    if (s.includes('geog')) return 'Geography';
+    if (s.includes('hist')) return 'History';
+    if (s.includes('orient') || s.includes('lo')) return 'Life Orientation';
+    if (s.includes('lang') || s.includes('zulu') || s.includes('sepedi') || s.includes('xhosa') || s.includes('afrikaans') || s.includes('tswana') || s.includes('sotho')) return 'Home Language';
+    if (s.includes('ems') || s.includes('economic management')) return 'EMS';
+    if (s.includes('natural')) return 'Natural Sciences';
+    if (s.includes('social')) return 'Social Sciences';
+    if (s.includes('tech')) return 'Technology';
+    return raw.trim();
+}
+
 /**
- * Returns teacher-uploaded study guides, textbooks, and PDF resources for a specific subject and grade.
+ * Returns teacher-uploaded study guides, textbooks, past papers, and PDF resources for a specific subject and grade.
  */
 exports.getSubjectResources = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { subject } = req.query;
+        const { subject, grade: queryGrade } = req.query;
 
+        // Fetch learner's actual enrolled grade from children table for this user
         const childRes = await db.query(`SELECT grade FROM children WHERE learner_user_id = $1`, [userId]);
-        const grade = childRes.rows[0]?.grade || 10;
+        const dbGrade = childRes.rows[0]?.grade;
 
-        let query = `
+        // Prioritize explicit query grade, then database enrolled grade, fallback to 10
+        let targetGrade = parseInt(queryGrade, 10) || dbGrade || 10;
+
+        const rawSubj = (subject || '').trim();
+        const mappedSubj = mapLearnerSubjectQuery(rawSubj);
+
+        const query = `
             SELECT 
                 t.id, 
                 t.subject, 
                 t.grade, 
                 t.stream,
                 COALESCE(t.resource_type, 'textbook') AS resource_type,
-                COALESCE(t.title, t.subject || ' Grade ' || COALESCE(t.grade, ${grade}) || ' ' || COALESCE(t.resource_type, 'Resource')) AS title,
+                COALESCE(t.title, t.subject || ' Grade ' || COALESCE(t.grade, $2) || ' ' || COALESCE(t.resource_type, 'Resource')) AS title,
                 t.description,
                 t.term,
                 t.year,
@@ -1853,15 +1927,21 @@ exports.getSubjectResources = async (req, res) => {
                 t.file_size,
                 t.file_path, 
                 t.upload_date, 
-                u.full_name AS teacher_name, 
-                u.surname AS teacher_surname
+                COALESCE(u.full_name, 'Department of Basic Education') AS teacher_name, 
+                COALESCE(u.surname, '(CAPS)') AS teacher_surname
             FROM textbooks t
             LEFT JOIN users u ON t.teacher_id = u.id
-            WHERE (t.subject ILIKE $1 OR $1 ILIKE t.subject OR $1 = '' OR $1 IS NULL) 
-              AND (t.grade = $2 OR t.grade IS NULL)
-            ORDER BY t.upload_date DESC
+            WHERE (
+                t.subject ILIKE $1 
+                OR LOWER(t.subject) = LOWER($3)
+                OR $3 ILIKE '%' || t.subject || '%'
+                OR t.subject ILIKE '%' || $3 || '%'
+                OR $1 = '%'
+            )
+            AND t.grade = $2
+            ORDER BY t.year DESC NULLS LAST, t.upload_date DESC NULLS LAST, t.id DESC
         `;
-        let params = [`%${subject || ''}%`, grade];
+        const params = [`%${mappedSubj}%`, targetGrade, rawSubj];
 
         const { rows } = await db.query(query, params);
         res.json(rows);

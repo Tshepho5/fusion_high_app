@@ -102,6 +102,13 @@ app.use(cors({ origin: '*', credentials: true }));
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(normalizePayload);
+
+// Serve client build if available (production SPA)
+const clientDistPath = path.join(__dirname, 'client', 'dist');
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+}
+
 app.use(express.static('public'));
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/uploads', express.static('uploads'));
@@ -160,11 +167,7 @@ app.use('/api', otherRoutes); // For progress, announcements etc.
 // Admin Routes (now imported from adminRoutes.js)
 app.use('/api/admin', require('./public/src/routes/adminRoutes.js'));
 
-// Serve client build if available (production SPA)
-const clientDistPath = path.join(__dirname, 'client', 'dist');
-if (fs.existsSync(clientDistPath)) {
-  app.use(express.static(clientDistPath));
-}
+
 
 // Serve dashboard index & legacy static fallbacks
 // Auth Page Routes

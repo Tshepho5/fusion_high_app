@@ -64,10 +64,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
   };
 
   const THEMES: { id: AppTheme; label: string; bg: string }[] = [
-    { id: 'dark', label: 'Midnight Dark', bg: 'bg-slate-900 border-indigo-500' },
-    { id: 'navy', label: 'Executive Navy', bg: 'bg-[#0a1936] border-blue-400' },
-    { id: 'cyberpunk', label: 'Cyberpunk Neon', bg: 'bg-[#0e0e24] border-cyan-400' },
-    { id: 'light', label: 'Classic Light', bg: 'bg-white text-slate-900 border-slate-300' },
+    { id: 'dark', label: 'Dark Theme', bg: 'bg-slate-900 border-indigo-500' },
+    { id: 'navy', label: 'Slate Navy', bg: 'bg-[#132247] border-blue-400' },
+    { id: 'light', label: 'Light Theme', bg: 'bg-white text-slate-900 border-slate-300' },
   ];
 
   const FONTS: { id: AppFont; label: string }[] = [

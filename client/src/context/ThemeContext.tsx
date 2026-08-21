@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-export type AppTheme = 'dark' | 'light' | 'cyberpunk' | 'navy';
+export type AppTheme = 'dark' | 'light' | 'navy';
 export type AppFont = 'sans' | 'display' | 'serif' | 'mono';
 
 interface ThemeContextType {
@@ -16,7 +16,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<AppTheme>(() => {
     const saved = localStorage.getItem('app_theme');
-    if (saved === 'dark' || saved === 'light' || saved === 'cyberpunk' || saved === 'navy') return saved as AppTheme;
+    if (saved === 'dark' || saved === 'light' || saved === 'navy') return saved as AppTheme;
     return 'dark';
   });
 
@@ -30,7 +30,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const root = document.documentElement;
     
     // Remove existing theme classes
-    root.classList.remove('theme-dark', 'theme-light', 'theme-cyberpunk', 'theme-navy', 'dark', 'light');
+    root.classList.remove('theme-dark', 'theme-light', 'theme-navy', 'dark', 'light');
     root.classList.add(`theme-${theme}`);
     root.setAttribute('data-theme', theme);
     if (theme === 'light') {
@@ -58,7 +58,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [font]);
 
   const toggleTheme = () => {
-    const themes: AppTheme[] = ['dark', 'navy', 'cyberpunk', 'light'];
+    const themes: AppTheme[] = ['dark', 'navy', 'light'];
     const nextIdx = (themes.indexOf(theme) + 1) % themes.length;
     setThemeState(themes[nextIdx]);
   };

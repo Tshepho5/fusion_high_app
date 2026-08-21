@@ -360,7 +360,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       {
         id: 'act-toggle-theme',
         title: 'Toggle Dark / Light Mode',
-        subtitle: 'Switch between Midnight Dark and Classic Light workspace',
+        subtitle: 'Switch between Dark and Light workspace',
         category: 'Quick Actions',
         icon: Moon,
         iconColor: 'text-yellow-400',
@@ -368,24 +368,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         keywords: ['theme', 'dark', 'light', 'mode', 'color']
       },
       {
-        id: 'act-cyberpunk',
-        title: 'Apply Cyberpunk Neon Theme',
-        subtitle: 'High-contrast vibrant neon color palette',
-        category: 'Quick Actions',
-        icon: Palette,
-        iconColor: 'text-cyan-400',
-        action: () => setTheme('cyberpunk'),
-        keywords: ['neon', 'cyberpunk', 'theme', 'color']
-      },
-      {
         id: 'act-navy',
-        title: 'Apply Executive Navy Theme',
-        subtitle: 'Corporate deep navy blue color palette',
+        title: 'Apply Slate Navy Theme',
+        subtitle: 'Classic school slate navy blue theme',
         category: 'Quick Actions',
         icon: Palette,
         iconColor: 'text-blue-400',
         action: () => setTheme('navy'),
-        keywords: ['navy', 'blue', 'executive', 'theme']
+        keywords: ['navy', 'blue', 'slate', 'theme']
       }
     );
 

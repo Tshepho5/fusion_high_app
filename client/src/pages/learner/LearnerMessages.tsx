@@ -123,7 +123,7 @@ export const LearnerMessages: React.FC = () => {
   const [showMobileChat, setShowMobileChat] = useState(false);
   const [showColorMenu, setShowColorMenu] = useState(false);
   const [chatTheme, setChatTheme] = useState<string>(() => {
-    return localStorage.getItem('fusion_chat_theme') || (appTheme === 'navy' ? 'indigo' : appTheme === 'cyberpunk' ? 'rose' : appTheme === 'light' ? 'teal' : 'emerald');
+    return localStorage.getItem('fusion_chat_theme') || (appTheme === 'navy' ? 'indigo' : appTheme === 'light' ? 'teal' : 'emerald');
   });
 
   // Keep chat theme in sync if parent changes dashboard theme
@@ -131,7 +131,6 @@ export const LearnerMessages: React.FC = () => {
     const savedChatTheme = localStorage.getItem('fusion_chat_theme');
     if (!savedChatTheme) {
       if (appTheme === 'navy') setChatTheme('indigo');
-      else if (appTheme === 'cyberpunk') setChatTheme('rose');
       else if (appTheme === 'light') setChatTheme('teal');
       else setChatTheme('emerald');
     }
@@ -400,38 +399,29 @@ export const LearnerMessages: React.FC = () => {
   // Dynamic Theme Styling Variables based on Dashboard App Theme
   const isLight = appTheme === 'light';
   const isNavy = appTheme === 'navy';
-  const isCyber = appTheme === 'cyberpunk';
 
   const containerBg = isLight
     ? 'bg-white border-slate-200 shadow-xl'
     : isNavy
     ? 'bg-[#0a1936] border-blue-500/20'
-    : isCyber
-    ? 'bg-[#0e0e24] border-cyan-500/25'
     : 'bg-[#111b21] border-white/10';
 
   const sidebarBg = isLight
     ? 'bg-slate-50 border-slate-200'
     : isNavy
     ? 'bg-[#0c1e40] border-blue-500/20'
-    : isCyber
-    ? 'bg-[#12122d] border-cyan-500/20'
     : 'bg-[#111b21] border-white/5';
 
   const headerBg = isLight
     ? 'bg-slate-100 border-slate-200 text-slate-900'
     : isNavy
     ? 'bg-[#11244d] border-blue-500/20 text-white'
-    : isCyber
-    ? 'bg-[#1a1a3e] border-cyan-500/20 text-white'
     : 'bg-[#202c33] border-white/5 text-white';
 
   const searchBoxBg = isLight
     ? 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
     : isNavy
     ? 'bg-[#0a1936] border-blue-500/30 text-white placeholder-blue-300'
-    : isCyber
-    ? 'bg-[#0a0a1f] border-cyan-500/30 text-white placeholder-purple-300'
     : 'bg-[#202c33] border-transparent text-white placeholder-slate-400';
 
   const chatActualBg = isLight ? '#f8fafc' : activeThemeObj.chatBg;
@@ -444,16 +434,12 @@ export const LearnerMessages: React.FC = () => {
     ? 'bg-slate-100 border-slate-200'
     : isNavy
     ? 'bg-[#11244d] border-blue-500/20'
-    : isCyber
-    ? 'bg-[#1a1a3e] border-cyan-500/20'
     : 'bg-[#202c33] border-white/5';
 
   const composerInputBg = isLight
     ? 'bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:border-brand-500'
     : isNavy
     ? 'bg-[#0a1936] border border-blue-500/30 text-white placeholder-blue-300'
-    : isCyber
-    ? 'bg-[#0a0a1f] border border-cyan-500/30 text-white placeholder-purple-300'
     : 'bg-[#2a3942] border-transparent text-white placeholder-slate-400';
 
   return (
