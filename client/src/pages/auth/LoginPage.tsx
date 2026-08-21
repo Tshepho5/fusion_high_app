@@ -28,12 +28,6 @@ export const LoginPage: React.FC = () => {
     return 'Good evening';
   };
 
-  const handleQuickFill = (user: string, pass: string) => {
-    setIdentifier(user);
-    setPassword(pass);
-    setError(null);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier.trim() || !password.trim()) {
@@ -176,43 +170,6 @@ export const LoginPage: React.FC = () => {
               )}
             </button>
           </form>
-
-          {/* Quick Demo Fill Shortcut Chips */}
-          <div className="pt-3 border-t border-white/5 text-center space-y-2">
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-500 block">
-              Quick Test Accounts
-            </span>
-            <div className="flex flex-wrap items-center justify-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleQuickFill('learner@fusionhigh.co.za', 'Learner@123')}
-                className="px-2.5 py-1 rounded-lg bg-surface-darker hover:bg-white/10 border border-white/5 hover:border-white/15 text-[10px] font-bold text-indigo-300 transition-all active:scale-95"
-              >
-                Learner
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('teacher@fusionhigh.co.za', 'Teacher@123')}
-                className="px-2.5 py-1 rounded-lg bg-surface-darker hover:bg-white/10 border border-white/5 hover:border-white/15 text-[10px] font-bold text-cyan-300 transition-all active:scale-95"
-              >
-                Teacher
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('parent@fusionhigh.co.za', 'Parent@123')}
-                className="px-2.5 py-1 rounded-lg bg-surface-darker hover:bg-white/10 border border-white/5 hover:border-white/15 text-[10px] font-bold text-emerald-300 transition-all active:scale-95"
-              >
-                Parent
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('admin@fusionhigh.co.za', 'Admin@123')}
-                className="px-2.5 py-1 rounded-lg bg-surface-darker hover:bg-white/10 border border-white/5 hover:border-white/15 text-[10px] font-bold text-amber-300 transition-all active:scale-95"
-              >
-                Admin
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Bottom Actions Links */}
