@@ -73,7 +73,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
           <div className="flex items-center gap-4">
             {/* User Profile Avatar */}
             <div className="relative shrink-0">
-              <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl border border-amber-400/30 bg-surface-darker shadow-sm overflow-hidden flex items-center justify-center text-white font-black text-lg md:text-xl">
+              <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl border-2 border-amber-400/40 bg-surface-darker shadow-md overflow-hidden flex items-center justify-center text-white font-black text-2xl md:text-3xl">
                 {profilePic ? (
                   <img
                     src={getProfilePictureUrl(profilePic)}
@@ -87,7 +87,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                   <span>{parentName.charAt(0).toUpperCase()}</span>
                 )}
               </div>
-              <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-surface-dark rounded-full shadow-sm" title="Active" />
+              <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-surface-dark rounded-full shadow-sm" title="Active" />
             </div>
 
             <div className="space-y-1.5">
