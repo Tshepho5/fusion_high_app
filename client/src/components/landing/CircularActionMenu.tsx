@@ -73,8 +73,8 @@ export const CircularActionMenu: React.FC<CircularActionMenuProps> = ({ onReplay
         />
       )}
 
-      {/* Floating Radial Dock at Bottom Center */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center select-none pointer-events-auto">
+      {/* Floating Radial Dock at Bottom Center with comfortable clearance above footer */}
+      <div className="fixed bottom-16 sm:bottom-20 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center select-none pointer-events-auto">
         {/* Animated Circular Action Buttons */}
         <div className="relative flex items-center justify-center">
           {actions.map((action, idx) => {

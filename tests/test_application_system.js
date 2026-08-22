@@ -5,7 +5,7 @@ const initApplicationTables = require('../db/init_applications');
 
 async function runTests() {
   console.log('====================================================');
-  console.log('🧪 RUNNING COMPREHENSIVE APPLICATION SYSTEM TESTS');
+  console.log('RUNNING COMPREHENSIVE APPLICATION SYSTEM TESTS');
   console.log('====================================================\n');
 
   let passed = 0;
@@ -13,10 +13,10 @@ async function runTests() {
 
   function assert(condition, testName) {
     if (condition) {
-      console.log(`✅ PASS: ${testName}`);
+      console.log(`PASS: ${testName}`);
       passed++;
     } else {
-      console.error(`❌ FAIL: ${testName}`);
+      console.error(`FAIL: ${testName}`);
       failed++;
     }
   }

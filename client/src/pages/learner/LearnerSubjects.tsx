@@ -26,7 +26,8 @@ import {
   ChevronRight,
   WifiOff,
   Flame,
-  FileCheck
+  FileCheck,
+  Sparkles
 } from 'lucide-react';
 
 interface LearnerSubjectsProps {
@@ -407,11 +408,37 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
               />
             ) : activeTab === 'resources' ? (
               /* Resources Tab */
-              <div className="space-y-4">
+              <div className="space-y-6">
+                {/* Grade-Specific Past Papers Quick-Access Banner */}
+                <div className="p-5 rounded-2xl bg-gradient-to-r from-purple-900/40 via-indigo-900/30 to-brand-900/30 border border-purple-500/30 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-mono font-bold uppercase border border-purple-500/40 flex items-center gap-1">
+                        <BookOpen className="w-3 h-3 text-purple-400" />
+                        CAPS DBE ARCHIVE
+                      </span>
+                      <Badge variant="indigo" size="sm">Grade {selectedGrade}</Badge>
+                    </div>
+                    <h4 className="text-base font-bold text-white">
+                      {selectedSubName} Grade {selectedGrade} Official Past Papers & Question Bank
+                    </h4>
+                    <p className="text-xs text-slate-300">
+                      Practice official DBE exam papers, view step-by-step marking memorandums, or practice with AI Tutor.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('past-papers')}
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-glow-purple transition-all shrink-0"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>View Interactive Question Papers</span>
+                  </button>
+                </div>
+
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
                     <FileText className="w-4 h-4 text-purple-400" />
-                    Teacher Uploaded Study Resources & Past Papers
+                    Grade {selectedGrade} Study Guides, Textbooks & Past Exam Papers
                   </h4>
                   <span className="text-[11px] text-slate-400">{resources.length} files available</span>
                 </div>
@@ -421,7 +448,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                     {resources.map((res, i) => {
                       const fileHref = res.file_path ? (res.file_path.startsWith('/') ? res.file_path : `/${res.file_path}`) : '#';
                       const resTitle = res.title || res.file_name || `${selectedSubName} Resource`;
-                      const resType = res.resource_type || 'textbook';
+                      const resType = res.resource_type || 'past_paper';
                       return (
                         <div
                           key={res.id || i}
@@ -433,26 +460,38 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <Badge variant={resType === 'past_paper' ? 'rose' : 'indigo'} size="sm">
-                                  {resType === 'past_paper' ? 'Past Paper' : (resType === 'study_guide' ? 'Study Guide' : (resType === 'worksheet' ? 'Worksheet' : 'CAPS Resource'))}
+                                <Badge variant={resType === 'past_paper' ? 'rose' : (resType === 'study_guide' ? 'emerald' : 'indigo')} size="sm">
+                                  {resType === 'past_paper' ? 'Past Exam Paper' : (resType === 'study_guide' ? 'Study Guide' : (resType === 'worksheet' ? 'Worksheet' : 'CAPS Resource'))}
                                 </Badge>
+                                <span className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-slate-300 font-mono">Grade {res.grade || selectedGrade}</span>
                                 {res.term && <span className="text-[10px] text-slate-400">{res.term}</span>}
                               </div>
-                              <h5 className="text-sm font-bold text-white truncate" title={resTitle}>
+                              <h5 className="text-sm font-bold text-white" title={resTitle}>
                                 {resTitle}
                               </h5>
                               <p className="text-[11px] text-slate-400 mt-1">
-                                Grade {res.grade || selectedGrade} • {res.teacher_name ? `Educator: ${res.teacher_name} • ` : ''}{res.file_size ? `${res.file_size} • ` : ''}{res.upload_date ? new Date(res.upload_date).toLocaleDateString() : 'Active Resource'}
+                                {res.teacher_name ? `Educator: ${res.teacher_name} ${res.teacher_surname || ''} • ` : 'Department of Basic Education • '}{res.file_size ? `${res.file_size} • ` : ''}{res.year ? `Exam Year ${res.year}` : (res.upload_date ? new Date(res.upload_date).toLocaleDateString() : 'Active Resource')}
                               </p>
                               {res.description && (
-                                <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
+                                <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
                                   {res.description}
                                 </p>
                               )}
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/5">
+                          <div className="flex items-center justify-between gap-2 pt-3 border-t border-white/5">
+                            <button
+                              onClick={() => {
+                                setTutorTopic({ id: 'exam-practice', name: `Help me practice with ${resTitle}` });
+                                setActiveTab('ai-tutor');
+                              }}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-300 font-bold text-xs border border-cyan-500/20 transition-all"
+                            >
+                              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                              <span>Solve with AI</span>
+                            </button>
+
                             {res.file_path && (
                               <a
                                 href={fileHref}
@@ -461,7 +500,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition-all"
                               >
                                 <Download className="w-3.5 h-3.5" />
-                                <span>Download Document</span>
+                                <span>Download PDF</span>
                               </a>
                             )}
                           </div>
@@ -470,10 +509,17 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                     })}
                   </div>
                 ) : (
-                  <div className="p-12 text-center rounded-2xl bg-surface-darker border border-white/5 space-y-2">
-                    <FileText className="w-10 h-10 text-slate-600 mx-auto" />
-                    <p className="text-sm text-slate-300 font-bold">No uploaded study resources found for {selectedSubName}.</p>
-                    <p className="text-xs text-slate-500">Textbooks and PDF study materials uploaded by your teacher will appear here.</p>
+                  <div className="p-8 text-center rounded-2xl bg-surface-darker border border-white/5 space-y-3">
+                    <FileText className="w-10 h-10 text-purple-400 mx-auto" />
+                    <p className="text-sm text-slate-200 font-bold">Official Question Papers & Study Materials for Grade {selectedGrade} {selectedSubName}</p>
+                    <p className="text-xs text-slate-400 max-w-md mx-auto">Access the interactive past examination papers, worked questions, and marking memorandums directly in the Past Papers tab.</p>
+                    <button
+                      onClick={() => setActiveTab('past-papers')}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-all mt-2"
+                    >
+                      <BookOpen className="w-4 h-4" />
+                      <span>Open Grade {selectedGrade} Question Bank</span>
+                    </button>
                   </div>
                 )}
               </div>

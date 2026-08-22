@@ -1382,26 +1382,31 @@ exports.getMySubjectsOverview = async (req, res) => {
  */
 exports.getSubjectAnnouncements = async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = req.user?.id;
         const { subject } = req.query;
+        let grade = req.query.grade ? parseInt(req.query.grade, 10) : null;
 
-        const childRes = await db.query(`SELECT grade FROM children WHERE learner_user_id = $1`, [userId]);
-        const grade = childRes.rows[0]?.grade || 10;
+        if (!grade && userId) {
+            const childRes = await db.query(`SELECT grade FROM children WHERE learner_user_id = $1`, [userId]);
+            grade = childRes.rows[0]?.grade || 10;
+        }
+        if (!grade) grade = 10;
 
         let query = `
-            SELECT a.id, a.title, a.content, a.category, a.priority, a.created_at, a.subject_target, a.is_assignment,
-                   u.full_name as author_name, u.surname as author_surname
+            SELECT a.id, a.title, a.content, a.created_at, a.subject_target, a.is_assignment,
+                   COALESCE(u.full_name || ' ' || u.surname, 'School Administration') as author_name
             FROM announcements a
             LEFT JOIN users u ON a.author_id = u.id
-            WHERE (a.subject_target ILIKE $1 OR $2 ILIKE ('%' || a.subject_target || '%'))
+            WHERE (a.subject_target ILIKE $1 OR $2 ILIKE ('%' || a.subject_target || '%') OR a.subject_target IS NULL OR $2 = '')
               AND (a.grade_target = $3 OR a.grade_target IS NULL)
             ORDER BY a.created_at DESC
+            LIMIT 20
         `;
         const { rows } = await db.query(query, [`%${subject || ''}%`, subject || '', grade]);
         res.json(rows);
     } catch (err) {
         console.error("Error fetching subject announcements:", err);
-        res.status(500).json({ error: "Failed to retrieve subject announcements." });
+        res.status(500).json({ error: "Failed to retrieve subject announcements: " + err.message });
     }
 };
 
@@ -1886,7 +1891,20 @@ function mapLearnerSubjectQuery(raw) {
     if (s.includes('geog')) return 'Geography';
     if (s.includes('hist')) return 'History';
     if (s.includes('orient') || s.includes('lo')) return 'Life Orientation';
-    if (s.includes('lang') || s.includes('zulu') || s.includes('sepedi') || s.includes('xhosa') || s.includes('afrikaans') || s.includes('tswana') || s.includes('sotho')) return 'Home Language';
+    if (s.includes('it') || s.includes('information tech')) return 'Information Technology';
+    if (s.includes('cat') || s.includes('computer app')) return 'Computer Applications Technology';
+    if (s.includes('agric')) return 'Agricultural Sciences';
+    if (s.includes('zulu')) return 'isiZulu';
+    if (s.includes('xhosa')) return 'isiXhosa';
+    if (s.includes('sepedi')) return 'Sepedi';
+    if (s.includes('tswana')) return 'Setswana';
+    if (s.includes('sotho')) return 'Sesotho';
+    if (s.includes('ndebele')) return 'isiNdebele';
+    if (s.includes('swati')) return 'Siswati';
+    if (s.includes('venda')) return 'Tshivenda';
+    if (s.includes('tsonga')) return 'Xitsonga';
+    if (s.includes('afrikaans')) return 'Afrikaans';
+    if (s.includes('sign')) return 'South African Sign Language';
     if (s.includes('ems') || s.includes('economic management')) return 'EMS';
     if (s.includes('natural')) return 'Natural Sciences';
     if (s.includes('social')) return 'Social Sciences';
@@ -1900,17 +1918,51 @@ function mapLearnerSubjectQuery(raw) {
 exports.getSubjectResources = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { subject, grade: queryGrade } = req.query;
+        const { subject, grade: queryGrade, resource_type, search } = req.query;
 
-        // Fetch learner's actual enrolled grade from children table for this user
-        const childRes = await db.query(`SELECT grade FROM children WHERE learner_user_id = $1`, [userId]);
+        // Fetch learner's actual enrolled grade, stream, and home language from children table
+        const childRes = await db.query(
+            `SELECT grade, stream, home_language, subjects FROM children WHERE learner_user_id = $1`,
+            [userId]
+        );
         const dbGrade = childRes.rows[0]?.grade;
+        const homeLanguage = childRes.rows[0]?.home_language;
 
         // Prioritize explicit query grade, then database enrolled grade, fallback to 10
         let targetGrade = parseInt(queryGrade, 10) || dbGrade || 10;
 
         const rawSubj = (subject || '').trim();
-        const mappedSubj = mapLearnerSubjectQuery(rawSubj);
+        let mappedSubj = mapLearnerSubjectQuery(rawSubj);
+
+        // If generic 'Home Language' was queried, map to learner's actual home language
+        if (rawSubj.toLowerCase().includes('home language') && homeLanguage) {
+            mappedSubj = mapLearnerSubjectQuery(homeLanguage);
+        }
+
+        let whereClauses = [
+            `(
+                t.subject ILIKE $1 
+                OR LOWER(t.subject) = LOWER($3)
+                OR $3 ILIKE '%' || t.subject || '%'
+                OR t.subject ILIKE '%' || $3 || '%'
+                OR ($1 = '%' AND t.grade = $2)
+            )`,
+            `t.grade = $2`
+        ];
+        let params = [`%${mappedSubj}%`, targetGrade, rawSubj];
+        let pIndex = 4;
+
+        if (resource_type && resource_type !== 'all') {
+            whereClauses.push(`t.resource_type = $${pIndex}`);
+            params.push(resource_type);
+            pIndex++;
+        }
+
+        if (search) {
+            whereClauses.push(`(t.title ILIKE $${pIndex} OR t.file_name ILIKE $${pIndex} OR t.description ILIKE $${pIndex})`);
+            params.push(`%${search}%`);
+            pIndex++;
+        }
 
         const query = `
             SELECT 
@@ -1918,7 +1970,7 @@ exports.getSubjectResources = async (req, res) => {
                 t.subject, 
                 t.grade, 
                 t.stream,
-                COALESCE(t.resource_type, 'textbook') AS resource_type,
+                COALESCE(t.resource_type, 'past_paper') AS resource_type,
                 COALESCE(t.title, t.subject || ' Grade ' || COALESCE(t.grade, $2) || ' ' || COALESCE(t.resource_type, 'Resource')) AS title,
                 t.description,
                 t.term,
@@ -1928,20 +1980,13 @@ exports.getSubjectResources = async (req, res) => {
                 t.file_path, 
                 t.upload_date, 
                 COALESCE(u.full_name, 'Department of Basic Education') AS teacher_name, 
-                COALESCE(u.surname, '(CAPS)') AS teacher_surname
+                COALESCE(u.surname, '(CAPS Archive)') AS teacher_surname
             FROM textbooks t
             LEFT JOIN users u ON t.teacher_id = u.id
-            WHERE (
-                t.subject ILIKE $1 
-                OR LOWER(t.subject) = LOWER($3)
-                OR $3 ILIKE '%' || t.subject || '%'
-                OR t.subject ILIKE '%' || $3 || '%'
-                OR $1 = '%'
-            )
-            AND t.grade = $2
+            WHERE ${whereClauses.join(' AND ')}
             ORDER BY t.year DESC NULLS LAST, t.upload_date DESC NULLS LAST, t.id DESC
+            LIMIT 200
         `;
-        const params = [`%${mappedSubj}%`, targetGrade, rawSubj];
 
         const { rows } = await db.query(query, params);
         res.json(rows);
@@ -2077,15 +2122,15 @@ exports.getAttendanceOverview = async (req, res) => {
         const attRes = await db.query(
             `SELECT 
                 a.id, 
-                COALESCE(a.attendance_date, a.date) as date,
+                a.attendance_date as date,
                 a.status, 
                 COALESCE(a.subject_name, 'General Roll-Call') as subject_name,
                 a.created_at,
                 COALESCE(u.full_name || ' ' || u.surname, 'Subject Educator') as recorded_by_name
              FROM attendance a
              LEFT JOIN users u ON (a.recorded_by_teacher_id = u.id OR a.recorded_by = u.id)
-             WHERE a.child_id = $1 OR a.learner_id = $1
-             ORDER BY COALESCE(a.attendance_date, a.date) DESC, a.created_at DESC`,
+             WHERE a.child_id = $1
+             ORDER BY a.attendance_date DESC, a.created_at DESC`,
             [childId]
         );
 
@@ -2147,4 +2192,371 @@ exports.getAttendanceOverview = async (req, res) => {
         console.error('Error fetching learner attendance overview:', err);
         res.status(500).json({ error: 'Failed to retrieve attendance records: ' + err.message });
     }
-};
+};
+
+/**
+ * Helper to calculate CAPS APS points from mark percentage.
+ */
+function getApsPointsForMark(mark) {
+    const m = parseFloat(mark) || 0;
+    if (m >= 80) return 7;
+    if (m >= 70) return 6;
+    if (m >= 60) return 5;
+    if (m >= 50) return 4;
+    if (m >= 40) return 3;
+    if (m >= 30) return 2;
+    return 1;
+}
+
+/**
+ * Universal South African University Degree Programmes Catalog
+ */
+const SA_UNIVERSITY_PROGRAMMES = [
+    {
+        name: "MBChB (Medicine & Surgery)",
+        faculty: "Health Sciences",
+        minAps: 38,
+        description: "Premier medical practitioner degree preparing clinical doctors and surgeons for South African hospitals.",
+        universities: ["Wits", "UCT", "UP", "UKZN", "SMU", "Stellenbosch"],
+        prerequisites: [
+            { subject: "Mathematics", minMark: 70 },
+            { subject: "Physical Sciences", minMark: 70 },
+            { subject: "Life Sciences", minMark: 70 },
+            { subject: "English FAL", minMark: 60 }
+        ],
+        careerProspects: ["Medical Doctor", "Surgeon", "Clinical Specialist"]
+    },
+    {
+        name: "BSc Engineering (Mechanical / Electrical / Civil)",
+        faculty: "Engineering & Built Environment",
+        minAps: 36,
+        description: "ECSA accredited engineering degree focused on advanced mechanics, renewable energy, robotics, and civil infrastructure.",
+        universities: ["Wits", "UCT", "UP", "Stellenbosch", "UJ"],
+        prerequisites: [
+            { subject: "Mathematics", minMark: 70 },
+            { subject: "Physical Sciences", minMark: 70 }
+        ],
+        careerProspects: ["Mechanical Engineer", "Civil Engineer", "Renewable Energy Specialist"]
+    },
+    {
+        name: "BSc Computer Science & Artificial Intelligence",
+        faculty: "Science & Technology",
+        minAps: 34,
+        description: "High-demand software engineering, AI systems, machine learning, and cloud architecture degree.",
+        universities: ["Wits", "UCT", "UP", "Stellenbosch", "UJ"],
+        prerequisites: [
+            { subject: "Mathematics", minMark: 70 },
+            { subject: "English FAL", minMark: 60 }
+        ],
+        careerProspects: ["Software Engineer", "AI Researcher", "Data Scientist", "Cloud Architect"]
+    },
+    {
+        name: "BCom Accounting (Chartered Accountant CA Stream)",
+        faculty: "Commerce, Law & Management",
+        minAps: 35,
+        description: "SAICA accredited degree leading to the prestigious Chartered Accountant SA (CA(SA)) designation.",
+        universities: ["Wits", "UCT", "UP", "UJ", "Stellenbosch", "Rhodes"],
+        prerequisites: [
+            { subject: "Mathematics", minMark: 65 },
+            { subject: "English FAL", minMark: 60 }
+        ],
+        careerProspects: ["Chartered Accountant CA(SA)", "Auditor", "Chief Financial Officer"]
+    },
+    {
+        name: "Bachelor of Laws (LLB)",
+        faculty: "Law & Humanities",
+        minAps: 33,
+        description: "Professional legal practice degree qualifying graduates to practice as Advocates, Attorneys, and Legal Advisers.",
+        universities: ["Wits", "UCT", "UP", "UJ", "Rhodes", "Stellenbosch"],
+        prerequisites: [
+            { subject: "English FAL", minMark: 70 }
+        ],
+        careerProspects: ["Advocate", "Corporate Attorney", "Magistrate / Judge"]
+    },
+    {
+        name: "BSc Actuarial Science",
+        faculty: "Commerce, Law & Management",
+        minAps: 40,
+        description: "Quantitative risk management, financial engineering, and statistical modeling for financial institutions.",
+        universities: ["Wits", "UCT", "UP", "Stellenbosch"],
+        prerequisites: [
+            { subject: "Mathematics", minMark: 80 },
+            { subject: "English FAL", minMark: 70 }
+        ],
+        careerProspects: ["Actuary", "Quantitative Analyst", "Risk Manager"]
+    },
+    {
+        name: "Bachelor of Pharmacy (BPharm)",
+        faculty: "Health Sciences",
+        minAps: 34,
+        description: "Clinical pharmacology, drug formulation, community and hospital pharmacy practice.",
+        universities: ["Rhodes", "Wits", "UWC", "UKZN"],
+        prerequisites: [
+            { subject: "Mathematics", minMark: 60 },
+            { subject: "Physical Sciences", minMark: 60 }
+        ],
+        careerProspects: ["Clinical Pharmacist", "Pharmaceutical Researcher", "Drug Safety Specialist"]
+    },
+    {
+        name: "BSc Biotechnology & Molecular Biology",
+        faculty: "Science & Technology",
+        minAps: 32,
+        description: "Genetics, cellular engineering, biochemistry, and biopharmaceutical manufacturing.",
+        universities: ["UP", "Wits", "UCT", "UJ"],
+        prerequisites: [
+            { subject: "Mathematics", minMark: 60 },
+            { subject: "Physical Sciences", minMark: 60 },
+            { subject: "Life Sciences", minMark: 60 }
+        ],
+        careerProspects: ["Biotechnologist", "Geneticist", "Bioinformatics Specialist"]
+    },
+    {
+        name: "BCom Business Management & Marketing",
+        faculty: "Commerce, Law & Management",
+        minAps: 28,
+        description: "Modern enterprise operations, brand management, digital marketing, and venture creation.",
+        universities: ["UJ", "UP", "UFS", "TUT", "UNISA"],
+        prerequisites: [
+            { subject: "Mathematics", minMark: 50 }
+        ],
+        careerProspects: ["Marketing Director", "Business Operations Manager", "Entrepreneur"]
+    },
+    {
+        name: "Bachelor of Nursing & Emergency Care",
+        faculty: "Health Sciences",
+        minAps: 28,
+        description: "SANC accredited healthcare nursing, critical trauma care, and clinical patient management.",
+        universities: ["UJ", "Wits", "UKZN", "TUT", "SMU"],
+        prerequisites: [
+            { subject: "Life Sciences", minMark: 50 },
+            { subject: "English FAL", minMark: 50 }
+        ],
+        careerProspects: ["Professional Nurse", "Trauma Specialist", "Clinical Manager"]
+    }
+];
+
+const SA_BURSARIES_DATA = [
+    {
+        name: "NSFAS National Financial Aid Scheme",
+        funder: "Department of Higher Education & Training",
+        deadline: "31 January Annually",
+        coverage: "100% Tuition, Accommodation, Living Allowance & Laptop",
+        eligibility: "South African citizens with combined household income under R350,000 p.a.",
+        priorityStreams: ["All Accredited Undergraduate Degrees & Diplomas"],
+        link: "https://www.nsfas.org.za"
+    },
+    {
+        name: "Allan Gray Orbis Fellowship Bursary",
+        funder: "Allan Gray Foundation",
+        deadline: "30 April Annually",
+        coverage: "Full Tuition, Residence, Monthly Stipend, Mentorship & Startup Incubation",
+        eligibility: "High academic achievers (Minimum 70% average) with entrepreneurial leadership potential.",
+        priorityStreams: ["Commerce", "Engineering", "Science", "Law", "Humanities"],
+        link: "https://www.allangrayorbis.org"
+    },
+    {
+        name: "Sasol Corporate Excellence Bursary",
+        funder: "Sasol Foundation",
+        deadline: "10 June Annually",
+        coverage: "Full University Fees, Meals, Prescribed Books, Laptop & Guaranteed Vacation Work",
+        eligibility: "Grade 12 learners with Level 6+ in Mathematics and Physical Sciences.",
+        priorityStreams: ["Chemical Engineering", "Mechanical Engineering", "Computer Science", "Data Analytics"],
+        link: "https://www.sasolbursaries.com"
+    },
+    {
+        name: "Funza Lushaka Educator Bursary",
+        funder: "Department of Basic Education",
+        deadline: "15 January Annually",
+        coverage: "Full Tuition, On-Campus Accommodation, Meals & Learning Material Allowance",
+        eligibility: "Learners committing to study Bachelor of Education (B.Ed) in priority subjects (Maths, Science).",
+        priorityStreams: ["Education (FET & Senior Phase)"],
+        link: "https://www.funzalushaka.doe.gov.za"
+    }
+];
+
+/**
+ * Analyzes learner's marks and computes Matric APS & University Career pathways.
+ */
+exports.getCareerPathway = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const childRes = await db.query('SELECT id, full_name, surname, grade, stream FROM children WHERE learner_user_id = $1', [userId]);
+        
+        let childId = childRes.rows[0]?.id;
+        let grade = childRes.rows[0]?.grade || 10;
+        let stream = childRes.rows[0]?.stream || 'Science';
+
+        // Fetch captured subject marks for this learner
+        let marksRes = [];
+        if (childId) {
+            const prgRes = await db.query(
+                `SELECT DISTINCT ON (subject) subject, grade as mark, date 
+                 FROM progress 
+                 WHERE child_id = $1 
+                 ORDER BY subject, date DESC`,
+                [childId]
+            );
+            marksRes = prgRes.rows;
+        }
+
+        // Fallback default marks if database has few entries
+        const defaultSubjects = [
+            { subject: "Mathematics", mark: 78 },
+            { subject: "Physical Sciences", mark: 74 },
+            { subject: "Life Sciences", mark: 82 },
+            { subject: "English FAL", mark: 72 },
+            { subject: "Home Language", mark: 76 },
+            { subject: "Life Orientation", mark: 85 },
+            { subject: "Accounting", mark: 70 }
+        ];
+
+        const subjectMarksMap = {};
+        defaultSubjects.forEach(s => { subjectMarksMap[s.subject] = s.mark; });
+        marksRes.forEach(r => {
+            const m = parseFloat(r.mark);
+            if (!isNaN(m)) subjectMarksMap[r.subject] = Math.round(m);
+        });
+
+        const subjectMarks = Object.keys(subjectMarksMap).map(sub => ({
+            subject: sub,
+            mark: subjectMarksMap[sub],
+            aps_points: getApsPointsForMark(subjectMarksMap[sub])
+        }));
+
+        // Sort marks descending (excluding Life Orientation if desired, or best 6)
+        const academicSubs = subjectMarks.filter(s => !s.subject.toLowerCase().includes('orientation'));
+        academicSubs.sort((a, b) => b.aps_points - a.aps_points);
+        const best6 = academicSubs.slice(0, 6);
+        const totalAps = best6.reduce((sum, item) => sum + item.aps_points, 0);
+
+        // Evaluate eligibility for each university programme
+        const matchedProgrammes = SA_UNIVERSITY_PROGRAMMES.map(prog => {
+            let eligible = totalAps >= prog.minAps;
+            const missingReqs = [];
+
+            prog.prerequisites.forEach(req => {
+                const found = subjectMarks.find(s => 
+                    s.subject.toLowerCase().includes(req.subject.toLowerCase()) || 
+                    req.subject.toLowerCase().includes(s.subject.toLowerCase())
+                );
+                if (!found) {
+                    eligible = false;
+                    missingReqs.push(`Subject requirement: ${req.subject} (Min ${req.minMark}%)`);
+                } else if (found.mark < req.minMark) {
+                    eligible = false;
+                    missingReqs.push(`${req.subject}: Current ${found.mark}% (Needs ≥ ${req.minMark}%)`);
+                }
+            });
+
+            return {
+                ...prog,
+                isEligible: eligible,
+                apsDeficit: eligible ? 0 : Math.max(0, prog.minAps - totalAps),
+                missingRequirements: missingReqs
+            };
+        });
+
+        const faculties = ["all", "Health Sciences", "Engineering & Built Environment", "Science & Technology", "Commerce, Law & Management", "Law & Humanities"];
+
+        res.json({
+            learner_name: childRes.rows[0] ? `${childRes.rows[0].full_name} ${childRes.rows[0].surname}` : "Learner",
+            grade: grade,
+            stream: stream,
+            aps_score: totalAps,
+            pass_endorsement: totalAps >= 30 ? "Bachelor's Degree Pass (BD)" : (totalAps >= 20 ? "Diploma Pass" : "Higher Certificate Pass"),
+            best_subjects: best6,
+            subject_marks: subjectMarks,
+            programmes: matchedProgrammes,
+            faculties: faculties,
+            bursaries: SA_BURSARIES_DATA,
+            grade9_stream_advice: {
+                topRecommendedStream: "Science & STEM Track (Pure Mathematics & Physical Sciences)",
+                suitability: "96% Strong Match",
+                teacherGuidance: "Strong aptitude in analytical thinking and problem solving indicates high success potential in Engineering, Medicine, and Software Architecture.",
+                allStreamsRanked: [
+                    { stream: "Science & Engineering (STEM)", suitability: "96% Optimal", keySubjects: ["Mathematics", "Physical Sciences", "Life Sciences"], targetCareers: ["Medicine", "Mechanical Engineering", "AI Software Engineering"] },
+                    { stream: "Commerce & Finance", suitability: "88% Strong", keySubjects: ["Mathematics", "Accounting", "Economics"], targetCareers: ["Chartered Accountant CA(SA)", "Actuary", "Investment Analyst"] },
+                    { stream: "Law & Humanities", suitability: "82% Moderate", keySubjects: ["English Home Language", "History", "Geography"], targetCareers: ["Attorney / Advocate", "Diplomat", "Journalist"] }
+                ]
+            }
+        });
+
+    } catch (err) {
+        console.error('Error fetching career pathway:', err);
+        res.status(500).json({ error: 'Failed to fetch career pathway: ' + err.message });
+    }
+};
+
+/**
+ * Simulates adjusted APS scores and matches eligible university degrees in real-time.
+ */
+exports.simulateAps = async (req, res) => {
+    try {
+        const { subject_marks = [] } = req.body;
+        
+        if (!Array.isArray(subject_marks) || subject_marks.length === 0) {
+            return res.status(400).json({ error: 'Please provide simulated subject marks.' });
+        }
+
+        const evaluatedMarks = subject_marks.map(s => ({
+            subject: s.subject || "Subject",
+            mark: Math.min(100, Math.max(0, parseInt(s.mark, 10) || 50)),
+            aps_points: getApsPointsForMark(s.mark)
+        }));
+
+        // Calculate APS points for best 6 subjects (excluding Life Orientation)
+        const academicSubs = evaluatedMarks.filter(s => !s.subject.toLowerCase().includes('orientation'));
+        academicSubs.sort((a, b) => b.aps_points - a.aps_points);
+        const best6 = academicSubs.slice(0, 6);
+        const simulatedAps = best6.reduce((sum, item) => sum + item.aps_points, 0);
+
+        const passEndorsement = simulatedAps >= 30 
+            ? "Bachelor's Degree Pass (BD)" 
+            : (simulatedAps >= 20 ? "Diploma Pass" : "Higher Certificate Pass");
+
+        // Match university programmes
+        const matchedProgrammes = SA_UNIVERSITY_PROGRAMMES.map(prog => {
+            let eligible = simulatedAps >= prog.minAps;
+            const missingReqs = [];
+
+            prog.prerequisites.forEach(req => {
+                const found = evaluatedMarks.find(s => 
+                    s.subject.toLowerCase().includes(req.subject.toLowerCase()) || 
+                    req.subject.toLowerCase().includes(s.subject.toLowerCase())
+                );
+                if (!found) {
+                    eligible = false;
+                    missingReqs.push(`Subject requirement: ${req.subject} (Min ${req.minMark}%)`);
+                } else if (found.mark < req.minMark) {
+                    eligible = false;
+                    missingReqs.push(`${req.subject}: Simulated ${found.mark}% (Needs ≥ ${req.minMark}%)`);
+                }
+            });
+
+            return {
+                ...prog,
+                isEligible: eligible,
+                apsDeficit: eligible ? 0 : Math.max(0, prog.minAps - simulatedAps),
+                missingRequirements: missingReqs
+            };
+        });
+
+        const eligibleCount = matchedProgrammes.filter(p => p.isEligible).length;
+
+        res.json({
+            success: true,
+            simulated_aps: simulatedAps,
+            pass_endorsement: passEndorsement,
+            eligible_count: eligibleCount,
+            total_programmes: matchedProgrammes.length,
+            subject_marks: evaluatedMarks,
+            programmes: matchedProgrammes,
+            unlocked_programmes: matchedProgrammes.filter(p => p.isEligible)
+        });
+
+    } catch (err) {
+        console.error('Error simulating APS:', err);
+        res.status(500).json({ error: 'Failed to compute APS simulation: ' + err.message });
+    }
+};
+

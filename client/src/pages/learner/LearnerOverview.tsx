@@ -130,7 +130,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
 
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-darker border border-white/10 font-semibold text-cyan-300 font-mono">
                   <Award className="w-3.5 h-3.5 text-cyan-400" />
-                  ID: {learnerNumber}
+                  Learner ID: {learnerNumber}
                 </span>
 
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-darker border border-white/10 font-semibold text-emerald-300">

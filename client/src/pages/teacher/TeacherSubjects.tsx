@@ -533,7 +533,7 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                                 <div>
                                   <p className="font-bold text-white leading-tight">{displayName}</p>
                                   <p className="text-[10px] text-slate-400 font-mono">
-                                    ID: {learner.learner_number || `ID-${learner.id}`} • Stream: {learner.stream || 'General'}
+                                    Learner ID: {learner.learner_number || `ID-${learner.id}`} • Stream: {learner.stream || 'General'}
                                   </p>
                                 </div>
                               </div>

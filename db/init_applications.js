@@ -4,7 +4,35 @@ async function initApplicationTables() {
   try {
     console.log('[DB] Ensuring Applications & Multi-Parent tables exist...');
 
-    // 1. Applications Table
+    // 1. Classes Table (must exist before applications references it)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS classes (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50) UNIQUE NOT NULL,
+        grade INTEGER NOT NULL CHECK (grade BETWEEN 8 AND 12),
+        stream VARCHAR(50) DEFAULT 'General',
+        homeroom_teacher_id INTEGER
+      );
+
+      INSERT INTO classes (name, grade, stream)
+      VALUES 
+        ('8A', 8, 'General'),
+        ('8B', 8, 'General'),
+        ('9A', 9, 'General'),
+        ('9B', 9, 'General'),
+        ('10A', 10, 'Science'),
+        ('10B', 10, 'Commerce'),
+        ('10C', 10, 'Tourism'),
+        ('11A', 11, 'Science'),
+        ('11B', 11, 'Tourism'),
+        ('11C', 11, 'Commerce'),
+        ('12A', 12, 'Science'),
+        ('12B', 12, 'Commerce'),
+        ('12C', 12, 'Tourism')
+      ON CONFLICT (name) DO NOTHING;
+    `);
+
+    // 2. Applications Table
     await db.query(`
       CREATE TABLE IF NOT EXISTS applications (
         id SERIAL PRIMARY KEY,
@@ -65,7 +93,7 @@ async function initApplicationTables() {
       );
     `);
 
-    // 2. Application Documents Table
+    // 3. Application Documents Table
     await db.query(`
       CREATE TABLE IF NOT EXISTS application_documents (
         id SERIAL PRIMARY KEY,
@@ -83,7 +111,7 @@ async function initApplicationTables() {
       );
     `);
 
-    // 3. Multi-Parent Support: Ensure secondary_parent_id in children and parent_children table
+    // 4. Multi-Parent Support: Ensure children and parent_children tables
     await db.query(`
       CREATE TABLE IF NOT EXISTS children (
         id SERIAL PRIMARY KEY,
@@ -114,31 +142,6 @@ async function initApplicationTables() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(parent_id, child_id)
       );
-
-      CREATE TABLE IF NOT EXISTS classes (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(50) UNIQUE NOT NULL,
-        grade INTEGER NOT NULL CHECK (grade BETWEEN 8 AND 12),
-        stream VARCHAR(50) DEFAULT 'General',
-        homeroom_teacher_id INTEGER
-      );
-
-      INSERT INTO classes (name, grade, stream)
-      VALUES 
-        ('8A', 8, 'General'),
-        ('8B', 8, 'General'),
-        ('9A', 9, 'General'),
-        ('9B', 9, 'General'),
-        ('10A', 10, 'Science'),
-        ('10B', 10, 'Commerce'),
-        ('10C', 10, 'Tourism'),
-        ('11A', 11, 'Science'),
-        ('11B', 11, 'Tourism'),
-        ('11C', 11, 'Commerce'),
-        ('12A', 12, 'Science'),
-        ('12B', 12, 'Commerce'),
-        ('12C', 12, 'Tourism')
-      ON CONFLICT (name) DO NOTHING;
     `);
 
     console.log('[DB] Application schema initialized successfully.');

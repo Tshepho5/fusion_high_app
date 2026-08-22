@@ -176,10 +176,10 @@ export const ParticleLogoIntro: React.FC<ParticleLogoIntroProps> = ({ onComplete
         <ArrowRight className="w-3.5 h-3.5" />
       </button>
 
-      {/* Central Assembled Logo */}
+      {/* Central Assembled Logo (Enlarged) */}
       <div className="relative z-10 flex flex-col items-center justify-center pointer-events-none -mt-20">
         <div
-          className={`w-44 h-44 md:w-56 md:h-56 rounded-3xl bg-slate-900/90 border border-white/20 p-5 shadow-2xl flex items-center justify-center transition-all duration-700 transform ${
+          className={`w-56 h-56 md:w-72 md:h-72 lg:w-80 lg:h-80 rounded-3xl bg-slate-900/95 border border-white/25 p-6 shadow-2xl shadow-indigo-500/20 flex items-center justify-center transition-all duration-700 transform ${
             showLogo
               ? 'scale-100 opacity-100 rotate-0'
               : 'scale-50 opacity-0 rotate-45'
@@ -188,7 +188,7 @@ export const ParticleLogoIntro: React.FC<ParticleLogoIntroProps> = ({ onComplete
           <img
             src="/assets/FH.png"
             alt="Fusion High School Logo"
-            className="w-full h-full object-contain drop-shadow-md"
+            className="w-full h-full object-contain drop-shadow-2xl"
           />
         </div>
 

@@ -151,34 +151,75 @@ const emailService = {
    * Real email sender using Nodemailer with automatic TLS fallback.
    */
   send: async (to, subject, body, replyTo = null) => {
+    if (!to || !to.includes('@')) {
+      console.error('[EMAIL ERROR] Invalid recipient email address:', to);
+      return { success: false, error: `Invalid recipient email address: '${to}'` };
+    }
+
+    const cleanTo = to.trim().toLowerCase();
+    if (cleanTo.endsWith('@fusion.high')) {
+      console.warn('[EMAIL ERROR] Cannot deliver email to internal placeholder domain:', cleanTo);
+      return { success: false, error: `Cannot deliver to internal placeholder domain '${cleanTo}'. Please use the linked parent/guardian email address.` };
+    }
+
     const senderUser = getSmtpUser();
+    const senderPass = getSmtpPass();
     const mailOptions = {
       from: `"Fusion High School" <${senderUser}>`,
-      to,
+      to: cleanTo,
       subject,
       html: body,
       ...(replyTo && { replyTo })
     };
 
+    // Strategy 1: service: 'gmail' (most reliable for Gmail App Passwords on cloud hosts)
     try {
-      const transporter = createTransporter();
-      const info = await transporter.sendMail(mailOptions);
-      console.log(`[EMAIL SUCCESS] Dispatched to ${to}: ${info.messageId}`);
+      const t1 = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: senderUser, pass: senderPass },
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 8000,
+        greetingTimeout: 8000
+      });
+      const info = await t1.sendMail(mailOptions);
+      console.log(`[EMAIL SUCCESS - Service Gmail] Dispatched to ${to}: ${info.messageId}`);
       return { success: true, messageId: info.messageId };
-    } catch (error) {
-      console.warn('[EMAIL PRIMARY RETRY] Primary transport failed (' + (error.message || error) + '), attempting direct SMTP 465 fallback...');
+    } catch (e1) {
+      console.warn(`[EMAIL RETRY 1] service: 'gmail' failed (${e1.message}), attempting Port 587 STARTTLS...`);
+      // Strategy 2: Port 587 with STARTTLS
       try {
-        const fallbackTransporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: { user: getSmtpUser(), pass: getSmtpPass() },
-          tls: { rejectUnauthorized: false }
+        const t2 = nodemailer.createTransport({
+          host: 'smtp.gmail.com',
+          port: 587,
+          secure: false,
+          auth: { user: senderUser, pass: senderPass },
+          tls: { rejectUnauthorized: false },
+          connectionTimeout: 8000,
+          greetingTimeout: 8000
         });
-        const fallbackInfo = await fallbackTransporter.sendMail(mailOptions);
-        console.log(`[EMAIL SUCCESS - Fallback 465] Dispatched to ${to}: ${fallbackInfo.messageId}`);
-        return { success: true, messageId: fallbackInfo.messageId };
-      } catch (fallbackError) {
-        console.error('[EMAIL ERROR - Both Transporters Failed]:', fallbackError.message || fallbackError);
-        return { success: false, error: error.message || fallbackError.message };
+        const info = await t2.sendMail(mailOptions);
+        console.log(`[EMAIL SUCCESS - Port 587] Dispatched to ${to}: ${info.messageId}`);
+        return { success: true, messageId: info.messageId };
+      } catch (e2) {
+        console.warn(`[EMAIL RETRY 2] Port 587 failed (${e2.message}), attempting Port 465 SSL...`);
+        // Strategy 3: Port 465 SSL
+        try {
+          const t3 = nodemailer.createTransport({
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true,
+            auth: { user: senderUser, pass: senderPass },
+            tls: { rejectUnauthorized: false },
+            connectionTimeout: 8000,
+            greetingTimeout: 8000
+          });
+          const info = await t3.sendMail(mailOptions);
+          console.log(`[EMAIL SUCCESS - Port 465] Dispatched to ${to}: ${info.messageId}`);
+          return { success: true, messageId: info.messageId };
+        } catch (e3) {
+          console.error('[EMAIL ERROR - All 3 Transporters Failed]:', e3.message || e3);
+          return { success: false, error: e1.message || e2.message || e3.message };
+        }
       }
     }
   },
@@ -928,6 +969,73 @@ const emailService = {
           ctaLink: loginUrl
         })
       };
+    },
+
+    parentWelcome: ({ name, surname, email, temporaryPassword, baseUrl }) => {
+      const title = `Welcome to Fusion High School Parent Portal`;
+      const cleanBaseUrl = (baseUrl || process.env.APP_URL || process.env.BASE_URL || 'https://fusion-high-app.onrender.com').replace(/\/+$/, '');
+      const loginUrl = `${cleanBaseUrl}/login`;
+
+      const contentHtml = `
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+          Dear <strong style="color: #ffffff;">${name} ${surname}</strong>,
+        </p>
+        <p style="color: #cbd5e1; font-size: 13px; line-height: 1.6; margin-bottom: 20px;">
+          An official parent account has been created for you on the <strong>Fusion High School Parent Portal</strong>. You can now securely monitor your children's academic reports, track live class attendance, view timetables, communicate with teachers, and pay school fees.
+        </p>
+
+        <!-- Credentials Card -->
+        <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; border-left: 4px solid #4f46e5; border-radius: 12px; padding: 20px 24px; margin: 24px 0;">
+          <h4 style="margin: 0 0 14px 0; color: #818cf8; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+            Your Login Credentials
+          </h4>
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px;">
+            <tr>
+              <td style="padding: 6px 0; color: #94a3b8; width: 140px;">Portal URL:</td>
+              <td style="padding: 6px 0; color: #38bdf8; font-weight: 600;">
+                <a href="${loginUrl}" style="color: #38bdf8; text-decoration: none;">${loginUrl}</a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #94a3b8;">Login Email:</td>
+              <td style="padding: 6px 0; color: #ffffff; font-weight: 700; font-family: monospace;">${email}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #94a3b8;">Temporary Password:</td>
+              <td style="padding: 6px 0; color: #34d399; font-weight: 700; font-family: monospace; font-size: 14px;">${temporaryPassword}</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Linking Children Guide -->
+        <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; border-left: 4px solid #06b6d4; border-radius: 12px; padding: 18px 22px; margin: 20px 0;">
+          <h4 style="margin: 0 0 12px 0; color: #22d3ee; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+            How to Link Your Child / Children
+          </h4>
+          <ol style="margin: 0; padding-left: 18px; color: #cbd5e1; font-size: 13px; line-height: 1.6;">
+            <li style="margin-bottom: 6px;">Sign in to your parent dashboard using your email and temporary password.</li>
+            <li style="margin-bottom: 6px;">Click on <strong>"Link Child / Learner"</strong>.</li>
+            <li style="margin-bottom: 6px;">Enter your child's <strong>Learner Number</strong> (e.g., <code style="color: #38bdf8;">2026001</code> or <code style="color: #38bdf8;">2026-FHS-001</code>) and their <strong>National ID Number</strong>.</li>
+            <li>You can repeat this simple step to link <strong>all of your children</strong> to the same account.</li>
+          </ol>
+        </div>
+
+        <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin-top: 24px;">
+          For security reasons, we recommend updating your password in your profile settings after your initial login.
+        </p>
+      `;
+
+      return {
+        subject: `Welcome to Fusion High School — Parent Portal Account Details`,
+        body: createBaseEmailTemplate({
+          preheader: `Your Fusion High Parent Portal account is ready. Temporary login credentials inside.`,
+          title,
+          subtitle: `Official Parent & Guardian Account Activation`,
+          contentHtml,
+          ctaText: 'Sign In to Parent Portal',
+          ctaLink: loginUrl
+        })
+      };
     }
   },
 
@@ -948,6 +1056,11 @@ const emailService = {
 
   sendEmployeeWelcome: async (params) => {
     const template = emailService.templates.employeeWelcome(params);
+    return await emailService.sendEmail(params.email, template.subject, template.body);
+  },
+
+  sendParentWelcome: async (params) => {
+    const template = emailService.templates.parentWelcome(params);
     return await emailService.sendEmail(params.email, template.subject, template.body);
   }
 };

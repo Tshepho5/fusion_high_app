@@ -73,15 +73,30 @@ export const TextbookAssetTracker: React.FC = () => {
           textbookService.getInventory(selectedGrade !== 'all' ? { grade: parseInt(selectedGrade, 10) } : undefined),
           adminService.getLearners()
         ]);
-        if (invData.status === 'fulfilled') setInventory(invData.value || []);
+        if (invData.status === 'fulfilled') {
+          const invList = Array.isArray(invData.value)
+            ? invData.value
+            : (invData.value?.inventory || invData.value?.textbooks || []);
+          setInventory(invList);
+        }
         if (lData.status === 'fulfilled') {
-          const lList = Array.isArray(lData.value) ? lData.value : lData.value.learners || [];
+          const lList = Array.isArray(lData.value)
+            ? lData.value
+            : (lData.value?.learners || []);
           setLearners(lList);
-          if (lList.length > 0) setIssueForm(prev => ({ ...prev, child_id: lList[0].id.toString() }));
+          if (lList.length > 0) {
+            const firstId = lList[0]?.id ?? lList[0]?.learner_id;
+            if (firstId !== undefined && firstId !== null) {
+              setIssueForm(prev => ({ ...prev, child_id: firstId.toString() }));
+            }
+          }
         }
       } else {
         const books = await textbookService.getMyBooks();
-        setMyBooks(books || []);
+        const bookList = Array.isArray(books)
+          ? books
+          : (books?.textbooks || books?.allocations || []);
+        setMyBooks(bookList);
       }
     } catch (err: any) {
       console.error('Error fetching textbooks:', err);
@@ -206,11 +221,16 @@ export const TextbookAssetTracker: React.FC = () => {
   }
 
   // Admin & Teacher View
-  const filteredInventory = inventory.filter(i =>
-    i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    i.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (i.barcode && i.barcode.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const safeInventory = Array.isArray(inventory) ? inventory : [];
+  const filteredInventory = safeInventory.filter(i => {
+    if (!i) return false;
+    const title = (i.title || '').toString().toLowerCase();
+    const subject = (i.subject || '').toString().toLowerCase();
+    const barcode = (i.barcode || '').toString().toLowerCase();
+    const isbn = (i.isbn || '').toString().toLowerCase();
+    const query = (searchQuery || '').toLowerCase();
+    return title.includes(query) || subject.includes(query) || barcode.includes(query) || isbn.includes(query);
+  });
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -443,11 +463,14 @@ export const TextbookAssetTracker: React.FC = () => {
                   onChange={(e) => setIssueForm(prev => ({ ...prev, child_id: e.target.value }))}
                   className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500"
                 >
-                  {learners.map(l => (
-                    <option key={l.id} value={l.id}>
-                      {l.full_name || l.name} {l.surname || ''} (Grade {l.grade || 10})
-                    </option>
-                  ))}
+                  {learners.map((l: any, idx: number) => {
+                    const lId = l.id ?? l.learner_id ?? idx;
+                    return (
+                      <option key={lId} value={lId}>
+                        {l.full_name || l.name || 'Learner'} {l.surname || ''} (Grade {l.grade || 10}{l.stream ? ` - ${l.stream}` : ''})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 

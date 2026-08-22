@@ -20,7 +20,13 @@ exports.getProfile = async (req, res) => {
 
         const user = userRes.rows[0];
         if (user.role === 'learner') {
-            const childRes = await db.query('SELECT * FROM children WHERE learner_user_id = $1 OR id_number = $2', [req.user.id, user.id_number]);
+            const lrnNum = (user.email || '').split('@')[0];
+            const childRes = await db.query(
+                `SELECT * FROM children 
+                 WHERE learner_user_id = $1 OR learner_number = $2 OR (id_number IS NOT NULL AND id_number = $3)
+                 LIMIT 1`, 
+                [req.user.id, lrnNum, user.id_number || '']
+            );
             user.academic = childRes.rows[0] || null;
             if (user.academic) {
                 user.grade = user.academic.grade;
@@ -277,24 +283,95 @@ exports.getMessages = async (req, res) => {
 /**
  * Sends a message from the logged-in user to any recipient.
  */
+/**
+ * Handles uploading chat attachments (images, voice notes, and documents)
+ */
+exports.uploadMessageAttachment = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, error: 'No file was uploaded.' });
+        }
+        
+        let attachmentType = 'document';
+        const mimetype = req.file.mimetype.toLowerCase();
+        if (mimetype.startsWith('image/')) {
+            attachmentType = 'image';
+        } else if (mimetype.startsWith('audio/') || mimetype.includes('ogg') || mimetype.includes('webm') || mimetype.includes('mp4')) {
+            attachmentType = 'voice_note';
+        }
+
+        const bytes = req.file.size || 0;
+        let formattedSize = `${(bytes / 1024).toFixed(1)} KB`;
+        if (bytes >= 1024 * 1024) {
+            formattedSize = `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        }
+
+        const relativePath = '/' + req.file.path.replace(/\\/g, '/');
+
+        res.json({
+            success: true,
+            file_url: relativePath,
+            file_name: req.file.originalname,
+            file_type: attachmentType,
+            file_size: formattedSize
+        });
+    } catch (err) {
+        console.error('Error uploading message attachment:', err);
+        res.status(500).json({ success: false, error: 'Failed to upload attachment: ' + err.message });
+    }
+};
+
+/**
+ * Sends a message from the logged-in user to any recipient.
+ * Supports text, voice notes, pictures, and documents.
+ */
 exports.sendMessage = async (req, res) => {
     const senderId = req.user.id;
     const rawRecipientId = req.body.recipientId || req.body.receiver_id || req.body.recipient_id || req.body.recipient;
     const recipientId = rawRecipientId ? parseInt(rawRecipientId, 10) : null;
     const subject = req.body.subject || 'Direct Message';
-    const body = req.body.body || req.body.content || req.body.message;
+    const body = req.body.body || req.body.content || req.body.message || '';
     const childId = req.body.childId || req.body.child_id ? parseInt(req.body.childId || req.body.child_id, 10) : null;
 
-    if (!recipientId || !body || !body.trim()) {
-        return res.status(400).json({ success: false, error: 'Recipient ID and message content are required.' });
+    const attachmentUrl = req.body.attachment_url || req.body.attachmentUrl || null;
+    const attachmentName = req.body.attachment_name || req.body.attachmentName || null;
+    const attachmentType = req.body.attachment_type || req.body.attachmentType || null;
+    const fileSize = req.body.file_size || req.body.fileSize || null;
+    const voiceDuration = req.body.voice_duration || req.body.voiceDuration ? parseInt(req.body.voice_duration || req.body.voiceDuration, 10) : null;
+
+    if (!recipientId) {
+        return res.status(400).json({ success: false, error: 'Recipient ID is required.' });
+    }
+
+    if (!body.trim() && !attachmentUrl) {
+        return res.status(400).json({ success: false, error: 'Message text or attachment is required.' });
     }
 
     try {
-        const textContent = body.trim();
+        let textContent = body.trim();
+        if (!textContent && attachmentUrl) {
+            if (attachmentType === 'voice_note') {
+                const mins = Math.floor((voiceDuration || 0) / 60);
+                const secs = (voiceDuration || 0) % 60;
+                textContent = `🎤 Voice Note (${mins}:${secs.toString().padStart(2, '0')})`;
+            } else if (attachmentType === 'image') {
+                textContent = `📷 Photo (${attachmentName || 'image'})`;
+            } else {
+                textContent = `📎 Document: ${attachmentName || 'file'}`;
+            }
+        }
+
         const result = await db.query(
-            `INSERT INTO messages (sender_id, recipient_id, child_id, subject, body, content, created_at) 
-             VALUES ($1, $2, $3, $4, $5, $5, NOW()) RETURNING *`,
-            [senderId, recipientId, childId || null, subject, textContent]
+            `INSERT INTO messages (
+                sender_id, recipient_id, child_id, subject, body, content, 
+                attachment_url, attachment_name, attachment_type, file_size, voice_duration, created_at
+             ) 
+             VALUES ($1, $2, $3, $4, $5, $5, $6, $7, $8, $9, $10, NOW()) 
+             RETURNING *`,
+            [
+                senderId, recipientId, childId || null, subject, textContent,
+                attachmentUrl, attachmentName, attachmentType, fileSize, voiceDuration
+            ]
         );
 
         // Fetch sender's name for instant push notification

@@ -31,12 +31,19 @@ async function ensureTimetablesTable() {
 }
 ensureTimetablesTable();
 
-// Standard 1-hour CAPS Class Periods (07:15 - 14:00, 45-min break: 10:15-11:00)
+// Standard 1-hour CAPS Class Periods with 45-minute nutrition break between 4th and 5th period:
+// Period 1: 07:15-08:15 (60 min)
+// Period 2: 08:15-09:15 (60 min)
+// Period 3: 09:15-10:15 (60 min)
+// Period 4: 10:15-11:15 (60 min)
+// [BREAK: 11:15-12:00 (45 min)]
+// Period 5: 12:00-13:00 (60 min)
+// Period 6: 13:00-14:00 (60 min)
 const PERIODS_1_HOUR = [
     "07:15-08:15",
     "08:15-09:15",
     "09:15-10:15",
-    "11:00-12:00",
+    "10:15-11:15",
     "12:00-13:00",
     "13:00-14:00"
 ];
@@ -49,13 +56,16 @@ exports.generateAITimetable = async (req, res) => {
     const targetGrade = parseInt(grade, 10) || 10;
 
     try {
-        // Fetch all active teachers, classes, and subjects from the database
+        // Fetch only active TEACHERS (strictly excluding admin/management), classes, and subjects
         const [teachersRes, classesRes, subjectsRes] = await Promise.all([
             db.query(
                 `SELECT u.id as user_id, u.full_name, u.surname, u.email, e.subjects, e.grades_taught, e.classes_taught 
                  FROM users u 
                  JOIN employees e ON u.id = e.user_id 
-                 WHERE ($1 = ANY(e.grades_taught) OR e.grades_taught IS NULL OR ARRAY_LENGTH(e.grades_taught, 1) = 0 OR ARRAY_LENGTH(e.grades_taught, 1) IS NULL)
+                 LEFT JOIN roles r ON u.role_id = r.id
+                 WHERE (r.name = 'teacher' OR r.name IS NULL)
+                   AND LOWER(COALESCE(r.name, '')) != 'admin'
+                   AND ($1 = ANY(e.grades_taught) OR e.grades_taught IS NULL OR ARRAY_LENGTH(e.grades_taught, 1) = 0 OR ARRAY_LENGTH(e.grades_taught, 1) IS NULL)
                  ORDER BY u.surname, u.full_name`,
                 [targetGrade]
             ),
@@ -79,17 +89,23 @@ exports.generateAITimetable = async (req, res) => {
 
         let teachers = teachersRes.rows;
         if (teachers.length === 0) {
-            // Fallback to all teachers in the employees table
+            // Fallback to all teachers in the employees table, excluding any administrators
             const allTeachersRes = await db.query(
                 `SELECT u.id as user_id, u.full_name, u.surname, u.email, e.subjects, e.grades_taught 
-                 FROM users u JOIN employees e ON u.id = e.user_id`
+                 FROM users u 
+                 JOIN employees e ON u.id = e.user_id 
+                 LEFT JOIN roles r ON u.role_id = r.id
+                 WHERE (r.name = 'teacher' OR r.name IS NULL)
+                   AND LOWER(COALESCE(r.name, '')) != 'admin'
+                 ORDER BY u.surname, u.full_name`
             );
             teachers = allTeachersRes.rows;
         }
 
         let subjects = subjectsRes.rows.map(s => s.name);
-        if (subjects.length === 0) {
-            subjects = [
+        if (subjects.length < 6) {
+            // Ensure at least 6 core CAPS subjects so each period of the 6-period day has a unique subject
+            const coreSubjects = [
                 'Mathematics',
                 'Physical Sciences',
                 'Life Sciences',
@@ -97,8 +113,13 @@ exports.generateAITimetable = async (req, res) => {
                 'Home Language',
                 'Life Orientation',
                 'Accounting',
-                'Geography'
+                'Geography',
+                'History',
+                'Business Studies'
             ];
+            coreSubjects.forEach(cs => {
+                if (!subjects.includes(cs)) subjects.push(cs);
+            });
         }
 
         const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -112,18 +133,24 @@ exports.generateAITimetable = async (req, res) => {
             });
         });
 
-        // Run full collision-free scheduling algorithm with 1-hour periods
+        // Run full collision-free scheduling algorithm with 1-hour periods and strict subject uniqueness per day
         const fullResult = autoScheduleFullTimetableLogic(timetable, { grade: targetGrade, stream }, teachers, subjects, classes);
         const finalTimetableData = fullResult.timetable_data;
         const filledCount = fullResult.filled_count;
 
         res.json({
-            message: `1-Hour Timetable preview generated successfully. Scheduled ${filledCount} clash-free period slots across classes.`,
+            message: `1-Hour Timetable preview generated successfully with 45-min break and unique subjects per day. Scheduled ${filledCount} clash-free period slots across classes.`,
             timetable_data: finalTimetableData,
             teachers: teachers,
             filled_count: filledCount,
             classes: classes,
             periods: PERIODS_1_HOUR,
+            break_time: {
+                after_period: 4,
+                duration: "45 Minutes",
+                time: "11:15 - 12:00",
+                label: "Nutrition & Midday Interval"
+            },
             generation_details: { grade: targetGrade, stream }
         });
 
@@ -134,7 +161,8 @@ exports.generateAITimetable = async (req, res) => {
 };
 
 /**
- * Internal logic for scheduling 1-hour periods without teacher or class conflicts.
+ * Internal logic for scheduling 1-hour periods without teacher or class conflicts,
+ * and ensuring that the SAME SUBJECT NEVER APPEARS MORE THAN ONCE PER DAY for any class.
  */
 function autoScheduleFullTimetableLogic(timetable_data, generation_details, allTeachers, availableSubjects, classesList) {
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -150,19 +178,29 @@ function autoScheduleFullTimetableLogic(timetable_data, generation_details, allT
         });
     });
 
+    // Subject uniqueness tracker per class per day: classDaySubjects[className][day] = Set(subjectName)
+    const classDaySubjects = {};
+    const classNames = Object.keys(timetable_data);
+    classNames.forEach(cName => {
+        classDaySubjects[cName] = {};
+        days.forEach(day => {
+            classDaySubjects[cName][day] = new Set();
+        });
+    });
+
     let filledSlots = 0;
-    const subjectsList = availableSubjects && availableSubjects.length ? availableSubjects : [
+    const subjectsList = availableSubjects && availableSubjects.length >= 6 ? availableSubjects : [
         'Mathematics',
         'Physical Sciences',
         'Life Sciences',
         'English FAL',
         'Home Language',
-        'Life Orientation'
+        'Life Orientation',
+        'Accounting',
+        'Geography'
     ];
 
-    const classNames = Object.keys(timetable_data);
-
-    // Schedule across days and periods to guarantee no teacher or class conflicts
+    // Schedule across days and periods to guarantee no teacher or class conflicts, and NO duplicate subject in a day
     for (let dIdx = 0; dIdx < days.length; dIdx++) {
         const day = days[dIdx];
 
@@ -173,11 +211,20 @@ function autoScheduleFullTimetableLogic(timetable_data, generation_details, allT
                 const className = classNames[cIdx];
                 if (!timetable_data[className][day]) timetable_data[className][day] = {};
 
-                if (timetable_data[className][day][period]?.subject) continue;
+                if (timetable_data[className][day][period]?.subject) {
+                    classDaySubjects[className][day].add(timetable_data[className][day][period].subject);
+                    continue;
+                }
 
-                // Pick subject with rotational balance across classes and days
-                const subjectOffset = (dIdx * 2 + pIdx + cIdx * 3) % subjectsList.length;
-                const currentSubject = subjectsList[subjectOffset];
+                // Pick a subject that has NOT yet been used on this day for this class
+                let unusedSubjects = subjectsList.filter(s => !classDaySubjects[className][day].has(s));
+                if (unusedSubjects.length === 0) {
+                    unusedSubjects = subjectsList;
+                }
+
+                const subjectOffset = (dIdx * 3 + pIdx + cIdx * 2) % unusedSubjects.length;
+                const currentSubject = unusedSubjects[subjectOffset];
+                classDaySubjects[className][day].add(currentSubject);
 
                 // Find a teacher who teaches this subject and is NOT currently teaching another class in this period
                 let assignedTeacher = allTeachers.find(t => {
@@ -207,7 +254,7 @@ function autoScheduleFullTimetableLogic(timetable_data, generation_details, allT
 
                 const teacherFullName = assignedTeacher
                     ? `${assignedTeacher.full_name} ${assignedTeacher.surname || ''}`.trim()
-                    : 'Faculty Educator';
+                    : (allTeachers[0] ? `${allTeachers[0].full_name} ${allTeachers[0].surname || ''}`.trim() : 'Faculty Educator');
 
                 if (assignedTeacher) {
                     const tKey = `${assignedTeacher.full_name} ${assignedTeacher.surname || ''}`.trim();

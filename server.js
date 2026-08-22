@@ -44,9 +44,15 @@ if (!fs.existsSync(appUploadDir)) fs.mkdirSync(appUploadDir, { recursive: true }
 
 // Initialize all 40 database tables, multi-parent, and notification schemas on server startup
 const initializeAllDatabaseTables = require('./db/init_full_schema');
-initializeAllDatabaseTables();
-initApplicationTables();
-NotificationService.initSchema();
+(async () => {
+  try {
+    await initializeAllDatabaseTables();
+    await initApplicationTables();
+    await NotificationService.initSchema();
+  } catch (err) {
+    console.error('[DB BOOTSTRAP] Initialization error:', err.message);
+  }
+})();
 
 const normalizePayload = require('./public/src/middleware/normalizePayload');
 
@@ -65,6 +71,32 @@ const uploadPfp = multer({
       cb(new Error('Only image files (JPEG, PNG, WEBP) are allowed for profile pictures.'));
     }
   }
+});
+
+// Configure Multer for chat message attachments (images, voice notes, documents)
+const msgUploadDir = 'uploads/messages/';
+if (!fs.existsSync(msgUploadDir)) fs.mkdirSync(msgUploadDir, { recursive: true });
+
+const messageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    let subfolder = 'documents';
+    const m = (file.mimetype || '').toLowerCase();
+    if (m.startsWith('image/')) subfolder = 'images';
+    else if (m.startsWith('audio/') || m.includes('ogg') || m.includes('webm') || m.includes('mp4') || m.includes('wav')) subfolder = 'voice';
+    const targetDir = path.join('uploads', 'messages', subfolder);
+    if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+    cb(null, targetDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || ((file.mimetype || '').startsWith('audio/') ? '.webm' : '');
+    const cleanBase = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+    cb(null, `${req.user ? req.user.id : 'user'}-${Date.now()}-${cleanBase}${ext}`);
+  }
+});
+
+const uploadChatMessage = multer({
+  storage: messageStorage,
+  limits: { fileSize: 25 * 1024 * 1024 } // 25 MB max
 });
 
 // Security Middleware
@@ -135,6 +167,7 @@ app.get('/api/messages/contacts', authenticateToken, userController.getCommunica
 app.get('/api/messages/conversation/:recipientId', authenticateToken, userController.getConversationHistory);
 app.get('/api/messages', authenticateToken, userController.getMessages);
 app.post('/api/messages', authenticateToken, userController.sendMessage);
+app.post('/api/messages/upload', authenticateToken, uploadChatMessage.single('file'), userController.uploadMessageAttachment);
 app.post('/api/change-password', authenticateToken, userController.changePassword);
 
 // Calendar Events Endpoints
@@ -160,7 +193,8 @@ app.use('/api/textbooks', require('./public/src/routes/textbookRoutes'));
 app.use('/api/leave-relief', require('./public/src/routes/leaveReliefRoutes'));
 app.use('/api/matric-analytics', require('./public/src/routes/matricAnalyticsRoutes'));
 app.use('/api/applications', applicationRoutes);
-app.use('/api/notifications', notificationRoutes);
+app.use('/api/finance', require('./public/src/routes/financeRoutes'));
+app.use('/api/bursaries', require('./public/src/routes/bursaryRoutes'));
 app.use('/api/assignments', require('./public/src/routes/assignmentRoutes'));
 app.use('/api', otherRoutes); // For progress, announcements etc.
 

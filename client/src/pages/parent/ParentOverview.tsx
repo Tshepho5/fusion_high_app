@@ -203,7 +203,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                       <div>
                         <h4 className="text-xs font-bold text-white">{childName}</h4>
                         <p className="text-[11px] text-slate-400 font-mono">
-                          Grade {child.grade || 10} • ID: {child.learner_number || `2026-00${child.id || 1}`}
+                          Grade {child.grade || 10} • Learner ID: {child.learner_number || `2026-00${child.id || 1}`}
                         </p>
                       </div>
                     </div>

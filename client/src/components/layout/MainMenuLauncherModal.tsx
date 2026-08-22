@@ -27,7 +27,9 @@ import {
   List,
   Layers,
   Filter,
-  CheckCircle2
+  CheckCircle2,
+  CreditCard,
+  FileSpreadsheet
 } from 'lucide-react';
 
 type ViewMode = 'launchpad' | 'cards' | 'list';
@@ -83,8 +85,11 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
       case 'admin':
         return [
           { id: 'overview', label: 'School Analytics Hub', desc: 'Overall school enrollment, attendance & pass rates', category: 'academic', icon: LayoutDashboard, gradient: 'from-blue-600 to-indigo-600' },
+          { id: 'marks', label: 'Academic Assessment Audits', desc: 'Grade mark schedules, SBA verification & DBE reports', category: 'academic', icon: FileSpreadsheet, gradient: 'from-emerald-600 to-teal-600', badge: 'CAPS' },
+          { id: 'finance', label: 'School Fees & Finance', desc: 'Tuition invoicing, payment receipts & collection analytics', category: 'operations', icon: CreditCard, gradient: 'from-emerald-600 to-teal-600', badge: 'ZAR' },
           { id: 'users', label: 'User Directory', desc: 'Manage teachers, parents, learners & staff accounts', category: 'operations', icon: Users, gradient: 'from-cyan-600 to-blue-600' },
           { id: 'matric-projector', label: 'Matric Pass Projector', desc: 'Grade 12 Bachelor pass & distinction forecast analytics', category: 'academic', icon: GraduationCap, gradient: 'from-purple-600 to-pink-600', badge: 'Gr12' },
+          { id: 'bursaries', label: 'Bursary Opportunities', desc: 'National tertiary scholarship catalog & learner applications', category: 'academic', icon: GraduationCap, gradient: 'from-amber-600 to-orange-600' },
           { id: 'leave-relief', label: 'Staff Leave & Relief', desc: 'Educator substitute allocations & daily duty roster', category: 'operations', icon: UserCheck, gradient: 'from-rose-600 to-red-600' },
           { id: 'timetable', label: 'Timetable Master', desc: 'Automated clash-free AI school timetable generation', category: 'operations', icon: Clock, gradient: 'from-sky-600 to-blue-600' },
           { id: 'exam-seating', label: 'Exam Seating Master', desc: 'Examination hall desk allocations & card printing', category: 'operations', icon: Grid, gradient: 'from-indigo-600 to-purple-600' },
@@ -98,6 +103,8 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
         return [
           { id: 'overview', label: 'Family Dashboard', desc: 'Child academic summary, attendance & school alerts', category: 'academic', icon: LayoutDashboard, gradient: 'from-blue-600 to-indigo-600' },
           { id: 'children', label: 'Linked Learners', desc: 'Overview of all your enrolled children at Fusion High', category: 'academic', icon: GraduationCap, gradient: 'from-cyan-600 to-blue-600' },
+          { id: 'finance', label: 'School Fees & PayFast', desc: 'Tuition statements, itemized levies & Instant EFT settlements', category: 'operations', icon: CreditCard, gradient: 'from-emerald-600 to-teal-600', badge: 'PAY' },
+          { id: 'bursaries', label: 'NSFAS & Bursaries', desc: 'Tertiary scholarships, funding coverage & checklist tracker', category: 'academic', icon: GraduationCap, gradient: 'from-amber-600 to-orange-600', badge: 'FUND' },
           { id: 'reports', label: 'CAPS Report Cards', desc: 'Official term report cards & educator remarks', category: 'academic', icon: Award, gradient: 'from-emerald-600 to-teal-600', badge: 'PDF' },
           { id: 'ptc', label: 'Parent Conferences (PTC)', desc: 'Book consultations with your child’s subject teachers', category: 'chat', icon: Users, gradient: 'from-amber-600 to-orange-600' },
           { id: 'attendance', label: 'Attendance Records', desc: 'Real-time daily presence, late & absence history', category: 'operations', icon: CalendarCheck, gradient: 'from-rose-600 to-red-600' },
@@ -114,6 +121,8 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
           { id: 'subjects', label: 'My Subjects & AI Tutor', desc: 'Syllabus, topics, interactive AI tutor & study notes', category: 'academic', icon: BookOpen, gradient: 'from-cyan-600 to-blue-600', badge: 'AI' },
           { id: 'assignments', label: 'Homework & Submissions', desc: 'Download worksheets, upload solutions & get AI concept pre-grading', category: 'academic', icon: BookOpen, gradient: 'from-brand-600 to-indigo-600', badge: 'AI Live' },
           { id: 'career-advisor', label: 'Matric APS & Careers', desc: 'APS point calculator, university requirements & fields', category: 'academic', icon: Compass, gradient: 'from-purple-600 to-pink-600', badge: 'Gr12 APS' },
+          { id: 'bursaries', label: 'NSFAS & Bursaries', desc: 'AI tertiary bursary matches, document checklists & funding', category: 'academic', icon: GraduationCap, gradient: 'from-amber-600 to-orange-600', badge: 'FUND' },
+          { id: 'finance', label: 'Fee Statements', desc: 'Official school fee statements & settled payment receipts', category: 'operations', icon: CreditCard, gradient: 'from-emerald-600 to-teal-600' },
           { id: 'reports', label: 'CAPS Report Cards', desc: 'Term mark sheets, subject levels & official transcripts', category: 'academic', icon: Award, gradient: 'from-emerald-600 to-teal-600', badge: 'PDF' },
           { id: 'exam-seating', label: 'Exam Seating & Card', desc: 'Personal exam hall allocation & student smart ID card', category: 'operations', icon: Grid, gradient: 'from-indigo-600 to-purple-600' },
           { id: 'sports', label: 'Sports & Clubs', desc: 'House athletics, extracurricular teams & events', category: 'campus', icon: Trophy, gradient: 'from-green-600 to-emerald-600' },

@@ -712,32 +712,66 @@ exports.forgotPassword = async (req, res) => {
     const { email, identifier } = req.body;
     try {
         const queryInput = (email || identifier || '').toString().trim();
-        if (!queryInput) return res.status(400).json({ error: 'Email address, Learner Number, or ID Number is required.' });
+        if (!queryInput) return res.status(400).json({ error: 'Email address, Learner Number, Phone, or ID Number is required.' });
+        const cleanInput = queryInput.toLowerCase();
+        const numericOnly = queryInput.replace(/\D/g, '');
 
         const userLookup = await db.query(`
-            SELECT u.id, u.email, u.full_name, u.surname, r.name as role_name, u.id_number, c.learner_number,
-                   pu.email as parent_user_email
+            SELECT u.id, u.email, u.full_name, u.surname, r.name as role_name, u.id_number, u.phone, c.learner_number,
+                   COALESCE(pu.email, pc_u.email) as parent_user_email
             FROM users u
             LEFT JOIN roles r ON u.role_id = r.id
-            LEFT JOIN children c ON c.learner_user_id = u.id
+            LEFT JOIN children c ON (c.learner_user_id = u.id)
             LEFT JOIN users pu ON c.parent_id = pu.id
-            WHERE LOWER(u.email) = LOWER($1)
-               OR LOWER(u.email) = LOWER($1) || '@fusion.high'
-               OR (u.id_number IS NOT NULL AND u.id_number = $1)
-               OR (c.learner_number IS NOT NULL AND c.learner_number = $1)
+            LEFT JOIN parent_children pc ON pc.child_id = c.id
+            LEFT JOIN users pc_u ON pc.parent_id = pc_u.id
+            WHERE LOWER(TRIM(u.email)) = $1
+               OR LOWER(TRIM(u.email)) = $1 || '@fusion.high'
+               OR LOWER(TRIM(u.email)) = $1 || '@fusionhigh.co.za'
+               OR (u.id_number IS NOT NULL AND TRIM(u.id_number) = $2)
+               OR (u.id_number IS NOT NULL AND $3 <> '' AND REGEXP_REPLACE(u.id_number, '[^0-9]', '', 'g') = $3)
+               OR (u.phone IS NOT NULL AND (TRIM(u.phone) = $2 OR ($3 <> '' AND REGEXP_REPLACE(u.phone, '[^0-9]', '', 'g') = $3)))
+               OR (c.learner_number IS NOT NULL AND TRIM(c.learner_number) = $2)
+               OR EXISTS (
+                   SELECT 1 FROM parent_children pc2 
+                   JOIN children c2 ON pc2.child_id = c2.id 
+                   WHERE pc2.parent_id = u.id AND (TRIM(c2.learner_number) = $2 OR c2.id::text = $2)
+               )
+               OR EXISTS (
+                   SELECT 1 FROM children c3 
+                   WHERE (c3.parent_id = u.id OR c3.secondary_parent_id = u.id) AND (TRIM(c3.learner_number) = $2 OR c3.id::text = $2)
+               )
+            ORDER BY (CASE WHEN r.name = 'parent' THEN 1 WHEN r.name = 'teacher' THEN 2 ELSE 3 END) ASC
             LIMIT 1
-        `, [queryInput]);
+        `, [cleanInput, queryInput, numericOnly]);
 
         if (userLookup.rows.length === 0) {
-            return res.status(404).json({ error: 'No account found matching this Email, Learner Number, or ID Number.' });
+            return res.status(404).json({ error: 'No account found matching this Email, Learner Number, Phone, or ID Number.' });
         }
 
         const user = userLookup.rows[0];
 
-        // Resolve real destination email (if learner account is @fusion.high, deliver to registered parent email)
-        let targetDeliveryEmail = user.email;
-        if (user.email.endsWith('@fusion.high') && user.parent_user_email) {
-            targetDeliveryEmail = user.parent_user_email;
+        // Resolve real destination email
+        let targetDeliveryEmail = (user.email || '').trim();
+
+        // If the account is a learner, route internal placeholder emails to the registered parent email
+        if (user.role_name === 'learner') {
+            const isInternalDomain = targetDeliveryEmail.toLowerCase().endsWith('@fusion.high') || targetDeliveryEmail.toLowerCase().endsWith('@fusionhigh.co.za');
+            if (isInternalDomain) {
+                if (user.parent_user_email && user.parent_user_email.includes('@') && !user.parent_user_email.endsWith('@fusion.high')) {
+                    targetDeliveryEmail = user.parent_user_email.trim();
+                } else {
+                    return res.status(400).json({ 
+                        error: `Learner account (${user.email}) is not linked to an active parent/guardian email. Please ask your parent to reset your credentials from their portal, or contact School Administration.` 
+                    });
+                }
+            }
+        }
+
+        if (!targetDeliveryEmail || !targetDeliveryEmail.includes('@') || targetDeliveryEmail.endsWith('@fusion.high')) {
+            return res.status(400).json({ 
+                error: 'No valid external email address found on file for this account. Please contact School Administration.' 
+            });
         }
 
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -763,11 +797,16 @@ exports.forgotPassword = async (req, res) => {
 
         const tpl = emailService.templates.forgotPassword(otp, targetDeliveryEmail, baseUrl);
         
-        // Dispatch email immediately with robust error logging
+        // Dispatch email and verify confirmation
         console.log(`[AUTH] Dispatching OTP [${otp}] to destination email: ${targetDeliveryEmail} for user ID ${user.id} (${user.email})`);
-        emailService.send(targetDeliveryEmail, tpl.subject, tpl.body).catch(err => {
-            console.error('[EMAIL ERROR] Failed to send OTP email to ' + targetDeliveryEmail + ':', err);
-        });
+        const sendResult = await emailService.send(targetDeliveryEmail, tpl.subject, tpl.body);
+
+        if (!sendResult.success) {
+            console.error(`[EMAIL ERROR] Failed to send OTP email to ${targetDeliveryEmail}:`, sendResult.error);
+            return res.status(500).json({ 
+                error: `Failed to deliver recovery email: ${sendResult.error || 'SMTP delivery failure'}. Please check your connection or contact school support.` 
+            });
+        }
 
         // Create a helpful masked email (e.g. ts***@gmail.com)
         const parts = targetDeliveryEmail.split('@');
@@ -793,18 +832,33 @@ exports.verifyOTP = async (req, res) => {
         const queryInput = (email || identifier || '').toString().trim();
         const rawCode = (code || otp || '').toString().trim();
         if (!queryInput || !rawCode) return res.status(400).json({ error: 'Email/Identifier and OTP code are required.' });
+        const cleanInput = queryInput.toLowerCase();
+        const numericOnly = queryInput.replace(/\D/g, '');
 
         const result = await db.query(`
             SELECT u.id, u.email, u.reset_code, u.reset_expiry
             FROM users u
             LEFT JOIN children c ON c.learner_user_id = u.id
-            WHERE (LOWER(u.email) = LOWER($1)
-               OR LOWER(u.email) = LOWER($1) || '@fusion.high'
-               OR (u.id_number IS NOT NULL AND u.id_number = $1)
-               OR (c.learner_number IS NOT NULL AND c.learner_number = $1))
-              AND u.reset_code = $2
+            WHERE (LOWER(TRIM(u.email)) = $1
+               OR LOWER(TRIM(u.email)) = $1 || '@fusion.high'
+               OR LOWER(TRIM(u.email)) = $1 || '@fusionhigh.co.za'
+               OR (u.id_number IS NOT NULL AND TRIM(u.id_number) = $2)
+               OR (u.id_number IS NOT NULL AND $3 <> '' AND REGEXP_REPLACE(u.id_number, '[^0-9]', '', 'g') = $3)
+               OR (u.phone IS NOT NULL AND (TRIM(u.phone) = $2 OR ($3 <> '' AND REGEXP_REPLACE(u.phone, '[^0-9]', '', 'g') = $3)))
+               OR (c.learner_number IS NOT NULL AND TRIM(c.learner_number) = $2)
+               OR EXISTS (
+                   SELECT 1 FROM parent_children pc2 
+                   JOIN children c2 ON pc2.child_id = c2.id 
+                   WHERE pc2.parent_id = u.id AND (TRIM(c2.learner_number) = $2 OR c2.id::text = $2)
+               )
+               OR EXISTS (
+                   SELECT 1 FROM children c3 
+                   WHERE (c3.parent_id = u.id OR c3.secondary_parent_id = u.id) AND (TRIM(c3.learner_number) = $2 OR c3.id::text = $2)
+               ))
+              AND u.reset_code = $4
+            ORDER BY u.id DESC
             LIMIT 1
-        `, [queryInput, rawCode]);
+        `, [cleanInput, queryInput, numericOnly, rawCode]);
 
         if (result.rows.length === 0) {
             return res.status(400).json({ error: 'Invalid 4-digit OTP code or identifier. Please check and try again.' });
@@ -832,18 +886,33 @@ exports.resetPassword = async (req, res) => {
         if (!queryInput || !rawCode || !targetPassword) {
             return res.status(400).json({ error: 'Email/Identifier, OTP code, and new password are required.' });
         }
+        const cleanInput = queryInput.toLowerCase();
+        const numericOnly = queryInput.replace(/\D/g, '');
 
         const userRes = await db.query(`
             SELECT u.id, u.email, u.password_hash, u.reset_expiry
             FROM users u
             LEFT JOIN children c ON c.learner_user_id = u.id
-            WHERE (LOWER(u.email) = LOWER($1)
-               OR LOWER(u.email) = LOWER($1) || '@fusion.high'
-               OR (u.id_number IS NOT NULL AND u.id_number = $1)
-               OR (c.learner_number IS NOT NULL AND c.learner_number = $1))
-              AND u.reset_code = $2
+            WHERE (LOWER(TRIM(u.email)) = $1
+               OR LOWER(TRIM(u.email)) = $1 || '@fusion.high'
+               OR LOWER(TRIM(u.email)) = $1 || '@fusionhigh.co.za'
+               OR (u.id_number IS NOT NULL AND TRIM(u.id_number) = $2)
+               OR (u.id_number IS NOT NULL AND $3 <> '' AND REGEXP_REPLACE(u.id_number, '[^0-9]', '', 'g') = $3)
+               OR (u.phone IS NOT NULL AND (TRIM(u.phone) = $2 OR ($3 <> '' AND REGEXP_REPLACE(u.phone, '[^0-9]', '', 'g') = $3)))
+               OR (c.learner_number IS NOT NULL AND TRIM(c.learner_number) = $2)
+               OR EXISTS (
+                   SELECT 1 FROM parent_children pc2 
+                   JOIN children c2 ON pc2.child_id = c2.id 
+                   WHERE pc2.parent_id = u.id AND (TRIM(c2.learner_number) = $2 OR c2.id::text = $2)
+               )
+               OR EXISTS (
+                   SELECT 1 FROM children c3 
+                   WHERE (c3.parent_id = u.id OR c3.secondary_parent_id = u.id) AND (TRIM(c3.learner_number) = $2 OR c3.id::text = $2)
+               ))
+              AND u.reset_code = $4
+            ORDER BY u.id DESC
             LIMIT 1
-        `, [queryInput, rawCode]);
+        `, [cleanInput, queryInput, numericOnly, rawCode]);
 
         if (userRes.rows.length === 0) {
             return res.status(400).json({ error: 'Invalid or expired OTP code. Please request a new code.' });
@@ -870,13 +939,13 @@ exports.resetPassword = async (req, res) => {
 
             // Check common slight mutations/variations (trailing digits, casing, suffix)
             const mutations = [
-                new_password.slice(0, -1),
-                new_password.slice(0, -2),
-                new_password.toLowerCase(),
-                new_password.toUpperCase(),
-                new_password.replace(/\d+$/, ''),
-                new_password.replace(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g, '')
-            ].filter(m => m && m.length >= 4 && m !== new_password);
+                targetPassword.slice(0, -1),
+                targetPassword.slice(0, -2),
+                targetPassword.toLowerCase(),
+                targetPassword.toUpperCase(),
+                targetPassword.replace(/\d+$/, ''),
+                targetPassword.replace(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g, '')
+            ].filter(m => m && m.length >= 4 && m !== targetPassword);
 
             for (const mutation of mutations) {
                 try {
@@ -893,9 +962,12 @@ exports.resetPassword = async (req, res) => {
         }
 
         // 3. If password is way different, replace the old one with the new one
-        const hash = await bcrypt.hash(new_password, 10);
-        await db.query('UPDATE users SET password_hash = $1, reset_code = NULL, reset_expiry = NULL WHERE LOWER(email) = LOWER($2)', [hash, normalizedEmail]);
-        await emailService.send(normalizedEmail, emailService.templates.passwordResetSuccess().subject, emailService.templates.passwordResetSuccess().body);
+        const hash = await bcrypt.hash(targetPassword, 10);
+        const normalizedEmail = (user.email || '').toLowerCase().trim();
+        await db.query('UPDATE users SET password_hash = $1, reset_code = NULL, reset_expiry = NULL WHERE id = $2', [hash, user.id]);
+        if (normalizedEmail && !normalizedEmail.endsWith('@fusion.high')) {
+            await emailService.send(normalizedEmail, emailService.templates.passwordResetSuccess().subject, emailService.templates.passwordResetSuccess().body);
+        }
         res.json({ message: 'Password updated successfully! Your old password has been replaced with your new one.' });
     } catch (err) { res.status(500).json({ error: err.message }); }
 };

@@ -14,6 +14,9 @@ import { SportsExtracurriculars } from '../../components/common/SportsExtracurri
 import { TextbookAssetTracker } from '../../components/common/TextbookAssetTracker';
 import { MatricPassRateProjector } from '../../components/admin/MatricPassRateProjector';
 import { EducatorLeaveReliefManager } from '../../components/admin/EducatorLeaveReliefManager';
+import { AcademicAssessmentAudits } from '../../components/admin/AcademicAssessmentAudits';
+import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
+import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
 
 export const AdminDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -35,6 +38,9 @@ export const AdminDashboard: React.FC = () => {
   const getTabTitle = () => {
     switch (activeTab) {
       case 'users': return 'User Directory & Permissions';
+      case 'finance': return 'School Fees, Invoicing & Collection Analytics';
+      case 'marks': return 'CAPS Academic Assessment & SBA Mark Audits';
+      case 'bursaries': return 'National Tertiary Bursaries Catalog';
       case 'matric-projector': return 'Matric Candidate Pass Rate Projector (Grade 12)';
       case 'leave-relief': return 'Educator Leave & Relief Duty Scheduler';
       case 'timetable': return 'School Timetable Allocations';
@@ -60,6 +66,9 @@ export const AdminDashboard: React.FC = () => {
         <AdminOverview onNavigateTab={handleSelectTab} />
       )}
       {activeTab === 'users' && <AdminUsers />}
+      {activeTab === 'marks' && <AcademicAssessmentAudits />}
+      {activeTab === 'finance' && <SchoolFeesManager userRole="admin" />}
+      {activeTab === 'bursaries' && <BursaryScholarshipHub />}
       {activeTab === 'matric-projector' && <MatricPassRateProjector />}
       {activeTab === 'leave-relief' && <EducatorLeaveReliefManager />}
       {activeTab === 'timetable' && <AdminTimetable />}

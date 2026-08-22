@@ -7,6 +7,7 @@ const { auth, requireRole } = require('../../../authMiddleware');
 router.use(auth, requireRole(['parent', 'admin']));
 
 router.get('/children', parentController.getChildren);
+router.post('/link-child', parentController.linkChild);
 router.post('/children/activate', parentController.activateChild);
 router.post('/children/link-sibling', parentController.linkSibling);
 router.post('/children/deactivate/:childId', parentController.deactivateChild);

@@ -140,6 +140,141 @@ exports.activateChild = async (req, res) => {
 };
 
 /**
+ * Links a child to the authenticated parent account using the learner number and national ID number.
+ * Accommodates linking 1 or more learners to the parent portal.
+ */
+exports.linkChild = async (req, res) => {
+    const parentId = req.user.id;
+    const { learner_number, learner_id, id_number, relationship } = req.body;
+
+    const targetLearnerNum = (learner_number || learner_id || '').toString().trim();
+    const targetIdNumber = (id_number || '').toString().trim();
+
+    if (!targetLearnerNum || !targetIdNumber) {
+        return res.status(400).json({
+            error: 'Both Learner Number and Learner National ID Number are required to link your child.'
+        });
+    }
+
+    if (/\D/.test(targetIdNumber)) {
+        return res.status(400).json({
+            error: 'Learner National ID Number must contain digits only.'
+        });
+    }
+
+    try {
+        const query = `
+            SELECT 
+                c.id as child_id, 
+                c.full_name, 
+                c.surname, 
+                c.parent_id,
+                c.secondary_parent_id,
+                c.grade,
+                c.stream,
+                c.subjects,
+                c.learner_number,
+                u.id as user_id,
+                u.email as learner_email,
+                u.id_number as user_id_number,
+                TO_CHAR(u.dob, 'YYYY-MM-DD') as dob_string
+            FROM children c
+            LEFT JOIN users u ON c.learner_user_id = u.id
+            WHERE (
+                LOWER(TRIM(c.learner_number)) = LOWER(TRIM($1))
+                OR c.learner_number ILIKE '%' || TRIM($1) || '%'
+                OR c.id::text = TRIM($1)
+            )
+            AND (
+                (u.id_number IS NOT NULL AND (u.id_number = $2 OR u.id_number ILIKE '%' || $2 || '%'))
+                OR (u.dob IS NOT NULL AND TO_CHAR(u.dob, 'YYYY-MM-DD') = $2)
+            )
+            LIMIT 1;
+        `;
+
+        const { rows } = await db.query(query, [targetLearnerNum, targetIdNumber]);
+
+        if (rows.length === 0) {
+            // Check if learner exists by number alone to give helpful feedback
+            const checkNum = await db.query(
+                `SELECT c.full_name, c.surname FROM children c WHERE c.learner_number = $1 OR c.id::text = $1 LIMIT 1`,
+                [targetLearnerNum]
+            );
+
+            if (checkNum.rows.length > 0) {
+                return res.status(400).json({
+                    error: `Learner Number "${targetLearnerNum}" found, but the provided ID Number does not match school records. Please verify the ID number.`
+                });
+            }
+
+            return res.status(404).json({
+                error: `No learner record found matching Learner Number "${targetLearnerNum}" and National ID Number "${targetIdNumber}". Please verify details with the administration office.`
+            });
+        }
+
+        const child = rows[0];
+        const childFullName = `${child.full_name || ''} ${child.surname || ''}`.trim() || 'Learner';
+
+        // Check if already linked to this parent
+        const existingLink = await db.query(
+            `SELECT id FROM parent_children WHERE parent_id = $1 AND child_id = $2`,
+            [parentId, child.child_id]
+        );
+
+        if (existingLink.rows.length > 0) {
+            return res.status(409).json({
+                error: `${childFullName} is already linked to your parent portal account.`
+            });
+        }
+
+        // Link learner in parent_children table
+        await db.query(
+            `INSERT INTO parent_children (parent_id, child_id, relationship, is_primary, created_at)
+             VALUES ($1, $2, $3, true, NOW())
+             ON CONFLICT (parent_id, child_id) DO NOTHING`,
+            [parentId, child.child_id, relationship || 'Parent/Guardian']
+        );
+
+        // Update parent_id on children records
+        if (!child.parent_id) {
+            await db.query('UPDATE children SET parent_id = $1 WHERE id = $2', [parentId, child.child_id]);
+        } else if (!child.secondary_parent_id && child.parent_id !== parentId) {
+            await db.query('UPDATE children SET secondary_parent_id = $1 WHERE id = $2', [parentId, child.child_id]);
+        }
+
+        // Create welcome notification
+        try {
+            await NotificationService.sendToUsers({
+                userIds: [parentId],
+                title: `Learner Linked: ${childFullName}`,
+                message: `Successfully linked ${childFullName} (Grade ${child.grade}) to your parent portal. You can now monitor their marks, attendance, and timetables.`,
+                type: 'system',
+                targetTab: 'children',
+                metadata: { child_id: child.child_id }
+            });
+        } catch (_) {}
+
+        res.json({
+            success: true,
+            message: `Successfully linked ${childFullName} (Grade ${child.grade}) to your parent portal!`,
+            child: {
+                id: child.child_id,
+                full_name: child.full_name,
+                surname: child.surname,
+                grade: child.grade,
+                stream: child.stream,
+                learner_number: child.learner_number,
+                subjects: child.subjects
+            }
+        });
+
+    } catch (err) {
+        console.error('Error linking child to parent:', err);
+        res.status(500).json({ error: 'Failed to link child: ' + err.message });
+    }
+};
+
+/**
  * Link / Enroll Sibling:
  * Internal application & instant registration for an existing parent's new child (e.g. Grade 8).
  * Generates official Learner Number & password (FH@<first-6-of-ID>) using the established system generator.
@@ -1382,15 +1517,15 @@ exports.getChildAttendanceOverview = async (req, res) => {
         const attRes = await db.query(
             `SELECT 
                 a.id, 
-                COALESCE(a.attendance_date, a.date) as date,
+                a.attendance_date as date,
                 a.status, 
                 COALESCE(a.subject_name, 'General Roll-Call') as subject_name,
                 a.created_at,
                 COALESCE(u.full_name || ' ' || u.surname, 'Subject Educator') as recorded_by_name
              FROM attendance a
              LEFT JOIN users u ON (a.recorded_by_teacher_id = u.id OR a.recorded_by = u.id)
-             WHERE a.child_id = $1 OR a.learner_id = $1
-             ORDER BY COALESCE(a.attendance_date, a.date) DESC, a.created_at DESC`,
+             WHERE a.child_id = $1
+             ORDER BY a.attendance_date DESC, a.created_at DESC`,
             [targetChild.id]
         );
 

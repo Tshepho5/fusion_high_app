@@ -400,49 +400,68 @@ async function generateDocumentationPDF() {
     'Teachers manage their assigned classes and subjects through an intuitive workload interface. The mark book automatically calculates class averages, CAPS levels, and flag learners requiring academic intervention.'
   );
 
-  addSubSectionHeading('7.5 Digital Homework & Assessment Portal');
+  addSubSectionHeading('7.5 Digital Homework, DBE Past Papers & AI Evaluation');
   addParagraph(
-    'The digital homework engine streamlines assignment distribution and collection:'
+    'The digital curriculum engine combines homework management with official national past examination papers and automated marking support:'
   );
   addBullet('Assignment Publishing', 'Teachers create tasks with subject, grade, stream, due date, total marks, and downloadable task briefs.');
-  addBullet('Learner Submission', 'Learners upload completed assignments with attachments and typed responses.');
-  addBullet('Automated Evaluation Assistant', 'The system evaluates submission criteria, scoring accuracy against rubric benchmarks.');
+  addBullet('DBE Past Examination Papers & Memos', 'Integrated repository of official Department of Basic Education (DBE) question papers and marking guidelines partitioned by Grade (8–12) and subject stream.');
+  addBullet('Learner Submission & AI Assistant', 'Learners upload completed assignments with attachments and typed responses, evaluated against CAPS rubric benchmarks.');
   addBullet('Educator Sign-Off', 'Educators review, adjust marks, provide constructive feedback, and sign off the final grade.');
 
   addImageWithCaption(activationImg, 'Child Activation & Secure Account Linking Interface', 130);
 
   // ==========================================
-  // SECTION 7.6 - 7.10: ADVANCED ENTERPRISE MODULES
+  // SECTION 7.6 - 7.12: ADVANCED ENTERPRISE & AI MODULES
   // ==========================================
   doc.addPage();
-  addHeader('7. ADVANCED ENTERPRISE MODULES', 'Attendance, Reporting, Assets, Extracurriculars & Relief');
+  addHeader('7. ADVANCED ENTERPRISE & AI SUBSYSTEMS', 'Voice Tutor, Neural OCR, Media Chat, Attendance & Reporting');
 
-  addSubSectionHeading('7.6 QR Code Attendance Tracking');
+  addSubSectionHeading('7.6 AI Voice Tutor (Speech-to-Text & Text-to-Speech)');
   addParagraph(
-    'Educators can conduct rapid roll calls using manual toggling or by scanning student QR codes. Attendance rates are instantly synchronized with parent dashboards and school-wide statistical summaries.'
+    'An interactive voice-enabled tutoring engine empowering learners across all South African official languages:'
+  );
+  addBullet('Voice Dictation (STT)', 'Integrated microphone dictation using Web Speech Recognition with South African language support (en-ZA, af-ZA, zu-ZA).');
+  addBullet('Natural Voice Synthesis (TTS)', 'SpeechSynthesisUtterance engine reading out step-by-step solutions, formulas, and summaries with live animated waveform equalizer bars.');
+  addBullet('Subject Guardrails', 'Enforces strict subject-boundary tutoring preventing cross-discipline confusion while generating on-demand practice quizzes.');
+
+  addSubSectionHeading('7.7 Neural Admissions Document OCR & Verification');
+  addParagraph(
+    'Automated document verification pipeline inspecting prospective learner and parent application documents:'
+  );
+  addBullet('Clarity Rating (0–100%)', 'Computes high-definition scan resolution, contrast, and text legibility scores.');
+  addBullet('13-Digit SA ID Luhn Checksum', 'Validates national identity numbers mathematically, cross-referencing Date of Birth (YYMMDD) and gender.');
+  addBullet('Department of Home Affairs Compliance', 'Detects certification stamps, barcodes, and certified copy compliance for streamlined school admissions.');
+
+  addSubSectionHeading('7.8 Multimedia Communication Hub (Voice Notes & Attachments)');
+  addParagraph(
+    'Enables secure, rich-media collaboration between parents, teachers, and learners:'
+  );
+  addBullet('In-App Voice Notes', 'Record and playback voice audio notes directly within conversation threads using the MediaRecorder API.');
+  addBullet('Image Sharing & Lightbox', 'High-resolution photo sharing with hover zoom and full-screen lightbox preview.');
+  addBullet('Document Attachments', 'Upload and download PDF and Word documents up to 25MB with secure MIME-type validation.');
+
+  addSubSectionHeading('7.9 Period Attendance Tracking & Automated Absence Alerts');
+  addParagraph(
+    'Period-by-period and daily attendance recording with automated background email notifications dispatched to registered parents when a learner is recorded absent.'
   );
 
-  addSubSectionHeading('7.7 Official CAPS Term Report Card Generator');
+  addSubSectionHeading('7.10 Official CAPS Term Report Card Generator');
   addParagraph(
     'Generates statutory term report cards formatted to Department of Basic Education specifications, complete with subject percentages, CAPS achievement levels (1–7), class teacher remarks, principal sign-off, and school crest.'
   );
 
-  addSubSectionHeading('7.8 Textbook & Asset Inventory Tracker');
+  addSubSectionHeading('7.11 Textbook & Asset Inventory Tracker');
   addParagraph(
     'Tracks school-owned textbook assets, barcode numbers, condition states (New, Good, Damaged, Lost), issuance dates, and return reconciliations across all learning areas.'
   );
 
-  addSubSectionHeading('7.9 Sports, Cultural & Extracurricular Club Management');
+  addSubSectionHeading('7.12 Sports, Cultural & Extracurricular Club Management');
   addParagraph(
     'Facilitates learner participation in athletic codes (Soccer, Netball, Rugby, Athletics) and cultural societies (Debating, Choir, Science Club) with match schedules and performance logs.'
   );
 
-  addSubSectionHeading('7.10 Educator Leave & Automated Relief Dispatcher');
-  addParagraph(
-    'When an educator submits sick or special leave, the automated relief engine inspects timetable matrices to identify available educators with free periods, automatically dispatching relief coverage notifications.'
-  );
-
-  addImageWithCaption(assemblyImg, 'Fusion High School Assembly and Extracurricular Activity Coordination', 130);
+  addImageWithCaption(assemblyImg, 'Fusion High School Assembly and Extracurricular Activity Coordination', 120);
 
   // ==========================================
   // SECTION 8: DEPLOYMENT & DEVOPS

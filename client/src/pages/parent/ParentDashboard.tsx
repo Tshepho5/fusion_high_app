@@ -12,6 +12,8 @@ import { LearnerMessages } from '../learner/LearnerMessages';
 import { LearnerProfile } from '../learner/LearnerProfile';
 import { ParentPTC } from '../../components/parent/ParentPTC';
 import { SportsExtracurriculars } from '../../components/common/SportsExtracurriculars';
+import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
+import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
 
 export const ParentDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -34,6 +36,8 @@ export const ParentDashboard: React.FC = () => {
     switch (activeTab) {
       case 'children':
       case 'marks': return 'Child Academic Reports & Marks';
+      case 'finance': return 'School Fees, Statements & Online Payments';
+      case 'bursaries': return 'NSFAS & Tertiary Bursaries Matching Hub';
       case 'reports': return 'Official CAPS Term Report Card';
       case 'ptc': return 'Parent-Teacher Conferences (PTC)';
       case 'sports': return 'Sports, Clubs & Match Fixtures';
@@ -58,6 +62,8 @@ export const ParentDashboard: React.FC = () => {
         <ParentOverview onNavigateTab={handleSelectTab} />
       )}
       {(activeTab === 'children' || activeTab === 'marks') && <ParentChildren />}
+      {activeTab === 'finance' && <SchoolFeesManager userRole="parent" />}
+      {activeTab === 'bursaries' && <BursaryScholarshipHub isParentView={true} />}
       {activeTab === 'reports' && <CapsReportCard />}
       {activeTab === 'ptc' && <ParentPTC />}
       {activeTab === 'sports' && <SportsExtracurriculars />}

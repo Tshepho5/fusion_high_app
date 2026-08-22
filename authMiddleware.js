@@ -66,4 +66,4 @@ const requireRole = (roles) => async (req, res, next) => {
  */
 const isAdmin = requireRole('admin');
 
-module.exports = { auth, isAdmin, requireRole };
+module.exports = { auth, authenticateToken: auth, isAdmin, requireRole };

@@ -15,6 +15,8 @@ import { ExamSeatingManager } from '../../components/common/ExamSeatingManager';
 import { SportsExtracurriculars } from '../../components/common/SportsExtracurriculars';
 import { TextbookAssetTracker } from '../../components/common/TextbookAssetTracker';
 import { LearnerAssignments } from '../../components/learner/LearnerAssignments';
+import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
+import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
 
 export const LearnerDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -52,6 +54,8 @@ export const LearnerDashboard: React.FC = () => {
       case 'subjects': return 'My Subjects';
       case 'ai-tutor': return 'AI Study Tutor';
       case 'career-advisor': return 'Matric APS & University Career Advisor';
+      case 'bursaries': return 'NSFAS & Tertiary Bursary Matching Engine';
+      case 'finance': return 'School Fee Statements & Receipts';
       case 'exam-seating': return 'Examination Seating & Candidate Slips';
       case 'sports': return 'Sports & Extracurricular Clubs';
       case 'textbooks': return 'My Issued Textbooks';
@@ -88,6 +92,8 @@ export const LearnerDashboard: React.FC = () => {
         />
       )}
       {activeTab === 'career-advisor' && <LearnerCareerAdvisor />}
+      {activeTab === 'bursaries' && <BursaryScholarshipHub isParentView={false} />}
+      {activeTab === 'finance' && <SchoolFeesManager userRole="learner" />}
       {activeTab === 'exam-seating' && <ExamSeatingManager />}
       {activeTab === 'sports' && <SportsExtracurriculars />}
       {activeTab === 'textbooks' && <TextbookAssetTracker />}

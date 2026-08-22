@@ -185,7 +185,7 @@ exports.getMySubjectsOverview = async (req, res) => {
                             COUNT(*) as total,
                             SUM(CASE WHEN a.status IN ('present', 'late') THEN 1 ELSE 0 END) as attended
                          FROM attendance a
-                         JOIN children c ON (a.child_id = c.id OR a.learner_id = c.id)
+                         JOIN children c ON a.child_id = c.id
                          WHERE c.grade = $1 AND (LOWER(a.subject_name) LIKE LOWER($2) OR a.subject_name IS NULL)`,
                         [gradeNum, `%${subjectName}%`]
                     );

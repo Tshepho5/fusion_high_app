@@ -27,7 +27,7 @@ interface LearnerRecord {
   surname?: string;
   name?: string;
   learner_number: string;
-  status: 'present' | 'late' | 'absent';
+  status: 'present' | 'late' | 'absent' | null;
 }
 
 interface AttendanceHistoryRecord {
@@ -50,7 +50,7 @@ interface AttendanceHistoryRecord {
 
 export const TeacherAttendance: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<'register' | 'history'>('register');
-  const [classes, setClasses] = useState<string[]>(['10A', '10B', '11A', '11B', '12A']);
+  const [classes, setClasses] = useState<string[]>(['10A', '11A']);
   const [selectedClass, setSelectedClass] = useState<string>('10A');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [learners, setLearners] = useState<LearnerRecord[]>([]);
@@ -95,6 +95,8 @@ export const TeacherAttendance: React.FC = () => {
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 5000);
       if (activeSubTab === 'history') fetchHistory();
+      // Reset status to no color once saved
+      setLearners(prev => prev.map(l => ({ ...l, status: null })));
     } catch (err: any) {
       console.error('Error saving QR attendance:', err);
       setError(err?.response?.data?.error || 'Could not automatically commit QR attendance to database.');
@@ -103,13 +105,30 @@ export const TeacherAttendance: React.FC = () => {
     }
   };
 
-  // Load teacher classes
+  // Load teacher assigned classes (strictly deduplicated and matching assigned subjects/grades)
   useEffect(() => {
-    teacherService.getClassList()
+    teacherService.getMySubjectsOverview()
       .then((res) => {
+        const list = Array.isArray(res) ? res : [];
+        if (list.length > 0) {
+          const names = Array.from(
+            new Set(list.map((c: any) => c.class_name || `${c.grade}A`).filter(Boolean))
+          ) as string[];
+          if (names.length > 0) {
+            setClasses(names);
+            setSelectedClass(names[0]);
+            return;
+          }
+        }
+        return teacherService.getClassList();
+      })
+      .then((res: any) => {
+        if (!res) return;
         const list = Array.isArray(res) ? res : res.classes || [];
         if (list.length > 0) {
-          const names = list.map((c: any) => (typeof c === 'string' ? c : c.name || c.class_name)).filter(Boolean);
+          const names = Array.from(
+            new Set(list.map((c: any) => (typeof c === 'string' ? c : c.name || c.class_name)).filter(Boolean))
+          ) as string[];
           if (names.length > 0) {
             setClasses(names);
             setSelectedClass(names[0]);
@@ -117,7 +136,7 @@ export const TeacherAttendance: React.FC = () => {
         }
       })
       .catch(() => {
-        // Keeps default classes
+        // Keeps default assigned classes
       });
   }, []);
 
@@ -134,7 +153,7 @@ export const TeacherAttendance: React.FC = () => {
           full_name: s.full_name || s.learner_name || s.name,
           surname: s.surname || s.learner_surname || '',
           learner_number: s.learner_number || `ID-${s.id}`,
-          status: (s.status || 'present').toLowerCase() as 'present' | 'late' | 'absent',
+          status: s.status ? (s.status.toLowerCase() as 'present' | 'late' | 'absent') : null,
         })));
       })
       .catch((err) => {
@@ -176,7 +195,7 @@ export const TeacherAttendance: React.FC = () => {
 
   const toggleStatus = (learnerId: number, status: 'present' | 'late' | 'absent') => {
     setLearners(prev =>
-      prev.map(l => (l.id === learnerId ? { ...l, status } : l))
+      prev.map(l => (l.id === learnerId ? { ...l, status: l.status === status ? null : status } : l))
     );
   };
 
@@ -204,7 +223,9 @@ export const TeacherAttendance: React.FC = () => {
         })),
       });
       setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 4000);
+      // Reset the attendance status to neutral / no color once saved
+      setLearners(prev => prev.map(l => ({ ...l, status: null })));
+      setTimeout(() => setSavedSuccess(false), 5000);
       if (activeSubTab === 'history') fetchHistory();
     } catch (err: any) {
       console.error('Error saving attendance:', err);

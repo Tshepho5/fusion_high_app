@@ -22,7 +22,7 @@ const PERIODS = [
   '07:15-08:15',
   '08:15-09:15',
   '09:15-10:15',
-  '11:00-12:00',
+  '10:15-11:15',
   '12:00-13:00',
   '13:00-14:00'
 ];
@@ -33,6 +33,7 @@ export const AdminTimetable: React.FC = () => {
   const [generating, setGenerating] = useState<boolean>(false);
   const [publishing, setPublishing] = useState<boolean>(false);
   const [timetableData, setTimetableData] = useState<any | null>(null);
+  const [activeTimetableName, setActiveTimetableName] = useState<string>('');
   const [selectedDay, setSelectedDay] = useState<string>('Monday');
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [timetablesList, setTimetablesList] = useState<any[]>([]);
@@ -47,7 +48,19 @@ export const AdminTimetable: React.FC = () => {
     setLoadingList(true);
     adminService.getTimetables()
       .then(res => {
-        setTimetablesList(Array.isArray(res) ? res : []);
+        const list = Array.isArray(res) ? res : [];
+        setTimetablesList(list);
+        if (list.length > 0 && !timetableData) {
+          const activeOrFirst = list.find(t => t.is_active) || list[0];
+          if (activeOrFirst && activeOrFirst.timetable_data) {
+            setTimetableData(activeOrFirst.timetable_data);
+            setActiveTimetableName(activeOrFirst.name || `Grade ${activeOrFirst.grade} Timetable`);
+            setGrade(activeOrFirst.grade || 10);
+            setStream(activeOrFirst.stream || 'General');
+            const firstClass = Object.keys(activeOrFirst.timetable_data || {})[0] || `Grade ${activeOrFirst.grade || 10}A`;
+            setSelectedClass(firstClass);
+          }
+        }
       })
       .catch(err => {
         console.error('Failed to load timetables:', err);
@@ -59,6 +72,18 @@ export const AdminTimetable: React.FC = () => {
     fetchTimetablesList();
   }, []);
 
+  const handleSelectStoredTimetable = (tt: any) => {
+    if (!tt || !tt.timetable_data) return;
+    setTimetableData(tt.timetable_data);
+    setActiveTimetableName(tt.name || `Grade ${tt.grade} Timetable`);
+    setGrade(tt.grade || 10);
+    setStream(tt.stream || 'General');
+    const firstClass = Object.keys(tt.timetable_data || {})[0] || `Grade ${tt.grade || 10}A`;
+    setSelectedClass(firstClass);
+    setStatusMessage(`Now viewing "${tt.name}".`);
+    window.scrollTo({ top: 300, behavior: 'smooth' });
+  };
+
   const handleGenerate = async () => {
     setGenerating(true);
     setError(null);
@@ -66,9 +91,10 @@ export const AdminTimetable: React.FC = () => {
     try {
       const res = await adminService.generateTimetable({ grade, stream });
       setTimetableData(res.timetable_data);
+      setActiveTimetableName(`Grade ${grade} (${stream}) Generated Draft`);
       const firstClass = Object.keys(res.timetable_data || {})[0] || `Grade ${grade}A`;
       setSelectedClass(firstClass);
-      setStatusMessage(`Preview generated with ${res.filled_count || 0} scheduled periods.`);
+      setStatusMessage(`Preview generated with 45-min break & unique subjects per day (${res.filled_count || 0} scheduled periods).`);
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || 'Failed to generate timetable.');
     } finally {
@@ -120,7 +146,7 @@ export const AdminTimetable: React.FC = () => {
             Timetable Generator & Allocation Studio
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Generate balanced schedules and publish directly to assigned teachers for curriculum review.
+            Generate balanced schedules with 45-min nutrition breaks, assign educators, and inspect published timetables.
           </p>
         </div>
       </div>
@@ -204,7 +230,7 @@ export const AdminTimetable: React.FC = () => {
         <div className="p-6 rounded-3xl bg-surface-dark border border-white/10 shadow-xl space-y-4 animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="cyan" size="sm">Grade {grade} ({stream})</Badge>
+              <Badge variant="cyan" size="sm">{activeTimetableName || `Grade ${grade} (${stream})`}</Badge>
               {availableClasses.length > 1 && (
                 <div className="flex gap-1.5 ml-2">
                   {availableClasses.map((cls) => (
@@ -251,9 +277,9 @@ export const AdminTimetable: React.FC = () => {
             ))}
           </div>
 
-          {/* Period Matrix */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-            {PERIODS.map((period, pIdx) => {
+          {/* Period Matrix with 45-Minute Break Slot */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-2.5">
+            {PERIODS.slice(0, 4).map((period, pIdx) => {
               const entry = activeClassData?.[selectedDay]?.[period];
               return (
                 <div
@@ -263,6 +289,55 @@ export const AdminTimetable: React.FC = () => {
                   <div>
                     <div className="flex justify-between items-center text-[10px] font-mono text-slate-400 pb-1 border-b border-white/5">
                       <span>Period {pIdx + 1}</span>
+                      <span>{period}</span>
+                    </div>
+                    {entry && entry.subject ? (
+                      <div className="mt-2 space-y-1">
+                        <p className="font-bold text-white text-xs leading-snug">{entry.subject}</p>
+                        <p className="text-[11px] text-cyan-300 flex items-center gap-1">
+                          <Users className="w-3 h-3 text-cyan-400" />
+                          <span>{entry.teacher || 'Assigned Educator'}</span>
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-mono">{entry.room || 'Main Classroom'}</p>
+                      </div>
+                    ) : (
+                      <div className="mt-4 text-center text-[11px] text-slate-500 italic">
+                        Free Period / Study Slot
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => setEditingSlot({ day: selectedDay, period, data: entry || { subject: 'Mathematics', teacher: '', room: `Room ${grade}A` } })}
+                    className="w-full py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[10px] font-semibold flex items-center justify-center gap-1 transition-colors"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                    <span>Edit Slot</span>
+                  </button>
+                </div>
+              );
+            })}
+
+            {/* 45-Minute Break Interval Card between Period 4 and Period 5 */}
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col justify-center items-center text-center space-y-1.5 shadow-sm">
+              <Clock className="w-5 h-5 text-amber-400" />
+              <p className="text-xs font-bold text-amber-300">45-Min Break</p>
+              <p className="text-[10px] text-amber-200/80 font-mono font-bold">11:15 - 12:00</p>
+              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[9px] font-extrabold uppercase tracking-wider border border-amber-500/30">
+                Nutrition & Rest
+              </span>
+            </div>
+
+            {PERIODS.slice(4).map((period, pIdx) => {
+              const entry = activeClassData?.[selectedDay]?.[period];
+              return (
+                <div
+                  key={period}
+                  className="p-3.5 rounded-2xl bg-surface-darker border border-white/5 flex flex-col justify-between space-y-2 hover:border-brand-500/30 transition-all group"
+                >
+                  <div>
+                    <div className="flex justify-between items-center text-[10px] font-mono text-slate-400 pb-1 border-b border-white/5">
+                      <span>Period {pIdx + 5}</span>
                       <span>{period}</span>
                     </div>
                     {entry && entry.subject ? (
@@ -309,17 +384,24 @@ export const AdminTimetable: React.FC = () => {
             {timetablesList.map((tt) => {
               const isTeacherDraft = tt.status === 'draft_teachers';
               return (
-                <div key={tt.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-white/5 px-3 rounded-xl transition-colors">
+                <div key={tt.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-white/5 px-3 rounded-xl transition-colors">
                   <div>
                     <p className="font-bold text-white text-xs">{tt.name}</p>
                     <p className="text-[11px] text-slate-400 font-mono">
                       Grade {tt.grade || 10} ({tt.stream || 'General'}) • Last Updated: {new Date(tt.updated_at || tt.created_at).toLocaleDateString()}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <Badge variant={isTeacherDraft ? 'amber' : 'emerald'} size="sm">
                       {isTeacherDraft ? 'Pending Teacher Review' : 'Published to Learners'}
                     </Badge>
+                    <button
+                      onClick={() => handleSelectStoredTimetable(tt)}
+                      className="px-3 py-1.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-300 border border-cyan-500/30 text-xs font-bold transition-all flex items-center gap-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>View Timetable</span>
+                    </button>
                   </div>
                 </div>
               );

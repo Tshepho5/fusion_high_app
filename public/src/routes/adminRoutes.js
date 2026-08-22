@@ -17,6 +17,11 @@ router.get('/teachers', auth, isAdmin, adminController.getAllTeachers);
 router.get('/employees', auth, isAdmin, adminController.getAllEmployees);
 router.post('/employees', auth, isAdmin, adminController.createEmployee);
 
+// Parent Management (matching users & parent_children tables)
+router.get('/parents', auth, isAdmin, adminController.getAllParents);
+router.post('/parents', auth, isAdmin, adminController.createParent);
+router.post('/register-parent', auth, isAdmin, adminController.createParent);
+
 // Learner Management (matching children table in schema.sql)
 router.get('/learners', auth, isAdmin, adminController.getAllLearners);
 router.post('/learners', auth, isAdmin, adminController.createLearner);
@@ -39,12 +44,14 @@ router.post('/incidents', auth, isAdmin, adminController.createBehaviorIncident)
 // Reports Management
 router.get('/reports/recent', auth, isAdmin, adminController.getRecentReports);
 router.post('/reports/generate', auth, isAdmin, adminController.generateReport);
-// Academics Overview
+// Academics Overview & Assessment Audits
 router.get('/academics/overview', auth, isAdmin, adminController.getAcademicOverview);
+router.post('/academics/moderate', auth, isAdmin, adminController.moderateAssessmentBatch);
 
 // Admissions Management
 router.get('/admissions', auth, isAdmin, adminController.getAllAdmissions);
 router.get('/admissions/:id', auth, isAdmin, adminController.getAdmissionById);
+router.post('/admissions/:id/ocr-inspect', auth, isAdmin, adminController.inspectAdmissionDocOCR);
 router.patch('/admissions/:id', auth, isAdmin, adminController.updateAdmissionStatus);
 
 module.exports = router;

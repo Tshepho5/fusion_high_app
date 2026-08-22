@@ -299,7 +299,7 @@ export const DigitalStudentIDCard: React.FC<DigitalStudentIDCardProps> = ({ lear
 
             <div className="p-3 rounded-xl bg-surface-darker border border-white/5">
               <p className="text-xs font-bold text-white">{fullName}</p>
-              <p className="text-[10px] font-mono text-cyan-400">ID: {learnerNumber} • Grade {grade}</p>
+              <p className="text-[10px] font-mono text-cyan-400">Learner ID: {learnerNumber} • Grade {grade}</p>
             </div>
 
             <button

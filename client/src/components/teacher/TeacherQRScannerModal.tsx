@@ -28,7 +28,7 @@ interface LearnerRecord {
   surname?: string;
   name?: string;
   learner_number: string;
-  status: 'present' | 'late' | 'absent';
+  status: 'present' | 'late' | 'absent' | null;
   scannedAt?: string;
   scanMethod?: 'qr' | 'manual';
 }

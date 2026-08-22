@@ -71,13 +71,33 @@ export const userService = {
   getContacts: () => api.get('/api/messages/contacts').then(res => res.data),
   getConversation: (recipientId: string | number) => 
     api.get(`/api/messages/conversation/${recipientId}`).then(res => res.data),
-  sendMessage: (payload: { receiver_id?: string | number; recipient_id?: string | number; content?: string; body?: string; subject?: string }) => 
+  uploadAttachment: (formData: FormData) => 
+    api.post('/api/messages/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(res => res.data),
+  sendMessage: (payload: { 
+    receiver_id?: string | number; 
+    recipient_id?: string | number; 
+    content?: string; 
+    body?: string; 
+    subject?: string;
+    attachment_url?: string;
+    attachment_name?: string;
+    attachment_type?: string;
+    file_size?: string;
+    voice_duration?: number;
+  }) => 
     api.post('/api/messages', {
       receiver_id: payload.receiver_id || payload.recipient_id,
       recipient_id: payload.recipient_id || payload.receiver_id,
       content: payload.content || payload.body,
       body: payload.body || payload.content,
-      subject: payload.subject
+      subject: payload.subject,
+      attachment_url: payload.attachment_url,
+      attachment_name: payload.attachment_name,
+      attachment_type: payload.attachment_type,
+      file_size: payload.file_size,
+      voice_duration: payload.voice_duration
     }).then(res => res.data),
   markMessagesAsRead: (payload: { sender_id: string | number }) => 
     api.post('/api/messages/read', payload).then(res => res.data),
@@ -171,6 +191,8 @@ export const adminService = {
   getAllTeachers: () => api.get('/api/admin/teachers').then(res => res.data),
   getEmployees: () => api.get('/api/admin/employees').then(res => res.data),
   createEmployee: (payload: any) => api.post('/api/admin/employees', payload).then(res => res.data),
+  getParents: () => api.get('/api/admin/parents').then(res => res.data),
+  createParent: (payload: any) => api.post('/api/admin/parents', payload).then(res => res.data),
   getLearners: () => api.get('/api/admin/learners').then(res => res.data),
   createLearner: (payload: any) => api.post('/api/admin/learners', payload).then(res => res.data),
   getSchoolMetadata: () => api.get('/api/admin/metadata').then(res => res.data),
@@ -185,7 +207,10 @@ export const adminService = {
   deleteAnnouncement: (id: string | number) => api.delete(`/api/announcements/${id}`).then(res => res.data),
   getAdmissions: (params?: any) => api.get('/api/admin/admissions', { params }).then(res => res.data),
   getAdmissionById: (id: string | number) => api.get(`/api/admin/admissions/${id}`).then(res => res.data),
+  inspectAdmissionOCR: (id: string | number, documentId?: number) => api.post(`/api/admin/admissions/${id}/ocr-inspect`, { documentId }).then(res => res.data),
   updateAdmissionStatus: (id: string | number, payload: any) => api.patch(`/api/admin/admissions/${id}`, payload).then(res => res.data),
+  getAcademicOverview: (params?: any) => api.get('/api/admin/academics/overview', { params }).then(res => res.data),
+  moderateBatch: (payload: any) => api.post('/api/admin/academics/moderate', payload).then(res => res.data),
 };
 
 // Parent Portal APIs (children, progress, attendance, messages)
@@ -198,6 +223,11 @@ export const parentService = {
   getChildAttendance: (childId: string | number) => api.get(`/api/parent/child-attendance?childId=${childId}`).then(res => res.data),
   getChildTimetable: (childId?: string | number) => api.get(`/api/parent/child-timetable${childId ? `?child_id=${childId}` : ''}`).then(res => res.data),
   getChildProgress: (childId: string | number) => api.get(`/api/progress/${childId}`).then(res => res.data),
+  linkChild: (payload: {
+    learner_number: string;
+    id_number: string;
+    relationship?: string;
+  }) => api.post('/api/parent/link-child', payload).then(res => res.data),
   linkSibling: (payload: {
     first_name: string;
     surname: string;
@@ -329,6 +359,43 @@ export const assignmentService = {
     }).then(res => res.data),
   gradeSubmission: (submissionId: number | string, payload: { teacher_score: number | string; teacher_feedback?: string }) =>
     api.post(`/api/assignments/submissions/${submissionId}/grade`, payload).then(res => res.data),
+};
+
+// Digital School Fees & Online Payments APIs
+export const financeService = {
+  getInvoices: (params?: { childId?: number | string; status?: string; term?: string }) =>
+    api.get('/api/finance/invoices', { params }).then(res => res.data),
+  getInvoiceById: (id: number | string) =>
+    api.get(`/api/finance/invoices/${id}`).then(res => res.data),
+  payInvoice: (payload: {
+    invoiceId: number | string;
+    amount: number | string;
+    paymentMethod: string;
+    payerName?: string;
+    payerEmail?: string;
+    notes?: string;
+  }) => api.post('/api/finance/pay', payload).then(res => res.data),
+  getReceipts: () =>
+    api.get('/api/finance/receipts').then(res => res.data),
+  getFinanceOverview: () =>
+    api.get('/api/finance/overview').then(res => res.data),
+  createInvoice: (payload: any) =>
+    api.post('/api/finance/invoices', payload).then(res => res.data),
+};
+
+// NSFAS & Tertiary Bursary / Scholarship Matching Engine APIs
+export const bursaryService = {
+  getBursaries: (params?: { category?: string; minAps?: number | string; search?: string }) =>
+    api.get('/api/bursaries', { params }).then(res => res.data),
+  getLearnerMatches: (childId?: number | string) =>
+    api.get('/api/bursaries/matches', { params: { childId } }).then(res => res.data),
+  trackBursary: (payload: {
+    bursaryId: number | string;
+    status: 'bookmarked' | 'in_progress' | 'applied' | 'shortlisted' | 'awarded';
+    notes?: string;
+    checklistProgress?: Record<string, boolean>;
+    learnerId?: number | string;
+  }) => api.post('/api/bursaries/track', payload).then(res => res.data),
 };
 
 

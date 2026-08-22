@@ -21,7 +21,15 @@ import {
   Target,
   AlertTriangle,
   Languages,
-  Sparkles
+  Sparkles,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
+  Play,
+  Pause,
+  Sliders,
+  Square
 } from 'lucide-react';
 
 interface LearnerAITutorProps {
@@ -273,7 +281,156 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<number | null>(null);
 
+  // Speech-to-Text (STT) Voice Dictation State
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
+
+  // Text-to-Speech (TTS) Read-Aloud State
+  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speechRate, setSpeechRate] = useState<number>(1.0);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Speech-to-Text Voice Dictation Starter
+  const toggleSpeechRecognition = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRec) {
+      setSpeechError('Speech recognition is not supported in this browser. Please try Chrome, Edge, or Safari.');
+      setTimeout(() => setSpeechError(null), 5000);
+      return;
+    }
+
+    try {
+      setSpeechError(null);
+      const recognition = new SpeechRec();
+      recognitionRef.current = recognition;
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      // Match language if it is a South African language subject
+      if (isLanguageSubject && selectedLanguage.toLowerCase() === 'afrikaans') {
+        recognition.lang = 'af-ZA';
+      } else if (isLanguageSubject && selectedLanguage.toLowerCase() === 'isizulu') {
+        recognition.lang = 'zu-ZA';
+      } else {
+        recognition.lang = 'en-ZA';
+      }
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        if (transcript.trim()) {
+          setInputText(transcript);
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn('[SPEECH RECOGNITION ERROR]:', event.error);
+        if (event.error !== 'no-speech') {
+          setSpeechError(`Voice input: ${event.error}`);
+          setTimeout(() => setSpeechError(null), 4000);
+        }
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (err: any) {
+      console.error('Error starting speech recognition:', err);
+      setSpeechError('Microphone access unavailable.');
+      setIsListening(false);
+    }
+  };
+
+  // Text-to-Speech (TTS) Synthesizer
+  const toggleReadAloud = (messageId: string, fullText: string) => {
+    if (!('speechSynthesis' in window)) {
+      setSpeechError('Text-to-speech voice synthesis is not supported in your browser.');
+      setTimeout(() => setSpeechError(null), 4000);
+      return;
+    }
+
+    if (speakingMsgId === messageId && isSpeaking) {
+      window.speechSynthesis.cancel();
+      setSpeakingMsgId(null);
+      setIsSpeaking(false);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    // Strip markdown formatting for natural speech flow
+    const cleanText = fullText
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/#{1,6}\s?/g, '')
+      .replace(/```[\s\S]*?```/g, 'Code example omitted.')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\[\d+\s*Marks?\]/gi, '')
+      .trim();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = speechRate;
+    utterance.pitch = 1.0;
+
+    // Pick best available voice
+    const voices = window.speechSynthesis.getVoices();
+    if (isLanguageSubject && selectedLanguage.toLowerCase() === 'afrikaans') {
+      const afVoice = voices.find(v => v.lang.includes('af') || v.name.includes('Afrikaans'));
+      if (afVoice) utterance.voice = afVoice;
+    } else {
+      const zaVoice = voices.find(v => v.lang === 'en-ZA' || v.name.includes('South Africa') || v.lang.includes('en'));
+      if (zaVoice) utterance.voice = zaVoice;
+    }
+
+    utterance.onstart = () => {
+      setSpeakingMsgId(messageId);
+      setIsSpeaking(true);
+    };
+
+    utterance.onend = () => {
+      setSpeakingMsgId(null);
+      setIsSpeaking(false);
+    };
+
+    utterance.onerror = () => {
+      setSpeakingMsgId(null);
+      setIsSpeaking(false);
+    };
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Stop speech when unmounting or switching topics
+  useEffect(() => {
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
 
   const isLanguageSubject = subject.toLowerCase().includes('language') || 
                             subject.toLowerCase().includes('hl') || 
@@ -594,7 +751,36 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                     </div>
 
                     {isAi && (
-                      <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-white/10">
+                      <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-white/10">
+                        {/* Audio Read-Aloud Speaker Button */}
+                        <button
+                          type="button"
+                          onClick={() => toggleReadAloud(msg.id, msg.text)}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                            speakingMsgId === msg.id && isSpeaking
+                              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-glow-emerald animate-pulse'
+                              : 'bg-white/5 hover:bg-white/10 text-emerald-300'
+                          }`}
+                          title={speakingMsgId === msg.id && isSpeaking ? "Stop Voice Read-Aloud" : "Listen / Read Aloud"}
+                        >
+                          {speakingMsgId === msg.id && isSpeaking ? (
+                            <>
+                              <VolumeX className="w-3 h-3 text-white" />
+                              <span>Speaking...</span>
+                              <span className="flex items-center gap-0.5 ml-1">
+                                <span className="w-0.5 h-2.5 bg-white animate-bounce" />
+                                <span className="w-0.5 h-3.5 bg-white animate-bounce delay-75" />
+                                <span className="w-0.5 h-2 bg-white animate-bounce delay-150" />
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 className="w-3 h-3 text-emerald-400" />
+                              <span>Read Aloud</span>
+                            </>
+                          )}
+                        </button>
+
                         <button
                           onClick={() => handleSendMessage(`Explain this simpler with a clear example: "${msg.text.slice(0, 80)}..."`)}
                           className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[10px] text-brand-300 font-medium transition-colors"
@@ -646,6 +832,30 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
             ))}
           </div>
 
+          {/* Live Voice Dictation Banner */}
+          {isListening && (
+            <div className="px-4 py-2 bg-rose-500/20 border-t border-rose-500/30 flex items-center justify-between animate-fade-in text-rose-300 text-xs">
+              <div className="flex items-center gap-2 font-bold">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+                <span>Listening to your voice... Speak your question now</span>
+              </div>
+              <button
+                type="button"
+                onClick={toggleSpeechRecognition}
+                className="text-[11px] font-bold px-2 py-0.5 rounded bg-rose-500/30 hover:bg-rose-500/50 text-white"
+              >
+                Done
+              </button>
+            </div>
+          )}
+
+          {speechError && (
+            <div className="px-4 py-1.5 bg-amber-500/10 border-t border-amber-500/20 text-amber-300 text-[11px] flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              <span>{speechError}</span>
+            </div>
+          )}
+
           {/* Chat Input Bar */}
           <div className="p-4 border-t border-white/10 bg-surface-darker">
             <form
@@ -655,17 +865,31 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
               }}
               className="flex items-center gap-2"
             >
+              {/* Speech-to-Text Microphone Button */}
+              <button
+                type="button"
+                onClick={toggleSpeechRecognition}
+                className={`flex h-11 w-11 items-center justify-center rounded-xl transition-all shadow-md shrink-0 ${
+                  isListening
+                    ? 'bg-rose-600 text-white animate-pulse shadow-glow-rose ring-2 ring-rose-400'
+                    : 'bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10'
+                }`}
+                title={isListening ? "Listening... Click to stop" : "Click to speak your question (Voice Dictation)"}
+              >
+                {isListening ? <MicOff className="w-4 h-4 text-white" /> : <Mic className="w-4 h-4 text-rose-400" />}
+              </button>
+
               <input
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder={`Ask anything about ${isLanguageSubject ? selectedLanguage : subject} (e.g., Grammar, Literature, Essays)...`}
+                placeholder={isListening ? "Listening... (Speaking will populate text)" : `Ask anything about ${isLanguageSubject ? selectedLanguage : subject} (e.g., Grammar, Literature, Essays)...`}
                 className="flex-1 rounded-xl bg-surface-dark border border-white/10 px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
               <button
                 type="submit"
                 disabled={loading || !inputText.trim()}
-                className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-r from-brand-600 to-brand-700 text-white shadow-glow-indigo disabled:opacity-50 transition-all hover:scale-105 active:scale-95"
+                className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-r from-brand-600 to-brand-700 text-white shadow-glow-indigo disabled:opacity-50 transition-all hover:scale-105 active:scale-95 shrink-0"
               >
                 <Send className="w-4 h-4" />
               </button>

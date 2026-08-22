@@ -7,6 +7,8 @@ import { PwaInstallPrompt } from './components/common/PwaInstallPrompt';
 
 // Code-split route components for performance optimization & faster initial bundle loading
 const LandingPage = lazy(() => import('./pages/landing/LandingPage').then(m => ({ default: m.LandingPage })));
+const AboutUsPage = lazy(() => import('./pages/landing/AboutUsPage').then(m => ({ default: m.AboutUsPage })));
+const TermsPage = lazy(() => import('./pages/landing/TermsPage').then(m => ({ default: m.TermsPage })));
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then(m => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./pages/auth/RegisterPage').then(m => ({ default: m.RegisterPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
@@ -14,6 +16,7 @@ const LearnerDashboard = lazy(() => import('./pages/learner/LearnerDashboard').t
 const TeacherDashboard = lazy(() => import('./pages/teacher/TeacherDashboard').then(m => ({ default: m.TeacherDashboard })));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 const ParentDashboard = lazy(() => import('./pages/parent/ParentDashboard').then(m => ({ default: m.ParentDashboard })));
+import { TermsAgreementModal } from './components/common/TermsAgreementModal';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRole?: string }> = ({
   children,
@@ -41,6 +44,9 @@ export const App: React.FC = () => {
     <ThemeProvider>
       <AuthProvider>
         <Router>
+          {/* Global Mandatory Terms & Conditions Agreement Gate (Requires acceptance before using app) */}
+          <TermsAgreementModal isMandatoryGate={true} />
+
           <Suspense
             fallback={
               <div className="flex h-screen w-screen items-center justify-center bg-canvas-dark">
@@ -49,8 +55,10 @@ export const App: React.FC = () => {
             }
           >
             <Routes>
-              {/* Landing Page */}
+              {/* Landing & Public Pages */}
               <Route path="/" element={<LandingPage />} />
+              <Route path="/about" element={<AboutUsPage />} />
+              <Route path="/terms" element={<TermsPage />} />
 
               {/* Auth Routes */}
               <Route path="/login" element={<LoginPage />} />

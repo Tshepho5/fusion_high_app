@@ -382,6 +382,136 @@ export const LearnerCareerAdvisor: React.FC = () => {
               ))}
             </div>
           </div>
+
+          {/* Simulated Results Section */}
+          {simulatedResult ? (
+            <div className="space-y-6 animate-fade-in">
+              {/* Simulation Result Header Card */}
+              <div className="p-6 rounded-3xl bg-gradient-to-r from-purple-950/70 via-surface-dark to-surface-dark border border-purple-500/30 shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono text-purple-400 uppercase tracking-widest font-bold block">
+                      SIMULATION METRICS & ENDORSEMENT
+                    </span>
+                    <div className="flex items-baseline gap-3">
+                      <h4 className="text-3xl font-extrabold font-mono text-white">
+                        {simulatedResult.simulated_aps} Points
+                      </h4>
+                      <Badge variant="indigo" size="sm">
+                        {simulatedResult.pass_endorsement || "Bachelor's Degree Pass"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-slate-300">
+                      Based on your adjusted marks, you qualify for <strong>{simulatedResult.eligible_count} of {simulatedResult.total_programmes || (simulatedResult.programmes || []).length}</strong> major university degrees.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="p-3.5 rounded-2xl bg-surface-darker/80 border border-white/5 text-center">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Eligible Degrees</p>
+                      <p className="text-xl font-mono font-bold text-emerald-400 mt-0.5">
+                        {simulatedResult.eligible_count}
+                      </p>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-surface-darker/80 border border-white/5 text-center">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Endorsement</p>
+                      <p className="text-xs font-bold text-purple-300 mt-1">
+                        DBE Bachelor
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Matched Programmes Grid */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-purple-400" />
+                    <span>Matched University Degrees (Simulation Results)</span>
+                  </h4>
+                  <span className="text-xs text-slate-400 font-mono">
+                    {simulatedResult.eligible_count} Qualified
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(simulatedResult.programmes || []).map((prog: any, idx: number) => {
+                    const isEligible = prog.isEligible;
+                    return (
+                      <div
+                        key={idx}
+                        className={`p-6 rounded-3xl border transition-all space-y-4 ${
+                          isEligible
+                            ? 'bg-surface-dark border-emerald-500/30 hover:border-emerald-500/60 shadow-xl'
+                            : 'bg-surface-darker/60 border-white/10 opacity-90'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <span className="text-[10px] uppercase font-bold tracking-wider text-purple-400">{prog.faculty}</span>
+                            <h4 className="text-base font-bold text-white">{prog.name}</h4>
+                          </div>
+
+                          {isEligible ? (
+                            <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-xs border border-emerald-500/30 flex items-center gap-1 shrink-0">
+                              <Check className="w-3 h-3" />
+                              Eligible
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 font-bold text-xs border border-amber-500/30 shrink-0">
+                              Needs +{prog.apsDeficit} Pts
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-slate-400">{prog.description}</p>
+
+                        <div className="pt-2 border-t border-white/5 space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-400">Min. Required APS:</span>
+                            <strong className="text-white font-mono">{prog.minAps} Points</strong>
+                          </div>
+
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-400">Offered at:</span>
+                            <span className="text-slate-200 font-medium">{prog.universities?.join(', ')}</span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-400">Career Outcomes:</span>
+                            <span className="text-slate-300 font-semibold">{prog.careerProspects?.slice(0, 2).join(', ')}</span>
+                          </div>
+                        </div>
+
+                        {!isEligible && prog.missingRequirements?.length > 0 && (
+                          <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] space-y-1">
+                            <span className="font-bold flex items-center gap-1">
+                              <Info className="w-3.5 h-3.5" />
+                              Prerequisites to unlock:
+                            </span>
+                            <ul className="list-disc list-inside space-y-0.5 text-slate-300">
+                              {prog.missingRequirements.map((r: string, rIdx: number) => (
+                                <li key={rIdx}>{r}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-8 rounded-3xl bg-surface-dark border border-white/10 text-center space-y-3">
+              <Sparkles className="w-8 h-8 text-purple-400 mx-auto" />
+              <h4 className="text-sm font-bold text-white">Project Your Matric University Admissions</h4>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                Adjust any of the subject sliders above and click <strong>"Simulate University Matches"</strong> to calculate real-time APS points and see which degree programmes you unlock.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

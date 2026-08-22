@@ -60,6 +60,28 @@ VALUES ('teacher'),
        ('Vice_Principal') ON CONFLICT DO NOTHING;
 
 
+CREATE TABLE users
+  (id SERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE,
+  password_hash VARCHAR(255),
+  role_id INTEGER REFERENCES roles(id) ON DELETE SET NULL, 
+  full_name VARCHAR(255),
+  surname VARCHAR(255),
+  id_number VARCHAR(20),
+  dob DATE, 
+  gender VARCHAR(10),
+  phone VARCHAR(20),
+  physical_address TEXT, 
+  country VARCHAR(100),
+  race VARCHAR(50),
+  parent_type VARCHAR(50),
+  reset_code VARCHAR(10),
+  reset_expiry TIMESTAMP, 
+  profile_picture_path VARCHAR(255),
+  preferences JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE employees
   (id SERIAL PRIMARY KEY,
    user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -93,39 +115,6 @@ VALUES ('10A', 10, 'Science'),
        ('11B', 11, 'Tourism'),
        ('12A', 12, 'Science'),
        ('12B', 12, 'Commerce') ON CONFLICT DO NOTHING;
-
-
-SELECT *
-FROM classes;
-
-
-CREATE TABLE users
-  (id SERIAL PRIMARY KEY,
-  email VARCHAR(255) UNIQUE,
-  password_hash VARCHAR(255),
-  role_id INTEGER REFERENCES roles(id) ON DELETE SET NULL, 
-  full_name VARCHAR(255),
-  surname VARCHAR(255),
-  id_number VARCHAR(20),
-  dob DATE, 
-  gender VARCHAR(10),
-  phone VARCHAR(20),
-  physical_address TEXT, 
-  country VARCHAR(100),
-  race VARCHAR(50),
-  parent_type VARCHAR(50),
-  reset_code VARCHAR(10),
-  reset_expiry TIMESTAMP, 
-  profile_picture_path VARCHAR(255),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-ALTER TABLE users ADD COLUMN preferences JSONB;
-
-
-select *
-from users;
-
 
 CREATE TABLE subjects (
   id SERIAL PRIMARY KEY,
@@ -256,7 +245,7 @@ select * from employees;
 
 
 -- SEEDING SAMPLE DATA (Employees & Workload)
--- 1. Create a Teacher User (Auth Record)
+-- 1. Create a Teacher User (Auth Record) 
 
 INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, phone, physical_address, country, race, parent_type)
 VALUES
@@ -265,7 +254,8 @@ VALUES
        ('thapeloleshabane05@gmail.com', '$2a$10$yB.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 'Thapelo', 'Leshabane', '0504225825083', '2005-05-22', 'male', '0661420527', '243 Rabothata street', 'South Africa', 'Black', 'Father'),
        ('202256986@myturf.ul.ac.za', '$2a$10$zC.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 'Minenhle', 'Dlungwane', '0205101032085', '2002-05-10', 'female', '0711943962', 'PV 8364, Atteridgeville, Pretoria', 'South Africa', 'Black', 'Mother'),
        ('mini.dludlu@gmail.com', '$2a$10$1C.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 'Putla', 'Dludlu', '9907311032084', '2002-05-10', 'female', '0711943962', 'PV 8364, Atteridgeville, Pretoria', 'South Africa', 'Black', 'Mother'),
-       ('mapula@gmail.com', '$2a$10$2C.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 'Mapula', 'Modiba', '9907311032084', '2002-05-10', 'female', '0711943962', 'PV 8364, Atteridgeville, Pretoria', 'South Africa', 'Black', 'Mother') ON CONFLICT DO NOTHING;
+       ('mapula@gmail.com', '$2a$10$2C.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 'Mapula', 'Modiba', '9907311032084', '2002-05-10', 'female', '0711943962', 'PV 8364, Atteridgeville, Pretoria', 'South Africa', 'Black', 'Mother')
+       ON CONFLICT DO NOTHING;
 
 
 Select *
@@ -357,32 +347,34 @@ WHERE u.email = '202256986@myturf.ul.ac.za' ON CONFLICT (user_id) DO NOTHING;
 SELECT *
 FROM users;
 
+Select * from children;
+
 
 --SEEDING SAMPLE DATA (Unclaimed Learners for Activation)
 
 INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, phone, country, race)
-VALUES --('20250001@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Jane', 'Walters', '0501014089081', '2005-01-01', 'Female', '0820000001','South Africa', 'White'),
-       --('20250002@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/B.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'David', 'Walters', '0502155099082', '2005-02-15', 'Male', '0820000002', 'South Africa', 'White'),
-       --('20250003@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/C.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Sarah', 'Walters', '05063003909083', '2005-06-30', 'Female', '0820000003', 'South Africa', 'White'),
-       --('20250004@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/D.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Thabelo', 'Ravhura', '0512254109084 ', '2005-12-22', 'Male', '0820000004', 'South Africa', 'Black'),
-       --('20250005@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/E.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Lufuno', 'Ravhura', '0603104989085', '2006-03-10', 'Female', '0820000005', 'South Africa', 'Black'),
-       --('20250006@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/F.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Don', 'Walters', '0607225119086', '2006-07-22', 'Male', '0820000006', 'South Africa', 'White'),
-       --('20250007@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/G.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Thato', 'Leshabane', '0701083809087', '2007-01-08', 'Female', '0820000007', 'South Africa', 'Black'),
-       --('20250008@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/H.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Thabang', 'Leshabane', '0709155209088', '2007-09-15', 'Male', '0820000008', 'South Africa', 'Black'),
-       --('20250009@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/I.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Tshegofatso', 'Leshabane', '0811185139080', '2008-11-18', 'Male', '0820000009', 'South Africa', 'Black'),
-       --('20250010@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/J.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Mpho', 'Ravhura', '0905053919081', '2009-05-05', 'Female', '0820000010', 'South Africa', 'Black'),
-       --('20250011@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/K.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Tumi', 'Leshabane', '0912315149082', '2009-12-31', 'Male', '0820000011', 'South Africa', 'Black'),
-       --('20250012@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/L.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Ditebogo', 'Ravhura', '1007154039083', '2010-07-15', 'Female', '0820000012', 'South Africa', 'Black'),
-       --('20250013@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/M.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Tumelo', 'Makola', '1103013929085', '2011-03-01', 'Female', '0820000013', 'South Africa', 'Black'),
-       --('20250014@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/N.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Neo', 'Makola', '1112255169086', '2011-12-25', 'Male', '0820000014', 'South Africa', 'Black'),
-       --('20250015@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/O.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Thabo', 'Makola', '1201015189088', '2012-01-01', 'Male', '0820000015', 'South Africa', 'Black'),
-       --('20250016@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Neo', 'Makola', '1209255199087', '2012-09-25', 'Male', '0820000016', 'South Africa', 'Black'),
-       --('20250017@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Junior', 'Tlhaka', '0503124123083', '2005-03-12', 'Female', '0820000016', 'South Africa', 'Black'),
-       --('20250018@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Lesedi', 'Tlhaka', '0607285782084', '2006-07-28', 'male', '0820000016', 'South Africa', 'Black'),
-       --('20250019@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Lethabo', 'Tlhaka', '0811041245081', '2008-11-04', 'Female', '0820000017', 'South Africa', 'Black'),
-       --('20250020@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Boitumelo', 'Tlhaka', '1001196321087', '2010-01-19', 'male', '0820000086', 'South Africa', 'Black'),
-       --('20250021@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Tebogo', 'Tlhaka', '1209230451089', '2012-09-23', 'Female', '0820000087', 'South Africa', 'Black'),
-         ('20250022@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Prince', 'Makola', '0503124123083', '2005-03-12', 'Male', '0729391381', 'South Africa', 'Black')
+VALUES ('20250001@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Jane', 'Walters', '0501014089081', '2005-01-01', 'Female', '0820000001','South Africa', 'White'),
+       ('20250002@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/B.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'David', 'Walters', '0502155099082', '2005-02-15', 'Male', '0820000002', 'South Africa', 'White'),
+       ('20250003@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/C.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Sarah', 'Walters', '05063003909083', '2005-06-30', 'Female', '0820000003', 'South Africa', 'White'),
+       ('20250004@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/D.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Thabelo', 'Ravhura', '0512254109084 ', '2005-12-22', 'Male', '0820000004', 'South Africa', 'Black'),
+       ('20250005@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/E.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Lufuno', 'Ravhura', '0603104989085', '2006-03-10', 'Female', '0820000005', 'South Africa', 'Black'),
+       ('20250006@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/F.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Don', 'Walters', '0607225119086', '2006-07-22', 'Male', '0820000006', 'South Africa', 'White'),
+       ('20250007@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/G.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Thato', 'Leshabane', '0701083809087', '2007-01-08', 'Female', '0820000007', 'South Africa', 'Black'),
+       ('20250008@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/H.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Thabang', 'Leshabane', '0709155209088', '2007-09-15', 'Male', '0820000008', 'South Africa', 'Black'),
+       ('20250009@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/I.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Tshegofatso', 'Leshabane', '0811185139080', '2008-11-18', 'Male', '0820000009', 'South Africa', 'Black'),
+       ('20250010@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/J.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Mpho', 'Ravhura', '0905053919081', '2009-05-05', 'Female', '0820000010', 'South Africa', 'Black'),
+       ('20250011@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/K.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Tumi', 'Leshabane', '0912315149082', '2009-12-31', 'Male', '0820000011', 'South Africa', 'Black'),
+       ('20250012@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/L.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Ditebogo', 'Ravhura', '1007154039083', '2010-07-15', 'Female', '0820000012', 'South Africa', 'Black'),
+       ('20250013@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/M.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Tumelo', 'Makola', '1103013929085', '2011-03-01', 'Female', '0820000013', 'South Africa', 'Black'),
+       ('20250014@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/N.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Neo', 'Makola', '1112255169086', '2011-12-25', 'Male', '0820000014', 'South Africa', 'Black'),
+       ('20250015@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/O.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Thabo', 'Makola', '1201015189088', '2012-01-01', 'Male', '0820000015', 'South Africa', 'Black'),
+       ('20250016@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Neo', 'Makola', '1209255199087', '2012-09-25', 'Male', '0820000016', 'South Africa', 'Black'),
+       ('20250017@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Junior', 'Tlhaka', '0503124123083', '2005-03-12', 'Female', '0820000016', 'South Africa', 'Black'),
+       ('20250018@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Lesedi', 'Tlhaka', '0607285782084', '2006-07-28', 'male', '0820000016', 'South Africa', 'Black'),
+       ('20250019@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Lethabo', 'Tlhaka', '0811041245081', '2008-11-04', 'Female', '0820000017', 'South Africa', 'Black'),
+       ('20250020@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Boitumelo', 'Tlhaka', '1001196321087', '2010-01-19', 'male', '0820000086', 'South Africa', 'Black'),
+       ('20250021@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Tebogo', 'Tlhaka', '1209230451089', '2012-09-23', 'Female', '0820000087', 'South Africa', 'Black'),
+       ('20250022@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/P.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'learner'), 'Prince', 'Makola', '0503124123083', '2005-03-12', 'Male', '0729391381', 'South Africa', 'Black')
         ON CONFLICT (email) DO NOTHING;
  
       
@@ -392,10 +384,10 @@ SELECT *
 FROM users;
 
 
-SELECT DISTINCT name 
-FROM subjects 
-WHERE grade = $1 AND (stream ILIKE $2 OR stream = 'General') 
-ORDER BY name; 
+-- SELECT DISTINCT name 
+-- FROM subjects 
+-- WHERE grade = 10 AND (stream ILIKE 'Science' OR stream = 'General') 
+-- ORDER BY name; 
 
 
 -- Create the corresponding child record, with parent_id as NULL
@@ -623,7 +615,6 @@ WHERE u.email = '20250014@fusion.high' ON CONFLICT (learner_user_id) DO
   UPDATE
   SET grade = 11;
 
-
 INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
 SELECT u.id,
        'Thabo',
@@ -746,7 +737,6 @@ from users;
 -- Link sample children to sample parents by surname or role
 UPDATE children c
 SET parent_id = p.id
-ALTER TABLE users ADD COLUMN parent_id VARCHAR(20);
 FROM users p
 WHERE p.role_id = (SELECT id FROM roles WHERE name = 'parent')
   AND LOWER(c.surname) = LOWER(p.surname)
@@ -754,7 +744,7 @@ WHERE p.role_id = (SELECT id FROM roles WHERE name = 'parent')
 
 -- ==========================================
 
-CREATE TABLE progress
+CREATE TABLE IF NOT EXISTS progress
   (id SERIAL PRIMARY KEY,
   child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
   subject VARCHAR(100) NOT NULL,
@@ -794,7 +784,7 @@ ON CONFLICT DO NOTHING;
 
 
 
-CREATE TABLE announcements
+CREATE TABLE IF NOT EXISTS announcements
   (id SERIAL PRIMARY KEY,
   title VARCHAR(255) NOT NULL,
   content TEXT NOT NULL,
@@ -809,16 +799,7 @@ CREATE TABLE announcements
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
 
 
-CREATE TABLE timetables (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    timetable_data JSONB NOT NULL,
-    is_active BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-
-CREATE TABLE messages (
+CREATE TABLE IF NOT EXISTS messages (
     id SERIAL PRIMARY KEY,
     sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     recipient_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -830,15 +811,15 @@ CREATE TABLE messages (
 );
 
 -- Optional: Add an index for faster message lookups
-CREATE INDEX idx_messages_participants ON messages (sender_id, recipient_id);
-ALTER TABLE users ADD COLUMN preferences JSONB;
+CREATE INDEX IF NOT EXISTS idx_messages_participants ON messages (sender_id, recipient_id);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS preferences JSONB;
 
 
 SELECT *
 FROM announcements;
 
 
-CREATE TABLE textbooks
+CREATE TABLE IF NOT EXISTS textbooks
   (id SERIAL PRIMARY KEY,
   subject VARCHAR(100) NOT NULL,
   grade INTEGER NOT NULL,
@@ -852,7 +833,7 @@ select *
 from textbooks;
 
 
-CREATE TABLE attendance (
+CREATE TABLE IF NOT EXISTS attendance (
     id SERIAL PRIMARY KEY,
     child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
     class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
@@ -864,7 +845,7 @@ CREATE TABLE attendance (
     UNIQUE(child_id, attendance_date, subject_name) -- Ensures one record per learner per date per subject
 );
 
-CREATE INDEX idx_attendance_child_id ON attendance (child_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_child_id ON attendance (child_id);
 
 -- Seed sample per-subject period attendance logs
 INSERT INTO attendance (child_id, class_id, subject_name, attendance_date, status, recorded_by_teacher_id)
@@ -884,20 +865,7 @@ ON CONFLICT DO NOTHING;
 
 
 
-CREATE TABLE assessment_results (
-    id SERIAL PRIMARY KEY,
-    assessment_id INTEGER NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
-    child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
-    score DECIMAL(5, 2) NOT NULL CHECK (score >= 0 AND score <= 100),
-    submission_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    feedback TEXT,
-    recorded_by_teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(assessment_id, child_id) -- Ensures a learner has only one result per assessment
-);
-
-
-create table assessments(
+CREATE TABLE IF NOT EXISTS assessments (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     subject VARCHAR(100) NOT NULL,
@@ -912,12 +880,24 @@ create table assessments(
     date_due TIMESTAMP WITH TIME ZONE    
 );
 
-CREATE INDEX idx_assessment_results_child_id ON assessment_results (child_id);
+CREATE TABLE IF NOT EXISTS assessment_results (
+    id SERIAL PRIMARY KEY,
+    assessment_id INTEGER NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
+    child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    score DECIMAL(5, 2) NOT NULL CHECK (score >= 0 AND score <= 100),
+    submission_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    feedback TEXT,
+    recorded_by_teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(assessment_id, child_id) -- Ensures a learner has only one result per assessment
+);
+
+CREATE INDEX IF NOT EXISTS idx_assessment_results_child_id ON assessment_results (child_id);
 
 
 
 -- Add an index for faster lookups
-CREATE INDEX idx_attendance_date_class ON attendance (attendance_date, class_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_date_class ON attendance (attendance_date, class_id);
 
 
 -- Logic-supporting Indexes
@@ -1231,10 +1211,10 @@ VALUES
     ('Behavior Incident Summary', 'behavior_summary', 'Principal Admin', '2026-03-05 14:22:00')
 ON CONFLICT DO NOTHING;
 
-SELECT r.name as role_name 
-FROM users u 
-JOIN roles r ON u.role_id = r.id 
-WHERE u.id = $1;
+-- SELECT r.name as role_name 
+-- FROM users u 
+-- JOIN roles r ON u.role_id = r.id 
+-- WHERE u.id = 1;
 
 -- ==========================================================
 -- ADMISSIONS & APPLICATIONS MANAGEMENT SYSTEM

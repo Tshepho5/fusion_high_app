@@ -399,9 +399,9 @@ export const SportsExtracurriculars: React.FC = () => {
 
       {/* Modal: Create Activity */}
       {isActivityModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-3xl bg-surface-dark border border-white/10 p-6 space-y-4 shadow-2xl animate-fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-surface-dark border border-white/10 p-6 space-y-4 shadow-2xl animate-fade-in">
+            <div className="flex items-center justify-between pb-3 border-b border-white/5 sticky top-0 bg-surface-dark z-10">
               <h3 className="text-base font-bold text-white">Register Sport or Club</h3>
               <button onClick={() => setIsActivityModalOpen(false)} className="text-slate-400 hover:text-white p-1 rounded-lg">
                 <X className="w-4 h-4" />
@@ -474,19 +474,20 @@ export const SportsExtracurriculars: React.FC = () => {
               <div>
                 <label className="block text-slate-300 font-bold mb-1">Description</label>
                 <textarea
-                  rows={2}
+                  rows={3}
+                  placeholder="Provide squad details, coach information, or requirements..."
                   value={activityForm.description}
                   onChange={(e) => setActivityForm(prev => ({ ...prev, description: e.target.value }))}
                   className="w-full rounded-xl bg-surface-darker border border-white/10 p-3 text-white focus:ring-2 focus:ring-brand-500"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3">
-                <button type="button" onClick={() => setIsActivityModalOpen(false)} className="px-4 py-2 rounded-xl bg-white/5 text-slate-300 font-bold">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10 sticky bottom-0 bg-surface-dark pb-1">
+                <button type="button" onClick={() => setIsActivityModalOpen(false)} className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold transition-colors">
                   Cancel
                 </button>
-                <button type="submit" className="px-5 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold shadow-sm">
-                  Register Club
+                <button type="submit" className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-sm transition-all">
+                  Register Squad
                 </button>
               </div>
             </form>
@@ -496,9 +497,9 @@ export const SportsExtracurriculars: React.FC = () => {
 
       {/* Modal: Add Event Fixture */}
       {isEventModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-3xl bg-surface-dark border border-white/10 p-6 space-y-4 shadow-2xl animate-fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-surface-dark border border-white/10 p-6 space-y-4 shadow-2xl animate-fade-in">
+            <div className="flex items-center justify-between pb-3 border-b border-white/5 sticky top-0 bg-surface-dark z-10">
               <h3 className="text-base font-bold text-white">Add Match / Event Fixture</h3>
               <button onClick={() => setIsEventModalOpen(false)} className="text-slate-400 hover:text-white p-1 rounded-lg">
                 <X className="w-4 h-4" />
@@ -563,11 +564,11 @@ export const SportsExtracurriculars: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3">
-                <button type="button" onClick={() => setIsEventModalOpen(false)} className="px-4 py-2 rounded-xl bg-white/5 text-slate-300 font-bold">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10 sticky bottom-0 bg-surface-dark pb-1">
+                <button type="button" onClick={() => setIsEventModalOpen(false)} className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold">
                   Cancel
                 </button>
-                <button type="submit" className="px-5 py-2 rounded-xl bg-brand-600 text-white font-bold">
+                <button type="submit" className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold transition-all shadow-sm">
                   Schedule Fixture
                 </button>
               </div>
@@ -578,9 +579,9 @@ export const SportsExtracurriculars: React.FC = () => {
 
       {/* Modal: Update Score */}
       {isScoreModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-3xl bg-surface-dark border border-white/10 p-6 space-y-4 shadow-2xl animate-fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-surface-dark border border-white/10 p-6 space-y-4 shadow-2xl animate-fade-in">
+            <div className="flex items-center justify-between pb-3 border-b border-white/5 sticky top-0 bg-surface-dark z-10">
               <h3 className="text-base font-bold text-white">Record Match Score / Result</h3>
               <button onClick={() => setIsScoreModalOpen(false)} className="text-slate-400 hover:text-white p-1 rounded-lg">
                 <X className="w-4 h-4" />
@@ -610,11 +611,11 @@ export const SportsExtracurriculars: React.FC = () => {
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10 sticky bottom-0 bg-surface-dark pb-1">
                 <button type="button" onClick={() => setIsScoreModalOpen(false)} className="px-4 py-2 rounded-xl bg-white/5 text-slate-300 font-bold">
                   Cancel
                 </button>
-                <button type="submit" className="px-5 py-2 rounded-xl bg-emerald-600 text-white font-bold">
+                <button type="submit" className="px-5 py-2 rounded-xl bg-emerald-600 text-white font-bold shadow-sm">
                   Save Score
                 </button>
               </div>
@@ -625,3 +626,4 @@ export const SportsExtracurriculars: React.FC = () => {
     </div>
   );
 };
+

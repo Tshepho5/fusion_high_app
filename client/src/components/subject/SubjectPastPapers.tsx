@@ -46,7 +46,7 @@ interface DbeResource {
 interface ExamPaper {
   id: string;
   year: number;
-  season: 'November Final (NSC)' | 'September Trial (Prelim)' | 'June Mid-Year Exam' | 'March Exemplar';
+  season: 'November Final (NSC)' | 'November Final Exam' | 'September Trial (Prelim)' | 'June Mid-Year Exam' | 'March Exemplar' | string;
   paperNumber: 'Paper 1' | 'Paper 2' | 'Paper 3';
   title: string;
   marks: number;
@@ -65,20 +65,170 @@ interface ExamPaper {
 // Generate realistic CAPS DBE Past Exam Papers tailored dynamically to any subject & grade
 const getSubjectPastPapers = (subjectName: string, gradeNum: number): ExamPaper[] => {
   const s = subjectName.toLowerCase();
+  const g = gradeNum || 10;
 
-  // Mathematics dataset
+  // =========================================================================
+  // 1. MATHEMATICS
+  // =========================================================================
   if (s.includes('math') && !s.includes('lit')) {
+    if (g === 10) {
+      return [
+        {
+          id: 'math-gr10-2024-nov-p1',
+          year: 2024,
+          season: 'November Final Exam',
+          paperNumber: 'Paper 1',
+          title: `Grade 10 Mathematics Paper 1 (Algebra, Equations & Finance)`,
+          marks: 100,
+          durationMinutes: 120,
+          curriculum: 'CAPS Grade 10 Mathematics',
+          topicsCovered: ['Algebraic Expressions & Factorisation', 'Exponents & Surd Rules', 'Equations & Inequalities (Linear & Quadratic)', 'Number Patterns & Sequences', 'Functions (Parabola & Hyperbola)', 'Financial Maths (Simple & Compound Interest, Hire Purchase)'],
+          sampleQuestions: [
+            {
+              questionNumber: 'Question 1.1',
+              topic: 'Algebraic Factorisation & Quadratic Equations',
+              marks: 4,
+              questionText: 'Solve for x:  3x² - 7x - 6 = 0  and verify your solutions.',
+              memoSnippet: '(3x + 2)(x - 3) = 0  ⇒  x = -2/3  or  x = 3.  [4 Marks: 1 mark factors, 1 mark per solution]'
+            },
+            {
+              questionNumber: 'Question 2.3',
+              topic: 'Exponential Equations',
+              marks: 4,
+              questionText: 'Solve for x:  3^(x+1) - 3^x = 18.',
+              memoSnippet: '3^x(3 - 1) = 18  ⇒  3^x(2) = 18  ⇒  3^x = 9 = 3²  ⇒  x = 2. [4 Marks]'
+            },
+            {
+              questionNumber: 'Question 5.2',
+              topic: 'Hyperbolic & Parabolic Functions',
+              marks: 5,
+              questionText: 'Given the function f(x) = 6/x - 2, write down the equations of the vertical and horizontal asymptotes, and calculate the coordinates of the x-intercept.',
+              memoSnippet: 'Vertical asymptote: x = 0. Horizontal asymptote: y = -2. x-intercept: 0 = 6/x - 2 ⇒ 2 = 6/x ⇒ x = 3. Point: (3; 0).'
+            },
+            {
+              questionNumber: 'Question 7.1',
+              topic: 'Financial Mathematics (Hire Purchase)',
+              marks: 5,
+              questionText: 'Lerato buys a study laptop priced at R12,000 on a hire purchase agreement. She pays a 15% deposit. The balance is paid over 36 months at 14% p.a. simple interest. Calculate her monthly instalment.',
+              memoSnippet: 'Deposit = 0.15 × 12000 = R1800. Principal balance P = R10,200. Total interest I = P·r·t = 10200 × 0.14 × 3 = R4284. Total amount A = 10200 + 4284 = R14,484. Monthly instalment = 14484 / 36 = R402.33.'
+            }
+          ]
+        },
+        {
+          id: 'math-gr10-2024-nov-p2',
+          year: 2024,
+          season: 'November Final Exam',
+          paperNumber: 'Paper 2',
+          title: `Grade 10 Mathematics Paper 2 (Euclidean Geometry, Trig & Stats)`,
+          marks: 100,
+          durationMinutes: 120,
+          curriculum: 'CAPS Grade 10 Mathematics',
+          topicsCovered: ['Euclidean Geometry (Quadrilaterals & Mid-point Theorem)', 'Analytical Geometry (Distance, Midpoint, Gradient)', 'Trigonometry (Definitions, Special Angles, 2D Trig)', 'Statistics (Five-Number Summary & Box-and-Whisker)'],
+          sampleQuestions: [
+            {
+              questionNumber: 'Question 1.1',
+              topic: 'Analytical Geometry Coordinates',
+              marks: 6,
+              questionText: 'Given coordinates A(-3; 2) and B(5; -4), determine: (a) the length of segment AB, (b) the coordinates of midpoint M, and (c) the gradient of line AB.',
+              memoSnippet: 'AB = √[(5 - (-3))² + (-4 - 2)²] = √[64 + 36] = √100 = 10 units. M = ((-3+5)/2; (2+(-4))/2) = (1; -1). Gradient m = (-4 - 2)/(5 - (-3)) = -6/8 = -3/4.'
+            },
+            {
+              questionNumber: 'Question 3.2',
+              topic: 'Trigonometry & Special Angles',
+              marks: 5,
+              questionText: 'Without using a calculator, evaluate:  sin 30° · cos 60° + tan 45° · cos 30° · sin 60°.',
+              memoSnippet: '= (1/2)(1/2) + (1)(√3/2)(√3/2) = 1/4 + 3/4 = 1. [5 Marks: 1 mark per special angle substitution, 1 mark final answer]'
+            },
+            {
+              questionNumber: 'Question 6.1',
+              topic: 'Statistics & Interquartile Range',
+              marks: 5,
+              questionText: 'The marks of 11 learners in a math test are: 12, 15, 18, 22, 25, 28, 31, 35, 39, 44, 48. Determine the median (Q2), lower quartile (Q1), upper quartile (Q3), and the IQR.',
+              memoSnippet: 'Q1 = 18, Median Q2 = 28, Q3 = 39. IQR = Q3 - Q1 = 39 - 18 = 21 marks.'
+            }
+          ]
+        }
+      ];
+    }
+
+    if (g === 11) {
+      return [
+        {
+          id: 'math-gr11-2024-nov-p1',
+          year: 2024,
+          season: 'November Final Exam',
+          paperNumber: 'Paper 1',
+          title: `Grade 11 Mathematics Paper 1 (Exponents, Surds, Patterns & Functions)`,
+          marks: 150,
+          durationMinutes: 180,
+          curriculum: 'CAPS Grade 11 Mathematics',
+          topicsCovered: ['Exponents & Surds Manipulation', 'Quadratic Equations, Inequalities & Nature of Roots', 'Quadratic Number Patterns (Tn = an² + bn + c)', 'Functions & Graphs (Transformations & Inverses)', 'Financial Maths (Depreciation & Interest)', 'Probability (Venn Diagrams & Tree Diagrams)'],
+          sampleQuestions: [
+            {
+              questionNumber: 'Question 1.2',
+              topic: 'Surd & Quadratic Equations',
+              marks: 5,
+              questionText: 'Solve for x:  √(2x + 5) = x + 1. Remember to check for extraneous roots.',
+              memoSnippet: 'Square both sides: 2x + 5 = (x + 1)² = x² + 2x + 1 ⇒ x² - 4 = 0 ⇒ (x - 2)(x + 2) = 0 ⇒ x = 2 or x = -2. Check x = -2: √1 ≠ -1 (invalid). Valid root: x = 2.'
+            },
+            {
+              questionNumber: 'Question 3.1',
+              topic: 'Quadratic Number Patterns',
+              marks: 6,
+              questionText: 'Given the quadratic sequence: 3; 10; 21; 36; ... Determine the general term Tn in the form Tn = an² + bn + c.',
+              memoSnippet: '1st differences: 7, 11, 15. 2nd difference: 4. 2a = 4 ⇒ a = 2. 3a + b = 7 ⇒ 3(2) + b = 7 ⇒ b = 1. a + b + c = 3 ⇒ 2 + 1 + c = 3 ⇒ c = 0. General term Tn = 2n² + n.'
+            },
+            {
+              questionNumber: 'Question 7.2',
+              topic: 'Reducing Balance Depreciation',
+              marks: 4,
+              questionText: 'A school vehicle priced at R320,000 depreciates at 12% p.a. on a reducing balance method. Calculate its book value after 5 years.',
+              memoSnippet: 'A = P(1 - i)^n = 320000(1 - 0.12)⁵ = 320000(0.88)⁵ = R168,874.45.'
+            }
+          ]
+        },
+        {
+          id: 'math-gr11-2024-nov-p2',
+          year: 2024,
+          season: 'November Final Exam',
+          paperNumber: 'Paper 2',
+          title: `Grade 11 Mathematics Paper 2 (Circle Geometry & Trig Reduction)`,
+          marks: 150,
+          durationMinutes: 180,
+          curriculum: 'CAPS Grade 11 Mathematics',
+          topicsCovered: ['Circle Geometry Theorems (Cyclic Quads, Tangent-Chord, Angle at Centre)', 'Trigonometry (Identities, Reduction Formulae, Sine/Cosine/Area Rules)', 'Analytical Geometry (Angle of Inclination tan θ = m)', 'Statistics (Ogives, Variance & Standard Deviation)'],
+          sampleQuestions: [
+            {
+              questionNumber: 'Question 4.1',
+              topic: 'Trigonometric Identities & Reduction',
+              marks: 6,
+              questionText: 'Prove the identity:  [sin(180° - x) · cos(90° + x)] / [cos(180° + x) · sin(90° - x)] = tan² x.',
+              memoSnippet: 'LHS = (sin x · (-sin x)) / (-cos x · cos x) = -sin²x / -cos²x = sin²x / cos²x = tan²x = RHS.'
+            },
+            {
+              questionNumber: 'Question 6.2',
+              topic: 'Sine and Cosine Rules in 2D',
+              marks: 5,
+              questionText: 'In ΔABC, AB = 8 cm, AC = 11 cm, and angle BAC = 54°. Calculate the length of side BC using the Cosine Rule.',
+              memoSnippet: 'BC² = AB² + AC² - 2(AB)(AC)cos(BAC) = 8² + 11² - 2(8)(11)cos(54°) = 64 + 121 - 176(0.5878) = 185 - 103.45 = 81.55 ⇒ BC = 9.03 cm.'
+            }
+          ]
+        }
+      ];
+    }
+
+    // Grade 12 (Matric NSC)
     return [
       {
-        id: 'math-2024-nov-p1',
+        id: 'math-gr12-2024-nov-p1',
         year: 2024,
         season: 'November Final (NSC)',
         paperNumber: 'Paper 1',
-        title: `Mathematics Grade ${gradeNum} Paper 1 (Algebra, Calculus & Finance)`,
+        title: `Grade 12 Mathematics NSC Paper 1 (Calculus, Sequences & Financial Annuities)`,
         marks: 150,
         durationMinutes: 180,
         curriculum: 'CAPS National Senior Certificate',
-        topicsCovered: ['Algebra & Equations', 'Patterns & Sequences', 'Functions & Inverses', 'Calculus Derivatives', 'Financial Maths', 'Probability'],
+        topicsCovered: ['Arithmetic & Geometric Sequences and Series (∑)', 'Inverse Functions & Logarithms', 'Differential Calculus (First Principles & Rules)', 'Cubic Polynomial Curve Sketching & Max/Min Optimization', 'Financial Mathematics (Present/Future Value Annuities & Sinking Funds)', 'Probability (Fundamental Counting Principle)'],
         sampleQuestions: [
           {
             questionNumber: 'Question 1.1',
@@ -89,14 +239,14 @@ const getSubjectPastPapers = (subjectName: string, gradeNum: number): ExamPaper[
           },
           {
             questionNumber: 'Question 7.2',
-            topic: 'Differential Calculus',
+            topic: 'Differential Calculus First Principles',
             marks: 5,
             questionText: 'Determine the derivative of f(x) = 4x³ - 2x + 7 from first principles.',
             memoSnippet: "f'(x) = lim[h→0] (f(x+h) - f(x))/h = lim[h→0] (4(x+h)³ - 2(x+h) + 7 - (4x³ - 2x + 7))/h = 12x² - 2."
           },
           {
             questionNumber: 'Question 8.1',
-            topic: 'Financial Mathematics',
+            topic: 'Financial Mathematics Annuities',
             marks: 6,
             questionText: 'A learner deposits R15,000 into a fixed deposit account earning 9.5% p.a. compounded monthly. Calculate the balance after 5 years.',
             memoSnippet: 'A = P(1 + i/m)^(n·m) = 15000(1 + 0.095/12)^(60) = R24,082.35.'
@@ -104,65 +254,47 @@ const getSubjectPastPapers = (subjectName: string, gradeNum: number): ExamPaper[
         ]
       },
       {
-        id: 'math-2024-nov-p2',
+        id: 'math-gr12-2024-nov-p2',
         year: 2024,
         season: 'November Final (NSC)',
         paperNumber: 'Paper 2',
-        title: `Mathematics Grade ${gradeNum} Paper 2 (Geometry, Trigonometry & Stats)`,
+        title: `Grade 12 Mathematics NSC Paper 2 (Geometry, Double Angles & Regression)`,
         marks: 150,
         durationMinutes: 180,
         curriculum: 'CAPS National Senior Certificate',
-        topicsCovered: ['Euclidean Geometry', 'Analytical Geometry', 'Trigonometry Identities', 'Statistics & Regression', 'Circle Theorems'],
+        topicsCovered: ['Proportionality & Similarity Geometry Theorems', 'Analytical Circles ((x-a)² + (y-b)² = r²) & Tangents', 'Compound & Double Angle Trigonometry', '3D Trigonometry', 'Bivariate Statistics (Least-Squares Regression & Correlation r)'],
         sampleQuestions: [
           {
             questionNumber: 'Question 3.1',
-            topic: 'Analytical Geometry',
+            topic: 'Analytical Circle Equations & Tangents',
             marks: 5,
-            questionText: 'Given points A(-2; 4) and B(6; -2), calculate the gradient of line AB and the equation of the perpendicular bisector.',
-            memoSnippet: 'm_AB = (-2 - 4)/(6 - (-2)) = -6/8 = -3/4. Perpendicular m = 4/3. Midpoint M(2; 1). Equation: y - 1 = 4/3(x - 2).'
+            questionText: 'Given the circle x² + y² - 4x + 6y - 12 = 0, determine the center and radius of the circle, and the equation of the tangent at point P(5; 1).',
+            memoSnippet: '(x - 2)² + (y + 3)² = 12 + 4 + 9 = 25. Center C(2; -3), Radius r = 5. Gradient CP = (1 - (-3))/(5 - 2) = 4/3. Tangent m = -3/4. Equation: y - 1 = -3/4(x - 5).'
           },
           {
             questionNumber: 'Question 5.2',
-            topic: 'Trigonometric Reduction',
+            topic: 'Double Angle Trigonometry',
             marks: 6,
-            questionText: 'Simplify without using a calculator:  sin(180° - x)·cos(90° + x) / [tan(360° - x)·cos(-x)].',
-            memoSnippet: '= (sin x)·(-sin x) / [(-tan x)·(cos x)] = -sin²x / (-sin x / cos x · cos x) = -sin²x / -sin x = sin x.'
-          }
-        ]
-      },
-      {
-        id: 'math-2023-sept-p1',
-        year: 2023,
-        season: 'September Trial (Prelim)',
-        paperNumber: 'Paper 1',
-        title: `Mathematics Grade ${gradeNum} Prelim Paper 1`,
-        marks: 150,
-        durationMinutes: 180,
-        curriculum: 'CAPS Provincial Standard',
-        topicsCovered: ['Sequences & Series', 'Polynomial Division', 'Cubic Graphs', 'Probability Counting Principles'],
-        sampleQuestions: [
-          {
-            questionNumber: 'Question 2.3',
-            topic: 'Geometric Series',
-            marks: 4,
-            questionText: 'For which values of k will the geometric series  ∑[n=1 to ∞] 3(2k - 1)ⁿ⁻¹ converge?',
-            memoSnippet: 'Condition for convergence: |r| < 1  ⇒  -1 < 2k - 1 < 1  ⇒  0 < 2k < 2  ⇒  0 < k < 1.'
+            questionText: 'Prove that:  cos 2x / (cos x + sin x) = cos x - sin x.',
+            memoSnippet: 'LHS = (cos²x - sin²x) / (cos x + sin x) = [(cos x - sin x)(cos x + sin x)] / (cos x + sin x) = cos x - sin x = RHS.'
           }
         ]
       }
     ];
   }
 
-  // Physical Sciences dataset
+  // =========================================================================
+  // 2. PHYSICAL SCIENCES
+  // =========================================================================
   if (s.includes('physic') || s.includes('science')) {
-    if (gradeNum === 10) {
+    if (g === 10) {
       return [
         {
           id: 'phys-gr10-2024-nov-p1',
           year: 2024,
-          season: 'November Final (NSC)',
+          season: 'November Final Exam',
           paperNumber: 'Paper 1',
-          title: 'Grade 10 Physical Sciences Paper 1 (Physics)',
+          title: 'Grade 10 Physical Sciences Paper 1 (Physics - Mechanics & Waves)',
           marks: 100,
           durationMinutes: 120,
           curriculum: 'CAPS Physics Mechanics, Waves & Electricity',
@@ -187,34 +319,34 @@ const getSubjectPastPapers = (subjectName: string, gradeNum: number): ExamPaper[
         {
           id: 'phys-gr10-2024-nov-p2',
           year: 2024,
-          season: 'November Final (NSC)',
+          season: 'November Final Exam',
           paperNumber: 'Paper 2',
-          title: 'Grade 10 Physical Sciences Paper 2 (Chemistry)',
+          title: 'Grade 10 Physical Sciences Paper 2 (Chemistry - Matter & Change)',
           marks: 100,
           durationMinutes: 120,
           curriculum: 'CAPS Chemistry Matter & Chemical Change',
-          topicsCovered: ['States of Matter & Kinetic Theory', 'Atomic Structure & Isotopes', 'Periodic Table & Electron Configuration', 'Chemical Bonding (Ionic, Covalent & Metallic)', 'Balancing Chemical Equations'],
+          topicsCovered: ['States of Matter & Kinetic Theory', 'Atomic Structure & Isotopes', 'Periodic Table & Electron Configuration (sp-notation)', 'Chemical Bonding (Ionic, Covalent & Metallic)', 'Balancing Chemical Equations & Molar Mass'],
           sampleQuestions: [
             {
               questionNumber: 'Question 3.1',
               topic: 'Atomic Structure & Electron Config',
               marks: 4,
-              questionText: 'Write down the sp-notation electron configuration for a chlorine atom (Cl, Z = 17) and draw its Aufbau diagram.',
-              memoSnippet: 'Chlorine (17 e⁻): 1s² 2s² 2p⁶ 3s² 3p⁵. Valence electrons = 7 (Group 17 / VII halogen).'
+              questionText: 'Write down the sp-notation electron configuration for a chlorine atom (Cl, Z = 17) and state the number of valence electrons.',
+              memoSnippet: 'Chlorine (17 e⁻): 1s² 2s² 2p⁶ 3s² 3p⁵. Valence electrons = 7 (Group 17 halogen).'
             }
           ]
         }
       ];
     }
 
-    if (gradeNum === 11) {
+    if (g === 11) {
       return [
         {
           id: 'phys-gr11-2024-nov-p1',
           year: 2024,
-          season: 'November Final (NSC)',
+          season: 'November Final Exam',
           paperNumber: 'Paper 1',
-          title: 'Grade 11 Physical Sciences Paper 1 (Physics)',
+          title: 'Grade 11 Physical Sciences Paper 1 (Physics - Newton\'s Laws & Optics)',
           marks: 150,
           durationMinutes: 180,
           curriculum: 'CAPS Physics Mechanics, Optics & Electrostatics',
@@ -224,24 +356,17 @@ const getSubjectPastPapers = (subjectName: string, gradeNum: number): ExamPaper[
               questionNumber: 'Question 2.1',
               topic: "Newton's Second Law of Motion",
               marks: 5,
-              questionText: 'A 5 kg block on a rough horizontal surface is pulled with a 40 N force acting at an angle of 30° above the horizontal. If μ_k = 0.2, calculate the acceleration.',
-              memoSnippet: 'F_x = 40·cos(30°) = 34.64 N. N = mg - 40·sin(30°) = 5(9.8) - 20 = 29 N. f_k = 0.2(29) = 5.8 N. F_net = F_x - f_k = 28.84 N. a = F_net / m = 28.84 / 5 = 5.77 m·s⁻².'
-            },
-            {
-              questionNumber: 'Question 5.2',
-              topic: "Coulomb's Law (Electrostatics)",
-              marks: 4,
-              questionText: 'Two point charges of +4 μC and -6 μC are placed 0.3 m apart in a vacuum. Calculate the magnitude of the electrostatic force between them.',
-              memoSnippet: 'F = k·|q₁·q₂| / r² = (9.0 × 10⁹)(4 × 10⁻⁶)(6 × 10⁻⁶) / (0.3)² = 0.216 / 0.09 = 2.4 N (attractive).'
+              questionText: 'A 5 kg block on a rough horizontal surface is pulled with a 40 N force acting at an angle of 30° above horizontal. If μ_k = 0.2, calculate the acceleration.',
+              memoSnippet: 'F_x = 40·cos(30°) = 34.64 N. N = mg - 40·sin(30°) = 5(9.8) - 20 = 29 N. f_k = 0.2(29) = 5.8 N. F_net = 34.64 - 5.8 = 28.84 N. a = 28.84 / 5 = 5.77 m·s⁻².'
             }
           ]
         },
         {
           id: 'phys-gr11-2024-nov-p2',
           year: 2024,
-          season: 'November Final (NSC)',
+          season: 'November Final Exam',
           paperNumber: 'Paper 2',
-          title: 'Grade 11 Physical Sciences Paper 2 (Chemistry)',
+          title: 'Grade 11 Physical Sciences Paper 2 (Chemistry - Stoichiometry & Gases)',
           marks: 150,
           durationMinutes: 180,
           curriculum: 'CAPS Chemistry Molecular Structure & Stoichiometry',
@@ -252,14 +377,7 @@ const getSubjectPastPapers = (subjectName: string, gradeNum: number): ExamPaper[
               topic: 'Intermolecular Forces',
               marks: 4,
               questionText: 'Explain why water (H₂O) has a significantly higher boiling point (100°C) than hydrogen sulfide (H₂S, -60°C) by referring to intermolecular forces.',
-              memoSnippet: 'H₂O forms strong hydrogen bonds due to highly electronegative Oxygen atoms with lone pairs. H₂S only forms weaker dipole-dipole forces. Significantly more energy is required to overcome the hydrogen bonds in H₂O.'
-            },
-            {
-              questionNumber: 'Question 6.1',
-              topic: 'Ideal Gas Laws (PV = nRT)',
-              marks: 5,
-              questionText: 'Calculate the volume occupied by 0.5 moles of oxygen gas (O₂) at a temperature of 27°C and a pressure of 101.3 kPa. (R = 8.314 J·K⁻¹·mol⁻¹)',
-              memoSnippet: 'T = 27 + 273.15 = 300.15 K. P = 101300 Pa. PV = nRT ⇒ V = (0.5 × 8.314 × 300.15) / 101300 = 0.0123 m³ (12.3 dm³).'
+              memoSnippet: 'H₂O forms strong hydrogen bonds due to highly electronegative Oxygen atoms with lone pairs. H₂S only forms weaker dipole-dipole forces. Significantly more energy is required to overcome hydrogen bonds in H₂O.'
             }
           ]
         }
@@ -273,7 +391,7 @@ const getSubjectPastPapers = (subjectName: string, gradeNum: number): ExamPaper[
         year: 2024,
         season: 'November Final (NSC)',
         paperNumber: 'Paper 1',
-        title: 'Grade 12 Physical Sciences Paper 1 (Physics NSC)',
+        title: 'Grade 12 Physical Sciences NSC Paper 1 (Physics - Mechanics & Electrodynamics)',
         marks: 150,
         durationMinutes: 180,
         curriculum: 'CAPS Physics Mechanics, Waves & Electrodynamics',
@@ -300,7 +418,7 @@ const getSubjectPastPapers = (subjectName: string, gradeNum: number): ExamPaper[
         year: 2024,
         season: 'November Final (NSC)',
         paperNumber: 'Paper 2',
-        title: 'Grade 12 Physical Sciences Paper 2 (Chemistry NSC)',
+        title: 'Grade 12 Physical Sciences NSC Paper 2 (Chemistry - Organic & Equilibrium)',
         marks: 150,
         durationMinutes: 180,
         curriculum: 'CAPS Chemistry Organic, Equilibrium & Electrochemistry',
@@ -325,65 +443,112 @@ const getSubjectPastPapers = (subjectName: string, gradeNum: number): ExamPaper[
     ];
   }
 
-  // Accounting dataset
-  if (s.includes('account')) {
-    return [
-      {
-        id: 'acc-2024-nov-p1',
-        year: 2024,
-        season: 'November Final (NSC)',
-        paperNumber: 'Paper 1',
-        title: `Accounting Grade ${gradeNum} Paper 1 (Financial Reporting & Audit)`,
-        marks: 150,
-        durationMinutes: 120,
-        curriculum: 'CAPS Financial Reporting',
-        topicsCovered: ['Income Statement (Statement of Comprehensive Income)', 'Balance Sheet (Statement of Financial Position)', 'Audit Report & Corporate Governance', 'Financial Indicators & Ratio Analysis'],
-        sampleQuestions: [
-          {
-            questionNumber: 'Question 1.2',
-            topic: 'Financial Indicators',
-            marks: 6,
-            questionText: 'Calculate the Debt-Equity Ratio and comment on whether the business is conservatively or highly geared.',
-            memoSnippet: 'Debt-Equity Ratio = Non-current Liabilities : Shareholders Equity. Ratio 0.4:1 indicates low financial risk and conservative gearing.'
-          }
-        ]
-      },
-      {
-        id: 'acc-2024-nov-p2',
-        year: 2024,
-        season: 'November Final (NSC)',
-        paperNumber: 'Paper 2',
-        title: `Accounting Grade ${gradeNum} Paper 2 (Cost & Managerial Accounting)`,
-        marks: 150,
-        durationMinutes: 120,
-        curriculum: 'CAPS Cost & Internal Control',
-        topicsCovered: ['Manufacturing Cost Statements', 'Budgeting & Projected Cash Flow', 'Stock Valuation (FIFO & Weighted Average)', 'Internal Control & Ethics'],
-        sampleQuestions: [
-          {
-            questionNumber: 'Question 2.1',
-            topic: 'Manufacturing Break-Even Point',
-            marks: 5,
-            questionText: 'Calculate the Break-Even Point in units if Total Fixed Costs = R180,000, Selling Price = R45/unit, Variable Cost = R25/unit.',
-            memoSnippet: 'BEP = Total Fixed Costs / (Selling Price - Variable Cost per unit) = 180,000 / (45 - 25) = 180,000 / 20 = 9,000 units.'
-          }
-        ]
-      }
-    ];
-  }
-
-  // Life Sciences dataset
+  // =========================================================================
+  // 3. LIFE SCIENCES
+  // =========================================================================
   if (s.includes('life') || s.includes('bio')) {
+    if (g === 10) {
+      return [
+        {
+          id: 'life-gr10-2024-nov-p1',
+          year: 2024,
+          season: 'November Final Exam',
+          paperNumber: 'Paper 1',
+          title: 'Grade 10 Life Sciences Paper 1 (Cells, Tissues & Organs)',
+          marks: 150,
+          durationMinutes: 150,
+          curriculum: 'CAPS Grade 10 Life Sciences',
+          topicsCovered: ['Chemistry of Life (Inorganic & Organic Compounds)', 'Cell Structure & Organelles', 'Plant Tissues (Xylem, Phloem)', 'Human Skeleton & Support Systems'],
+          sampleQuestions: [
+            {
+              questionNumber: 'Question 2.1',
+              topic: 'Cellular Organelles',
+              marks: 4,
+              questionText: 'Tabulate two structural differences between plant and animal cells under electron microscopy.',
+              memoSnippet: 'Plant cells: Cell wall present, Chloroplasts present, Large permanent central vacuole. Animal cells: No cell wall, No chloroplasts, Small temporary vacuoles.'
+            }
+          ]
+        },
+        {
+          id: 'life-gr10-2024-nov-p2',
+          year: 2024,
+          season: 'November Final Exam',
+          paperNumber: 'Paper 2',
+          title: 'Grade 10 Life Sciences Paper 2 (Biosphere, Biomes & Circulatory System)',
+          marks: 150,
+          durationMinutes: 150,
+          curriculum: 'CAPS Grade 10 Life Sciences',
+          topicsCovered: ['Biosphere & South African Biomes (Fynbos, Savanna, Karoo)', 'Human Heart & Circulatory Anatomy', 'Biodiversity & Classification', 'History of Life on Earth'],
+          sampleQuestions: [
+            {
+              questionNumber: 'Question 3.2',
+              topic: 'South African Biomes',
+              marks: 5,
+              questionText: 'Describe the climate and characteristic vegetation of the Fynbos biome in South Africa.',
+              memoSnippet: 'Mediterranean climate with winter rainfall and hot dry summers. Vegetation dominated by proteas, ericas, and restios adapted to frequent wildfires.'
+            }
+          ]
+        }
+      ];
+    }
+
+    if (g === 11) {
+      return [
+        {
+          id: 'life-gr11-2024-nov-p1',
+          year: 2024,
+          season: 'November Final Exam',
+          paperNumber: 'Paper 1',
+          title: 'Grade 11 Life Sciences Paper 1 (Photosynthesis, Respiration & Excretion)',
+          marks: 150,
+          durationMinutes: 150,
+          curriculum: 'CAPS Grade 11 Life Sciences',
+          topicsCovered: ['Photosynthesis (Light & Dark Reactions)', 'Cellular Respiration (Glycolysis & Krebs)', 'Human Nutrition & Digestive System', 'Kidney Anatomy & Nephron Excretion'],
+          sampleQuestions: [
+            {
+              questionNumber: 'Question 1.4',
+              topic: 'Photosynthesis Biochemical Pathways',
+              marks: 5,
+              questionText: 'Explain the role of ATP and NADPH produced during the light-dependent phase of photosynthesis in the Calvin cycle.',
+              memoSnippet: 'ATP provides activation energy and NADPH provides high-energy hydrogen atoms to reduce carbon dioxide into glucose molecules during the light-independent phase (Calvin cycle).'
+            }
+          ]
+        },
+        {
+          id: 'life-gr11-2024-nov-p2',
+          year: 2024,
+          season: 'November Final Exam',
+          paperNumber: 'Paper 2',
+          title: 'Grade 11 Life Sciences Paper 2 (Biodiversity & Population Ecology)',
+          marks: 150,
+          durationMinutes: 150,
+          curriculum: 'CAPS Grade 11 Life Sciences',
+          topicsCovered: ['Biodiversity of Microorganisms (Viruses, Bacteria, Fungi)', 'Plant & Animal Diversity (Bryophytes to Angiosperms, Porifera to Chordata)', 'Population Ecology & Predator-Prey Dynamics', 'Human Impact on the Environment'],
+          sampleQuestions: [
+            {
+              questionNumber: 'Question 2.3',
+              topic: 'Population Estimation Techniques',
+              marks: 4,
+              questionText: 'State the Petersen-Lincoln formula used in the mark-recapture technique and list two assumptions required for accuracy.',
+              memoSnippet: 'N = (M × C) / R. Assumptions: Marks do not fade/harm individuals, No significant immigration/emigration or births/deaths during sampling period.'
+            }
+          ]
+        }
+      ];
+    }
+
+    // Grade 12 (Matric NSC)
     return [
       {
-        id: 'life-2024-nov-p1',
+        id: 'life-gr12-2024-nov-p1',
         year: 2024,
         season: 'November Final (NSC)',
         paperNumber: 'Paper 1',
-        title: `Life Sciences Grade ${gradeNum} Paper 1 (Physiology & Reproduction)`,
+        title: `Grade 12 Life Sciences NSC Paper 1 (Physiology, Reproduction & Homeostasis)`,
         marks: 150,
         durationMinutes: 150,
         curriculum: 'CAPS Life Sciences Human Reproduction & Endocrine',
-        topicsCovered: ['Meiosis & Gametogenesis', 'Human Reproduction', 'Nervous System & Sense Organs', 'Endocrine System & Homeostasis'],
+        topicsCovered: ['Meiosis & Gametogenesis', 'Human Reproduction & Fertilization', 'Nervous System & Sense Organs', 'Endocrine System & Homeostasis'],
         sampleQuestions: [
           {
             questionNumber: 'Question 1.4',
@@ -395,11 +560,11 @@ const getSubjectPastPapers = (subjectName: string, gradeNum: number): ExamPaper[
         ]
       },
       {
-        id: 'life-2024-nov-p2',
+        id: 'life-gr12-2024-nov-p2',
         year: 2024,
         season: 'November Final (NSC)',
         paperNumber: 'Paper 2',
-        title: `Life Sciences Grade ${gradeNum} Paper 2 (Genetics & Evolution)`,
+        title: `Grade 12 Life Sciences NSC Paper 2 (Genetics, DNA Code of Life & Evolution)`,
         marks: 150,
         durationMinutes: 150,
         curriculum: 'CAPS DNA Code of Life & Natural Selection',
@@ -417,45 +582,188 @@ const getSubjectPastPapers = (subjectName: string, gradeNum: number): ExamPaper[
     ];
   }
 
-  // Default Standard CAPS Archive for any other subject (IT, Geography, Business Studies, etc.)
+  // =========================================================================
+  // 4. ACCOUNTING
+  // =========================================================================
+  if (s.includes('account')) {
+    if (g === 10) {
+      return [
+        {
+          id: 'acc-gr10-2024-nov-p1',
+          year: 2024,
+          season: 'November Final Exam',
+          paperNumber: 'Paper 1',
+          title: 'Grade 10 Accounting Paper 1 (Financial Accounting & General Ledger)',
+          marks: 100,
+          durationMinutes: 90,
+          curriculum: 'CAPS Grade 10 Accounting',
+          topicsCovered: ['Accounting Equation (A = O + L)', 'Subsidiary Journals (CRJ, CPJ, DJ, CJ)', 'General Ledger & Trial Balance', 'Sole Trader Income Statement'],
+          sampleQuestions: [
+            {
+              questionNumber: 'Question 1.1',
+              topic: 'Accounting Equation Analysis',
+              marks: 6,
+              questionText: 'Analyze the effect of selling goods on credit for R3,500 (cost price R2,000) on Assets, Owners Equity, and Liabilities.',
+              memoSnippet: 'Assets: +3,500 (Debtors Control), -2,000 (Trading Stock) = Net +1,500. Owners Equity: +1,500 (Gross Profit). Liabilities: 0.'
+            }
+          ]
+        }
+      ];
+    }
+
+    if (g === 11) {
+      return [
+        {
+          id: 'acc-gr11-2024-nov-p1',
+          year: 2024,
+          season: 'November Final Exam',
+          paperNumber: 'Paper 1',
+          title: 'Grade 11 Accounting Paper 1 (Partnerships & Reconciliations)',
+          marks: 150,
+          durationMinutes: 120,
+          curriculum: 'CAPS Grade 11 Accounting',
+          topicsCovered: ['Partnership Financial Statements & Balance Sheet Notes', 'Bank Reconciliation Statements', 'Creditors Reconciliations', 'Fixed Asset Schedules & Depreciation'],
+          sampleQuestions: [
+            {
+              questionNumber: 'Question 2.1',
+              topic: 'Bank Reconciliation',
+              marks: 6,
+              questionText: 'Explain why a post-dated cheque received from a debtor is not recorded in the Cash Receipts Journal immediately on receipt.',
+              memoSnippet: 'A post-dated cheque cannot be deposited or honored by the bank until the date stated on the cheque arrives; hence it is not legal tender until that date.'
+            }
+          ]
+        }
+      ];
+    }
+
+    // Grade 12 (Matric NSC)
+    return [
+      {
+        id: 'acc-gr12-2024-nov-p1',
+        year: 2024,
+        season: 'November Final (NSC)',
+        paperNumber: 'Paper 1',
+        title: `Grade 12 Accounting NSC Paper 1 (Financial Reporting & Audit)`,
+        marks: 150,
+        durationMinutes: 120,
+        curriculum: 'CAPS Financial Reporting',
+        topicsCovered: ['Income Statement (Statement of Comprehensive Income)', 'Balance Sheet (Statement of Financial Position)', 'Audit Report & Corporate Governance (King IV)', 'Financial Indicators & Ratio Analysis (EPS, DPS, NAV, Debt-Equity)'],
+        sampleQuestions: [
+          {
+            questionNumber: 'Question 1.2',
+            topic: 'Financial Indicators & Gearing',
+            marks: 6,
+            questionText: 'Calculate the Debt-Equity Ratio and comment on whether the company is conservatively or highly geared.',
+            memoSnippet: 'Debt-Equity Ratio = Non-current Liabilities : Shareholders Equity. Ratio 0.4:1 indicates low financial risk and conservative gearing.'
+          }
+        ]
+      },
+      {
+        id: 'acc-gr12-2024-nov-p2',
+        year: 2024,
+        season: 'November Final (NSC)',
+        paperNumber: 'Paper 2',
+        title: `Grade 12 Accounting NSC Paper 2 (Cost, Budgets & Stock Valuation)`,
+        marks: 150,
+        durationMinutes: 120,
+        curriculum: 'CAPS Cost & Internal Control',
+        topicsCovered: ['Production Cost Statements', 'Cash Budgets & Debtors Collection', 'Stock Valuation (FIFO & Weighted Average)', 'Internal Control & Ethics'],
+        sampleQuestions: [
+          {
+            questionNumber: 'Question 2.1',
+            topic: 'Manufacturing Break-Even Point',
+            marks: 5,
+            questionText: 'Calculate the Break-Even Point in units if Total Fixed Costs = R180,000, Selling Price = R45/unit, Variable Cost = R25/unit.',
+            memoSnippet: 'BEP = Total Fixed Costs / (Selling Price - Variable Cost per unit) = 180,000 / (45 - 25) = 180,000 / 20 = 9,000 units.'
+          }
+        ]
+      }
+    ];
+  }
+
+  // =========================================================================
+  // 5. ENGLISH FAL & HOME LANGUAGES
+  // =========================================================================
+  if (s.includes('english') || s.includes('isizulu') || s.includes('language') || s.includes('sepedi') || s.includes('setswana') || s.includes('sesotho') || s.includes('xitsonga') || s.includes('afrikaans')) {
+    return [
+      {
+        id: `${s.replace(/\s+/g, '-')}-gr${g}-2024-nov-p1`,
+        year: 2024,
+        season: 'November Final Exam',
+        paperNumber: 'Paper 1',
+        title: `${subjectName} Grade ${g} Paper 1 (Language in Context & Comprehension)`,
+        marks: 80,
+        durationMinutes: 120,
+        curriculum: `CAPS Grade ${g} Language Curriculum`,
+        topicsCovered: ['Comprehension & Text Analysis', 'Summary Writing Skills', 'Advertisement & Visual Literacy', 'Cartoon Analysis & Satire', 'Language Structures & Editing Conventions'],
+        sampleQuestions: [
+          {
+            questionNumber: 'Section A - Question 1',
+            topic: 'Comprehension Analysis',
+            marks: 10,
+            questionText: 'Refer to paragraph 3. Explain how the writer uses emotive diction to persuade the reader to support community education initiatives.',
+            memoSnippet: 'Award marks for identifying specific emotive words and explaining their psychological effect on the target audience.'
+          },
+          {
+            questionNumber: 'Section C - Question 3',
+            topic: 'Language Editing Mechanics',
+            marks: 5,
+            questionText: 'Rewrite the following sentence in indirect (reported) speech: The principal said, "All Grade 10 learners must prepare for their term tests today."',
+            memoSnippet: 'The principal said that all Grade 10 learners had to prepare for their term tests that day.'
+          }
+        ]
+      },
+      {
+        id: `${s.replace(/\s+/g, '-')}-gr${g}-2024-nov-p2`,
+        year: 2024,
+        season: 'November Final Exam',
+        paperNumber: 'Paper 2',
+        title: `${subjectName} Grade ${g} Paper 2 (Literature - Novel, Drama & Poetry)`,
+        marks: 80,
+        durationMinutes: 150,
+        curriculum: `CAPS Grade ${g} Literature`,
+        topicsCovered: ['Prescribed Novel Analysis', 'Dramatic Techniques & Characterization', 'Prescribed & Unseen Poetry', 'Literary Devices & Themes'],
+        sampleQuestions: [
+          {
+            questionNumber: 'Section A - Poetry',
+            topic: 'Poetic Devices & Tone',
+            marks: 10,
+            questionText: 'Identify the figure of speech used in line 8 and comment on the tone and mood conveyed throughout the poem.',
+            memoSnippet: 'Full marks awarded for identifying metaphor/personification with textual evidence and linking it to the prevailing melancholic/optimistic tone.'
+          }
+        ]
+      }
+    ];
+  }
+
+  // =========================================================================
+  // 6. DEFAULT STANDARD CAPS ARCHIVE FOR ANY OTHER SUBJECT (Business Studies, Economics, Tourism, Geography, etc.)
+  // =========================================================================
   return [
     {
-      id: `${subjectName.toLowerCase().replace(/\s+/g, '-')}-2024-nov-p1`,
+      id: `${subjectName.toLowerCase().replace(/\s+/g, '-')}-gr${g}-2024-nov-p1`,
       year: 2024,
-      season: 'November Final (NSC)',
+      season: 'November Final Exam',
       paperNumber: 'Paper 1',
-      title: `${subjectName} Grade ${gradeNum} Paper 1 (National Exam)`,
+      title: `${subjectName} Grade ${g} Paper 1 (CAPS Curriculum Assessment)`,
       marks: 150,
       durationMinutes: 180,
-      curriculum: `CAPS Curriculum • Grade ${gradeNum}`,
-      topicsCovered: ['Core Terminology', 'Theory Application', 'Case Study Analysis', 'Data Interpretation'],
+      curriculum: `CAPS Curriculum • Grade ${g}`,
+      topicsCovered: ['Term 1-4 Core Curriculum Topics', 'Structured Problem Solving', 'Case Study Data Analysis', 'Application & Essay Synthesis'],
       sampleQuestions: [
         {
           questionNumber: 'Section A - Question 1',
-          topic: 'Foundational Theory & Application',
+          topic: `Core Principles of Grade ${g} ${subjectName}`,
           marks: 10,
-          questionText: `Analyze the core principles of ${subjectName} and evaluate their real-world application.`,
-          memoSnippet: 'Award full marks for accurate identification of definitions, correct terminology, and practical contextualization.'
-        }
-      ]
-    },
-    {
-      id: `${subjectName.toLowerCase().replace(/\s+/g, '-')}-2023-nov-p1`,
-      year: 2023,
-      season: 'November Final (NSC)',
-      paperNumber: 'Paper 1',
-      title: `${subjectName} Grade ${gradeNum} Paper 1 (Previous Exam Series)`,
-      marks: 150,
-      durationMinutes: 180,
-      curriculum: `CAPS Curriculum • Grade ${gradeNum}`,
-      topicsCovered: ['Term 1-4 Comprehensive Syllabus', 'Structured Questions', 'Essay Synthesis'],
-      sampleQuestions: [
+          questionText: `Analyze the core theoretical concepts of Grade ${g} ${subjectName} and evaluate their real-world application in South Africa.`,
+          memoSnippet: 'Award full marks for accurate definitions, contextual examples, and correct curriculum terminology.'
+        },
         {
-          questionNumber: 'Section B - Question 3',
-          topic: 'Structured Problem Solving',
+          questionNumber: 'Section B - Question 2',
+          topic: 'Case Study & Problem Solving',
           marks: 15,
-          questionText: `Explain the key step-by-step methodologies used in ${subjectName} under curriculum requirements.`,
-          memoSnippet: 'Comprehensive marking breakdown with rubric levels 1 to 7.'
+          questionText: `Critically assess the scenario provided and recommend practical interventions aligned with official syllabus guidelines.`,
+          memoSnippet: 'Mark according to standard DBE rubric levels 1 to 7.'
         }
       ]
     }

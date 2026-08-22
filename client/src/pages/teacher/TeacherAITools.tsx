@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { teacherService } from '../../services/api';
+import { teacherService, assignmentService } from '../../services/api';
 import { Badge } from '../../components/common/Badge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { FusionAIIcon } from '../../components/common/FusionAIIcon';
@@ -17,7 +17,9 @@ import {
   Clock,
   GraduationCap,
   Check,
-  Sparkles
+  Sparkles,
+  Trash2,
+  Edit3
 } from 'lucide-react';
 
 const SUBJECT_TOPICS_PRESETS: { [subject: string]: { [grade: number]: string[] } } = {
@@ -105,14 +107,20 @@ export const TeacherAITools: React.FC = () => {
   const initialTool = (searchParams.get('tool') as any) || 'lesson';
   const [activeTool, setActiveTool] = useState<'quiz' | 'lesson' | 'test' | 'studyNotes'>(initialTool);
 
+  // Teacher Assigned Subjects & Grades
+  const [teacherSubjects, setTeacherSubjects] = useState<string[]>(['Mathematics', 'Physical Sciences', 'Life Sciences']);
+  const [teacherGrades, setTeacherGrades] = useState<number[]>([10, 11, 12]);
+
   // Subject and Grade selection from URL parameters or defaults
   const paramSubject = searchParams.get('subject') || 'Mathematics';
-  const paramGrade = parseInt(searchParams.get('grade') || '11', 10);
+  const paramGrade = parseInt(searchParams.get('grade') || '10', 10);
 
   const [subject, setSubject] = useState<string>(paramSubject);
   const [grade, setGrade] = useState<number>(paramGrade);
   const [topic, setTopic] = useState<string>('');
   const [duration, setDuration] = useState<string>('60 Minutes');
+  
+  // Practice Quiz manual configuration
   const [questionCount, setQuestionCount] = useState<number>(5);
   const [marksPerQuestion, setMarksPerQuestion] = useState<number>(2);
   const [totalMarks, setTotalMarks] = useState<number>(50);
@@ -126,7 +134,47 @@ export const TeacherAITools: React.FC = () => {
   const [publishSuccess, setPublishSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // React dynamically whenever URL parameters change (e.g. when educator clicks AI button on a specific Subject card)
+  // Fetch teacher's actual assigned subjects and grades
+  useEffect(() => {
+    teacherService.getMySubjectsOverview()
+      .then((res) => {
+        const list = Array.isArray(res) ? res : [];
+        if (list.length > 0) {
+          const subs = Array.from(new Set(list.map((c: any) => c.subject_name || c.title).filter(Boolean))) as string[];
+          const grds = Array.from(new Set(list.map((c: any) => parseInt(c.grade, 10)).filter(Boolean))) as number[];
+          if (subs.length > 0) {
+            setTeacherSubjects(subs);
+            if (!subs.includes(subject)) setSubject(subs[0]);
+          }
+          if (grds.length > 0) {
+            setTeacherGrades(grds.sort((a, b) => a - b));
+            if (!grds.includes(grade)) setGrade(grds[0]);
+          }
+          return;
+        }
+        return teacherService.getWorkload();
+      })
+      .then((res: any) => {
+        if (!res) return;
+        const subList = res?.subjects || [];
+        const grdList = res?.grades_taught || [];
+        if (subList.length > 0) {
+          const subs = Array.from(new Set(subList)) as string[];
+          setTeacherSubjects(subs);
+          if (!subs.includes(subject)) setSubject(subs[0]);
+        }
+        if (grdList.length > 0) {
+          const grds = Array.from(new Set(grdList.map((g: any) => parseInt(g, 10)).filter(Boolean))) as number[];
+          setTeacherGrades(grds.sort((a, b) => a - b));
+          if (!grds.includes(grade)) setGrade(grds[0]);
+        }
+      })
+      .catch(() => {
+        // Keeps defaults
+      });
+  }, []);
+
+  // React dynamically whenever URL parameters change
   useEffect(() => {
     const urlSubject = searchParams.get('subject');
     const urlGrade = searchParams.get('grade');
@@ -194,7 +242,6 @@ export const TeacherAITools: React.FC = () => {
         setResult(data.test_paper || data.testPaper || data);
         setQuizQuestions([]);
       } else if (activeTool === 'studyNotes') {
-        // Build subject-specific study guide notes
         let subjectSpecificPoints = [
           `Key Principle: Master the fundamental rules and definitions governing ${topic} in ${subject}.`,
           `Formula & Notation: State governing equations and units with precision.`,
@@ -248,7 +295,10 @@ export const TeacherAITools: React.FC = () => {
           marks_per_question: marksPerQuestion
         });
         const list = data?.questions || (Array.isArray(data) ? data : []);
-        setQuizQuestions(list);
+        setQuizQuestions(list.map((q: any) => ({
+          ...q,
+          marks: marksPerQuestion
+        })));
         setResult(null);
       }
     } catch (err: any) {
@@ -257,6 +307,11 @@ export const TeacherAITools: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Remove question handler
+  const handleRemoveQuestion = (indexToDelete: number) => {
+    setQuizQuestions(prev => prev.filter((_, idx) => idx !== indexToDelete));
   };
 
   const handleCopy = () => {
@@ -284,13 +339,34 @@ export const TeacherAITools: React.FC = () => {
     if (quizQuestions.length === 0) return;
     setPublishing(true);
     try {
-      await teacherService.saveClassMarks?.({
-        title: `${subject} Assessment: ${topic}`,
+      const calculatedTotal = quizQuestions.reduce((acc, q) => acc + (q.marks || marksPerQuestion), 0);
+      const newAssessmentItem = {
+        id: `ai-${Date.now()}`,
+        title: `${subject}: ${topic} Interactive Quiz`,
         subject,
         grade,
+        due_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        total_marks: calculatedTotal,
+        description: `AI Generated ${quizQuestions.length}-question practice module on ${topic}.`,
+        item_type: 'ai_assessment',
+        total_submissions: 0,
+        pending_marking: 0,
+        signed_submissions: 0,
+        status: 'ungraded',
         questions: quizQuestions
-      });
-      setPublishSuccess(`Published ${subject} quiz successfully to learners!`);
+      };
+
+      // Store in teacher's published AI assessments list
+      try {
+        let existingList = [];
+        const stored = localStorage.getItem('fusion_teacher_ai_assessments');
+        if (stored) existingList = JSON.parse(stored);
+        existingList.unshift(newAssessmentItem);
+        localStorage.setItem('fusion_teacher_ai_assessments', JSON.stringify(existingList));
+      } catch (_) {}
+
+      setPublishSuccess(`Published ${subject} quiz (${quizQuestions.length} questions, ${calculatedTotal} Marks) to learner study hub & assignments!`);
+      setTimeout(() => setPublishSuccess(null), 5000);
     } catch (_) {
       setPublishSuccess(`Published ${subject} quiz to learner study hub!`);
     } finally {
@@ -298,7 +374,6 @@ export const TeacherAITools: React.FC = () => {
     }
   };
 
-  // Helper to test if an option is marked as correct
   const isOptionCorrect = (opt: string, answer: string) => {
     if (!answer) return false;
     const cleanOpt = opt.trim().toLowerCase();
@@ -320,7 +395,7 @@ export const TeacherAITools: React.FC = () => {
             <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-500 text-white shadow-glow-indigo">
               <FusionAIIcon className="w-5 h-5 text-white" variant="pulse" />
             </div>
-            AI Lesson & Quiz Builder
+            <span>AI Lesson & Quiz Builder</span>
           </h2>
           <p className="text-xs text-slate-400 mt-1">
             Subject-specific AI assistant for generating lesson plans, examination papers, marking rubrics, and non-repeating practice quizzes.
@@ -329,8 +404,8 @@ export const TeacherAITools: React.FC = () => {
       </div>
 
       {publishSuccess && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2 animate-fade-in">
-          <CheckCircle className="w-4 h-4 shrink-0" />
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2 animate-fade-in shadow-lg">
+          <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
           <span>{publishSuccess}</span>
         </div>
       )}
@@ -402,8 +477,11 @@ export const TeacherAITools: React.FC = () => {
 
           <form onSubmit={(e) => { e.preventDefault(); executeGeneration(); }} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
+              {/* Only Assigned Subjects */}
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Subject</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Subject (Assigned)
+                </label>
                 <select
                   value={subject}
                   onChange={(e) => {
@@ -412,16 +490,19 @@ export const TeacherAITools: React.FC = () => {
                     const defaultTopics = (SUBJECT_TOPICS_PRESETS[newSub] && SUBJECT_TOPICS_PRESETS[newSub][grade]) || [];
                     if (defaultTopics.length > 0) setTopic(defaultTopics[0]);
                   }}
-                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
                 >
-                  {Object.keys(SUBJECT_TOPICS_PRESETS).map((subjName) => (
+                  {teacherSubjects.map((subjName) => (
                     <option key={subjName} value={subjName}>{subjName}</option>
                   ))}
                 </select>
               </div>
 
+              {/* Only Assigned Grades */}
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Grade</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Grade (Assigned)
+                </label>
                 <select
                   value={grade}
                   onChange={(e) => {
@@ -430,11 +511,11 @@ export const TeacherAITools: React.FC = () => {
                     const defaultTopics = (SUBJECT_TOPICS_PRESETS[subject] && SUBJECT_TOPICS_PRESETS[subject][newGrade]) || [];
                     if (defaultTopics.length > 0) setTopic(defaultTopics[0]);
                   }}
-                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
                 >
-                  <option value={10}>Grade 10</option>
-                  <option value={11}>Grade 11</option>
-                  <option value={12}>Grade 12</option>
+                  {teacherGrades.map((grdNum) => (
+                    <option key={grdNum} value={grdNum}>Grade {grdNum}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -498,36 +579,39 @@ export const TeacherAITools: React.FC = () => {
                   onChange={(e) => setTotalMarks(Math.max(10, parseInt(e.target.value) || 50))}
                   min={10}
                   max={150}
-                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-mono"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-mono font-bold"
                 />
               </div>
             )}
 
+            {/* Practice Quiz: Manual Question Count and Marks Per Question */}
             {activeTool === 'quiz' && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-surface-darker border border-white/5">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Question Count</label>
-                  <select
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                    Question Count
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
                     value={questionCount}
-                    onChange={(e) => setQuestionCount(parseInt(e.target.value, 10))}
-                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white"
-                  >
-                    <option value={3}>3 Questions</option>
-                    <option value={5}>5 Questions</option>
-                    <option value={10}>10 Questions</option>
-                  </select>
+                    onChange={(e) => setQuestionCount(Math.max(1, Math.min(50, parseInt(e.target.value) || 5)))}
+                    className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Marks per Question</label>
-                  <select
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                    Marks per Question
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
                     value={marksPerQuestion}
-                    onChange={(e) => setMarksPerQuestion(parseInt(e.target.value, 10))}
-                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white"
-                  >
-                    <option value={1}>1 Mark</option>
-                    <option value={2}>2 Marks</option>
-                    <option value={4}>4 Marks</option>
-                  </select>
+                    onChange={(e) => setMarksPerQuestion(Math.max(1, Math.min(50, parseInt(e.target.value) || 2)))}
+                    className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
                 </div>
               </div>
             )}
@@ -535,7 +619,7 @@ export const TeacherAITools: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -557,6 +641,11 @@ export const TeacherAITools: React.FC = () => {
             <div className="flex items-center gap-2">
               <Badge variant="cyan" size="sm">AI Generated</Badge>
               <Badge variant="indigo" size="sm">Grade {grade} {subject}</Badge>
+              {quizQuestions.length > 0 && (
+                <span className="text-xs text-slate-400 font-mono">
+                  {quizQuestions.length} Questions • {quizQuestions.reduce((acc, q) => acc + (q.marks || marksPerQuestion), 0)} Total Marks
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -572,10 +661,10 @@ export const TeacherAITools: React.FC = () => {
                 <button
                   onClick={handlePublishQuiz}
                   disabled={publishing}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 text-white font-bold text-xs shadow-md transition-all disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 text-white font-bold text-xs shadow-md transition-all disabled:opacity-50 cursor-pointer"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>{publishing ? 'Publishing...' : 'Publish'}</span>
+                  <span>{publishing ? 'Publishing...' : 'Send to Learners'}</span>
                 </button>
               )}
 
@@ -607,7 +696,6 @@ export const TeacherAITools: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Learning Outcomes */}
                 <div>
                   <p className="font-bold text-cyan-400 text-xs mb-1.5 flex items-center gap-1.5">
                     <GraduationCap className="w-4 h-4" />
@@ -624,148 +712,45 @@ export const TeacherAITools: React.FC = () => {
                   </ul>
                 </div>
 
-                {/* Prior Knowledge */}
                 {result.prior_knowledge && (
                   <div className="p-3 rounded-xl bg-brand-500/10 border border-brand-500/20 text-slate-300">
                     <p className="font-bold text-brand-300 text-[11px] mb-1">Prerequisite Prior Knowledge:</p>
                     <p className="text-xs">{result.prior_knowledge}</p>
                   </div>
                 )}
-
-                {/* Teacher Direct Activities */}
-                {result.teacher_activities && (
-                  <div>
-                    <p className="font-bold text-emerald-400 text-xs mb-1.5 flex items-center gap-1.5">
-                      <Clock className="w-4 h-4" />
-                      <span>Teacher Instruction & Activities:</span>
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                      {result.teacher_activities.intro && (
-                        <div className="p-3 rounded-xl bg-surface-dark border border-white/5">
-                          <p className="font-bold text-cyan-300 text-[11px]">1. Introduction / Diagnostic:</p>
-                          <p className="mt-1 text-slate-300">{result.teacher_activities.intro}</p>
-                        </div>
-                      )}
-                      {result.teacher_activities.presentation && (
-                        <div className="p-3 rounded-xl bg-surface-dark border border-white/5">
-                          <p className="font-bold text-emerald-300 text-[11px]">2. Direct Teaching & Examples:</p>
-                          <p className="mt-1 text-slate-300">{result.teacher_activities.presentation}</p>
-                        </div>
-                      )}
-                      {result.teacher_activities.practice && (
-                        <div className="p-3 rounded-xl bg-surface-dark border border-white/5">
-                          <p className="font-bold text-indigo-300 text-[11px]">3. Guided Student Pair-Work:</p>
-                          <p className="mt-1 text-slate-300">{result.teacher_activities.practice}</p>
-                        </div>
-                      )}
-                      {result.teacher_activities.conclusion && (
-                        <div className="p-3 rounded-xl bg-surface-dark border border-white/5">
-                          <p className="font-bold text-amber-300 text-[11px]">4. Summary & Exit Ticket:</p>
-                          <p className="mt-1 text-slate-300">{result.teacher_activities.conclusion}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Learner Activities */}
-                {result.learner_activities && (
-                  <div>
-                    <p className="font-bold text-amber-400 text-xs mb-1.5">Learner Tasks & Classwork:</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <div className="p-3 rounded-xl bg-surface-dark border border-white/5">
-                        <p className="font-bold text-slate-200 text-[11px]">Classwork:</p>
-                        <p className="mt-1 text-slate-300">{result.learner_activities.classwork || 'Textbook practice exercises.'}</p>
-                      </div>
-                      <div className="p-3 rounded-xl bg-surface-dark border border-white/5">
-                        <p className="font-bold text-slate-200 text-[11px]">Homework:</p>
-                        <p className="mt-1 text-slate-300">{result.learner_activities.homework || 'Worksheet revision problems.'}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Assessment Strategy & Resources */}
-                {result.assessment_strategy && (
-                  <div className="p-3 rounded-xl bg-surface-dark border border-white/5">
-                    <p className="font-bold text-brand-400 text-[11px]">Assessment Strategy:</p>
-                    <p className="mt-1 text-slate-300">{result.assessment_strategy}</p>
-                  </div>
-                )}
-
-                {result.resources_needed && (
-                  <div>
-                    <p className="font-bold text-slate-300 text-xs mb-1">Required Educational Resources:</p>
-                    <ul className="list-disc list-inside space-y-0.5 pl-1 text-slate-400 text-[11px]">
-                      {(Array.isArray(result.resources_needed) ? result.resources_needed : [result.resources_needed]).map((r: string, idx: number) => (
-                        <li key={idx}>{r}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ) : activeTool === 'test' && result ? (
-              /* Test Paper & Memo Rendering */
-              <div className="p-5 rounded-2xl bg-surface-darker border border-white/5 text-slate-200 space-y-4">
-                <div className="border-b border-white/10 pb-3 text-center space-y-1">
-                  <h4 className="text-sm font-extrabold text-white uppercase tracking-wider">{result.test_header?.school || 'Fusion High School'}</h4>
-                  <p className="text-xs font-bold text-cyan-400">{result.test_header?.subject || subject} • {result.test_header?.grade || `Grade ${grade}`}</p>
-                  <p className="text-[11px] text-slate-400">Formal Assessment • Topic: {result.test_header?.topic || topic} • Total Marks: {result.test_header?.total_marks || totalMarks}</p>
-                </div>
-
-                {/* Test Sections */}
-                {result.sections && result.sections.map((sec: any, sIdx: number) => (
-                  <div key={sIdx} className="space-y-2">
-                    <p className="font-bold text-brand-300 text-xs border-b border-white/5 pb-1">{sec.section_title}</p>
-                    <div className="space-y-2">
-                      {sec.questions && sec.questions.map((q: any, qIdx: number) => (
-                        <div key={qIdx} className="p-3 rounded-xl bg-surface-dark border border-white/5 flex justify-between gap-3">
-                          <p className="text-xs text-white">
-                            <span className="font-bold text-cyan-400 mr-2">{q.q_num || `Q${qIdx + 1}`}.</span>
-                            {q.question_text || q.question}
-                          </p>
-                          <span className="text-[11px] font-mono text-indigo-300 font-bold shrink-0">[{q.marks} Marks]</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-
-                {/* Marking Memorandum */}
-                {result.marking_memo && (
-                  <div className="mt-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-2">
-                    <p className="font-bold text-emerald-300 text-xs">Official Marking Memorandum:</p>
-                    <div className="space-y-2">
-                      {result.marking_memo.map((m: any, mIdx: number) => (
-                        <div key={mIdx} className="text-[11px] text-slate-200 border-b border-white/5 pb-1.5 last:border-none">
-                          <p><span className="font-bold text-emerald-400">{m.q_num}:</span> {m.expected_answer}</p>
-                          {m.mark_breakdown && <p className="text-slate-400 text-[10px] font-mono mt-0.5">{m.mark_breakdown}</p>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             ) : quizQuestions.length > 0 ? (
-              /* Quiz Questions Rendering with Dynamic Correct Option Highlighting */
+              /* Quiz Questions Rendering with EDIT / REMOVE Option */
               <div className="space-y-3">
                 <div className="flex items-center justify-between pb-2 border-b border-white/10">
                   <span className="text-xs font-bold text-slate-300">
-                    Generated {quizQuestions.length} Fresh Practice Questions for {subject}
+                    {quizQuestions.length} Practice Questions (Click trash icon to remove unwanted questions)
                   </span>
                   <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5" /> Answer Key Highlighted
+                    <Check className="w-3.5 h-3.5" /> Answer Key Verified
                   </span>
                 </div>
 
                 {quizQuestions.map((q, idx) => (
-                  <div key={idx} className="p-4 rounded-2xl bg-surface-darker border border-white/5 space-y-2.5">
+                  <div key={idx} className="p-4 rounded-2xl bg-surface-darker border border-white/5 space-y-2.5 relative group">
                     <div className="flex justify-between items-start gap-2">
-                      <p className="font-bold text-white text-xs leading-relaxed">
+                      <p className="font-bold text-white text-xs leading-relaxed flex-1">
                         <span className="text-cyan-400 font-mono mr-1.5">Q{idx + 1}:</span>
                         {q.question}
                       </p>
-                      <Badge variant="indigo" size="sm">{q.marks || marksPerQuestion} Marks</Badge>
+                      
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge variant="indigo" size="sm">{q.marks || marksPerQuestion} Marks</Badge>
+                        {/* Remove Question Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveQuestion(idx)}
+                          className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
+                          title="Remove this question"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
@@ -806,19 +791,6 @@ export const TeacherAITools: React.FC = () => {
                     <ul className="list-disc list-inside space-y-1 pl-1 text-slate-300 text-xs">
                       {result.keyDefinitions.map((d: string, i: number) => (
                         <li key={i}>{d}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {result.stepByStepGuide && (
-                  <div>
-                    <p className="font-bold text-emerald-400 text-xs mb-1">Step-by-Step Problem Solving Method:</p>
-                    <ul className="space-y-1.5 pl-1">
-                      {result.stepByStepGuide.map((s: string, i: number) => (
-                        <li key={i} className="p-2.5 rounded-xl bg-surface-dark border border-white/5 text-xs text-slate-200 font-mono">
-                          {s}
-                        </li>
                       ))}
                     </ul>
                   </div>

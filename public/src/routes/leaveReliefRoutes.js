@@ -12,7 +12,7 @@ router.get('/my-leave', requireRole(['teacher']), leaveReliefController.getTeach
 // Admin & Staff operations
 router.get('/requests', requireRole(['teacher', 'admin']), leaveReliefController.getLeaveRequests);
 router.patch('/requests/:id/status', requireRole(['admin']), leaveReliefController.updateLeaveStatus);
-router.get('/available-teachers', requireRole(['admin']), leaveReliefController.getAvailableReliefTeachers);
+router.get('/available-teachers', requireRole(['teacher', 'admin']), leaveReliefController.getAvailableReliefTeachers);
 router.post('/assign-relief', requireRole(['admin']), leaveReliefController.assignReliefPeriod);
 router.get('/daily-roster', leaveReliefController.getDailyReliefRoster);
 

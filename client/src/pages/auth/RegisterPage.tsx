@@ -919,7 +919,7 @@ export const RegisterPage: React.FC = () => {
                               {child.firstName} {child.surname}
                             </p>
                             <p className="text-[11px] text-slate-400 mt-0.5">
-                              ID: <strong className="text-cyan-300 font-mono">{child.learnerDetails?.learner_number || child.learnerNumber || 'Assigned on Submit'}</strong> &bull; Grade {child.grade} ({child.stream}) &bull; <span className="text-amber-300 font-semibold">{child.homeLanguage || 'isiZulu'} HL</span>
+                              Learner ID: <strong className="text-cyan-300 font-mono">{child.learnerDetails?.learner_number || child.learnerNumber || 'Assigned on Submit'}</strong> &bull; Grade {child.grade} ({child.stream}) &bull; <span className="text-amber-300 font-semibold">{child.homeLanguage || 'isiZulu'} HL</span>
                             </p>
                           </div>
                           <button
@@ -975,7 +975,12 @@ export const RegisterPage: React.FC = () => {
                 Sign in to your portal
               </Link>
             </p>
-            <p className="text-[11px] text-slate-500">
+            <div className="pt-2 flex items-center justify-center gap-3 text-[11px] text-slate-500 border-t border-white/5">
+              <Link to="/about" className="hover:text-cyan-400 transition-colors">About Us</Link>
+              <span>•</span>
+              <Link to="/terms" className="hover:text-cyan-400 transition-colors">Terms & Conditions</Link>
+            </div>
+            <p className="text-[10px] text-slate-500">
               Note: Teachers, Staff, and Learners are registered directly by School Administration.
             </p>
           </div>

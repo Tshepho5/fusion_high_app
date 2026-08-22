@@ -17,6 +17,10 @@ yarn-error.log*
 .system_generated/
 *.log
 
+# Uploads & Media Files
+uploads/
+public/uploads/
+
 # OS Metadata
 .DS_Store
 Thumbs.db

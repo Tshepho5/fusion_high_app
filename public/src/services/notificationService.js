@@ -22,6 +22,11 @@ class NotificationService {
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
 
+        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link VARCHAR(255);
+        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link_url VARCHAR(255);
+        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS target_tab VARCHAR(50) DEFAULT 'announcements';
+        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
+
         CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, is_read);
         CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC);
 

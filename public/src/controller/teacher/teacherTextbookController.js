@@ -5,27 +5,94 @@ const NotificationService = require('../../services/notificationService');
 
 exports.getMyTextbooks = async (req, res) => {
     try {
-        const result = await db.query(`
+        const teacherId = req.user.id;
+        const { subject, grade, resource_type, search } = req.query;
+
+        // Fetch teacher's assigned subjects and grades from employees table
+        const empRes = await db.query(
+            'SELECT subjects, grades_taught FROM employees WHERE user_id = $1 LIMIT 1',
+            [teacherId]
+        );
+
+        let assignedSubjects = [];
+        let assignedGrades = [];
+
+        if (empRes.rows.length > 0) {
+            assignedSubjects = empRes.rows[0].subjects || [];
+            assignedGrades = (empRes.rows[0].grades_taught || []).map(g => parseInt(g, 10)).filter(Boolean);
+        }
+
+        // Build query conditions
+        let whereClauses = [];
+        let params = [];
+        let pIndex = 1;
+
+        // If specific filters are requested
+        if (subject && subject !== 'All') {
+            whereClauses.push(`(t.subject ILIKE $${pIndex} OR LOWER(t.subject) = LOWER($${pIndex}))`);
+            params.push(`%${subject}%`);
+            pIndex++;
+        } else if (assignedSubjects.length > 0) {
+            // Default to teacher's assigned subjects OR teacher's own uploads
+            const subjectConditions = assignedSubjects.map(s => `t.subject ILIKE '%${s.replace(/'/g, "''")}%'`).join(' OR ');
+            whereClauses.push(`(${subjectConditions} OR t.teacher_id = $${pIndex})`);
+            params.push(teacherId);
+            pIndex++;
+        }
+
+        if (grade && grade !== 'All') {
+            whereClauses.push(`t.grade = $${pIndex}`);
+            params.push(parseInt(grade, 10));
+            pIndex++;
+        } else if (assignedGrades.length > 0 && !subject) {
+            whereClauses.push(`t.grade = ANY($${pIndex}::int[])`);
+            params.push(assignedGrades);
+            pIndex++;
+        }
+
+        if (resource_type && resource_type !== 'All') {
+            whereClauses.push(`t.resource_type = $${pIndex}`);
+            params.push(resource_type);
+            pIndex++;
+        }
+
+        if (search) {
+            whereClauses.push(`(t.title ILIKE $${pIndex} OR t.file_name ILIKE $${pIndex} OR t.description ILIKE $${pIndex})`);
+            params.push(`%${search}%`);
+            pIndex++;
+        }
+
+        const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+        const query = `
             SELECT 
-                id, 
-                subject, 
-                grade, 
-                stream,
-                COALESCE(resource_type, 'textbook') AS resource_type,
-                COALESCE(title, subject || ' Grade ' || grade || ' ' || COALESCE(resource_type, 'Resource')) AS title,
-                description,
-                term,
-                year,
-                file_name,
-                file_size,
-                file_path, 
-                upload_date 
-            FROM textbooks 
-            WHERE teacher_id = $1 
-            ORDER BY upload_date DESC
-        `, [req.user.id]);
+                t.id, 
+                t.subject, 
+                t.grade, 
+                t.stream,
+                COALESCE(t.resource_type, 'past_paper') AS resource_type,
+                COALESCE(t.title, t.subject || ' Grade ' || t.grade || ' ' || COALESCE(t.resource_type, 'Resource')) AS title,
+                t.description,
+                t.term,
+                t.year,
+                t.file_name,
+                t.file_size,
+                t.file_path, 
+                t.upload_date,
+                t.teacher_id,
+                COALESCE(u.full_name, 'Department of Basic Education') AS uploader_name,
+                COALESCE(u.surname, '(CAPS Archive)') AS uploader_surname
+            FROM textbooks t
+            LEFT JOIN users u ON t.teacher_id = u.id
+            ${whereSql}
+            ORDER BY t.grade ASC, t.subject ASC, t.year DESC NULLS LAST, t.id DESC
+            LIMIT 300
+        `;
+
+        const result = await db.query(query, params);
         res.json(result.rows);
     } catch (err) {
+        console.error('Error fetching teacher resources:', err);
         res.status(500).json({ error: err.message });
     }
 };
@@ -146,9 +213,9 @@ exports.getTopicsFromTextbook = async (req, res) => {
 
         const bookRes = await db.query(
             `SELECT file_path FROM textbooks 
-             WHERE (LOWER(subject) = LOWER($1) OR (LOWER($1) = 'mathematics' AND LOWER(subject) = 'maths') OR (LOWER($1) = 'physical sciences' AND LOWER(subject) = 'physics')) 
-             AND grade = $2 AND teacher_id = $3 ORDER BY upload_date DESC LIMIT 1`,
-            [subject, grade, req.user.id]
+             WHERE (LOWER(subject) ILIKE LOWER($1) OR LOWER($1) ILIKE '%' || LOWER(subject) || '%') 
+             AND grade = $2 AND (teacher_id = $3 OR is_published = true) ORDER BY year DESC, upload_date DESC LIMIT 2`,
+            [`%${subject}%`, grade, req.user.id]
         );
 
         let textbookTopics = [];
@@ -178,9 +245,9 @@ exports.generateAIQuestions = async (req, res) => {
     try {
         const bookRes = await db.query(
             `SELECT file_path FROM textbooks 
-             WHERE LOWER(subject) = LOWER($1)
-             AND grade = $2 AND teacher_id = $3 ORDER BY upload_date DESC LIMIT 1`,
-            [subject, grade, req.user.id]
+             WHERE (LOWER(subject) ILIKE LOWER($1) OR LOWER($1) ILIKE '%' || LOWER(subject) || '%')
+             AND grade = $2 AND (teacher_id = $3 OR is_published = true) ORDER BY year DESC, upload_date DESC LIMIT 2`,
+            [`%${subject}%`, grade, req.user.id]
         );
 
         if (bookRes.rows.length > 0) {
