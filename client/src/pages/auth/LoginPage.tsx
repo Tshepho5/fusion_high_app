@@ -33,10 +33,13 @@ export const LoginPage: React.FC = () => {
     setError(null);
 
     try {
-      const isEmail = identifier.includes('@');
-      const credentials = isEmail
-        ? { email: identifier.trim(), password }
-        : { learnerNumber: identifier.trim(), password };
+      const trimmedId = identifier.trim();
+      const credentials = {
+        email: trimmedId,
+        identifier: trimmedId,
+        learnerNumber: trimmedId,
+        password
+      };
 
       const { role } = await login(credentials);
       navigate(`/dashboard/${role || 'learner'}`);

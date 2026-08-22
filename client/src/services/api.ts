@@ -40,8 +40,13 @@ export default api;
 
 // Authentication APIs
 export const authService = {
-  login: (credentials: { email?: string; learnerNumber?: string; password: string }) => 
-    api.post('/api/login', credentials).then(res => res.data),
+  login: (credentials: { email?: string; learnerNumber?: string; identifier?: string; password: string }) => 
+    api.post('/api/login', {
+      email: credentials.email || credentials.identifier || credentials.learnerNumber,
+      identifier: credentials.identifier || credentials.email || credentials.learnerNumber,
+      learnerNumber: credentials.learnerNumber || credentials.identifier || credentials.email,
+      password: credentials.password
+    }).then(res => res.data),
   register: (userData: any) => 
     api.post('/api/register', userData).then(res => res.data),
   checkEmail: (email: string) => 
