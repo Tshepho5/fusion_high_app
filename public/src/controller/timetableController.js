@@ -531,18 +531,27 @@ exports.publishToTeachers = async (req, res) => {
             }
         }
 
-        // Broadcast school announcement
-        await db.query(
-            `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target)
-             VALUES ($1, $2, 'all', $3, $4, $5)`,
-            [
-                `Official 1-Hour Timetable Live: Grade ${grade} (${stream})`,
-                `The official 1-hour class timetable for Grade ${grade} (${stream}) has been published by the Principal. Real-time schedules are now active for learners, parents, and educators.`,
-                adminId,
-                grade,
-                stream
-            ]
-        );
+        // Broadcast school announcement safely
+        try {
+            await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS role_target VARCHAR(50) DEFAULT 'all'`);
+            await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_id INTEGER`);
+            await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS grade_target INTEGER`);
+            await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS stream_target VARCHAR(50)`);
+
+            await db.query(
+                `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target)
+                 VALUES ($1, $2, 'all', $3, $4, $5)`,
+                [
+                    `Official 1-Hour Timetable Live: Grade ${grade} (${stream})`,
+                    `The official 1-hour class timetable for Grade ${grade} (${stream}) has been published by the Principal. Real-time schedules are now active for learners, parents, and educators.`,
+                    adminId,
+                    grade,
+                    stream
+                ]
+            );
+        } catch (annErr) {
+            console.warn('Could not dispatch timetable live announcement:', annErr.message);
+        }
 
         res.json({
             message: `Timetable published successfully! Real-time schedules are now live for Grade ${grade} educators, parents, and learners.`,

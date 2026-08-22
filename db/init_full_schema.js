@@ -741,6 +741,23 @@ async function initializeAllDatabaseTables(customClient) {
       `);
     }
 
+    // Auto-migrate schema columns for existing production databases
+    try {
+      await runner.query(`
+        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS role_target VARCHAR(50) DEFAULT 'all';
+        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS grade_target INTEGER;
+        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS stream_target VARCHAR(50);
+        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS subject_target VARCHAR(100);
+        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_assignment BOOLEAN DEFAULT FALSE;
+        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS due_date TIMESTAMP;
+        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+        ALTER TABLE children ADD COLUMN IF NOT EXISTS home_language VARCHAR(50);
+      `);
+    } catch (migErr) {
+      console.warn('[SCHEMA MIGRATION WARNING]:', migErr.message);
+    }
+
     console.log('✅ [SCHEMA BOOTSTRAP] All tables, indexes, and initial records verified successfully.');
   } catch (err) {
     console.error('❌ [SCHEMA BOOTSTRAP ERROR]:', err.message);
