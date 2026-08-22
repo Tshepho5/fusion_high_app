@@ -450,10 +450,11 @@ function autoScheduleFullTimetableLogic(timetable_data, generation_details, allT
 }
 
 /**
- * ADMIN / PRINCIPAL: Publishes master timetable directly to teachers, learners, and parents.
+ * ADMIN / PRINCIPAL: Publishes master timetable draft to educators for subject review.
+ * Timetable remains in 'draft_teachers' status until educators confirm and release it to learners.
  */
 exports.publishToTeachers = async (req, res) => {
-    const { timetable_data, generation_details, name, publish_to_all = true } = req.body;
+    const { timetable_data, generation_details, name } = req.body;
     const grade = generation_details?.grade || 10;
     const stream = generation_details?.stream || 'General';
     const adminId = req.user ? req.user.id : null;
@@ -471,14 +472,14 @@ exports.publishToTeachers = async (req, res) => {
             [grade]
         );
 
-        // Insert new active published master timetable
+        // Insert new draft master timetable for educator review
         const result = await db.query(
             `INSERT INTO timetables (name, grade, stream, timetable_data, status, is_active, created_by, updated_at) 
-             VALUES ($1, $2, $3, $4, 'published_to_learners', TRUE, $5, NOW()) RETURNING *`,
+             VALUES ($1, $2, $3, $4, 'draft_teachers', TRUE, $5, NOW()) RETURNING *`,
             [timetableName, grade, stream, JSON.stringify(timetable_data), adminId]
         );
 
-        // Fetch teachers who teach this grade
+        // Fetch educators who teach this grade
         const teachersRes = await db.query(
             `SELECT u.id, u.full_name, u.email 
              FROM users u 
@@ -487,18 +488,10 @@ exports.publishToTeachers = async (req, res) => {
             [grade]
         );
 
-        // Fetch learners and linked parents for this grade
-        const learnersRes = await db.query(
-            `SELECT c.id as child_id, c.learner_user_id, c.parent_id, c.full_name, c.surname
-             FROM children c
-             WHERE c.grade = $1`,
-            [grade]
-        );
+        const notifySubject = `Educator Review Required: Grade ${grade} (${stream}) Timetable Draft`;
+        const notifyBody = `Administration has generated the 1-hour weekly timetable draft for Grade ${grade} (${stream}). Please inspect your subject slots in your Educator Portal. Once all subject allocations are verified, you can release the schedule to your learners.`;
 
-        const notifySubject = `Official 1-Hour Weekly Timetable Published: Grade ${grade} (${stream})`;
-        const notifyBody = `Principal Mr Kunene has published the clash-free 1-hour weekly timetable for Grade ${grade} (${stream}). Check your Timetable tab for periods and room allocations.`;
-
-        // Send messages to assigned teachers
+        // Send messages specifically to assigned teachers
         for (const teacher of teachersRes.rows) {
             try {
                 await db.query(
@@ -509,29 +502,7 @@ exports.publishToTeachers = async (req, res) => {
             } catch (e) {}
         }
 
-        // Send messages to learners and parents
-        for (const record of learnersRes.rows) {
-            if (record.learner_user_id) {
-                try {
-                    await db.query(
-                        `INSERT INTO messages (sender_id, recipient_id, subject, body, created_at)
-                         VALUES ($1, $2, $3, $4, NOW())`,
-                        [adminId, record.learner_user_id, notifySubject, notifyBody]
-                    );
-                } catch (e) {}
-            }
-            if (record.parent_id) {
-                try {
-                    await db.query(
-                        `INSERT INTO messages (sender_id, recipient_id, child_id, subject, body, created_at)
-                         VALUES ($1, $2, $3, $4, $5, NOW())`,
-                        [adminId, record.parent_id, record.child_id, notifySubject, notifyBody]
-                    );
-                } catch (e) {}
-            }
-        }
-
-        // Broadcast school announcement safely
+        // Broadcast teacher notice safely
         try {
             await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS role_target VARCHAR(50) DEFAULT 'all'`);
             await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_id INTEGER`);
@@ -540,27 +511,26 @@ exports.publishToTeachers = async (req, res) => {
 
             await db.query(
                 `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target)
-                 VALUES ($1, $2, 'all', $3, $4, $5)`,
+                 VALUES ($1, $2, 'teacher', $3, $4, $5)`,
                 [
-                    `Official 1-Hour Timetable Live: Grade ${grade} (${stream})`,
-                    `The official 1-hour class timetable for Grade ${grade} (${stream}) has been published by the Principal. Real-time schedules are now active for learners, parents, and educators.`,
+                    `Timetable Draft Live for Review: Grade ${grade} (${stream})`,
+                    `The 1-hour class schedule draft for Grade ${grade} (${stream}) has been sent by Administration. Please check your assigned subject periods and release to learners once confirmed.`,
                     adminId,
                     grade,
                     stream
                 ]
             );
         } catch (annErr) {
-            console.warn('Could not dispatch timetable live announcement:', annErr.message);
+            console.warn('Could not dispatch teacher review announcement:', annErr.message);
         }
 
         res.json({
-            message: `Timetable published successfully! Real-time schedules are now live for Grade ${grade} educators, parents, and learners.`,
+            message: `Timetable draft successfully distributed to Grade ${grade} educators for subject review!`,
             timetable: result.rows[0],
-            target_teachers_count: teachersRes.rows.length,
-            target_learners_count: learnersRes.rows.length
+            target_teachers_count: teachersRes.rows.length
         });
     } catch (err) {
-        console.error('Error publishing timetable:', err);
+        console.error('Error publishing timetable to teachers:', err);
         res.status(500).json({ error: 'Failed to publish timetable: ' + err.message });
     }
 };
@@ -580,7 +550,7 @@ exports.getTeacherTimetables = async (req, res) => {
 
         const { rows } = await db.query(
             `SELECT * FROM timetables 
-             WHERE grade = ANY($1::int[]) OR status = 'published_to_learners' OR is_active = TRUE
+             WHERE grade = ANY($1::int[]) OR status = 'published_to_learners' OR status = 'draft_teachers' OR is_active = TRUE
              ORDER BY updated_at DESC`,
             [grades.length ? grades : [10, 11, 12]]
         );
@@ -637,13 +607,6 @@ exports.getTeacherTimetables = async (req, res) => {
             });
         });
 
-        // Also assign array behavior so res is directly iterable or accessed via properties
-        const responseData = [...rows];
-        responseData.timetables = rows;
-        responseData.personal_schedule = personalTimetable;
-        responseData.my_slots = mySlots;
-        responseData.teacher_name = teacherName;
-
         res.json({
             timetables: rows,
             personal_schedule: personalTimetable,
@@ -657,9 +620,104 @@ exports.getTeacherTimetables = async (req, res) => {
 };
 
 /**
- * TEACHER: Updates specific period slots and publishes the schedule to learners and parents.
+ * TEACHER: Officially verifies subject allocations and publishes timetable to learners & parents.
  */
-exports.teacherPublishToLearners = exports.publishToTeachers;
+exports.teacherPublishToLearners = async (req, res) => {
+    const { timetable_id, timetable_data } = req.body;
+    const teacherId = req.user.id;
+
+    try {
+        let tt;
+        if (timetable_id) {
+            const ttRes = await db.query('SELECT * FROM timetables WHERE id = $1', [timetable_id]);
+            tt = ttRes.rows[0];
+        } else {
+            const ttRes = await db.query('SELECT * FROM timetables WHERE is_active = TRUE ORDER BY updated_at DESC LIMIT 1');
+            tt = ttRes.rows[0];
+        }
+
+        if (!tt) {
+            return res.status(404).json({ error: 'Timetable not found to publish.' });
+        }
+
+        const grade = tt.grade || 10;
+        const stream = tt.stream || 'General';
+
+        // Update timetable status to officially published for learners
+        const updatedRes = await db.query(
+            `UPDATE timetables 
+             SET status = 'published_to_learners', 
+                 timetable_data = COALESCE($1, timetable_data), 
+                 updated_at = NOW() 
+             WHERE id = $2 RETURNING *`,
+            [timetable_data ? JSON.stringify(timetable_data) : null, tt.id]
+        );
+
+        // Fetch learners and parents for this grade
+        const learnersRes = await db.query(
+            `SELECT c.id as child_id, c.learner_user_id, c.parent_id, c.full_name, c.surname
+             FROM children c
+             WHERE c.grade = $1`,
+            [grade]
+        );
+
+        const notifySubject = `Official Timetable Released: Grade ${grade} (${stream})`;
+        const notifyBody = `Your subject educators have verified and officially published the 1-hour weekly class schedule for Grade ${grade} (${stream}). Check your Timetable tab for periods and room allocations.`;
+
+        // Send messages to learners and parents
+        for (const record of learnersRes.rows) {
+            if (record.learner_user_id) {
+                try {
+                    await db.query(
+                        `INSERT INTO messages (sender_id, recipient_id, subject, body, created_at)
+                         VALUES ($1, $2, $3, $4, NOW())`,
+                        [teacherId, record.learner_user_id, notifySubject, notifyBody]
+                    );
+                } catch (e) {}
+            }
+            if (record.parent_id) {
+                try {
+                    await db.query(
+                        `INSERT INTO messages (sender_id, recipient_id, child_id, subject, body, created_at)
+                         VALUES ($1, $2, $3, $4, $5, NOW())`,
+                        [teacherId, record.parent_id, record.child_id, notifySubject, notifyBody]
+                    );
+                } catch (e) {}
+            }
+        }
+
+        // Broadcast school-wide release notice safely
+        try {
+            await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS role_target VARCHAR(50) DEFAULT 'all'`);
+            await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_id INTEGER`);
+            await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS grade_target INTEGER`);
+            await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS stream_target VARCHAR(50)`);
+
+            await db.query(
+                `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target)
+                 VALUES ($1, $2, 'all', $3, $4, $5)`,
+                [
+                    `Official Class Timetable Released: Grade ${grade} (${stream})`,
+                    `Subject educators have finalized and published the official 1-hour class timetable for Grade ${grade} (${stream}). Real-time schedules are now active for learners and parents.`,
+                    teacherId,
+                    grade,
+                    stream
+                ]
+            );
+        } catch (annErr) {
+            console.warn('Could not dispatch timetable release announcement:', annErr.message);
+        }
+
+        res.json({
+            message: `Timetable officially released to Grade ${grade} learners and parents!`,
+            timetable: updatedRes.rows[0],
+            target_learners_count: learnersRes.rows.length
+        });
+    } catch (err) {
+        console.error('Error publishing timetable to learners:', err);
+        res.status(500).json({ error: 'Failed to publish timetable to learners: ' + err.message });
+    }
+};
 
 /**
  * LEARNER: Gets active published timetable for the learner's grade and stream.
@@ -673,7 +731,7 @@ exports.getLearnerTimetable = async (req, res) => {
         const { rows } = await db.query(
             `SELECT * FROM timetables 
              WHERE (grade = $1 OR grade IS NULL) AND is_active = TRUE
-             ORDER BY updated_at DESC LIMIT 1`,
+             ORDER BY CASE WHEN status = 'published_to_learners' THEN 0 ELSE 1 END, updated_at DESC LIMIT 1`,
             [grade]
         );
 
@@ -699,7 +757,7 @@ exports.getChildTimetable = async (req, res) => {
         const { rows } = await db.query(
             `SELECT * FROM timetables 
              WHERE (grade = $1 OR grade IS NULL) AND is_active = TRUE
-             ORDER BY updated_at DESC LIMIT 1`,
+             ORDER BY CASE WHEN status = 'published_to_learners' THEN 0 ELSE 1 END, updated_at DESC LIMIT 1`,
             [grade]
         );
         res.json(rows[0] || null);

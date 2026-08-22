@@ -80,11 +80,23 @@ export const LearnerTimetable: React.FC = () => {
         </div>
 
         {activeSchedule && (
-          <Badge variant="cyan" size="md">
-            {activeSchedule.name || 'Published Master Schedule'}
+          <Badge variant={activeSchedule.status === 'draft_teachers' ? 'amber' : 'cyan'} size="md">
+            {activeSchedule.status === 'draft_teachers' ? 'Pending Educator Final Verification' : (activeSchedule.name || 'Official Published Master Schedule')}
           </Badge>
         )}
       </div>
+
+      {activeSchedule?.status === 'draft_teachers' && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-3 animate-fade-in">
+          <Clock className="w-5 h-5 text-amber-400 shrink-0" />
+          <div>
+            <p className="font-bold">Educator Review in Progress</p>
+            <p className="text-[11px] text-amber-400/80 mt-0.5">
+              Your subject educators are currently verifying teaching slots and room allocations for this grade. The finalized schedule will be released here once fully approved.
+            </p>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
