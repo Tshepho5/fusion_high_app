@@ -266,20 +266,47 @@ function autoScheduleFullTimetableLogic(timetable_data, generation_details, allT
                     continue;
                 }
 
+                const targetGrade = parseInt(generation_details.grade, 10) || 10;
+                const isSeniorGET = targetGrade === 8 || targetGrade === 9;
+                const isFET = targetGrade >= 10 && targetGrade <= 12;
+                const prioritySubject = generation_details.target_subject && generation_details.target_subject !== 'all'
+                    ? generation_details.target_subject.trim()
+                    : null;
+
                 // Pick a subject not yet taken today by this class
                 let unusedSubjects = subjectsList.filter(s => !classDaySubjects[className][day].has(s));
                 if (unusedSubjects.length === 0) {
                     unusedSubjects = subjectsList;
                 }
 
-                // Deterministic and varied subject rotation
-                const subjectOffset = (dIdx * 3 + pIdx + cIdx * 2) % unusedSubjects.length;
-                const currentSubject = unusedSubjects[subjectOffset];
-                classDaySubjects[className][day].add(currentSubject);
+                let currentSubject = null;
 
-                const targetGrade = parseInt(generation_details.grade, 10) || 10;
-                const isSeniorGET = targetGrade === 8 || targetGrade === 9;
-                const isFET = targetGrade >= 10 && targetGrade <= 12;
+                // Guaranteed Focus Subject Priority: If admin specified a priority subject, guarantee prime daily placement for each class!
+                if (prioritySubject) {
+                    const matchedPriority = subjectsList.find(s => 
+                        s.toLowerCase().trim() === prioritySubject.toLowerCase().trim() ||
+                        s.toLowerCase().includes(prioritySubject.toLowerCase().trim()) ||
+                        prioritySubject.toLowerCase().includes(s.toLowerCase().trim())
+                    ) || (subjectsList.includes(prioritySubject) ? prioritySubject : null);
+
+                    if (matchedPriority && !classDaySubjects[className][day].has(matchedPriority)) {
+                        // Prioritize in prime morning slot (Period 1 or 2) or the first available period of the day
+                        const isPrimePeriodForClass = (pIdx === 0 && cIdx % 2 === 0) || (pIdx === 1 && cIdx % 2 === 1) || pIdx === 0 || unusedSubjects.length === subjectsList.length;
+                        if (isPrimePeriodForClass) {
+                            currentSubject = matchedPriority;
+                        }
+                    }
+                }
+
+                if (!currentSubject) {
+                    // Filter out priority subject if already handled for today, and rotate remaining subjects fairly
+                    const remainingToRotate = unusedSubjects.filter(s => !prioritySubject || s.toLowerCase().trim() !== prioritySubject.toLowerCase().trim());
+                    const listToPickFrom = remainingToRotate.length > 0 ? remainingToRotate : unusedSubjects;
+                    const subjectOffset = (dIdx * 3 + pIdx + cIdx * 2) % listToPickFrom.length;
+                    currentSubject = listToPickFrom[subjectOffset];
+                }
+
+                classDaySubjects[className][day].add(currentSubject);
 
                 // Strict Helper to check if an educator is qualified for a specific subject and grade phase
                 const isTeacherQualifiedForSubjectAndGrade = (t, subj, gr) => {

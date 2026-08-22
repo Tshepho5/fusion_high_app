@@ -289,14 +289,35 @@ export const AdminTimetable: React.FC = () => {
               onChange={(e) => setTargetSubject(e.target.value)}
               className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
-              <option value="all">All CAPS Subjects</option>
+              <option value="all">All Subjects (Balanced Distribution)</option>
               <option value="Mathematics">Mathematics</option>
-              <option value="Physical Sciences">Physical Sciences</option>
-              <option value="Life Sciences">Life Sciences</option>
+              {grade <= 9 ? (
+                <>
+                  <option value="Natural Sciences">Natural Sciences</option>
+                  <option value="Social Sciences">Social Sciences</option>
+                  <option value="Economic and Management Sciences (EMS)">EMS</option>
+                  <option value="Technology">Technology</option>
+                  <option value="Creative Arts">Creative Arts</option>
+                </>
+              ) : (
+                <>
+                  <option value="Physical Sciences">Physical Sciences</option>
+                  <option value="Life Sciences">Life Sciences</option>
+                  <option value="Accounting">Accounting</option>
+                  <option value="Business Studies">Business Studies</option>
+                  <option value="Economics">Economics</option>
+                  <option value="Geography">Geography</option>
+                  <option value="History">History</option>
+                  <option value="Tourism">Tourism</option>
+                </>
+              )}
               <option value="English FAL">English FAL</option>
-              <option value="Home Language">Home Language</option>
-              <option value="Accounting">Accounting</option>
-              <option value="Geography">Geography</option>
+              <option value="English HL">English HL</option>
+              <option value="Sepedi Home Language">Sepedi Home Language</option>
+              <option value="isiZulu Home Language">isiZulu Home Language</option>
+              <option value="Afrikaans Home Language">Afrikaans Home Language</option>
+              <option value="Sesotho Home Language">Sesotho Home Language</option>
+              <option value="Setswana Home Language">Setswana Home Language</option>
               <option value="Life Orientation">Life Orientation</option>
             </select>
           </div>
