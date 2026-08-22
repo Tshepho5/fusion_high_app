@@ -112,12 +112,13 @@ exports.generateAITimetable = async (req, res) => {
                 'Physical Sciences',
                 'Life Sciences',
                 'English FAL',
-                'Home Language',
                 'Life Orientation',
                 'Accounting',
                 'Geography',
                 'History',
-                'Business Studies'
+                'Business Studies',
+                'Economics',
+                'Tourism'
             ];
             coreSubjects.forEach(cs => {
                 if (!subjects.includes(cs)) subjects.push(cs);
@@ -242,10 +243,10 @@ function autoScheduleFullTimetableLogic(timetable_data, generation_details, allT
         'Physical Sciences',
         'Life Sciences',
         'English FAL',
-        'Home Language',
         'Life Orientation',
         'Accounting',
-        'Geography'
+        'Geography',
+        'Business Studies'
     ];
 
     // 3. Schedule slots with workload distribution
@@ -276,7 +277,126 @@ function autoScheduleFullTimetableLogic(timetable_data, generation_details, allT
                 const currentSubject = unusedSubjects[subjectOffset];
                 classDaySubjects[className][day].add(currentSubject);
 
-                // Find a free subject specialist teacher with capacity (< maxDailySlotsPerTeacher)
+                const targetGrade = parseInt(generation_details.grade, 10) || 10;
+                const isSeniorGET = targetGrade === 8 || targetGrade === 9;
+                const isFET = targetGrade >= 10 && targetGrade <= 12;
+
+                // Strict Helper to check if an educator is qualified for a specific subject and grade phase
+                const isTeacherQualifiedForSubjectAndGrade = (t, subj, gr) => {
+                    if (!t || !Array.isArray(t.subjects) || t.subjects.length === 0) return false;
+                    
+                    const g = parseInt(gr, 10) || 10;
+                    const isGET = g === 8 || g === 9;
+                    const isFETPhase = g >= 10 && g <= 12;
+                    
+                    // Check grades taught by teacher if specified in employee profile
+                    const gradesTaught = Array.isArray(t.grades_taught) ? t.grades_taught : [];
+                    if (gradesTaught.length > 0) {
+                        const teachesThisGrade = gradesTaught.includes(g);
+                        const teachesPhase = isGET 
+                            ? gradesTaught.some(gt => gt === 8 || gt === 9)
+                            : gradesTaught.some(gt => gt >= 10);
+                        if (!teachesThisGrade && !teachesPhase) {
+                            return false;
+                        }
+                    }
+
+                    const subLow = subj.toLowerCase().trim();
+                    
+                    return t.subjects.some(s => {
+                        const sLow = s.toLowerCase().trim();
+                        if (sLow === subLow) return true;
+
+                        // 1. Natural Sciences (Grade 8 & 9 only): Can be taught by Natural Sciences, Life Sciences, or Physical Sciences educators
+                        if (isGET && subLow.includes('natural science')) {
+                            return sLow.includes('natural science') || sLow.includes('life science') || sLow.includes('physic');
+                        }
+
+                        // 2. Mathematics:
+                        // - In Grade 8 & 9: Senior phase Mathematics
+                        // - In Grade 10-12: FET Mathematics / Mathematical Literacy
+                        if (subLow.includes('math')) {
+                            return sLow.includes('math');
+                        }
+
+                        // 3. Physical Sciences (FET Grade 10-12 only): Strictly Physical Sciences / Physics
+                        if (isFETPhase && subLow.includes('physic')) {
+                            return sLow.includes('physic');
+                        }
+
+                        // 4. Life Sciences (FET Grade 10-12 only): Strictly Life Sciences / Biology
+                        if (isFETPhase && subLow.includes('life science')) {
+                            return sLow.includes('life science');
+                        }
+
+                        // 5. English FAL / English HL:
+                        if (subLow.includes('english')) {
+                            return sLow.includes('english');
+                        }
+
+                        // 6. Social Sciences (Grade 8 & 9 only): Can be taught by Social Sciences, History, or Geography educators
+                        if (isGET && subLow.includes('social science')) {
+                            return sLow.includes('social science') || sLow.includes('geograph') || sLow.includes('history');
+                        }
+
+                        // 7. Geography (FET 10-12): Strictly Geography
+                        if (subLow.includes('geograph')) {
+                            return sLow.includes('geograph');
+                        }
+
+                        // 8. History (FET 10-12): Strictly History
+                        if (subLow.includes('history')) {
+                            return sLow.includes('history');
+                        }
+
+                        // 9. Tourism (FET 10-12): Strictly Tourism
+                        if (subLow.includes('tourism')) {
+                            return sLow.includes('tourism');
+                        }
+
+                        // 10. Commercial subjects (Accounting, Business Studies, Economics, EMS)
+                        if (isGET && subLow.includes('ems')) {
+                            return sLow.includes('ems') || sLow.includes('account') || sLow.includes('business') || sLow.includes('economic');
+                        }
+                        if (subLow.includes('account')) {
+                            return sLow.includes('account');
+                        }
+                        if (subLow.includes('business')) {
+                            return sLow.includes('business');
+                        }
+                        if (subLow.includes('economic')) {
+                            return sLow.includes('economic');
+                        }
+
+                        // 11. Technology & Creative Arts (Grade 8 & 9)
+                        if (subLow.includes('technology')) {
+                            return sLow.includes('technology');
+                        }
+                        if (subLow.includes('creative art')) {
+                            return sLow.includes('creative art') || sLow.includes('art');
+                        }
+
+                        // 12. Life Orientation
+                        if (subLow.includes('life orientation')) {
+                            return sLow.includes('life orientation');
+                        }
+
+                        // 13. Official Home Languages (Sepedi, Sesotho, Setswana, siSwati, Tshivenda, Xitsonga, Afrikaans, isiNdebele, isiXhosa, isiZulu)
+                        const langMatches = [
+                            'sepedi', 'sesotho', 'setswana', 'siswati', 'tshivenda', 'xitsonga',
+                            'afrikaans', 'isindebele', 'isixhosa', 'isizulu'
+                        ];
+                        for (const lang of langMatches) {
+                            if (subLow.includes(lang) && sLow.includes(lang)) {
+                                return true;
+                            }
+                        }
+
+                        return false;
+                    });
+                };
+
+                // Find a free subject-specialist teacher who strictly teaches this subject and grade phase
                 let assignedTeacher = allTeachers.find(t => {
                     const tKey = `${t.full_name} ${t.surname || ''}`.trim().toLowerCase();
                     if (teacherBusyMap[tKey]?.[day]?.[period]) return false;
@@ -284,57 +404,42 @@ function autoScheduleFullTimetableLogic(timetable_data, generation_details, allT
                     const dailySlots = teacherDailySlotCount[tKey]?.[day] || 0;
                     if (dailySlots >= maxDailySlotsPerTeacher) return false;
 
-                    const teachesSubject = Array.isArray(t.subjects) && t.subjects.some(s => {
-                        const sLow = s.toLowerCase();
-                        const curLow = currentSubject.toLowerCase();
-                        return sLow === curLow || sLow.includes(curLow) || curLow.includes(sLow) ||
-                            (curLow.includes('math') && sLow.includes('math')) ||
-                            (curLow.includes('physic') && sLow.includes('physic')) ||
-                            (curLow.includes('life') && sLow.includes('life')) ||
-                            (curLow.includes('english') && sLow.includes('english')) ||
-                            (curLow.includes('account') && sLow.includes('account'));
-                    });
-
-                    return teachesSubject;
+                    return isTeacherQualifiedForSubjectAndGrade(t, currentSubject, targetGrade);
                 });
 
-                // Fallback: If all qualified teachers are at max daily capacity, relax daily slot cap by 1
+                // Fallback 1: If qualified specialist is available but at max daily slots, allow +1 slot to preserve subject specialization
                 if (!assignedTeacher) {
                     assignedTeacher = allTeachers.find(t => {
                         const tKey = `${t.full_name} ${t.surname || ''}`.trim().toLowerCase();
                         if (teacherBusyMap[tKey]?.[day]?.[period]) return false;
                         const dailySlots = teacherDailySlotCount[tKey]?.[day] || 0;
-                        return dailySlots < (maxDailySlotsPerTeacher + 1);
+                        return dailySlots < (maxDailySlotsPerTeacher + 1) && isTeacherQualifiedForSubjectAndGrade(t, currentSubject, targetGrade);
                     });
                 }
 
-                // Final safety: Any available teacher not busy in this slot
-                if (!assignedTeacher) {
-                    assignedTeacher = allTeachers.find(t => {
-                        const tKey = `${t.full_name} ${t.surname || ''}`.trim().toLowerCase();
-                        return !teacherBusyMap[tKey]?.[day]?.[period];
-                    });
-                }
-
-                const teacherFullName = assignedTeacher
-                    ? `${assignedTeacher.full_name} ${assignedTeacher.surname || ''}`.trim()
-                    : (allTeachers[cIdx % allTeachers.length] ? `${allTeachers[cIdx % allTeachers.length].full_name} ${allTeachers[cIdx % allTeachers.length].surname || ''}`.trim() : 'Faculty Educator');
-
+                // If no teacher in DB is assigned to this subject, place the subject on the timetable as Unassigned (Pending Allocation)
+                // (NEVER assign an educator of a different discipline or grade phase)
+                let teacherFullName = '';
                 if (assignedTeacher) {
-                    const tKey = `${assignedTeacher.full_name} ${assignedTeacher.surname || ''}`.trim().toLowerCase();
+                    teacherFullName = `${assignedTeacher.full_name} ${assignedTeacher.surname || ''}`.trim();
+                    const tKey = teacherFullName.toLowerCase();
                     if (teacherBusyMap[tKey]) {
                         if (!teacherBusyMap[tKey][day]) teacherBusyMap[tKey][day] = {};
                         teacherBusyMap[tKey][day][period] = true;
                         teacherDailySlotCount[tKey][day] = (teacherDailySlotCount[tKey][day] || 0) + 1;
                     }
+                } else {
+                    teacherFullName = 'Unassigned (Pending Allocation)';
                 }
+
+                const syllabusPhase = isSeniorGET ? 'GET Senior Phase' : 'FET Phase';
 
                 timetable_data[className][day][period] = {
                     subject: currentSubject,
                     teacher: teacherFullName,
                     room: `Room ${className.replace(/[^0-9]/g, '') || '10'}${String.fromCharCode(65 + cIdx)}`,
                     duration: '1 Hour (60 min)',
-                    lesson_focus: `CAPS ${currentSubject} 1-Hour Curriculum Session`
+                    lesson_focus: `CAPS ${syllabusPhase} (Grade ${targetGrade}) ${currentSubject} Session`
                 };
                 filledSlots++;
             }
@@ -624,26 +729,30 @@ exports.deleteTimetable = async (req, res) => {
     const adminId = req.user ? req.user.id : null;
 
     try {
-        // 1. Fetch timetable details before deletion
-        const ttRes = await db.query('SELECT * FROM timetables WHERE id = $1', [id]);
-        if (ttRes.rows.length === 0) {
-            return res.status(404).json({ error: 'Timetable not found.' });
-        }
-        const tt = ttRes.rows[0];
-        const grade = tt.grade || 10;
-        const stream = tt.stream || 'General';
+        let grade = 10;
+        let stream = 'General';
+        let classSummary = 'Class Schedule';
 
-        let classSummary = `Grade ${grade}`;
-        try {
-            const data = typeof tt.timetable_data === 'string' ? JSON.parse(tt.timetable_data) : tt.timetable_data;
-            const classKeys = Object.keys(data || {});
-            if (classKeys.length > 0) {
-                classSummary = classKeys.join(', ');
+        // 1. Fetch timetable details before deletion if present
+        if (id && !isNaN(parseInt(id, 10))) {
+            const ttRes = await db.query('SELECT * FROM timetables WHERE id = $1', [parseInt(id, 10)]);
+            if (ttRes.rows.length > 0) {
+                const tt = ttRes.rows[0];
+                grade = tt.grade || 10;
+                stream = tt.stream || 'General';
+                try {
+                    const data = typeof tt.timetable_data === 'string' ? JSON.parse(tt.timetable_data) : tt.timetable_data;
+                    const classKeys = Object.keys(data || {});
+                    if (classKeys.length > 0) {
+                        classSummary = classKeys.join(', ');
+                    }
+                } catch (e) {}
             }
-        } catch (e) {}
-
-        // 2. Delete timetable from database (frees slots immediately)
-        await db.query('DELETE FROM timetables WHERE id = $1', [id]);
+            // 2. Delete timetable from database (frees slots immediately)
+            await db.query('DELETE FROM timetables WHERE id = $1', [parseInt(id, 10)]);
+        } else {
+            await db.query('DELETE FROM timetables WHERE name ILIKE $1 OR id::text = $1', [`%${id}%`]);
+        }
 
         // 3. Post notification to announcements specifically for educators of this deleted class/grade
         try {
@@ -651,7 +760,7 @@ exports.deleteTimetable = async (req, res) => {
                 `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, created_at)
                  VALUES ($1, $2, 'teacher', $3, $4, $5, NOW())`,
                 [
-                    `Timetable Deleted: ${tt.name || classSummary}`,
+                    `Timetable Deleted: Grade ${grade} (${stream})`,
                     `Notice to Educators: The class timetable for ${classSummary} (${stream}) has been removed and reset by Administration. Previous teaching allocations for these classes are now open for new schedule generation.`,
                     adminId,
                     grade,
@@ -689,14 +798,8 @@ exports.deleteTimetable = async (req, res) => {
         }
 
         res.json({
-            message: `Timetable for ${classSummary} deleted successfully. Educators assigned to ${classSummary} have been notified via Announcements.`,
-            deleted_timetable: {
-                id: tt.id,
-                name: tt.name,
-                grade: tt.grade,
-                stream: tt.stream,
-                classes: classSummary
-            }
+            success: true,
+            message: `Timetable deleted successfully. Associated slots are now free for new generation.`
         });
     } catch (err) {
         console.error('Error deleting timetable:', err);

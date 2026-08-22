@@ -69,7 +69,7 @@ exports.getMySubjectsOverview = async (req, res) => {
 
         // Ensure home_language column exists
         try {
-            await db.query(`ALTER TABLE children ADD COLUMN IF NOT EXISTS home_language VARCHAR(50) DEFAULT 'isiZulu'`);
+            await db.query(`ALTER TABLE children ADD COLUMN IF NOT EXISTS home_language VARCHAR(50)`);
         } catch (_) {}
 
         let childRes = await db.query(
@@ -94,18 +94,18 @@ exports.getMySubjectsOverview = async (req, res) => {
                 // Auto-create linked child record if missing
                 const defaultGrade = 10;
                 const defaultStream = 'Science';
-                const standardSubs = curriculumService.getSubjectsForGradeAndStream(defaultGrade, defaultStream, 'isiZulu');
+                const standardSubs = curriculumService.getSubjectsForGradeAndStream(defaultGrade, defaultStream, null);
                 const generatedLrnNum = `2026${String(Math.floor(1000 + Math.random() * 9000))}`;
                 childRes = await db.query(`
                     INSERT INTO children (learner_user_id, full_name, surname, grade, stream, subjects, home_language, learner_number, created_at)
-                    VALUES ($1, $2, $3, $4, $5, $6, 'isiZulu', $7, CURRENT_TIMESTAMP)
+                    VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, CURRENT_TIMESTAMP)
                     RETURNING id, full_name, surname, grade, stream, subjects, class_id, home_language
                 `, [userId, userFullName || 'Learner', req.user.surname || '', defaultGrade, defaultStream, standardSubs, generatedLrnNum]);
             }
         }
 
         const learner = childRes.rows[0] || {};
-        const chosenHomeLanguage = learner.home_language || 'isiZulu';
+        const chosenHomeLanguage = learner.home_language || null;
         let subjectsList = learner.subjects || [];
 
         if (!subjectsList || subjectsList.length === 0) {
@@ -333,9 +333,9 @@ exports.updateHomeLanguage = async (req, res) => {
             return res.status(400).json({ error: 'Please choose one of the 11 Official South African Languages.' });
         }
 
-        // Ensure home_language column exists
+        // Ensure home_language column exists without hardcoded default
         try {
-            await db.query(`ALTER TABLE children ADD COLUMN IF NOT EXISTS home_language VARCHAR(50) DEFAULT 'isiZulu'`);
+            await db.query(`ALTER TABLE children ADD COLUMN IF NOT EXISTS home_language VARCHAR(50)`);
         } catch (_) {}
 
         let childRes = await db.query(`SELECT id, grade, stream, subjects, home_language FROM children WHERE learner_user_id = $1`, [userId]);

@@ -16,6 +16,8 @@ router.get('/teachers', auth, isAdmin, adminController.getAllTeachers);
 // Employee Management (matching employees table in schema.sql)
 router.get('/employees', auth, isAdmin, adminController.getAllEmployees);
 router.post('/employees', auth, isAdmin, adminController.createEmployee);
+router.put('/employees/:id/subjects', auth, isAdmin, adminController.updateTeacherSubjects);
+router.put('/teachers/:id/subjects', auth, isAdmin, adminController.updateTeacherSubjects);
 
 // Parent Management (matching users & parent_children tables)
 router.get('/parents', auth, isAdmin, adminController.getAllParents);

@@ -208,6 +208,8 @@ export const adminService = {
   publishTimetable: (payload: { timetable_id?: number; timetable_data?: any; generation_details?: any; name?: string; [key: string]: any }) => 
     api.post('/api/admin/publish-to-teachers', payload).then(res => res.data),
   deleteTimetable: (id: string | number) => api.delete(`/api/admin/timetables/${id}`).then(res => res.data),
+  updateTeacherSubjects: (id: string | number, payload: { subjects: string[]; grades_taught?: number[] }) => 
+    api.put(`/api/admin/teachers/${id}/subjects`, payload).then(res => res.data),
   getAnnouncements: () => api.get('/api/announcements').then(res => res.data),
   createAnnouncement: (payload: any) => api.post('/api/announcements', payload).then(res => res.data),
   deleteAnnouncement: (id: string | number) => api.delete(`/api/announcements/${id}`).then(res => res.data),

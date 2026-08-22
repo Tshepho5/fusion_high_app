@@ -138,27 +138,27 @@ const STREAM_SUBJECTS = {
 };
 
 const SA_OFFICIAL_LANGUAGES_LIST = [
-  'isiZulu',
-  'isiXhosa',
-  'Afrikaans',
-  'English',
   'Sepedi',
-  'Setswana',
   'Sesotho',
-  'Xitsonga',
+  'Setswana',
   'siSwati',
   'Tshivenda',
-  'isiNdebele'
+  'Xitsonga',
+  'Afrikaans',
+  'English',
+  'isiNdebele',
+  'isiXhosa',
+  'isiZulu'
 ];
 
 /**
  * Returns the official list of CAPS curriculum subjects for a given grade, stream, and chosen Home Language.
  * @param {number|string} grade - 8, 9, 10, 11, or 12
  * @param {string} [stream] - Science, Commerce, Tourism, or General
- * @param {string} [homeLanguage] - One of the 11 South African Official Languages
+ * @param {string|null} [homeLanguage] - One of the 11 South African Official Languages
  * @returns {string[]} Array of subject names
  */
-function getSubjectsForGradeAndStream(grade, stream, homeLanguage = 'isiZulu') {
+function getSubjectsForGradeAndStream(grade, stream, homeLanguage = null) {
   const gStr = String(grade || '8').replace(/\D/g, '') || '8';
   const gradeKey = ['8', '9', '10', '11', '12'].includes(gStr) ? gStr : '8';
   
@@ -173,16 +173,19 @@ function getSubjectsForGradeAndStream(grade, stream, homeLanguage = 'isiZulu') {
     baseList = [...(STREAM_SUBJECTS[gradeKey][validStream] || STREAM_SUBJECTS[gradeKey]['Science'])];
   }
 
-  // Format Home Language subject entry
-  const rawLang = (homeLanguage || 'isiZulu').trim();
-  const matchedOfficial = SA_OFFICIAL_LANGUAGES_LIST.find(l => l.toLowerCase() === rawLang.toLowerCase()) || rawLang;
-  const langSubjectName = matchedOfficial.toLowerCase().includes('home language') || matchedOfficial.toLowerCase().includes('huistaal')
-    ? matchedOfficial
-    : `${matchedOfficial} Home Language`;
+  // Format Home Language subject entry if specified
+  let langSubjectName = null;
+  if (homeLanguage && typeof homeLanguage === 'string' && homeLanguage.trim() && homeLanguage.trim() !== 'Home Language') {
+    const rawLang = homeLanguage.trim();
+    const matchedOfficial = SA_OFFICIAL_LANGUAGES_LIST.find(l => l.toLowerCase() === rawLang.toLowerCase()) || rawLang;
+    langSubjectName = matchedOfficial.toLowerCase().includes('home language') || matchedOfficial.toLowerCase().includes('huistaal')
+      ? matchedOfficial
+      : `${matchedOfficial} Home Language`;
+  }
 
   return baseList.map(subj => {
     if (subj === 'Home Language' || subj === 'Home Language (HL)') {
-      return langSubjectName;
+      return langSubjectName || 'Select Home Language';
     }
     return subj;
   });

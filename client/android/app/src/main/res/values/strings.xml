@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Fusion High</string>
+    <string name="title_activity_main">Fusion High</string>
+    <string name="package_name">com.fusionhigh.app</string>
+    <string name="custom_url_scheme">com.fusionhigh.app</string>
+</resources>

@@ -71,8 +71,33 @@ export const AdminTimetable: React.FC = () => {
       .finally(() => setLoadingList(false));
   };
 
+  // FET Educators (Grades 10, 11, 12 - non Grade 8/9 only)
+  const [fetTeachers, setFetTeachers] = useState<any[]>([]);
+  const [loadingFetTeachers, setLoadingFetTeachers] = useState<boolean>(false);
+  const [editingTeacherSubjects, setEditingTeacherSubjects] = useState<{ id: number; name: string; subjects: string[] } | null>(null);
+  const [newSubjectInput, setNewSubjectInput] = useState<string>('');
+  const [savingTeacherSubjects, setSavingTeacherSubjects] = useState<boolean>(false);
+
+  const fetchFetTeachers = () => {
+    setLoadingFetTeachers(true);
+    adminService.getAllTeachers()
+      .then((res) => {
+        const list = Array.isArray(res) ? res : res.teachers || [];
+        // Filter teachers who teach Grade 10, 11, 12 (or not exclusively 8 and 9)
+        const fetList = list.filter((t: any) => {
+          const grades = Array.isArray(t.grades_taught) ? t.grades_taught : [];
+          if (grades.length === 0) return true;
+          return grades.some((g: number) => g >= 10);
+        });
+        setFetTeachers(fetList);
+      })
+      .catch((err) => console.error('Failed to load FET educators:', err))
+      .finally(() => setLoadingFetTeachers(false));
+  };
+
   useEffect(() => {
     fetchTimetablesList();
+    fetchFetTeachers();
   }, []);
 
   const handleSelectStoredTimetable = (tt: any) => {
@@ -88,10 +113,11 @@ export const AdminTimetable: React.FC = () => {
     window.scrollTo({ top: 300, behavior: 'smooth' });
   };
 
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
   const handleDeleteTimetable = async (id: number, name: string) => {
-    if (!window.confirm(`Delete "${name}" from database? Freeing this schedule allows the AI generator to allocate these educator slots to other grades without clashes.`)) {
-      return;
-    }
+    setDeletingId(id);
+    setError(null);
     try {
       await adminService.deleteTimetable(id);
       setStatusMessage(`Timetable "${name}" deleted. Associated slots are now fully free for new schedule generation.`);
@@ -100,9 +126,30 @@ export const AdminTimetable: React.FC = () => {
         setActiveTimetableName('');
         setActiveTimetableId(null);
       }
+      setTimetablesList(prev => prev.filter(t => t.id !== id));
       fetchTimetablesList();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to delete timetable.');
+      console.error('Failed to delete timetable:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to delete timetable.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleSaveTeacherSubjects = async () => {
+    if (!editingTeacherSubjects) return;
+    setSavingTeacherSubjects(true);
+    try {
+      await adminService.updateTeacherSubjects(editingTeacherSubjects.id, {
+        subjects: editingTeacherSubjects.subjects
+      });
+      setStatusMessage(`Updated subject specializations for ${editingTeacherSubjects.name}. The AI Scheduler will now allocate these subjects strictly to this educator.`);
+      setEditingTeacherSubjects(null);
+      fetchFetTeachers();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to update teacher subjects.');
+    } finally {
+      setSavingTeacherSubjects(false);
     }
   };
 
@@ -284,13 +331,26 @@ export const AdminTimetable: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              {activeTimetableId && (
+              {activeTimetableId ? (
                 <button
                   onClick={() => handleDeleteTimetable(activeTimetableId, activeTimetableName || 'Selected Timetable')}
-                  className="px-4 py-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/30 font-bold text-xs shadow-lg transition-all flex items-center gap-2"
+                  disabled={deletingId === activeTimetableId}
+                  className="px-4 py-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/30 font-bold text-xs shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
                 >
                   <Trash2 className="w-4 h-4" />
-                  <span>Delete Timetable</span>
+                  <span>{deletingId === activeTimetableId ? 'Deleting...' : 'Delete Timetable'}</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setTimetableData(null);
+                    setActiveTimetableName('');
+                    setStatusMessage('Cleared draft from preview.');
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-slate-700/40 hover:bg-slate-700 text-slate-300 border border-white/10 font-bold text-xs shadow-lg transition-all flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Clear Draft</span>
                 </button>
               )}
 
@@ -433,11 +493,12 @@ export const AdminTimetable: React.FC = () => {
                       <span>View</span>
                     </button>
                     <button
-                      onClick={() => handleDeleteTimetable(tt.id, tt.name)}
-                      className="px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/30 text-xs font-bold transition-all flex items-center gap-1"
+                      onClick={() => handleDeleteTimetable(tt.id, tt.name || `Grade ${tt.grade} Timetable`)}
+                      disabled={deletingId === tt.id}
+                      className="px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/30 text-xs font-bold transition-all flex items-center gap-1 disabled:opacity-50"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete</span>
+                      <span>{deletingId === tt.id ? 'Deleting...' : 'Delete'}</span>
                     </button>
                   </div>
                 </div>
@@ -450,6 +511,247 @@ export const AdminTimetable: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Manual / Optional FET Educator Subject Allocations (Grades 10 - 12) */}
+      <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 shadow-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white">FET Educator Subject Allocations (Grades 10 - 12)</h3>
+              <p className="text-xs text-slate-400">
+                Manually and optionally assign or expand subjects for high school teachers. The AI Timetable Generator strictly obeys these specializations.
+              </p>
+            </div>
+          </div>
+          <Badge variant="indigo" size="sm">
+            {fetTeachers.length} FET Educators
+          </Badge>
+        </div>
+
+        {loadingFetTeachers ? (
+          <div className="p-6 flex justify-center">
+            <LoadingSpinner size="md" />
+          </div>
+        ) : fetTeachers.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {fetTeachers.map((teacher: any) => {
+              const subjects = Array.isArray(teacher.subjects) ? teacher.subjects : [];
+              const grades = Array.isArray(teacher.grades_taught) ? teacher.grades_taught : [];
+              return (
+                <div key={teacher.id || teacher.user_id} className="p-4 rounded-2xl bg-surface-darker/60 border border-white/5 flex flex-col justify-between gap-3">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <p className="text-xs font-bold text-white">{teacher.full_name} {teacher.surname}</p>
+                      <Badge variant="cyan" size="sm">Grades {grades.join(', ') || '10-12'}</Badge>
+                    </div>
+                    <p className="text-[11px] text-slate-400 font-mono mb-2">{teacher.email}</p>
+                    
+                    <div className="flex flex-wrap gap-1.5 min-h-[32px]">
+                      {subjects.length > 0 ? (
+                        subjects.map((s: string, sIdx: number) => (
+                          <span key={sIdx} className="px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-[10px] font-bold">
+                            {s}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[10px] text-slate-500 italic">No subjects assigned yet</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setEditingTeacherSubjects({
+                        id: teacher.user_id || teacher.id,
+                        name: `${teacher.full_name} ${teacher.surname}`,
+                        subjects: [...subjects]
+                      });
+                      setNewSubjectInput('');
+                    }}
+                    className="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Manage Subjects</span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-6 text-center text-slate-500 text-xs">
+            No FET teachers registered yet.
+          </div>
+        )}
+      </div>
+
+      {/* Edit Teacher Subjects Modal */}
+      {editingTeacherSubjects && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md rounded-3xl bg-surface-dark border border-white/10 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-bold text-white">
+                  Assign Subjects: {editingTeacherSubjects.name}
+                </h4>
+                <p className="text-[11px] text-slate-400">
+                  Select or add subjects strictly taught by this educator.
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Add CAPS Subject Chips */}
+            <div className="space-y-2">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase">Quick Add CAPS Subjects</label>
+              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                {[
+                  'Mathematics',
+                  'Physical Sciences',
+                  'Life Sciences',
+                  'English FAL',
+                  'Home Language',
+                  'Accounting',
+                  'Business Studies',
+                  'Economics',
+                  'Geography',
+                  'History',
+                  'Tourism',
+                  'Mathematical Literacy',
+                  'Life Orientation'
+                ].map((capSub) => {
+                  const isSelected = editingTeacherSubjects.subjects.some(
+                    s => s.toLowerCase().trim() === capSub.toLowerCase().trim()
+                  );
+                  return (
+                    <button
+                      key={capSub}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          setEditingTeacherSubjects({
+                            ...editingTeacherSubjects,
+                            subjects: editingTeacherSubjects.subjects.filter(
+                              s => s.toLowerCase().trim() !== capSub.toLowerCase().trim()
+                            )
+                          });
+                        } else {
+                          setEditingTeacherSubjects({
+                            ...editingTeacherSubjects,
+                            subjects: [...editingTeacherSubjects.subjects, capSub]
+                          });
+                        }
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all border ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white border-indigo-400'
+                          : 'bg-surface-darker text-slate-400 border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      {isSelected ? `✓ ${capSub}` : `+ ${capSub}`}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Custom Subject Input */}
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase">Or Add Custom Subject</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. Engineering Graphics & Design"
+                  value={newSubjectInput}
+                  onChange={(e) => setNewSubjectInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newSubjectInput.trim()) {
+                      e.preventDefault();
+                      if (!editingTeacherSubjects.subjects.includes(newSubjectInput.trim())) {
+                        setEditingTeacherSubjects({
+                          ...editingTeacherSubjects,
+                          subjects: [...editingTeacherSubjects.subjects, newSubjectInput.trim()]
+                        });
+                      }
+                      setNewSubjectInput('');
+                    }
+                  }}
+                  className="flex-1 rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white placeholder:text-slate-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newSubjectInput.trim() && !editingTeacherSubjects.subjects.includes(newSubjectInput.trim())) {
+                      setEditingTeacherSubjects({
+                        ...editingTeacherSubjects,
+                        subjects: [...editingTeacherSubjects.subjects, newSubjectInput.trim()]
+                      });
+                      setNewSubjectInput('');
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-surface-darker hover:bg-white/10 text-white border border-white/10 text-xs font-bold"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+
+            {/* Active Allocated Subjects Display */}
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase">Currently Assigned ({editingTeacherSubjects.subjects.length})</label>
+              <div className="flex flex-wrap gap-1.5 min-h-[36px] p-2 rounded-xl bg-surface-darker/80 border border-white/5">
+                {editingTeacherSubjects.subjects.length > 0 ? (
+                  editingTeacherSubjects.subjects.map((sub, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold"
+                    >
+                      <span>{sub}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingTeacherSubjects({
+                            ...editingTeacherSubjects,
+                            subjects: editingTeacherSubjects.subjects.filter((_, i) => i !== idx)
+                          });
+                        }}
+                        className="hover:text-rose-400 text-slate-400 text-xs font-bold ml-1"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-500 italic p-1">No subjects assigned.</span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setEditingTeacherSubjects(null)}
+                className="flex-1 py-2.5 rounded-xl bg-surface-darker text-slate-300 font-bold text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveTeacherSubjects}
+                disabled={savingTeacherSubjects}
+                className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {savingTeacherSubjects ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <span>Save Specializations</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Slot Modal */}
       {editingSlot && (

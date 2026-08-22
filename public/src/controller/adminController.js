@@ -1657,3 +1657,42 @@ exports.moderateAssessmentBatch = async (req, res) => {
     }
 };
 
+/**
+ * ADMIN: Manually and optionally assigns or updates subjects for a teacher (specifically Grade 10-12 FET educators).
+ */
+exports.updateTeacherSubjects = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { subjects, grades_taught } = req.body;
+
+        if (!Array.isArray(subjects)) {
+            return res.status(400).json({ error: 'Subjects must be provided as an array of subject names.' });
+        }
+
+        const cleanSubjects = subjects.map(s => String(s).trim()).filter(Boolean);
+
+        let query = `
+            UPDATE employees 
+            SET subjects = $1
+            WHERE user_id = $2 OR id = $2
+            RETURNING *
+        `;
+        let result = await db.query(query, [cleanSubjects, id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Educator profile not found in database.' });
+        }
+
+        const emp = result.rows[0];
+
+        res.json({
+            success: true,
+            message: `Subject specializations updated for ${emp.full_name} ${emp.surname}. The AI Timetable Generator will now allocate these subjects strictly to this educator.`,
+            employee: emp
+        });
+    } catch (err) {
+        console.error('Error updating teacher subjects:', err);
+        res.status(500).json({ error: 'Failed to update teacher subjects: ' + err.message });
+    }
+};
+

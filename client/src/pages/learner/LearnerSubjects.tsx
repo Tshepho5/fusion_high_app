@@ -35,17 +35,17 @@ interface LearnerSubjectsProps {
 }
 
 const SA_OFFICIAL_LANGUAGES = [
-  { code: 'isiZulu', name: 'isiZulu', native: 'isiZulu Home Language' },
-  { code: 'isiXhosa', name: 'isiXhosa', native: 'isiXhosa Home Language' },
-  { code: 'Afrikaans', name: 'Afrikaans', native: 'Afrikaans Huistaal' },
-  { code: 'English', name: 'English', native: 'English Home Language' },
   { code: 'Sepedi', name: 'Sepedi', native: 'Sepedi (Sesotho sa Leboa)' },
-  { code: 'Setswana', name: 'Setswana', native: 'Setswana Home Language' },
   { code: 'Sesotho', name: 'Sesotho', native: 'Sesotho Home Language' },
-  { code: 'Xitsonga', name: 'Xitsonga', native: 'Xitsonga Home Language' },
+  { code: 'Setswana', name: 'Setswana', native: 'Setswana Home Language' },
   { code: 'siSwati', name: 'siSwati', native: 'siSwati Home Language' },
   { code: 'Tshivenda', name: 'Tshivenda', native: 'Tshivenda Home Language' },
-  { code: 'isiNdebele', name: 'isiNdebele', native: 'isiNdebele Home Language' }
+  { code: 'Xitsonga', name: 'Xitsonga', native: 'Xitsonga Home Language' },
+  { code: 'Afrikaans', name: 'Afrikaans', native: 'Afrikaans Huistaal' },
+  { code: 'English', name: 'English', native: 'English Home Language' },
+  { code: 'isiNdebele', name: 'isiNdebele', native: 'isiNdebele Home Language' },
+  { code: 'isiXhosa', name: 'isiXhosa', native: 'isiXhosa Home Language' },
+  { code: 'isiZulu', name: 'isiZulu', native: 'isiZulu Home Language' }
 ];
 
 export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic }) => {
@@ -59,10 +59,10 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
   const [tutorTopic, setTutorTopic] = useState<{ id?: string; name?: string }>({ id: 'general', name: '' });
   const [isOfflineNotesOpen, setIsOfflineNotesOpen] = useState(false);
   
-  const [currentHomeLanguage, setCurrentHomeLanguage] = useState<string>('isiZulu');
+  const [currentHomeLanguage, setCurrentHomeLanguage] = useState<string>('');
   const [updatingLanguage, setUpdatingLanguage] = useState<boolean>(false);
   const [languageMessage, setLanguageMessage] = useState<string | null>(null);
-  const [showLanguagePicker, setShowLanguagePicker] = useState<boolean>(false);
+  const [showLanguagePicker, setShowLanguagePicker] = useState<boolean>(true);
 
   const [topics, setTopics] = useState<any[]>([]);
   const [resources, setResources] = useState<any[]>([]);
@@ -80,7 +80,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
     try {
       const res = await learnerService.updateHomeLanguage(newLang);
       setCurrentHomeLanguage(res.home_language || newLang);
-      setLanguageMessage(`Official Home Language updated to ${newLang}! Your stream subjects and AI Tutor are now synchronized.`);
+      setLanguageMessage(`Official Home Language saved as ${newLang}! Your stream subjects and AI Tutor are permanently synchronized.`);
       
       if (res.subjects && Array.isArray(res.subjects)) {
         setSubjects(res.subjects.map((subName: string) => ({
@@ -122,14 +122,16 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
       { name: 'Mathematics', code: `MATH${learnerEnrolledGrade}`, grade: learnerEnrolledGrade, teacher: 'Subject Specialist', curriculum_progress: 50, progress: 75, assignments_due: 0, classmates_count: 32, resources_count: 4 },
       { name: 'Physical Sciences', code: `PHYS${learnerEnrolledGrade}`, grade: learnerEnrolledGrade, teacher: 'Subject Specialist', curriculum_progress: 45, progress: 72, assignments_due: 0, classmates_count: 32, resources_count: 3 },
       { name: 'Life Sciences', code: `LIFE${learnerEnrolledGrade}`, grade: learnerEnrolledGrade, teacher: 'Subject Specialist', curriculum_progress: 60, progress: 78, assignments_due: 0, classmates_count: 32, resources_count: 5 },
-      { name: 'English FAL', code: `ENGL${learnerEnrolledGrade}`, grade: learnerEnrolledGrade, teacher: 'Subject Specialist', curriculum_progress: 70, progress: 80, assignments_due: 0, classmates_count: 32, resources_count: 6 },
-      { name: 'isiZulu Home Language', code: `ISIZ${learnerEnrolledGrade}`, grade: learnerEnrolledGrade, teacher: 'Subject Specialist', curriculum_progress: 65, progress: 82, assignments_due: 0, classmates_count: 32, resources_count: 4 }
+      { name: 'English FAL', code: `ENGL${learnerEnrolledGrade}`, grade: learnerEnrolledGrade, teacher: 'Subject Specialist', curriculum_progress: 70, progress: 80, assignments_due: 0, classmates_count: 32, resources_count: 6 }
     ];
 
     learnerService.getMySubjectsOverview()
       .then((data) => {
         if (data.home_language) {
           setCurrentHomeLanguage(data.home_language);
+          setShowLanguagePicker(false);
+        } else {
+          setShowLanguagePicker(true);
         }
         const list = Array.isArray(data) ? data : data.subjects || [];
         setSubjects(list.length > 0 ? list : defaultLearnerSubjects);
@@ -700,11 +702,15 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Official Curriculum Language</span>
-                  <Badge variant="amber" size="sm">{currentHomeLanguage} Home Language</Badge>
+                  <Badge variant={currentHomeLanguage ? "amber" : "rose"} size="sm">
+                    {currentHomeLanguage ? `${currentHomeLanguage} Home Language` : 'Action Required: Select Language'}
+                  </Badge>
                 </div>
-                <h3 className="text-base font-bold text-white">Select Your South African Home Language</h3>
+                <h3 className="text-base font-bold text-white">
+                  {currentHomeLanguage ? `Selected Home Language: ${currentHomeLanguage}` : 'Select Your South African Home Language (1 of 11)'}
+                </h3>
                 <p className="text-xs text-slate-400 max-w-2xl">
-                  Choose which of the 11 official South African languages you study. The school database will immediately allocate your official language subject and configure your AI Subject Specialist for your grade syllabus.
+                  Choose which of the 11 official South African languages you study. The school database permanently allocates your specified language and synchronizes your AI Subject Specialist.
                 </p>
               </div>
 
@@ -714,7 +720,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                   onClick={() => setShowLanguagePicker(!showLanguagePicker)}
                   className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-md transition-all shrink-0"
                 >
-                  {showLanguagePicker ? 'Close Language Bar' : 'Change Home Language'}
+                  {showLanguagePicker ? 'Hide Language Bar' : (currentHomeLanguage ? 'Change Home Language' : 'Choose Language')}
                 </button>
               </div>
             </div>
