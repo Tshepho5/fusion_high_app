@@ -244,6 +244,10 @@ app.get('/api/health', (req, res) => res.status(200).json({ status: 'healthy', u
 
 // SPA Catch-all route (supports React Router client-side routes)
 app.use((req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
   const spaIndex = path.join(clientDistPath, 'index.html');
   if (fs.existsSync(spaIndex)) {
     return res.sendFile(spaIndex);
