@@ -283,20 +283,32 @@ export const AdminTimetable: React.FC = () => {
               <Badge variant="indigo" size="sm">45-Min Nutrition Break</Badge>
             </div>
 
-            <button
-              onClick={handlePublishToTeachers}
-              disabled={publishing}
-              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
-            >
-              {publishing ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  <span>Publish Master Timetable</span>
-                </>
+            <div className="flex items-center gap-2">
+              {activeTimetableId && (
+                <button
+                  onClick={() => handleDeleteTimetable(activeTimetableId, activeTimetableName || 'Selected Timetable')}
+                  className="px-4 py-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/30 font-bold text-xs shadow-lg transition-all flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete Timetable</span>
+                </button>
               )}
-            </button>
+
+              <button
+                onClick={handlePublishToTeachers}
+                disabled={publishing}
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
+              >
+                {publishing ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>Publish Master Timetable</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Class & Day Filter Tabs */}

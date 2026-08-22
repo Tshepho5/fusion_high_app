@@ -646,38 +646,46 @@ exports.deleteTimetable = async (req, res) => {
         await db.query('DELETE FROM timetables WHERE id = $1', [id]);
 
         // 3. Post notification to announcements specifically for educators of this deleted class/grade
-        await db.query(
-            `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, created_at)
-             VALUES ($1, $2, 'teacher', $3, $4, $5, NOW())`,
-            [
-                `Timetable Deleted: ${tt.name || classSummary}`,
-                `Notice to Educators: The class timetable for ${classSummary} (${stream}) has been removed and reset by Administration. Previous teaching allocations for these classes are now open for new schedule generation.`,
-                adminId,
-                grade,
-                stream
-            ]
-        );
+        try {
+            await db.query(
+                `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, created_at)
+                 VALUES ($1, $2, 'teacher', $3, $4, $5, NOW())`,
+                [
+                    `Timetable Deleted: ${tt.name || classSummary}`,
+                    `Notice to Educators: The class timetable for ${classSummary} (${stream}) has been removed and reset by Administration. Previous teaching allocations for these classes are now open for new schedule generation.`,
+                    adminId,
+                    grade,
+                    stream
+                ]
+            );
+        } catch (annErr) {
+            console.warn('Could not dispatch timetable deletion announcement:', annErr.message);
+        }
 
         // 4. Send direct message notification to educators teaching this grade/class
-        const teachersRes = await db.query(
-            `SELECT u.id, u.full_name 
-             FROM users u 
-             JOIN employees e ON u.id = e.user_id 
-             WHERE ($1 = ANY(e.grades_taught) OR e.grades_taught IS NULL OR ARRAY_LENGTH(e.grades_taught, 1) = 0)`,
-            [grade]
-        );
+        try {
+            const teachersRes = await db.query(
+                `SELECT u.id, u.full_name 
+                 FROM users u 
+                 JOIN employees e ON u.id = e.user_id 
+                 WHERE ($1 = ANY(e.grades_taught) OR e.grades_taught IS NULL OR ARRAY_LENGTH(e.grades_taught, 1) = 0)`,
+                [grade]
+            );
 
-        const notifySubject = `Timetable Reset Notice: ${classSummary}`;
-        const notifyBody = `Administration has deleted and reset the timetable for ${classSummary} (${stream}). A new conflict-free schedule will be published shortly.`;
+            const notifySubject = `Timetable Reset Notice: ${classSummary}`;
+            const notifyBody = `Administration has deleted and reset the timetable for ${classSummary} (${stream}). A new conflict-free schedule will be published shortly.`;
 
-        for (const teacher of teachersRes.rows) {
-            try {
-                await db.query(
-                    `INSERT INTO messages (sender_id, recipient_id, subject, body, created_at)
-                     VALUES ($1, $2, $3, $4, NOW())`,
-                    [adminId, teacher.id, notifySubject, notifyBody]
-                );
-            } catch (e) {}
+            for (const teacher of teachersRes.rows) {
+                try {
+                    await db.query(
+                        `INSERT INTO messages (sender_id, recipient_id, subject, body, created_at)
+                         VALUES ($1, $2, $3, $4, NOW())`,
+                        [adminId, teacher.id, notifySubject, notifyBody]
+                    );
+                } catch (_) {}
+            }
+        } catch (msgErr) {
+            console.warn('Could not dispatch direct teacher messages:', msgErr.message);
         }
 
         res.json({
