@@ -122,16 +122,15 @@ export const TeacherAssessments: React.FC = () => {
     teacherService.getClassRoster({ class: selectedClass, subject: selectedSubject })
       .then((res) => {
         const roster = Array.isArray(res) ? res : res.roster || res.learners || [];
-        setLearners(roster.map((s: any, idx: number) => {
+        setLearners(roster.map((s: any) => {
           const baseMark = s.current_mark !== null && s.current_mark !== undefined 
             ? Math.round(parseFloat(s.current_mark)) 
-            : 70 + ((s.id * 7) % 25);
+            : 0;
 
-          // Simulated realistic historical and in-app AI marks for consistent reporting
-          const t1 = Math.min(98, Math.max(35, baseMark - ((idx % 3) * 3) + 2));
-          const t2 = Math.min(98, Math.max(35, baseMark + ((idx % 2) * 2) - 1));
-          const t3 = baseMark;
-          const aiScore = Math.min(100, Math.max(50, baseMark + 5 + ((idx % 4) * 2)));
+          const t1 = s.term1_mark !== undefined && s.term1_mark !== null ? Math.round(parseFloat(s.term1_mark)) : baseMark;
+          const t2 = s.term2_mark !== undefined && s.term2_mark !== null ? Math.round(parseFloat(s.term2_mark)) : baseMark;
+          const t3 = s.term3_mark !== undefined && s.term3_mark !== null ? Math.round(parseFloat(s.term3_mark)) : baseMark;
+          const aiScore = s.ai_score !== undefined && s.ai_score !== null ? Math.round(parseFloat(s.ai_score)) : (baseMark > 0 ? baseMark : 0);
 
           return {
             id: s.id || s.child_id,
@@ -146,8 +145,8 @@ export const TeacherAssessments: React.FC = () => {
             term2_mark: t2,
             term3_mark: t3,
             ai_activities_mark: aiScore,
-            ai_completed_count: 4 + (idx % 6),
-            inputMark: baseMark <= totalMarks ? baseMark : Math.round((baseMark / 100) * totalMarks),
+            ai_completed_count: s.ai_completed_count || 0,
+            inputMark: baseMark <= totalMarks ? (baseMark > 0 ? baseMark : '') : Math.round((baseMark / 100) * totalMarks),
           };
         }));
       })

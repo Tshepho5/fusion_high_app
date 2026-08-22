@@ -191,11 +191,8 @@ export const EducatorLeaveReliefManager: React.FC = () => {
         <div>
           <h2 className="text-xl md:text-2xl font-extrabold font-display text-white tracking-tight flex items-center gap-2">
             <UserCheck className="w-6 h-6 text-brand-400" />
-            <span>Educator Leave & Relief Duty Scheduler</span>
+            <span>Educator Leave & Relief Scheduler</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Review educator absence requests, scan timetable periods for free substitute teachers, and prevent unattended classrooms.
-          </p>
         </div>
 
         <div className="flex items-center gap-2">

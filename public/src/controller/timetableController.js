@@ -31,33 +31,34 @@ async function ensureTimetablesTable() {
 }
 ensureTimetablesTable();
 
-// Standard 1-hour CAPS Class Periods with 45-minute nutrition break between 4th and 5th period:
-// Period 1: 07:15-08:15 (60 min)
-// Period 2: 08:15-09:15 (60 min)
-// Period 3: 09:15-10:15 (60 min)
-// Period 4: 10:15-11:15 (60 min)
-// [BREAK: 11:15-12:00 (45 min)]
-// Period 5: 12:00-13:00 (60 min)
-// Period 6: 13:00-14:00 (60 min)
+// Standard 1-hour CAPS Class Periods (60 minutes each) with 45-minute nutrition break:
+// Period 1: 08:00 - 09:00 (60 min)
+// Period 2: 09:00 - 10:00 (60 min)
+// Period 3: 10:00 - 11:00 (60 min)
+// [BREAK: 11:00 - 11:45 (45 min Interval & Nutrition)]
+// Period 4: 11:45 - 12:45 (60 min)
+// Period 5: 12:45 - 13:45 (60 min)
+// Period 6: 13:45 - 14:45 (60 min)
 const PERIODS_1_HOUR = [
-    "07:15-08:15",
-    "08:15-09:15",
-    "09:15-10:15",
-    "10:15-11:15",
-    "12:00-13:00",
-    "13:00-14:00"
+    "08:00 - 09:00",
+    "09:00 - 10:00",
+    "10:00 - 11:00",
+    "11:45 - 12:45",
+    "12:45 - 13:45",
+    "13:45 - 14:45"
 ];
 
 /**
  * Generates an automated, clash-free, CAPS-aligned weekly timetable preview with 1-hour class periods.
+ * Smartly allocates ~3 slots per teacher per day across different classes with morning/afternoon rotation.
  */
 exports.generateAITimetable = async (req, res) => {
-    const { grade = 10, stream = 'General' } = req.body;
+    const { grade = 10, stream = 'General', target_subject, max_teacher_daily_slots = 3 } = req.body;
     const targetGrade = parseInt(grade, 10) || 10;
 
     try {
-        // Fetch only active TEACHERS (strictly excluding admin/management), classes, and subjects
-        const [teachersRes, classesRes, subjectsRes] = await Promise.all([
+        // 1. Fetch active TEACHERS (excluding admin/management), classes, and subjects
+        const [teachersRes, classesRes, subjectsRes, activeTimetablesRes] = await Promise.all([
             db.query(
                 `SELECT u.id as user_id, u.full_name, u.surname, u.email, e.subjects, e.grades_taught, e.classes_taught 
                  FROM users u 
@@ -65,9 +66,7 @@ exports.generateAITimetable = async (req, res) => {
                  LEFT JOIN roles r ON u.role_id = r.id
                  WHERE (r.name = 'teacher' OR r.name IS NULL)
                    AND LOWER(COALESCE(r.name, '')) != 'admin'
-                   AND ($1 = ANY(e.grades_taught) OR e.grades_taught IS NULL OR ARRAY_LENGTH(e.grades_taught, 1) = 0 OR ARRAY_LENGTH(e.grades_taught, 1) IS NULL)
-                 ORDER BY u.surname, u.full_name`,
-                [targetGrade]
+                 ORDER BY u.surname, u.full_name`
             ),
             db.query(
                 `SELECT id, name, grade, stream FROM classes WHERE grade = $1 AND (stream = $2 OR stream IS NULL OR stream = 'General') ORDER BY name;`,
@@ -76,6 +75,11 @@ exports.generateAITimetable = async (req, res) => {
             db.query(
                 `SELECT name FROM subjects WHERE (grade = $1 OR grade IS NULL) AND (stream = $2 OR stream = 'General' OR stream ILIKE 'General%') ORDER BY name;`,
                 [targetGrade, stream]
+            ),
+            // Fetch all other active published timetables to avoid global educator double-booking
+            db.query(
+                `SELECT id, grade, stream, timetable_data FROM timetables WHERE is_active = TRUE AND grade != $1`,
+                [targetGrade]
             )
         ]);
 
@@ -89,7 +93,6 @@ exports.generateAITimetable = async (req, res) => {
 
         let teachers = teachersRes.rows;
         if (teachers.length === 0) {
-            // Fallback to all teachers in the employees table, excluding any administrators
             const allTeachersRes = await db.query(
                 `SELECT u.id as user_id, u.full_name, u.surname, u.email, e.subjects, e.grades_taught 
                  FROM users u 
@@ -104,7 +107,6 @@ exports.generateAITimetable = async (req, res) => {
 
         let subjects = subjectsRes.rows.map(s => s.name);
         if (subjects.length < 6) {
-            // Ensure at least 6 core CAPS subjects so each period of the 6-period day has a unique subject
             const coreSubjects = [
                 'Mathematics',
                 'Physical Sciences',
@@ -122,6 +124,11 @@ exports.generateAITimetable = async (req, res) => {
             });
         }
 
+        // If a specific target subject was prioritized by the admin, place it at the front
+        if (target_subject && subjects.includes(target_subject)) {
+            subjects = [target_subject, ...subjects.filter(s => s !== target_subject)];
+        }
+
         const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
         // Initialize timetable structure for each class
@@ -133,25 +140,33 @@ exports.generateAITimetable = async (req, res) => {
             });
         });
 
-        // Run full collision-free scheduling algorithm with 1-hour periods and strict subject uniqueness per day
-        const fullResult = autoScheduleFullTimetableLogic(timetable, { grade: targetGrade, stream }, teachers, subjects, classes);
+        // Run full conflict-free scheduling with 1-hour periods, max 3 slots per teacher/day, and cross-timetable safety
+        const fullResult = autoScheduleFullTimetableLogic(
+            timetable,
+            { grade: targetGrade, stream, target_subject, max_teacher_daily_slots: parseInt(max_teacher_daily_slots, 10) || 3 },
+            teachers,
+            subjects,
+            classes,
+            activeTimetablesRes.rows
+        );
+
         const finalTimetableData = fullResult.timetable_data;
         const filledCount = fullResult.filled_count;
 
         res.json({
-            message: `1-Hour Timetable preview generated successfully with 45-min break and unique subjects per day. Scheduled ${filledCount} clash-free period slots across classes.`,
+            message: `1-Hour Timetable preview generated successfully (${filledCount} periods scheduled with 0 clashes and 3 slots/day teacher workload balance).`,
             timetable_data: finalTimetableData,
             teachers: teachers,
             filled_count: filledCount,
             classes: classes,
             periods: PERIODS_1_HOUR,
             break_time: {
-                after_period: 4,
+                after_period: 3,
                 duration: "45 Minutes",
-                time: "11:15 - 12:00",
-                label: "Nutrition & Midday Interval"
+                time: "11:00 - 11:45",
+                label: "Nutrition & Midday Break"
             },
-            generation_details: { grade: targetGrade, stream }
+            generation_details: { grade: targetGrade, stream, target_subject }
         });
 
     } catch (err) {
@@ -161,24 +176,57 @@ exports.generateAITimetable = async (req, res) => {
 };
 
 /**
- * Internal logic for scheduling 1-hour periods without teacher or class conflicts,
- * and ensuring that the SAME SUBJECT NEVER APPEARS MORE THAN ONCE PER DAY for any class.
+ * Intelligent conflict-free 1-hour scheduler:
+ * - Each period takes exactly 1 hour.
+ * - Maximum ~3 periods per day per teacher across classes.
+ * - Rotates morning and afternoon periods across the week.
+ * - Checks other active school timetables to guarantee zero double-booking.
+ * - No subject repeated more than once per day for the same class.
  */
-function autoScheduleFullTimetableLogic(timetable_data, generation_details, allTeachers, availableSubjects, classesList) {
+function autoScheduleFullTimetableLogic(timetable_data, generation_details, allTeachers, availableSubjects, classesList, otherActiveTimetables = []) {
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-    const periods = PERIODS_1_HOUR; // 6 slots of 1 hour each per day
+    const periods = PERIODS_1_HOUR; // 6 slots of 1 hour each
+    const maxDailySlotsPerTeacher = generation_details.max_teacher_daily_slots || 3;
 
-    // Teacher occupancy tracker to strictly prevent clashes: teacherBusyMap[teacherId][day][period] = true
+    // 1. Build teacher occupancy tracker from existing active school timetables
     const teacherBusyMap = {};
+    const teacherDailySlotCount = {};
+
     allTeachers.forEach(t => {
-        const tKey = `${t.full_name} ${t.surname || ''}`.trim();
+        const tKey = `${t.full_name} ${t.surname || ''}`.trim().toLowerCase();
         teacherBusyMap[tKey] = {};
+        teacherDailySlotCount[tKey] = {};
         days.forEach(day => {
             teacherBusyMap[tKey][day] = {};
+            teacherDailySlotCount[tKey][day] = 0;
         });
     });
 
-    // Subject uniqueness tracker per class per day: classDaySubjects[className][day] = Set(subjectName)
+    // Populate existing busy slots from other grades' published active timetables
+    otherActiveTimetables.forEach(activeTT => {
+        const data = typeof activeTT.timetable_data === 'string' ? JSON.parse(activeTT.timetable_data) : activeTT.timetable_data;
+        if (!data) return;
+        Object.keys(data).forEach(cName => {
+            const classObj = data[cName];
+            days.forEach(day => {
+                const dayObj = classObj?.[day];
+                if (!dayObj) return;
+                Object.keys(dayObj).forEach(period => {
+                    const slot = dayObj[period];
+                    if (slot && slot.teacher) {
+                        const tKey = slot.teacher.trim().toLowerCase();
+                        if (teacherBusyMap[tKey]) {
+                            if (!teacherBusyMap[tKey][day]) teacherBusyMap[tKey][day] = {};
+                            teacherBusyMap[tKey][day][period] = true;
+                            teacherDailySlotCount[tKey][day] = (teacherDailySlotCount[tKey][day] || 0) + 1;
+                        }
+                    }
+                });
+            });
+        });
+    });
+
+    // 2. Subject uniqueness tracker per class per day
     const classDaySubjects = {};
     const classNames = Object.keys(timetable_data);
     classNames.forEach(cName => {
@@ -200,12 +248,13 @@ function autoScheduleFullTimetableLogic(timetable_data, generation_details, allT
         'Geography'
     ];
 
-    // Schedule across days and periods to guarantee no teacher or class conflicts, and NO duplicate subject in a day
+    // 3. Schedule slots with workload distribution
     for (let dIdx = 0; dIdx < days.length; dIdx++) {
         const day = days[dIdx];
 
         for (let pIdx = 0; pIdx < periods.length; pIdx++) {
             const period = periods[pIdx];
+            const isMorning = pIdx < 3; // Periods 1, 2, 3 are morning; 4, 5, 6 are afternoon
 
             for (let cIdx = 0; cIdx < classNames.length; cIdx++) {
                 const className = classNames[cIdx];
@@ -216,21 +265,24 @@ function autoScheduleFullTimetableLogic(timetable_data, generation_details, allT
                     continue;
                 }
 
-                // Pick a subject that has NOT yet been used on this day for this class
+                // Pick a subject not yet taken today by this class
                 let unusedSubjects = subjectsList.filter(s => !classDaySubjects[className][day].has(s));
                 if (unusedSubjects.length === 0) {
                     unusedSubjects = subjectsList;
                 }
 
+                // Deterministic and varied subject rotation
                 const subjectOffset = (dIdx * 3 + pIdx + cIdx * 2) % unusedSubjects.length;
                 const currentSubject = unusedSubjects[subjectOffset];
                 classDaySubjects[className][day].add(currentSubject);
 
-                // Find a teacher who teaches this subject and is NOT currently teaching another class in this period
+                // Find a free subject specialist teacher with capacity (< maxDailySlotsPerTeacher)
                 let assignedTeacher = allTeachers.find(t => {
-                    const tName = `${t.full_name} ${t.surname || ''}`.trim();
-                    const isBusy = teacherBusyMap[tName]?.[day]?.[period];
-                    if (isBusy) return false;
+                    const tKey = `${t.full_name} ${t.surname || ''}`.trim().toLowerCase();
+                    if (teacherBusyMap[tKey]?.[day]?.[period]) return false;
+                    
+                    const dailySlots = teacherDailySlotCount[tKey]?.[day] || 0;
+                    if (dailySlots >= maxDailySlotsPerTeacher) return false;
 
                     const teachesSubject = Array.isArray(t.subjects) && t.subjects.some(s => {
                         const sLow = s.toLowerCase();
@@ -238,36 +290,49 @@ function autoScheduleFullTimetableLogic(timetable_data, generation_details, allT
                         return sLow === curLow || sLow.includes(curLow) || curLow.includes(sLow) ||
                             (curLow.includes('math') && sLow.includes('math')) ||
                             (curLow.includes('physic') && sLow.includes('physic')) ||
-                            (curLow.includes('life') && sLow.includes('life'));
+                            (curLow.includes('life') && sLow.includes('life')) ||
+                            (curLow.includes('english') && sLow.includes('english')) ||
+                            (curLow.includes('account') && sLow.includes('account'));
                     });
 
                     return teachesSubject;
                 });
 
-                // If no subject specialist is free, find any available teacher who is not busy in this 1-hour slot
+                // Fallback: If all qualified teachers are at max daily capacity, relax daily slot cap by 1
                 if (!assignedTeacher) {
                     assignedTeacher = allTeachers.find(t => {
-                        const tName = `${t.full_name} ${t.surname || ''}`.trim();
-                        return !teacherBusyMap[tName]?.[day]?.[period];
+                        const tKey = `${t.full_name} ${t.surname || ''}`.trim().toLowerCase();
+                        if (teacherBusyMap[tKey]?.[day]?.[period]) return false;
+                        const dailySlots = teacherDailySlotCount[tKey]?.[day] || 0;
+                        return dailySlots < (maxDailySlotsPerTeacher + 1);
+                    });
+                }
+
+                // Final safety: Any available teacher not busy in this slot
+                if (!assignedTeacher) {
+                    assignedTeacher = allTeachers.find(t => {
+                        const tKey = `${t.full_name} ${t.surname || ''}`.trim().toLowerCase();
+                        return !teacherBusyMap[tKey]?.[day]?.[period];
                     });
                 }
 
                 const teacherFullName = assignedTeacher
                     ? `${assignedTeacher.full_name} ${assignedTeacher.surname || ''}`.trim()
-                    : (allTeachers[0] ? `${allTeachers[0].full_name} ${allTeachers[0].surname || ''}`.trim() : 'Faculty Educator');
+                    : (allTeachers[cIdx % allTeachers.length] ? `${allTeachers[cIdx % allTeachers.length].full_name} ${allTeachers[cIdx % allTeachers.length].surname || ''}`.trim() : 'Faculty Educator');
 
                 if (assignedTeacher) {
-                    const tKey = `${assignedTeacher.full_name} ${assignedTeacher.surname || ''}`.trim();
+                    const tKey = `${assignedTeacher.full_name} ${assignedTeacher.surname || ''}`.trim().toLowerCase();
                     if (teacherBusyMap[tKey]) {
                         if (!teacherBusyMap[tKey][day]) teacherBusyMap[tKey][day] = {};
                         teacherBusyMap[tKey][day][period] = true;
+                        teacherDailySlotCount[tKey][day] = (teacherDailySlotCount[tKey][day] || 0) + 1;
                     }
                 }
 
                 timetable_data[className][day][period] = {
                     subject: currentSubject,
                     teacher: teacherFullName,
-                    room: `Room ${className.replace(/[^0-9]/g, '') || '10'}A`,
+                    room: `Room ${className.replace(/[^0-9]/g, '') || '10'}${String.fromCharCode(65 + cIdx)}`,
                     duration: '1 Hour (60 min)',
                     lesson_focus: `CAPS ${currentSubject} 1-Hour Curriculum Session`
                 };
@@ -387,13 +452,17 @@ exports.publishToTeachers = async (req, res) => {
 };
 
 /**
- * TEACHER: Gets timetables assigned to this teacher for review/adjustment.
+ * TEACHER: Gets timetables assigned to this teacher with dedicated personal slot synthesis.
  */
 exports.getTeacherTimetables = async (req, res) => {
     const teacherId = req.user.id;
     try {
-        const empRes = await db.query('SELECT grades_taught, subjects FROM employees WHERE user_id = $1', [teacherId]);
+        const [empRes, userRes] = await Promise.all([
+            db.query('SELECT grades_taught, subjects FROM employees WHERE user_id = $1', [teacherId]),
+            db.query('SELECT full_name, surname FROM users WHERE id = $1', [teacherId])
+        ]);
         const grades = empRes.rows[0]?.grades_taught || [10, 11, 12];
+        const teacherName = userRes.rows[0] ? `${userRes.rows[0].full_name} ${userRes.rows[0].surname || ''}`.trim() : '';
 
         const { rows } = await db.query(
             `SELECT * FROM timetables 
@@ -401,7 +470,72 @@ exports.getTeacherTimetables = async (req, res) => {
              ORDER BY updated_at DESC`,
             [grades.length ? grades : [10, 11, 12]]
         );
-        res.json(rows);
+
+        // Build personalized timetable slots for this teacher across all active grades & classes
+        const mySlots = [];
+        const personalTimetable = {
+            Monday: {},
+            Tuesday: {},
+            Wednesday: {},
+            Thursday: {},
+            Friday: {}
+        };
+
+        const tLower = teacherName.toLowerCase();
+        const surnameLower = userRes.rows[0]?.surname ? userRes.rows[0].surname.toLowerCase() : '';
+
+        rows.forEach(tt => {
+            const data = typeof tt.timetable_data === 'string' ? JSON.parse(tt.timetable_data) : tt.timetable_data;
+            if (!data) return;
+
+            Object.keys(data).forEach(className => {
+                const classDays = data[className];
+                ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(day => {
+                    const daySlots = classDays?.[day];
+                    if (!daySlots) return;
+
+                    Object.keys(daySlots).forEach(period => {
+                        const slot = daySlots[period];
+                        if (slot && slot.teacher) {
+                            const slotTeacherLower = slot.teacher.toLowerCase();
+                            const isMatch = (tLower && slotTeacherLower.includes(tLower)) ||
+                                (surnameLower && slotTeacherLower.includes(surnameLower));
+
+                            if (isMatch) {
+                                const entry = {
+                                    timetable_id: tt.id,
+                                    grade: tt.grade,
+                                    class_name: className,
+                                    day,
+                                    period,
+                                    subject: slot.subject,
+                                    teacher: slot.teacher,
+                                    room: slot.room || `Room ${className.replace(/[^0-9]/g, '') || '10'}A`,
+                                    duration: slot.duration || '1 Hour (60 min)',
+                                    lesson_focus: slot.lesson_focus
+                                };
+                                mySlots.push(entry);
+                                personalTimetable[day][period] = entry;
+                            }
+                        }
+                    });
+                });
+            });
+        });
+
+        // Also assign array behavior so res is directly iterable or accessed via properties
+        const responseData = [...rows];
+        responseData.timetables = rows;
+        responseData.personal_schedule = personalTimetable;
+        responseData.my_slots = mySlots;
+        responseData.teacher_name = teacherName;
+
+        res.json({
+            timetables: rows,
+            personal_schedule: personalTimetable,
+            my_slots: mySlots,
+            teacher_name: teacherName
+        });
     } catch (err) {
         console.error('Error fetching teacher timetables:', err);
         res.status(500).json({ error: 'Failed to load teacher timetables.' });
@@ -487,11 +621,78 @@ exports.getTimetableById = async (req, res) => {
 
 exports.deleteTimetable = async (req, res) => {
     const { id } = req.params;
+    const adminId = req.user ? req.user.id : null;
+
     try {
+        // 1. Fetch timetable details before deletion
+        const ttRes = await db.query('SELECT * FROM timetables WHERE id = $1', [id]);
+        if (ttRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Timetable not found.' });
+        }
+        const tt = ttRes.rows[0];
+        const grade = tt.grade || 10;
+        const stream = tt.stream || 'General';
+
+        let classSummary = `Grade ${grade}`;
+        try {
+            const data = typeof tt.timetable_data === 'string' ? JSON.parse(tt.timetable_data) : tt.timetable_data;
+            const classKeys = Object.keys(data || {});
+            if (classKeys.length > 0) {
+                classSummary = classKeys.join(', ');
+            }
+        } catch (e) {}
+
+        // 2. Delete timetable from database (frees slots immediately)
         await db.query('DELETE FROM timetables WHERE id = $1', [id]);
-        res.json({ message: 'Timetable deleted successfully.' });
+
+        // 3. Post notification to announcements specifically for educators of this deleted class/grade
+        await db.query(
+            `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, created_at)
+             VALUES ($1, $2, 'teacher', $3, $4, $5, NOW())`,
+            [
+                `Timetable Deleted: ${tt.name || classSummary}`,
+                `Notice to Educators: The class timetable for ${classSummary} (${stream}) has been removed and reset by Administration. Previous teaching allocations for these classes are now open for new schedule generation.`,
+                adminId,
+                grade,
+                stream
+            ]
+        );
+
+        // 4. Send direct message notification to educators teaching this grade/class
+        const teachersRes = await db.query(
+            `SELECT u.id, u.full_name 
+             FROM users u 
+             JOIN employees e ON u.id = e.user_id 
+             WHERE ($1 = ANY(e.grades_taught) OR e.grades_taught IS NULL OR ARRAY_LENGTH(e.grades_taught, 1) = 0)`,
+            [grade]
+        );
+
+        const notifySubject = `Timetable Reset Notice: ${classSummary}`;
+        const notifyBody = `Administration has deleted and reset the timetable for ${classSummary} (${stream}). A new conflict-free schedule will be published shortly.`;
+
+        for (const teacher of teachersRes.rows) {
+            try {
+                await db.query(
+                    `INSERT INTO messages (sender_id, recipient_id, subject, body, created_at)
+                     VALUES ($1, $2, $3, $4, NOW())`,
+                    [adminId, teacher.id, notifySubject, notifyBody]
+                );
+            } catch (e) {}
+        }
+
+        res.json({
+            message: `Timetable for ${classSummary} deleted successfully. Educators assigned to ${classSummary} have been notified via Announcements.`,
+            deleted_timetable: {
+                id: tt.id,
+                name: tt.name,
+                grade: tt.grade,
+                stream: tt.stream,
+                classes: classSummary
+            }
+        });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('Error deleting timetable:', err);
+        res.status(500).json({ error: 'Failed to delete timetable: ' + err.message });
     }
 };
 

@@ -139,11 +139,8 @@ export const ExamSeatingManager: React.FC = () => {
           </div>
           <h2 className="text-2xl font-extrabold text-white font-display flex items-center gap-2">
             <Grid className="w-6 h-6 text-brand-400" />
-            <span>Examination Seating & Candidate Admission Card</span>
+            <span>Examination Seating</span>
           </h2>
-          <p className="text-xs text-slate-400 max-w-2xl">
-            View your allocated exam halls, desk numbers, and candidate identification numbers. Please arrive at your designated venue 30 minutes before commencement.
-          </p>
         </div>
 
         {examList.length > 0 ? (
@@ -206,11 +203,8 @@ export const ExamSeatingManager: React.FC = () => {
         <div>
           <h2 className="text-xl md:text-2xl font-extrabold font-display text-white tracking-tight flex items-center gap-2">
             <Grid className="w-6 h-6 text-brand-400" />
-            <span>Examination Seating & Candidate Allocation Planner</span>
+            <span>Examination Seating Planner</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Configure examination hall layouts, generate automated desk allocations with candidate IDs, and print official exam hall plans.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">

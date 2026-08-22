@@ -156,7 +156,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
 
           {/* Quick Study Center Action */}
           <button
-            onClick={() => onNavigateTab('study-center')}
+            onClick={() => onNavigateTab('ai-tutor')}
             className="flex items-center gap-2 self-start md:self-auto px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-md transition-all active:scale-95 shrink-0"
           >
             <FusionAIIcon className="w-4 h-4 text-cyan-200" />

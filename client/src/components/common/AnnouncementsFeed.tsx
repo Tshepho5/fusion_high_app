@@ -223,11 +223,8 @@ export const AnnouncementsFeed: React.FC = () => {
         <div>
           <h2 className="text-xl md:text-2xl font-extrabold font-display text-white tracking-tight flex items-center gap-2">
             <Megaphone className="w-6 h-6 text-brand-400" />
-            School Notices & Official Broadcasts
+            School Notices & Broadcasts
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Real-time administrative announcements, exam dates, and official notices.
-          </p>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">

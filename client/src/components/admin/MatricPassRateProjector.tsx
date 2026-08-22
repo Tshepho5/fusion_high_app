@@ -91,11 +91,8 @@ export const MatricPassRateProjector: React.FC = () => {
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-display flex items-center gap-2 mt-1">
               <GraduationCap className="w-7 h-7 text-brand-400" />
-              <span>Matric Candidate Pass Rate Projector</span>
+              <span>Candidate Pass Rate</span>
             </h2>
-            <p className="text-xs text-slate-300 max-w-2xl">
-              Real-time predictive pass rate modeling based on official DBE National Senior Certificate qualification benchmarks, gateway subject health diagnostics, and at-risk candidate intervention tracking.
-            </p>
           </div>
 
           <button

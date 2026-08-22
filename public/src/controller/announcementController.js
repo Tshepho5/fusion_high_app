@@ -35,30 +35,93 @@ exports.createAnnouncement = async (req, res) => {
 
 exports.getAnnouncements = async (req, res) => {
     try {
-        let result;
-        if (req.user.role === 'learner') {
-            const learnerRes = await db.query('SELECT grade, stream, subjects FROM children WHERE learner_user_id = $1', [req.user.id]);
-            if (learnerRes.rows.length === 0) return res.status(404).json({ error: 'Learner profile not found' });
-            const { grade, stream, subjects } = learnerRes.rows[0];
+        const userRole = (req.user?.role || '').toLowerCase();
+        const userId = req.user?.id;
 
-            result = await db.query(
-                `SELECT * FROM announcements 
-         WHERE (role_target = 'learner' OR role_target = 'all')
-         AND (grade_target IS NULL OR grade_target = $1)
-         AND (stream_target IS NULL OR stream_target = $2 OR stream_target = 'General')
-         AND (subject_target IS NULL OR subject_target = ANY($3::text[]))
-         ORDER BY created_at DESC`,
-                [grade, stream, subjects]);
-        } else {
-            const role_filter = req.query.role_target || req.user.role;
-            // Corrected query to fetch announcements for the specific role OR for 'all'
-            result = await db.query(
-                `SELECT * FROM announcements WHERE role_target = $1 OR role_target = 'all' ORDER BY created_at DESC`,
-                [role_filter]
-            );
+        // Auto-seed default school notices if table is empty
+        const countRes = await db.query('SELECT COUNT(*) FROM announcements');
+        if (parseInt(countRes.rows[0].count, 10) === 0) {
+            await db.query(`
+                INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, created_at)
+                VALUES
+                  ('Term 3 Academic Assessment Schedule & SBA Guidelines', 'All learners and parents are reminded that formal Term 3 CAPS assessments commence next week. Please consult your timetable and subject study guides.', 'all', $1, NULL, 'General', NOW() - INTERVAL '2 days'),
+                  ('Parent-Teacher Consultations & Academic Progress Review', 'Term 3 PTC booking slots are now open in the Parent Portal. Please book a 15-minute slot with your child subject educators.', 'parent', $1, NULL, 'General', NOW() - INTERVAL '1 day'),
+                  ('National Senior Certificate (NSFAS & Tertiary Bursaries)', 'Grade 12 matriculants are encouraged to view the Bursary & Scholarship Matching Hub to track open higher education funding opportunities.', 'learner', $1, 12, 'General', NOW())
+            `, [userId || null]);
         }
-        res.json(result.rows);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+
+        let query = `
+            SELECT 
+                a.id, 
+                a.title, 
+                a.content, 
+                a.role_target, 
+                a.grade_target, 
+                a.stream_target, 
+                a.subject_target,
+                a.created_at,
+                COALESCE(CONCAT(u.full_name, ' ', u.surname), 'School Administration') AS author_name
+            FROM announcements a
+            LEFT JOIN users u ON a.author_id = u.id
+            WHERE 1=1
+        `;
+        const params = [];
+
+        if (userRole === 'admin') {
+            // Admins see all announcements
+            query += ` ORDER BY a.created_at DESC`;
+            const { rows } = await db.query(query, params);
+            return res.json(rows);
+        }
+
+        if (userRole === 'learner') {
+            const learnerRes = await db.query(
+                'SELECT grade, stream, subjects FROM children WHERE learner_user_id = $1 OR id = $1 LIMIT 1',
+                [userId]
+            );
+            const learner = learnerRes.rows[0];
+            const gradeVal = learner?.grade || null;
+            const streamVal = learner?.stream || null;
+
+            params.push(gradeVal);
+            const pGrade = `$${params.length}`;
+            params.push(streamVal);
+            const pStream = `$${params.length}`;
+
+            query += ` AND (a.role_target = 'learner' OR a.role_target = 'all' OR a.role_target IS NULL)`;
+            if (gradeVal) {
+                query += ` AND (a.grade_target IS NULL OR a.grade_target = ${pGrade})`;
+            }
+            if (streamVal) {
+                query += ` AND (a.stream_target IS NULL OR a.stream_target = 'General' OR a.stream_target = ${pStream})`;
+            }
+        } else if (userRole === 'parent') {
+            query += ` AND (a.role_target = 'parent' OR a.role_target = 'all' OR a.role_target IS NULL)`;
+        } else if (userRole === 'teacher') {
+            const empRes = await db.query(
+                'SELECT grades_taught FROM employees WHERE user_id = $1 LIMIT 1',
+                [userId]
+            );
+            const emp = empRes.rows[0];
+            const grades = emp?.grades_taught || [];
+
+            query += ` AND (a.role_target = 'teacher' OR a.role_target = 'all' OR a.role_target IS NULL)`;
+            if (grades.length > 0) {
+                params.push(grades);
+                const pGrades = `$${params.length}`;
+                query += ` AND (a.grade_target IS NULL OR a.grade_target = ANY(${pGrades}::int[]))`;
+            }
+        } else {
+            query += ` AND (a.role_target = 'all' OR a.role_target IS NULL)`;
+        }
+
+        query += ` ORDER BY a.created_at DESC`;
+        const { rows } = await db.query(query, params);
+        res.json(rows);
+    } catch (err) {
+        console.error('Error fetching announcements:', err);
+        res.status(500).json({ error: 'Failed to retrieve announcements: ' + err.message });
+    }
 };
 
 exports.deleteAnnouncement = async (req, res) => {

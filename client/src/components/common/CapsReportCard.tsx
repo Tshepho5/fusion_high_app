@@ -183,9 +183,9 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({ childId, initial
           <div className="absolute inset-0 opacity-[0.035] print:opacity-[0.05] flex flex-col justify-around rotate-[-22deg] scale-150">
             {Array.from({ length: 12 }).map((_, i) => (
               <div key={i} className="whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.35em] text-white print:text-black font-extrabold">
-                FUSION HIGH SCHOOL • OFFICIAL CAPS ACADEMIC TRANSCRIPT • VERIFIED AND SIGNED • MR KUNENE PRINCIPAL • EMIS 700400192 • NATIONAL SENIOR CERTIFICATE • 
+                FUSION HIGH SCHOOL • OFFICIAL ACADEMIC TRANSCRIPT • VERIFIED AND SIGNED • MR MAKULA PRINCIPAL • EMIS 700400192 • 
               </div>
-            ))}
+            ))} 
           </div>
 
           {/* Layer 2: Central SVG Security Guilloche Emblem & Shield */}
@@ -245,7 +245,7 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({ childId, initial
                   Fusion High School
                 </h1>
                 <p className="text-xs text-cyan-300 font-bold tracking-wider uppercase print:text-slate-800">
-                  National Senior Certificate • CAPS Standardized Academic Transcript
+                  • CAPS Standardized Academic Transcript
                 </p>
                 <p className="text-[10px] text-slate-400 font-mono print:text-slate-600">
                   EMIS No: 700400192 • Province: Gauteng • One School, One Connection
@@ -281,7 +281,7 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({ childId, initial
 
             <div>
               <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400 print:text-slate-600">
-                Student ID / Number
+                Learner Number
               </span>
               <span className="font-mono font-bold text-cyan-300 print:text-black text-xs block">
                 {learner.learner_number || '2026-FHS-094'}

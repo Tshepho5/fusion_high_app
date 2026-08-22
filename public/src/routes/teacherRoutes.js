@@ -23,6 +23,7 @@ router.get('/my-subjects-overview', teacherController.getMySubjectsOverview);
 router.get('/performance-overview', teacherController.getTeacherPerformanceOverview);
 router.post('/marks/save', teacherController.saveClassMarks);
 router.get('/classlist', teacherController.getClassList);
+router.get('/class-roster', teacherController.getClassRoster);
 
 
 router.get('/topics', teacherController.getTopicsFromTextbook);

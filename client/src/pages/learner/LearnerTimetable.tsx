@@ -74,8 +74,8 @@ export const LearnerTimetable: React.FC = () => {
             <Clock className="w-6 h-6 text-cyan-400" />
             Weekly Class Timetable
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            School Hours: <span className="font-mono text-cyan-400 font-bold">07:15 - 14:00</span> (45-Min Break: 10:15 - 11:00)
+          <p className="text-xs text-slate-400 mt-1 font-mono">
+            Daily Schedule • 1-Hour Periods • 45-Min Interval
           </p>
         </div>
 

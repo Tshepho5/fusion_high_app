@@ -139,12 +139,9 @@ export const SchoolFeesManager: React.FC<SchoolFeesManagerProps> = ({
                 School Fees & Online Payments
               </h2>
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-[11px] font-mono text-emerald-300 font-bold">
-                South African Gateway Active
+                Gateway Active
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {learnerName ? `Fee Statements & Receipts for ${learnerName}` : 'Digital Tuition Invoicing, Instant EFT & PDF Receipts'}
-            </p>
           </div>
         </div>
 

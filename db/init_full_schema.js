@@ -597,9 +597,151 @@ async function initializeAllDatabaseTables(customClient) {
         generated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- 12. School Fees, Invoices & Payments
+      CREATE TABLE IF NOT EXISTS fee_invoices (
+        id SERIAL PRIMARY KEY,
+        learner_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        parent_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        invoice_number VARCHAR(100) UNIQUE NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        category VARCHAR(50) DEFAULT 'Tuition',
+        term VARCHAR(50) DEFAULT 'Term 3 2026',
+        amount NUMERIC(10, 2) NOT NULL,
+        paid_amount NUMERIC(10, 2) DEFAULT 0.00,
+        balance NUMERIC(10, 2) NOT NULL,
+        status VARCHAR(50) DEFAULT 'pending',
+        due_date DATE NOT NULL,
+        itemized_breakdown JSONB DEFAULT '[]'::jsonb,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS fee_payments (
+        id SERIAL PRIMARY KEY,
+        invoice_id INTEGER REFERENCES fee_invoices(id) ON DELETE CASCADE,
+        learner_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        parent_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        payment_reference VARCHAR(100) UNIQUE NOT NULL,
+        receipt_number VARCHAR(100) UNIQUE NOT NULL,
+        amount NUMERIC(10, 2) NOT NULL,
+        payment_method VARCHAR(50) NOT NULL,
+        gateway_transaction_id VARCHAR(100),
+        status VARCHAR(50) DEFAULT 'completed',
+        payer_name VARCHAR(255),
+        payer_email VARCHAR(255),
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- 13. Tertiary Bursaries & Scholarships
+      CREATE TABLE IF NOT EXISTS bursaries (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        sponsor VARCHAR(255) NOT NULL,
+        logo_url TEXT,
+        category VARCHAR(100) NOT NULL,
+        min_aps INTEGER DEFAULT 28,
+        min_aggregate_percentage NUMERIC(5,2) DEFAULT 60.00,
+        required_subjects JSONB DEFAULT '[]'::jsonb,
+        min_subject_percentage JSONB DEFAULT '{}'::jsonb,
+        target_fields TEXT[],
+        coverage_details TEXT[],
+        estimated_annual_value NUMERIC(10, 2) DEFAULT 120000.00,
+        eligibility_criteria TEXT,
+        household_income_cap VARCHAR(100),
+        deadline_date DATE,
+        is_open BOOLEAN DEFAULT true,
+        application_url TEXT NOT NULL,
+        required_documents TEXT[],
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS learner_bursaries (
+        id SERIAL PRIMARY KEY,
+        learner_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        bursary_id INTEGER REFERENCES bursaries(id) ON DELETE CASCADE,
+        status VARCHAR(50) DEFAULT 'bookmarked',
+        notes TEXT,
+        checklist_progress JSONB DEFAULT '{}'::jsonb,
+        applied_date DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(learner_id, bursary_id)
+      );
+
+      -- 14. Homework Assignments & Digital Submissions
+      CREATE TABLE IF NOT EXISTS homework_assignments (
+        id SERIAL PRIMARY KEY,
+        teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        subject VARCHAR(150) NOT NULL,
+        grade INTEGER NOT NULL,
+        stream VARCHAR(100) DEFAULT 'General',
+        due_date DATE NOT NULL,
+        due_time VARCHAR(20) DEFAULT '23:59',
+        total_marks NUMERIC DEFAULT 50,
+        file_url TEXT,
+        file_name VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS homework_submissions (
+        id SERIAL PRIMARY KEY,
+        assignment_id INTEGER NOT NULL REFERENCES homework_assignments(id) ON DELETE CASCADE,
+        child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+        learner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        file_url TEXT,
+        file_name VARCHAR(255),
+        submission_text TEXT,
+        submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        status VARCHAR(50) DEFAULT 'submitted',
+        ai_score NUMERIC,
+        ai_percentage NUMERIC,
+        ai_feedback TEXT,
+        ai_strengths TEXT,
+        ai_areas_for_improvement TEXT,
+        teacher_score NUMERIC,
+        teacher_percentage NUMERIC,
+        teacher_feedback TEXT,
+        signed_by_teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        signed_at TIMESTAMP WITH TIME ZONE,
+        UNIQUE (assignment_id, child_id)
+      );
+
+      -- 15. Standalone Marks Table
+      CREATE TABLE IF NOT EXISTS marks (
+        id SERIAL PRIMARY KEY,
+        learner_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        subject_id INTEGER REFERENCES subjects(id) ON DELETE CASCADE,
+        subject_name VARCHAR(100),
+        term INTEGER DEFAULT 1,
+        mark_type VARCHAR(50) DEFAULT 'Test',
+        score NUMERIC(5,2) NOT NULL,
+        max_score NUMERIC(5,2) DEFAULT 100.00,
+        weight NUMERIC(3,2) DEFAULT 1.0,
+        recorded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
-    console.log('✅ [SCHEMA BOOTSTRAP] All 40 tables and column definitions verified successfully.');
+    // Ensure default bursary entries exist in database
+    const bursariesCheck = await runner.query('SELECT COUNT(*) FROM bursaries');
+    if (parseInt(bursariesCheck.rows[0].count, 10) === 0) {
+      await runner.query(`
+        INSERT INTO bursaries (name, sponsor, category, min_aps, min_aggregate_percentage, required_subjects, coverage_details, estimated_annual_value, application_url)
+        VALUES
+          ('NSFAS Comprehensive Student Financial Aid', 'Department of Higher Education & Training (DHET)', 'General & Comprehensive', 25, 50.00, '["English FAL"]', ARRAY['100% Tuition', 'Accommodation', 'Book Allowance', 'Monthly Stipend'], 125000.00, 'https://www.nsfas.org.za'),
+          ('Sasol STEM & Engineering Bursary', 'Sasol Energy & Chemicals', 'STEM & Engineering', 32, 70.00, '["Mathematics", "Physical Sciences"]', ARRAY['Full Tuition', 'University Residence', 'Laptop', 'Meals Allowance', 'Vacation Work'], 160000.00, 'https://www.sasolbursaries.com'),
+          ('Funza Lushaka Educator Bursary Programme', 'Department of Basic Education (DBE)', 'Teaching & Education', 28, 60.00, '["English FAL", "Mathematics"]', ARRAY['100% Tuition', 'Hostel Accommodation', 'Book Allowance', 'Stipend'], 95000.00, 'http://www.funzalushaka.doe.gov.za'),
+          ('Standard Bank 150 Bursary Fund', 'Standard Bank Group South Africa', 'Commerce & Finance', 32, 70.00, '["Mathematics", "Accounting"]', ARRAY['Full Tuition', 'Accommodation Allowance', 'Prescribed Textbooks', 'Monthly Allowance'], 145000.00, 'https://www.standardbank.co.za')
+        ON CONFLICT DO NOTHING;
+      `);
+    }
+
+    console.log('✅ [SCHEMA BOOTSTRAP] All tables, indexes, and initial records verified successfully.');
   } catch (err) {
     console.error('❌ [SCHEMA BOOTSTRAP ERROR]:', err.message);
   }

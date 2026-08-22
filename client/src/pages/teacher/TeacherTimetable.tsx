@@ -18,26 +18,26 @@ import {
   Check,
   X,
   Sparkles,
+  Layers,
   Inbox
 } from 'lucide-react';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const PERIODS = [
-  '07:45-08:15',
-  '08:15-08:45',
-  '08:45-09:15',
-  '09:15-09:45',
-  '09:45-10:15',
-  '10:15-10:45',
-  '11:45-12:15',
-  '12:15-12:45',
-  '12:45-13:15',
-  '13:15-13:45'
+  '08:00 - 09:00',
+  '09:00 - 10:00',
+  '10:00 - 11:00',
+  '11:45 - 12:45',
+  '12:45 - 13:45',
+  '13:45 - 14:45'
 ];
 
 export const TeacherTimetable: React.FC = () => {
   const { user } = useAuth();
   const [timetables, setTimetables] = useState<any[]>([]);
+  const [personalSchedule, setPersonalSchedule] = useState<any | null>(null);
+  const [mySlotsList, setMySlotsList] = useState<any[]>([]);
+  const [viewMode, setViewMode] = useState<'my_schedule' | 'class_schedule'>('my_schedule');
   const [selectedTimetable, setSelectedTimetable] = useState<any | null>(null);
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedDay, setSelectedDay] = useState<string>('Monday');
@@ -63,7 +63,14 @@ export const TeacherTimetable: React.FC = () => {
     setLoading(true);
     teacherService.getTimetables()
       .then(res => {
-        const list = Array.isArray(res) ? res : [];
+        let list: any[] = [];
+        if (Array.isArray(res)) {
+          list = res;
+        } else if (res && typeof res === 'object') {
+          list = Array.isArray(res.timetables) ? res.timetables : [];
+          if (res.personal_schedule) setPersonalSchedule(res.personal_schedule);
+          if (Array.isArray(res.my_slots)) setMySlotsList(res.my_slots);
+        }
         setTimetables(list);
         if (list.length > 0) {
           const current = selectedTimetable ? list.find(t => t.id === selectedTimetable.id) || list[0] : list[0];
@@ -272,8 +279,141 @@ export const TeacherTimetable: React.FC = () => {
         </div>
       )}
 
-      {/* Timetable Selector Tabs */}
-      {timetables.length > 0 ? (
+      {/* View Mode Toggle */}
+      <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+        <button
+          onClick={() => setViewMode('my_schedule')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            viewMode === 'my_schedule'
+              ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-glow-indigo'
+              : 'bg-surface-dark text-slate-400 hover:text-white border border-white/5'
+          }`}
+        >
+          <Star className="w-3.5 h-3.5 text-amber-300" />
+          <span>My Teaching Schedule (My Slots Only)</span>
+        </button>
+
+        <button
+          onClick={() => setViewMode('class_schedule')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            viewMode === 'class_schedule'
+              ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-glow-indigo'
+              : 'bg-surface-dark text-slate-400 hover:text-white border border-white/5'
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5 text-cyan-400" />
+          <span>Master Class Schedules</span>
+        </button>
+      </div>
+
+      {/* Mode 1: Personal Educator Schedule (Only My Slots) */}
+      {viewMode === 'my_schedule' && (
+        <div className="p-6 rounded-3xl bg-surface-dark border border-white/10 shadow-xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+            <div>
+              <h3 className="text-sm font-bold font-display text-white flex items-center gap-2">
+                <Users className="w-4 h-4 text-cyan-400" />
+                <span>Personal Teaching Roster ({user?.full_name} {user?.surname})</span>
+              </h3>
+              <p className="text-[11px] text-slate-400 font-mono">
+                Allocated 1-hour teaching slots with free periods across Grades & Classes.
+              </p>
+            </div>
+
+            {/* Day Selector */}
+            <div className="flex gap-1.5 p-1 rounded-2xl bg-surface-darker border border-white/5 overflow-x-auto">
+              {DAYS.map((day) => (
+                <button
+                  key={day}
+                  onClick={() => setSelectedDay(day)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    selectedDay === day
+                      ? 'bg-brand-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Personal Period Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {PERIODS.map((period, pIdx) => {
+              // Check in personalSchedule or mySlotsList
+              const slotFromSchedule = personalSchedule?.[selectedDay]?.[period];
+              const slotFromList = mySlotsList.find(s => s.day === selectedDay && s.period === period);
+              const slot = slotFromSchedule || slotFromList;
+              const isAfternoon = pIdx >= 3;
+
+              return (
+                <div
+                  key={period}
+                  className={`p-4 rounded-2xl flex flex-col justify-between space-y-3 transition-all ${
+                    slot
+                      ? 'bg-brand-600/15 border-2 border-brand-500/60 shadow-glow-indigo'
+                      : 'bg-surface-darker border border-white/5'
+                  }`}
+                >
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-[10px] font-mono text-slate-400 pb-1 border-b border-white/5">
+                      <span className="flex items-center gap-1 font-bold text-white">
+                        {slot && <Star className="w-3 h-3 text-amber-400 fill-amber-400" />}
+                        Period {pIdx + 1}
+                      </span>
+                      <span>{period}</span>
+                    </div>
+
+                    {slot ? (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 font-bold text-[10px]">
+                            {slot.class_name || `Grade ${slot.grade || 10}`}
+                          </span>
+                          <Badge variant={isAfternoon ? 'indigo' : 'cyan'} size="sm">
+                            {isAfternoon ? 'Afternoon' : 'Morning'}
+                          </Badge>
+                        </div>
+                        <h4 className="font-extrabold text-white text-base">{slot.subject}</h4>
+                        <p className="text-xs text-slate-300 flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-slate-400" />
+                          <span>{slot.room || 'Classroom'}</span>
+                          <span className="text-slate-500">•</span>
+                          <span className="font-mono text-cyan-300 text-[11px]">{slot.duration || '1 Hour'}</span>
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="py-4 text-center space-y-1">
+                        <span className="px-2.5 py-1 rounded-full bg-white/5 text-slate-400 text-[11px] font-mono inline-block">
+                          ☕ Preparation / Free Period
+                        </span>
+                        <p className="text-[10px] text-slate-500">No scheduled class teaching duties</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {slot && (
+                    <div className="flex gap-1.5 pt-2 border-t border-white/5">
+                      <button
+                        onClick={() => handleOpenSwapModal(selectedDay, period, slot)}
+                        className="w-full py-1.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 text-xs font-bold flex items-center justify-center gap-1 transition-colors"
+                      >
+                        <Repeat className="w-3.5 h-3.5" />
+                        <span>Request Swap</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Mode 2: Master Class Timetables */}
+      {viewMode === 'class_schedule' && (
+        timetables.length > 0 ? (
         <div className="space-y-6">
           <div className="flex gap-2 p-1.5 rounded-2xl bg-surface-dark border border-white/10 overflow-x-auto">
             {timetables.map((tt) => {
@@ -440,7 +580,7 @@ export const TeacherTimetable: React.FC = () => {
             No draft timetables assigned by Administration yet. When Administration generates your schedule, it will appear here for review and period exchange.
           </p>
         </div>
-      )}
+      ))}
 
       {/* Period Swap Modal */}
       {isSwapModalOpen && swapSourceSlot && (

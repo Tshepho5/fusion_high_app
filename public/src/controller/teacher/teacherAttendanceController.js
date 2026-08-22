@@ -26,8 +26,9 @@ exports.getAttendanceRoster = async (req, res) => {
                 c.parent_id,
                 COALESCE(a.status, 'present') as status
             FROM children c
+            LEFT JOIN classes cl ON c.class_id = cl.id
             LEFT JOIN attendance a ON c.id = a.child_id AND a.attendance_date = $2::DATE
-            WHERE (c.class_id::text = $1 OR c.grade::text = $3)
+            WHERE (cl.name ILIKE $1 OR c.class_id::text = $1 OR c.grade::text = $3)
             ORDER BY c.surname, c.full_name
         `;
         const { rows } = await db.query(query, [classId, date, cleanedGrade || '0']);

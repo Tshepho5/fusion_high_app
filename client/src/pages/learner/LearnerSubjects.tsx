@@ -76,14 +76,34 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
   const handleUpdateLanguage = async (newLang: string) => {
     setUpdatingLanguage(true);
     setLanguageMessage(null);
+    setError(null);
     try {
       const res = await learnerService.updateHomeLanguage(newLang);
       setCurrentHomeLanguage(res.home_language || newLang);
       setLanguageMessage(`Official Home Language updated to ${newLang}! Your stream subjects and AI Tutor are now synchronized.`);
-      // Refresh subjects from DB
-      const updatedData = await learnerService.getMySubjectsOverview();
-      const list = Array.isArray(updatedData) ? updatedData : updatedData.subjects || [];
-      setSubjects(list);
+      
+      if (res.subjects && Array.isArray(res.subjects)) {
+        setSubjects(res.subjects.map((subName: string) => ({
+          name: subName,
+          code: (subName.substring(0, 4) + (learnerEnrolledGrade || 10)).toUpperCase().replace(/[^A-Z0-9]/g, ''),
+          grade: learnerEnrolledGrade,
+          teacher: 'Subject Specialist',
+          curriculum_progress: 60,
+          progress: 75,
+          assignments_due: 0,
+          classmates_count: 32,
+          resources_count: 4
+        })));
+      }
+
+      try {
+        const updatedData = await learnerService.getMySubjectsOverview();
+        const list = Array.isArray(updatedData) ? updatedData : updatedData.subjects || [];
+        if (list.length > 0) {
+          setSubjects(list);
+        }
+      } catch (_) {}
+
       setTimeout(() => setLanguageMessage(null), 5000);
     } catch (err: any) {
       setError('Failed to update home language: ' + (err.response?.data?.error || err.message));

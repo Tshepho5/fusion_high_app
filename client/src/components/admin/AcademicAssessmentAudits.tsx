@@ -225,9 +225,6 @@ export const AcademicAssessmentAudits: React.FC = () => {
                   DBE CAPS VERIFIED
                 </span>
               </div>
-              <p className="text-xs text-slate-300 mt-1">
-                Executive marks verification, Department of Basic Education moderation schedules, and subject SBA compliance audits.
-              </p>
             </div>
           </div>
 

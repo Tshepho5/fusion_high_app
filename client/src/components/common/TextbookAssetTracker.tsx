@@ -163,11 +163,8 @@ export const TextbookAssetTracker: React.FC = () => {
           </div>
           <h2 className="text-2xl font-extrabold text-white font-display flex items-center gap-2">
             <BookOpen className="w-6 h-6 text-brand-400" />
-            <span>My Issued Textbooks & Study Guides</span>
+            <span>My Issued Textbooks</span>
           </h2>
-          <p className="text-xs text-slate-400 max-w-2xl">
-            Track official school textbooks issued for your academic subjects. Please maintain books in good condition and return them at the conclusion of examinations.
-          </p>
         </div>
 
         {myBooks.length > 0 ? (
@@ -239,11 +236,8 @@ export const TextbookAssetTracker: React.FC = () => {
         <div>
           <h2 className="text-xl md:text-2xl font-extrabold font-display text-white tracking-tight flex items-center gap-2">
             <BookOpen className="w-6 h-6 text-brand-400" />
-            <span>Textbook & Learning Asset Inventory</span>
+            <span>Textbook Inventory</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Catalog curriculum textbooks, scan barcode/ISBNs, issue copies to learners, and track returns with condition auditing.
-          </p>
         </div>
 
         <button

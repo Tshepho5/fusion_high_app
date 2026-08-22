@@ -19,21 +19,23 @@ import {
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const PERIODS = [
-  '07:15-08:15',
-  '08:15-09:15',
-  '09:15-10:15',
-  '10:15-11:15',
-  '12:00-13:00',
-  '13:00-14:00'
+  '08:00 - 09:00',
+  '09:00 - 10:00',
+  '10:00 - 11:00',
+  '11:45 - 12:45',
+  '12:45 - 13:45',
+  '13:45 - 14:45'
 ];
 
 export const AdminTimetable: React.FC = () => {
   const [grade, setGrade] = useState<number>(10);
   const [stream, setStream] = useState<string>('General');
+  const [targetSubject, setTargetSubject] = useState<string>('all');
   const [generating, setGenerating] = useState<boolean>(false);
   const [publishing, setPublishing] = useState<boolean>(false);
   const [timetableData, setTimetableData] = useState<any | null>(null);
   const [activeTimetableName, setActiveTimetableName] = useState<string>('');
+  const [activeTimetableId, setActiveTimetableId] = useState<number | null>(null);
   const [selectedDay, setSelectedDay] = useState<string>('Monday');
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [timetablesList, setTimetablesList] = useState<any[]>([]);
@@ -55,6 +57,7 @@ export const AdminTimetable: React.FC = () => {
           if (activeOrFirst && activeOrFirst.timetable_data) {
             setTimetableData(activeOrFirst.timetable_data);
             setActiveTimetableName(activeOrFirst.name || `Grade ${activeOrFirst.grade} Timetable`);
+            setActiveTimetableId(activeOrFirst.id);
             setGrade(activeOrFirst.grade || 10);
             setStream(activeOrFirst.stream || 'General');
             const firstClass = Object.keys(activeOrFirst.timetable_data || {})[0] || `Grade ${activeOrFirst.grade || 10}A`;
@@ -76,6 +79,7 @@ export const AdminTimetable: React.FC = () => {
     if (!tt || !tt.timetable_data) return;
     setTimetableData(tt.timetable_data);
     setActiveTimetableName(tt.name || `Grade ${tt.grade} Timetable`);
+    setActiveTimetableId(tt.id);
     setGrade(tt.grade || 10);
     setStream(tt.stream || 'General');
     const firstClass = Object.keys(tt.timetable_data || {})[0] || `Grade ${tt.grade || 10}A`;
@@ -84,17 +88,40 @@ export const AdminTimetable: React.FC = () => {
     window.scrollTo({ top: 300, behavior: 'smooth' });
   };
 
+  const handleDeleteTimetable = async (id: number, name: string) => {
+    if (!window.confirm(`Delete "${name}" from database? Freeing this schedule allows the AI generator to allocate these educator slots to other grades without clashes.`)) {
+      return;
+    }
+    try {
+      await adminService.deleteTimetable(id);
+      setStatusMessage(`Timetable "${name}" deleted. Associated slots are now fully free for new schedule generation.`);
+      if (activeTimetableId === id) {
+        setTimetableData(null);
+        setActiveTimetableName('');
+        setActiveTimetableId(null);
+      }
+      fetchTimetablesList();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to delete timetable.');
+    }
+  };
+
   const handleGenerate = async () => {
     setGenerating(true);
     setError(null);
     setStatusMessage(null);
     try {
-      const res = await adminService.generateTimetable({ grade, stream });
+      const res = await adminService.generateTimetable({
+        grade,
+        stream,
+        target_subject: targetSubject === 'all' ? undefined : targetSubject
+      });
       setTimetableData(res.timetable_data);
-      setActiveTimetableName(`Grade ${grade} (${stream}) Generated Draft`);
+      setActiveTimetableName(`Grade ${grade} (${stream}) Generated 1-Hour Schedule`);
+      setActiveTimetableId(null);
       const firstClass = Object.keys(res.timetable_data || {})[0] || `Grade ${grade}A`;
       setSelectedClass(firstClass);
-      setStatusMessage(`Preview generated with 45-min break & unique subjects per day (${res.filled_count || 0} scheduled periods).`);
+      setStatusMessage(`Clash-free 1-hour timetable generated (${res.filled_count || 0} slots, balanced ~3 slots/teacher per day).`);
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || 'Failed to generate timetable.');
     } finally {
@@ -172,7 +199,7 @@ export const AdminTimetable: React.FC = () => {
           Generate New School Schedule
         </h3>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
               Select Grade
@@ -200,9 +227,30 @@ export const AdminTimetable: React.FC = () => {
               className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
               <option value="General">General Stream</option>
-              <option value="Science">Science (Maths & Physical Sciences)</option>
+              <option value="Science">Science (Maths & Sciences)</option>
               <option value="Commerce">Commerce (Accounting & Business)</option>
               <option value="Tourism">Services & Tourism</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+              Focus Subject Priority
+            </label>
+            <select
+              value={targetSubject}
+              onChange={(e) => setTargetSubject(e.target.value)}
+              className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <option value="all">All CAPS Subjects</option>
+              <option value="Mathematics">Mathematics</option>
+              <option value="Physical Sciences">Physical Sciences</option>
+              <option value="Life Sciences">Life Sciences</option>
+              <option value="English FAL">English FAL</option>
+              <option value="Home Language">Home Language</option>
+              <option value="Accounting">Accounting</option>
+              <option value="Geography">Geography</option>
+              <option value="Life Orientation">Life Orientation</option>
             </select>
           </div>
 
@@ -217,7 +265,7 @@ export const AdminTimetable: React.FC = () => {
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 text-cyan-200" />
-                  <span>Generate AI Schedule</span>
+                  <span>Generate Schedule</span>
                 </>
               )}
             </button>
@@ -231,123 +279,93 @@ export const AdminTimetable: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="cyan" size="sm">{activeTimetableName || `Grade ${grade} (${stream})`}</Badge>
-              {availableClasses.length > 1 && (
-                <div className="flex gap-1.5 ml-2">
-                  {availableClasses.map((cls) => (
-                    <button
-                      key={cls}
-                      onClick={() => setSelectedClass(cls)}
-                      className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                        selectedClass === cls
-                          ? 'bg-brand-600 text-white shadow-sm'
-                          : 'bg-surface-darker text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {cls}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <Badge variant="emerald" size="sm">60-Min Periods</Badge>
+              <Badge variant="indigo" size="sm">45-Min Nutrition Break</Badge>
             </div>
 
             <button
               onClick={handlePublishToTeachers}
               disabled={publishing}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-brand-600 hover:from-emerald-500 text-white font-bold text-xs shadow-md transition-all self-start sm:self-auto disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
             >
-              <Send className="w-3.5 h-3.5" />
-              <span>{publishing ? 'Publishing...' : 'Publish Master Timetable (Live)'}</span>
+              {publishing ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  <span>Publish Master Timetable</span>
+                </>
+              )}
             </button>
           </div>
 
-          {/* Day Selector Tabs */}
-          <div className="flex gap-2 p-1.5 rounded-2xl bg-surface-darker border border-white/5 overflow-x-auto">
-            {DAYS.map((day) => (
-              <button
-                key={day}
-                onClick={() => setSelectedDay(day)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  selectedDay === day
-                    ? 'bg-brand-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {day}
-              </button>
-            ))}
-          </div>
-
-          {/* Period Matrix with 45-Minute Break Slot */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-2.5">
-            {PERIODS.slice(0, 4).map((period, pIdx) => {
-              const entry = activeClassData?.[selectedDay]?.[period];
-              return (
-                <div
-                  key={period}
-                  className="p-3.5 rounded-2xl bg-surface-darker border border-white/5 flex flex-col justify-between space-y-2 hover:border-brand-500/30 transition-all group"
+          {/* Class & Day Filter Tabs */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Class:</span>
+              {availableClasses.map((cName) => (
+                <button
+                  key={cName}
+                  onClick={() => setSelectedClass(cName)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    selectedClass === cName
+                      ? 'bg-brand-600 text-white shadow-glow-indigo'
+                      : 'bg-surface-darker text-slate-400 hover:text-white border border-white/5'
+                  }`}
                 >
-                  <div>
-                    <div className="flex justify-between items-center text-[10px] font-mono text-slate-400 pb-1 border-b border-white/5">
-                      <span>Period {pIdx + 1}</span>
-                      <span>{period}</span>
-                    </div>
-                    {entry && entry.subject ? (
-                      <div className="mt-2 space-y-1">
-                        <p className="font-bold text-white text-xs leading-snug">{entry.subject}</p>
-                        <p className="text-[11px] text-cyan-300 flex items-center gap-1">
-                          <Users className="w-3 h-3 text-cyan-400" />
-                          <span>{entry.teacher || 'Assigned Educator'}</span>
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-mono">{entry.room || 'Main Classroom'}</p>
-                      </div>
-                    ) : (
-                      <div className="mt-4 text-center text-[11px] text-slate-500 italic">
-                        Free Period / Study Slot
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => setEditingSlot({ day: selectedDay, period, data: entry || { subject: 'Mathematics', teacher: '', room: `Room ${grade}A` } })}
-                    className="w-full py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[10px] font-semibold flex items-center justify-center gap-1 transition-colors"
-                  >
-                    <Edit3 className="w-3 h-3" />
-                    <span>Edit Slot</span>
-                  </button>
-                </div>
-              );
-            })}
-
-            {/* 45-Minute Break Interval Card between Period 4 and Period 5 */}
-            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col justify-center items-center text-center space-y-1.5 shadow-sm">
-              <Clock className="w-5 h-5 text-amber-400" />
-              <p className="text-xs font-bold text-amber-300">45-Min Break</p>
-              <p className="text-[10px] text-amber-200/80 font-mono font-bold">11:15 - 12:00</p>
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[9px] font-extrabold uppercase tracking-wider border border-amber-500/30">
-                Nutrition & Rest
-              </span>
+                  {cName}
+                </button>
+              ))}
             </div>
 
-            {PERIODS.slice(4).map((period, pIdx) => {
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+              {DAYS.map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setSelectedDay(d)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    selectedDay === d
+                      ? 'bg-cyan-600 text-white'
+                      : 'bg-surface-darker text-slate-400 hover:text-white border border-white/5'
+                  }`}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 1-Hour Schedule Periods Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {PERIODS.map((period, idx) => {
               const entry = activeClassData?.[selectedDay]?.[period];
+              const isAfternoon = idx >= 3;
+
               return (
                 <div
                   key={period}
-                  className="p-3.5 rounded-2xl bg-surface-darker border border-white/5 flex flex-col justify-between space-y-2 hover:border-brand-500/30 transition-all group"
+                  className="p-4 rounded-2xl bg-surface-darker border border-white/10 space-y-3 relative group hover:border-brand-500/30 transition-all"
                 >
+                  <div className="flex items-center justify-between">
+                    <span className="px-2 py-0.5 rounded-md bg-white/5 text-[10px] font-mono text-slate-300 font-bold">
+                      Period {idx + 1} ({period})
+                    </span>
+                    <Badge variant={isAfternoon ? 'indigo' : 'cyan'} size="sm">
+                      {isAfternoon ? 'Afternoon' : 'Morning'}
+                    </Badge>
+                  </div>
+
                   <div>
-                    <div className="flex justify-between items-center text-[10px] font-mono text-slate-400 pb-1 border-b border-white/5">
-                      <span>Period {pIdx + 5}</span>
-                      <span>{period}</span>
-                    </div>
-                    {entry && entry.subject ? (
-                      <div className="mt-2 space-y-1">
-                        <p className="font-bold text-white text-xs leading-snug">{entry.subject}</p>
-                        <p className="text-[11px] text-cyan-300 flex items-center gap-1">
-                          <Users className="w-3 h-3 text-cyan-400" />
+                    {entry ? (
+                      <div className="space-y-1">
+                        <p className="font-extrabold text-white text-sm">{entry.subject}</p>
+                        <p className="text-xs text-brand-300 flex items-center gap-1">
+                          <Users className="w-3.5 h-3.5" />
                           <span>{entry.teacher || 'Assigned Educator'}</span>
                         </p>
-                        <p className="text-[10px] text-slate-400 font-mono">{entry.room || 'Main Classroom'}</p>
+                        <p className="text-[11px] text-slate-400 font-mono">
+                          {entry.room || `Room ${grade}A`} • {entry.duration || '1 Hour (60 min)'}
+                        </p>
                       </div>
                     ) : (
                       <div className="mt-4 text-center text-[11px] text-slate-500 italic">
@@ -358,9 +376,9 @@ export const AdminTimetable: React.FC = () => {
 
                   <button
                     onClick={() => setEditingSlot({ day: selectedDay, period, data: entry || { subject: 'Mathematics', teacher: '', room: `Room ${grade}A` } })}
-                    className="w-full py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[10px] font-semibold flex items-center justify-center gap-1 transition-colors"
+                    className="w-full py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[10px] font-bold flex items-center justify-center gap-2 transition-colors"
                   >
-                    <Edit3 className="w-3 h-3" />
+                    <Edit3 className="w-3.5 h-3.5" />
                     <span>Edit Slot</span>
                   </button>
                 </div>
@@ -400,7 +418,14 @@ export const AdminTimetable: React.FC = () => {
                       className="px-3 py-1.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-300 border border-cyan-500/30 text-xs font-bold transition-all flex items-center gap-1"
                     >
                       <Eye className="w-3.5 h-3.5" />
-                      <span>View Timetable</span>
+                      <span>View</span>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTimetable(tt.id, tt.name)}
+                      className="px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/30 text-xs font-bold transition-all flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
                     </button>
                   </div>
                 </div>

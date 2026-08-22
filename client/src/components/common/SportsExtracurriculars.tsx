@@ -162,11 +162,8 @@ export const SportsExtracurriculars: React.FC = () => {
         <div>
           <h2 className="text-xl md:text-2xl font-extrabold font-display text-white tracking-tight flex items-center gap-2">
             <Trophy className="w-6 h-6 text-amber-400" />
-            <span>Sports & Extracurriculars Portal</span>
+            <span>Sports</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Explore school sporting codes, cultural societies, squad rosters, upcoming match fixtures, and results.
-          </p>
         </div>
 
         {isStaff && (

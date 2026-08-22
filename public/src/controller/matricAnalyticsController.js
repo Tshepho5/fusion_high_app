@@ -145,22 +145,43 @@ exports.getMatricProjectorStats = async (req, res) => {
       'General': ['History', 'Geography', 'Mathematical Literacy', 'Tourism', 'English First Additional Language', 'Life Orientation']
     };
 
-    // 2. Fetch or compute marks for each candidate
-    const candidateRoster = candidates.map((cand, idx) => {
+    // 2. Fetch all real marks recorded in database for Grade 12 candidates
+    const candidateIds = candidates.map(c => c.id);
+    const marksRes = await db.query(`
+      SELECT child_id, subject, ROUND(AVG(grade)) as score
+      FROM progress
+      WHERE child_id = ANY($1::int[])
+      GROUP BY child_id, subject
+    `, [candidateIds]);
+
+    const marksByChild = {};
+    marksRes.rows.forEach(r => {
+      if (!marksByChild[r.child_id]) marksByChild[r.child_id] = [];
+      marksByChild[r.child_id].push({
+        subject: r.subject,
+        score: parseFloat(r.score) || 0
+      });
+    });
+
+    const candidateRoster = candidates.map((cand) => {
       const stream = cand.stream || 'Science';
       const homeLang = cand.home_language || 'isiZulu';
-      const baseSubList = streamSubjects[stream] || streamSubjects['Science'];
+      const baseSubList = cand.subjects && cand.subjects.length > 0
+        ? cand.subjects
+        : (streamSubjects[stream] || streamSubjects['Science']);
 
-      // Generate consistent deterministic or DB-backed mock assessment scores
-      const subjectMarks = [
-        { subject: `${homeLang} Home Language`, score: 55 + ((cand.id * 7 + idx * 3) % 35) },
-        ...baseSubList.map((subName, sIdx) => {
-          let score = 45 + ((cand.id * 11 + sIdx * 13) % 45);
-          if (subName.includes('Mathematics') && (cand.id % 4 === 0)) score = 34; // sample at-risk
-          if (subName.includes('Physical') && (cand.id % 5 === 0)) score = 38; // sample at-risk
-          return { subject: subName, score };
-        })
-      ];
+      const dbMarks = marksByChild[cand.id] || [];
+      const subjectMarks = baseSubList.map(subName => {
+        const found = dbMarks.find(m => 
+          m.subject.toLowerCase() === subName.toLowerCase() ||
+          m.subject.toLowerCase().includes(subName.toLowerCase()) ||
+          subName.toLowerCase().includes(m.subject.toLowerCase())
+        );
+        return {
+          subject: subName,
+          score: found ? found.score : 0
+        };
+      });
 
       const evaluation = evaluateNscPass(subjectMarks, homeLang);
 
