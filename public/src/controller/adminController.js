@@ -1696,3 +1696,121 @@ exports.updateTeacherSubjects = async (req, res) => {
     }
 };
 
+/**
+ * ADMIN: Batch-generates term tuition fee invoices for all active enrolled learners in 1 click.
+ */
+exports.generateTermFeeInvoices = async (req, res) => {
+    const { term = 'Term 3 2026', due_date = '2026-09-30', amount = 4500.00 } = req.body;
+    try {
+        const learnersRes = await db.query(
+            `SELECT c.id, c.learner_number, c.full_name, c.surname, c.grade, c.stream, c.parent_id
+             FROM children c
+             ORDER BY c.grade, c.surname`
+        );
+
+        let createdCount = 0;
+        let skippedCount = 0;
+
+        for (const learner of learnersRes.rows) {
+            const invoiceNum = `INV-${term.replace(/\s+/g, '')}-${learner.learner_number || learner.id}`;
+
+            const exists = await db.query('SELECT id FROM fee_invoices WHERE invoice_number = $1 LIMIT 1', [invoiceNum]);
+            if (exists.rows.length > 0) {
+                skippedCount++;
+                continue;
+            }
+
+            const breakdown = [
+                { item: `CAPS Grade ${learner.grade} Tuition Fee (${term})`, amount: parseFloat(amount) - 500 },
+                { item: 'Digital Curriculum & Past Papers Lab Access', amount: 300.00 },
+                { item: 'Extracurricular & Sports Facilities Levy', amount: 200.00 }
+            ];
+
+            await db.query(
+                `INSERT INTO fee_invoices (learner_id, parent_id, invoice_number, title, description, category, term, amount, paid_amount, balance, status, due_date, itemized_breakdown, created_at)
+                 VALUES ($1, $2, $3, $4, $5, 'Tuition', $6, $7, 0.00, $7, 'pending', $8, $9, NOW())`,
+                [
+                    learner.id,
+                    learner.parent_id || null,
+                    invoiceNum,
+                    `School Fees — ${term} (Grade ${learner.grade})`,
+                    `Official tuition fee invoice for ${learner.full_name} ${learner.surname} (${term}).`,
+                    term,
+                    parseFloat(amount),
+                    due_date,
+                    JSON.stringify(breakdown)
+                ]
+            );
+            createdCount++;
+        }
+
+        res.json({
+            success: true,
+            message: `Successfully generated ${createdCount} term fee invoices for ${term} (${skippedCount} already existed).`,
+            created_count: createdCount,
+            skipped_count: skippedCount,
+            total_learners: learnersRes.rows.length
+        });
+    } catch (err) {
+        console.error('Error generating term fee invoices:', err);
+        res.status(500).json({ error: 'Failed to generate term fee invoices: ' + err.message });
+    }
+};
+
+/**
+ * ADMIN: Scans unpaid school fee invoices and sends automated email reminders to parents.
+ */
+exports.sendFeeReminders = async (req, res) => {
+    try {
+        const unpaidRes = await db.query(
+            `SELECT fi.*, c.full_name as learner_name, c.surname as learner_surname, c.grade,
+                    u.email as parent_email, CONCAT(u.full_name, ' ', u.surname) as parent_name
+             FROM fee_invoices fi
+             JOIN children c ON fi.learner_id = c.id
+             LEFT JOIN users u ON fi.parent_id = u.id
+             WHERE fi.balance > 0 AND fi.status != 'paid' AND u.email IS NOT NULL`
+        );
+
+        let sentCount = 0;
+        for (const inv of unpaidRes.rows) {
+            try {
+                const notifySubject = `[Fusion High] School Fees Reminder: ${inv.title} (Balance: R${inv.balance})`;
+                const notifyBody = `Dear ${inv.parent_name || 'Parent'},\n\nThis is a friendly reminder that an outstanding balance of R${inv.balance} is due on ${new Date(inv.due_date).toLocaleDateString()} for ${inv.learner_name} ${inv.learner_surname} (${inv.title}).\n\nPlease log in to your Parent Portal to view the itemized invoice or pay via school EFT.\n\nThank you,\nFinance Department\nFusion High School`;
+
+                await db.query(
+                    `INSERT INTO messages (sender_id, recipient_id, child_id, subject, body, created_at)
+                     VALUES (1, $1, $2, $3, $4, NOW())`,
+                    [inv.parent_id, inv.learner_id, notifySubject, notifyBody]
+                );
+
+                if (inv.parent_email) {
+                    await emailService.sendEmail(
+                        inv.parent_email,
+                        notifySubject,
+                        `<p style="color: #cbd5e1; font-size: 14px;">Dear <strong>${inv.parent_name || 'Parent / Guardian'}</strong>,</p>
+                         <p style="color: #cbd5e1; font-size: 13px;">This is an official notice regarding the outstanding school fees for <strong>${inv.learner_name} ${inv.learner_surname}</strong> (Grade ${inv.grade}).</p>
+                         <div style="background: #0f172a; border-left: 4px solid #f59e0b; padding: 16px 20px; border-radius: 8px; margin: 20px 0;">
+                           <p style="margin: 0; color: #fbbf24; font-weight: 700; font-size: 16px;">Outstanding Balance: R${inv.balance}</p>
+                           <p style="margin: 6px 0 0 0; color: #94a3b8; font-size: 12px;">Due Date: ${new Date(inv.due_date).toLocaleDateString()}</p>
+                           <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 12px;">Invoice: ${inv.invoice_number}</p>
+                         </div>
+                         <p style="color: #94a3b8; font-size: 12px;">Please sign in to the Parent Portal to view your statement.</p>`
+                    );
+                }
+                sentCount++;
+            } catch (sendErr) {
+                console.warn(`[FEE REMINDER ERROR] Parent ${inv.parent_email}:`, sendErr.message);
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `Automated fee reminders dispatched to ${sentCount} parents with outstanding balances!`,
+            sent_count: sentCount
+        });
+    } catch (err) {
+        console.error('Error sending fee reminders:', err);
+        res.status(500).json({ error: 'Failed to send fee reminders: ' + err.message });
+    }
+};
+

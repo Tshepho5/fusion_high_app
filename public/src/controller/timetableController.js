@@ -177,6 +177,138 @@ exports.generateAITimetable = async (req, res) => {
 };
 
 /**
+ * 1-CLICK SCHOOL-WIDE AUTO-SCHEDULER & DRAFT DISTRIBUTOR:
+ * Generates conflict-free 1-hour timetables for all Grades (8, 9, 10, 11, 12) simultaneously.
+ * Tracks teacher busy slots across all grades to guarantee zero double bookings.
+ * Automatically saves them with status 'draft_teachers' and sends email alerts to all teachers.
+ */
+exports.generateSchoolWideTimetable = async (req, res) => {
+    const adminId = req.user ? req.user.id : null;
+    const grades = [8, 9, 10, 11, 12];
+    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+    try {
+        await ensureTimetablesTable();
+
+        // 1. Fetch all teachers
+        const allTeachersRes = await db.query(
+            `SELECT u.id, u.full_name, u.surname, u.email, e.subjects, e.grades_taught, e.department
+             FROM users u
+             JOIN employees e ON u.id = e.user_id
+             LEFT JOIN roles r ON u.role_id = r.id
+             WHERE (r.name = 'teacher' OR r.name IS NULL)
+               AND LOWER(COALESCE(r.name, '')) != 'admin'
+             ORDER BY u.surname, u.full_name`
+        );
+        const allTeachers = allTeachersRes.rows;
+
+        // 2. Fetch all classes
+        const classesRes = await db.query(`SELECT id, name, grade, stream FROM classes ORDER BY grade, name`);
+        const allDbClasses = classesRes.rows;
+
+        const generatedSchedules = [];
+        const runningActiveTimetables = [];
+
+        // Deactivate previous active timetables
+        await db.query(`UPDATE timetables SET is_active = FALSE`);
+
+        for (const gr of grades) {
+            let gradeClasses = allDbClasses.filter(c => c.grade === gr);
+            if (gradeClasses.length === 0) {
+                gradeClasses = [
+                    { id: gr * 10 + 1, name: `Grade ${gr}A`, grade: gr, stream: gr >= 10 ? 'Science' : 'General' },
+                    { id: gr * 10 + 2, name: `Grade ${gr}B`, grade: gr, stream: gr >= 10 ? 'Commerce' : 'General' },
+                    { id: gr * 10 + 3, name: `Grade ${gr}C`, grade: gr, stream: gr >= 10 ? 'General' : 'General' }
+                ];
+            }
+
+            const stream = gr >= 10 ? 'General' : 'General';
+            let subjects;
+            if (gr === 8 || gr === 9) {
+                subjects = [
+                    'Mathematics', 'Natural Sciences', 'English FAL', 'English HL',
+                    'Social Sciences', 'EMS', 'Technology', 'Creative Arts', 'Life Orientation'
+                ];
+            } else {
+                subjects = [
+                    'Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL',
+                    'Accounting', 'Business Studies', 'Economics', 'Geography', 'History', 'Tourism', 'Life Orientation'
+                ];
+            }
+
+            const timetableData = {};
+            gradeClasses.forEach(c => {
+                timetableData[c.name] = {};
+                days.forEach(d => {
+                    timetableData[c.name][d] = {};
+                });
+            });
+
+            const result = autoScheduleFullTimetableLogic(
+                timetableData,
+                { grade: gr, stream, max_teacher_daily_slots: 3 },
+                allTeachers,
+                subjects,
+                gradeClasses,
+                runningActiveTimetables
+            );
+
+            const timetableName = `Grade ${gr} Master Timetable (1-Hour Conflict-Free)`;
+            
+            const insertRes = await db.query(
+                `INSERT INTO timetables (name, grade, stream, timetable_data, status, is_active, created_by, updated_at)
+                 VALUES ($1, $2, $3, $4, 'draft_teachers', TRUE, $5, NOW()) RETURNING *`,
+                [timetableName, gr, stream, JSON.stringify(result.timetable_data), adminId]
+            );
+
+            runningActiveTimetables.push({
+                id: insertRes.rows[0].id,
+                grade: gr,
+                timetable_data: result.timetable_data
+            });
+
+            generatedSchedules.push(insertRes.rows[0]);
+        }
+
+        // Notify all teachers via in-app message and email
+        for (const teacher of allTeachers) {
+            try {
+                await db.query(
+                    `INSERT INTO messages (sender_id, recipient_id, subject, body, created_at)
+                     VALUES ($1, $2, $3, $4, NOW())`,
+                    [
+                        adminId,
+                        teacher.id,
+                        `School-Wide Timetable Generated (Grades 8 - 12)`,
+                        `Principal Mr Kunene has generated the 1-hour conflict-free master timetable for Grades 8 to 12. Please review your subject allocations in your Educator Portal.`
+                    ]
+                );
+            } catch (e) {}
+
+            if (teacher.email) {
+                emailService.sendTimetableDraftToTeacher({
+                    teacherName: teacher.full_name,
+                    teacherEmail: teacher.email,
+                    grade: '8-12',
+                    stream: 'All Streams',
+                    timetableName: 'School-Wide Master Timetable'
+                }).catch(err => console.error(`[EMAIL ERROR] School-wide draft email to ${teacher.email}:`, err.message));
+            }
+        }
+
+        res.json({
+            message: `Successfully generated clash-free 1-hour timetables for Grades 8, 9, 10, 11, and 12 in 1 click! Drafts distributed to all educators for review.`,
+            timetables: generatedSchedules,
+            total_grades: grades.length,
+            notified_teachers_count: allTeachers.length
+        });
+    } catch (err) {
+        console.error('Error generating school-wide timetable:', err);
+        res.status(500).json({ error: 'Failed to generate school-wide timetable: ' + err.message });
+    }
+};
+
+/**
  * Intelligent conflict-free 1-hour scheduler:
  * - Each period takes exactly 1 hour.
  * - Maximum ~3 periods per day per teacher across classes.

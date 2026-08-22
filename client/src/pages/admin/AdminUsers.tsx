@@ -469,6 +469,24 @@ export const AdminUsers: React.FC = () => {
     (u.role || '').toLowerCase().includes(q)
   );
 
+  const [enrollingAdmissionId, setEnrollingAdmissionId] = useState<number | null>(null);
+
+  const handleQuickApproveAndEnroll = async (admId: number, admName: string) => {
+    setEnrollingAdmissionId(admId);
+    setError(null);
+    try {
+      const res = await adminService.reviewApplicationDecision(admId, { status: 'approved' });
+      setActionSuccess(res.message || `Learner ${admName} enrolled successfully with parent login credentials sent.`);
+      fetchData();
+      setTimeout(() => setActionSuccess(null), 5000);
+    } catch (err: any) {
+      console.error('Failed to 1-click enroll applicant:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to enroll applicant.');
+    } finally {
+      setEnrollingAdmissionId(null);
+    }
+  };
+
   const toggleSubjectForEmployee = (subName: string) => {
     setEmployeeForm(prev => {
       const exists = prev.subjects.includes(subName);
@@ -863,13 +881,26 @@ export const AdminUsers: React.FC = () => {
                       {adm.created_at ? new Date(adm.created_at).toLocaleDateString() : 'Recent'}
                     </td>
                     <td className="py-3.5 px-3 text-right">
-                      <button
-                        onClick={() => handleInspectAdmission(adm)}
-                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1.5 ml-auto transition-all hover:scale-105"
-                      >
-                        <Scan className="w-3.5 h-3.5" />
-                        <span>Inspect OCR</span>
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        {adm.status !== 'enrolled' && (
+                          <button
+                            onClick={() => handleQuickApproveAndEnroll(adm.id, `${adm.first_name} ${adm.surname}`)}
+                            disabled={enrollingAdmissionId === adm.id}
+                            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1.5 transition-all hover:scale-105 disabled:opacity-50"
+                            title="1-Click Approve, Create User & Parent Accounts, Generate Fee Invoice & Send Credentials"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-emerald-200" />
+                            <span>{enrollingAdmissionId === adm.id ? 'Enrolling...' : '⚡ 1-Click Enroll'}</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleInspectAdmission(adm)}
+                          className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1.5 transition-all hover:scale-105"
+                        >
+                          <Scan className="w-3.5 h-3.5" />
+                          <span>Inspect OCR</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

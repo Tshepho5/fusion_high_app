@@ -127,10 +127,22 @@ exports.getCapsReportCardData = async (req, res) => {
             else if (mark >= 30) { levelCode = 2; levelDescriptor = '2 - Elementary Achievement (30 - 39%)'; }
 
             let comment = 'Shows steady progress in class assessments.';
-            if (levelCode >= 6) comment = 'Exceptional performance! Demonstrates strong mastery of CAPS curriculum concepts.';
-            else if (levelCode === 5) comment = 'Good understanding. Consistent effort shown across tasks.';
-            else if (levelCode === 4) comment = 'Satisfactory performance. Additional practice recommended for exams.';
-            else if (levelCode <= 3) comment = 'Requires focused academic intervention and extra tutorial support.';
+            const sName = subj.toLowerCase();
+            if (levelCode >= 6) {
+                if (sName.includes('math')) comment = 'Outstanding mathematical aptitude and mastery of algebraic/geometric problem-solving.';
+                else if (sName.includes('physic') || sName.includes('science')) comment = 'Superb analytical thinking with high precision in scientific investigation and calculations.';
+                else if (sName.includes('english') || sName.includes('language')) comment = 'Eloquent literary expression, advanced comprehension, and flawless grammar mechanics.';
+                else if (sName.includes('account') || sName.includes('ems')) comment = 'Impeccable bookkeeping precision and strong financial statement interpretation.';
+                else comment = 'Exceptional performance! Demonstrates strong mastery of CAPS curriculum concepts.';
+            } else if (levelCode === 5) {
+                if (sName.includes('math')) comment = 'Good comprehension of key formulas; continue practicing step-by-step proofs.';
+                else if (sName.includes('physic')) comment = 'Solid understanding of core scientific laws; maintain consistent laboratory and problem sets.';
+                else comment = 'Good understanding. Consistent effort shown across tasks.';
+            } else if (levelCode === 4) {
+                comment = 'Satisfactory performance. Additional targeted practice recommended prior to formal examinations.';
+            } else {
+                comment = 'Requires focused academic intervention, mandatory afternoon clinic, and extra tutorial support.';
+            }
 
             subjectRows.push({
                 subject: subj,
@@ -144,6 +156,9 @@ exports.getCapsReportCardData = async (req, res) => {
         }
 
         const overallAvg = validSubjectsCount > 0 ? Math.round(totalAvgSum / validSubjectsCount) : 75;
+
+        // Calculate APS (Admission Point Score)
+        const apsScore = subjectRows.reduce((acc, row) => acc + (row.level_code || 1), 0);
 
         const attRes = await db.query(
             `SELECT COUNT(*) as total_days,
@@ -160,8 +175,14 @@ exports.getCapsReportCardData = async (req, res) => {
         const attPct = totalDays > 0 ? Math.round((daysAttended / totalDays) * 100) : 95;
 
         let recommendation = 'PROMOTED TO NEXT GRADE';
-        if (overallAvg >= 75) recommendation = 'PASS WITH MERIT - PROMOTED TO NEXT GRADE';
-        else if (overallAvg < 50) recommendation = 'ACADEMIC INTERVENTION REQUIRED';
+        let principalRemark = 'A commendable term of disciplined study and academic growth. Well done!';
+        if (overallAvg >= 75) {
+            recommendation = 'PASS WITH DISTINCTION / MERIT';
+            principalRemark = 'Outstanding academic excellence! A role model of scholastic diligence and intellectual inquiry.';
+        } else if (overallAvg < 50) {
+            recommendation = 'ACADEMIC INTERVENTION REQUIRED';
+            principalRemark = 'Urgent consultation requested with educators. Dedicated revision and remedial clinic attendance mandatory.';
+        }
 
         res.json({
             school_name: 'FUSION HIGH SCHOOL',
@@ -178,6 +199,7 @@ exports.getCapsReportCardData = async (req, res) => {
             },
             subjects: subjectRows,
             overall_average: overallAvg,
+            aps_score: apsScore,
             attendance: {
                 total_days: totalDays,
                 days_attended: daysAttended,
@@ -185,6 +207,7 @@ exports.getCapsReportCardData = async (req, res) => {
                 attendance_percentage: attPct
             },
             recommendation: recommendation,
+            principal_remark: principalRemark,
             principal_name: 'T.L. Makula (Principal)'
         });
     } catch (err) {

@@ -33,12 +33,17 @@ router.get('/metadata', auth, isAdmin, adminController.getSchoolMetadata);
 
 // AI Timetable Generation
 router.post('/generate-timetable', auth, isAdmin, timetableController.generateAITimetable);
+router.post('/generate-school-wide-timetable', auth, isAdmin, timetableController.generateSchoolWideTimetable);
 router.post('/publish-to-teachers', auth, isAdmin, timetableController.publishToTeachers);
 router.post('/publish-timetable', auth, isAdmin, timetableController.publishToTeachers);
 router.get('/timetables', auth, isAdmin, timetableController.getTimetables);
 router.get('/timetables/:id', auth, isAdmin, timetableController.getTimetableById);
 router.delete('/timetables/:id', auth, isAdmin, timetableController.deleteTimetable);
 router.patch('/timetables/:id', auth, isAdmin, timetableController.updateTimetable);
+
+// Automated Fee Billing & Reminders
+router.post('/fees/generate-term-invoices', auth, isAdmin, adminController.generateTermFeeInvoices);
+router.post('/fees/send-reminders', auth, isAdmin, adminController.sendFeeReminders);
 
 // Behavior Incidents
 router.post('/incidents', auth, isAdmin, adminController.createBehaviorIncident);

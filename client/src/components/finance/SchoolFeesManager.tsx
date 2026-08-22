@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { financeService } from '../../services/api';
+import { financeService, adminService } from '../../services/api';
 import { Badge } from '../common/Badge';
 import { Modal } from '../common/Modal';
 import { LoadingSpinner } from '../common/LoadingSpinner';
@@ -20,7 +20,8 @@ import {
   Search,
   Plus,
   Zap,
-  Sparkles
+  Sparkles,
+  Mail
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -116,6 +117,37 @@ export const SchoolFeesManager: React.FC<SchoolFeesManagerProps> = ({
     }
   };
 
+  const [generatingTermFees, setGeneratingTermFees] = useState<boolean>(false);
+  const [sendingReminders, setSendingReminders] = useState<boolean>(false);
+  const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
+
+  const handleGenerateTermFees = async () => {
+    setGeneratingTermFees(true);
+    setActionSuccessMsg(null);
+    try {
+      const res = await adminService.generateTermFeeInvoices({ term: 'Term 3 2026', amount: 4500.00 });
+      setActionSuccessMsg(res.message || 'Term 3 fee invoices generated for all enrolled learners.');
+      fetchData();
+    } catch (err: any) {
+      alert('Failed to generate term fee invoices: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setGeneratingTermFees(false);
+    }
+  };
+
+  const handleSendReminders = async () => {
+    setSendingReminders(true);
+    setActionSuccessMsg(null);
+    try {
+      const res = await adminService.sendFeeReminders();
+      setActionSuccessMsg(res.message || 'Automated fee reminders dispatched to parents.');
+    } catch (err: any) {
+      alert('Failed to send fee reminders: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setSendingReminders(false);
+    }
+  };
+
   // Calculate quick summary
   const totalBilled = invoices.reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
   const totalPaid = invoices.reduce((acc, curr) => acc + parseFloat(curr.paid_amount || 0), 0);
@@ -142,19 +174,49 @@ export const SchoolFeesManager: React.FC<SchoolFeesManagerProps> = ({
                 Gateway Active
               </span>
             </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Autonomous fee invoicing, instant EFT reconciliation, and automated parent payment alerts.
+            </p>
           </div>
         </div>
 
         {userRole === 'admin' && (
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-xs shadow-glow-indigo transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Generate Fee Invoice</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleGenerateTermFees}
+              disabled={generatingTermFees}
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-600/20 border border-emerald-500/30 hover:bg-emerald-600/30 text-emerald-300 font-bold text-xs transition-all disabled:opacity-50"
+            >
+              <Zap className="w-4 h-4 text-emerald-400" />
+              <span>{generatingTermFees ? 'Generating...' : '⚡ Generate Term Invoices'}</span>
+            </button>
+
+            <button
+              onClick={handleSendReminders}
+              disabled={sendingReminders}
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-amber-600/20 border border-amber-500/30 hover:bg-amber-600/30 text-amber-300 font-bold text-xs transition-all disabled:opacity-50"
+            >
+              <Mail className="w-4 h-4 text-amber-400" />
+              <span>{sendingReminders ? 'Sending...' : '📧 Send Due Reminders'}</span>
+            </button>
+
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-xs shadow-glow-indigo transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New Single Invoice</span>
+            </button>
+          </div>
         )}
       </div>
+
+      {actionSuccessMsg && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2 animate-fade-in">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>{actionSuccessMsg}</span>
+        </div>
+      )}
 
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

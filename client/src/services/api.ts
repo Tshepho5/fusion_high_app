@@ -203,6 +203,7 @@ export const adminService = {
   getSchoolMetadata: () => api.get('/api/admin/metadata').then(res => res.data),
   getTimetables: () => api.get('/api/admin/timetables').then(res => res.data),
   generateTimetable: (payload: any) => api.post('/api/admin/generate-timetable', payload).then(res => res.data),
+  generateSchoolWideTimetable: () => api.post('/api/admin/generate-school-wide-timetable').then(res => res.data),
   publishToTeachers: (payload: { timetable_id?: number; timetable_data?: any; generation_details?: any; name?: string; [key: string]: any }) => 
     api.post('/api/admin/publish-to-teachers', payload).then(res => res.data),
   publishTimetable: (payload: { timetable_id?: number; timetable_data?: any; generation_details?: any; name?: string; [key: string]: any }) => 
@@ -210,6 +211,8 @@ export const adminService = {
   deleteTimetable: (id: string | number) => api.delete(`/api/admin/timetables/${id}`).then(res => res.data),
   updateTeacherSubjects: (id: string | number, payload: { subjects: string[]; grades_taught?: number[] }) => 
     api.put(`/api/admin/teachers/${id}/subjects`, payload).then(res => res.data),
+  generateTermFeeInvoices: (payload?: any) => api.post('/api/admin/fees/generate-term-invoices', payload).then(res => res.data),
+  sendFeeReminders: () => api.post('/api/admin/fees/send-reminders').then(res => res.data),
   getAnnouncements: () => api.get('/api/announcements').then(res => res.data),
   createAnnouncement: (payload: any) => api.post('/api/announcements', payload).then(res => res.data),
   deleteAnnouncement: (id: string | number) => api.delete(`/api/announcements/${id}`).then(res => res.data),
@@ -217,6 +220,8 @@ export const adminService = {
   getAdmissionById: (id: string | number) => api.get(`/api/admin/admissions/${id}`).then(res => res.data),
   inspectAdmissionOCR: (id: string | number, documentId?: number) => api.post(`/api/admin/admissions/${id}/ocr-inspect`, { documentId }).then(res => res.data),
   updateAdmissionStatus: (id: string | number, payload: any) => api.patch(`/api/admin/admissions/${id}`, payload).then(res => res.data),
+  reviewApplicationDecision: (id: string | number, payload: { status: string; admin_notes?: string; assigned_class_id?: number }) =>
+    api.post(`/api/applications/${id}/decision`, payload).then(res => res.data),
   getAcademicOverview: (params?: any) => api.get('/api/admin/academics/overview', { params }).then(res => res.data),
   moderateBatch: (payload: any) => api.post('/api/admin/academics/moderate', payload).then(res => res.data),
 };

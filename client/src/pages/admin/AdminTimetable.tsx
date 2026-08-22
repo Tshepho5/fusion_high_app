@@ -153,6 +153,24 @@ export const AdminTimetable: React.FC = () => {
     }
   };
 
+  const [generatingSchoolWide, setGeneratingSchoolWide] = useState(false);
+
+  const handleGenerateSchoolWide = async () => {
+    setGeneratingSchoolWide(true);
+    setError(null);
+    setStatusMessage(null);
+    try {
+      const res = await adminService.generateSchoolWideTimetable();
+      setStatusMessage(res.message || 'Successfully generated conflict-free 1-hour timetables for all Grades 8 to 12! Drafts distributed to educators.');
+      fetchTimetablesList();
+    } catch (err: any) {
+      console.error('Failed to generate school-wide timetables:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to generate school-wide timetables.');
+    } finally {
+      setGeneratingSchoolWide(false);
+    }
+  };
+
   const handleGenerate = async () => {
     setGenerating(true);
     setError(null);
@@ -198,14 +216,36 @@ export const AdminTimetable: React.FC = () => {
 
   const handleSaveSlotEdit = () => {
     if (!editingSlot || !selectedClass) return;
+    const { day, period, subject, teacher, room, duration, lesson_focus } = editingSlot.data;
     setTimetableData((prev: any) => {
-      const copy = { ...prev };
+      if (!prev) return prev;
+      const copy = JSON.parse(JSON.stringify(prev));
       if (!copy[selectedClass]) copy[selectedClass] = {};
       if (!copy[selectedClass][editingSlot.day]) copy[selectedClass][editingSlot.day] = {};
-      copy[selectedClass][editingSlot.day][editingSlot.period] = editingSlot.data;
+      copy[selectedClass][editingSlot.day][editingSlot.period] = {
+        subject,
+        teacher,
+        room,
+        duration: duration || '1 Hour (60 min)',
+        lesson_focus: lesson_focus || ''
+      };
       return copy;
     });
     setEditingSlot(null);
+    setStatusMessage(`Updated period ${editingSlot.period} on ${editingSlot.day} for ${selectedClass}.`);
+  };
+
+  const handleClearSlot = (day: string, period: string) => {
+    if (!selectedClass) return;
+    setTimetableData((prev: any) => {
+      if (!prev) return prev;
+      const copy = JSON.parse(JSON.stringify(prev));
+      if (copy[selectedClass] && copy[selectedClass][day]) {
+        delete copy[selectedClass][day][period];
+      }
+      return copy;
+    });
+    setStatusMessage(`Cleared period ${period} on ${day} for ${selectedClass}.`);
   };
 
   const availableClasses = timetableData ? Object.keys(timetableData) : [];
@@ -213,16 +253,35 @@ export const AdminTimetable: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl md:text-2xl font-extrabold font-display text-white tracking-tight flex items-center gap-2">
-            <Calendar className="w-6 h-6 text-cyan-400" />
-            Timetable Generator & Allocation Studio
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Generate balanced schedules with 45-min nutrition breaks, assign educators, and inspect published timetables.
+      {/* Header & 1-Click Autonomous Action */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-brand-900/40 via-surface-dark to-surface-dark border border-white/10 shadow-2xl">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-6 h-6 text-brand-400" />
+            <h2 className="text-xl font-bold font-display text-white">AI Timetable & Master Scheduling</h2>
+          </div>
+          <p className="text-xs text-slate-400">
+            Intelligent 1-hour conflict-free periods (07:15 – 14:00) with educator draft review and learner auto-sync.
           </p>
         </div>
+
+        <button
+          onClick={handleGenerateSchoolWide}
+          disabled={generatingSchoolWide}
+          className="py-3 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold text-xs shadow-glow-emerald transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-50"
+        >
+          {generatingSchoolWide ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>Generating All Grades (8–12)...</span>
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4 text-emerald-200" />
+              <span>⚡ 1-Click School-Wide Auto-Scheduler (Grades 8–12)</span>
+            </>
+          )}
+        </button>
       </div>
 
       {statusMessage && (
@@ -243,7 +302,7 @@ export const AdminTimetable: React.FC = () => {
       <div className="p-6 rounded-3xl bg-surface-dark border border-white/10 shadow-xl space-y-4">
         <h3 className="text-sm font-bold font-display text-white flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-brand-400" />
-          Generate New School Schedule
+          Single Grade Custom Schedule Generator
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">

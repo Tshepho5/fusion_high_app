@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
@@ -785,7 +786,7 @@ exports.listApplications = async (req, res) => {
 };
 
 /**
- * Admin: Manual Decision / Review
+ * Admin: Manual Decision / Review & 1-Click Autonomous Enrollment
  */
 exports.reviewApplication = async (req, res) => {
   const { id } = req.params;
@@ -800,9 +801,153 @@ exports.reviewApplication = async (req, res) => {
     const app = appRes.rows[0];
     let provNumber = app.provisional_learner_number;
 
-    if (status === 'approved' && !provNumber) {
+    if ((status === 'approved' || status === 'enrolled') && !provNumber) {
       provNumber = applicationService.generateProvisionalLearnerNumber(app.grade_applied);
     }
+
+    // 1. If approved or enrolled, execute full 1-Click Autonomous Enrollment
+    let enrollmentDetails = null;
+    if (status === 'approved' || status === 'enrolled') {
+      const gradeApplied = parseInt(app.grade_applied, 10) || 10;
+      const stream = app.stream || 'General';
+      const homeLanguage = (app.home_language || 'Sepedi').trim();
+      const subjects = curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
+      
+      const defaultPassword = 'FusionPassword2026!';
+      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+      // (a) Create or link Parent User Account
+      let parentUserId = null;
+      if (app.primary_parent_email) {
+        const parentEmailClean = app.primary_parent_email.trim().toLowerCase();
+        const parentUserRes = await db.query('SELECT id, email FROM users WHERE LOWER(email) = $1 LIMIT 1', [parentEmailClean]);
+        if (parentUserRes.rows.length > 0) {
+          parentUserId = parentUserRes.rows[0].id;
+        } else {
+          // Resolve parent role_id
+          const parentRoleRes = await db.query("SELECT id FROM roles WHERE name = 'parent' LIMIT 1");
+          const parentRoleId = parentRoleRes.rows[0]?.id || null;
+
+          const newParentRes = await db.query(
+            `INSERT INTO users (full_name, surname, email, password, phone, role_id, role, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, 'parent', NOW()) RETURNING id`,
+            [
+              app.primary_parent_name,
+              app.primary_parent_surname,
+              parentEmailClean,
+              hashedPassword,
+              app.primary_parent_phone || null,
+              parentRoleId
+            ]
+          );
+          parentUserId = newParentRes.rows[0].id;
+        }
+      }
+
+      // (b) Create Learner User Account
+      let learnerUserId = null;
+      const learnerEmail = app.email ? app.email.trim().toLowerCase() : `${provNumber.toLowerCase()}@fusionhigh.co.za`;
+      const learnerUserRes = await db.query('SELECT id FROM users WHERE LOWER(email) = $1 LIMIT 1', [learnerEmail]);
+      if (learnerUserRes.rows.length > 0) {
+        learnerUserId = learnerUserRes.rows[0].id;
+      } else {
+        const learnerRoleRes = await db.query("SELECT id FROM roles WHERE name = 'learner' LIMIT 1");
+        const learnerRoleId = learnerRoleRes.rows[0]?.id || null;
+
+        const newLearnerRes = await db.query(
+          `INSERT INTO users (full_name, surname, email, password, phone, role_id, role, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, 'learner', NOW()) RETURNING id`,
+          [
+            app.first_name,
+            app.surname,
+            learnerEmail,
+            hashedPassword,
+            app.phone || null,
+            learnerRoleId
+          ]
+        );
+        learnerUserId = newLearnerRes.rows[0].id;
+      }
+
+      // (c) Create or Update record in children table
+      let childId;
+      const existingChild = await db.query('SELECT id FROM children WHERE learner_number = $1 OR application_number = $2 LIMIT 1', [provNumber, app.application_number]);
+      if (existingChild.rows.length > 0) {
+        childId = existingChild.rows[0].id;
+        await db.query(
+          `UPDATE children SET
+             full_name = $1, surname = $2, grade = $3, stream = $4, home_language = $5,
+             subjects = $6, parent_id = $7, learner_user_id = $8, is_active = TRUE
+           WHERE id = $9`,
+          [app.first_name, app.surname, gradeApplied, stream, homeLanguage, subjects, parentUserId, learnerUserId, childId]
+        );
+      } else {
+        const childInsert = await db.query(
+          `INSERT INTO children (full_name, surname, learner_number, grade, stream, home_language, subjects, parent_id, learner_user_id, application_number, is_active, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, TRUE, NOW()) RETURNING id`,
+          [app.first_name, app.surname, provNumber, gradeApplied, stream, homeLanguage, subjects, parentUserId, learnerUserId, app.application_number]
+        );
+        childId = childInsert.rows[0].id;
+      }
+
+      // (d) Link in parent_children table
+      if (parentUserId && childId) {
+        try {
+          await db.query(
+            `INSERT INTO parent_children (parent_id, child_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [parentUserId, childId]
+          );
+        } catch (_) {}
+      }
+
+      // (e) Create Term 1 Tuition Fee Invoice
+      const invoiceNum = `INV-TERM1-${provNumber}`;
+      const feeCheck = await db.query('SELECT id FROM fee_invoices WHERE invoice_number = $1 LIMIT 1', [invoiceNum]);
+      if (feeCheck.rows.length === 0) {
+        const breakdown = [
+          { item: `CAPS Grade ${gradeApplied} Term 1 Tuition Fee`, amount: 4000.00 },
+          { item: 'Digital Curriculum, Past Papers & AI Tutor License', amount: 300.00 },
+          { item: 'Sports & Extracurricular Facilities Levy', amount: 200.00 }
+        ];
+        await db.query(
+          `INSERT INTO fee_invoices (learner_id, parent_id, invoice_number, title, description, category, term, amount, paid_amount, balance, status, due_date, itemized_breakdown, created_at)
+           VALUES ($1, $2, $3, $4, $5, 'Tuition', 'Term 1 2026', 4500.00, 0.00, 4500.00, 'pending', '2026-03-31', $6, NOW())`,
+          [
+            childId,
+            parentUserId,
+            invoiceNum,
+            `Term 1 School Fees — Grade ${gradeApplied}`,
+            `Official tuition invoice for newly enrolled learner ${app.first_name} ${app.surname}.`,
+            JSON.stringify(breakdown)
+          ]
+        );
+      }
+
+      // (f) Send Official Welcome Email with Credentials to Parent
+      if (app.primary_parent_email) {
+        try {
+          await emailService.sendParentWelcome({
+            email: app.primary_parent_email,
+            parentName: `${app.primary_parent_name} ${app.primary_parent_surname}`,
+            childName: `${app.first_name} ${app.surname}`,
+            learnerNumber: provNumber,
+            temporaryPassword: defaultPassword
+          });
+        } catch (emailErr) {
+          console.warn('[ENROLLMENT WELCOME EMAIL ERROR]:', emailErr.message);
+        }
+      }
+
+      enrollmentDetails = {
+        learner_number: provNumber,
+        learner_user_id: learnerUserId,
+        parent_user_id: parentUserId,
+        child_id: childId,
+        temporary_password: defaultPassword
+      };
+    }
+
+    const finalStatus = (status === 'approved' || status === 'enrolled') ? 'enrolled' : status;
 
     await db.query(`
       UPDATE applications SET
@@ -812,11 +957,18 @@ exports.reviewApplication = async (req, res) => {
         provisional_learner_number = $4,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $5
-    `, [status, admin_notes || app.admin_notes, assigned_class_id || app.assigned_class_id, provNumber, id]);
+    `, [finalStatus, admin_notes || app.admin_notes, assigned_class_id || app.assigned_class_id, provNumber, id]);
 
-    res.json({ success: true, message: `Application status updated to ${status}.` });
+    res.json({
+      success: true,
+      message: (status === 'approved' || status === 'enrolled')
+        ? `Application approved & learner officially enrolled in 1 click! Learner Number: ${provNumber}. Welcome credentials sent to parent.`
+        : `Application status updated to ${status}.`,
+      status: finalStatus,
+      enrollment: enrollmentDetails
+    });
   } catch (err) {
     console.error('[ADMIN REVIEW ERROR]:', err);
-    res.status(500).json({ error: 'Failed to update application review.' });
+    res.status(500).json({ error: 'Failed to process application enrollment: ' + err.message });
   }
 };
