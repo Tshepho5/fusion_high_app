@@ -1036,6 +1036,121 @@ const emailService = {
           ctaLink: loginUrl
         })
       };
+    },
+
+    timetableDraft: ({ teacherName, grade, stream, timetableName }) => {
+      const title = `Timetable Draft for Review: Grade ${grade} (${stream})`;
+      const loginUrl = (process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim() + '/login';
+
+      const contentHtml = `
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6; margin-top: 0;">
+          Dear <strong>${teacherName || 'Educator'}</strong>,
+        </p>
+        <p style="color: #cbd5e1; font-size: 13px; line-height: 1.6;">
+          Administration has generated and distributed the clash-free 1-hour weekly timetable draft for <strong>Grade ${grade} (${stream})</strong>.
+        </p>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #38bdf8; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
+          <h4 style="margin: 0 0 14px 0; color: #38bdf8; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+            Schedule Details
+          </h4>
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px;">
+            <tr>
+              <td style="padding: 6px 0; color: #94a3b8; width: 140px;">Timetable:</td>
+              <td style="padding: 6px 0; color: #ffffff; font-weight: 700;">${timetableName || `Grade ${grade} Master Timetable`}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #94a3b8;">Target Grade:</td>
+              <td style="padding: 6px 0; color: #38bdf8; font-weight: 700;">Grade ${grade} (${stream})</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #94a3b8;">Daily Structure:</td>
+              <td style="padding: 6px 0; color: #34d399; font-weight: 700;">6 Periods × 1 Hour (07:15 - 14:00)</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #94a3b8;">Status:</td>
+              <td style="padding: 6px 0; color: #fbbf24; font-weight: 700;">Pending Educator Review</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; border-left: 4px solid #10b981; border-radius: 12px; padding: 18px 22px; margin: 20px 0;">
+          <h4 style="margin: 0 0 10px 0; color: #34d399; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+            Action Required
+          </h4>
+          <ol style="margin: 0; padding-left: 18px; color: #cbd5e1; font-size: 13px; line-height: 1.6;">
+            <li style="margin-bottom: 6px;">Sign in to your <strong>Educator Portal</strong>.</li>
+            <li style="margin-bottom: 6px;">Open the <strong>Timetable</strong> tab to inspect your assigned periods and rooms.</li>
+            <li>Once you confirm your allocations are accurate, click <strong>"Publish to Learners & Parents"</strong> to make the schedule live.</li>
+          </ol>
+        </div>
+      `;
+
+      return {
+        subject: `[Fusion High] Timetable Draft for Educator Review: Grade ${grade} (${stream})`,
+        body: createBaseEmailTemplate({
+          preheader: `Grade ${grade} timetable draft is ready for your review in the Educator Portal.`,
+          title,
+          subtitle: `Official Educator Timetable Verification Notice`,
+          contentHtml,
+          ctaText: 'Review My Schedule in Portal',
+          ctaLink: loginUrl
+        })
+      };
+    },
+
+    timetableReleased: ({ recipientName, grade, stream, timetableName }) => {
+      const title = `Official Timetable Released: Grade ${grade} (${stream})`;
+      const loginUrl = (process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim() + '/login';
+
+      const contentHtml = `
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6; margin-top: 0;">
+          Dear <strong>${recipientName || 'Learner / Parent'}</strong>,
+        </p>
+        <p style="color: #cbd5e1; font-size: 13px; line-height: 1.6;">
+          Your subject educators have verified and officially published the weekly 1-hour class schedule for <strong>Grade ${grade} (${stream})</strong>.
+        </p>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #10b981; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
+          <h4 style="margin: 0 0 14px 0; color: #34d399; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+            Schedule Summary
+          </h4>
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px;">
+            <tr>
+              <td style="padding: 6px 0; color: #94a3b8; width: 140px;">Timetable:</td>
+              <td style="padding: 6px 0; color: #ffffff; font-weight: 700;">${timetableName || `Grade ${grade} Master Timetable`}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #94a3b8;">Grade:</td>
+              <td style="padding: 6px 0; color: #38bdf8; font-weight: 700;">Grade ${grade} (${stream})</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #94a3b8;">School Hours:</td>
+              <td style="padding: 6px 0; color: #34d399; font-weight: 700;">07:15 - 14:00 (1-Hour Periods)</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #94a3b8;">Status:</td>
+              <td style="padding: 6px 0; color: #10b981; font-weight: 700;">Live & Active</td>
+            </tr>
+          </table>
+        </div>
+
+        <p style="color: #cbd5e1; font-size: 13px; line-height: 1.6;">
+          You can now view your daily periods, classroom allocations, and subject teachers in your portal.
+        </p>
+      `;
+
+      return {
+        subject: `[Fusion High] Official Timetable Released: Grade ${grade} (${stream})`,
+        body: createBaseEmailTemplate({
+          preheader: `Your official Grade ${grade} weekly class timetable is now live in your portal.`,
+          title,
+          subtitle: `Official Academic Schedule Release`,
+          contentHtml,
+          ctaText: 'View My Timetable',
+          ctaLink: loginUrl
+        })
+      };
     }
   },
 
@@ -1061,6 +1176,16 @@ const emailService = {
 
   sendParentWelcome: async (params) => {
     const template = emailService.templates.parentWelcome(params);
+    return await emailService.sendEmail(params.email, template.subject, template.body);
+  },
+
+  sendTimetableDraftToTeacher: async (params) => {
+    const template = emailService.templates.timetableDraft(params);
+    return await emailService.sendEmail(params.teacherEmail, template.subject, template.body);
+  },
+
+  sendTimetableReleased: async (params) => {
+    const template = emailService.templates.timetableReleased(params);
     return await emailService.sendEmail(params.email, template.subject, template.body);
   }
 };

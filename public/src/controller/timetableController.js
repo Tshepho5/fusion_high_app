@@ -518,7 +518,7 @@ exports.publishToTeachers = async (req, res) => {
         const notifySubject = `Educator Review Required: Grade ${grade} (${stream}) Timetable Draft`;
         const notifyBody = `Administration has generated the 1-hour weekly timetable draft for Grade ${grade} (${stream}). Please inspect your subject slots in your Educator Portal. Once all subject allocations are verified, you can release the schedule to your learners.`;
 
-        // Send messages specifically to assigned teachers
+        // Send in-app messages and real SMTP emails specifically to assigned teachers
         for (const teacher of teachersRes.rows) {
             try {
                 await db.query(
@@ -527,6 +527,16 @@ exports.publishToTeachers = async (req, res) => {
                     [adminId, teacher.id, notifySubject, notifyBody]
                 );
             } catch (e) {}
+
+            if (teacher.email) {
+                emailService.sendTimetableDraftToTeacher({
+                    teacherName: teacher.full_name,
+                    teacherEmail: teacher.email,
+                    grade,
+                    stream,
+                    timetableName
+                }).catch(err => console.error(`[EMAIL ERROR] Timetable draft email to ${teacher.email}:`, err.message));
+            }
         }
 
         // Broadcast teacher notice safely
@@ -552,7 +562,7 @@ exports.publishToTeachers = async (req, res) => {
         }
 
         res.json({
-            message: `Timetable draft successfully distributed to Grade ${grade} educators for subject review!`,
+            message: `Timetable draft successfully distributed to Grade ${grade} educators via email and portal!`,
             timetable: result.rows[0],
             target_teachers_count: teachersRes.rows.length
         });
@@ -680,10 +690,13 @@ exports.teacherPublishToLearners = async (req, res) => {
             [timetable_data ? JSON.stringify(timetable_data) : null, tt.id]
         );
 
-        // Fetch learners and parents for this grade
+        // Fetch learners and linked parents for this grade with email addresses
         const learnersRes = await db.query(
-            `SELECT c.id as child_id, c.learner_user_id, c.parent_id, c.full_name, c.surname
+            `SELECT c.id as child_id, c.learner_user_id, c.parent_id, c.full_name, c.surname,
+                    u_l.email as learner_email, u_p.email as parent_email
              FROM children c
+             LEFT JOIN users u_l ON c.learner_user_id = u_l.id
+             LEFT JOIN users u_p ON c.parent_id = u_p.id
              WHERE c.grade = $1`,
             [grade]
         );
@@ -691,7 +704,7 @@ exports.teacherPublishToLearners = async (req, res) => {
         const notifySubject = `Official Timetable Released: Grade ${grade} (${stream})`;
         const notifyBody = `Your subject educators have verified and officially published the 1-hour weekly class schedule for Grade ${grade} (${stream}). Check your Timetable tab for periods and room allocations.`;
 
-        // Send messages to learners and parents
+        // Send in-app messages and real SMTP emails to learners and parents
         for (const record of learnersRes.rows) {
             if (record.learner_user_id) {
                 try {
@@ -701,6 +714,16 @@ exports.teacherPublishToLearners = async (req, res) => {
                         [teacherId, record.learner_user_id, notifySubject, notifyBody]
                     );
                 } catch (e) {}
+
+                if (record.learner_email) {
+                    emailService.sendTimetableReleased({
+                        recipientName: `${record.full_name} ${record.surname || ''}`.trim(),
+                        email: record.learner_email,
+                        grade,
+                        stream,
+                        timetableName: tt.name
+                    }).catch(err => console.error(`[EMAIL ERROR] Timetable released email to learner ${record.learner_email}:`, err.message));
+                }
             }
             if (record.parent_id) {
                 try {
@@ -710,6 +733,16 @@ exports.teacherPublishToLearners = async (req, res) => {
                         [teacherId, record.parent_id, record.child_id, notifySubject, notifyBody]
                     );
                 } catch (e) {}
+
+                if (record.parent_email) {
+                    emailService.sendTimetableReleased({
+                        recipientName: 'Parent / Guardian',
+                        email: record.parent_email,
+                        grade,
+                        stream,
+                        timetableName: tt.name
+                    }).catch(err => console.error(`[EMAIL ERROR] Timetable released email to parent ${record.parent_email}:`, err.message));
+                }
             }
         }
 
@@ -736,7 +769,7 @@ exports.teacherPublishToLearners = async (req, res) => {
         }
 
         res.json({
-            message: `Timetable officially released to Grade ${grade} learners and parents!`,
+            message: `Timetable officially released to Grade ${grade} learners and parents via email and portal!`,
             timetable: updatedRes.rows[0],
             target_learners_count: learnersRes.rows.length
         });
