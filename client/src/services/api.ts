@@ -213,6 +213,7 @@ export const adminService = {
     api.put(`/api/admin/teachers/${id}/subjects`, payload).then(res => res.data),
   generateTermFeeInvoices: (payload?: any) => api.post('/api/admin/fees/generate-term-invoices', payload).then(res => res.data),
   sendFeeReminders: () => api.post('/api/admin/fees/send-reminders').then(res => res.data),
+  sendSundayParentDigest: () => api.post('/api/admin/communications/send-sunday-digest').then(res => res.data),
   getAnnouncements: () => api.get('/api/announcements').then(res => res.data),
   createAnnouncement: (payload: any) => api.post('/api/announcements', payload).then(res => res.data),
   deleteAnnouncement: (id: string | number) => api.delete(`/api/announcements/${id}`).then(res => res.data),
@@ -326,6 +327,7 @@ export const extracurricularService = {
 };
 
 // Textbook & Learning Asset Tracking APIs
+// Textbook & Learning Asset Tracking APIs
 export const textbookService = {
   getInventory: (params?: { grade?: number; subject?: string }) => api.get('/api/textbooks/inventory', { params }).then(res => res.data),
   addInventory: (payload: any) => api.post('/api/textbooks/inventory', payload).then(res => res.data),
@@ -333,6 +335,7 @@ export const textbookService = {
     api.post('/api/textbooks/issue', payload).then(res => res.data),
   returnTextbook: (id: number | string, payload: { condition_on_return: string; replacement_fee?: number }) => 
     api.patch(`/api/textbooks/return/${id}`, payload).then(res => res.data),
+  autoBillOverdue: () => api.post('/api/textbooks/auto-bill-overdue').then(res => res.data),
   getMyBooks: () => api.get('/api/textbooks/my-books').then(res => res.data),
 };
 
@@ -351,8 +354,10 @@ export const leaveReliefService = {
 
 // Matric Candidate Examination Readiness & Pass Rate Projector APIs
 export const matricAnalyticsService = {
-  getProjectorStats: () => api.get('/api/matric-analytics/projector').then(res => res.data),
+  getProjectorStats: () => api.get('/api/matric/projector').then(res => res.data),
+  autoRouteRemedial: () => api.post('/api/matric/remedial-route').then(res => res.data),
 };
+export const matricService = matricAnalyticsService;
 
 // Homework & Digital Assignment Submission APIs
 export const assignmentService = {
@@ -372,6 +377,8 @@ export const assignmentService = {
     }).then(res => res.data),
   gradeSubmission: (submissionId: number | string, payload: { teacher_score: number | string; teacher_feedback?: string }) =>
     api.post(`/api/assignments/submissions/${submissionId}/grade`, payload).then(res => res.data),
+  batchAIGrade: (assignmentId: number | string) =>
+    api.post(`/api/assignments/${assignmentId}/batch-ai-grade`).then(res => res.data),
 };
 
 // Digital School Fees & Online Payments APIs

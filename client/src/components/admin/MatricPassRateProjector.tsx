@@ -79,6 +79,22 @@ export const MatricPassRateProjector: React.FC = () => {
     return true;
   });
 
+  const [routing, setRouting] = useState<boolean>(false);
+  const [routeSuccess, setRouteSuccess] = useState<string | null>(null);
+
+  const handleAutoRouteRemedial = async () => {
+    setRouting(true);
+    setRouteSuccess(null);
+    try {
+      const res = await matricAnalyticsService.autoRouteRemedial();
+      setRouteSuccess(res.message || 'At-Risk candidates routed to Saturday/Afternoon clinics.');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to auto-route remedial clinics.');
+    } finally {
+      setRouting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header Banner */}
@@ -95,14 +111,31 @@ export const MatricPassRateProjector: React.FC = () => {
             </h2>
           </div>
 
-          <button
-            onClick={() => window.print()}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition-all shrink-0"
-          >
-            <Printer className="w-4 h-4" />
-            <span>Print NSC Report</span>
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={handleAutoRouteRemedial}
+              disabled={routing}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-lg shadow-amber-500/20 transition-all shrink-0 disabled:opacity-50"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>{routing ? 'Enrolling & Emailing...' : '⚡ Auto-Route At-Risk to Remedial Clinics'}</span>
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition-all shrink-0"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Print NSC Report</span>
+            </button>
+          </div>
         </div>
+
+        {routeSuccess && (
+          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{routeSuccess}</span>
+          </div>
+        )}
 
         {/* Aggregate KPI Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2">

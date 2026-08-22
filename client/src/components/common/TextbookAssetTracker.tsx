@@ -229,6 +229,23 @@ export const TextbookAssetTracker: React.FC = () => {
     return title.includes(query) || subject.includes(query) || barcode.includes(query) || isbn.includes(query);
   });
 
+  const [scanningOverdue, setScanningOverdue] = useState<boolean>(false);
+
+  const handleAutoBillOverdue = async () => {
+    setScanningOverdue(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await textbookService.autoBillOverdue();
+      setSuccess(res.message || 'Overdue scan completed and replacement fees billed to parents.');
+      fetchData();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to auto-bill overdue textbooks.');
+    } finally {
+      setScanningOverdue(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -240,13 +257,23 @@ export const TextbookAssetTracker: React.FC = () => {
           </h2>
         </div>
 
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add New Textbook</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleAutoBillOverdue}
+            disabled={scanningOverdue}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50"
+          >
+            <Barcode className="w-4 h-4" />
+            <span>{scanningOverdue ? 'Scanning & Invoicing...' : '⚡ 1-Click Overdue Scan & Loss Invoicing'}</span>
+          </button>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add New Textbook</span>
+          </button>
+        </div>
       </div>
 
       {success && (

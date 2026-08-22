@@ -35,6 +35,13 @@ router.post(
   assignmentController.gradeSubmission
 );
 
+// Teacher: 1-Click Batch AI Grade all pending submissions for an assignment
+router.post(
+  '/:assignmentId/batch-ai-grade',
+  requireRole(['teacher', 'admin']),
+  assignmentController.batchAIGrade
+);
+
 // Learner: Get homework assignments for learner's grade and enrolled subjects
 router.get(
   '/learner',

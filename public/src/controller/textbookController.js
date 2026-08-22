@@ -1,5 +1,6 @@
 const db = require('../../../db/db');
 const NotificationService = require('../services/notificationService');
+const emailService = require('../services/emailService');
 
 /**
  * Get All Textbook Inventory
@@ -209,5 +210,78 @@ exports.getLearnerAllocations = async (req, res) => {
   } catch (err) {
     console.error('Error fetching learner textbooks:', err);
     res.status(500).json({ error: 'Failed to retrieve issued textbooks.' });
+  }
+};
+
+/**
+ * 1-Click Action: Auto-Scan Overdue Textbooks, Generate Replacement Fee Invoices & Send Parent Notices
+ */
+exports.autoBillOverdue = async (req, res) => {
+  try {
+    const overdueRes = await db.query(`
+      SELECT a.id as allocation_id, a.child_id, a.status, a.issued_date,
+             t.id as inventory_id, t.title as textbook_title, t.unit_cost_zar,
+             c.full_name as learner_name, c.surname as learner_surname, c.grade, c.parent_id,
+             u_p.email as parent_email, CONCAT(u_p.full_name, ' ', u_p.surname) as parent_name
+      FROM textbook_allocations a
+      JOIN textbook_inventory t ON a.inventory_id = t.id
+      JOIN children c ON a.child_id = c.id
+      LEFT JOIN users u_p ON c.parent_id = u_p.id
+      WHERE a.status = 'issued' OR (a.status IN ('lost', 'damaged') AND a.replacement_fee > 0);
+    `);
+
+    let billedCount = 0;
+    const billedItems = [];
+
+    for (const item of overdueRes.rows) {
+      const unitCost = parseFloat(item.unit_cost_zar) || 350.00;
+      const invoiceNumber = `INV-TBK-${item.allocation_id}-${Date.now().toString().slice(-4)}`;
+      const learnerFullName = `${item.learner_name} ${item.learner_surname}`;
+
+      // Check if invoice already exists
+      const existingInv = await db.query(
+        `SELECT id FROM fee_invoices WHERE learner_id = $1 AND category = 'textbook' AND description LIKE $2`,
+        [item.child_id, `%${item.textbook_title}%`]
+      );
+
+      if (existingInv.rows.length === 0) {
+        await db.query(
+          `INSERT INTO fee_invoices 
+             (learner_id, parent_id, invoice_number, title, description, category, term, amount, status, due_date, created_at)
+           VALUES ($1, $2, $3, $4, $5, 'textbook', 'Term 3 2026', $6, 'unpaid', CURRENT_DATE + INTERVAL '14 days', NOW())`,
+          [
+            item.child_id,
+            item.parent_id,
+            invoiceNumber,
+            `Textbook Replacement: ${item.textbook_title}`,
+            `Replacement fee for unreturned/overdue prescribed textbook "${item.textbook_title}" for ${learnerFullName} (Grade ${item.grade}).`,
+            unitCost
+          ]
+        );
+        billedCount++;
+        billedItems.push({ learner: learnerFullName, title: item.textbook_title, cost: unitCost });
+      }
+
+      // Send email notification to parent
+      if (item.parent_email) {
+        emailService.sendTextbookOverdueNotice({
+          parentName: item.parent_name || 'Parent / Guardian',
+          learnerName: learnerFullName,
+          textbookTitle: item.textbook_title,
+          unitCost: unitCost.toFixed(2),
+          dueDate: 'Immediate Return Required'
+        }).catch(err => console.warn(`[TEXTBOOK OVERDUE EMAIL ERROR] ${item.parent_email}:`, err.message));
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Overdue scan complete: Automatically generated ${billedCount} replacement fee invoice(s) and dispatched parent email notices.`,
+      billed_count: billedCount,
+      items: billedItems
+    });
+  } catch (err) {
+    console.error('Error auto-billing overdue textbooks:', err);
+    res.status(500).json({ error: 'Failed to auto-bill overdue textbooks: ' + err.message });
   }
 };

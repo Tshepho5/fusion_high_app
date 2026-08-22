@@ -7,5 +7,6 @@ router.use(authenticateToken);
 
 // Admin & Teachers can view Matric analytics
 router.get('/projector', requireRole(['admin', 'teacher']), matricAnalyticsController.getMatricProjectorStats);
+router.post('/remedial-route', requireRole(['admin', 'teacher']), matricAnalyticsController.autoRouteRemedial);
 
 module.exports = router;

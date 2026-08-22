@@ -1099,6 +1099,8 @@ const emailService = {
       };
     },
 
+    },
+
     timetableReleased: ({ recipientName, grade, stream, timetableName }) => {
       const title = `Official Timetable Released: Grade ${grade} (${stream})`;
       const loginUrl = (process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim() + '/login';
@@ -1151,6 +1153,142 @@ const emailService = {
           ctaLink: loginUrl
         })
       };
+    },
+
+    examInvigilationNotice: ({ teacherName, sessionTitle, venue, date, time, role }) => {
+      const loginUrl = (process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim() + '/login';
+      const contentHtml = `
+        <p style="color: #cbd5e1; font-size: 14px; margin-top: 0;">Dear <strong>${teacherName}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 13px;">You have been officially assigned as <strong>${role || 'Invigilator'}</strong> for the upcoming formal examination session.</p>
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #6366f1; border-radius: 12px; padding: 18px 22px; margin: 20px 0;">
+          <p style="margin: 0; color: #818cf8; font-weight: 700; font-size: 15px;">${sessionTitle}</p>
+          <p style="margin: 6px 0 0 0; color: #cbd5e1; font-size: 13px;">Venue: <strong>${venue}</strong></p>
+          <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 12px;">Date: <strong>${date}</strong> | Time: <strong>${time}</strong></p>
+          <p style="margin: 4px 0 0 0; color: #34d399; font-size: 12px;">Role: <strong>${role || 'Invigilator'}</strong></p>
+        </div>
+        <p style="color: #94a3b8; font-size: 12px;">Please arrive at the exam venue 20 minutes prior to paper commencement to oversee candidate check-in.</p>
+      `;
+      return {
+        subject: `[Fusion High] Exam Invigilation Duty: ${sessionTitle} (${date})`,
+        body: createBaseEmailTemplate({
+          preheader: `Invigilation assignment for ${sessionTitle} on ${date}.`,
+          title: 'Exam Invigilation Duty Assignment',
+          subtitle: 'Formal Assessment Office',
+          contentHtml,
+          ctaText: 'Open Exam Seating Manager',
+          ctaLink: loginUrl
+        })
+      };
+    },
+
+    matricRemedialNotice: ({ recipientName, learnerName, subjects, clinicSchedule }) => {
+      const loginUrl = (process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim() + '/login';
+      const contentHtml = `
+        <p style="color: #cbd5e1; font-size: 14px; margin-top: 0;">Dear <strong>${recipientName}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 13px;">In preparation for the National Senior Certificate (NSC) examinations, <strong>${learnerName}</strong> has been enrolled into our intensive <strong>Matric Academic Remedial & Saturday Clinic Program</strong>.</p>
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #f59e0b; border-radius: 12px; padding: 18px 22px; margin: 20px 0;">
+          <p style="margin: 0; color: #fbbf24; font-weight: 700; font-size: 14px;">Focus Subjects: ${Array.isArray(subjects) ? subjects.join(', ') : subjects}</p>
+          <p style="margin: 6px 0 0 0; color: #cbd5e1; font-size: 13px;">Schedule: <strong>${clinicSchedule || 'Saturdays 08:30 - 12:30 & Tue/Thu Afternoon Labs'}</strong></p>
+        </div>
+        <p style="color: #cbd5e1; font-size: 13px;">Curated CAPS past-paper revision packs and AI Tutor exercises are now active in the learner dashboard.</p>
+      `;
+      return {
+        subject: `[Fusion High] Matric Academic Clinic Enrollment: ${learnerName}`,
+        body: createBaseEmailTemplate({
+          preheader: `Remedial clinic enrollment and study pack for ${learnerName}.`,
+          title: 'Matric At-Risk Intervention & Clinic Roster',
+          subtitle: 'Academic Excellence Department',
+          contentHtml,
+          ctaText: 'Access Revision Materials',
+          ctaLink: loginUrl
+        })
+      };
+    },
+
+    textbookOverdueNotice: ({ parentName, learnerName, textbookTitle, unitCost, dueDate }) => {
+      const loginUrl = (process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim() + '/login';
+      const contentHtml = `
+        <p style="color: #cbd5e1; font-size: 14px; margin-top: 0;">Dear <strong>${parentName}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 13px;">This is an official notice regarding an overdue learning resource issued to <strong>${learnerName}</strong>.</p>
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #ef4444; border-radius: 12px; padding: 18px 22px; margin: 20px 0;">
+          <p style="margin: 0; color: #f87171; font-weight: 700; font-size: 14px;">Resource: ${textbookTitle}</p>
+          <p style="margin: 6px 0 0 0; color: #cbd5e1; font-size: 13px;">Due Date: <strong>${dueDate || 'End of Term'}</strong></p>
+          <p style="margin: 4px 0 0 0; color: #fbbf24; font-size: 13px;">Replacement Value: <strong>R${unitCost || '350.00'}</strong></p>
+        </div>
+        <p style="color: #cbd5e1; font-size: 13px;">Please ensure the textbook is returned to the school library within 3 school days to avoid replacement cost billing.</p>
+      `;
+      return {
+        subject: `[Fusion High] Overdue Textbook Notice: ${textbookTitle} (${learnerName})`,
+        body: createBaseEmailTemplate({
+          preheader: `Overdue textbook notice for ${learnerName}.`,
+          title: 'Textbook Asset Return Notice',
+          subtitle: 'Learning Resources & Library Services',
+          contentHtml,
+          ctaText: 'View Student Account',
+          ctaLink: loginUrl
+        })
+      };
+    },
+
+    consultationBookedNotice: ({ recipientName, otherPartyName, learnerName, subjectName, date, timeSlot, meetingLink }) => {
+      const loginUrl = (process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim() + '/login';
+      const contentHtml = `
+        <p style="color: #cbd5e1; font-size: 14px; margin-top: 0;">Dear <strong>${recipientName}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 13px;">A 1-on-1 parent-educator consultation has been confirmed for <strong>${learnerName}</strong>.</p>
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #38bdf8; border-radius: 12px; padding: 18px 22px; margin: 20px 0;">
+          <p style="margin: 0; color: #38bdf8; font-weight: 700; font-size: 14px;">Consultation with: ${otherPartyName}</p>
+          <p style="margin: 6px 0 0 0; color: #cbd5e1; font-size: 13px;">Subject: <strong>${subjectName || 'General Academic Progress'}</strong></p>
+          <p style="margin: 4px 0 0 0; color: #cbd5e1; font-size: 13px;">Date & Time: <strong>${date} at ${timeSlot}</strong></p>
+          ${meetingLink ? `<p style="margin: 6px 0 0 0; color: #34d399; font-size: 12px;">Virtual Room: <a href="${meetingLink}" style="color: #38bdf8; text-decoration: underline;">Join Video Consultation</a></p>` : ''}
+        </div>
+      `;
+      return {
+        subject: `[Fusion High] Confirmed Consultation: ${learnerName} with ${otherPartyName}`,
+        body: createBaseEmailTemplate({
+          preheader: `Parent-Teacher consultation scheduled for ${date}.`,
+          title: 'Parent-Educator Consultation Confirmed',
+          subtitle: 'Academic Support Services',
+          contentHtml,
+          ctaText: 'Open Parent Portal',
+          ctaLink: loginUrl
+        })
+      };
+    },
+
+    sundayParentDigest: ({ parentName, learnerName, attendancePct, upcomingTests, pendingHomework, feeBalance }) => {
+      const loginUrl = (process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim() + '/login';
+      const contentHtml = `
+        <p style="color: #cbd5e1; font-size: 14px; margin-top: 0;">Dear <strong>${parentName}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 13px;">Here is your weekly academic summary for <strong>${learnerName}</strong> as we head into the new school week.</p>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0;">
+          <div style="background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 14px;">
+            <p style="margin: 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: 700;">Attendance</p>
+            <p style="margin: 4px 0 0 0; color: #34d399; font-size: 20px; font-weight: 800;">${attendancePct}%</p>
+          </div>
+          <div style="background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 14px;">
+            <p style="margin: 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: 700;">Fee Balance</p>
+            <p style="margin: 4px 0 0 0; color: ${parseFloat(feeBalance) > 0 ? '#fbbf24' : '#34d399'}; font-size: 20px; font-weight: 800;">R${feeBalance}</p>
+          </div>
+        </div>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px;">
+          <h4 style="margin: 0 0 8px 0; color: #38bdf8; font-size: 13px;">Upcoming Assessments & Tasks</h4>
+          <p style="margin: 0; color: #cbd5e1; font-size: 12px;"><strong>Assessments:</strong> ${upcomingTests || 'No formal tests scheduled this week.'}</p>
+          <p style="margin: 6px 0 0 0; color: #cbd5e1; font-size: 12px;"><strong>Homework Tasks:</strong> ${pendingHomework || 'All current homework assignments submitted.'}</p>
+        </div>
+      `;
+      return {
+        subject: `[Fusion High] Weekly Academic Digest: ${learnerName}`,
+        body: createBaseEmailTemplate({
+          preheader: `Weekly academic and attendance overview for ${learnerName}.`,
+          title: 'Weekly Parent Academic Digest',
+          subtitle: 'Fusion High Executive Summary',
+          contentHtml,
+          ctaText: 'Sign In to Parent Portal',
+          ctaLink: loginUrl
+        })
+      };
     }
   },
 
@@ -1186,6 +1324,31 @@ const emailService = {
 
   sendTimetableReleased: async (params) => {
     const template = emailService.templates.timetableReleased(params);
+    return await emailService.sendEmail(params.email, template.subject, template.body);
+  },
+
+  sendExamInvigilationNotice: async (params) => {
+    const template = emailService.templates.examInvigilationNotice(params);
+    return await emailService.sendEmail(params.email, template.subject, template.body);
+  },
+
+  sendMatricRemedialNotice: async (params) => {
+    const template = emailService.templates.matricRemedialNotice(params);
+    return await emailService.sendEmail(params.email, template.subject, template.body);
+  },
+
+  sendTextbookOverdueNotice: async (params) => {
+    const template = emailService.templates.textbookOverdueNotice(params);
+    return await emailService.sendEmail(params.email, template.subject, template.body);
+  },
+
+  sendConsultationBookedNotice: async (params) => {
+    const template = emailService.templates.consultationBookedNotice(params);
+    return await emailService.sendEmail(params.email, template.subject, template.body);
+  },
+
+  sendSundayParentDigest: async (params) => {
+    const template = emailService.templates.sundayParentDigest(params);
     return await emailService.sendEmail(params.email, template.subject, template.body);
   }
 };

@@ -1814,3 +1814,60 @@ exports.sendFeeReminders = async (req, res) => {
     }
 };
 
+/**
+ * ADMIN: Automated Weekly Sunday Parent Academic Digest
+ */
+exports.sendSundayParentDigest = async (req, res) => {
+    try {
+        const learnersRes = await db.query(`
+            SELECT c.id as learner_id, c.full_name as learner_name, c.surname as learner_surname, c.grade, c.stream,
+                   u_p.id as parent_id, u_p.email as parent_email, CONCAT(u_p.full_name, ' ', u_p.surname) as parent_name,
+                   (
+                     SELECT COALESCE(ROUND((COUNT(CASE WHEN a.status = 'Present' THEN 1 END)::numeric / NULLIF(COUNT(*), 0)) * 100), 100)
+                     FROM attendance a
+                     WHERE a.child_id = c.id
+                   ) AS attendance_pct,
+                   (
+                     SELECT COALESCE(SUM(fi.amount - fi.paid_amount), 0)
+                     FROM fee_invoices fi
+                     WHERE fi.learner_id = c.id AND fi.status != 'paid'
+                   ) AS fee_balance
+            FROM children c
+            JOIN users u_p ON c.parent_id = u_p.id
+            WHERE u_p.email IS NOT NULL AND u_p.email != ''
+        `);
+
+        let sentCount = 0;
+        for (const learner of learnersRes.rows) {
+            try {
+                const learnerFullName = `${learner.learner_name} ${learner.learner_surname}`;
+                const attendancePct = learner.attendance_pct || 100;
+                const feeBalance = (parseFloat(learner.fee_balance) || 0).toFixed(2);
+
+                await emailService.sendSundayParentDigest({
+                    parentName: learner.parent_name || 'Parent / Guardian',
+                    email: learner.parent_email,
+                    learnerName: `${learnerFullName} (Grade ${learner.grade})`,
+                    attendancePct: attendancePct.toString(),
+                    upcomingTests: `Grade ${learner.grade} CAPS Continuous Assessment & Weekly Quizzes`,
+                    pendingHomework: 'Check Active Homework tab in Parent Portal',
+                    feeBalance
+                });
+
+                sentCount++;
+            } catch (e) {
+                console.warn(`[SUNDAY DIGEST EMAIL ERROR] Parent ${learner.parent_email}:`, e.message);
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `Weekly Sunday Academic Digest successfully compiled and dispatched to ${sentCount} parents via email!`,
+            sent_count: sentCount
+        });
+    } catch (err) {
+        console.error('Error sending Sunday parent digest:', err);
+        res.status(500).json({ error: 'Failed to dispatch weekly parent digest: ' + err.message });
+    }
+};
+

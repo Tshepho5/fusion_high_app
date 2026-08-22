@@ -173,9 +173,12 @@ exports.bookSlot = async (req, res) => {
       RETURNING *;
     `, [slot_id, parentId, child_id, subject, parent_notes || '']);
 
-    const parentUserRes = await db.query('SELECT full_name, surname FROM users WHERE id = $1', [parentId]);
-    const parentName = parentUserRes.rows.length > 0 ? `${parentUserRes.rows[0].full_name} ${parentUserRes.rows[0].surname}` : 'A Parent';
+    const parentUserRes = await db.query('SELECT full_name, surname, email FROM users WHERE id = $1', [parentId]);
+    const parentUser = parentUserRes.rows[0] || {};
+    const parentName = parentUser.full_name ? `${parentUser.full_name} ${parentUser.surname}` : 'A Parent';
+    const parentEmail = parentUser.email;
     const formattedDate = new Date(slot.date).toLocaleDateString('en-ZA', { weekday: 'short', month: 'short', day: 'numeric' });
+    const teacherName = `${slot.teacher_name} ${slot.teacher_surname}`;
 
     // Trigger in-app notification to Teacher
     const NotificationService = require('../services/notificationService');
@@ -187,18 +190,44 @@ exports.bookSlot = async (req, res) => {
       targetTab: 'ptc'
     }).catch(e => console.error('PTC notification error (teacher):', e));
 
+    // Send email to Teacher
+    if (slot.teacher_email) {
+      emailService.sendConsultationBookedNotice({
+        recipientName: teacherName,
+        otherPartyName: `Parent: ${parentName}`,
+        learnerName: `${child.full_name} ${child.surname} (Grade ${child.grade})`,
+        subjectName: subject,
+        date: formattedDate,
+        timeSlot: `${slot.start_time} - ${slot.end_time || slot.start_time}`,
+        meetingLink: slot.meeting_location_or_link
+      }).catch(err => console.warn('[PTC TEACHER EMAIL ERROR]:', err.message));
+    }
+
     // Trigger in-app confirmation notification to Parent
     NotificationService.sendToUsers({
       userIds: [parentId],
       title: '📅 Consultation Confirmed',
-      message: `Your consultation with Educator ${slot.teacher_name} ${slot.teacher_surname} for ${child.full_name} is confirmed for ${formattedDate} at ${slot.start_time}.`,
+      message: `Your consultation with Educator ${teacherName} for ${child.full_name} is confirmed for ${formattedDate} at ${slot.start_time}.`,
       type: 'ptc',
       targetTab: 'ptc'
     }).catch(e => console.error('PTC notification error (parent):', e));
 
+    // Send email to Parent
+    if (parentEmail) {
+      emailService.sendConsultationBookedNotice({
+        recipientName: parentName,
+        otherPartyName: `Educator: ${teacherName}`,
+        learnerName: `${child.full_name} ${child.surname}`,
+        subjectName: subject,
+        date: formattedDate,
+        timeSlot: `${slot.start_time} - ${slot.end_time || slot.start_time}`,
+        meetingLink: slot.meeting_location_or_link
+      }).catch(err => console.warn('[PTC PARENT EMAIL ERROR]:', err.message));
+    }
+
     res.status(201).json({
       success: true,
-      message: `Consultation confirmed with ${slot.teacher_name} ${slot.teacher_surname} on ${formattedDate} at ${slot.start_time}.`,
+      message: `Consultation confirmed with ${teacherName} on ${formattedDate} at ${slot.start_time}. Email confirmations sent!`,
       booking: bookingRes.rows[0]
     });
   } catch (err) {

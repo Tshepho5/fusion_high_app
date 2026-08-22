@@ -44,6 +44,7 @@ router.patch('/timetables/:id', auth, isAdmin, timetableController.updateTimetab
 // Automated Fee Billing & Reminders
 router.post('/fees/generate-term-invoices', auth, isAdmin, adminController.generateTermFeeInvoices);
 router.post('/fees/send-reminders', auth, isAdmin, adminController.sendFeeReminders);
+router.post('/communications/send-sunday-digest', auth, isAdmin, adminController.sendSundayParentDigest);
 
 // Behavior Incidents
 router.post('/incidents', auth, isAdmin, adminController.createBehaviorIncident);

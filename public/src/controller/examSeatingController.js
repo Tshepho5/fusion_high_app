@@ -1,5 +1,6 @@
 const db = require('../../../db/db');
 const NotificationService = require('../services/notificationService');
+const emailService = require('../services/emailService');
 
 /**
  * Admin/Teacher: Create an Exam Session
@@ -135,6 +136,50 @@ exports.generateSeating = async (req, res) => {
       `, [a.session_id, a.child_id, a.desk_number, a.row_num, a.col_num, a.candidate_number]);
     }
 
+    // Auto-allocate 2 available educators as Chief & Assistant Invigilators
+    const teachersRes = await db.query(
+      `SELECT u.id, u.full_name, u.surname, u.email
+       FROM users u
+       JOIN employees e ON u.id = e.user_id
+       LEFT JOIN roles r ON u.role_id = r.id
+       WHERE (r.name = 'teacher' OR r.name IS NULL)
+         AND LOWER(COALESCE(r.name, '')) != 'admin'
+       LIMIT 2`
+    );
+
+    const assignedInvigilators = [];
+    if (teachersRes.rows.length > 0) {
+      const chief = teachersRes.rows[0];
+      assignedInvigilators.push({ name: `${chief.full_name} ${chief.surname}`, role: 'Chief Invigilator' });
+      if (chief.email) {
+        emailService.sendExamInvigilationNotice({
+          teacherName: `${chief.full_name} ${chief.surname}`,
+          email: chief.email,
+          sessionTitle: session.title,
+          venue: session.venue,
+          date: new Date(session.exam_date).toLocaleDateString('en-ZA'),
+          time: `${session.start_time} - ${session.end_time}`,
+          role: 'Chief Invigilator'
+        }).catch(err => console.warn('[EXAM INVIGILATOR EMAIL ERROR]:', err.message));
+      }
+
+      if (teachersRes.rows.length > 1) {
+        const assistant = teachersRes.rows[1];
+        assignedInvigilators.push({ name: `${assistant.full_name} ${assistant.surname}`, role: 'Assistant Invigilator' });
+        if (assistant.email) {
+          emailService.sendExamInvigilationNotice({
+            teacherName: `${assistant.full_name} ${assistant.surname}`,
+            email: assistant.email,
+            sessionTitle: session.title,
+            venue: session.venue,
+            date: new Date(session.exam_date).toLocaleDateString('en-ZA'),
+            time: `${session.start_time} - ${session.end_time}`,
+            role: 'Assistant Invigilator'
+          }).catch(err => console.warn('[EXAM INVIGILATOR EMAIL ERROR]:', err.message));
+        }
+      }
+    }
+
     // Dispatch notification to learners & candidates
     const learnerUserIds = allocations.map(a => a.learner_user_id).filter(Boolean);
     if (learnerUserIds.length > 0) {
@@ -149,8 +194,9 @@ exports.generateSeating = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Successfully allocated ${allocations.length} candidate desks in ${session.venue}.`,
+      message: `Successfully allocated ${allocations.length} candidate desks in ${session.venue} with invigilators assigned & notified via email!`,
       total_allocated: allocations.length,
+      invigilators: assignedInvigilators,
       session
     });
   } catch (err) {

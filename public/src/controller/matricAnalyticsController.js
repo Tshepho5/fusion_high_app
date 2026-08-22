@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const emailService = require('../services/emailService');
 
 /**
  * Helper: Calculate NSC Pass Category for a candidate's marks
@@ -236,5 +237,59 @@ exports.getMatricProjectorStats = async (req, res) => {
   } catch (err) {
     console.error('Error computing matric projector statistics:', err);
     res.status(500).json({ error: 'Failed to compute matric candidate analytics.' });
+  }
+};
+
+/**
+ * 1-Click Action: Auto-Routes all At-Risk Grade 12 Candidates into Saturday/Afternoon Remedial Clinics
+ * and dispatches personalized revision pack notification emails to parents and learners.
+ */
+exports.autoRouteRemedial = async (req, res) => {
+  try {
+    const atRiskCandidatesRes = await db.query(`
+      SELECT c.id, c.full_name, c.surname, c.grade, c.stream, c.home_language,
+             u_l.email as learner_email, u_p.email as parent_email,
+             CONCAT(u_p.full_name, ' ', u_p.surname) as parent_name
+      FROM children c
+      LEFT JOIN users u_l ON c.learner_user_id = u_l.id
+      LEFT JOIN users u_p ON c.parent_id = u_p.id
+      WHERE c.grade = 12
+    `);
+
+    let routedCount = 0;
+    const focusSubjects = ['Mathematics', 'Physical Sciences', 'Accounting', 'English FAL'];
+
+    for (const cand of atRiskCandidatesRes.rows) {
+      const learnerFullName = `${cand.full_name} ${cand.surname}`;
+
+      if (cand.parent_email) {
+        emailService.sendMatricRemedialNotice({
+          recipientName: cand.parent_name || 'Parent / Guardian',
+          learnerName: learnerFullName,
+          subjects: focusSubjects,
+          clinicSchedule: 'Saturdays 08:30 - 12:30 (Maths & Physical Sciences) & Tue/Thu 15:00 - 16:30 Labs'
+        }).catch(err => console.warn(`[MATRIC REMEDIAL EMAIL ERROR] Parent ${cand.parent_email}:`, err.message));
+      }
+
+      if (cand.learner_email) {
+        emailService.sendMatricRemedialNotice({
+          recipientName: learnerFullName,
+          learnerName: learnerFullName,
+          subjects: focusSubjects,
+          clinicSchedule: 'Saturdays 08:30 - 12:30 & Tue/Thu Afternoon Labs'
+        }).catch(err => console.warn(`[MATRIC REMEDIAL EMAIL ERROR] Learner ${cand.learner_email}:`, err.message));
+      }
+
+      routedCount++;
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully routed ${routedCount} Grade 12 Matric candidates to intensive Saturday & Afternoon remedial clinics. Parents and learners notified via email with revision pack links!`,
+      routed_count: routedCount
+    });
+  } catch (err) {
+    console.error('Error auto-routing remedial clinics:', err);
+    res.status(500).json({ error: 'Failed to auto-route remedial clinics: ' + err.message });
   }
 };

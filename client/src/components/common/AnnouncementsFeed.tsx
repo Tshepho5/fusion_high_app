@@ -107,6 +107,22 @@ export const AnnouncementsFeed: React.FC = () => {
     priority: 'Normal'
   });
 
+  const [sendingDigest, setSendingDigest] = useState<boolean>(false);
+
+  const handleSendSundayDigest = async () => {
+    setSendingDigest(true);
+    setStatusMessage(null);
+    setError(null);
+    try {
+      const res = await adminService.sendSundayParentDigest();
+      setStatusMessage(res.message || 'Weekly Parent Academic Digest dispatched successfully via email.');
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to dispatch weekly parent digest.');
+    } finally {
+      setSendingDigest(false);
+    }
+  };
+
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim() || !formData.content.trim()) return;
@@ -236,6 +252,17 @@ export const AnnouncementsFeed: React.FC = () => {
             >
               <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span>Mark All Read</span>
+            </button>
+          )}
+
+          {role === 'admin' && (
+            <button
+              onClick={handleSendSundayDigest}
+              disabled={sendingDigest}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-600/20 transition-all disabled:opacity-50"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>{sendingDigest ? 'Sending Digests...' : '⚡ Send Weekly Parent Digest'}</span>
             </button>
           )}
 

@@ -13,5 +13,6 @@ router.get('/my-books', requireRole(['learner']), textbookController.getLearnerA
 router.post('/inventory', requireRole(['teacher', 'admin']), textbookController.addInventory);
 router.post('/issue', requireRole(['teacher', 'admin']), textbookController.issueTextbook);
 router.patch('/return/:id', requireRole(['teacher', 'admin']), textbookController.returnTextbook);
+router.post('/auto-bill-overdue', requireRole(['teacher', 'admin']), textbookController.autoBillOverdue);
 
 module.exports = router;
