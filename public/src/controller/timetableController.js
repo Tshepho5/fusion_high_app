@@ -192,7 +192,7 @@ exports.generateSchoolWideTimetable = async (req, res) => {
 
         // 1. Fetch all teachers
         const allTeachersRes = await db.query(
-            `SELECT u.id, u.full_name, u.surname, u.email, e.subjects, e.grades_taught, e.department
+            `SELECT u.id, u.id as user_id, u.full_name, u.surname, u.email, e.subjects, e.grades_taught
              FROM users u
              JOIN employees e ON u.id = e.user_id
              LEFT JOIN roles r ON u.role_id = r.id
