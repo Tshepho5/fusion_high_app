@@ -77,8 +77,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
   ];
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-white/10 bg-surface-darker/80 px-4 md:px-8 backdrop-blur-md">
-      <div className="flex items-center gap-4">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-white/10 bg-surface-darker/90 px-4 md:px-8 backdrop-blur-md">
+      {/* Left: Mobile Toggle + User Profile Trigger */}
+      <div className="flex items-center gap-3">
         {onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
@@ -88,14 +89,36 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
             <Menu className="w-5 h-5" />
           </button>
         )}
-        <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-glow-cyan" title="System Live" />
-          <h1 className="text-base md:text-lg font-bold font-display text-white tracking-tight">
-            {title || 'Dashboard'}
-          </h1>
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-white font-bold text-sm shadow-sm overflow-hidden shrink-0 border border-white/10">
+            {user?.profile_picture_path ? (
+              <img src={getProfilePictureUrl(user.profile_picture_path)} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              user?.full_name ? user.full_name.charAt(0).toUpperCase() : (user?.email?.charAt(0).toUpperCase() || 'L')
+            )}
+          </div>
+          <div className="hidden sm:flex flex-col">
+            <span className="text-xs font-bold text-white leading-none truncate max-w-[130px]">
+              {user?.full_name || 'Learner'}
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium capitalize mt-0.5">
+              {role === 'learner' ? `Grade ${user?.grade || user?.academic?.grade || '10'}` : (role || 'User')}
+            </span>
+          </div>
         </div>
       </div>
 
+      {/* Middle: FUSION HIGH Brand Header */}
+      <div className="flex items-center gap-2">
+        <div className="w-7 h-7 rounded-lg bg-brand-500/20 text-brand-400 flex items-center justify-center border border-brand-500/30 shadow-glow-indigo">
+          <GraduationCap className="w-4 h-4 text-brand-300" />
+        </div>
+        <span className="text-sm md:text-base font-extrabold font-display text-white tracking-wide uppercase">
+          FUSION HIGH
+        </span>
+      </div>
+
+      {/* Right: Theme Accent Selector, Mode Toggle, Notifications, Logout */}
       <div className="flex items-center gap-2 md:gap-3">
         {/* Quick Search / Command Palette Trigger */}
         {onOpenCommandPalette && (
