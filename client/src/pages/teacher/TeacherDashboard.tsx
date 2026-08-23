@@ -12,6 +12,7 @@ import { AnnouncementsFeed } from '../../components/common/AnnouncementsFeed';
 import { SchoolCalendar } from '../../components/common/SchoolCalendar';
 import { LearnerMessages } from '../learner/LearnerMessages';
 import { LearnerProfile } from '../learner/LearnerProfile';
+import { LearnerSettings } from '../learner/LearnerSettings';
 import { TeacherPTC } from '../../components/teacher/TeacherPTC';
 import { TeacherConduct } from '../../components/teacher/TeacherConduct';
 import { ExamSeatingManager } from '../../components/common/ExamSeatingManager';
@@ -65,6 +66,7 @@ export const TeacherDashboard: React.FC = () => {
       case 'assignments': return 'Homework & Digital Assignment Submission Hub';
       case 'announcements': return 'School Notices & Broadcasts';
       case 'messages': return 'Communication Hub';
+      case 'settings': return 'App & Technical Settings';
       case 'profile': return 'Teacher Profile';
       case 'overview':
       default: return 'Educator Workspace';
@@ -101,6 +103,7 @@ export const TeacherDashboard: React.FC = () => {
       {activeTab === 'announcements' && <AnnouncementsFeed />}
       {activeTab === 'messages' && <LearnerMessages />}
       {activeTab === 'profile' && <LearnerProfile />}
+      {activeTab === 'settings' && <LearnerSettings />}
     </DashboardLayout>
   );
 };

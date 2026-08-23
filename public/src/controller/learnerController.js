@@ -126,7 +126,7 @@ exports.getMySubjectsOverview = async (req, res) => {
         let validAvgCount = 0;
 
         for (const subjName of subjectsList) {
-            let teacherFormatted = 'Subject Specialist';
+            let teacherFormatted = 'To Be Assigned';
             try {
                 let teacherRes = await db.query(
                     `SELECT u.full_name, u.surname 
@@ -144,18 +144,21 @@ exports.getMySubjectsOverview = async (req, res) => {
                 if (teacherRes.rows.length === 0) {
                     teacherRes = await db.query(
                         `SELECT u.full_name, u.surname 
-                         FROM users u 
-                         JOIN roles r ON u.role_id = r.id 
-                         WHERE r.name = 'teacher' 
-                         ORDER BY u.id ASC LIMIT 1`
+                         FROM employees e 
+                         JOIN users u ON e.user_id = u.id 
+                         WHERE EXISTS (
+                             SELECT 1 FROM unnest(COALESCE(e.subjects, ARRAY[]::TEXT[])) s 
+                             WHERE s ILIKE $1 OR $1 ILIKE s
+                         )
+                         LIMIT 1`,
+                        [`%${subjName}%`]
                     );
                 }
 
                 if (teacherRes.rows[0]) {
                     const fn = teacherRes.rows[0].full_name || '';
                     const sn = teacherRes.rows[0].surname || '';
-                    const initial = fn.trim() ? `${fn.trim().charAt(0).toUpperCase()}.` : '';
-                    teacherFormatted = initial ? `${initial} ${sn.trim()}` : sn.trim();
+                    teacherFormatted = `${fn.trim()} ${sn.trim()}`.trim() || 'To Be Assigned';
                 }
             } catch (_) {}
 
@@ -1329,19 +1332,28 @@ exports.getMySubjectsOverview = async (req, res) => {
                 [subj, mappedSubjCount]
             );
 
-            let teacherName = teacherRes.rows[0] ? `${teacherRes.rows[0].full_name} ${teacherRes.rows[0].surname}` : null;
+            let teacherName = teacherRes.rows[0] ? `${teacherRes.rows[0].full_name} ${teacherRes.rows[0].surname}`.trim() : null;
             if (!teacherName) {
-                // Fallback to department subject specialist educator
-                const sLow = subj.toLowerCase();
-                if (sLow.includes('math')) teacherName = 'Thapelo Leshabane';
-                else if (sLow.includes('physic') || sLow.includes('science')) teacherName = 'Thabang Maetane';
-                else if (sLow.includes('life') || sLow.includes('bio')) teacherName = 'Minenhle Dlungwane';
-                else if (sLow.includes('english') || sLow.includes('econ')) teacherName = 'Bontle Mothopeng';
-                else if (sLow.includes('zulu') || sLow.includes('pedi') || sLow.includes('xhosa') || sLow.includes('lang')) teacherName = 'Bongumusa Kunene';
-                else if (sLow.includes('account') || sLow.includes('business') || sLow.includes('ems')) teacherName = 'Peter Walters';
-                else if (sLow.includes('geog') || sLow.includes('hist') || sLow.includes('social')) teacherName = 'Christopher Ravhura';
-                else if (sLow.includes('orient') || sLow.includes('tour') || sLow.includes('tech')) teacherName = 'Thato Tlhaka';
-                else teacherName = 'Subject Specialist';
+                // Secondary check across employees without strict match
+                try {
+                    const fallbackTeacherRes = await db.query(
+                        `SELECT u.full_name, u.surname 
+                         FROM employees e 
+                         JOIN users u ON e.user_id = u.id 
+                         WHERE EXISTS (
+                             SELECT 1 FROM unnest(COALESCE(e.subjects, ARRAY[]::TEXT[])) s 
+                             WHERE s ILIKE $1 OR $1 ILIKE s
+                         )
+                         LIMIT 1`,
+                        [`%${subj}%`]
+                    );
+                    if (fallbackTeacherRes.rows[0]) {
+                        teacherName = `${fallbackTeacherRes.rows[0].full_name} ${fallbackTeacherRes.rows[0].surname}`.trim();
+                    }
+                } catch (_) {}
+            }
+            if (!teacherName) {
+                teacherName = 'To Be Assigned';
             }
 
             // Find count of teacher-uploaded textbooks/resources for this subject & grade

@@ -7,8 +7,8 @@ import { AdminTimetable } from './AdminTimetable';
 import { AnnouncementsFeed } from '../../components/common/AnnouncementsFeed';
 import { SchoolCalendar } from '../../components/common/SchoolCalendar';
 import { LearnerMessages } from '../learner/LearnerMessages';
-import { LearnerOverview } from '../learner/LearnerOverview';
 import { LearnerProfile } from '../learner/LearnerProfile';
+import { LearnerSettings } from '../learner/LearnerSettings';
 import { ExamSeatingManager } from '../../components/common/ExamSeatingManager';
 import { SportsExtracurriculars } from '../../components/common/SportsExtracurriculars';
 import { TextbookAssetTracker } from '../../components/common/TextbookAssetTracker';
@@ -50,6 +50,7 @@ export const AdminDashboard: React.FC = () => {
       case 'calendar': return 'School Calendar & Events Management';
       case 'announcements': return 'Official Broadcasts & Notices';
       case 'messages': return 'School Chat Hub & Communications';
+      case 'settings': return 'App & Technical Settings';
       case 'profile': return 'Admin Settings';
       case 'overview':
       default: return 'School Executive Analytics';
@@ -79,6 +80,7 @@ export const AdminDashboard: React.FC = () => {
       {activeTab === 'announcements' && <AnnouncementsFeed />}
       {activeTab === 'messages' && <LearnerMessages />}
       {activeTab === 'profile' && <LearnerProfile />}
+      {activeTab === 'settings' && <LearnerSettings />}
     </DashboardLayout>
   );
 };

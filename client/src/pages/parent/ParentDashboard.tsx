@@ -10,6 +10,7 @@ import { AnnouncementsFeed } from '../../components/common/AnnouncementsFeed';
 import { SchoolCalendar } from '../../components/common/SchoolCalendar';
 import { LearnerMessages } from '../learner/LearnerMessages';
 import { LearnerProfile } from '../learner/LearnerProfile';
+import { LearnerSettings } from '../learner/LearnerSettings';
 import { ParentPTC } from '../../components/parent/ParentPTC';
 import { SportsExtracurriculars } from '../../components/common/SportsExtracurriculars';
 import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
@@ -46,6 +47,7 @@ export const ParentDashboard: React.FC = () => {
       case 'attendance': return 'Child Attendance & Punctuality Records';
       case 'announcements': return 'School Notices & Broadcasts';
       case 'messages': return 'Teacher Communications';
+      case 'settings': return 'App & Technical Settings';
       case 'profile': return 'Parent Profile';
       case 'overview':
       default: return 'Family Learning Hub';
@@ -73,6 +75,7 @@ export const ParentDashboard: React.FC = () => {
       {activeTab === 'announcements' && <AnnouncementsFeed />}
       {activeTab === 'messages' && <LearnerMessages />}
       {activeTab === 'profile' && <LearnerProfile />}
+      {activeTab === 'settings' && <LearnerSettings />}
     </DashboardLayout>
   );
 };
