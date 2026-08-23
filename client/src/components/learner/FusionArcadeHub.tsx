@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Badge } from '../common/Badge';
+import { generateDynamicQuestion } from '../../utils/capsQuestionGenerator';
+import { CapsCareerQuest } from './CapsCareerQuest';
 import {
   Gamepad2,
   Trophy,
@@ -27,7 +29,10 @@ import {
   VolumeX,
   Play,
   Share2,
-  HelpCircle
+  HelpCircle,
+  Crown,
+  Compass,
+  Castle
 } from 'lucide-react';
 
 interface Question {
@@ -233,7 +238,7 @@ export const FusionArcadeHub: React.FC<{ initialSubject?: string }> = ({ initial
   const userGrade = Number(user?.grade || user?.academic?.grade) || 10;
   const [selectedGrade, setSelectedGrade] = useState<number>(userGrade);
   const [selectedSubject, setSelectedSubject] = useState<string>(initialSubject || 'All Subjects');
-  const [activeMode, setActiveMode] = useState<'hub' | 'battle' | 'trig-sniper' | 'mole-lab' | 'balance-sheet' | 'dna-runner'>('hub');
+  const [activeMode, setActiveMode] = useState<'hub' | 'career-quest' | 'battle' | 'trig-sniper' | 'mole-lab' | 'balance-sheet' | 'dna-runner'>('hub');
 
   // Gamification Player Stats
   const [playerXP, setPlayerXP] = useState<number>(() => {
@@ -270,23 +275,16 @@ export const FusionArcadeHub: React.FC<{ initialSubject?: string }> = ({ initial
     });
   }, [selectedGrade, selectedSubject]);
 
-  // Start 1v1 Battle
+  // Start 1v1 Battle with 100% Dynamic, Non-Repeating Questions
   const handleStartBattle = (targetSubject?: string) => {
     const sub = targetSubject || selectedSubject;
-    let pool = CAPS_QUESTION_BANK.filter(q => q.grade === selectedGrade);
-    if (sub !== 'All Subjects') {
-      pool = pool.filter(q => q.subject.toLowerCase().includes(sub.toLowerCase()));
-    }
-    if (pool.length === 0) {
-      pool = CAPS_QUESTION_BANK.filter(q => q.grade === selectedGrade);
-    }
-    if (pool.length === 0) {
-      pool = CAPS_QUESTION_BANK;
+    const dynamicList: Question[] = [];
+    for (let i = 0; i < 5; i++) {
+      const dyn = generateDynamicQuestion(selectedGrade, sub);
+      dynamicList.push(dyn);
     }
 
-    // Shuffle pool
-    const shuffled = [...pool].sort(() => Math.random() - 0.5).slice(0, 5);
-    setBattleQuestions(shuffled);
+    setBattleQuestions(dynamicList);
     setCurrentQIndex(0);
     setPlayerScore(0);
     setBotScore(0);
@@ -500,6 +498,43 @@ export const FusionArcadeHub: React.FC<{ initialSubject?: string }> = ({ initial
 
           {/* Interactive Games Catalog Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {/* Featured RPG: CAPS Career Quest & Boss Battles */}
+            <div className="md:col-span-2 lg:col-span-3 p-6 md:p-8 rounded-3xl bg-gradient-to-r from-brand-950 via-surface-dark to-purple-950/80 border border-brand-500/40 hover:border-brand-400 hover:shadow-glow-indigo transition-all relative overflow-hidden group">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 via-brand-500 to-indigo-600 text-white flex items-center justify-center font-bold text-2xl shrink-0 shadow-glow-indigo">
+                    👑
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg md:text-xl font-black font-display text-white group-hover:text-cyan-300 transition-colors">
+                        CAPS Career Quest & Epic Topic Boss Battles
+                      </h3>
+                      <Badge variant="amber" size="sm">RPG Campaign</Badge>
+                    </div>
+                    <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                      Embark on an adventure across Grade {selectedGrade} syllabus waypoints. Clear the Concept Trail, Formula Woods, and Calculation Cavern to summon and vanquish epic guardians like <em>The Calculus Dragon</em>, <em>The Stoichiometry Golem</em>, and <em>The Balance Sheet Titan</em>!
+                    </p>
+                    <div className="flex items-center gap-3 pt-2 text-xs text-cyan-300 font-mono">
+                      <span className="flex items-center gap-1"><Castle className="w-3.5 h-3.5" /> 4-Stage Waypoints</span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1"><Zap className="w-3.5 h-3.5 text-amber-400" /> +600 XP Boss Rewards</span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-emerald-400" /> Auto-Saves Daily</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setActiveMode('career-quest')}
+                  className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-brand-600 to-cyan-600 text-white font-extrabold text-xs shadow-lg hover:from-amber-400 hover:to-cyan-400 transition-all flex items-center justify-center gap-2 shrink-0 transform hover:scale-105"
+                >
+                  <Play className="w-4 h-4 fill-current" />
+                  <span>Launch Career Quest</span>
+                </button>
+              </div>
+            </div>
+
             {/* Game 1: 1v1 Battle Arena */}
             <div className="p-6 rounded-3xl bg-surface-dark border border-brand-500/30 hover:border-brand-500 hover:shadow-glow-indigo transition-all space-y-4 relative overflow-hidden group">
               <div className="w-12 h-12 rounded-2xl bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold">
@@ -513,7 +548,7 @@ export const FusionArcadeHub: React.FC<{ initialSubject?: string }> = ({ initial
                   <Badge variant="cyan" size="sm">Multiplayer / AI</Badge>
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
-                  Timed 60-second rapid-fire battle against classmates or the AI Bot covering Grade {selectedGrade} {selectedSubject} curriculum.
+                  Timed 60-second rapid-fire battle against classmates or the AI Bot with dynamic non-repeating Grade {selectedGrade} questions.
                 </p>
               </div>
               <button
@@ -640,6 +675,16 @@ export const FusionArcadeHub: React.FC<{ initialSubject?: string }> = ({ initial
             </div>
           </div>
         </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          FEATURED MODE: CAPS CAREER QUEST RPG & BOSS BATTLES
+      ───────────────────────────────────────────────────────────── */}
+      {activeMode === 'career-quest' && (
+        <CapsCareerQuest
+          onBackToArcade={() => setActiveMode('hub')}
+          initialGrade={selectedGrade}
+        />
       )}
 
       {/* ─────────────────────────────────────────────────────────────
