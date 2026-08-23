@@ -191,6 +191,32 @@ button:active:not(:disabled), [role="button"]:active:not(:disabled), a:active {
   animation: fadeIn 0.2s ease-out forwards;
 }
 
+/* Waving Hand Animation */
+@keyframes handWave {
+  0% { transform: rotate(0deg); }
+  15% { transform: rotate(18deg); }
+  30% { transform: rotate(-14deg); }
+  45% { transform: rotate(16deg); }
+  60% { transform: rotate(-10deg); }
+  75% { transform: rotate(12deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.animate-wave {
+  animation: handWave 2s ease-in-out infinite;
+  transform-origin: 70% 70%;
+}
+
+/* Orb float animation */
+@keyframes orbFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-20px) scale(1.05); }
+}
+
+.animate-orb-float {
+  animation: orbFloat 10s ease-in-out infinite;
+}
+
 /* Clean focus rings */
 input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: none;

@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
 import { AboutUsModal } from './AboutUsModal';
 import { ContactUsModal } from './ContactUsModal';
+import { HelpSupportModal } from '../common/HelpSupportModal';
 import {
   User,
   Info,
@@ -13,7 +14,10 @@ import {
   LayoutGrid,
   ShieldCheck,
   Palette,
-  ChevronRight
+  ChevronRight,
+  Headphones,
+  HelpCircle,
+  Bot
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -34,12 +38,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { user, role, logout } = useAuth();
   const [aboutUsOpen, setAboutUsOpen] = useState(false);
   const [contactUsOpen, setContactUsOpen] = useState(false);
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
+  const [helpModalTab, setHelpModalTab] = useState<'faq' | 'ai-support'>('faq');
+
+  const handleOpenHelp = (tab: 'faq' | 'ai-support') => {
+    setHelpModalTab(tab);
+    setHelpModalOpen(true);
+    onClose();
+  };
 
   return (
     <>
-      {/* Modals for About Us & Contact Us */}
+      {/* Modals for About Us, Contact Us & 24/7 AI Support */}
       <AboutUsModal isOpen={aboutUsOpen} onClose={() => setAboutUsOpen(false)} />
       <ContactUsModal isOpen={contactUsOpen} onClose={() => setContactUsOpen(false)} />
+      <HelpSupportModal isOpen={helpModalOpen} onClose={() => setHelpModalOpen(false)} defaultTab={helpModalTab} />
 
       {/* Mobile Backdrop */}
       {isOpen && (
@@ -120,7 +133,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Minimal Essential Sidebar Navigation */}
         <nav className="flex-1 px-4 py-2 space-y-1.5 overflow-y-auto custom-scrollbar">
           <p className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-extrabold px-3 py-1">
-            Account & School
+            Account & Support
           </p>
 
           {/* 1. My Profile & Settings */}
@@ -137,12 +150,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <div className="flex items-center gap-3">
               <User className="w-4 h-4 text-brand-400" />
-              <span>My Profile & Settings</span>
+              <span>My Profile</span>
             </div>
             <ChevronRight className="w-3.5 h-3.5 opacity-50" />
           </button>
 
-          {/* 2. About Us */}
+          {/* 2. 24/7 AI Help & Support */}
+          <button
+            onClick={() => handleOpenHelp('ai-support')}
+            className="w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold bg-gradient-to-r from-brand-600/30 to-cyan-500/30 border border-cyan-500/40 text-cyan-300 hover:text-white hover:shadow-glow-cyan transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <Bot className="w-4 h-4 text-cyan-400 animate-pulse" />
+              <span>24/7 AI Help & Support</span>
+            </div>
+            <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-[8px] font-bold">24/7</span>
+          </button>
+
+          {/* 3. View FAQs */}
+          <button
+            onClick={() => handleOpenHelp('faq')}
+            className="w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/5 transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <HelpCircle className="w-4 h-4 text-indigo-400" />
+              <span>View FAQs</span>
+            </div>
+            <span className="text-[9px] font-mono text-indigo-400/80 uppercase font-bold">FAQs</span>
+          </button>
+
+          {/* 4. About Us */}
           <button
             onClick={() => {
               setAboutUsOpen(true);
@@ -157,7 +194,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-[9px] font-mono text-cyan-400/80 uppercase font-bold">Info</span>
           </button>
 
-          {/* 3. Contact Us & Support */}
+          {/* 5. Contact Us */}
           <button
             onClick={() => {
               setContactUsOpen(true);
@@ -167,7 +204,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <div className="flex items-center gap-3">
               <Phone className="w-4 h-4 text-emerald-400" />
-              <span>Contact Us & Support</span>
+              <span>Contact Us</span>
             </div>
             <span className="text-[9px] font-mono text-emerald-400/80 uppercase font-bold">Help</span>
           </button>
