@@ -10,6 +10,7 @@ import { SubjectFocusTimer } from '../../components/subject/SubjectFocusTimer';
 import { FusionAIIcon } from '../../components/common/FusionAIIcon';
 import { LearnerAITutor } from './LearnerAITutor';
 import { LearnerAssignments } from '../../components/learner/LearnerAssignments';
+import { FusionArcadeHub } from '../../components/learner/FusionArcadeHub';
 import {
   BookOpen,
   ArrowLeft,
@@ -27,7 +28,8 @@ import {
   WifiOff,
   Flame,
   FileCheck,
-  Sparkles
+  Sparkles,
+  Gamepad2
 } from 'lucide-react';
 
 interface LearnerSubjectsProps {
@@ -55,7 +57,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
   const [searchParams, setSearchParams] = useSearchParams();
   const [subjects, setSubjects] = useState<any[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState<'topics' | 'homework' | 'ai-tutor' | 'past-papers' | 'focus-timer' | 'resources' | 'grades'>('topics');
+  const [activeTab, setActiveTab] = useState<'topics' | 'homework' | 'ai-tutor' | 'past-papers' | 'focus-timer' | 'resources' | 'grades' | 'arcade'>('topics');
   const [tutorTopic, setTutorTopic] = useState<{ id?: string; name?: string }>({ id: 'general', name: '' });
   const [isOfflineNotesOpen, setIsOfflineNotesOpen] = useState(false);
   
@@ -392,6 +394,19 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                   <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
                 )}
               </button>
+
+              <button
+                onClick={() => setActiveTab('arcade')}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                  activeTab === 'arcade'
+                    ? 'bg-gradient-to-r from-amber-600 to-brand-600 text-white shadow-glow-indigo'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Gamepad2 className="w-3.5 h-3.5 text-amber-400" />
+                <span>Subject Games & 1v1 Battle</span>
+                <span className="px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[9px] font-extrabold border border-amber-400/30">XP</span>
+              </button>
             </div>
           </div>
 
@@ -399,6 +414,11 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
           <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 shadow-xl">
             {loadingContent ? (
               <LoadingSpinner size="md" text={`Loading ${selectedSubName} curriculum details...`} />
+            ) : activeTab === 'arcade' ? (
+              /* Embedded Subject Games & 1v1 Arena Tab */
+              <div className="space-y-4">
+                <FusionArcadeHub initialSubject={selectedSubName} />
+              </div>
             ) : activeTab === 'homework' ? (
               /* Embedded Homework & Submissions Portal Tab */
               <div className="space-y-4">

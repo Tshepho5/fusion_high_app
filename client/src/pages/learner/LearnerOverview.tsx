@@ -33,7 +33,9 @@ import {
   Calendar,
   LayoutGrid,
   List,
-  Grid3X3
+  Grid3X3,
+  Gamepad2,
+  Swords
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
@@ -184,6 +186,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
   // ALL FUNCTIONS FROM MAIN MENU (ICON + NAME ONLY)
   const mainPortalFunctions = [
     { id: 'subjects', label: 'My Subjects', icon: BookOpen, color: 'text-cyan-400 bg-cyan-500/15 border-cyan-500/30' },
+    { id: 'arcade', label: 'Fusion Arcade (Games)', icon: Gamepad2, color: 'text-amber-400 bg-amber-500/15 border-amber-500/30' },
     { id: 'assignments', label: 'Homework & Tasks', icon: FileText, color: 'text-indigo-400 bg-indigo-500/15 border-indigo-500/30' },
     { id: 'ai-tutor', label: 'AI Study Tutor', icon: Bot, color: 'text-pink-400 bg-pink-500/15 border-pink-500/30' },
     { id: 'performance', label: 'Subject Performance', icon: TrendingUp, color: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' },

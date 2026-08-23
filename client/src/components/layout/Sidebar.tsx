@@ -18,7 +18,8 @@ import {
   Headphones,
   HelpCircle,
   Bot,
-  GraduationCap
+  GraduationCap,
+  Gamepad2
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -160,6 +161,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
               <ChevronRight className="w-3.5 h-3.5 opacity-50" />
             </button>
+
+            {role === 'learner' && (
+              <button
+                onClick={() => {
+                  onSelectTab('arcade');
+                  onClose();
+                }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+                  activeTab === 'arcade'
+                    ? 'bg-gradient-to-r from-amber-600 to-brand-600 text-white shadow-glow-indigo border border-amber-400/40'
+                    : 'text-slate-300 hover:text-white hover:bg-white/5 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Gamepad2 className="w-4 h-4 text-amber-400" />
+                  <span>Fusion Arcade (Games)</span>
+                </div>
+                <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[8px] font-bold">XP</span>
+              </button>
+            )}
           </div>
 
           {/* Section 2: 🌟 FUSION SUPPORT HUB (Feature Card with AI Mascot preview) */}

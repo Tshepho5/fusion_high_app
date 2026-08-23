@@ -19,6 +19,7 @@ import { TextbookAssetTracker } from '../../components/common/TextbookAssetTrack
 import { LearnerAssignments } from '../../components/learner/LearnerAssignments';
 import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
 import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
+import { FusionArcadeHub } from '../../components/learner/FusionArcadeHub';
 import { ArrowLeft, ChevronRight, Home } from 'lucide-react';
 
 export const LearnerDashboard: React.FC = () => {
@@ -68,6 +69,7 @@ export const LearnerDashboard: React.FC = () => {
       case 'sports': return 'Sports & Extracurricular Clubs';
       case 'textbooks': return 'My Issued Textbooks';
       case 'assignments': return 'Homework & Digital Assignments Hub';
+      case 'arcade': return 'Fusion Arcade & CAPS Study Games';
       case 'reports': return 'Official CAPS Term Report Card';
       case 'timetable': return 'Weekly Timetable';
       case 'calendar': return 'Academic & Events Calendar';
@@ -118,6 +120,7 @@ export const LearnerDashboard: React.FC = () => {
       {activeTab === 'subjects' && (
         <LearnerSubjects onStartAITopic={handleStartAITopic} />
       )}
+      {activeTab === 'arcade' && <FusionArcadeHub />}
       {activeTab === 'performance' && <SubjectPerformanceView />}
       {activeTab === 'assignments' && <LearnerAssignments />}
       {activeTab === 'ai-tutor' && (
