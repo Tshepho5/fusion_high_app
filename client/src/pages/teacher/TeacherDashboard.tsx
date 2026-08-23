@@ -20,6 +20,7 @@ import { SportsExtracurriculars } from '../../components/common/SportsExtracurri
 import { TextbookAssetTracker } from '../../components/common/TextbookAssetTracker';
 import { EducatorLeaveReliefManager } from '../../components/admin/EducatorLeaveReliefManager';
 import { TeacherAssignments } from '../../components/teacher/TeacherAssignments';
+import { ArrowLeft, ChevronRight, Home } from 'lucide-react';
 
 export const TeacherDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -79,6 +80,32 @@ export const TeacherDashboard: React.FC = () => {
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
     >
+      {/* Universal Module Backtrack Navigation Bar */}
+      {activeTab !== 'overview' && (
+        <div className="flex items-center justify-between gap-3 p-3 mb-6 rounded-2xl bg-surface-dark border border-white/10 shadow-sm animate-fade-in">
+          <button
+            onClick={() => handleSelectTab('overview')}
+            className="px-3.5 py-1.5 rounded-xl bg-surface-darker hover:bg-white/10 border border-white/10 hover:border-brand-500/40 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-2 transition-all shadow-sm group"
+            title="Back to Educator Overview"
+          >
+            <ArrowLeft className="w-4 h-4 text-cyan-400 group-hover:-translate-x-1 transition-transform" />
+            <span>Back to Overview</span>
+          </button>
+
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 font-mono">
+            <button
+              onClick={() => handleSelectTab('overview')}
+              className="hover:text-white flex items-center gap-1 transition-colors"
+            >
+              <Home className="w-3.5 h-3.5 text-brand-400" />
+              <span>Workspace</span>
+            </button>
+            <ChevronRight className="w-3 h-3 text-slate-600" />
+            <span className="text-cyan-300 font-bold">{getTabTitle()}</span>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'overview' && (
         <TeacherOverview onNavigateTab={handleSelectTab} />
       )}
