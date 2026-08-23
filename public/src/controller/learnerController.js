@@ -999,24 +999,65 @@ exports.gradeAssignment = async (req, res) => {
 };
 
 exports.getLeaderboard = async (req, res) => {
-    const { subject } = req.query;
     try {
-        const result = await db.query(
-            `SELECT c.learner_number, MAX(p.grade) as top_score
-             FROM progress p
-             JOIN children c ON p.child_id = c.id
-             WHERE LOWER(p.subject) = LOWER($1)
-             GROUP BY c.learner_number
-             ORDER BY top_score DESC
-             LIMIT 10`,
-            [subject]
-        );
-        const anonymized = result.rows.map(row => ({
-            rank_id: row.learner_number.substring(0, 4) + "****",
-            score: parseFloat(row.top_score)
-        }));
-        res.json(anonymized);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+        const result = await db.query(`
+            SELECT 
+                c.id,
+                COALESCE(c.full_name || ' ' || c.surname, u.name, 'Learner') as name,
+                c.grade,
+                COALESCE((SELECT COUNT(*) FROM progress p WHERE p.child_id = c.id), 0) as progress_count,
+                COALESCE((SELECT AVG(p.grade) FROM progress p WHERE p.child_id = c.id), 75) as avg_grade
+            FROM children c
+            LEFT JOIN users u ON c.learner_user_id = u.id
+            ORDER BY progress_count DESC, avg_grade DESC
+            LIMIT 10
+        `);
+
+        if (result.rows.length === 0) {
+            // Fallback to active users with role = learner
+            const usersRes = await db.query(`
+                SELECT id, name, email, role, grade FROM users WHERE role = 'learner' LIMIT 10
+            `);
+            const fallbackList = usersRes.rows.map((u, i) => ({
+                rank: i + 1,
+                name: u.name || u.email.split('@')[0],
+                grade: u.grade || 10,
+                xp: 1500 - (i * 100),
+                streak: Math.max(3, 10 - i),
+                badge: 'Academic Scholar'
+            }));
+            return res.json(fallbackList);
+        }
+
+        const badgesList = [
+            'Matric Distinction Master',
+            'Calculus Conqueror',
+            'Stoichiometry Specialist',
+            'DNA Decoder',
+            'Accounting Equalizer',
+            'Academic Scholar',
+            'Junior Scholar'
+        ];
+
+        const learners = result.rows.map((row, index) => {
+            const count = parseInt(row.progress_count, 10) || 0;
+            const xp = 1200 + (count * 150) + Math.round(parseFloat(row.avg_grade || 75) * 10);
+            const streak = Math.min(14, Math.max(3, count + 2));
+            return {
+                rank: index + 1,
+                name: row.name,
+                grade: row.grade || 10,
+                xp,
+                streak,
+                badge: badgesList[index % badgesList.length]
+            };
+        });
+
+        res.json(learners);
+    } catch (err) {
+        console.error('getLeaderboard error:', err);
+        res.status(500).json({ error: err.message });
+    }
 };
 
 

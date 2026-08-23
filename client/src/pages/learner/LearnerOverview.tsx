@@ -173,15 +173,25 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
 
   const unreadAnnouncements = announcements.filter(a => !readIds.includes(a.id));
 
-  // Fallback demo subjects if none loaded
-  const displaySubjects = subjects.length > 0 ? subjects : [
-    { name: 'Mathematics', code: 'MATH10', grade: 10, progress: 82, teacher: 'Dr. Sithole', assignmentsDue: 1 },
-    { name: 'Physical Sciences', code: 'PHYS10', grade: 10, progress: 75, teacher: 'Mrs. Van Der Merwe', assignmentsDue: 0 },
-    { name: 'Life Sciences', code: 'LFSC10', grade: 10, progress: 90, teacher: 'Mr. Khumalo', assignmentsDue: 2 },
-    { name: 'English First Additional Language', code: 'EFAL10', grade: 10, progress: 88, teacher: 'Ms. Pillay', assignmentsDue: 0 },
-    { name: 'Geography', code: 'GEOG10', grade: 10, progress: 70, teacher: 'Mr. Baloyi', assignmentsDue: 1 },
-    { name: 'Life Orientation', code: 'LFOR10', grade: 10, progress: 95, teacher: 'Mrs. Mokoena', assignmentsDue: 0 }
+  // User subjects from database or stream
+  const userStream = profile?.stream || user?.academic?.stream || 'Science';
+  const defaultStreamSubjects = userStream === 'Commerce' ? [
+    { name: 'Accounting', code: 'ACC10', grade: profile?.grade || 10, progress: 80, teacher: 'Commerce Educator', assignmentsDue: 0 },
+    { name: 'Business Studies', code: 'BUS10', grade: profile?.grade || 10, progress: 85, teacher: 'Business Educator', assignmentsDue: 0 },
+    { name: 'Economics', code: 'ECON10', grade: profile?.grade || 10, progress: 78, teacher: 'Economics Educator', assignmentsDue: 0 },
+    { name: 'Mathematics', code: 'MATH10', grade: profile?.grade || 10, progress: 82, teacher: 'Mathematics Educator', assignmentsDue: 0 },
+    { name: 'English First Additional Language', code: 'EFAL10', grade: profile?.grade || 10, progress: 88, teacher: 'Languages Educator', assignmentsDue: 0 },
+    { name: 'Life Orientation', code: 'LFOR10', grade: profile?.grade || 10, progress: 95, teacher: 'Life Orientation Educator', assignmentsDue: 0 }
+  ] : [
+    { name: 'Mathematics', code: 'MATH10', grade: profile?.grade || 10, progress: 82, teacher: 'Mathematics Educator', assignmentsDue: 0 },
+    { name: 'Physical Sciences', code: 'PHYS10', grade: profile?.grade || 10, progress: 75, teacher: 'Physical Sciences Educator', assignmentsDue: 0 },
+    { name: 'Life Sciences', code: 'LFSC10', grade: profile?.grade || 10, progress: 90, teacher: 'Life Sciences Educator', assignmentsDue: 0 },
+    { name: 'English First Additional Language', code: 'EFAL10', grade: profile?.grade || 10, progress: 88, teacher: 'Languages Educator', assignmentsDue: 0 },
+    { name: 'Geography', code: 'GEOG10', grade: profile?.grade || 10, progress: 70, teacher: 'Geography Educator', assignmentsDue: 0 },
+    { name: 'Life Orientation', code: 'LFOR10', grade: profile?.grade || 10, progress: 95, teacher: 'Life Orientation Educator', assignmentsDue: 0 }
   ];
+
+  const displaySubjects = subjects.length > 0 ? subjects : defaultStreamSubjects;
 
   // ALL FUNCTIONS FROM MAIN MENU (ICON + NAME ONLY)
   const mainPortalFunctions = [

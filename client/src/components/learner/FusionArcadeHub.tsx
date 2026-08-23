@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Badge } from '../common/Badge';
+import { learnerService } from '../../services/api';
 import { generateDynamicQuestion } from '../../utils/capsQuestionGenerator';
 import { CapsCareerQuest } from './CapsCareerQuest';
 import {
@@ -46,190 +47,6 @@ interface Question {
   explanation: string;
 }
 
-const CAPS_QUESTION_BANK: Question[] = [
-  // ── GRADE 8 & 9 (Senior Phase) ──
-  {
-    id: 'g8-math-1',
-    grade: 8,
-    subject: 'Mathematics',
-    topic: 'Integers & Exponents',
-    question: 'Calculate the value of: (-6) × (-4) - (-12) ÷ 3',
-    options: ['28', '20', '32', '-28'],
-    correctIndex: 0,
-    explanation: '(-6) × (-4) = 24. (-12) ÷ 3 = -4. Then 24 - (-4) = 24 + 4 = 28.'
-  },
-  {
-    id: 'g8-sci-1',
-    grade: 8,
-    subject: 'Natural Sciences',
-    topic: 'Photosynthesis & Respiration',
-    question: 'What are the main products of photosynthesis in green plant leaves?',
-    options: ['Glucose and Oxygen', 'Carbon Dioxide and Water', 'Nitrogen and Glucose', 'Oxygen and Carbon Dioxide'],
-    correctIndex: 0,
-    explanation: 'Carbon dioxide + Water + Sunlight in chlorophyll produces Glucose (C6H12O6) and Oxygen (O2).'
-  },
-  {
-    id: 'g9-math-1',
-    grade: 9,
-    subject: 'Mathematics',
-    topic: 'Algebra & Theorem of Pythagoras',
-    question: 'In a right-angled triangle, if the two shorter sides are 6 cm and 8 cm, what is the hypotenuse?',
-    options: ['10 cm', '14 cm', '12 cm', '48 cm'],
-    correctIndex: 0,
-    explanation: 'c² = a² + b² = 6² + 8² = 36 + 64 = 100. Therefore, c = √100 = 10 cm.'
-  },
-  {
-    id: 'g9-ems-1',
-    grade: 9,
-    subject: 'Economic & Management Sciences',
-    topic: 'Financial Literacy (Accounting Equation)',
-    question: 'If a business purchases equipment for R5,000 cash, how is the Accounting Equation (A = O + L) affected?',
-    options: [
-      'Assets increase by R5,000 and decrease by R5,000 (No net change)',
-      'Assets increase and Owner’s Equity increases',
-      'Liabilities increase by R5,000',
-      'Owner’s Equity decreases by R5,000'
-    ],
-    correctIndex: 0,
-    explanation: 'Equipment (Asset) increases by +R5,000, and Bank/Cash (Asset) decreases by -R5,000. Net change in Assets is 0.'
-  },
-
-  // ── GRADE 10 (FET Phase) ──
-  {
-    id: 'g10-math-1',
-    grade: 10,
-    subject: 'Mathematics',
-    topic: 'Trigonometry (SOH-CAH-TOA)',
-    question: 'In a right-angled triangle, if opposite side = 3 and adjacent side = 4, what is tan(θ)?',
-    options: ['3/4', '4/3', '3/5', '4/5'],
-    correctIndex: 0,
-    explanation: 'tan(θ) = Opposite / Adjacent = 3/4.'
-  },
-  {
-    id: 'g10-sci-1',
-    grade: 10,
-    subject: 'Physical Sciences',
-    topic: 'Chemical Bonding & States of Matter',
-    question: 'What type of chemical bonding occurs between Sodium (Na) and Chlorine (Cl)?',
-    options: ['Ionic Bonding', 'Covalent Bonding', 'Metallic Bonding', 'Hydrogen Bonding'],
-    correctIndex: 0,
-    explanation: 'Sodium transfers one valence electron to Chlorine, forming Na+ and Cl- ions held by electrostatic forces (Ionic Bonding).'
-  },
-  {
-    id: 'g10-acc-1',
-    grade: 10,
-    subject: 'Accounting',
-    topic: 'Trial Balance & Ledger',
-    question: 'Which of the following accounts normally has a DEBIT balance?',
-    options: ['Vehicles (Asset)', 'Capital (Owner’s Equity)', 'Loan: Nedbank (Liability)', 'Sales (Income)'],
-    correctIndex: 0,
-    explanation: 'Assets and Expenses have normal debit balances (DEAD CLIC rule: Debits = Expenses, Assets, Drawings).'
-  },
-  {
-    id: 'g10-bio-1',
-    grade: 10,
-    subject: 'Life Sciences',
-    topic: 'Plant & Animal Cells / Mitosis',
-    question: 'During which phase of Mitosis do sister chromatids pull apart to opposite poles?',
-    options: ['Anaphase', 'Metaphase', 'Prophase', 'Telophase'],
-    correctIndex: 0,
-    explanation: 'During Anaphase (A for Apart), spindle fibers contract and pull sister chromatids apart toward opposite poles.'
-  },
-
-  // ── GRADE 11 (FET Phase) ──
-  {
-    id: 'g11-math-1',
-    grade: 11,
-    subject: 'Mathematics',
-    topic: 'Quadratic Equations & Parabola',
-    question: 'What are the roots of the quadratic equation: x² - 5x + 6 = 0?',
-    options: ['x = 2 and x = 3', 'x = -2 and x = -3', 'x = 1 and x = 6', 'x = -1 and x = 5'],
-    correctIndex: 0,
-    explanation: 'Factoring: (x - 2)(x - 3) = 0, therefore x = 2 or x = 3.'
-  },
-  {
-    id: 'g11-sci-1',
-    grade: 11,
-    subject: 'Physical Sciences',
-    topic: 'Newton’s Laws of Motion',
-    question: 'Newton’s Second Law states that acceleration is directly proportional to net force and inversely proportional to:',
-    options: ['Mass (m)', 'Velocity (v)', 'Friction (f)', 'Displacement (x)'],
-    correctIndex: 0,
-    explanation: 'F_net = m × a, which rearranges to a = F_net / m (inversely proportional to mass).'
-  },
-  {
-    id: 'g11-bio-1',
-    grade: 11,
-    subject: 'Life Sciences',
-    topic: 'Human Circulatory & Excretory System',
-    question: 'Which blood vessel carries oxygenated blood from the lungs back to the left atrium of the heart?',
-    options: ['Pulmonary Vein', 'Pulmonary Artery', 'Aorta', 'Vena Cava'],
-    correctIndex: 0,
-    explanation: 'The Pulmonary Vein is the only vein carrying oxygen-rich blood from the lungs to the heart.'
-  },
-  {
-    id: 'g11-bus-1',
-    grade: 11,
-    subject: 'Business Studies',
-    topic: 'Business Environments (Micro, Market, Macro)',
-    question: 'Which environment includes competitors, suppliers, intermediaries, and consumers?',
-    options: ['Market Environment', 'Micro Environment', 'Macro Environment', 'Global Environment'],
-    correctIndex: 0,
-    explanation: 'The Market Environment directly surrounds the business and consists of suppliers, consumers, competitors, and intermediaries.'
-  },
-
-  // ── GRADE 12 (NSC Matric) ──
-  {
-    id: 'g12-math-1',
-    grade: 12,
-    subject: 'Mathematics',
-    topic: 'Differential Calculus & Derivatives',
-    question: 'Find the first derivative f’(x) if f(x) = 4x³ - 5x² + 7x - 9:',
-    options: ['12x² - 10x + 7', '12x² - 5x + 7', '7x² - 10x + 7', '4x² - 10x'],
-    correctIndex: 0,
-    explanation: 'Power rule: d/dx(4x³) = 12x², d/dx(-5x²) = -10x, d/dx(7x) = 7, d/dx(-9) = 0. So f’(x) = 12x² - 10x + 7.'
-  },
-  {
-    id: 'g12-sci-1',
-    grade: 12,
-    subject: 'Physical Sciences',
-    topic: 'Doppler Effect & Organic Chemistry',
-    question: 'When a source of sound moves TOWARDS a stationary observer, the observed frequency:',
-    options: ['Increases (Higher pitch)', 'Decreases (Lower pitch)', 'Remains unchanged', 'Drops to zero'],
-    correctIndex: 0,
-    explanation: 'The wavefronts compress, decreasing the observed wavelength and increasing the observed frequency (higher pitch).'
-  },
-  {
-    id: 'g12-bio-1',
-    grade: 12,
-    subject: 'Life Sciences',
-    topic: 'DNA Replication & Genetics',
-    question: 'If a DNA strand has the sequence TAC GGC TTA, what is the complementary mRNA codon sequence?',
-    options: ['AUG CCG AAU', 'ATG CCG AAT', 'UAC GGC UUA', 'AUG GGC AAU'],
-    correctIndex: 0,
-    explanation: 'In RNA transcription: T pairs with A, A pairs with U, C pairs with G, G pairs with C. TAC GGC TTA -> AUG CCG AAU.'
-  },
-  {
-    id: 'g12-acc-1',
-    grade: 12,
-    subject: 'Accounting',
-    topic: 'Financial Indicators & Liquidity',
-    question: 'The ideal Acid-Test (Quick) Ratio for a healthy trading business is generally considered to be:',
-    options: ['1 : 1', '2 : 1', '5 : 1', '0.5 : 1'],
-    correctIndex: 0,
-    explanation: 'The Acid-Test Ratio (Current Assets - Inventory) : Current Liabilities has a recognized CAPS benchmark of 1:1.'
-  }
-];
-
-const LEADERBOARD_DATA = [
-  { rank: 1, name: 'Sipho Ndlovu', grade: 12, xp: 4850, streak: 14, badge: 'Matric Distinction Master' },
-  { rank: 2, name: 'Kagiso Mokoena', grade: 11, xp: 4210, streak: 11, badge: 'Calculus Conqueror' },
-  { rank: 3, name: 'Zanele Khumalo', grade: 10, xp: 3890, streak: 9, badge: 'Stoichiometry Specialist' },
-  { rank: 4, name: 'Liam van der Merwe', grade: 12, xp: 3640, streak: 8, badge: 'DNA Decoder' },
-  { rank: 5, name: 'Thabo Mthembu', grade: 9, xp: 3120, streak: 12, badge: 'Algebra Ace' },
-  { rank: 6, name: 'Amogelang Sithole', grade: 8, xp: 2950, streak: 7, badge: 'Junior Scholar' },
-];
-
 export const FusionArcadeHub: React.FC<{ initialSubject?: string }> = ({ initialSubject }) => {
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -239,6 +56,20 @@ export const FusionArcadeHub: React.FC<{ initialSubject?: string }> = ({ initial
   const [selectedGrade, setSelectedGrade] = useState<number>(userGrade);
   const [selectedSubject, setSelectedSubject] = useState<string>(initialSubject || 'All Subjects');
   const [activeMode, setActiveMode] = useState<'hub' | 'career-quest' | 'battle' | 'trig-sniper' | 'mole-lab' | 'balance-sheet' | 'dna-runner'>('hub');
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+
+  // Load Real Database Leaderboard
+  useEffect(() => {
+    learnerService.getLeaderboard()
+      .then(res => {
+        if (Array.isArray(res) && res.length > 0) {
+          setLeaderboard(res);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load database leaderboard:', err);
+      });
+  }, []);
 
   // Gamification Player Stats
   const [playerXP, setPlayerXP] = useState<number>(() => {
@@ -265,15 +96,6 @@ export const FusionArcadeHub: React.FC<{ initialSubject?: string }> = ({ initial
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [battleFinished, setBattleFinished] = useState(false);
-
-  // Filter available questions based on selected grade and subject
-  const filteredQuestions = useMemo(() => {
-    return CAPS_QUESTION_BANK.filter(q => {
-      const matchGrade = q.grade === selectedGrade;
-      const matchSubject = selectedSubject === 'All Subjects' || q.subject.toLowerCase() === selectedSubject.toLowerCase();
-      return matchGrade && matchSubject;
-    });
-  }, [selectedGrade, selectedSubject]);
 
   // Start 1v1 Battle with 100% Dynamic, Non-Repeating Questions
   const handleStartBattle = (targetSubject?: string) => {
@@ -649,7 +471,9 @@ export const FusionArcadeHub: React.FC<{ initialSubject?: string }> = ({ initial
             </div>
 
             <div className="divide-y divide-white/5">
-              {LEADERBOARD_DATA.map(userItem => (
+              {(leaderboard.length > 0 ? leaderboard : [
+                { rank: 1, name: user?.full_name || 'Active Scholar', grade: selectedGrade, xp: playerXP, streak: streakDays, badge: 'Curriculum Scholar' }
+              ]).map(userItem => (
                 <div key={userItem.rank} className="py-3 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-3">
                     <span className={`w-6 text-center font-extrabold ${userItem.rank <= 3 ? 'text-amber-400 font-mono text-sm' : 'text-slate-500'}`}>
