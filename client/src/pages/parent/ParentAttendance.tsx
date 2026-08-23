@@ -57,10 +57,10 @@ export const ParentAttendance: React.FC = () => {
   if (loading) return <LoadingSpinner text="Loading children attendance profiles..." />;
 
   const stats = {
-    present_days: attendanceData?.stats?.present_days ?? attendanceData?.days_present ?? (selectedChild ? 44 + ((selectedChild.id * 3) % 5) : 45),
-    absent_days: attendanceData?.stats?.absent_days ?? attendanceData?.days_absent ?? (selectedChild ? (selectedChild.id % 3) + 1 : 2),
-    late_days: attendanceData?.stats?.late_days ?? attendanceData?.late_days ?? (selectedChild ? (selectedChild.id % 2) : 1),
-    attendance_rate: attendanceData?.stats?.attendance_rate ?? attendanceData?.overall_attendance ?? (selectedChild ? 92 + (selectedChild.id % 7) : 95)
+    present_days: attendanceData?.stats?.present_days ?? attendanceData?.days_present ?? attendanceData?.present_count ?? 0,
+    absent_days: attendanceData?.stats?.absent_days ?? attendanceData?.days_absent ?? attendanceData?.absent_count ?? 0,
+    late_days: attendanceData?.stats?.late_days ?? attendanceData?.late_days ?? attendanceData?.late_count ?? 0,
+    attendance_rate: attendanceData?.stats?.attendance_rate ?? attendanceData?.overall_attendance ?? attendanceData?.attendance_rate ?? 100
   };
 
   const records = attendanceData?.records || attendanceData?.recent_attendance_records || attendanceData?.recent || [];

@@ -882,12 +882,15 @@ exports.getChildrenDetailedOverview = async (req, res) => {
                 grade: child.grade,
                 stream: child.stream || 'General',
                 profile_picture: child.profile_picture_path,
+                profile_picture_path: child.profile_picture_path,
                 average_mark: avgMark,
+                overall_average: avgMark,
                 highest_mark: highestMark,
                 lowest_mark: lowestMark,
                 class_rank: avgMark > 0 ? 'N/A' : '-',
                 total_subjects: subjects.length,
                 attendance_pct: attPct,
+                attendance_rate: `${attPct}%`,
                 days_present: attended,
                 days_absent: parseInt(attRes.rows[0]?.absent_cnt || 0, 10),
                 days_late: parseInt(attRes.rows[0]?.late_cnt || 0, 10),
@@ -1185,111 +1188,145 @@ exports.getChildPerformanceOverview = async (req, res) => {
 
 /**
  * Parent Dashboard Child Attendance View (/api/parent/child-attendance?childId=X)
+ * Pure PostgreSQL attendance data resolution with zero dummy numbers.
  */
 exports.getChildAttendanceOverview = async (req, res) => {
     try {
         const parentId = req.user.id;
-        let childId = req.query.childId;
+        let childId = req.query.childId || req.query.child_id;
 
-        if (!childId) {
-            const availableChildren = await fetchParentChildren(parentId);
-            if (availableChildren.length === 0) return res.status(404).json({ error: 'No linked children found.' });
-            childId = availableChildren[0].id;
+        const availableChildren = await fetchParentChildren(parentId);
+        if (availableChildren.length === 0) {
+            return res.json({
+                child: null,
+                children: [],
+                total_recorded: 0,
+                present_count: 0,
+                absent_count: 0,
+                late_count: 0,
+                days_present: 0,
+                days_absent: 0,
+                late_days: 0,
+                overall_attendance: 100,
+                attendance_rate: 100,
+                stats: {
+                    present_days: 0,
+                    absent_days: 0,
+                    late_days: 0,
+                    attendance_rate: 100,
+                    punctuality_rate: 100
+                },
+                daily_records: [],
+                records: [],
+                calendar_entries: []
+            });
         }
 
-        let childRes = await db.query(
-            `SELECT c.id, c.full_name, c.surname, c.grade, c.stream, u.profile_picture_path
-             FROM children c
-             JOIN users u ON c.learner_user_id = u.id
-             WHERE c.id = $1`,
-            [childId]
-        );
-
-        if (childRes.rows.length === 0) {
-            return res.status(404).json({ error: 'Child attendance profile not found.' });
+        let targetChild = availableChildren[0];
+        if (childId) {
+            const found = availableChildren.find(c => c.id === parseInt(childId, 10));
+            if (found) targetChild = found;
         }
 
-        const child = childRes.rows[0];
-
-        const attLogsRes = await db.query(
-            `SELECT a.attendance_date, a.status, a.subject_name, a.created_at, u.full_name as teacher_name, u.surname as teacher_surname
+        // Query real database attendance records for this child
+        const attRes = await db.query(
+            `SELECT 
+                a.id, 
+                a.attendance_date as date,
+                a.status, 
+                COALESCE(a.subject_name, 'General Roll-Call') as subject_name,
+                a.created_at,
+                COALESCE(u.full_name || ' ' || u.surname, 'Subject Educator') as recorded_by_name
              FROM attendance a
-             LEFT JOIN users u ON a.recorded_by_teacher_id = u.id
+             LEFT JOIN users u ON (a.recorded_by_teacher_id = u.id OR a.recorded_by = u.id)
              WHERE a.child_id = $1
              ORDER BY a.attendance_date DESC, a.created_at DESC`,
-            [child.id]
+            [targetChild.id]
         );
 
-        const logs = attLogsRes.rows;
-        const totalLogs = logs.length;
-        const attendedLogs = logs.filter(l => l.status === 'present' || l.status === 'late').length;
-        const absentLogs = logs.filter(l => l.status === 'absent').length;
-        const lateLogs = logs.filter(l => l.status === 'late').length;
+        const rows = attRes.rows;
+        let presentCount = 0;
+        let absentCount = 0;
+        let lateCount = 0;
 
-        // Calculate unique distinct metrics per child
-        const childSeed = (child.id * 7) % 5;
-        const fallbackPresent = 44 + ((child.id * 3) % 5);
-        const fallbackAbsent = (child.id % 3) + 1;
-        const fallbackLate = (child.id % 2);
-        const fallbackTotal = fallbackPresent + fallbackAbsent;
-        const fallbackRate = Math.round((fallbackPresent / fallbackTotal) * 100);
+        const dailyRecords = rows.map(r => {
+            const statusLower = (r.status || 'present').toLowerCase();
+            if (statusLower === 'present') presentCount++;
+            else if (statusLower === 'absent') absentCount++;
+            else if (statusLower === 'late') lateCount++;
 
-        const daysPresent = totalLogs > 0 ? attendedLogs : fallbackPresent;
-        const daysAbsent = totalLogs > 0 ? absentLogs : fallbackAbsent;
-        const daysLate = totalLogs > 0 ? lateLogs : fallbackLate;
-        const overallAtt = totalLogs > 0 ? Math.round((attendedLogs / totalLogs) * 100) : fallbackRate;
-        const punctualityRate = totalLogs > 0 
-            ? Math.round(((attendedLogs - lateLogs) / Math.max(1, attendedLogs)) * 100) 
-            : Math.round(((fallbackPresent - fallbackLate) / Math.max(1, fallbackPresent)) * 100);
+            const dateObj = new Date(r.date);
+            const isoDate = r.date instanceof Date ? r.date.toISOString().split('T')[0] : String(r.date).split('T')[0];
 
-        const recentLogsTable = logs.map(l => {
-            const dateObj = new Date(l.attendance_date);
-            const isoDate = l.attendance_date instanceof Date ? l.attendance_date.toISOString().split('T')[0] : String(l.attendance_date).split('T')[0];
-            const timeInFormatted = l.status === 'absent' ? '—' : (l.created_at ? new Date(l.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (l.status === 'late' ? '08:15 AM' : '07:45 AM'));
-            const timeOutFormatted = l.status === 'absent' ? '—' : '02:30 PM';
             return {
+                id: r.id,
                 date: isoDate,
                 attendance_date: isoDate,
                 formatted_date: dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                 day: dateObj.toLocaleDateString('en-US', { weekday: 'long' }),
-                status: (l.status || 'present').toLowerCase(),
-                subject_name: l.subject_name || 'General Registration',
-                subject: l.subject_name || 'General Registration',
-                time_in: timeInFormatted,
-                time_out: timeOutFormatted,
-                teacher: l.teacher_name ? `${l.teacher_name} ${l.teacher_surname || ''}` : 'Class Teacher',
-                notes: l.status === 'late' ? 'Marked late by class teacher' : (l.status === 'absent' ? 'Absent (Marked in Register)' : 'Checked in on time')
+                status: statusLower,
+                subject_name: r.subject_name,
+                subject: r.subject_name,
+                recorded_by: r.recorded_by_name,
+                teacher: r.recorded_by_name,
+                time: r.created_at ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '08:00 AM',
+                time_in: statusLower === 'absent' ? '—' : (r.created_at ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '08:00 AM'),
+                time_out: statusLower === 'absent' ? '—' : '02:30 PM',
+                notes: statusLower === 'late' ? 'Marked late' : (statusLower === 'absent' ? 'Absent from roll-call' : 'Present')
             };
         });
 
+        const totalRecorded = rows.length;
+        const attendanceRate = totalRecorded > 0 ? Math.round(((presentCount + lateCount) / totalRecorded) * 100) : 100;
+        const punctualityRate = (presentCount + lateCount) > 0 ? Math.round((presentCount / (presentCount + lateCount)) * 100) : 100;
+
         const statsObj = {
-            present_days: daysPresent,
-            absent_days: daysAbsent,
-            late_days: daysLate,
-            attendance_rate: overallAtt,
+            present_days: presentCount,
+            absent_days: absentCount,
+            late_days: lateCount,
+            attendance_rate: attendanceRate,
             punctuality_rate: punctualityRate
         };
 
+        const calendarEntries = dailyRecords.map(r => ({
+            id: `att-${r.id}`,
+            date: r.date,
+            title: `Attendance: ${r.status.toUpperCase()} (${r.subject})`,
+            type: r.status === 'present' ? 'Sports' : (r.status === 'late' ? 'Holiday' : 'Exam'),
+            status: r.status,
+            subject: r.subject,
+            time: r.time,
+            child_name: targetChild.full_name,
+            is_attendance: true
+        }));
+
         res.json({
-            child_id: child.id,
-            name: `${child.full_name} ${child.surname}`,
-            first_name: child.full_name,
-            grade: child.grade,
-            profile_picture: child.profile_picture_path,
-            overall_attendance: overallAtt,
-            days_present: daysPresent,
-            days_absent: daysAbsent,
-            late_days: daysLate,
+            child: targetChild,
+            child_id: targetChild.id,
+            name: `${targetChild.full_name} ${targetChild.surname || ''}`.trim(),
+            first_name: targetChild.full_name,
+            grade: targetChild.grade,
+            profile_picture: targetChild.profile_picture_path,
+            children: availableChildren.map(c => ({ id: c.id, full_name: c.full_name, surname: c.surname, grade: c.grade })),
+            total_recorded: totalRecorded,
+            present_count: presentCount,
+            absent_count: absentCount,
+            late_count: lateCount,
+            days_present: presentCount,
+            days_absent: absentCount,
+            late_days: lateCount,
+            overall_attendance: attendanceRate,
+            attendance_rate: attendanceRate,
             punctuality_rate: punctualityRate,
             stats: statsObj,
-            daily_records: recentLogsTable,
-            records: recentLogsTable,
-            recent_attendance_records: recentLogsTable
+            daily_records: dailyRecords,
+            records: dailyRecords,
+            recent_attendance_records: dailyRecords,
+            calendar_entries: calendarEntries
         });
-
     } catch (err) {
-        console.error('Error fetching child attendance overview:', err);
-        res.status(500).json({ error: 'Failed to retrieve child attendance.' });
+        console.error('Error fetching child attendance overview for parent:', err);
+        res.status(500).json({ error: 'Failed to retrieve attendance records: ' + err.message });
     }
 };
 
@@ -1481,107 +1518,5 @@ exports.getChildAlerts = async (req, res) => {
     } catch (err) {
         console.error('Error fetching child alerts:', err);
         res.status(500).json({ error: 'Failed to retrieve alerts.' });
-    }
-};
-
-/**
- * Child Attendance Overview for Parent Portal (/api/parent/child-attendance?childId=X)
- * ZERO DUMMY DATA: Queries real database records.
- */
-exports.getChildAttendanceOverview = async (req, res) => {
-    try {
-        const parentId = req.user.id;
-        let childId = req.query.childId || req.query.child_id;
-
-        const availableChildren = await fetchParentChildren(parentId);
-        if (availableChildren.length === 0) {
-            return res.json({
-                children: [],
-                total_recorded: 0,
-                present_count: 0,
-                absent_count: 0,
-                late_count: 0,
-                attendance_rate: 100,
-                daily_records: [],
-                calendar_entries: []
-            });
-        }
-
-        let targetChild = availableChildren[0];
-        if (childId) {
-            const found = availableChildren.find(c => c.id === parseInt(childId, 10));
-            if (found) targetChild = found;
-        }
-
-        // Query real database attendance records for this child
-        const attRes = await db.query(
-            `SELECT 
-                a.id, 
-                a.attendance_date as date,
-                a.status, 
-                COALESCE(a.subject_name, 'General Roll-Call') as subject_name,
-                a.created_at,
-                COALESCE(u.full_name || ' ' || u.surname, 'Subject Educator') as recorded_by_name
-             FROM attendance a
-             LEFT JOIN users u ON (a.recorded_by_teacher_id = u.id OR a.recorded_by = u.id)
-             WHERE a.child_id = $1
-             ORDER BY a.attendance_date DESC, a.created_at DESC`,
-            [targetChild.id]
-        );
-
-        const rows = attRes.rows;
-        let presentCount = 0;
-        let absentCount = 0;
-        let lateCount = 0;
-
-        const dailyRecords = rows.map(r => {
-            const statusLower = (r.status || 'present').toLowerCase();
-            if (statusLower === 'present') presentCount++;
-            else if (statusLower === 'absent') absentCount++;
-            else if (statusLower === 'late') lateCount++;
-
-            const dateObj = new Date(r.date);
-            const formattedDate = dateObj.toISOString().split('T')[0];
-
-            return {
-                id: r.id,
-                date: formattedDate,
-                raw_date: r.date,
-                status: statusLower,
-                subject: r.subject_name,
-                recorded_by: r.recorded_by_name,
-                time: r.created_at ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '08:00 AM'
-            };
-        });
-
-        const totalRecorded = rows.length;
-        const attendanceRate = totalRecorded > 0 ? Math.round(((presentCount + lateCount) / totalRecorded) * 100) : 100;
-
-        const calendarEntries = dailyRecords.map(r => ({
-            id: `att-${r.id}`,
-            date: r.date,
-            title: `Attendance: ${r.status.toUpperCase()} (${r.subject})`,
-            type: r.status === 'present' ? 'Sports' : (r.status === 'late' ? 'Holiday' : 'Exam'),
-            status: r.status,
-            subject: r.subject,
-            time: r.time,
-            child_name: targetChild.full_name,
-            is_attendance: true
-        }));
-
-        res.json({
-            child: targetChild,
-            children: availableChildren.map(c => ({ id: c.id, full_name: c.full_name, surname: c.surname, grade: c.grade })),
-            total_recorded: totalRecorded,
-            present_count: presentCount,
-            absent_count: absentCount,
-            late_count: lateCount,
-            attendance_rate: attendanceRate,
-            daily_records: dailyRecords,
-            calendar_entries: calendarEntries
-        });
-    } catch (err) {
-        console.error('Error fetching child attendance overview for parent:', err);
-        res.status(500).json({ error: 'Failed to retrieve attendance records: ' + err.message });
     }
 };
