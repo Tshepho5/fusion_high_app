@@ -7,6 +7,7 @@ import { LearnerAITutor } from './LearnerAITutor';
 import { LearnerTimetable } from './LearnerTimetable';
 import { LearnerMessages } from './LearnerMessages';
 import { LearnerProfile } from './LearnerProfile';
+import { LearnerSettings } from './LearnerSettings';
 import { CapsReportCard } from '../../components/common/CapsReportCard';
 import { AnnouncementsFeed } from '../../components/common/AnnouncementsFeed';
 import { SchoolCalendar } from '../../components/common/SchoolCalendar';
@@ -69,7 +70,8 @@ export const LearnerDashboard: React.FC = () => {
       case 'calendar': return 'Academic & Events Calendar';
       case 'announcements': return 'School Notices & Broadcasts';
       case 'messages': return 'Message Center';
-      case 'profile': return 'My Profile & Settings';
+      case 'settings': return 'App & Technical Settings';
+      case 'profile': return 'My Profile & Student ID';
       case 'overview':
       default: return 'Home';
     }
@@ -107,6 +109,7 @@ export const LearnerDashboard: React.FC = () => {
       {activeTab === 'announcements' && <AnnouncementsFeed />}
       {activeTab === 'messages' && <LearnerMessages />}
       {activeTab === 'profile' && <LearnerProfile />}
+      {activeTab === 'settings' && <LearnerSettings />}
     </DashboardLayout>
   );
 };

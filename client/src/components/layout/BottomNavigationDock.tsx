@@ -121,13 +121,13 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
 
         {/* 5. Settings Shortcut */}
         <button
-          onClick={() => onSelectTab('profile')}
+          onClick={() => onSelectTab('settings')}
           className={`flex flex-col items-center justify-center p-2 rounded-full transition-all duration-200 ${
-            activeTab === 'settings' || (activeTab === 'profile' && false)
+            activeTab === 'settings'
               ? 'text-cyan-400 bg-white/10 shadow-glow-cyan'
               : 'text-slate-400 hover:text-white hover:bg-white/5'
           }`}
-          title="Settings & Preferences"
+          title="App & Technical Settings"
         >
           <Settings className="w-5 h-5" />
           <span className="text-[9px] font-bold mt-0.5 hidden sm:block">Settings</span>
