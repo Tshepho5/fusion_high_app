@@ -39,31 +39,55 @@ const EVENT_TYPES = [
   { label: 'Meetings & General', value: 'General', badge: 'cyan' },
 ];
 
+const isDateInRange = (now: Date, startStr: string, endStr: string) => {
+  const start = new Date(startStr);
+  const end = new Date(endStr);
+  end.setHours(23, 59, 59, 999);
+  return now >= start && now <= end;
+};
+
 /**
- * Generates official Department of Basic Education (DBE) 4-Term Calendar metadata for any given year.
+ * Generates official Department of Basic Education (DBE) 4-Term Calendar metadata for any given year,
+ * dynamically determining the currently active term based on today's actual calendar date.
  */
 const getDBETermsForYear = (year: number) => {
-  const currentYear = new Date().getFullYear();
+  const today = new Date();
+  
   if (year === 2026) {
+    const isT1 = isDateInRange(today, '2026-01-14', '2026-03-27');
+    const isT2 = isDateInRange(today, '2026-04-08', '2026-06-26');
+    const isT3 = isDateInRange(today, '2026-07-21', '2026-10-02');
+    const isT4 = isDateInRange(today, '2026-10-13', '2026-12-09');
+
     return [
-      { term: 'Term 1', start: '14 Jan', end: '27 Mar', desc: 'Orientation & Term 1 CAPS', active: year === currentYear },
-      { term: 'Term 2', start: '08 Apr', end: '26 Jun', desc: 'Mid-Year Examinations', active: false },
-      { term: 'Term 3', start: '21 Jul', end: '02 Oct', desc: 'Preparatory / Trial Exams', active: false },
-      { term: 'Term 4', start: '13 Oct', end: '09 Dec', desc: 'Grade 12 NSC Final Exams', active: false },
+      { term: 'Term 1', start: '14 Jan', end: '27 Mar', desc: 'Orientation & Term 1 CAPS', active: isT1, completed: today > new Date('2026-03-27T23:59:59') },
+      { term: 'Term 2', start: '08 Apr', end: '26 Jun', desc: 'Mid-Year Examinations', active: isT2, completed: today > new Date('2026-06-26T23:59:59') },
+      { term: 'Term 3', start: '21 Jul', end: '02 Oct', desc: 'Preparatory / Trial Exams', active: isT3, completed: today > new Date('2026-10-02T23:59:59') },
+      { term: 'Term 4', start: '13 Oct', end: '09 Dec', desc: 'Grade 12 NSC Final Exams', active: isT4, completed: false },
     ];
   } else if (year === 2025) {
+    const isT1 = isDateInRange(today, '2025-01-15', '2025-03-28');
+    const isT2 = isDateInRange(today, '2025-04-08', '2025-06-27');
+    const isT3 = isDateInRange(today, '2025-07-22', '2025-10-03');
+    const isT4 = isDateInRange(today, '2025-10-14', '2025-12-10');
     return [
-      { term: 'Term 1', start: '15 Jan', end: '28 Mar', desc: 'Term 1 CAPS Curriculum', active: false },
-      { term: 'Term 2', start: '08 Apr', end: '27 Jun', desc: 'Mid-Year Assessments', active: false },
-      { term: 'Term 3', start: '22 Jul', end: '03 Oct', desc: 'Preparatory Trial Exams', active: false },
-      { term: 'Term 4', start: '14 Oct', end: '10 Dec', desc: 'NSC Final Examinations', active: false },
+      { term: 'Term 1', start: '15 Jan', end: '28 Mar', desc: 'Term 1 CAPS Curriculum', active: isT1, completed: today > new Date('2025-03-28T23:59:59') },
+      { term: 'Term 2', start: '08 Apr', end: '27 Jun', desc: 'Mid-Year Assessments', active: isT2, completed: today > new Date('2025-06-27T23:59:59') },
+      { term: 'Term 3', start: '22 Jul', end: '03 Oct', desc: 'Preparatory Trial Exams', active: isT3, completed: today > new Date('2025-10-03T23:59:59') },
+      { term: 'Term 4', start: '14 Oct', end: '10 Dec', desc: 'NSC Final Examinations', active: isT4, completed: false },
     ];
   }
+
+  const isT1 = isDateInRange(today, `${year}-01-13`, `${year}-03-26`);
+  const isT2 = isDateInRange(today, `${year}-04-07`, `${year}-06-25`);
+  const isT3 = isDateInRange(today, `${year}-07-20`, `${year}-10-01`);
+  const isT4 = isDateInRange(today, `${year}-10-12`, `${year}-12-08`);
+
   return [
-    { term: 'Term 1', start: '13 Jan', end: '26 Mar', desc: `Term 1 ${year} CAPS Curriculum`, active: year === currentYear },
-    { term: 'Term 2', start: '07 Apr', end: '25 Jun', desc: 'Mid-Year Assessments', active: false },
-    { term: 'Term 3', start: '20 Jul', end: '01 Oct', desc: 'Trial Preparatory Exams', active: false },
-    { term: 'Term 4', start: '12 Oct', end: '08 Dec', desc: 'Grade 12 NSC Final Exams', active: false },
+    { term: 'Term 1', start: '13 Jan', end: '26 Mar', desc: `Term 1 ${year} CAPS Curriculum`, active: isT1, completed: today > new Date(`${year}-03-26T23:59:59`) },
+    { term: 'Term 2', start: '07 Apr', end: '25 Jun', desc: 'Mid-Year Assessments', active: isT2, completed: today > new Date(`${year}-06-25T23:59:59`) },
+    { term: 'Term 3', start: '20 Jul', end: '01 Oct', desc: 'Trial Preparatory Exams', active: isT3, completed: today > new Date(`${year}-10-01T23:59:59`) },
+    { term: 'Term 4', start: '12 Oct', end: '08 Dec', desc: 'Grade 12 NSC Final Exams', active: isT4, completed: false },
   ];
 };
 
@@ -428,19 +452,31 @@ export const SchoolCalendar: React.FC = () => {
               key={idx}
               className={`p-3 rounded-2xl border transition-all ${
                 term.active
-                  ? 'bg-gradient-to-br from-brand-900/40 to-cyan-950/40 border-cyan-500/40 shadow-glow-cyan'
+                  ? 'bg-gradient-to-br from-brand-900/50 via-cyan-950/40 to-surface-dark border-cyan-400/60 shadow-glow-cyan'
+                  : term.completed
+                  ? 'bg-surface-darker/60 border-white/5 opacity-80'
                   : 'bg-surface-darker/70 border-white/5'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold text-white">{term.term}</span>
-                {term.active && (
-                  <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 text-[8px] font-bold uppercase animate-pulse">
-                    CURRENT
+                <span className={`text-xs font-extrabold ${term.active ? 'text-cyan-300 font-black' : 'text-white'}`}>
+                  {term.term}
+                </span>
+                {term.active ? (
+                  <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[8.5px] font-extrabold uppercase animate-pulse">
+                    CURRENT ACTIVE
+                  </span>
+                ) : term.completed ? (
+                  <span className="px-1.5 py-0.2 rounded bg-slate-700/50 text-slate-400 text-[8px] font-semibold uppercase">
+                    COMPLETED
+                  </span>
+                ) : (
+                  <span className="px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-300 text-[8px] font-semibold uppercase">
+                    UPCOMING
                   </span>
                 )}
               </div>
-              <p className="text-[11px] font-mono font-bold text-cyan-300 mt-1">
+              <p className={`text-[11px] font-mono font-bold mt-1 ${term.active ? 'text-white' : 'text-cyan-400/80'}`}>
                 {term.start} – {term.end}
               </p>
               <p className="text-[10px] text-slate-400 truncate mt-0.5">{term.desc}</p>

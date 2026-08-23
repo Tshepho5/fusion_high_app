@@ -150,7 +150,7 @@ export const ParentAttendance: React.FC = () => {
                 <Calendar className="w-4 h-4 text-emerald-400" />
                 Recent Daily Presence History ({selectedChild.full_name})
               </h3>
-              <Badge variant="emerald" size="sm">Term 1 Active</Badge>
+              <Badge variant="emerald" size="sm">Term 3 Active</Badge>
             </div>
 
             {loadingAttendance ? (
