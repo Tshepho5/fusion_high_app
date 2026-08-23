@@ -8,6 +8,7 @@ import { LearnerTimetable } from './LearnerTimetable';
 import { LearnerMessages } from './LearnerMessages';
 import { LearnerProfile } from './LearnerProfile';
 import { LearnerSettings } from './LearnerSettings';
+import { SubjectPerformanceView } from './SubjectPerformanceView';
 import { CapsReportCard } from '../../components/common/CapsReportCard';
 import { AnnouncementsFeed } from '../../components/common/AnnouncementsFeed';
 import { SchoolCalendar } from '../../components/common/SchoolCalendar';
@@ -57,6 +58,7 @@ export const LearnerDashboard: React.FC = () => {
   const getTabTitle = () => {
     switch (activeTab) {
       case 'subjects': return 'My Subjects';
+      case 'performance': return 'Subject Academic Performance';
       case 'ai-tutor': return 'AI Study Tutor';
       case 'career-advisor': return 'Matric APS & University Career Advisor';
       case 'bursaries': return 'NSFAS & Tertiary Bursary Matching Engine';
@@ -89,6 +91,7 @@ export const LearnerDashboard: React.FC = () => {
       {activeTab === 'subjects' && (
         <LearnerSubjects onStartAITopic={handleStartAITopic} />
       )}
+      {activeTab === 'performance' && <SubjectPerformanceView />}
       {activeTab === 'assignments' && <LearnerAssignments />}
       {activeTab === 'ai-tutor' && (
         <LearnerAITutor

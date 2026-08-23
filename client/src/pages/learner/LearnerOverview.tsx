@@ -31,10 +31,14 @@ import {
   Grid,
   Trophy,
   Calendar,
-  LayoutGrid
+  LayoutGrid,
+  List,
+  Grid3X3
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
+
+type GridViewMode = 'grid' | 'compact' | 'list';
 
 interface LearnerOverviewProps {
   onNavigateTab: (tabId: string, subjectName?: string) => void;
@@ -45,10 +49,19 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
   const [profile, setProfile] = useState<any>(null);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [attendance, setAttendance] = useState<any>(null);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [performance, setPerformance] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Optional Grid View Mode (Grid / Compact Tiles / List)
+  const [modulesViewMode, setModulesViewMode] = useState<GridViewMode>(() => {
+    return (localStorage.getItem('learner_modules_view_mode') as GridViewMode) || 'grid';
+  });
+
+  const handleSetViewMode = (mode: GridViewMode) => {
+    setModulesViewMode(mode);
+    localStorage.setItem('learner_modules_view_mode', mode);
+  };
 
   // Resource Modal state
   const [selectedResourceSubject, setSelectedResourceSubject] = useState<{ name: string; grade: number } | null>(null);
@@ -103,11 +116,10 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [profData, subjData, annData, attData, assignData, gradesData] = await Promise.allSettled([
+        const [profData, subjData, annData, assignData, gradesData] = await Promise.allSettled([
           learnerService.getProfile(),
           learnerService.getMySubjectsOverview().catch(() => learnerService.getSubjects()),
           learnerService.getAnnouncements(),
-          learnerService.getAttendance(),
           learnerService.getAssignments(),
           learnerService.getGradesOverview().catch(() => learnerService.getProgress())
         ]);
@@ -122,7 +134,6 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
           } else if (Array.isArray(val)) {
             subList = val;
           }
-          // Format subject items consistently
           const formatted = subList.map((s: any) => {
             const name = typeof s === 'string' ? s : (s.name || s.subject_name || 'Subject');
             const code = s.code || `${name.substring(0, 4).toUpperCase()}10`;
@@ -139,7 +150,6 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
           const list = Array.isArray(annData.value) ? annData.value : annData.value?.announcements || [];
           setAnnouncements(list);
         }
-        if (attData.status === 'fulfilled') setAttendance(attData.value);
         if (assignData.status === 'fulfilled') {
           const list = Array.isArray(assignData.value) ? assignData.value : assignData.value?.assignments || [];
           setAssignments(list);
@@ -159,13 +169,6 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
     return <LoadingSpinner text="Loading your learner portal..." />;
   }
 
-  const learnerName = profile?.full_name || user?.full_name || 'Learner';
-  const grade = profile?.grade || user?.grade || profile?.academic?.grade || '10';
-  const stream = profile?.stream || user?.stream || profile?.academic?.stream || 'General';
-  const learnerNumber = profile?.learner_number || user?.learner_number || profile?.academic?.learner_number || '2026-001';
-  const attendanceRate = attendance?.percentage !== undefined ? `${attendance.percentage}%` : (attendance?.presentRate || '96%');
-  const overallAverage = performance?.overall_average || performance?.average || 78;
-
   const unreadAnnouncements = announcements.filter(a => !readIds.includes(a.id));
 
   // Fallback demo subjects if none loaded
@@ -178,113 +181,24 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
     { name: 'Life Orientation', code: 'LFOR10', grade: 10, progress: 95, teacher: 'Mrs. Mokoena', assignmentsDue: 0 }
   ];
 
-  // ALL FUNCTIONS FROM THE MAIN MENU
+  // ALL FUNCTIONS FROM MAIN MENU (ICON + NAME ONLY)
   const mainPortalFunctions = [
-    {
-      id: 'subjects',
-      label: 'My Subjects & AI Tutor',
-      desc: 'Syllabus, topics, interactive AI tutor & study notes',
-      icon: BookOpen,
-      color: 'from-cyan-600/20 to-blue-600/20 text-cyan-400 border-cyan-500/30',
-      badge: 'AI'
-    },
-    {
-      id: 'assignments',
-      label: 'Homework & Submissions',
-      desc: 'Download worksheets, upload solutions & get AI pre-grading',
-      icon: FileText,
-      color: 'from-indigo-600/20 to-brand-600/20 text-indigo-400 border-indigo-500/30',
-      badge: 'AI Live'
-    },
-    {
-      id: 'ai-tutor',
-      label: 'AI Study Tutor',
-      desc: 'Step-by-step math breakdowns & self-study quiz coach',
-      icon: Bot,
-      color: 'from-pink-600/20 to-purple-600/20 text-pink-400 border-pink-500/30',
-      badge: 'AI Coach'
-    },
-    {
-      id: 'career-advisor',
-      label: 'Matric APS & Careers',
-      desc: 'APS point calculator, university requirements & fields',
-      icon: Compass,
-      color: 'from-purple-600/20 to-pink-600/20 text-purple-400 border-purple-500/30',
-      badge: 'Gr12 APS'
-    },
-    {
-      id: 'bursaries',
-      label: 'NSFAS & Bursaries',
-      desc: 'AI tertiary bursary matches, document checklists & funding',
-      icon: GraduationCap,
-      color: 'from-amber-600/20 to-orange-600/20 text-amber-400 border-amber-500/30',
-      badge: 'FUND'
-    },
-    {
-      id: 'finance',
-      label: 'Fee Statements',
-      desc: 'Official school fee statements & settled payment receipts',
-      icon: CreditCard,
-      color: 'from-emerald-600/20 to-teal-600/20 text-emerald-400 border-emerald-500/30'
-    },
-    {
-      id: 'reports',
-      label: 'CAPS Report Cards',
-      desc: 'Term mark sheets, subject levels & official transcripts',
-      icon: Award,
-      color: 'from-emerald-600/20 to-cyan-600/20 text-emerald-400 border-emerald-500/30',
-      badge: 'PDF'
-    },
-    {
-      id: 'exam-seating',
-      label: 'Exam Seating & Card',
-      desc: 'Personal exam hall allocation & student smart ID card',
-      icon: Grid,
-      color: 'from-indigo-600/20 to-purple-600/20 text-indigo-400 border-indigo-500/30'
-    },
-    {
-      id: 'sports',
-      label: 'Sports & Clubs',
-      desc: 'House athletics, extracurricular teams & events',
-      icon: Trophy,
-      color: 'from-green-600/20 to-emerald-600/20 text-green-400 border-green-500/30'
-    },
-    {
-      id: 'textbooks',
-      label: 'My Textbooks',
-      desc: 'Issued textbooks, digital study e-books & guides',
-      icon: BookMarked,
-      color: 'from-teal-600/20 to-cyan-600/20 text-teal-400 border-teal-500/30'
-    },
-    {
-      id: 'timetable',
-      label: 'Weekly Timetable',
-      desc: 'Classroom periods, room numbers & educator timetable',
-      icon: Clock,
-      color: 'from-sky-600/20 to-blue-600/20 text-sky-400 border-sky-500/30'
-    },
-    {
-      id: 'calendar',
-      label: 'School Calendar',
-      desc: 'Academic terms, test weeks & school holidays',
-      icon: Calendar,
-      color: 'from-violet-600/20 to-indigo-600/20 text-violet-400 border-violet-500/30'
-    },
-    {
-      id: 'announcements',
-      label: 'Announcements',
-      desc: 'School alerts, sports updates & event notices',
-      icon: Megaphone,
-      color: 'from-fuchsia-600/20 to-purple-600/20 text-fuchsia-400 border-fuchsia-500/30'
-    },
-    {
-      id: 'messages',
-      label: 'Teacher Messages',
-      desc: 'Direct private chats with subject teachers',
-      icon: MessageSquare,
-      color: 'from-brand-600/20 to-cyan-600/20 text-brand-400 border-brand-500/30',
-      badge: 'CHAT'
-    }
+    { id: 'subjects', label: 'My Subjects', icon: BookOpen, color: 'text-cyan-400 bg-cyan-500/15 border-cyan-500/30' },
+    { id: 'assignments', label: 'Homework & Tasks', icon: FileText, color: 'text-indigo-400 bg-indigo-500/15 border-indigo-500/30' },
+    { id: 'ai-tutor', label: 'AI Study Tutor', icon: Bot, color: 'text-pink-400 bg-pink-500/15 border-pink-500/30' },
+    { id: 'performance', label: 'Subject Performance', icon: TrendingUp, color: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' },
+    { id: 'career-advisor', label: 'Matric APS & Careers', icon: Compass, color: 'text-purple-400 bg-purple-500/15 border-purple-500/30' },
+    { id: 'bursaries', label: 'NSFAS & Bursaries', icon: GraduationCap, color: 'text-amber-400 bg-amber-500/15 border-amber-500/30' },
+    { id: 'reports', label: 'CAPS Report Cards', icon: Award, color: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' },
+    { id: 'finance', label: 'Fee Statements', icon: CreditCard, color: 'text-teal-400 bg-teal-500/15 border-teal-500/30' },
+    { id: 'timetable', label: 'Weekly Timetable', icon: Clock, color: 'text-sky-400 bg-sky-500/15 border-sky-500/30' },
+    { id: 'calendar', label: 'School Calendar', icon: Calendar, color: 'text-violet-400 bg-violet-500/15 border-violet-500/30' },
+    { id: 'exam-seating', label: 'Exam Seating & Card', icon: Grid, color: 'text-indigo-400 bg-indigo-500/15 border-indigo-500/30' },
+    { id: 'textbooks', label: 'My Textbooks', icon: BookMarked, color: 'text-teal-400 bg-teal-500/15 border-teal-500/30' },
+    { id: 'sports', label: 'Sports & Clubs', icon: Trophy, color: 'text-green-400 bg-green-500/15 border-green-500/30' },
+    { id: 'announcements', label: 'Announcements', icon: Megaphone, color: 'text-fuchsia-400 bg-fuchsia-500/15 border-fuchsia-500/30' },
+    { id: 'messages', label: 'Teacher Messages', icon: MessageSquare, color: 'text-brand-400 bg-brand-500/15 border-brand-500/30' },
+    { id: 'settings', label: 'Technical Settings', icon: UserCheck, color: 'text-slate-300 bg-slate-700/30 border-slate-600/30' }
   ];
 
   return (
@@ -390,11 +304,11 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                   AI Tutor
                 </button>
                 <button
-                  onClick={() => onNavigateTab('reports')}
+                  onClick={() => onNavigateTab('performance')}
                   className="px-2 py-1.5 rounded-lg bg-surface-darker hover:bg-white/10 text-emerald-300 hover:text-emerald-200 text-[11px] font-medium border border-white/5 transition-colors text-center"
-                  title="Grades History"
+                  title="Subject Performance"
                 >
-                  Grades
+                  Marks
                 </button>
                 <button
                   onClick={() => onNavigateTab('subjects', sub.name)}
@@ -409,7 +323,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
         </div>
       </section>
 
-      {/* 2. ALL FUNCTIONS FROM MAIN MENU (Under Subjects Carousel) */}
+      {/* 2. MAIN MODULES (ICON + NAME ONLY WITH OPTIONAL GRID VIEWS) */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -417,75 +331,122 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
               <LayoutGrid className="w-4 h-4" />
             </div>
             <h2 className="text-base md:text-lg font-bold font-display text-white tracking-tight">
-              Main Menu Functions & Modules
+              Portal Modules & Quick Functions
             </h2>
           </div>
-          <span className="text-xs text-slate-400 font-medium">All 14 Modules</span>
+
+          {/* Optional Grid View Selectors */}
+          <div className="flex items-center gap-1 p-1 bg-surface-dark rounded-xl border border-white/10">
+            <button
+              onClick={() => handleSetViewMode('grid')}
+              className={`p-1.5 rounded-lg transition-colors ${
+                modulesViewMode === 'grid'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="Standard Grid"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => handleSetViewMode('compact')}
+              className={`p-1.5 rounded-lg transition-colors ${
+                modulesViewMode === 'compact'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="Compact App Tiles"
+            >
+              <Grid3X3 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => handleSetViewMode('list')}
+              className={`p-1.5 rounded-lg transition-colors ${
+                modulesViewMode === 'list'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="List View"
+            >
+              <List className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-          {mainPortalFunctions.map((func) => {
-            const IconComp = func.icon;
-            return (
-              <div
-                key={func.id}
-                onClick={() => onNavigateTab(func.id)}
-                className="p-4 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-sm group relative overflow-hidden"
-              >
-                <div className="flex items-start justify-between">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${func.color} border flex items-center justify-center group-hover:scale-105 transition-transform`}>
+        {/* View Mode 1: Standard Clean Grid (Icon + Name) */}
+        {modulesViewMode === 'grid' && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {mainPortalFunctions.map((func) => {
+              const IconComp = func.icon;
+              return (
+                <div
+                  key={func.id}
+                  onClick={() => onNavigateTab(func.id)}
+                  className="p-3.5 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex items-center gap-3 shadow-sm group"
+                >
+                  <div className={`w-10 h-10 rounded-xl ${func.color} border flex items-center justify-center group-hover:scale-105 transition-transform shrink-0`}>
                     <IconComp className="w-5 h-5" />
                   </div>
-                  {func.badge && (
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/10 text-slate-300 border border-white/10">
-                      {func.badge}
-                    </span>
-                  )}
+                  <span className="text-xs font-bold text-white group-hover:text-indigo-300 transition-colors leading-tight">
+                    {func.label}
+                  </span>
                 </div>
+              );
+            })}
+          </div>
+        )}
 
-                <div>
-                  <h3 className="text-sm font-bold text-white group-hover:text-indigo-300 transition-colors flex items-center gap-1.5">
-                    <span>{func.label}</span>
-                    <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-indigo-400" />
-                  </h3>
-                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
-                    {func.desc}
-                  </p>
+        {/* View Mode 2: Compact App Icon Tiles */}
+        {modulesViewMode === 'compact' && (
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5">
+            {mainPortalFunctions.map((func) => {
+              const IconComp = func.icon;
+              return (
+                <div
+                  key={func.id}
+                  onClick={() => onNavigateTab(func.id)}
+                  className="p-3 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-2 shadow-sm group"
+                >
+                  <div className={`w-11 h-11 rounded-2xl ${func.color} border flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                    <IconComp className="w-5 h-5" />
+                  </div>
+                  <span className="text-[11px] font-bold text-white group-hover:text-indigo-300 transition-colors line-clamp-2 leading-tight">
+                    {func.label}
+                  </span>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* View Mode 3: Sleek List View */}
+        {modulesViewMode === 'list' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {mainPortalFunctions.map((func) => {
+              const IconComp = func.icon;
+              return (
+                <div
+                  key={func.id}
+                  onClick={() => onNavigateTab(func.id)}
+                  className="p-3 px-4 rounded-xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex items-center justify-between shadow-sm group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg ${func.color} border flex items-center justify-center shrink-0`}>
+                      <IconComp className="w-4 h-4" />
+                    </div>
+                    <span className="text-xs font-bold text-white group-hover:text-indigo-300 transition-colors">
+                      {func.label}
+                    </span>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-white transition-colors" />
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
-      {/* 3. ACADEMIC STATS RIBBON */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 shadow-sm space-y-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Current Grade</span>
-          <p className="text-xl font-extrabold text-white">Grade {grade}</p>
-          <span className="text-[10px] text-indigo-400 font-medium">{stream} Stream</span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 shadow-sm space-y-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Learner Number</span>
-          <p className="text-xl font-extrabold text-white font-mono">{learnerNumber}</p>
-          <span className="text-[10px] text-cyan-400 font-medium">Verified Active</span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 shadow-sm space-y-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Term Average</span>
-          <p className="text-xl font-extrabold text-emerald-400">{overallAverage}%</p>
-          <span className="text-[10px] text-emerald-400/80 font-medium">CAPS Level 6 Rating</span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 shadow-sm space-y-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Attendance Rate</span>
-          <p className="text-xl font-extrabold text-white">{attendanceRate}</p>
-          <span className="text-[10px] text-slate-400 font-medium">Term 2 Verified</span>
-        </div>
-      </div>
-
-      {/* 4. TWO-COLUMN DASHBOARD GRID */}
+      {/* 3. TWO-COLUMN DASHBOARD GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Left Column: Tasks & AI Topics */}
@@ -585,10 +546,10 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 <span>Subject Performance Summary</span>
               </h3>
               <button
-                onClick={() => onNavigateTab('reports')}
+                onClick={() => onNavigateTab('performance')}
                 className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold"
               >
-                View Report
+                View Full Marks
               </button>
             </div>
 
@@ -666,7 +627,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
 
       </div>
 
-      {/* 5. STUDY RESOURCES MODAL */}
+      {/* 4. STUDY RESOURCES MODAL */}
       {selectedResourceSubject && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"

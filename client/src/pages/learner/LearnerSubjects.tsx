@@ -52,7 +52,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
   const { user } = useAuth();
   const learnerEnrolledGrade = Number(user?.grade) || 11;
 
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [subjects, setSubjects] = useState<any[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<'topics' | 'homework' | 'ai-tutor' | 'past-papers' | 'focus-timer' | 'resources' | 'grades'>('topics');
@@ -224,6 +224,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
               onClick={() => {
                 setSelectedSubject(null);
                 setSearchQuery('');
+                setSearchParams({ tab: 'subjects' });
               }}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-bold text-xs border border-white/10 transition-all self-start sm:self-auto"
             >
