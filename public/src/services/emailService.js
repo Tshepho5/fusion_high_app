@@ -1099,8 +1099,6 @@ const emailService = {
       };
     },
 
-    },
-
     timetableReleased: ({ recipientName, grade, stream, timetableName }) => {
       const title = `Official Timetable Released: Grade ${grade} (${stream})`;
       const loginUrl = (process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim() + '/login';
