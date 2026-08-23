@@ -16,15 +16,18 @@ import {
   Users,
   CreditCard,
   LifeBuoy,
-  RefreshCw,
-  CheckCircle2,
-  PhoneCall,
+  Phone,
   Mail,
   Clock,
   ThumbsUp,
-  RotateCcw
+  RotateCcw,
+  Compass,
+  CheckCircle2,
+  Lightbulb,
+  Smile
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { learnerService } from '../../services/api';
 
 interface HelpSupportModalProps {
@@ -38,73 +41,205 @@ interface ChatMessage {
   sender: 'ai' | 'user';
   text: string;
   timestamp: string;
-  suggestedAction?: {
-    label: string;
-    tabId: string;
-  };
 }
 
-// Interactive Animated Mascot Character Component with Helmet & Fusion High Icon
-const AnimatedSupportMascot: React.FC<{ isThinking?: boolean; isWaving?: boolean; mood?: 'happy' | 'thinking' | 'talking' }> = ({
-  isThinking = false,
-  isWaving = true,
-  mood = 'happy'
-}) => {
+/**
+ * 🌟 Dynamic Theme-Adaptive Animated Mascot (Fusion High AI Assistant)
+ * Features:
+ * - Helmet featuring the Fusion High Crest on forehead.
+ * - Expressive welcoming animated face with blinking glowing eyes and rosy cheeks.
+ * - Ear antenna communication lights and animated waving hand.
+ * - Dynamically adapts colors, materials, and glow to Dark, Navy, and Light themes!
+ */
+export const AnimatedSupportMascot: React.FC<{
+  isThinking?: boolean;
+  isWaving?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+}> = ({ isThinking = false, isWaving = true, size = 'md' }) => {
+  const { theme } = useTheme();
+
+  // Dynamic Theme Palette Styles for Mascot
+  const themeStyles = {
+    dark: {
+      aura: 'from-indigo-600/30 via-cyan-500/20 to-purple-600/30',
+      helmetBg: 'from-slate-800 via-slate-900 to-indigo-950',
+      helmetBorder: 'border-cyan-400/70 shadow-glow-indigo',
+      visorBg: 'from-slate-950/95 via-indigo-950/90 to-slate-950/95',
+      visorBorder: 'border-cyan-400/50 shadow-[0_0_12px_rgba(34,211,238,0.3)]',
+      eyeColor: '#22d3ee',
+      eyeGlow: '0 0 10px #22d3ee, 0 0 20px #06b6d4',
+      badgeBg: 'from-indigo-600 to-cyan-500',
+      badgeBorder: 'border-cyan-300',
+      antennaColor: 'bg-cyan-400 shadow-[0_0_8px_#22d3ee]',
+      cheeksColor: 'bg-pink-400/70',
+      mouthColor: 'border-cyan-300 bg-cyan-400/20',
+      handBg: 'from-indigo-500 to-cyan-400 border-cyan-300',
+      statusText: 'text-cyan-300 bg-cyan-500/20 border-cyan-500/30'
+    },
+    navy: {
+      aura: 'from-blue-600/30 via-sky-500/20 to-amber-500/20',
+      helmetBg: 'from-[#14234b] via-[#0e1a38] to-[#0a1226]',
+      helmetBorder: 'border-amber-400/70 shadow-[0_0_20px_rgba(251,191,36,0.25)]',
+      visorBg: 'from-[#081020]/95 via-[#0f2042]/90 to-[#081020]/95',
+      visorBorder: 'border-sky-400/50 shadow-[0_0_12px_rgba(56,189,248,0.3)]',
+      eyeColor: '#38bdf8',
+      eyeGlow: '0 0 10px #38bdf8, 0 0 18px #0284c7',
+      badgeBg: 'from-amber-500 to-amber-600',
+      badgeBorder: 'border-amber-300',
+      antennaColor: 'bg-amber-400 shadow-[0_0_8px_#fbbf24]',
+      cheeksColor: 'bg-amber-400/60',
+      mouthColor: 'border-sky-300 bg-sky-400/20',
+      handBg: 'from-blue-600 to-amber-400 border-amber-300',
+      statusText: 'text-amber-300 bg-amber-500/20 border-amber-500/30'
+    },
+    light: {
+      aura: 'from-brand-500/20 via-sky-400/20 to-indigo-500/20',
+      helmetBg: 'from-slate-100 via-white to-slate-200',
+      helmetBorder: 'border-indigo-500/40 shadow-xl',
+      visorBg: 'from-slate-900 via-indigo-950 to-slate-900',
+      visorBorder: 'border-sky-400/60 shadow-[0_0_10px_rgba(56,189,248,0.3)]',
+      eyeColor: '#38bdf8',
+      eyeGlow: '0 0 10px #38bdf8, 0 0 15px #60a5fa',
+      badgeBg: 'from-brand-600 to-indigo-600',
+      badgeBorder: 'border-white',
+      antennaColor: 'bg-indigo-600 shadow-[0_0_8px_#4f46e5]',
+      cheeksColor: 'bg-rose-400/80',
+      mouthColor: 'border-sky-300 bg-sky-400/30',
+      handBg: 'from-white to-slate-100 border-indigo-400',
+      statusText: 'text-brand-600 bg-brand-50 border-brand-200'
+    }
+  };
+
+  const currentThemeStyle = themeStyles[theme] || themeStyles.dark;
+  const isLight = theme === 'light';
+
   return (
-    <div className="relative flex flex-col items-center justify-center select-none py-2">
-      {/* Glow aura */}
-      <div className="absolute w-24 h-24 rounded-full bg-gradient-to-tr from-brand-600/30 to-cyan-400/30 blur-xl animate-pulse pointer-events-none" />
+    <div className="relative flex flex-col items-center justify-center select-none py-1.5 animate-mascot-bob">
+      {/* Ambient Glow Aura */}
+      <div
+        className={`absolute w-28 h-28 rounded-full bg-gradient-to-tr ${currentThemeStyle.aura} blur-xl animate-pulse pointer-events-none`}
+      />
 
       <div className="relative flex items-center justify-center">
-        {/* Waving Hand (Left or Right) */}
-        <div className={`absolute -right-7 -top-1 transition-all duration-300 origin-bottom-left ${isWaving ? 'animate-wave' : ''}`}>
-          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 border border-white/30 shadow-md flex items-center justify-center text-white text-xs transform rotate-12">
+        
+        {/* Left Ear Antenna with pulsing beacon light */}
+        <div className="absolute -left-3 top-3 flex items-center">
+          <div className="w-2.5 h-4 rounded-l-md bg-slate-700 border border-white/20 relative">
+            <div className={`absolute -left-1 top-1 w-2 h-2 rounded-full ${currentThemeStyle.antennaColor} animate-ping`} />
+            <div className={`absolute -left-1 top-1 w-2 h-2 rounded-full ${currentThemeStyle.antennaColor}`} />
+          </div>
+        </div>
+
+        {/* Right Ear Antenna with waving arm attached */}
+        <div className="absolute -right-3 top-3 flex items-center">
+          <div className="w-2.5 h-4 rounded-r-md bg-slate-700 border border-white/20 relative">
+            <div className={`absolute -right-1 top-1 w-2 h-2 rounded-full ${currentThemeStyle.antennaColor} animate-ping`} />
+            <div className={`absolute -right-1 top-1 w-2 h-2 rounded-full ${currentThemeStyle.antennaColor}`} />
+          </div>
+        </div>
+
+        {/* Waving Hand & Arm */}
+        <div
+          className={`absolute -right-8 -top-3 z-30 transition-all duration-300 origin-bottom-left ${
+            isWaving ? 'animate-wave' : ''
+          }`}
+        >
+          <div
+            className={`w-7 h-7 rounded-2xl bg-gradient-to-br ${currentThemeStyle.handBg} border shadow-lg flex items-center justify-center text-sm transform rotate-12`}
+          >
             ✋
           </div>
         </div>
 
-        {/* Outer Helmet */}
-        <div className="relative w-20 h-20 rounded-full bg-gradient-to-b from-slate-800 via-slate-900 to-indigo-950 border-2 border-cyan-400/60 shadow-glow-indigo flex flex-col items-center justify-center overflow-hidden group">
-          
-          {/* Forehead App Badge / Icon on Helmet */}
-          <div className="absolute top-1.5 z-20 flex items-center justify-center px-1.5 py-0.5 rounded-full bg-gradient-to-r from-brand-600 to-cyan-500 border border-white/40 shadow-sm shadow-cyan-500/50">
-            <GraduationCap className="w-3 h-3 text-white animate-pulse" />
-            <span className="text-[7px] font-black text-white ml-0.5 tracking-tighter">FUSION</span>
+        {/* Outer Protective Space/School Helmet */}
+        <div
+          className={`relative w-24 h-24 rounded-full bg-gradient-to-b ${currentThemeStyle.helmetBg} border-2 ${currentThemeStyle.helmetBorder} flex flex-col items-center justify-center overflow-hidden transition-all duration-300 shadow-2xl`}
+        >
+          {/* Top Head Aerodynamic Crest Highlight */}
+          <div className="absolute top-0 w-12 h-2 bg-white/20 rounded-b-lg blur-[0.5px]" />
+
+          {/* Forehead Emblem: Fusion High School Graduation Cap Badge */}
+          <div
+            className={`absolute top-2 z-20 flex items-center justify-center px-2 py-0.5 rounded-full bg-gradient-to-r ${currentThemeStyle.badgeBg} border ${currentThemeStyle.badgeBorder} shadow-md`}
+          >
+            <GraduationCap className="w-3.5 h-3.5 text-white animate-pulse" />
+            <span className="text-[8px] font-black text-white ml-1 tracking-wider uppercase">FUSION</span>
           </div>
 
-          {/* Helmet Glass Visor */}
-          <div className="w-16 h-12 mt-3 rounded-2xl bg-gradient-to-b from-slate-950/90 via-indigo-950/80 to-slate-950/90 border border-cyan-500/40 shadow-inner flex flex-col items-center justify-center relative overflow-hidden">
-            
-            {/* Visor Glare Reflection */}
-            <div className="absolute top-0 left-1 w-10 h-2 rounded-full bg-white/20 transform -rotate-12 blur-[1px]" />
+          {/* High-Tech Glowing Visor */}
+          <div
+            className={`w-18 h-14 mt-4 rounded-2xl bg-gradient-to-b ${currentThemeStyle.visorBg} border ${currentThemeStyle.visorBorder} flex flex-col items-center justify-center relative overflow-hidden transition-all duration-300`}
+            style={{ width: '4.8rem', height: '3.4rem' }}
+          >
+            {/* Visor Sunlight/Star Glare Reflection */}
+            <div className="absolute top-1 left-2 w-10 h-2 rounded-full bg-white/25 transform -rotate-12 blur-[1px]" />
+            <div className="absolute top-3 left-4 w-4 h-1 rounded-full bg-white/20 transform -rotate-12 blur-[0.5px]" />
 
-            {/* Welcoming Smiling Face inside Helmet */}
-            <div className="flex flex-col items-center justify-center gap-1.5 z-10">
+            {/* Welcoming Smiling Character Face inside Visor */}
+            <div className="flex flex-col items-center justify-center gap-1.5 z-10 pt-1">
               
-              {/* Cheerful Glowing Eyes */}
-              <div className="flex items-center gap-3">
+              {/* Expressive Glowing Eyes */}
+              <div className="flex items-center gap-3.5">
                 {isThinking ? (
                   <>
-                    <div className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping shadow-glow-indigo" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping shadow-glow-indigo" style={{ animationDelay: '200ms' }} />
+                    <div
+                      className="w-3 h-3 rounded-full animate-spin border-2 border-dashed"
+                      style={{ borderColor: currentThemeStyle.eyeColor, boxShadow: currentThemeStyle.eyeGlow }}
+                    />
+                    <div
+                      className="w-3 h-3 rounded-full animate-spin border-2 border-dashed"
+                      style={{ borderColor: currentThemeStyle.eyeColor, boxShadow: currentThemeStyle.eyeGlow }}
+                    />
                   </>
                 ) : (
                   <>
-                    {/* Happy curved arch eye */}
-                    <div className="w-2.5 h-1.5 rounded-t-full bg-cyan-300 shadow-[0_0_8px_#22d3ee] transform scale-y-125" />
-                    <div className="w-2.5 h-1.5 rounded-t-full bg-cyan-300 shadow-[0_0_8px_#22d3ee] transform scale-y-125" />
+                    {/* Happy Expressive Arched Glowing Eyes with Blinking */}
+                    <div className="relative flex flex-col items-center animate-mascot-blink">
+                      {/* Eyebrow */}
+                      <div className="w-3 h-0.5 rounded-full bg-white/40 -mb-0.5 transform -rotate-6" />
+                      <div
+                        className="w-3.5 h-2 rounded-t-full transform scale-y-125 transition-transform"
+                        style={{
+                          backgroundColor: currentThemeStyle.eyeColor,
+                          boxShadow: currentThemeStyle.eyeGlow
+                        }}
+                      />
+                    </div>
+
+                    <div className="relative flex flex-col items-center animate-mascot-blink">
+                      {/* Eyebrow */}
+                      <div className="w-3 h-0.5 rounded-full bg-white/40 -mb-0.5 transform rotate-6" />
+                      <div
+                        className="w-3.5 h-2 rounded-t-full transform scale-y-125 transition-transform"
+                        style={{
+                          backgroundColor: currentThemeStyle.eyeColor,
+                          boxShadow: currentThemeStyle.eyeGlow
+                        }}
+                      />
+                    </div>
                   </>
                 )}
               </div>
 
-              {/* Glowing Rosy Cheeks & Big Happy Smile */}
-              <div className="flex items-center justify-center relative w-8">
-                <div className="absolute left-0 w-1.5 h-1 rounded-full bg-pink-400/60 blur-[1px]" />
-                <div className="absolute right-0 w-1.5 h-1 rounded-full bg-pink-400/60 blur-[1px]" />
+              {/* Glowing Rosy Cheeks & Big Cheerful Smile */}
+              <div className="flex items-center justify-center relative w-10 mt-0.5">
+                {/* Blushing Cheeks */}
+                <div className={`absolute left-0 w-2 h-1.5 rounded-full ${currentThemeStyle.cheeksColor} blur-[1px]`} />
+                <div className={`absolute right-0 w-2 h-1.5 rounded-full ${currentThemeStyle.cheeksColor} blur-[1px]`} />
+
+                {/* Animated Smile */}
                 {isThinking ? (
-                  <div className="w-2 h-1 rounded-full bg-cyan-300 animate-pulse" />
+                  <div
+                    className="w-2.5 h-1 rounded-full animate-pulse"
+                    style={{ backgroundColor: currentThemeStyle.eyeColor }}
+                  />
                 ) : (
-                  <div className="w-3.5 h-2 rounded-b-full border-b-2 border-x border-cyan-300 bg-cyan-400/20 shadow-[0_0_6px_#22d3ee]" />
+                  <div
+                    className={`w-4 h-2 rounded-b-full border-b-2 border-x ${currentThemeStyle.mouthColor} transform transition-transform hover:scale-110`}
+                    style={{
+                      boxShadow: `0 0 6px ${currentThemeStyle.eyeColor}`
+                    }}
+                  />
                 )}
               </div>
 
@@ -112,18 +247,28 @@ const AnimatedSupportMascot: React.FC<{ isThinking?: boolean; isWaving?: boolean
 
           </div>
 
-          {/* Helmet Chin Guard & Audio Mic */}
-          <div className="absolute bottom-1 w-6 h-1 rounded-full bg-slate-700 border border-cyan-500/30" />
+          {/* Helmet Chin Guard & Voice Communicator */}
+          <div className="absolute bottom-1 flex items-center gap-1">
+            <div className="w-1.5 h-1 rounded-full bg-slate-600" />
+            <div className="w-5 h-1 rounded-full bg-slate-500" />
+            <div className="w-1.5 h-1 rounded-full bg-slate-600" />
+          </div>
         </div>
       </div>
 
       {/* Mascot Name Badge & Status */}
-      <div className="flex items-center gap-1.5 mt-1.5">
-        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-        <span className="text-[11px] font-extrabold font-display text-white tracking-wide">
+      <div className="flex items-center gap-2 mt-2">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
+        <span
+          className={`text-xs font-extrabold font-display tracking-wide ${
+            isLight ? 'text-slate-900' : 'text-white'
+          }`}
+        >
           Fusion AI Support Bot
         </span>
-        <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 text-[9px] font-bold border border-cyan-500/30">
+        <span
+          className={`px-2 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${currentThemeStyle.statusText}`}
+        >
           24/7 ONLINE
         </span>
       </div>
@@ -131,7 +276,7 @@ const AnimatedSupportMascot: React.FC<{ isThinking?: boolean; isWaving?: boolean
   );
 };
 
-// Official School FAQs Data
+// Comprehensive School FAQs Data
 const FAQ_CATEGORIES = [
   {
     id: 'general',
@@ -140,15 +285,15 @@ const FAQ_CATEGORIES = [
     faqs: [
       {
         q: 'What is Fusion High School Portal?',
-        a: 'Fusion High School Portal is the official digital school management system for learners, educators, parents, and administrators. It connects South African CAPS curriculum delivery, digital marksheet auditing, SBA grading, attendance registers, and AI study tools.'
+        a: 'Fusion High School Portal is the official digital school management platform. It manages South African CAPS curriculum delivery, SBA marksheet auditing, daily attendance roll-call, term report cards, digital assignments, and 24/7 AI tutoring tools.'
       },
       {
-        q: 'How do I change between Light, Dark, and Slate Navy themes?',
-        a: 'Click the Color Palette icon in the top header or navigate to Technical Settings in your bottom dock to choose your preferred theme and font family (Inter, Outfit, Playfair, Mono).'
+        q: 'How do I change between Dark, Navy, and Light themes?',
+        a: 'Click the Color Palette icon in the top header or navigate to Technical Settings in your bottom dock to select your theme (Dark, Navy, Light) and font family (Inter, Outfit, Playfair, Mono).'
       },
       {
         q: 'How do I switch the module view (Standard Grid, Compact App Tiles, List View)?',
-        a: 'On your dashboard, look for the 3 view selector icons directly to the right of the "Functions & Quick Tools" title. Click any icon to instantly switch your layout.'
+        a: 'On your dashboard, locate the 3 view selector icons directly to the right of the "Functions & Quick Tools" title. Click any icon to instantly switch your layout.'
       }
     ]
   },
@@ -213,6 +358,9 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
   defaultTab = 'faq'
 }) => {
   const { user, role } = useAuth();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+
   const [activeTab, setActiveTab] = useState<'faq' | 'ai-support'>(defaultTab);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFaq, setExpandedFaq] = useState<string | null>('general-0');
@@ -258,14 +406,16 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
     setIsAiThinking(true);
 
     try {
-      // Query learner ask-tutor endpoint or generate structured school help response
       const res = await learnerService.askTutor({
         question: textToSend,
         subject: 'General School System Help & Support',
         grade: user?.grade || 10
       });
 
-      const replyText = res?.answer || res?.response || res?.text ||
+      const replyText =
+        res?.answer ||
+        res?.response ||
+        res?.text ||
         `I understand you're asking about "${textToSend}". At Fusion High, you can manage this directly through your portal modules. Let me know if you need step-by-step guidance!`;
 
       const aiMsg: ChatMessage = {
@@ -277,9 +427,8 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
 
       setChatMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
-      // Helpful fallback response
       let fallbackText = `I'm here to assist with any questions about Fusion High School! You can access all your academic marks, subjects carousel, class timetables, and fee statements from the main dashboard.`;
-      
+
       const lower = textToSend.toLowerCase();
       if (lower.includes('report') || lower.includes('marks') || lower.includes('grade')) {
         fallbackText = `To view your CAPS report card, open the "CAPS Report Cards" or "Subject Performance" module on your dashboard. It displays official DBE Levels 1–7 and term marks.`;
@@ -310,24 +459,33 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-fade-in overflow-hidden">
-      <div className="relative w-full max-w-4xl h-[90vh] max-h-[750px] rounded-3xl bg-surface-dark border border-white/10 shadow-2xl flex flex-col overflow-hidden text-slate-100">
-        
+      <div
+        className={`relative w-full max-w-4xl h-[90vh] max-h-[750px] rounded-3xl border shadow-2xl flex flex-col overflow-hidden ${
+          isLight
+            ? 'bg-white border-slate-200 text-slate-900'
+            : 'bg-surface-dark border-white/10 text-slate-100'
+        }`}
+      >
         {/* Top Header */}
-        <div className="p-4 sm:p-5 bg-surface-darker border-b border-white/10 flex items-center justify-between gap-4 shrink-0">
+        <div
+          className={`p-4 sm:p-5 border-b flex items-center justify-between gap-4 shrink-0 ${
+            isLight ? 'bg-slate-50 border-slate-200' : 'bg-surface-darker border-white/10'
+          }`}
+        >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-white shadow-glow-indigo shrink-0">
               <Headphones className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-extrabold font-display text-white tracking-wide">
-                  Help, FAQs & 24/7 AI Support
+                <h2 className="text-base sm:text-lg font-extrabold font-display tracking-wide">
+                  Fusion Support Hub & 24/7 AI Help
                 </h2>
-                <span className="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-[10px] font-bold text-cyan-300">
+                <span className="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-[10px] font-bold text-cyan-400">
                   Fusion High
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                 Instant assistance, frequently asked questions, and interactive 24/7 AI guide
               </p>
             </div>
@@ -335,7 +493,9 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            className={`p-2 rounded-xl transition-colors ${
+              isLight ? 'text-slate-400 hover:text-slate-900 hover:bg-slate-200' : 'text-slate-400 hover:text-white hover:bg-white/10'
+            }`}
             title="Close Help Center"
           >
             <X className="w-5 h-5" />
@@ -343,12 +503,18 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
         </div>
 
         {/* Tab Navigation Switcher */}
-        <div className="flex items-center gap-2 px-5 py-2.5 bg-surface-dark border-b border-white/5 shrink-0">
+        <div
+          className={`flex items-center gap-2 px-5 py-2.5 border-b shrink-0 ${
+            isLight ? 'bg-slate-100/80 border-slate-200' : 'bg-surface-dark border-white/5'
+          }`}
+        >
           <button
             onClick={() => setActiveTab('faq')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               activeTab === 'faq'
                 ? 'bg-indigo-600 text-white shadow-md'
+                : isLight
+                ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -361,6 +527,8 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               activeTab === 'ai-support'
                 ? 'bg-gradient-to-r from-brand-600 to-cyan-500 text-white shadow-glow-indigo'
+                : isLight
+                ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -370,7 +538,7 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
           </button>
         </div>
 
-        {/* Modal Body Container */}
+        {/* Modal Body */}
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           
           {/* TAB 1: VIEW FAQS */}
@@ -385,7 +553,11 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search frequently asked questions (e.g. report card, link child, timetable)..."
-                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-surface-darker border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-indigo-500"
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs focus:outline-none focus:border-indigo-500 ${
+                    isLight
+                      ? 'bg-slate-100 border-slate-300 text-slate-900 placeholder-slate-400'
+                      : 'bg-surface-darker border-white/10 text-white placeholder-slate-500'
+                  }`}
                 />
               </div>
 
@@ -404,7 +576,7 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
 
                   return (
                     <div key={category.id} className="space-y-2">
-                      <div className="flex items-center gap-2 text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                      <div className="flex items-center gap-2 text-xs font-bold text-cyan-500 uppercase tracking-wider">
                         <CategoryIcon className="w-4 h-4" />
                         <span>{category.name}</span>
                       </div>
@@ -417,11 +589,17 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
                           return (
                             <div
                               key={faqKey}
-                              className="rounded-2xl bg-surface-darker border border-white/5 overflow-hidden transition-all"
+                              className={`rounded-2xl border overflow-hidden transition-all ${
+                                isLight
+                                  ? 'bg-slate-50 border-slate-200'
+                                  : 'bg-surface-darker border-white/5'
+                              }`}
                             >
                               <button
                                 onClick={() => setExpandedFaq(isExpanded ? null : faqKey)}
-                                className="w-full p-3.5 sm:p-4 text-left flex items-center justify-between gap-3 text-xs font-bold text-white hover:text-indigo-300 transition-colors"
+                                className={`w-full p-3.5 sm:p-4 text-left flex items-center justify-between gap-3 text-xs font-bold transition-colors ${
+                                  isLight ? 'text-slate-900 hover:text-indigo-600' : 'text-white hover:text-indigo-300'
+                                }`}
                               >
                                 <span>{faq.q}</span>
                                 {isExpanded ? (
@@ -432,7 +610,13 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
                               </button>
 
                               {isExpanded && (
-                                <div className="px-4 pb-4 text-xs text-slate-300 leading-relaxed border-t border-white/5 pt-3 animate-fade-in">
+                                <div
+                                  className={`px-4 pb-4 text-xs leading-relaxed border-t pt-3 animate-fade-in ${
+                                    isLight
+                                      ? 'text-slate-600 border-slate-200'
+                                      : 'text-slate-300 border-white/5'
+                                  }`}
+                                >
                                   {faq.a}
                                 </div>
                               )}
@@ -446,11 +630,17 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
               </div>
 
               {/* Still need help callout */}
-              <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div
+                className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-3 ${
+                  isLight
+                    ? 'bg-indigo-50 border-indigo-200 text-slate-900'
+                    : 'bg-indigo-500/10 border-indigo-500/20 text-white'
+                }`}
+              >
                 <div>
-                  <h4 className="text-xs font-bold text-white">Couldn't find what you're looking for?</h4>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Our 24/7 AI Support Bot is ready to answer questions and navigate the system with you.
+                  <h4 className="text-xs font-bold">Couldn't find what you're looking for?</h4>
+                  <p className={`text-[11px] mt-0.5 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                    Our 24/7 AI Support Bot is ready to answer questions and guide you in real-time.
                   </p>
                 </div>
                 <button
@@ -458,7 +648,7 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-500 text-white font-bold text-xs shadow-md shrink-0 hover:scale-105 transition-all flex items-center gap-1.5"
                 >
                   <Bot className="w-4 h-4" />
-                  <span>Chat with AI Support</span>
+                  <span>Chat with AI Mascot</span>
                 </button>
               </div>
 
@@ -467,16 +657,27 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
 
           {/* TAB 2: 24/7 AI HELP & SUPPORT CHAT TOOL */}
           {activeTab === 'ai-support' && (
-            <div className="flex-1 flex flex-col min-h-0 bg-surface-darker/60">
-              
+            <div
+              className={`flex-1 flex flex-col min-h-0 ${
+                isLight ? 'bg-slate-50' : 'bg-surface-darker/60'
+              }`}
+            >
               {/* Mascot Header Ribbon */}
-              <div className="p-3 bg-surface-dark border-b border-white/5 flex items-center justify-between gap-4 shrink-0 px-5">
+              <div
+                className={`p-3 border-b flex items-center justify-between gap-4 shrink-0 px-5 ${
+                  isLight ? 'bg-white border-slate-200' : 'bg-surface-dark border-white/5'
+                }`}
+              >
                 <AnimatedSupportMascot isThinking={isAiThinking} isWaving={true} />
-                
+
                 <div className="hidden sm:flex flex-col text-right">
-                  <span className="text-[11px] text-slate-400">School Admin Office</span>
-                  <span className="text-xs font-bold text-cyan-300">support@fusionhigh.co.za</span>
-                  <span className="text-[10px] text-slate-400">Tel: +27 (0)11 555 0192</span>
+                  <span className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                    School Support Office
+                  </span>
+                  <span className="text-xs font-bold text-cyan-500">support@fusionhigh.co.za</span>
+                  <span className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-slate-400'}`}>
+                    Tel: +27 (0)11 555 0192
+                  </span>
                 </div>
               </div>
 
@@ -505,6 +706,8 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
                       className={`p-3.5 rounded-2xl text-xs leading-relaxed ${
                         msg.sender === 'user'
                           ? 'bg-indigo-600 text-white rounded-tr-none shadow-md'
+                          : isLight
+                          ? 'bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm'
                           : 'bg-surface-dark border border-white/10 text-slate-200 rounded-tl-none shadow-sm'
                       }`}
                     >
@@ -517,7 +720,7 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
                 ))}
 
                 {isAiThinking && (
-                  <div className="flex items-center gap-2 text-xs text-cyan-400 animate-pulse p-2">
+                  <div className="flex items-center gap-2 text-xs text-cyan-500 animate-pulse p-2">
                     <Bot className="w-4 h-4" />
                     <span>Fusion AI is thinking and preparing your answer...</span>
                   </div>
@@ -527,16 +730,24 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
               </div>
 
               {/* Quick Prompt Chips */}
-              <div className="px-4 py-2 bg-surface-dark border-t border-white/5 flex items-center gap-1.5 overflow-x-auto shrink-0 scrollbar-none">
+              <div
+                className={`px-4 py-2 border-t flex items-center gap-1.5 overflow-x-auto shrink-0 scrollbar-none ${
+                  isLight ? 'bg-slate-100 border-slate-200' : 'bg-surface-dark border-white/5'
+                }`}
+              >
                 <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-cyan-400" />
+                  <Sparkles className="w-3 h-3 text-cyan-500" />
                   Suggestions:
                 </span>
                 {quickPrompts.map((prompt, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleSendAiMessage(prompt)}
-                    className="px-2.5 py-1 rounded-xl bg-surface-darker hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white text-[11px] font-medium shrink-0 transition-colors"
+                    className={`px-2.5 py-1 rounded-xl border text-[11px] font-medium shrink-0 transition-colors ${
+                      isLight
+                        ? 'bg-white hover:bg-slate-200 border-slate-300 text-slate-700'
+                        : 'bg-surface-darker hover:bg-white/10 border-white/10 text-slate-300 hover:text-white'
+                    }`}
                   >
                     {prompt}
                   </button>
@@ -549,14 +760,20 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
                   e.preventDefault();
                   handleSendAiMessage();
                 }}
-                className="p-3 sm:p-4 bg-surface-darker border-t border-white/10 flex items-center gap-2 shrink-0"
+                className={`p-3 sm:p-4 border-t flex items-center gap-2 shrink-0 ${
+                  isLight ? 'bg-white border-slate-200' : 'bg-surface-darker border-white/10'
+                }`}
               >
                 <input
                   type="text"
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   placeholder="Ask any question about Fusion High School or the portal..."
-                  className="flex-1 px-4 py-2.5 rounded-2xl bg-surface-dark border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-500"
+                  className={`flex-1 px-4 py-2.5 rounded-2xl border text-xs focus:outline-none focus:border-cyan-500 ${
+                    isLight
+                      ? 'bg-slate-100 border-slate-300 text-slate-900 placeholder-slate-400'
+                      : 'bg-surface-dark border border-white/10 text-white placeholder-slate-500'
+                  }`}
                 />
                 <button
                   type="submit"
