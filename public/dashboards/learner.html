@@ -73,15 +73,185 @@
 
     <main class="main-content">
         <nav class="top-nav">
-            <h2 id="tab-title">Home</h2>
-            <div class="top-nav-learner-info">
-                <i class="fas fa-user-graduate"></i> <span id="top-learner-name">Loading...</span>
+            <div class="top-nav-left">
+                <div class="hamburger" onclick="document.querySelector('.sidebar').classList.toggle('active')">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+                <div class="top-learner-profile-btn" id="top-learner-profile-btn" onclick="switchTab('profile', null)" title="View Profile">
+                    <div class="top-nav-avatar" id="top-nav-avatar-circle">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <div class="top-nav-user-meta">
+                        <span class="name" id="top-learner-name">Learner</span>
+                        <span class="role" id="top-learner-grade-badge">Grade 10</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="top-nav-center">
+                <div class="header-brand-title">
+                    <i class="fas fa-graduation-cap"></i> FUSION HIGH
+                </div>
+            </div>
+
+            <div class="top-nav-right">
+                <!-- Theme Accent Selector Dropdown -->
+                <div class="theme-menu-wrapper">
+                    <button type="button" class="header-action-btn" title="Choose Color Accent" onclick="window.toggleThemeMenu(event)">
+                        <i class="fas fa-palette"></i>
+                    </button>
+                    <div class="theme-dropdown-content" id="theme-dropdown-menu">
+                        <div class="theme-palette-title">Color Accent</div>
+                        <div class="theme-palette-options">
+                            <button type="button" class="theme-dot-btn active" data-accent="indigo" style="background:#6366f1;" title="Indigo (Default)" onclick="window.setThemeAccent('indigo')"></button>
+                            <button type="button" class="theme-dot-btn" data-accent="emerald" style="background:#10b981;" title="Emerald" onclick="window.setThemeAccent('emerald')"></button>
+                            <button type="button" class="theme-dot-btn" data-accent="ocean" style="background:#0ea5e9;" title="Ocean Blue" onclick="window.setThemeAccent('ocean')"></button>
+                            <button type="button" class="theme-dot-btn" data-accent="purple" style="background:#8b5cf6;" title="Royal Purple" onclick="window.setThemeAccent('purple')"></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dark / Light Mode Toggle Button -->
+                <button type="button" class="header-action-btn" id="theme-toggle-btn" title="Toggle Light/Dark Mode" onclick="window.toggleThemeMode()">
+                    <i class="fas fa-sun"></i>
+                </button>
+
+                <!-- Notifications Button -->
+                <button type="button" class="header-action-btn" id="header-notif-btn" title="Announcements & Notifications" onclick="switchTab('announcements', null)">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge" id="top-notif-badge" style="display:none;">0</span>
+                </button>
+
+                <!-- Quick Logout Button -->
+                <button type="button" class="header-action-btn" title="Sign Out" onclick="logout()" style="color:var(--danger);">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
             </div>
         </nav>
 
         <div class="dashboard-body">
             <!-- Home / Overview -->
             <div id="home" class="section active">
+
+                <!-- 1. Enrolled Subjects Sideways Scroll Carousel -->
+                <div class="subjects-carousel-section">
+                    <div class="home-section-header">
+                        <div class="home-section-title">
+                            <i class="fas fa-book-open"></i> My Enrolled Subjects
+                        </div>
+                        <div class="carousel-nav-controls">
+                            <button type="button" class="carousel-nav-btn" onclick="window.scrollSubjectsCarousel(-1)" title="Scroll Left">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button type="button" class="carousel-nav-btn" onclick="window.scrollSubjectsCarousel(1)" title="Scroll Right">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Sideways Scrollable Container -->
+                    <div id="home-subjects-carousel" class="subjects-horizontal-carousel">
+                        <p style="color: var(--text-muted); padding: 1.5rem; text-align: center; width: 100%;">
+                            <i class="fas fa-spinner fa-spin me-2"></i> Loading enrolled subjects...
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 2. Main Portal Functions Grid (Under Subjects) -->
+                <div class="main-functions-section">
+                    <div class="home-section-header" style="margin-bottom: 0.75rem;">
+                        <div class="home-section-title">
+                            <i class="fas fa-th-large"></i> Portal Functions
+                        </div>
+                    </div>
+
+                    <div class="functions-grid">
+                        <div class="function-card" onclick="switchTab('subjects', null)">
+                            <div class="function-icon-box">
+                                <i class="fas fa-book-open"></i>
+                            </div>
+                            <div class="function-info">
+                                <h5 class="function-name">My Subjects</h5>
+                                <p class="function-desc">Workspaces & curriculum</p>
+                            </div>
+                        </div>
+
+                        <div class="function-card" onclick="switchTab('attendance', null)">
+                            <div class="function-icon-box" style="color:var(--success); background:var(--success-soft);">
+                                <i class="fas fa-calendar-check"></i>
+                            </div>
+                            <div class="function-info">
+                                <h5 class="function-name">Attendance</h5>
+                                <p class="function-desc">Track class presence</p>
+                            </div>
+                        </div>
+
+                        <div class="function-card" onclick="switchTab('timetable', null)">
+                            <div class="function-icon-box" style="color:var(--info); background:var(--info-soft);">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="function-info">
+                                <h5 class="function-name">Timetable</h5>
+                                <p class="function-desc">Daily periods & schedule</p>
+                            </div>
+                        </div>
+
+                        <div class="function-card" onclick="switchTab('announcements', null)">
+                            <div class="function-icon-box" style="color:var(--warning); background:var(--warning-soft);">
+                                <i class="fas fa-bullhorn"></i>
+                            </div>
+                            <div class="function-info">
+                                <h5 class="function-name">Announcements</h5>
+                                <p class="function-desc">School notices & alerts</p>
+                            </div>
+                        </div>
+
+                        <div class="function-card" onclick="switchTab('messages', null)">
+                            <div class="function-icon-box" style="color:#a855f7; background:rgba(168,85,247,0.15);">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div class="function-info">
+                                <h5 class="function-name">Messages</h5>
+                                <p class="function-desc">Chat with teachers</p>
+                            </div>
+                            <span class="badge badge-red function-badge" id="grid-unread-badge" style="display:none;">New</span>
+                        </div>
+
+                        <div class="function-card" onclick="switchTab('ai-tutor', null)">
+                            <div class="function-icon-box" style="color:#ec4899; background:rgba(236,72,153,0.15);">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <div class="function-info">
+                                <h5 class="function-name">AI Tutor</h5>
+                                <p class="function-desc">Self-study & quiz practice</p>
+                            </div>
+                        </div>
+
+                        <div class="function-card" onclick="document.getElementById('homePerformanceChart')?.scrollIntoView({behavior:'smooth'})">
+                            <div class="function-icon-box" style="color:var(--success); background:var(--success-soft);">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="function-info">
+                                <h5 class="function-name">Performance</h5>
+                                <p class="function-desc">Academic progress</p>
+                            </div>
+                        </div>
+
+                        <div class="function-card" onclick="switchTab('profile', null)">
+                            <div class="function-icon-box" style="color:var(--text-muted); background:var(--card-border);">
+                                <i class="fas fa-user-circle"></i>
+                            </div>
+                            <div class="function-info">
+                                <h5 class="function-name">My Profile</h5>
+                                <p class="function-desc">Personal details</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Academic Stats Ribbon -->
                 <div class="stat-grid">
                     <div class="stat-card">
                         <div class="stat-label">Current Grade</div>
@@ -97,6 +267,7 @@
                     </div>
                 </div>
                 
+                <!-- 4. Dashboard Two-Column Grid -->
                 <div class="dashboard-grid">
                     <!-- Left Column -->
                     <div class="dashboard-col">
@@ -119,7 +290,7 @@
                                     <span class="small font-weight-600" style="color: var(--text-muted); font-size: 0.85rem;">
                                         <i class="fas fa-history"></i> Latest Submission
                                     </span>
-                                    <a href="#" onclick="switchTab('subjects')" style="font-size: 0.8rem; color: var(--secondary) !important; text-decoration: none;">View History</a>
+                                    <a href="#" onclick="switchTab('subjects')" style="font-size: 0.8rem; color: var(--accent) !important; text-decoration: none;">View History</a>
                                 </div>
                                 <div id="latest-submissions-list" class="tasks-list">Loading recent scores...</div>
                             </div>
@@ -143,7 +314,7 @@
                         <div class="card">
                             <div class="card-title">
                                 <span>Recent Announcements</span>
-                                <span class="badge" style="background: var(--secondary); color: white;">New</span>
+                                <span class="badge badge-purple">Latest</span>
                             </div>
                             <div id="home-news-grid" class="announcements-grid">
                                 Fetching announcements...
@@ -832,39 +1003,167 @@
 
             <!-- Settings Section -->
             <div id="settings" class="section">
-                <div class="card">
-                    <div class="card-title">Security Account</div>
-                    <form onsubmit="changeAccountPassword(event)">
-                        <div class="form-group">
-                            <label>Current Password</label>
-                            <input type="password" id="sett-curr-pass" class="form-control" required
-                                autocomplete="current-password">
-                        </div>
-                        <div class="form-group">
-                            <label>New Password</label>
-                            <input type="password" id="sett-new-pass" class="form-control" required
-                                autocomplete="new-password">
-                        </div>
-                        <div class="form-group">
-                            <label>Confirm New Password</label>
-                            <input type="password" id="sett-conf-pass" class="form-control" required
-                                autocomplete="new-password">
-                        </div>
-                        <button type="submit" class="btn btn-primary">Change Password</button>
-                    </form>
+                <div class="view-header-bar mb-1rem">
+                    <div class="view-header-title">
+                        <h1><i class="fas fa-cog" style="color: var(--accent);"></i> Application Settings</h1>
+                        <p>Customize your experience, manage security preferences, and adjust notifications.</p>
+                    </div>
                 </div>
-                <div class="card mt-1_5rem">
-                    <div class="card-title">Study Preferences</div>
-                    <label class="flex-layout">
-                        <input type="checkbox" checked> Enable AI study reminders
-                    </label>
+
+                <div class="settings-grid-layout">
+                    <!-- 1. Account & Security Card -->
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <i class="fas fa-shield-alt"></i> Account Security & Password
+                        </div>
+                        <form onsubmit="changeAccountPassword(event)">
+                            <div class="form-group">
+                                <label>Current Password</label>
+                                <input type="password" id="sett-curr-pass" class="form-control" placeholder="Enter current password" required autocomplete="current-password">
+                            </div>
+                            <div class="form-group">
+                                <label>New Password</label>
+                                <input type="password" id="sett-new-pass" class="form-control" placeholder="Min. 8 characters" required autocomplete="new-password">
+                            </div>
+                            <div class="form-group">
+                                <label>Confirm New Password</label>
+                                <input type="password" id="sett-conf-pass" class="form-control" placeholder="Repeat new password" required autocomplete="new-password">
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 mt-0_5rem">
+                                <i class="fas fa-key me-1"></i> Update Password
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- 2. Appearance & Theme Card -->
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <i class="fas fa-paint-brush"></i> Appearance & Display
+                        </div>
+                        
+                        <div class="settings-toggle-row">
+                            <div class="settings-toggle-info">
+                                <span class="settings-toggle-title">Theme Mode</span>
+                                <span class="settings-toggle-sub">Switch between Dark and Light mode</span>
+                            </div>
+                            <select id="setting-theme-mode" class="form-control" style="width: auto; padding: 4px 10px; font-size: 0.82rem;" onchange="window.setThemeFromSelect(this.value)">
+                                <option value="dark">Dark Theme</option>
+                                <option value="light">Light Theme</option>
+                            </select>
+                        </div>
+
+                        <div class="settings-toggle-row">
+                            <div class="settings-toggle-info">
+                                <span class="settings-toggle-title">Color Palette Accent</span>
+                                <span class="settings-toggle-sub">Pick your personal interface accent color</span>
+                            </div>
+                            <div style="display: flex; gap: 6px;">
+                                <button type="button" class="theme-dot-btn" data-accent="indigo" style="background:#6366f1;" title="Indigo" onclick="window.setThemeAccent('indigo')"></button>
+                                <button type="button" class="theme-dot-btn" data-accent="emerald" style="background:#10b981;" title="Emerald" onclick="window.setThemeAccent('emerald')"></button>
+                                <button type="button" class="theme-dot-btn" data-accent="ocean" style="background:#0ea5e9;" title="Ocean" onclick="window.setThemeAccent('ocean')"></button>
+                                <button type="button" class="theme-dot-btn" data-accent="purple" style="background:#8b5cf6;" title="Purple" onclick="window.setThemeAccent('purple')"></button>
+                            </div>
+                        </div>
+
+                        <div class="settings-toggle-row">
+                            <div class="settings-toggle-info">
+                                <span class="settings-toggle-title">Math & LaTeX Equations</span>
+                                <span class="settings-toggle-sub">Auto-render mathematical notation</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" checked id="setting-mathjax">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 3. Notifications & Study Reminders Card -->
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <i class="fas fa-bell"></i> Notifications & Study Alerts
+                        </div>
+
+                        <div class="settings-toggle-row">
+                            <div class="settings-toggle-info">
+                                <span class="settings-toggle-title">AI Study Coach Reminders</span>
+                                <span class="settings-toggle-sub">Daily revision & practice prompts</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" checked id="setting-ai-reminders">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="settings-toggle-row">
+                            <div class="settings-toggle-info">
+                                <span class="settings-toggle-title">Assignment Due Alerts</span>
+                                <span class="settings-toggle-sub">Notifications before deadlines</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" checked id="setting-assignment-alerts">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="settings-toggle-row">
+                            <div class="settings-toggle-info">
+                                <span class="settings-toggle-title">School Announcements</span>
+                                <span class="settings-toggle-sub">Instant alerts for institutional notices</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" checked id="setting-announcement-alerts">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 4. Session & Account Actions Card -->
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <i class="fas fa-user-shield"></i> Session & Preferences
+                        </div>
+
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+                            You are logged in as an active learner on Fusion High CAPS Curriculum Portal.
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <button type="button" class="btn btn-neutral" onclick="switchTab('profile', null)">
+                                <i class="fas fa-user-edit me-1"></i> Edit Personal & Contact Details
+                            </button>
+                            <button type="button" class="btn btn-danger" onclick="logout()">
+                                <i class="fas fa-sign-out-alt me-1"></i> Log Out from Device
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <footer class="dashboard-footer">
-                &copy; 2024 FUSION_HIGH_APP. All rights reserved. | <a href="#" class="footer-link">Privacy Policy</a>
+            <footer class="dashboard-footer" style="margin-top: 2rem; text-align: center; color: var(--text-muted); font-size: 0.8rem; padding-bottom: 2rem;">
+                &copy; 2026 FUSION HIGH. All rights reserved. | CAPS Aligned Learner Portal
             </footer>
         </div>
+
+        <!-- Bottom Navigation Dock -->
+        <nav class="bottom-nav-dock" id="learner-bottom-nav">
+            <a href="javascript:void(0)" class="bottom-nav-item active" data-tab="home" onclick="switchTab('home', null)">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </a>
+            <a href="javascript:void(0)" class="bottom-nav-item" data-tab="timetable" onclick="switchTab('timetable', null)">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Calendar</span>
+            </a>
+            <a href="javascript:void(0)" class="bottom-nav-item" data-tab="messages" onclick="switchTab('messages', null)">
+                <i class="fas fa-envelope"></i>
+                <span>Messages</span>
+                <span class="bottom-nav-badge" id="bottom-unread-badge" style="display:none;"></span>
+            </a>
+            <a href="javascript:void(0)" class="bottom-nav-item" data-tab="settings" onclick="switchTab('settings', null)">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </a>
+        </nav>
     </main>
 
     <script>
@@ -880,13 +1179,18 @@
             }
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            // Sync Bottom Nav Active State
+            document.querySelectorAll('.bottom-nav-item').forEach(b => {
+                b.classList.toggle('active', b.getAttribute('data-tab') === tabId);
+            });
+
             const target = document.getElementById(tabId);
             if (target) target.classList.add('active');
             if (el) {
                 el.classList.add('active');
-                const titleEl = document.getElementById('tab-title');
-                if (titleEl) titleEl.innerText = el.innerText.trim();
             }
+
             location.hash = tabId;
 
             // Trigger view loaders
@@ -894,10 +1198,80 @@
                 if (window.loadLearnerMySubjectsOverview) window.loadLearnerMySubjectsOverview();
                 else setTimeout(() => { if (window.loadLearnerMySubjectsOverview) window.loadLearnerMySubjectsOverview(); }, 200);
             }
+            if (tabId === 'home') {
+                if (window.loadLearnerMySubjectsOverview) window.loadLearnerMySubjectsOverview();
+                if (window.loadHomeDashboard) window.loadHomeDashboard();
+            }
             if (tabId === 'attendance' && window.loadLearnerAttendance) window.loadLearnerAttendance();
             if (tabId === 'announcements' && window.loadLearnerAnnouncements) window.loadLearnerAnnouncements();
             if (tabId === 'timetable' && window.loadAndDisplayTimetable) window.loadAndDisplayTimetable();
         }
+
+        // Horizontal Sideways Scroll for Subjects Carousel
+        window.scrollSubjectsCarousel = function(direction) {
+            const carousel = document.getElementById('home-subjects-carousel');
+            if (!carousel) return;
+            const scrollAmount = 340 * direction;
+            carousel.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        };
+
+        // Theme and Dark/Light Mode Handlers
+        window.initThemeSystem = function() {
+            const savedTheme = localStorage.getItem('learner_theme_mode') || 'dark';
+            const savedAccent = localStorage.getItem('learner_accent_color') || 'indigo';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            if (savedAccent !== 'indigo') {
+                document.documentElement.setAttribute('data-accent', savedAccent);
+            }
+            updateThemeToggleIcon(savedTheme);
+        };
+
+        window.toggleThemeMode = function() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('learner_theme_mode', newTheme);
+            updateThemeToggleIcon(newTheme);
+        };
+
+        window.setThemeFromSelect = function(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('learner_theme_mode', theme);
+            updateThemeToggleIcon(theme);
+        };
+
+        window.setThemeAccent = function(accent) {
+            if (accent === 'indigo') {
+                document.documentElement.removeAttribute('data-accent');
+            } else {
+                document.documentElement.setAttribute('data-accent', accent);
+            }
+            localStorage.setItem('learner_accent_color', accent);
+            document.querySelectorAll('.theme-dot-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.accent === accent);
+            });
+        };
+
+        function updateThemeToggleIcon(theme) {
+            const btn = document.getElementById('theme-toggle-btn');
+            if (btn) {
+                btn.innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                btn.title = theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+            }
+            const sel = document.getElementById('setting-theme-mode');
+            if (sel) sel.value = theme;
+        }
+
+        window.toggleThemeMenu = function(e) {
+            if (e) e.stopPropagation();
+            const menu = document.getElementById('theme-dropdown-menu');
+            if (menu) menu.classList.toggle('show');
+        };
+
+        document.addEventListener('click', () => {
+            const menu = document.getElementById('theme-dropdown-menu');
+            if (menu && menu.classList.contains('show')) menu.classList.remove('show');
+        });
 
         let quizTimerInterval;
         let currentTaskData;
@@ -1885,6 +2259,11 @@
                 const profile = await fetchData('/api/profile');
                 const subjectData = await fetchData('/api/learner/subjects');
                 
+                // Populate Top Carousel on Home Page
+                if (subjectData && subjectData.subjects && window.renderLearnerCarouselSubjects) {
+                    window.renderLearnerCarouselSubjects(subjectData.subjects);
+                }
+
                 // Populate Your Subjects container under My Subjects tab
                 const container = document.getElementById('learner-subjects-rows-container');
                 if (container && subjectData && subjectData.subjects) {
@@ -2122,6 +2501,7 @@
         }
 
         window.addEventListener('load', () => {
+            if (window.initThemeSystem) window.initThemeSystem();
             loadProfile();
             loadProgress();
             loadPerformance();
@@ -2131,6 +2511,7 @@
             if (currentHash) {
                 switchTab(currentHash);
             } else {
+                switchTab('home');
                 if (window.loadLearnerMySubjectsOverview) window.loadLearnerMySubjectsOverview();
             }
         });

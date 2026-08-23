@@ -139,6 +139,7 @@ export async function loadLearnerMySubjectsOverview() {
         }
 
         renderLearnerSubjectCards(subjects);
+        renderLearnerCarouselSubjects(subjects);
 
         // Home Page subjects list
         if (subjectsHomeGrid) {
@@ -161,6 +162,68 @@ export async function loadLearnerMySubjectsOverview() {
     }
 }
 window.loadLearnerMySubjectsOverview = loadLearnerMySubjectsOverview;
+
+export function renderLearnerCarouselSubjects(cards) {
+    const carousel = document.getElementById('home-subjects-carousel');
+    if (!carousel) return;
+
+    if (!cards || cards.length === 0) {
+        carousel.innerHTML = `<p style="color: var(--text-muted); padding: 1.5rem; text-align: center; width: 100%;">No enrolled subjects found.</p>`;
+        return;
+    }
+
+    carousel.innerHTML = cards.map(c => {
+        const safeName = typeof c === 'string' ? c : (c.name || 'Subject');
+        const code = c.code || `${safeName.substring(0, 4).toUpperCase()}${c.grade || 10}`;
+        const grade = c.grade || 10;
+        const progress = c.curriculum_progress || c.progress || 75;
+        const teacher = c.teacher || 'Subject Teacher';
+        const assignmentsDue = c.assignments_due || 0;
+
+        return `
+            <div class="carousel-subject-card">
+                <div class="carousel-subject-header">
+                    <div>
+                        <span class="badge badge-purple">Grade ${grade} • ${code}</span>
+                        <h4 class="carousel-subject-title" onclick="window.openSubjectWorkspace('${safeName}')" title="Open ${safeName} Workspace">${safeName}</h4>
+                    </div>
+                    ${assignmentsDue > 0 ? `<span class="badge badge-red"><i class="fas fa-bell"></i> ${assignmentsDue} Due</span>` : ''}
+                </div>
+
+                <div class="carousel-subject-meta">
+                    <i class="fas fa-chalkboard-teacher" style="color: var(--accent);"></i>
+                    <span>${teacher}</span>
+                </div>
+
+                <div class="carousel-subject-progress">
+                    <div class="carousel-progress-labels">
+                        <span>Curriculum Pace</span>
+                        <span style="color: var(--accent); font-weight: 700;">${progress}%</span>
+                    </div>
+                    <div class="carousel-progress-bar-bg">
+                        <div class="carousel-progress-bar-fill" style="width: ${progress}%;"></div>
+                    </div>
+                </div>
+
+                <div class="carousel-subject-actions">
+                    <button type="button" class="subject-action-btn-sm" onclick="window.openSubjectResourcesModal('${safeName}', ${grade})" title="Study Resources">
+                        <i class="fas fa-file-pdf" style="color: var(--accent-text);"></i> Resources
+                    </button>
+                    <button type="button" class="subject-action-btn-sm" onclick="window.openSubjectWorkspace('${safeName}')" title="AI Tutor">
+                        <i class="fas fa-robot" style="color: var(--info);"></i> AI Tutor
+                    </button>
+                    <button type="button" class="subject-action-btn-sm" onclick="window.openSubjectGradesModal('${safeName}', ${grade})" title="Grades History">
+                        <i class="fas fa-chart-line" style="color: var(--success);"></i> Grades
+                    </button>
+                    <button type="button" class="subject-action-btn-primary" onclick="window.openSubjectWorkspace('${safeName}')" title="Open Complete Workspace">
+                        <i class="fas fa-arrow-right"></i> View All
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+window.renderLearnerCarouselSubjects = renderLearnerCarouselSubjects;
 
 export function renderLearnerSubjectCards(cards) {
     const container = document.getElementById('learner-subjects-rows-container');
@@ -688,14 +751,38 @@ window.startAssignment = async function (assignmentId) {
 window.loadUnreadMessageBadge = async function() {
     try {
         const data = await safeApiCall('/api/messages/unread-count');
+        const count = data?.count || 0;
+        
+        // 1. Sidebar Badge
         const badgeEl = document.getElementById('learner-unread-badge');
         if (badgeEl) {
-            const count = data?.count || 0;
             if (count > 0) {
                 badgeEl.textContent = count;
                 badgeEl.style.display = 'inline-block';
             } else {
                 badgeEl.style.display = 'none';
+            }
+        }
+
+        // 2. Home Functions Grid Badge
+        const gridBadgeEl = document.getElementById('grid-unread-badge');
+        if (gridBadgeEl) {
+            if (count > 0) {
+                gridBadgeEl.textContent = `${count} New`;
+                gridBadgeEl.style.display = 'inline-block';
+            } else {
+                gridBadgeEl.style.display = 'none';
+            }
+        }
+
+        // 3. Bottom Nav Dock Badge
+        const bottomBadgeEl = document.getElementById('bottom-unread-badge');
+        if (bottomBadgeEl) {
+            if (count > 0) {
+                bottomBadgeEl.textContent = count;
+                bottomBadgeEl.style.display = 'inline-block';
+            } else {
+                bottomBadgeEl.style.display = 'none';
             }
         }
     } catch (err) {
