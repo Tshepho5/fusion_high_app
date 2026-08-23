@@ -218,66 +218,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
         {/* Notification Bell Dropdown */}
         <NotificationDropdown />
 
-        {/* User Profile Avatar / Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => {
-              setShowProfileMenu(!showProfileMenu);
-              setShowThemeMenu(false);
-            }}
-            className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors"
-          >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-white font-bold text-xs shadow-sm overflow-hidden shrink-0 border border-white/10">
-              {user?.profile_picture_path ? (
-                <img src={getProfilePictureUrl(user.profile_picture_path)} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                user?.full_name ? user.full_name.charAt(0).toUpperCase() : (user?.email?.charAt(0).toUpperCase() || 'U')
-              )}
-            </div>
-            <span className="hidden lg:block text-xs font-medium text-slate-300 max-w-[120px] truncate">
-              {user?.full_name || user?.email || 'My Account'}
-            </span>
-          </button>
-
-          {/* Profile Dropdown */}
-          {showProfileMenu && (
-            <div className="absolute right-0 mt-2 w-52 rounded-2xl bg-surface-dark border border-white/10 p-2 shadow-2xl z-50 animate-fade-in">
-              <div className="px-3 py-2 border-b border-white/10 mb-1">
-                <p className="text-xs font-bold text-white truncate">{user?.full_name || user?.email}</p>
-                <p className="text-[10px] text-slate-400 capitalize">{role} Account</p>
-              </div>
-              <Link
-                to={`/dashboard/${role || 'learner'}?tab=profile`}
-                onClick={() => setShowProfileMenu(false)}
-                className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-xs text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
-              >
-                <UserIcon className="w-4 h-4 text-slate-400" />
-                Profile Settings
-              </Link>
-              <a
-                href="/api/documentation/download"
-                download="Fusion_High_System_Architecture_and_Development_Documentation.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setShowProfileMenu(false)}
-                className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-xs text-amber-400 hover:bg-amber-500/10 transition-colors"
-              >
-                <FileText className="w-4 h-4 text-amber-400" />
-                System Docs (PDF)
-              </a>
-              <button
-                onClick={() => {
-                  setShowProfileMenu(false);
-                  logout();
-                }}
-                className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-xs text-rose-400 hover:bg-rose-500/10 transition-colors mt-1"
-              >
-                <LogOut className="w-4 h-4" />
-                Sign Out
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Quick Sign Out Action */}
+        <button
+          onClick={logout}
+          className="p-2 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
+          title="Sign Out"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
       </div>
     </header>
   );

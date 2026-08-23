@@ -39,9 +39,13 @@ export const LearnerDashboard: React.FC = () => {
     }
   }, [searchParams]);
 
-  const handleSelectTab = (tabId: string) => {
+  const handleSelectTab = (tabId: string, subjectName?: string) => {
     setActiveTab(tabId);
-    setSearchParams({ tab: tabId });
+    if (subjectName) {
+      setSearchParams({ tab: tabId, subject: subjectName });
+    } else {
+      setSearchParams({ tab: tabId });
+    }
   };
 
   const handleStartAITopic = (subject: string, topicId: string, topicName: string) => {

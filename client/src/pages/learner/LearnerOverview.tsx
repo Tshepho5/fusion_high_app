@@ -25,13 +25,19 @@ import {
   Layers,
   X,
   ExternalLink,
-  BookMarked
+  BookMarked,
+  Compass,
+  CreditCard,
+  Grid,
+  Trophy,
+  Calendar,
+  LayoutGrid
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
 
 interface LearnerOverviewProps {
-  onNavigateTab: (tabId: string) => void;
+  onNavigateTab: (tabId: string, subjectName?: string) => void;
 }
 
 export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab }) => {
@@ -42,7 +48,6 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
   const [attendance, setAttendance] = useState<any>(null);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [performance, setPerformance] = useState<any>(null);
-  const [unreadMessageCount, setUnreadMessageCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Resource Modal state
@@ -173,6 +178,115 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
     { name: 'Life Orientation', code: 'LFOR10', grade: 10, progress: 95, teacher: 'Mrs. Mokoena', assignmentsDue: 0 }
   ];
 
+  // ALL FUNCTIONS FROM THE MAIN MENU
+  const mainPortalFunctions = [
+    {
+      id: 'subjects',
+      label: 'My Subjects & AI Tutor',
+      desc: 'Syllabus, topics, interactive AI tutor & study notes',
+      icon: BookOpen,
+      color: 'from-cyan-600/20 to-blue-600/20 text-cyan-400 border-cyan-500/30',
+      badge: 'AI'
+    },
+    {
+      id: 'assignments',
+      label: 'Homework & Submissions',
+      desc: 'Download worksheets, upload solutions & get AI pre-grading',
+      icon: FileText,
+      color: 'from-indigo-600/20 to-brand-600/20 text-indigo-400 border-indigo-500/30',
+      badge: 'AI Live'
+    },
+    {
+      id: 'ai-tutor',
+      label: 'AI Study Tutor',
+      desc: 'Step-by-step math breakdowns & self-study quiz coach',
+      icon: Bot,
+      color: 'from-pink-600/20 to-purple-600/20 text-pink-400 border-pink-500/30',
+      badge: 'AI Coach'
+    },
+    {
+      id: 'career-advisor',
+      label: 'Matric APS & Careers',
+      desc: 'APS point calculator, university requirements & fields',
+      icon: Compass,
+      color: 'from-purple-600/20 to-pink-600/20 text-purple-400 border-purple-500/30',
+      badge: 'Gr12 APS'
+    },
+    {
+      id: 'bursaries',
+      label: 'NSFAS & Bursaries',
+      desc: 'AI tertiary bursary matches, document checklists & funding',
+      icon: GraduationCap,
+      color: 'from-amber-600/20 to-orange-600/20 text-amber-400 border-amber-500/30',
+      badge: 'FUND'
+    },
+    {
+      id: 'finance',
+      label: 'Fee Statements',
+      desc: 'Official school fee statements & settled payment receipts',
+      icon: CreditCard,
+      color: 'from-emerald-600/20 to-teal-600/20 text-emerald-400 border-emerald-500/30'
+    },
+    {
+      id: 'reports',
+      label: 'CAPS Report Cards',
+      desc: 'Term mark sheets, subject levels & official transcripts',
+      icon: Award,
+      color: 'from-emerald-600/20 to-cyan-600/20 text-emerald-400 border-emerald-500/30',
+      badge: 'PDF'
+    },
+    {
+      id: 'exam-seating',
+      label: 'Exam Seating & Card',
+      desc: 'Personal exam hall allocation & student smart ID card',
+      icon: Grid,
+      color: 'from-indigo-600/20 to-purple-600/20 text-indigo-400 border-indigo-500/30'
+    },
+    {
+      id: 'sports',
+      label: 'Sports & Clubs',
+      desc: 'House athletics, extracurricular teams & events',
+      icon: Trophy,
+      color: 'from-green-600/20 to-emerald-600/20 text-green-400 border-green-500/30'
+    },
+    {
+      id: 'textbooks',
+      label: 'My Textbooks',
+      desc: 'Issued textbooks, digital study e-books & guides',
+      icon: BookMarked,
+      color: 'from-teal-600/20 to-cyan-600/20 text-teal-400 border-teal-500/30'
+    },
+    {
+      id: 'timetable',
+      label: 'Weekly Timetable',
+      desc: 'Classroom periods, room numbers & educator timetable',
+      icon: Clock,
+      color: 'from-sky-600/20 to-blue-600/20 text-sky-400 border-sky-500/30'
+    },
+    {
+      id: 'calendar',
+      label: 'School Calendar',
+      desc: 'Academic terms, test weeks & school holidays',
+      icon: Calendar,
+      color: 'from-violet-600/20 to-indigo-600/20 text-violet-400 border-violet-500/30'
+    },
+    {
+      id: 'announcements',
+      label: 'Announcements',
+      desc: 'School alerts, sports updates & event notices',
+      icon: Megaphone,
+      color: 'from-fuchsia-600/20 to-purple-600/20 text-fuchsia-400 border-fuchsia-500/30'
+    },
+    {
+      id: 'messages',
+      label: 'Teacher Messages',
+      desc: 'Direct private chats with subject teachers',
+      icon: MessageSquare,
+      color: 'from-brand-600/20 to-cyan-600/20 text-brand-400 border-brand-500/30',
+      badge: 'CHAT'
+    }
+  ];
+
   return (
     <div className="space-y-6 animate-fade-in text-slate-100">
       
@@ -229,10 +343,10 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 )}
               </div>
 
-              {/* Subject Title & Teacher Meta */}
+              {/* Subject Title & Teacher Meta (Click opens specific subject workspace directly!) */}
               <div>
                 <h3
-                  onClick={() => onNavigateTab('subjects')}
+                  onClick={() => onNavigateTab('subjects', sub.name)}
                   className="text-base font-bold text-white group-hover:text-indigo-300 transition-colors cursor-pointer leading-snug"
                   title={`Open ${sub.name} Workspace`}
                 >
@@ -283,10 +397,10 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                   Grades
                 </button>
                 <button
-                  onClick={() => onNavigateTab('subjects')}
+                  onClick={() => onNavigateTab('subjects', sub.name)}
                   className="col-span-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm"
                 >
-                  <span>Open Workspace</span>
+                  <span>Open {sub.name} Workspace</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -295,145 +409,52 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
         </div>
       </section>
 
-      {/* 2. MAIN FUNCTIONS INTERACTIVE GRID (Under Subjects Carousel) */}
+      {/* 2. ALL FUNCTIONS FROM MAIN MENU (Under Subjects Carousel) */}
       <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center">
-            <Layers className="w-4 h-4" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center">
+              <LayoutGrid className="w-4 h-4" />
+            </div>
+            <h2 className="text-base md:text-lg font-bold font-display text-white tracking-tight">
+              Main Menu Functions & Modules
+            </h2>
           </div>
-          <h2 className="text-base md:text-lg font-bold font-display text-white tracking-tight">
-            Portal Functions & Quick Tools
-          </h2>
+          <span className="text-xs text-slate-400 font-medium">All 14 Modules</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          {/* 1. My Subjects */}
-          <div
-            onClick={() => onNavigateTab('subjects')}
-            className="p-4 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer space-y-2 shadow-sm group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <BookOpen className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white group-hover:text-indigo-300 transition-colors">
-                My Subjects
-              </h3>
-              <p className="text-[11px] text-slate-400">Workspaces & curriculum</p>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+          {mainPortalFunctions.map((func) => {
+            const IconComp = func.icon;
+            return (
+              <div
+                key={func.id}
+                onClick={() => onNavigateTab(func.id)}
+                className="p-4 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-sm group relative overflow-hidden"
+              >
+                <div className="flex items-start justify-between">
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${func.color} border flex items-center justify-center group-hover:scale-105 transition-transform`}>
+                    <IconComp className="w-5 h-5" />
+                  </div>
+                  {func.badge && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/10 text-slate-300 border border-white/10">
+                      {func.badge}
+                    </span>
+                  )}
+                </div>
 
-          {/* 2. Attendance */}
-          <div
-            onClick={() => onNavigateTab('timetable')}
-            className="p-4 rounded-2xl bg-surface-dark border border-white/10 hover:border-emerald-500/50 hover:bg-surface-darker transition-all cursor-pointer space-y-2 shadow-sm group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <CalendarCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors">
-                Attendance
-              </h3>
-              <p className="text-[11px] text-slate-400">Track class presence</p>
-            </div>
-          </div>
-
-          {/* 3. Timetable */}
-          <div
-            onClick={() => onNavigateTab('timetable')}
-            className="p-4 rounded-2xl bg-surface-dark border border-white/10 hover:border-cyan-500/50 hover:bg-surface-darker transition-all cursor-pointer space-y-2 shadow-sm group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Clock className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors">
-                Timetable
-              </h3>
-              <p className="text-[11px] text-slate-400">Daily periods & schedule</p>
-            </div>
-          </div>
-
-          {/* 4. Announcements */}
-          <div
-            onClick={() => onNavigateTab('announcements')}
-            className="p-4 rounded-2xl bg-surface-dark border border-white/10 hover:border-amber-500/50 hover:bg-surface-darker transition-all cursor-pointer space-y-2 shadow-sm group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Megaphone className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
-                Announcements
-              </h3>
-              <p className="text-[11px] text-slate-400">School notices & alerts</p>
-            </div>
-          </div>
-
-          {/* 5. Messages */}
-          <div
-            onClick={() => onNavigateTab('messages')}
-            className="p-4 rounded-2xl bg-surface-dark border border-white/10 hover:border-purple-500/50 hover:bg-surface-darker transition-all cursor-pointer space-y-2 shadow-sm group relative"
-          >
-            <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <MessageSquare className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors">
-                Messages
-              </h3>
-              <p className="text-[11px] text-slate-400">Chat with teachers</p>
-            </div>
-          </div>
-
-          {/* 6. AI Study Coach */}
-          <div
-            onClick={() => onNavigateTab('ai-tutor')}
-            className="p-4 rounded-2xl bg-surface-dark border border-white/10 hover:border-pink-500/50 hover:bg-surface-darker transition-all cursor-pointer space-y-2 shadow-sm group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-pink-500/15 text-pink-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Bot className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white group-hover:text-pink-300 transition-colors">
-                AI Tutor
-              </h3>
-              <p className="text-[11px] text-slate-400">Self-study & quiz practice</p>
-            </div>
-          </div>
-
-          {/* 7. Performance & Grades */}
-          <div
-            onClick={() => onNavigateTab('reports')}
-            className="p-4 rounded-2xl bg-surface-dark border border-white/10 hover:border-emerald-500/50 hover:bg-surface-darker transition-all cursor-pointer space-y-2 shadow-sm group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors">
-                Performance
-              </h3>
-              <p className="text-[11px] text-slate-400">Academic marks & reports</p>
-            </div>
-          </div>
-
-          {/* 8. My Profile */}
-          <div
-            onClick={() => onNavigateTab('profile')}
-            className="p-4 rounded-2xl bg-surface-dark border border-white/10 hover:border-slate-400/50 hover:bg-surface-darker transition-all cursor-pointer space-y-2 shadow-sm group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-slate-700/40 text-slate-300 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <UserCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white group-hover:text-slate-200 transition-colors">
-                My Profile
-              </h3>
-              <p className="text-[11px] text-slate-400">Account settings & info</p>
-            </div>
-          </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white group-hover:text-indigo-300 transition-colors flex items-center gap-1.5">
+                    <span>{func.label}</span>
+                    <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-indigo-400" />
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                    {func.desc}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 

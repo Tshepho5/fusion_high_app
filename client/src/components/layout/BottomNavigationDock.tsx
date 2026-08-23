@@ -2,28 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import {
-  LayoutGrid,
   Home,
   MessageSquare,
-  Sparkles,
   Calendar,
-  Layers
+  User,
+  Settings
 } from 'lucide-react';
+import { getProfilePictureUrl } from '../../utils/imageUrl';
 
 interface BottomNavigationDockProps {
   activeTab: string;
   onSelectTab: (tabId: string) => void;
-  onOpenMainMenu: () => void;
-  isMainMenuOpen: boolean;
+  onOpenMainMenu?: () => void;
+  isMainMenuOpen?: boolean;
 }
 
 export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
   activeTab,
   onSelectTab,
-  onOpenMainMenu,
-  isMainMenuOpen,
 }) => {
-  const { role } = useAuth();
+  const { user } = useAuth();
   const [unreadMessages, setUnreadMessages] = useState<number>(0);
 
   // Poll unread messages for live badge on bottom dock
@@ -48,9 +46,9 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
 
   return (
     <div className="fixed bottom-4 inset-x-0 md:left-72 z-40 flex justify-center items-center pointer-events-none select-none animate-bounce-in px-4">
-      <div className="pointer-events-auto relative flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-full bg-surface-darker/90 backdrop-blur-2xl border border-white/15 shadow-2xl shadow-black/80 ring-1 ring-white/10 max-w-full">
+      <div className="pointer-events-auto relative flex items-center gap-1 sm:gap-3 px-4 py-2 rounded-full bg-surface-darker/95 backdrop-blur-2xl border border-white/15 shadow-2xl shadow-black/80 ring-1 ring-white/10 max-w-full">
         {/* Subtle glowing underlay */}
-        <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-brand-500/20 via-cyan-500/20 to-brand-500/20 blur-md -z-10 pointer-events-none" />
+        <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-indigo-500/20 via-cyan-500/20 to-indigo-500/20 blur-md -z-10 pointer-events-none" />
 
         {/* 1. Home / Overview Shortcut */}
         <button
@@ -66,34 +64,38 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
           <span className="text-[9px] font-bold mt-0.5 hidden sm:block">Home</span>
         </button>
 
-        {/* 2. Calendar / Events Shortcut */}
+        {/* 2. Calendar / Timetable Shortcut */}
         <button
           onClick={() => onSelectTab('calendar')}
           className={`flex flex-col items-center justify-center p-2 rounded-full transition-all duration-200 ${
-            activeTab === 'calendar'
+            activeTab === 'calendar' || activeTab === 'timetable'
               ? 'text-cyan-400 bg-white/10 shadow-glow-cyan'
               : 'text-slate-400 hover:text-white hover:bg-white/5'
           }`}
-          title="School Calendar"
+          title="Calendar & Timetable"
         >
           <Calendar className="w-5 h-5" />
           <span className="text-[9px] font-bold mt-0.5 hidden sm:block">Calendar</span>
         </button>
 
-        {/* 🌟 3. PROMINENT CENTER MAIN MENU BUTTON */}
+        {/* 🌟 3. PROMINENT CENTER MY PROFILE BUTTON */}
         <div className="relative px-1 sm:px-2">
           <button
-            onClick={onOpenMainMenu}
-            className={`group relative flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r from-brand-600 via-indigo-600 to-cyan-500 text-white font-extrabold text-xs shadow-lg shadow-brand-500/40 hover:shadow-cyan-500/50 hover:scale-105 active:scale-95 transition-all duration-200 border border-white/25 ${
-              isMainMenuOpen ? 'ring-4 ring-cyan-400/50 scale-105' : ''
+            onClick={() => onSelectTab('profile')}
+            className={`group relative flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r from-indigo-600 via-brand-600 to-cyan-500 text-white font-extrabold text-xs shadow-lg shadow-indigo-500/40 hover:shadow-cyan-500/50 hover:scale-105 active:scale-95 transition-all duration-200 border border-white/25 ${
+              activeTab === 'profile' ? 'ring-4 ring-cyan-400/50 scale-105' : ''
             }`}
-            title="Open Main Menu (All Modules)"
+            title="My Profile & Account"
           >
-            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-              <LayoutGrid className="w-4 h-4 text-white group-hover:rotate-45 transition-transform duration-300" />
+            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0 overflow-hidden">
+              {user?.profile_picture_path ? (
+                <img src={getProfilePictureUrl(user.profile_picture_path)} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-3.5 h-3.5 text-white" />
+              )}
             </div>
             <span className="tracking-wide uppercase font-display font-black text-[11px] sm:text-xs">
-              Main Menu
+              My Profile
             </span>
           </button>
         </div>
@@ -117,25 +119,18 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
           <span className="text-[9px] font-bold mt-0.5 hidden sm:block">Chat</span>
         </button>
 
-        {/* 5. Role-Specific Core Action (Subjects / Classes / Children) */}
+        {/* 5. Settings Shortcut */}
         <button
-          onClick={() => {
-            if (role === 'teacher') onSelectTab('classes');
-            else if (role === 'parent') onSelectTab('children');
-            else if (role === 'admin') onSelectTab('users');
-            else onSelectTab('subjects');
-          }}
+          onClick={() => onSelectTab('profile')}
           className={`flex flex-col items-center justify-center p-2 rounded-full transition-all duration-200 ${
-            ['classes', 'children', 'users', 'subjects'].includes(activeTab)
+            activeTab === 'settings' || (activeTab === 'profile' && false)
               ? 'text-cyan-400 bg-white/10 shadow-glow-cyan'
               : 'text-slate-400 hover:text-white hover:bg-white/5'
           }`}
-          title={role === 'teacher' ? 'Class Registers' : role === 'parent' ? 'Children' : role === 'admin' ? 'Users' : 'My Subjects'}
+          title="Settings & Preferences"
         >
-          <Layers className="w-5 h-5" />
-          <span className="text-[9px] font-bold mt-0.5 hidden sm:block">
-            {role === 'teacher' ? 'Register' : role === 'parent' ? 'Children' : role === 'admin' ? 'Users' : 'Subjects'}
-          </span>
+          <Settings className="w-5 h-5" />
+          <span className="text-[9px] font-bold mt-0.5 hidden sm:block">Settings</span>
         </button>
       </div>
     </div>
