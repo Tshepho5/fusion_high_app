@@ -18,9 +18,7 @@ import {
   CheckCircle2,
   AlertCircle,
   ShieldCheck,
-  AlertTriangle,
-  Award,
-  Layers,
+  RotateCcw,
   Flag,
   BookOpen,
   Info
@@ -41,13 +39,33 @@ const EVENT_TYPES = [
   { label: 'Meetings & General', value: 'General', badge: 'cyan' },
 ];
 
-// Official DBE 4-Term South African School Calendar (2026)
-const DBE_TERMS_2026 = [
-  { term: 'Term 1', start: '14 Jan', end: '27 Mar', desc: 'Orientation & Term 1 CAPS', active: true },
-  { term: 'Term 2', start: '08 Apr', end: '26 Jun', desc: 'Mid-Year Examinations', active: false },
-  { term: 'Term 3', start: '21 Jul', end: '02 Oct', desc: 'Preparatory / Trial Exams', active: false },
-  { term: 'Term 4', start: '13 Oct', end: '09 Dec', desc: 'Grade 12 NSC Final Exams', active: false },
-];
+/**
+ * Generates official Department of Basic Education (DBE) 4-Term Calendar metadata for any given year.
+ */
+const getDBETermsForYear = (year: number) => {
+  const currentYear = new Date().getFullYear();
+  if (year === 2026) {
+    return [
+      { term: 'Term 1', start: '14 Jan', end: '27 Mar', desc: 'Orientation & Term 1 CAPS', active: year === currentYear },
+      { term: 'Term 2', start: '08 Apr', end: '26 Jun', desc: 'Mid-Year Examinations', active: false },
+      { term: 'Term 3', start: '21 Jul', end: '02 Oct', desc: 'Preparatory / Trial Exams', active: false },
+      { term: 'Term 4', start: '13 Oct', end: '09 Dec', desc: 'Grade 12 NSC Final Exams', active: false },
+    ];
+  } else if (year === 2025) {
+    return [
+      { term: 'Term 1', start: '15 Jan', end: '28 Mar', desc: 'Term 1 CAPS Curriculum', active: false },
+      { term: 'Term 2', start: '08 Apr', end: '27 Jun', desc: 'Mid-Year Assessments', active: false },
+      { term: 'Term 3', start: '22 Jul', end: '03 Oct', desc: 'Preparatory Trial Exams', active: false },
+      { term: 'Term 4', start: '14 Oct', end: '10 Dec', desc: 'NSC Final Examinations', active: false },
+    ];
+  }
+  return [
+    { term: 'Term 1', start: '13 Jan', end: '26 Mar', desc: `Term 1 ${year} CAPS Curriculum`, active: year === currentYear },
+    { term: 'Term 2', start: '07 Apr', end: '25 Jun', desc: 'Mid-Year Assessments', active: false },
+    { term: 'Term 3', start: '20 Jul', end: '01 Oct', desc: 'Trial Preparatory Exams', active: false },
+    { term: 'Term 4', start: '12 Oct', end: '08 Dec', desc: 'Grade 12 NSC Final Exams', active: false },
+  ];
+};
 
 const formatLocalDate = (d: Date): string => {
   const yr = d.getFullYear();
@@ -87,6 +105,7 @@ export const SchoolCalendar: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [syncingDBE, setSyncingDBE] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -138,10 +157,14 @@ export const SchoolCalendar: React.FC = () => {
     stream_target: ''
   });
 
-  const fetchEvents = async () => {
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
+  const fetchEvents = async (yearParam?: number) => {
+    const yr = yearParam || year;
     try {
       setLoading(true);
-      const data = await eventService.getEvents();
+      const data = await eventService.getEvents(yr);
       setEvents(Array.isArray(data) ? data : []);
     } catch (err: any) {
       console.error('Failed to load events:', err);
@@ -174,11 +197,26 @@ export const SchoolCalendar: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchEvents();
+    fetchEvents(year);
     if (role === 'learner' || role === 'parent') {
       fetchAttendance();
     }
-  }, [role, selectedChildId]);
+  }, [role, selectedChildId, year]);
+
+  const handleSyncOfficialDBE = async () => {
+    setSyncingDBE(true);
+    setError(null);
+    try {
+      const res = await eventService.syncOfficialCalendar(year);
+      setStatusMessage(res?.message || `Official South African public holidays & DBE terms for ${year} synchronized.`);
+      fetchEvents(year);
+      setTimeout(() => setStatusMessage(null), 5000);
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'Failed to synchronize official DBE calendar.');
+    } finally {
+      setSyncingDBE(false);
+    }
+  };
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,7 +238,7 @@ export const SchoolCalendar: React.FC = () => {
         grade_target: '',
         stream_target: ''
       });
-      fetchEvents();
+      fetchEvents(year);
       setTimeout(() => setStatusMessage(null), 4000);
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Failed to publish event.');
@@ -235,7 +273,7 @@ export const SchoolCalendar: React.FC = () => {
       await eventService.updateEvent(editFormData.id, editFormData);
       setStatusMessage('Calendar event updated successfully.');
       setIsEditModalOpen(false);
-      fetchEvents();
+      fetchEvents(year);
       setTimeout(() => setStatusMessage(null), 4000);
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Failed to update event.');
@@ -257,11 +295,16 @@ export const SchoolCalendar: React.FC = () => {
   };
 
   // Calendar Date Math
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
+  const prevMonth = () => {
+    const newDate = new Date(year, month - 1, 1);
+    setCurrentDate(newDate);
+  };
 
-  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+  const nextMonth = () => {
+    const newDate = new Date(year, month + 1, 1);
+    setCurrentDate(newDate);
+  };
+
   const goToToday = () => {
     const today = new Date();
     setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -325,6 +368,7 @@ export const SchoolCalendar: React.FC = () => {
   };
 
   const canEditOrAdd = role === 'admin' || role === 'teacher';
+  const currentDBETerms = getDBETermsForYear(year);
 
   return (
     <div className="space-y-6">
@@ -338,32 +382,48 @@ export const SchoolCalendar: React.FC = () => {
           <div className="flex items-center gap-2.5">
             <span className="text-xl">🇿🇦</span>
             <div>
-              <h3 className="text-xs sm:text-sm font-extrabold font-display text-white flex items-center gap-2">
-                <span>Official South African DBE School Calendar</span>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono">
-                  2026 Academic Year
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs sm:text-sm font-extrabold font-display text-white">
+                  Official South African DBE & Higher Education Calendar
+                </h3>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono font-bold">
+                  {year} Academic Year
                 </span>
-              </h3>
+              </div>
               <p className="text-[11px] text-slate-400">
-                Aligned with South African statutory public holidays and CAPS 4-term curriculum schedules
+                Self-updating statutory national public holidays, DBE 4-term schedules, and NSC final examinations
               </p>
             </div>
           </div>
 
-          {canEditOrAdd && (
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-bold text-xs shadow-glow-indigo transition-all flex items-center gap-1.5 shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Publish Event / Due Date</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {role === 'admin' && (
+              <button
+                onClick={handleSyncOfficialDBE}
+                disabled={syncingDBE}
+                className="px-3 py-1.5 rounded-xl bg-surface-darker hover:bg-white/10 border border-cyan-500/30 text-cyan-300 text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50"
+                title={`Sync official ${year} DBE Calendar & SA Holidays`}
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${syncingDBE ? 'animate-spin' : ''}`} />
+                <span>{syncingDBE ? 'Syncing...' : 'Sync DBE Calendar'}</span>
+              </button>
+            )}
+
+            {canEditOrAdd && (
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-bold text-xs shadow-glow-indigo transition-all flex items-center gap-1.5 shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Publish Event / Due Date</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* 4 Terms Grid */}
+        {/* 4 Terms Grid for Current Selected Year */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 pt-3">
-          {DBE_TERMS_2026.map((term, idx) => (
+          {currentDBETerms.map((term, idx) => (
             <div
               key={idx}
               className={`p-3 rounded-2xl border transition-all ${

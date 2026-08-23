@@ -263,9 +263,10 @@ export const parentService = {
 
 // School & Class Event Calendar APIs
 export const eventService = {
-  getEvents: () => api.get('/api/events').then(res => res.data),
+  getEvents: (year?: number) => api.get(`/api/events${year ? `?year=${year}` : ''}`).then(res => res.data),
   createEvent: (payload: any) => api.post('/api/events', payload).then(res => res.data),
   updateEvent: (id: string | number, payload: any) => api.put(`/api/events/${id}`, payload).then(res => res.data),
+  syncOfficialCalendar: (year?: number) => api.post('/api/events/sync-dbe', { year }).then(res => res.data),
   deleteEvent: (id: string | number) => api.delete(`/api/events/${id}`).then(res => res.data),
 };
 

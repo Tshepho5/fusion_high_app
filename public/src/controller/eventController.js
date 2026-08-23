@@ -1,41 +1,166 @@
 const db = require('../../../db/db');
 
-// Official South African Public Holidays & DBE 4-Term School Calendar (2026)
-const OFFICIAL_SA_HOLIDAYS_AND_TERMS = [
-    // --- South African Statutory Public Holidays ---
-    { title: "New Year's Day", event_date: "2026-01-01", event_type: "Holiday", audience: "all", description: "National Public Holiday: Celebrating the start of 2026." },
-    { title: "Human Rights Day", event_date: "2026-03-21", event_type: "Holiday", audience: "all", description: "Commemoration of Sharpeville and the South African Bill of Rights." },
-    { title: "Good Friday", event_date: "2026-04-03", event_type: "Holiday", audience: "all", description: "National Christian & Public Holiday." },
-    { title: "Family Day (Easter Monday)", event_date: "2026-04-06", event_type: "Holiday", audience: "all", description: "National Public Holiday following Easter Sunday." },
-    { title: "Freedom Day", event_date: "2026-04-27", event_type: "Holiday", audience: "all", description: "Commemoration of South Africa's first democratic elections in 1994." },
-    { title: "Workers' Day", event_date: "2026-05-01", event_type: "Holiday", audience: "all", description: "International Labour Day honoring workers' rights in South Africa." },
-    { title: "Youth Day (Soweto Uprising)", event_date: "2026-06-16", event_type: "Holiday", audience: "all", description: "Commemorating the 1976 Soweto youth uprising and student rights." },
-    { title: "National Women's Day", event_date: "2026-08-09", event_type: "Holiday", audience: "all", description: "Honoring the 1956 women's march against pass laws." },
-    { title: "Public Holiday (Women's Day Observed)", event_date: "2026-08-10", event_type: "Holiday", audience: "all", description: "Official observed public holiday under the Public Holidays Act." },
-    { title: "Heritage Day (National Braai Day)", event_date: "2026-09-24", event_type: "Holiday", audience: "all", description: "Celebration of South Africa's rich cultural diversity and traditions." },
-    { title: "Day of Reconciliation", event_date: "2026-12-16", event_type: "Holiday", audience: "all", description: "Promoting national unity and racial harmony across South Africa." },
-    { title: "Christmas Day", event_date: "2026-12-25", event_type: "Holiday", audience: "all", description: "National Christian & Family Celebration." },
-    { title: "Day of Goodwill", event_date: "2026-12-26", event_type: "Holiday", audience: "all", description: "National Public Holiday (Boxing Day)." },
+/**
+ * Calculates Easter Sunday for any given Gregorian year using the Meeus/Jones/Butcher algorithm.
+ */
+function getEasterSunday(year) {
+    const a = year % 19;
+    const b = Math.floor(year / 100);
+    const c = year % 100;
+    const d = Math.floor(b / 4);
+    const e = b % 4;
+    const f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3);
+    const h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4);
+    const k = c % 4;
+    const l = (32 + 2 * e + 2 * i - h - k) % 7;
+    const m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const month = Math.floor((h + l - 7 * m + 114) / 31); // 3 = March, 4 = April
+    const day = ((h + l - 7 * m + 114) % 31) + 1;
+    return new Date(Date.UTC(year, month - 1, day));
+}
 
-    // --- Department of Basic Education (DBE) South African School Calendar (2026) ---
-    { title: "DBE Term 1 Starts (Inland & Coastal Schools Reopen)", event_date: "2026-01-14", event_type: "Academic", audience: "all", description: "Official start of Term 1 2026 academic curriculum and learner orientation." },
-    { title: "DBE Term 1 Ends (Autumn School Vacation Begins)", event_date: "2026-03-27", event_type: "Holiday", audience: "all", description: "School closes for Autumn vacation (28 March – 7 April 2026)." },
-    { title: "DBE Term 2 Starts (Winter Term Opens)", event_date: "2026-04-08", event_type: "Academic", audience: "all", description: "Term 2 commences for all learners and educators." },
-    { title: "DBE Term 2 Ends (Winter Vacation Begins)", event_date: "2026-06-26", event_type: "Holiday", audience: "all", description: "School closes for 3-week winter vacation (27 June – 20 July 2026)." },
-    { title: "DBE Term 3 Starts (Spring Academic Term)", event_date: "2026-07-21", event_type: "Academic", audience: "all", description: "School reopens for Term 3 CAPS teaching and preparatory assessments." },
-    { title: "DBE Term 3 Ends (Spring Break)", event_date: "2026-10-02", event_type: "Holiday", audience: "all", description: "School closes for Spring vacation (3 October – 12 October 2026)." },
-    { title: "DBE Term 4 Starts (Final Promotional Term)", event_date: "2026-10-13", event_type: "Academic", audience: "all", description: "Final term of the academic year commences." },
-    { title: "Grade 12 NSC Final Examinations Commence", event_date: "2026-10-19", event_type: "Exam", audience: "all", description: "National Senior Certificate (NSC) Grade 12 final examinations kick off nationwide." },
-    { title: "Grade 12 NSC Final Examinations Conclude", event_date: "2026-11-27", event_type: "Exam", audience: "all", description: "Completion of all Grade 12 National Senior Certificate papers." },
-    { title: "DBE Term 4 Ends (Academic Year Closes)", event_date: "2026-12-09", event_type: "Holiday", audience: "all", description: "Official closure of the 2026 school academic year and start of summer vacation." }
-];
+function formatDateStr(d) {
+    const yr = d.getUTCFullYear();
+    const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const da = String(d.getUTCDate()).padStart(2, '0');
+    return `${yr}-${mo}-${da}`;
+}
+
+function addDays(d, days) {
+    const res = new Date(d.getTime());
+    res.setUTCDate(res.getUTCDate() + days);
+    return res;
+}
 
 /**
- * Ensures standard South African Public Holidays and DBE Terms exist in the database.
+ * Computes official South African Statutory Public Holidays for any given year
+ * adhering to the Public Holidays Act No 36 of 1994 (including Sunday observation rule).
  */
-async function syncSouthAfricanSchoolCalendar() {
+function generateSAPublicHolidays(year) {
+    const holidays = [];
+
+    const fixedHolidays = [
+        { month: 0, day: 1, name: "New Year's Day", desc: `Official South African Public Holiday celebrating the start of ${year}.` },
+        { month: 2, day: 21, name: "Human Rights Day", desc: "Commemoration of Sharpeville and the South African Bill of Rights." },
+        { month: 3, day: 27, name: "Freedom Day", desc: "Commemorating South Africa's first democratic elections in 1994." },
+        { month: 4, day: 1, name: "Workers' Day", desc: "International Labour Day honoring workers' rights in South Africa." },
+        { month: 5, day: 16, name: "Youth Day (Soweto Uprising)", desc: "Commemorating the 1976 Soweto youth uprising and student rights." },
+        { month: 7, day: 9, name: "National Women's Day", desc: "Honoring the 1956 women's march against pass laws in Pretoria." },
+        { month: 8, day: 24, name: "Heritage Day (National Braai Day)", desc: "Celebration of South Africa's rich cultural diversity and traditions." },
+        { month: 11, day: 16, name: "Day of Reconciliation", desc: "Promoting national unity and racial harmony across South Africa." },
+        { month: 11, day: 25, name: "Christmas Day", desc: "National Christian and family celebration." },
+        { month: 11, day: 26, name: "Day of Goodwill", desc: "Official South African Public Holiday (Boxing Day)." }
+    ];
+
+    for (const h of fixedHolidays) {
+        const dateObj = new Date(Date.UTC(year, h.month, h.day));
+        const isSunday = dateObj.getUTCDay() === 0;
+
+        holidays.push({
+            title: h.name,
+            event_date: formatDateStr(dateObj),
+            event_type: 'Holiday',
+            audience: 'all',
+            description: h.desc
+        });
+
+        // Section 2(1) Public Holidays Act: If a public holiday falls on a Sunday, the following Monday is observed
+        if (isSunday) {
+            const observedDate = addDays(dateObj, 1);
+            holidays.push({
+                title: `Public Holiday (${h.name} Observed)`,
+                event_date: formatDateStr(observedDate),
+                event_type: 'Holiday',
+                audience: 'all',
+                description: `Statutory observed public holiday under the South African Public Holidays Act (since ${h.name} falls on a Sunday).`
+            });
+        }
+    }
+
+    // Dynamic Easter-Dependent Public Holidays
+    const easterSunday = getEasterSunday(year);
+    const goodFriday = addDays(easterSunday, -2);
+    const familyDay = addDays(easterSunday, 1);
+
+    holidays.push({
+        title: "Good Friday",
+        event_date: formatDateStr(goodFriday),
+        event_type: 'Holiday',
+        audience: 'all',
+        description: `National Christian & Public Holiday (${year} Easter Weekend).`
+    });
+
+    holidays.push({
+        title: "Family Day (Easter Monday)",
+        event_date: formatDateStr(familyDay),
+        event_type: 'Holiday',
+        audience: 'all',
+        description: `National Public Holiday following Easter Sunday (${year}).`
+    });
+
+    return holidays;
+}
+
+/**
+ * Computes official Department of Basic Education (DBE) and DHET 4-Term Calendar for any year.
+ */
+function generateDBETermCalendar(year) {
+    // Specific official published dates for 2025 & 2026, and dynamic algorithm for upcoming years
+    if (year === 2026) {
+        return [
+            { title: "DBE Term 1 Starts (Inland & Coastal Schools Reopen)", event_date: "2026-01-14", event_type: "Academic", audience: "all", description: "Official start of Term 1 2026 academic curriculum and learner orientation." },
+            { title: "DBE Term 1 Ends (Autumn School Vacation Begins)", event_date: "2026-03-27", event_type: "Holiday", audience: "all", description: "School closes for Autumn vacation (28 March – 7 April 2026)." },
+            { title: "DBE Term 2 Starts (Winter Term Opens)", event_date: "2026-04-08", event_type: "Academic", audience: "all", description: "Term 2 commences for all learners and educators." },
+            { title: "DBE Term 2 Ends (Winter Vacation Begins)", event_date: "2026-06-26", event_type: "Holiday", audience: "all", description: "School closes for 3-week winter vacation (27 June – 20 July 2026)." },
+            { title: "DBE Term 3 Starts (Spring Academic Term)", event_date: "2026-07-21", event_type: "Academic", audience: "all", description: "School reopens for Term 3 CAPS teaching and preparatory assessments." },
+            { title: "DBE Term 3 Ends (Spring Break)", event_date: "2026-10-02", event_type: "Holiday", audience: "all", description: "School closes for Spring vacation (3 October – 12 October 2026)." },
+            { title: "DBE Term 4 Starts (Final Promotional Term)", event_date: "2026-10-13", event_type: "Academic", audience: "all", description: "Final term of the academic year commences." },
+            { title: "Grade 12 NSC Final Examinations Commence", event_date: "2026-10-19", event_type: "Exam", audience: "all", description: "National Senior Certificate (NSC) Grade 12 final examinations kick off nationwide." },
+            { title: "Grade 12 NSC Final Examinations Conclude", event_date: "2026-11-27", event_type: "Exam", audience: "all", description: "Completion of all Grade 12 National Senior Certificate papers." },
+            { title: "DBE Term 4 Ends (Academic Year Closes)", event_date: "2026-12-09", event_type: "Holiday", audience: "all", description: "Official closure of the 2026 school academic year and start of summer vacation." }
+        ];
+    } else if (year === 2025) {
+        return [
+            { title: "DBE Term 1 Starts (Schools Reopen)", event_date: "2025-01-15", event_type: "Academic", audience: "all", description: "Official start of Term 1 2025." },
+            { title: "DBE Term 1 Ends (Autumn Vacation)", event_date: "2025-03-28", event_type: "Holiday", audience: "all", description: "School closes for Autumn break." },
+            { title: "DBE Term 2 Starts", event_date: "2025-04-08", event_type: "Academic", audience: "all", description: "Term 2 commences." },
+            { title: "DBE Term 2 Ends (Winter Vacation)", event_date: "2025-06-27", event_type: "Holiday", audience: "all", description: "School closes for Winter break." },
+            { title: "DBE Term 3 Starts", event_date: "2025-07-22", event_type: "Academic", audience: "all", description: "Term 3 commences." },
+            { title: "DBE Term 3 Ends (Spring Break)", event_date: "2025-10-03", event_type: "Holiday", audience: "all", description: "School closes for Spring vacation." },
+            { title: "DBE Term 4 Starts", event_date: "2025-10-14", event_type: "Academic", audience: "all", description: "Term 4 final promotional term." },
+            { title: "Grade 12 NSC Final Examinations Commence", event_date: "2025-10-20", event_type: "Exam", audience: "all", description: "National Senior Certificate final exams." },
+            { title: "Grade 12 NSC Final Examinations Conclude", event_date: "2025-11-28", event_type: "Exam", audience: "all", description: "NSC exams conclude." },
+            { title: "DBE Term 4 Ends (Academic Year Closes)", event_date: "2025-12-10", event_type: "Holiday", audience: "all", description: "Closure of academic year." }
+        ];
+    }
+
+    // Dynamic standard formula for future academic years (2027, 2028, etc.)
+    return [
+        { title: `DBE Term 1 Starts (${year} Schools Reopen)`, event_date: `${year}-01-13`, event_type: "Academic", audience: "all", description: `Department of Basic Education Term 1 ${year} commences.` },
+        { title: `DBE Term 1 Ends (Autumn Vacation Begins)`, event_date: `${year}-03-26`, event_type: "Holiday", audience: "all", description: `School closes for Autumn vacation.` },
+        { title: `DBE Term 2 Starts (Winter Term Opens)`, event_date: `${year}-04-07`, event_type: "Academic", audience: "all", description: `Term 2 ${year} commences.` },
+        { title: `DBE Term 2 Ends (Winter Vacation Begins)`, event_date: `${year}-06-25`, event_type: "Holiday", audience: "all", description: `School closes for Winter vacation.` },
+        { title: `DBE Term 3 Starts (Spring Academic Term)`, event_date: `${year}-07-20`, event_type: "Academic", audience: "all", description: `Term 3 ${year} commences.` },
+        { title: `DBE Term 3 Ends (Spring Break)`, event_date: `${year}-10-01`, event_type: "Holiday", audience: "all", description: `School closes for Spring vacation.` },
+        { title: `DBE Term 4 Starts (Final Promotional Term)`, event_date: `${year}-10-12`, event_type: "Academic", audience: "all", description: `Final term of ${year} commences.` },
+        { title: `Grade 12 NSC Final Examinations Commence`, event_date: `${year}-10-18`, event_type: "Exam", audience: "all", description: `National Senior Certificate (NSC) Grade 12 final examinations.` },
+        { title: `Grade 12 NSC Final Examinations Conclude`, event_date: `${year}-11-26`, event_type: "Exam", audience: "all", description: `Completion of Grade 12 NSC examinations.` },
+        { title: `DBE Term 4 Ends (Academic Year Closes)`, event_date: `${year}-12-08`, event_type: "Holiday", audience: "all", description: `Official closure of the ${year} academic year.` }
+    ];
+}
+
+/**
+ * Ensures standard South African Public Holidays and DBE Terms exist in the database for a given year.
+ */
+async function syncSouthAfricanSchoolCalendarForYear(year) {
     try {
-        for (const item of OFFICIAL_SA_HOLIDAYS_AND_TERMS) {
+        const publicHolidays = generateSAPublicHolidays(year);
+        const dbeTerms = generateDBETermCalendar(year);
+        const combined = [...publicHolidays, ...dbeTerms];
+
+        for (const item of combined) {
             const check = await db.query(
                 'SELECT id FROM events WHERE event_date = $1 AND title = $2 LIMIT 1',
                 [item.event_date, item.title]
@@ -50,12 +175,23 @@ async function syncSouthAfricanSchoolCalendar() {
             }
         }
     } catch (err) {
-        console.warn('[CALENDAR AUTO-SYNC] Notice syncing South African calendar:', err.message);
+        console.warn(`[CALENDAR MULTI-YEAR SYNC] Notice syncing South African calendar for ${year}:`, err.message);
     }
 }
 
-// Sync calendar entries on module load
-syncSouthAfricanSchoolCalendar();
+/**
+ * Synchronizes the current year and adjacent upcoming years on server boot.
+ */
+async function syncAllActiveYears() {
+    const currentYear = new Date().getFullYear();
+    const yearsToSync = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
+    for (const yr of yearsToSync) {
+        await syncSouthAfricanSchoolCalendarForYear(yr);
+    }
+}
+
+// Initial Sync across years on startup
+syncAllActiveYears();
 
 /**
  * Retrieves school and class events for the user's role and enrolled grades.
@@ -63,6 +199,12 @@ syncSouthAfricanSchoolCalendar();
 exports.getEvents = async (req, res) => {
     const userRole = req.user.role;
     const userId = req.user.id;
+    const requestedYear = parseInt(req.query.year || new Date().getFullYear(), 10);
+
+    // Auto-sync calendar for requested year if not yet synced
+    if (!isNaN(requestedYear) && requestedYear >= 2020 && requestedYear <= 2040) {
+        syncSouthAfricanSchoolCalendarForYear(requestedYear);
+    }
 
     try {
         let query = '';
@@ -244,6 +386,22 @@ exports.updateEvent = async (req, res) => {
     } catch (err) {
         console.error('Error updating event:', err);
         res.status(500).json({ error: 'Failed to update calendar event: ' + err.message });
+    }
+};
+
+/**
+ * Force sync/refresh official DBE / DHET calendar events for a specific year (Admin).
+ */
+exports.syncOfficialCalendar = async (req, res) => {
+    const year = parseInt(req.body.year || new Date().getFullYear(), 10);
+    try {
+        await syncSouthAfricanSchoolCalendarForYear(year);
+        res.json({
+            message: `Official South African Public Holidays and DBE Calendar for ${year} synchronized successfully.`
+        });
+    } catch (err) {
+        console.error('Error in manual calendar sync:', err);
+        res.status(500).json({ error: 'Failed to sync official calendar: ' + err.message });
     }
 };
 

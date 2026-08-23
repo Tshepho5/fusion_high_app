@@ -175,6 +175,7 @@ app.post('/api/change-password', authenticateToken, userController.changePasswor
 // Calendar Events Endpoints
 app.get('/api/events', authenticateToken, eventController.getEvents);
 app.post('/api/events', authenticateToken, eventController.createEvent);
+app.post('/api/events/sync-dbe', authenticateToken, eventController.syncOfficialCalendar);
 app.put('/api/events/:id', authenticateToken, eventController.updateEvent);
 app.delete('/api/events/:id', authenticateToken, eventController.deleteEvent);
 
