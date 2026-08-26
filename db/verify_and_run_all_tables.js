@@ -308,10 +308,16 @@ async function runAllTables() {
     });
 
     console.log('--- DATABASE TABLES VERIFICATION COMPLETE ---');
-    process.exit(0);
+    return checkRes.rows;
 }
 
-runAllTables().catch(err => {
-    console.error('Fatal DB init error:', err);
-    process.exit(1);
-});
+if (require.main === module) {
+    runAllTables()
+        .then(() => process.exit(0))
+        .catch(err => {
+            console.error('Fatal DB init error:', err);
+            process.exit(1);
+        });
+}
+
+module.exports = runAllTables;

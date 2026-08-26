@@ -172,49 +172,52 @@ const emailService = {
       ...(replyTo && { replyTo })
     };
 
-    // Strategy 1: service: 'gmail' (most reliable for Gmail App Passwords on cloud hosts)
+    // Strategy 1: service: 'gmail' with IPv4 binding
     try {
       const t1 = nodemailer.createTransport({
         service: 'gmail',
         auth: { user: senderUser, pass: senderPass },
         tls: { rejectUnauthorized: false },
-        connectionTimeout: 8000,
-        greetingTimeout: 8000
+        family: 4,
+        connectionTimeout: 10000,
+        greetingTimeout: 10000
       });
       const info = await t1.sendMail(mailOptions);
       console.log(`[EMAIL SUCCESS - Service Gmail] Dispatched to ${to}: ${info.messageId}`);
       return { success: true, messageId: info.messageId };
     } catch (e1) {
-      console.warn(`[EMAIL RETRY 1] service: 'gmail' failed (${e1.message}), attempting Port 587 STARTTLS...`);
-      // Strategy 2: Port 587 with STARTTLS
+      console.warn(`[EMAIL RETRY 1] service: 'gmail' failed (${e1.message}), attempting Port 465 SSL...`);
+      // Strategy 2: Port 465 SSL direct with IPv4
       try {
         const t2 = nodemailer.createTransport({
           host: 'smtp.gmail.com',
-          port: 587,
-          secure: false,
+          port: 465,
+          secure: true,
           auth: { user: senderUser, pass: senderPass },
           tls: { rejectUnauthorized: false },
-          connectionTimeout: 8000,
-          greetingTimeout: 8000
+          family: 4,
+          connectionTimeout: 10000,
+          greetingTimeout: 10000
         });
         const info = await t2.sendMail(mailOptions);
-        console.log(`[EMAIL SUCCESS - Port 587] Dispatched to ${to}: ${info.messageId}`);
+        console.log(`[EMAIL SUCCESS - Port 465] Dispatched to ${to}: ${info.messageId}`);
         return { success: true, messageId: info.messageId };
       } catch (e2) {
-        console.warn(`[EMAIL RETRY 2] Port 587 failed (${e2.message}), attempting Port 465 SSL...`);
-        // Strategy 3: Port 465 SSL
+        console.warn(`[EMAIL RETRY 2] Port 465 failed (${e2.message}), attempting Port 587 STARTTLS...`);
+        // Strategy 3: Port 587 STARTTLS with IPv4
         try {
           const t3 = nodemailer.createTransport({
             host: 'smtp.gmail.com',
-            port: 465,
-            secure: true,
+            port: 587,
+            secure: false,
             auth: { user: senderUser, pass: senderPass },
-            tls: { rejectUnauthorized: false },
-            connectionTimeout: 8000,
-            greetingTimeout: 8000
+            tls: { rejectUnauthorized: false, ciphers: 'SSLv3' },
+            family: 4,
+            connectionTimeout: 10000,
+            greetingTimeout: 10000
           });
           const info = await t3.sendMail(mailOptions);
-          console.log(`[EMAIL SUCCESS - Port 465] Dispatched to ${to}: ${info.messageId}`);
+          console.log(`[EMAIL SUCCESS - Port 587] Dispatched to ${to}: ${info.messageId}`);
           return { success: true, messageId: info.messageId };
         } catch (e3) {
           console.error('[EMAIL ERROR - All 3 Transporters Failed]:', e3.message || e3);

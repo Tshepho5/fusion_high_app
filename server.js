@@ -31,6 +31,8 @@ const initApplicationTables = require('./db/init_applications');
 const NotificationService = require('./public/src/services/notificationService');
 
 const app = express();
+app.set('trust proxy', 1); // Enable proxy trust for Render / reverse proxies
+
 const PORT = process.env.PORT || 4000;
 const IP = process.env.IP || 'localhost';  // Network IP or fallback to localhost
 
@@ -44,13 +46,16 @@ if (!fs.existsSync(appUploadDir)) fs.mkdirSync(appUploadDir, { recursive: true }
 
 // Initialize all 40 database tables, multi-parent, and notification schemas on server startup
 const initializeAllDatabaseTables = require('./db/init_full_schema');
+const runAllTables = require('./db/verify_and_run_all_tables');
 const { fixAllUserPasswords } = require('./db/fix_all_user_passwords');
 (async () => {
   try {
     await initializeAllDatabaseTables();
+    await runAllTables();
     await initApplicationTables();
     await NotificationService.initSchema();
     await fixAllUserPasswords();
+    console.log('[DB BOOTSTRAP] All database tables and schemas verified successfully.');
   } catch (err) {
     console.error('[DB BOOTSTRAP] Initialization error:', err.message);
   }
@@ -107,21 +112,23 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-// Rate Limiters
+// Rate Limiters (configured with validate.xForwardedForHeader = false for reverse proxy compatibility)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 40, // Limit each IP to 40 auth attempts per 15 minutes
+  max: 60, // Limit each IP to 60 auth attempts per 15 minutes
   message: { error: 'Too many authentication attempts from this IP. Please try again after 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false, default: false }
 });
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 600, // 600 requests per 15 minutes
+  max: 1000, // 1000 requests per 15 minutes
   message: { error: 'API rate limit exceeded. Please try again in a few minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false, default: false }
 });
 
 app.use('/api/login', authLimiter);
