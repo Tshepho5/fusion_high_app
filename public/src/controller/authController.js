@@ -811,32 +811,32 @@ exports.forgotPassword = async (req, res) => {
         const numericOnly = queryInput.replace(/\D/g, '');
 
         const userLookup = await db.query(`
-            SELECT u.id, u.email, u.full_name, u.surname, r.name as role_name, u.id_number, u.phone, c.learner_number,
+            SELECT u.id, u.email, u.full_name, u.surname, COALESCE(r.name, u.role_id::text, 'learner') as role_name, u.id_number::text as id_number, u.phone::text as phone, c.learner_number::text as learner_number,
                    COALESCE(pu.email, pc_u.email) as parent_user_email
             FROM users u
-            LEFT JOIN roles r ON u.role_id = r.id
-            LEFT JOIN children c ON (c.learner_user_id = u.id)
-            LEFT JOIN users pu ON c.parent_id = pu.id
-            LEFT JOIN parent_children pc ON pc.child_id = c.id
-            LEFT JOIN users pc_u ON pc.parent_id = pc_u.id
-            WHERE LOWER(TRIM(u.email)) = $1
-               OR (LOWER(TRIM($1)) IN ('admin@fusionhigh.co.za', 'admin@fusion.high') AND r.name = 'admin')
-               OR LOWER(TRIM(u.email)) = $1 || '@fusion.high'
-               OR LOWER(TRIM(u.email)) = $1 || '@fusionhigh.co.za'
-               OR (u.id_number IS NOT NULL AND TRIM(u.id_number) = $2)
-               OR (u.id_number IS NOT NULL AND $3 <> '' AND REGEXP_REPLACE(u.id_number, '[^0-9]', '', 'g') = $3)
-               OR (u.phone IS NOT NULL AND (TRIM(u.phone) = $2 OR ($3 <> '' AND REGEXP_REPLACE(u.phone, '[^0-9]', '', 'g') = $3)))
-               OR (c.learner_number IS NOT NULL AND TRIM(c.learner_number) = $2)
+            LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
+            LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
+            LEFT JOIN users pu ON (c.parent_id::text = pu.id::text)
+            LEFT JOIN parent_children pc ON (pc.child_id::text = c.id::text)
+            LEFT JOIN users pc_u ON (pc.parent_id::text = pc_u.id::text)
+            WHERE LOWER(TRIM(u.email::text)) = $1
+               OR (LOWER(TRIM($1)) IN ('admin@fusionhigh.co.za', 'admin@fusion.high') AND LOWER(COALESCE(r.name, u.role_id::text, '')) = 'admin')
+               OR LOWER(TRIM(u.email::text)) = $1 || '@fusion.high'
+               OR LOWER(TRIM(u.email::text)) = $1 || '@fusionhigh.co.za'
+               OR (u.id_number IS NOT NULL AND TRIM(u.id_number::text) = $2)
+               OR (u.id_number IS NOT NULL AND $3 <> '' AND REGEXP_REPLACE(u.id_number::text, '[^0-9]', '', 'g') = $3)
+               OR (u.phone IS NOT NULL AND (TRIM(u.phone::text) = $2 OR ($3 <> '' AND REGEXP_REPLACE(u.phone::text, '[^0-9]', '', 'g') = $3)))
+               OR (c.learner_number IS NOT NULL AND TRIM(c.learner_number::text) = $2)
                OR EXISTS (
                    SELECT 1 FROM parent_children pc2 
-                   JOIN children c2 ON pc2.child_id = c2.id 
-                   WHERE pc2.parent_id = u.id AND (TRIM(c2.learner_number) = $2 OR c2.id::text = $2)
+                   JOIN children c2 ON pc2.child_id::text = c2.id::text 
+                   WHERE pc2.parent_id::text = u.id::text AND (TRIM(c2.learner_number::text) = $2 OR c2.id::text = $2)
                )
                OR EXISTS (
                    SELECT 1 FROM children c3 
-                   WHERE (c3.parent_id = u.id OR c3.secondary_parent_id = u.id) AND (TRIM(c3.learner_number) = $2 OR c3.id::text = $2)
+                   WHERE (c3.parent_id::text = u.id::text OR c3.secondary_parent_id::text = u.id::text) AND (TRIM(c3.learner_number::text) = $2 OR c3.id::text = $2)
                )
-            ORDER BY (CASE WHEN r.name = 'parent' THEN 1 WHEN r.name = 'teacher' THEN 2 WHEN r.name = 'admin' THEN 3 ELSE 4 END) ASC
+            ORDER BY (CASE WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'parent' THEN 1 WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN 2 WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'admin' THEN 3 ELSE 4 END) ASC
             LIMIT 1
         `, [cleanInput, queryInput, numericOnly]);
 
@@ -930,26 +930,26 @@ exports.verifyOTP = async (req, res) => {
         const numericOnly = queryInput.replace(/\D/g, '');
 
         const result = await db.query(`
-            SELECT u.id, u.email, u.reset_code, u.reset_expiry, r.name as role_name
+            SELECT u.id, u.email, u.reset_code, u.reset_expiry, COALESCE(r.name, u.role_id::text, 'learner') as role_name
             FROM users u
-            LEFT JOIN roles r ON u.role_id = r.id
-            LEFT JOIN children c ON c.learner_user_id = u.id
-            WHERE (LOWER(TRIM(u.email)) = $1
-               OR (LOWER(TRIM($1)) IN ('admin@fusionhigh.co.za', 'admin@fusion.high') AND r.name = 'admin')
-               OR LOWER(TRIM(u.email)) = $1 || '@fusion.high'
-               OR LOWER(TRIM(u.email)) = $1 || '@fusionhigh.co.za'
-               OR (u.id_number IS NOT NULL AND TRIM(u.id_number) = $2)
-               OR (u.id_number IS NOT NULL AND $3 <> '' AND REGEXP_REPLACE(u.id_number, '[^0-9]', '', 'g') = $3)
-               OR (u.phone IS NOT NULL AND (TRIM(u.phone) = $2 OR ($3 <> '' AND REGEXP_REPLACE(u.phone, '[^0-9]', '', 'g') = $3)))
-               OR (c.learner_number IS NOT NULL AND TRIM(c.learner_number) = $2)
+            LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
+            LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
+            WHERE (LOWER(TRIM(u.email::text)) = $1
+               OR (LOWER(TRIM($1)) IN ('admin@fusionhigh.co.za', 'admin@fusion.high') AND LOWER(COALESCE(r.name, u.role_id::text, '')) = 'admin')
+               OR LOWER(TRIM(u.email::text)) = $1 || '@fusion.high'
+               OR LOWER(TRIM(u.email::text)) = $1 || '@fusionhigh.co.za'
+               OR (u.id_number IS NOT NULL AND TRIM(u.id_number::text) = $2)
+               OR (u.id_number IS NOT NULL AND $3 <> '' AND REGEXP_REPLACE(u.id_number::text, '[^0-9]', '', 'g') = $3)
+               OR (u.phone IS NOT NULL AND (TRIM(u.phone::text) = $2 OR ($3 <> '' AND REGEXP_REPLACE(u.phone::text, '[^0-9]', '', 'g') = $3)))
+               OR (c.learner_number IS NOT NULL AND TRIM(c.learner_number::text) = $2)
                OR EXISTS (
                    SELECT 1 FROM parent_children pc2 
-                   JOIN children c2 ON pc2.child_id = c2.id 
-                   WHERE pc2.parent_id = u.id AND (TRIM(c2.learner_number) = $2 OR c2.id::text = $2)
+                   JOIN children c2 ON pc2.child_id::text = c2.id::text 
+                   WHERE pc2.parent_id::text = u.id::text AND (TRIM(c2.learner_number::text) = $2 OR c2.id::text = $2)
                )
                OR EXISTS (
                    SELECT 1 FROM children c3 
-                   WHERE (c3.parent_id = u.id OR c3.secondary_parent_id = u.id) AND (TRIM(c3.learner_number) = $2 OR c3.id::text = $2)
+                   WHERE (c3.parent_id::text = u.id::text OR c3.secondary_parent_id::text = u.id::text) AND (TRIM(c3.learner_number::text) = $2 OR c3.id::text = $2)
                ))
               AND u.reset_code = $4
             ORDER BY u.id DESC
@@ -967,7 +967,7 @@ exports.verifyOTP = async (req, res) => {
         }
         
         // Once verified within 2m, extend reset_expiry so user has sufficient time (15 mins) to enter new password
-        await db.query("UPDATE users SET reset_expiry = NOW() + INTERVAL '15 minutes' WHERE id = $1", [user.id]);
+        await db.query("UPDATE users SET reset_expiry = NOW() + INTERVAL '15 minutes' WHERE id::text = $1::text", [user.id]);
         res.json({ message: 'Code verified successfully. You can now set your new password.', email: user.email });
     } catch (err) { res.status(500).json({ error: err.message }); }
 };
@@ -986,26 +986,26 @@ exports.resetPassword = async (req, res) => {
         const numericOnly = queryInput.replace(/\D/g, '');
 
         const userRes = await db.query(`
-            SELECT u.id, u.email, u.password_hash, u.reset_expiry, r.name as role_name
+            SELECT u.id, u.email, u.password_hash, u.reset_expiry, COALESCE(r.name, u.role_id::text, 'learner') as role_name
             FROM users u
-            LEFT JOIN roles r ON u.role_id = r.id
-            LEFT JOIN children c ON c.learner_user_id = u.id
-            WHERE (LOWER(TRIM(u.email)) = $1
-               OR (LOWER(TRIM($1)) IN ('admin@fusionhigh.co.za', 'admin@fusion.high') AND r.name = 'admin')
-               OR LOWER(TRIM(u.email)) = $1 || '@fusion.high'
-               OR LOWER(TRIM(u.email)) = $1 || '@fusionhigh.co.za'
-               OR (u.id_number IS NOT NULL AND TRIM(u.id_number) = $2)
-               OR (u.id_number IS NOT NULL AND $3 <> '' AND REGEXP_REPLACE(u.id_number, '[^0-9]', '', 'g') = $3)
-               OR (u.phone IS NOT NULL AND (TRIM(u.phone) = $2 OR ($3 <> '' AND REGEXP_REPLACE(u.phone, '[^0-9]', '', 'g') = $3)))
-               OR (c.learner_number IS NOT NULL AND TRIM(c.learner_number) = $2)
+            LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
+            LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
+            WHERE (LOWER(TRIM(u.email::text)) = $1
+               OR (LOWER(TRIM($1)) IN ('admin@fusionhigh.co.za', 'admin@fusion.high') AND LOWER(COALESCE(r.name, u.role_id::text, '')) = 'admin')
+               OR LOWER(TRIM(u.email::text)) = $1 || '@fusion.high'
+               OR LOWER(TRIM(u.email::text)) = $1 || '@fusionhigh.co.za'
+               OR (u.id_number IS NOT NULL AND TRIM(u.id_number::text) = $2)
+               OR (u.id_number IS NOT NULL AND $3 <> '' AND REGEXP_REPLACE(u.id_number::text, '[^0-9]', '', 'g') = $3)
+               OR (u.phone IS NOT NULL AND (TRIM(u.phone::text) = $2 OR ($3 <> '' AND REGEXP_REPLACE(u.phone::text, '[^0-9]', '', 'g') = $3)))
+               OR (c.learner_number IS NOT NULL AND TRIM(c.learner_number::text) = $2)
                OR EXISTS (
                    SELECT 1 FROM parent_children pc2 
-                   JOIN children c2 ON pc2.child_id = c2.id 
-                   WHERE pc2.parent_id = u.id AND (TRIM(c2.learner_number) = $2 OR c2.id::text = $2)
+                   JOIN children c2 ON pc2.child_id::text = c2.id::text 
+                   WHERE pc2.parent_id::text = u.id::text AND (TRIM(c2.learner_number::text) = $2 OR c2.id::text = $2)
                )
                OR EXISTS (
                    SELECT 1 FROM children c3 
-                   WHERE (c3.parent_id = u.id OR c3.secondary_parent_id = u.id) AND (TRIM(c3.learner_number) = $2 OR c3.id::text = $2)
+                   WHERE (c3.parent_id::text = u.id::text OR c3.secondary_parent_id::text = u.id::text) AND (TRIM(c3.learner_number::text) = $2 OR c3.id::text = $2)
                ))
               AND u.reset_code = $4
             ORDER BY u.id DESC

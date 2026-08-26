@@ -211,42 +211,45 @@ exports.getEvents = async (req, res) => {
         let params = [];
 
         if (userRole === 'learner') {
-            const childRes = await db.query('SELECT grade, stream FROM children WHERE learner_user_id = $1', [userId]);
+            const childRes = await db.query('SELECT grade, stream FROM children WHERE learner_user_id::text = $1::text', [userId]);
             const grade = childRes.rows[0]?.grade || 10;
             const stream = childRes.rows[0]?.stream || 'General';
 
             query = `
-                SELECT e.*, u.full_name as creator_name, u.surname as creator_surname, r.name as creator_role
+                SELECT e.*, u.full_name as creator_name, u.surname as creator_surname, 
+                       COALESCE(r.name, u.role_id::text, 'admin') as creator_role
                 FROM events e
-                LEFT JOIN users u ON e.created_by = u.id
-                LEFT JOIN roles r ON u.role_id = r.id
+                LEFT JOIN users u ON e.created_by::text = u.id::text
+                LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                 WHERE (e.audience = 'all' OR e.audience = 'learners' OR e.audience IS NULL)
-                  AND (e.grade_target IS NULL OR e.grade_target = $1)
+                  AND (e.grade_target IS NULL OR e.grade_target::text = $1::text)
                   AND (e.stream_target IS NULL OR e.stream_target = $2 OR e.stream_target = 'General')
                 ORDER BY e.event_date ASC, e.start_time ASC;
             `;
-            params = [grade, stream];
+            params = [grade.toString(), stream];
         } else if (userRole === 'parent') {
-            const childrenRes = await db.query('SELECT grade, stream FROM children WHERE parent_id = $1', [userId]);
+            const childrenRes = await db.query('SELECT grade, stream FROM children WHERE parent_id::text = $1::text', [userId]);
             const grades = childrenRes.rows.map(c => c.grade);
 
             query = `
-                SELECT e.*, u.full_name as creator_name, u.surname as creator_surname, r.name as creator_role
+                SELECT e.*, u.full_name as creator_name, u.surname as creator_surname, 
+                       COALESCE(r.name, u.role_id::text, 'admin') as creator_role
                 FROM events e
-                LEFT JOIN users u ON e.created_by = u.id
-                LEFT JOIN roles r ON u.role_id = r.id
+                LEFT JOIN users u ON e.created_by::text = u.id::text
+                LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                 WHERE (e.audience = 'all' OR e.audience = 'parents' OR e.audience IS NULL)
-                  AND (e.grade_target IS NULL OR e.grade_target = ANY($1::int[]))
+                  AND (e.grade_target IS NULL OR e.grade_target::text = ANY($1::text[]))
                 ORDER BY e.event_date ASC, e.start_time ASC;
             `;
-            params = [grades.length > 0 ? grades : [8, 9, 10, 11, 12]];
+            params = [grades.length > 0 ? grades.map(String) : ['8', '9', '10', '11', '12']];
         } else {
             // Teacher / Admin: view all school and academic events
             query = `
-                SELECT e.*, u.full_name as creator_name, u.surname as creator_surname, r.name as creator_role
+                SELECT e.*, u.full_name as creator_name, u.surname as creator_surname, 
+                       COALESCE(r.name, u.role_id::text, 'admin') as creator_role
                 FROM events e
-                LEFT JOIN users u ON e.created_by = u.id
-                LEFT JOIN roles r ON u.role_id = r.id
+                LEFT JOIN users u ON e.created_by::text = u.id::text
+                LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                 ORDER BY e.event_date ASC, e.start_time ASC;
             `;
         }
