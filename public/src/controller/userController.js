@@ -225,13 +225,13 @@ exports.markMessagesAsRead = async (req, res) => {
 
     try {
         if (Array.isArray(messageIds) && messageIds.length > 0) {
-            await db.query('UPDATE messages SET read_at = NOW() WHERE id = ANY($1::int[]) AND recipient_id = $2', [messageIds, userId]);
+            await db.query('UPDATE messages SET read_at = NOW() WHERE id::text = ANY($1::text[]) AND recipient_id::text = $2::text', [messageIds.map(String), userId]);
             return res.json({ success: true, message: 'Messages marked as read.' });
         }
         
         const targetSender = sender_id || senderId || contact_id;
         if (targetSender) {
-            await db.query('UPDATE messages SET read_at = NOW() WHERE recipient_id = $1 AND sender_id = $2 AND read_at IS NULL', [userId, targetSender]);
+            await db.query('UPDATE messages SET read_at = NOW() WHERE recipient_id::text = $1::text AND sender_id::text = $2::text AND read_at IS NULL', [userId, targetSender]);
             return res.json({ success: true, message: 'Conversation messages marked as read.' });
         }
 
@@ -247,7 +247,7 @@ exports.markMessagesAsRead = async (req, res) => {
 exports.getUnreadMessageCount = async (req, res) => {
     const userId = req.user.id;
     try {
-        const { rows } = await db.query('SELECT COUNT(*) FROM messages WHERE recipient_id = $1 AND read_at IS NULL', [userId]);
+        const { rows } = await db.query('SELECT COUNT(*) FROM messages WHERE recipient_id::text = $1::text AND read_at IS NULL', [userId]);
         res.json({ success: true, count: parseInt(rows[0].count, 10) });
     } catch (err) {
         console.error('Error fetching unread message count:', err);
@@ -267,10 +267,10 @@ exports.getMessages = async (req, res) => {
                    recipient.full_name as recipient_name, recipient.surname as recipient_surname,
                    c.full_name as child_name, c.surname as child_surname
             FROM messages m
-            LEFT JOIN users sender ON m.sender_id = sender.id
-            LEFT JOIN users recipient ON m.recipient_id = recipient.id
-            LEFT JOIN children c ON m.child_id = c.id
-            WHERE m.sender_id = $1 OR m.recipient_id = $1
+            LEFT JOIN users sender ON m.sender_id::text = sender.id::text
+            LEFT JOIN users recipient ON m.recipient_id::text = recipient.id::text
+            LEFT JOIN children c ON m.child_id::text = c.id::text
+            WHERE m.sender_id::text = $1::text OR m.recipient_id::text = $1::text
             ORDER BY m.created_at DESC;
         `;
         const { rows } = await db.query(query, [userId]);
@@ -281,9 +281,6 @@ exports.getMessages = async (req, res) => {
     }
 };
 
-/**
- * Sends a message from the logged-in user to any recipient.
- */
 /**
  * Handles uploading chat attachments (images, voice notes, and documents)
  */
@@ -301,24 +298,19 @@ exports.uploadMessageAttachment = async (req, res) => {
             attachmentType = 'voice_note';
         }
 
-        const bytes = req.file.size || 0;
-        let formattedSize = `${(bytes / 1024).toFixed(1)} KB`;
-        if (bytes >= 1024 * 1024) {
-            formattedSize = `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-        }
-
-        const relativePath = '/' + req.file.path.replace(/\\/g, '/');
-
+        const filePath = `/uploads/messages/${req.file.filename}`;
         res.json({
             success: true,
-            file_url: relativePath,
+            file_url: filePath,
+            attachment_url: filePath,
             file_name: req.file.originalname,
-            file_type: attachmentType,
-            file_size: formattedSize
+            attachment_name: req.file.originalname,
+            attachment_type: attachmentType,
+            file_size: `${(req.file.size / 1024).toFixed(1)} KB`
         });
     } catch (err) {
         console.error('Error uploading message attachment:', err);
-        res.status(500).json({ success: false, error: 'Failed to upload attachment: ' + err.message });
+        res.status(500).json({ success: false, error: 'Failed to process attachment upload.' });
     }
 };
 
@@ -328,15 +320,13 @@ exports.uploadMessageAttachment = async (req, res) => {
  */
 exports.sendMessage = async (req, res) => {
     const senderId = req.user.id;
-    const rawRecipientId = req.body.recipientId || req.body.receiver_id || req.body.recipient_id || req.body.recipient;
-    const recipientId = rawRecipientId ? parseInt(rawRecipientId, 10) : null;
-    const subject = req.body.subject || 'Direct Message';
+    const recipientId = req.body.recipient_id || req.body.receiver_id || req.body.recipientId;
+    const childId = req.body.child_id || req.body.childId || null;
+    const subject = req.body.subject || 'School Communication';
     const body = req.body.body || req.body.content || req.body.message || '';
-    const childId = req.body.childId || req.body.child_id ? parseInt(req.body.childId || req.body.child_id, 10) : null;
-
     const attachmentUrl = req.body.attachment_url || req.body.attachmentUrl || null;
     const attachmentName = req.body.attachment_name || req.body.attachmentName || null;
-    const attachmentType = req.body.attachment_type || req.body.attachmentType || null;
+    const attachmentType = req.body.attachment_type || req.body.attachmentType || 'document';
     const fileSize = req.body.file_size || req.body.fileSize || null;
     const voiceDuration = req.body.voice_duration || req.body.voiceDuration ? parseInt(req.body.voice_duration || req.body.voiceDuration, 10) : null;
 
@@ -377,22 +367,20 @@ exports.sendMessage = async (req, res) => {
 
         // Fetch sender's name for instant push notification
         try {
-            const senderRes = await db.query('SELECT full_name, surname FROM users WHERE id = $1', [senderId]);
-            const senderName = senderRes.rows[0] ? `${senderRes.rows[0].full_name} ${senderRes.rows[0].surname}` : 'A user';
+            const senderRes = await db.query('SELECT full_name, surname FROM users WHERE id::text = $1::text', [senderId]);
+            const senderName = senderRes.rows[0] ? `${senderRes.rows[0].full_name} ${senderRes.rows[0].surname}`.trim() : 'Fusion High User';
             
-            await NotificationService.sendToUsers({
-                userIds: [recipientId],
-                title: `💬 New Message from ${senderName}`,
-                message: textContent.length > 80 ? textContent.substring(0, 77) + '...' : textContent,
-                type: 'message',
-                targetTab: 'messages',
-                metadata: { senderId, senderName, messageId: result.rows[0].id }
-            });
+            await NotificationService.sendNotification(
+                recipientId,
+                `New Message from ${senderName}`,
+                textContent.length > 80 ? textContent.substring(0, 77) + '...' : textContent,
+                'chat'
+            );
         } catch (notifErr) {
-            console.warn('[MESSAGE NOTIFICATION NOTICE]:', notifErr.message);
+            console.warn('Chat notification error:', notifErr.message);
         }
 
-        res.json({ success: true, message: 'Message sent successfully.', messageRecord: result.rows[0] });
+        res.json({ success: true, message: 'Message sent successfully.', data: result.rows[0] });
     } catch (err) {
         console.error('Error sending message:', err);
         res.status(500).json({ success: false, error: 'Failed to send message: ' + err.message });
@@ -400,12 +388,11 @@ exports.sendMessage = async (req, res) => {
 };
 
 /**
- * Gets allowed communication contacts based on user role and database associations.
- * Deduplicates contacts so that each user appears exactly once in the chat directory.
+ * Returns allowed communication contacts with live unread counts and last message previews.
  */
 exports.getCommunicationContacts = async (req, res) => {
     const userId = req.user.id;
-    const role = req.user.role;
+    const role = (req.user.role || '').toLowerCase();
 
     try {
         let query = '';
@@ -413,131 +400,131 @@ exports.getCommunicationContacts = async (req, res) => {
 
         if (role === 'teacher') {
             query = `
-                SELECT u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name as role_name,
+                SELECT u.id, u.full_name, u.surname, u.email, u.profile_picture_path, COALESCE(r.name, u.role_id::text, 'learner') as role_name,
                        CASE 
-                           WHEN r.name = 'parent' THEN 'Parent' || CASE WHEN COUNT(c.id) > 0 THEN ' (' || STRING_AGG(DISTINCT c.full_name, ', ') || ')' ELSE '' END
-                           WHEN r.name = 'learner' THEN 'Learner - Grade ' || COALESCE(MAX(c.grade)::text, 'N/A')
-                           WHEN r.name = 'teacher' THEN COALESCE(MAX(e.subjects[1]), 'Teacher') || ' Teacher'
+                           WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'parent' THEN 'Parent' || CASE WHEN COUNT(c.id) > 0 THEN ' (' || STRING_AGG(DISTINCT c.full_name, ', ') || ')' ELSE '' END
+                           WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'learner' THEN 'Learner - Grade ' || COALESCE(MAX(c.grade)::text, 'N/A')
+                           WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN COALESCE(MAX(e.subjects[1]), 'Teacher') || ' Teacher'
                            ELSE 'School Admin'
                        END AS tag_name,
                        (
                            SELECT body FROM messages m 
-                           WHERE (m.sender_id = $1 AND m.recipient_id = u.id) OR (m.sender_id = u.id AND m.recipient_id = $1)
+                           WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
                            ORDER BY created_at DESC LIMIT 1
                        ) AS last_message,
                        (
                            SELECT created_at FROM messages m 
-                           WHERE (m.sender_id = $1 AND m.recipient_id = u.id) OR (m.sender_id = u.id AND m.recipient_id = $1)
+                           WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
                            ORDER BY created_at DESC LIMIT 1
                        ) AS last_activity,
                        (
                            SELECT COUNT(*) FROM messages m
-                           WHERE m.sender_id = u.id AND m.recipient_id = $1 AND m.read_at IS NULL
+                           WHERE m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text AND m.read_at IS NULL
                        ) AS unread_count
                 FROM users u
-                JOIN roles r ON u.role_id = r.id
-                LEFT JOIN employees e ON e.user_id = u.id
-                LEFT JOIN children c ON (c.parent_id = u.id OR c.learner_user_id = u.id)
-                WHERE u.id != $1 AND (
-                    r.name IN ('admin', 'teacher', 'parent', 'learner')
+                LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
+                LEFT JOIN employees e ON e.user_id::text = u.id::text
+                LEFT JOIN children c ON (c.parent_id::text = u.id::text OR c.learner_user_id::text = u.id::text)
+                WHERE u.id::text != $1::text AND (
+                    LOWER(COALESCE(r.name, u.role_id::text, '')) IN ('admin', 'teacher', 'parent', 'learner')
                 )
-                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name
+                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id
                 ORDER BY last_activity DESC NULLS LAST, u.full_name ASC;
             `;
         } else if (role === 'learner') {
-            const gradeRes = await db.query('SELECT grade FROM children WHERE learner_user_id = $1', [userId]);
+            const gradeRes = await db.query('SELECT grade FROM children WHERE learner_user_id::text = $1::text', [userId]);
             const learnerGrade = gradeRes.rows[0]?.grade || null;
 
             query = `
-                SELECT u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name as role_name,
+                SELECT u.id, u.full_name, u.surname, u.email, u.profile_picture_path, COALESCE(r.name, u.role_id::text, 'learner') as role_name,
                        CASE 
-                           WHEN r.name = 'teacher' THEN COALESCE(MAX(e.subjects[1]), 'Teacher') || ' Teacher'
-                           WHEN r.name = 'learner' THEN 'Grade ' || COALESCE(MAX(c.grade)::text, 'N/A') || ' Learner'
+                           WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN COALESCE(MAX(e.subjects[1]), 'Teacher') || ' Teacher'
+                           WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'learner' THEN 'Grade ' || COALESCE(MAX(c.grade)::text, 'N/A') || ' Learner'
                            ELSE 'School Admin'
                        END AS tag_name,
                        (
                            SELECT body FROM messages m 
-                           WHERE (m.sender_id = $1 AND m.recipient_id = u.id) OR (m.sender_id = u.id AND m.recipient_id = $1)
+                           WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
                            ORDER BY created_at DESC LIMIT 1
                        ) AS last_message,
                        (
                            SELECT created_at FROM messages m 
-                           WHERE (m.sender_id = $1 AND m.recipient_id = u.id) OR (m.sender_id = u.id AND m.recipient_id = $1)
+                           WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
                            ORDER BY created_at DESC LIMIT 1
                        ) AS last_activity,
                        (
                            SELECT COUNT(*) FROM messages m
-                           WHERE m.sender_id = u.id AND m.recipient_id = $1 AND m.read_at IS NULL
+                           WHERE m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text AND m.read_at IS NULL
                        ) AS unread_count
                 FROM users u
-                JOIN roles r ON u.role_id = r.id
-                LEFT JOIN employees e ON e.user_id = u.id
-                LEFT JOIN children c ON c.learner_user_id = u.id
-                WHERE u.id != $1 AND (
-                    r.name = 'admin' 
-                    OR (r.name = 'learner' AND ($2::int IS NULL OR c.grade = $2::int))
-                    OR (r.name = 'teacher' AND ($2::int IS NULL OR $2::int = ANY(e.grades_taught) OR ARRAY_LENGTH(e.grades_taught, 1) IS NULL OR e.grades_taught = '{}'))
+                LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
+                LEFT JOIN employees e ON e.user_id::text = u.id::text
+                LEFT JOIN children c ON c.learner_user_id::text = u.id::text
+                WHERE u.id::text != $1::text AND (
+                    LOWER(COALESCE(r.name, u.role_id::text, '')) = 'admin' 
+                    OR (LOWER(COALESCE(r.name, u.role_id::text, '')) = 'learner' AND ($2::text IS NULL OR c.grade::text = $2::text))
+                    OR (LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' AND ($2::int IS NULL OR $2::int = ANY(e.grades_taught) OR ARRAY_LENGTH(e.grades_taught, 1) IS NULL OR e.grades_taught = '{}'))
                 )
-                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name
+                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id
                 ORDER BY last_activity DESC NULLS LAST, u.full_name ASC;
             `;
-            params = [userId, learnerGrade];
+            params = [userId, learnerGrade ? String(learnerGrade) : null];
         } else if (role === 'parent') {
             query = `
-                SELECT u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name as role_name,
+                SELECT u.id, u.full_name, u.surname, u.email, u.profile_picture_path, COALESCE(r.name, u.role_id::text, 'teacher') as role_name,
                        CASE 
-                           WHEN r.name = 'teacher' THEN COALESCE(MAX(e.subjects[1]), 'Teacher') || ' Teacher'
+                           WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN COALESCE(MAX(e.subjects[1]), 'Teacher') || ' Teacher'
                            ELSE 'School Admin'
                        END AS tag_name,
                        (
                            SELECT body FROM messages m 
-                           WHERE (m.sender_id = $1 AND m.recipient_id = u.id) OR (m.sender_id = u.id AND m.recipient_id = $1)
+                           WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
                            ORDER BY created_at DESC LIMIT 1
                        ) AS last_message,
                        (
                            SELECT created_at FROM messages m 
-                           WHERE (m.sender_id = $1 AND m.recipient_id = u.id) OR (m.sender_id = u.id AND m.recipient_id = $1)
+                           WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
                            ORDER BY created_at DESC LIMIT 1
                        ) AS last_activity,
                        (
                            SELECT COUNT(*) FROM messages m
-                           WHERE m.sender_id = u.id AND m.recipient_id = $1 AND m.read_at IS NULL
+                           WHERE m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text AND m.read_at IS NULL
                        ) AS unread_count
                 FROM users u
-                JOIN roles r ON u.role_id = r.id
-                LEFT JOIN employees e ON e.user_id = u.id
-                WHERE u.id != $1 AND (r.name = 'admin' OR r.name = 'teacher')
-                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name
+                LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
+                LEFT JOIN employees e ON e.user_id::text = u.id::text
+                WHERE u.id::text != $1::text AND (LOWER(COALESCE(r.name, u.role_id::text, '')) IN ('admin', 'teacher'))
+                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id
                 ORDER BY last_activity DESC NULLS LAST, u.full_name ASC;
             `;
         } else {
             query = `
-                SELECT u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name as role_name,
+                SELECT u.id, u.full_name, u.surname, u.email, u.profile_picture_path, COALESCE(r.name, u.role_id::text, 'learner') as role_name,
                        CASE 
-                           WHEN r.name = 'teacher' THEN COALESCE(MAX(e.subjects[1]), 'Teacher') || ' Teacher'
-                           WHEN r.name = 'parent' THEN 'Parent'
-                           WHEN r.name = 'learner' THEN 'Learner'
+                           WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN COALESCE(MAX(e.subjects[1]), 'Teacher') || ' Teacher'
+                           WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'parent' THEN 'Parent'
+                           WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'learner' THEN 'Learner'
                            ELSE 'School Admin'
                        END AS tag_name,
                        (
                            SELECT body FROM messages m 
-                           WHERE (m.sender_id = $1 AND m.recipient_id = u.id) OR (m.sender_id = u.id AND m.recipient_id = $1)
+                           WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
                            ORDER BY created_at DESC LIMIT 1
                        ) AS last_message,
                        (
                            SELECT created_at FROM messages m 
-                           WHERE (m.sender_id = $1 AND m.recipient_id = u.id) OR (m.sender_id = u.id AND m.recipient_id = $1)
+                           WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
                            ORDER BY created_at DESC LIMIT 1
                        ) AS last_activity,
                        (
                            SELECT COUNT(*) FROM messages m
-                           WHERE m.sender_id = u.id AND m.recipient_id = $1 AND m.read_at IS NULL
+                           WHERE m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text AND m.read_at IS NULL
                        ) AS unread_count
                 FROM users u
-                JOIN roles r ON u.role_id = r.id
-                LEFT JOIN employees e ON e.user_id = u.id
-                WHERE u.id != $1
-                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name
+                LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
+                LEFT JOIN employees e ON e.user_id::text = u.id::text
+                WHERE u.id::text != $1::text
+                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id
                 ORDER BY last_activity DESC NULLS LAST, u.full_name ASC;
             `;
         }
@@ -546,7 +533,7 @@ exports.getCommunicationContacts = async (req, res) => {
         res.json(rows);
     } catch (err) {
         console.error('Error fetching communication contacts:', err);
-        res.status(500).json({ error: 'Failed to retrieve allowed contact list.' });
+        res.status(500).json({ error: 'Failed to retrieve allowed contact list: ' + err.message });
     }
 };
 
@@ -564,10 +551,10 @@ exports.getConversationHistory = async (req, res) => {
                    sender.full_name as sender_name, sender.surname as sender_surname, sender.profile_picture_path as sender_pfp,
                    recipient.full_name as recipient_name, recipient.surname as recipient_surname, recipient.profile_picture_path as recipient_pfp
             FROM messages m
-            JOIN users sender ON m.sender_id = sender.id
-            JOIN users recipient ON m.recipient_id = recipient.id
-            WHERE (m.sender_id = $1 AND m.recipient_id = $2)
-               OR (m.sender_id = $2 AND m.recipient_id = $1)
+            JOIN users sender ON m.sender_id::text = sender.id::text
+            JOIN users recipient ON m.recipient_id::text = recipient.id::text
+            WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = $2::text)
+               OR (m.sender_id::text = $2::text AND m.recipient_id::text = $1::text)
             ORDER BY m.id ASC, m.created_at ASC;
         `;
         const { rows } = await db.query(query, [userId, recipientId]);
@@ -575,11 +562,11 @@ exports.getConversationHistory = async (req, res) => {
         // Sort chronologically by timestamp
         rows.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
-        await db.query('UPDATE messages SET read_at = NOW() WHERE recipient_id = $1 AND sender_id = $2 AND read_at IS NULL', [userId, recipientId]);
+        await db.query('UPDATE messages SET read_at = NOW() WHERE recipient_id::text = $1::text AND sender_id::text = $2::text AND read_at IS NULL', [userId, recipientId]);
 
         res.json(rows);
     } catch (err) {
         console.error('Error fetching conversation history:', err);
-        res.status(500).json({ error: 'Failed to load conversation history.' });
+        res.status(500).json({ error: 'Failed to load conversation history: ' + err.message });
     }
-};
+};
