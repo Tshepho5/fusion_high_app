@@ -8,19 +8,53 @@ const nodemailer = require('nodemailer');
 const getSmtpUser = () => (process.env.SMTP_USER || 'tshepomakola23@gmail.com').trim().replace(/^["']|["']$/g, '');
 const getSmtpPass = () => (process.env.SMTP_PASS || 'ixuyslitvtetlmzc').trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '');
 
-function createTransporter() {
+let pooledTransporter = null;
+let lastSmtpUser = null;
+let lastSmtpPass = null;
+
+function getPooledTransporter() {
   const user = getSmtpUser();
   const pass = getSmtpPass();
-  
-  return nodemailer.createTransport({
+
+  if (pooledTransporter && lastSmtpUser === user && lastSmtpPass === pass) {
+    return pooledTransporter;
+  }
+
+  pooledTransporter = nodemailer.createTransport({
+    pool: true,
+    maxConnections: 5,
+    maxMessages: 500,
+    rateLimit: 14, // Gmail max 14 msgs/sec
     host: 'smtp.gmail.com',
     port: 465,
     secure: true,
     auth: { user, pass },
     tls: { rejectUnauthorized: false },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000
+    family: 4,
+    connectionTimeout: 6000,
+    greetingTimeout: 6000,
+    socketTimeout: 10000
+  });
+
+  lastSmtpUser = user;
+  lastSmtpPass = pass;
+  return pooledTransporter;
+}
+
+function createDirectTransporter(port = 465, secure = true) {
+  const user = getSmtpUser();
+  const pass = getSmtpPass();
+  
+  return nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port,
+    secure,
+    auth: { user, pass },
+    tls: { rejectUnauthorized: false, ciphers: 'SSLv3' },
+    family: 4,
+    connectionTimeout: 6000,
+    greetingTimeout: 6000,
+    socketTimeout: 10000
   });
 }
 
@@ -148,7 +182,7 @@ function createBaseEmailTemplate({ preheader, title, subtitle, contentHtml, ctaT
 
 const emailService = {
   /**
-   * Real email sender using Nodemailer with automatic TLS fallback.
+   * High-speed email sender using Nodemailer connection pooling with automatic fallback.
    */
   send: async (to, subject, body, replyTo = null) => {
     if (!to || !to.includes('@')) {
@@ -186,7 +220,6 @@ const emailService = {
     }
 
     const senderUser = getSmtpUser();
-    const senderPass = getSmtpPass();
     const mailOptions = {
       from: `"Fusion High School" <${senderUser}>`,
       to: targetRecipient,
@@ -195,59 +228,53 @@ const emailService = {
       ...(replyTo && { replyTo })
     };
 
-    // Strategy 1: service: 'gmail' with IPv4 binding
+    // Strategy 1: High-speed Persistent Connection Pool (SSL Port 465)
     try {
-      const t1 = nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user: senderUser, pass: senderPass },
-        tls: { rejectUnauthorized: false },
-        family: 4,
-        connectionTimeout: 10000,
-        greetingTimeout: 10000
-      });
-      const info = await t1.sendMail(mailOptions);
-      console.log(`[EMAIL SUCCESS - Service Gmail] Dispatched to ${to}: ${info.messageId}`);
+      const pool = getPooledTransporter();
+      const info = await pool.sendMail(mailOptions);
+      console.log(`[EMAIL DISPATCH INSTANT] Delivered to ${targetRecipient}: ${info.messageId}`);
       return { success: true, messageId: info.messageId };
     } catch (e1) {
-      console.warn(`[EMAIL RETRY 1] service: 'gmail' failed (${e1.message}), attempting Port 465 SSL...`);
-      // Strategy 2: Port 465 SSL direct with IPv4
+      console.warn(`[EMAIL RETRY 1] Pool delivery warning (${e1.message}), attempting direct Port 587 STARTTLS...`);
+      // Strategy 2: Direct Port 587 STARTTLS
       try {
-        const t2 = nodemailer.createTransport({
-          host: 'smtp.gmail.com',
-          port: 465,
-          secure: true,
-          auth: { user: senderUser, pass: senderPass },
-          tls: { rejectUnauthorized: false },
-          family: 4,
-          connectionTimeout: 10000,
-          greetingTimeout: 10000
-        });
+        const t2 = createDirectTransporter(587, false);
         const info = await t2.sendMail(mailOptions);
-        console.log(`[EMAIL SUCCESS - Port 465] Dispatched to ${to}: ${info.messageId}`);
+        console.log(`[EMAIL SUCCESS - Port 587] Delivered to ${targetRecipient}: ${info.messageId}`);
         return { success: true, messageId: info.messageId };
       } catch (e2) {
-        console.warn(`[EMAIL RETRY 2] Port 465 failed (${e2.message}), attempting Port 587 STARTTLS...`);
-        // Strategy 3: Port 587 STARTTLS with IPv4
+        console.warn(`[EMAIL RETRY 2] Port 587 warning (${e2.message}), attempting direct service: 'gmail'...`);
+        // Strategy 3: Direct service: 'gmail'
         try {
           const t3 = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
-            port: 587,
-            secure: false,
-            auth: { user: senderUser, pass: senderPass },
-            tls: { rejectUnauthorized: false, ciphers: 'SSLv3' },
+            service: 'gmail',
+            auth: { user: senderUser, pass: getSmtpPass() },
             family: 4,
-            connectionTimeout: 10000,
-            greetingTimeout: 10000
+            tls: { rejectUnauthorized: false },
+            connectionTimeout: 6000,
+            greetingTimeout: 6000
           });
           const info = await t3.sendMail(mailOptions);
-          console.log(`[EMAIL SUCCESS - Port 587] Dispatched to ${to}: ${info.messageId}`);
+          console.log(`[EMAIL SUCCESS - Service Gmail] Delivered to ${targetRecipient}: ${info.messageId}`);
           return { success: true, messageId: info.messageId };
         } catch (e3) {
-          console.error('[EMAIL ERROR - All 3 Transporters Failed]:', e3.message || e3);
+          console.error('[EMAIL ERROR - All Transporters Failed]:', e3.message || e3);
           return { success: false, error: e1.message || e2.message || e3.message };
         }
       }
     }
+  },
+
+  /**
+   * Asynchronous fire-and-forget email sender for high-throughput background notifications.
+   * Returns immediately so API responses are near-instantaneous.
+   */
+  sendAsync: (to, subject, body, replyTo = null) => {
+    setImmediate(() => {
+      emailService.send(to, subject, body, replyTo).catch(err => {
+        console.warn('[EMAIL ASYNC ERROR]:', err.message);
+      });
+    });
   },
 
   // Alias for send
