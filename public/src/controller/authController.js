@@ -902,6 +902,13 @@ exports.forgotPassword = async (req, res) => {
         console.log(`[AUTH] Dispatching OTP [${otp}] to destination email: ${targetDeliveryEmail} for user ID ${user.id} (${user.email})`);
         const sendResult = await emailService.send(targetDeliveryEmail, tpl.subject, tpl.body);
 
+        if (!sendResult || sendResult.success === false) {
+            console.error('[AUTH FORGOT PW NOTICE] Email service dispatch error:', sendResult ? sendResult.error : 'Failed to send email via SMTP');
+            return res.status(500).json({
+                error: `Unable to deliver recovery OTP email to ${targetDeliveryEmail}: ${sendResult?.error || 'Email service connection error'}. Please check your SMTP configuration or try again.`
+            });
+        }
+
         // Create a helpful masked email (e.g. ts***@gmail.com)
         const parts = targetDeliveryEmail.split('@');
         const masked = parts[0].length > 2 
@@ -951,7 +958,7 @@ exports.verifyOTP = async (req, res) => {
                    SELECT 1 FROM children c3 
                    WHERE (c3.parent_id::text = u.id::text OR c3.secondary_parent_id::text = u.id::text) AND (TRIM(c3.learner_number::text) = $2 OR c3.id::text = $2)
                ))
-              AND u.reset_code = $4
+              AND u.reset_code::text = $4::text
             ORDER BY u.id DESC
             LIMIT 1
         `, [cleanInput, queryInput, numericOnly, rawCode]);
@@ -1007,7 +1014,7 @@ exports.resetPassword = async (req, res) => {
                    SELECT 1 FROM children c3 
                    WHERE (c3.parent_id::text = u.id::text OR c3.secondary_parent_id::text = u.id::text) AND (TRIM(c3.learner_number::text) = $2 OR c3.id::text = $2)
                ))
-              AND u.reset_code = $4
+              AND u.reset_code::text = $4::text
             ORDER BY u.id DESC
             LIMIT 1
         `, [cleanInput, queryInput, numericOnly, rawCode]);
