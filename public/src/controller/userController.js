@@ -7,10 +7,11 @@ const { validatePassword } = require('./authController');
 exports.getProfile = async (req, res) => {
     try {
         const userRes = await db.query(
-            `SELECT u.id, u.email, u.full_name, u.surname, u.phone, u.id_number, u.gender, u.physical_address, u.country, u.race, u.preferences, u.profile_picture_path, r.name as role 
+            `SELECT u.id, u.email, u.full_name, u.surname, u.phone, u.id_number, u.gender, u.physical_address, u.country, u.race, u.preferences, u.profile_picture_path, 
+                    COALESCE(r.name, u.role_id::text, 'learner') as role 
              FROM users u 
-             JOIN roles r ON u.role_id = r.id 
-             WHERE u.id = $1`,
+             LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text)) 
+             WHERE u.id::text = $1::text`,
             [req.user.id]
         );
 
@@ -23,7 +24,7 @@ exports.getProfile = async (req, res) => {
             const lrnNum = (user.email || '').split('@')[0];
             const childRes = await db.query(
                 `SELECT * FROM children 
-                 WHERE learner_user_id = $1 OR learner_number = $2 OR (id_number IS NOT NULL AND id_number = $3)
+                 WHERE learner_user_id::text = $1::text OR learner_number::text = $2::text OR (id_number IS NOT NULL AND id_number::text = $3::text)
                  LIMIT 1`, 
                 [req.user.id, lrnNum, user.id_number || '']
             );
