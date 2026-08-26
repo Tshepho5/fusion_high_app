@@ -156,17 +156,40 @@ const emailService = {
       return { success: false, error: `Invalid recipient email address: '${to}'` };
     }
 
-    const cleanTo = to.trim().toLowerCase();
-    if (cleanTo.endsWith('@fusion.high')) {
-      console.warn('[EMAIL ERROR] Cannot deliver email to internal placeholder domain:', cleanTo);
-      return { success: false, error: `Cannot deliver to internal placeholder domain '${cleanTo}'. Please use the linked parent/guardian email address.` };
+    let targetRecipient = to.trim().toLowerCase();
+
+    // If destination is a learner login address (@fusion.high or @fusionhigh.co.za), automatically resolve the linked Parent's personal email
+    if (targetRecipient.endsWith('@fusion.high') || targetRecipient.endsWith('@fusionhigh.co.za')) {
+      try {
+        const db = require('../../../db/db');
+        const parentRes = await db.query(`
+          SELECT pu.email as parent_email 
+          FROM users u
+          LEFT JOIN children c ON c.learner_user_id::text = u.id::text
+          LEFT JOIN users pu ON c.parent_id::text = pu.id::text
+          WHERE LOWER(u.email::text) = $1 AND pu.email IS NOT NULL AND pu.email NOT LIKE '%@fusion.high%' AND pu.email NOT LIKE '%@fusionhigh.co.za%'
+          LIMIT 1
+        `, [targetRecipient]);
+
+        if (parentRes.rows.length > 0 && parentRes.rows[0].parent_email) {
+          const parentPersonalEmail = parentRes.rows[0].parent_email.trim();
+          console.log(`[EMAIL ROUTING] Redirected learner login [${targetRecipient}] notice to Parent personal email [${parentPersonalEmail}]`);
+          targetRecipient = parentPersonalEmail;
+        } else {
+          console.log(`[EMAIL NOTICE] Learner email [${targetRecipient}] is a portal login identifier. No linked parent email was found.`);
+          return { success: true, skipped: true, reason: 'Learner accounts are for portal login only.' };
+        }
+      } catch (lookupErr) {
+        console.warn('[EMAIL ROUTING] Parent email lookup notice:', lookupErr.message);
+        return { success: true, skipped: true, reason: 'Learner login identifier only.' };
+      }
     }
 
     const senderUser = getSmtpUser();
     const senderPass = getSmtpPass();
     const mailOptions = {
       from: `"Fusion High School" <${senderUser}>`,
-      to: cleanTo,
+      to: targetRecipient,
       subject,
       html: body,
       ...(replyTo && { replyTo })
