@@ -13,6 +13,65 @@ async function initializeAllDatabaseTables(customClient) {
     await runner.query(`
       CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+      -- 0. Multi-School Tenant Table (Mankweng / Polokwane & National)
+      CREATE TABLE IF NOT EXISTS schools (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL,
+        slug VARCHAR(100) UNIQUE NOT NULL,
+        domain VARCHAR(255),
+        emis_number VARCHAR(50),
+        circuit VARCHAR(100),
+        district VARCHAR(100) DEFAULT 'Capricorn South',
+        province VARCHAR(50) DEFAULT 'Limpopo',
+        physical_address TEXT,
+        contact_email VARCHAR(255),
+        contact_phone VARCHAR(50),
+        principal_name VARCHAR(255),
+        logo_url TEXT,
+        badge_url TEXT,
+        primary_color VARCHAR(20) DEFAULT '#4f46e5',
+        secondary_color VARCHAR(20) DEFAULT '#06b6d4',
+        accent_color VARCHAR(20) DEFAULT '#f59e0b',
+        motto TEXT,
+        curriculum_type VARCHAR(50) DEFAULT 'CAPS (DBE Limpopo)',
+        grade_range VARCHAR(50) DEFAULT '8-12',
+        is_active BOOLEAN DEFAULT TRUE,
+        settings JSONB DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      INSERT INTO schools (id, name, slug, domain, emis_number, circuit, district, province, physical_address, contact_email, contact_phone, principal_name, primary_color, secondary_color, accent_color, motto, curriculum_type, grade_range)
+      VALUES
+        (1, 'Fusion High School', 'fusion-high', 'fusion-high.co.za', '911220001', 'Polokwane Central Circuit', 'Capricorn South', 'Limpopo', 'Polokwane Central, Limpopo, 0700', 'admin@fusionhigh.co.za', '+27 15 291 0000', 'Dr. T. Makola', '#4f46e5', '#06b6d4', '#f59e0b', 'Innovate, Lead, Transform', 'CAPS (DBE Limpopo)', '8-12'),
+        (2, 'Mountainview Senior Secondary School', 'mountainview-high', 'mountainview.co.za', '911220452', 'Mankweng Circuit', 'Capricorn South', 'Limpopo', 'Mankweng Unit C, Polokwane, 0727', 'info@mountainviewhigh.co.za', '+27 15 267 1100', 'Mr. M. S. Phasha', '#1e40af', '#3b82f6', '#f59e0b', 'Strive for Excellence', 'CAPS (DBE Limpopo)', '8-12'),
+        (3, 'Makgoka High School', 'makgoka-high', 'makgoka.co.za', '911220411', 'Molepo Circuit', 'Capricorn South', 'Limpopo', 'Ga-Molepo, Mankweng Area, Polokwane, 0727', 'admin@makgoka.co.za', '+27 15 267 2200', 'Mrs. K. E. Molepo', '#065f46', '#10b981', '#fbbf24', 'Knowledge is Light', 'CAPS (DBE Limpopo)', '8-12'),
+        (4, 'Turfloop High School', 'turfloop-high', 'turfloop.co.za', '911220612', 'Mankweng Circuit', 'Capricorn South', 'Limpopo', 'University Road, Turfloop, Mankweng, 0727', 'principal@turfloophigh.co.za', '+27 15 267 3300', 'Mr. N. J. Mamabolo', '#1e1b4b', '#4338ca', '#991b1b', 'Education for Progress', 'CAPS (DBE Limpopo)', '8-12'),
+        (5, 'Hwiti High School', 'hwiti-high', 'hwiti.co.za', '911220323', 'Mankweng Circuit', 'Capricorn South', 'Limpopo', 'Sovenga Zone 1, Mankweng, Polokwane, 0727', 'info@hwitisecondary.co.za', '+27 15 267 4400', 'Mrs. R. M. Ramokgopa', '#581c87', '#9333ea', '#06b6d4', 'Perseverance Conquers', 'CAPS (DBE Limpopo)', '8-12'),
+        (6, 'Ngwana Mohube Secondary School', 'ngwana-mohube', 'ngwanamohube.co.za', '911220501', 'Mankweng Circuit', 'Capricorn South', 'Limpopo', 'Segopje Village, Mankweng Area, Polokwane, 0727', 'admin@ngwanamohube.co.za', '+27 15 267 5500', 'Mr. S. P. Mohube', '#991b1b', '#ef4444', '#0f172a', 'Forward in Excellence', 'CAPS (DBE Limpopo)', '8-12')
+      ON CONFLICT (name) DO UPDATE SET
+        slug = EXCLUDED.slug,
+        emis_number = EXCLUDED.emis_number,
+        circuit = EXCLUDED.circuit,
+        district = EXCLUDED.district,
+        province = EXCLUDED.province,
+        physical_address = EXCLUDED.physical_address,
+        primary_color = EXCLUDED.primary_color,
+        secondary_color = EXCLUDED.secondary_color,
+        accent_color = EXCLUDED.accent_color,
+        motto = EXCLUDED.motto;
+
+      -- Add school_id column to tables
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE employees ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE subjects ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE fee_invoices ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE timetables ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE applications ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+
       -- 1. Core Auth & Organizational Tables
       CREATE TABLE IF NOT EXISTS roles (
         id SERIAL PRIMARY KEY,

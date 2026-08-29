@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { SchoolProvider } from './context/SchoolContext';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { PwaInstallPrompt } from './components/common/PwaInstallPrompt';
 
@@ -42,10 +43,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRole?: string
 export const App: React.FC = () => {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <Router>
-          {/* Global Mandatory Terms & Conditions Agreement Gate (Requires acceptance before using app) */}
-          <TermsAgreementModal isMandatoryGate={true} />
+      <SchoolProvider>
+        <AuthProvider>
+          <Router>
+            {/* Global Mandatory Terms & Conditions Agreement Gate (Requires acceptance before using app) */}
+            <TermsAgreementModal isMandatoryGate={true} />
 
           <Suspense
             fallback={
@@ -106,6 +108,7 @@ export const App: React.FC = () => {
           <PwaInstallPrompt />
         </Router>
       </AuthProvider>
-    </ThemeProvider>
+    </SchoolProvider>
+  </ThemeProvider>
   );
 };

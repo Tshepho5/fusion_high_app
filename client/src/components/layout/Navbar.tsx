@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, AppTheme, AppFont } from '../../context/ThemeContext';
+import { useSchool } from '../../context/SchoolContext';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
 import {
   Palette,
@@ -14,7 +15,9 @@ import {
   Check,
   Type,
   Search,
-  Command
+  Command,
+  Building2,
+  ChevronDown
 } from 'lucide-react';
 
 import { NotificationDropdown } from './NotificationDropdown';
@@ -28,7 +31,9 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPalette, title }) => {
   const { user, role } = useAuth();
   const { theme, font, setTheme, setFont, toggleTheme } = useTheme();
+  const { currentSchool, schoolsList, setSchoolById } = useSchool();
   const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const [showSchoolMenu, setShowSchoolMenu] = useState(false);
 
   const getRoleIcon = () => {
     switch (role) {
@@ -99,14 +104,96 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
         </div>
       </div>
 
-      {/* Middle: FUSION HIGH Brand Header */}
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-lg bg-brand-500/20 text-brand-400 flex items-center justify-center border border-brand-500/30 shadow-glow-indigo">
-          <GraduationCap className="w-4 h-4 text-brand-300" />
-        </div>
-        <span className="text-sm md:text-base font-extrabold font-display text-white tracking-wide uppercase">
-          FUSION HIGH
-        </span>
+      {/* Middle: Dynamic Multi-School Header & Switcher */}
+      <div className="relative">
+        <button
+          onClick={() => setShowSchoolMenu(!showSchoolMenu)}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-dark/80 hover:bg-surface-dark border border-white/10 hover:border-brand-500/40 transition-all text-left shadow-sm group"
+          title="Click to Switch School Environment (Mankweng / Polokwane)"
+        >
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center border shadow-sm transition-transform group-hover:scale-105"
+            style={{
+              backgroundColor: `${currentSchool?.primary_color || '#4f46e5'}20`,
+              borderColor: `${currentSchool?.primary_color || '#4f46e5'}50`
+            }}
+          >
+            <GraduationCap className="w-4 h-4" style={{ color: currentSchool?.primary_color || '#818cf8' }} />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs md:text-sm font-extrabold font-display text-white tracking-wide uppercase line-clamp-1 max-w-[180px] md:max-w-[260px]">
+              {currentSchool?.name || 'Fusion High School'}
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+              <span>{currentSchool?.circuit || 'Mankweng Circuit'}</span>
+              <span className="text-slate-500">•</span>
+              <span className="text-cyan-400 font-bold">EMIS {currentSchool?.emis_number || '911220001'}</span>
+            </span>
+          </div>
+          <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showSchoolMenu ? 'rotate-180 text-brand-400' : ''}`} />
+        </button>
+
+        {/* Multi-School Switcher Dropdown */}
+        {showSchoolMenu && (
+          <div
+            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-80 md:w-96 rounded-2xl bg-surface-dark border border-white/15 shadow-2xl p-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl"
+            onMouseLeave={() => setShowSchoolMenu(false)}
+          >
+            <div className="px-3 py-2 border-b border-white/10 mb-1.5 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-cyan-400" />
+                  Mankweng & Polokwane Schools
+                </p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Select a school to switch institutional branding</p>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-mono font-bold">
+                {schoolsList.length} Active
+              </span>
+            </div>
+
+            <div className="space-y-1 max-h-72 overflow-y-auto custom-scrollbar">
+              {schoolsList.map(school => {
+                const isSelected = currentSchool?.id === school.id;
+                return (
+                  <button
+                    key={school.id}
+                    onClick={() => {
+                      setSchoolById(school.id);
+                      setShowSchoolMenu(false);
+                    }}
+                    className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all ${
+                      isSelected
+                        ? 'bg-brand-500/20 border border-brand-500/40 text-white shadow-glow-indigo'
+                        : 'hover:bg-white/5 text-slate-300 hover:text-white border border-transparent'
+                    }`}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border"
+                      style={{
+                        backgroundColor: `${school.primary_color}25`,
+                        borderColor: `${school.primary_color}60`
+                      }}
+                    >
+                      <GraduationCap className="w-4 h-4" style={{ color: school.primary_color }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold truncate text-white">{school.name}</p>
+                      <p className="text-[10px] text-slate-400 truncate flex items-center gap-1">
+                        <span>{school.circuit}</span>
+                        <span className="text-slate-500">•</span>
+                        <span className="text-amber-400 italic">"{school.motto}"</span>
+                      </p>
+                    </div>
+                    {isSelected && (
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-glow-emerald shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Right: Quick Search, Role, Dark/Light Mode, Theme Palette, Notifications */}

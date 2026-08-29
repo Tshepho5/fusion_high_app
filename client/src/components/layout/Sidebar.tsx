@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useSchool } from '../../context/SchoolContext';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
 import { AboutUsModal } from './AboutUsModal';
 import { ContactUsModal } from './ContactUsModal';
@@ -39,6 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { user, role, logout } = useAuth();
   const { theme } = useTheme();
+  const { currentSchool } = useSchool();
   const isLight = theme === 'light';
 
   const [aboutUsOpen, setAboutUsOpen] = useState(false);
@@ -75,16 +77,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         {/* Brand Header */}
         <div className="flex h-20 items-center justify-between px-5 border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/5 p-1 border border-white/15 shadow-glow-indigo shrink-0">
-              <img src="/assets/FH.png" alt="Fusion High Logo" className="w-full h-full object-contain" />
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="flex h-11 w-11 items-center justify-center rounded-2xl p-1 border shadow-sm shrink-0"
+              style={{
+                backgroundColor: `${currentSchool?.primary_color || '#4f46e5'}20`,
+                borderColor: `${currentSchool?.primary_color || '#4f46e5'}40`
+              }}
+            >
+              <GraduationCap className="w-6 h-6" style={{ color: currentSchool?.primary_color || '#818cf8' }} />
             </div>
             <div className="min-w-0">
-              <span className="font-display text-base font-extrabold tracking-tight text-white block truncate leading-tight">
-                FUSION HIGH
+              <span className="font-display text-sm font-extrabold tracking-tight text-white block truncate leading-tight uppercase">
+                {currentSchool?.name || 'FUSION HIGH'}
               </span>
               <span className="text-[8.5px] font-mono uppercase tracking-wider text-cyan-400 font-bold block truncate">
-                ONE SCHOOL • ONE CONNECTION
+                {currentSchool?.motto || 'ONE SCHOOL • ONE CONNECTION'}
               </span>
             </div>
           </div>
