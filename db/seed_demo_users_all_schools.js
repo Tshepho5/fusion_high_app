@@ -251,11 +251,20 @@ async function seedDemoUsers() {
     console.log('👉 The system automatically detects their school and displays their branded dashboard.');
     console.log('================================================================\n');
 
-    process.exit(0);
+    if (require.main === module) {
+      process.exit(0);
+    }
   } catch (err) {
     console.error('❌ Error seeding demo users:', err);
-    process.exit(1);
+    if (require.main === module) {
+      process.exit(1);
+    }
+    throw err;
   }
 }
 
-seedDemoUsers();
+if (require.main === module) {
+  seedDemoUsers();
+}
+
+module.exports = { seedDemoUsers, SCHOOL_DEMO_USERS, DEMO_PASSWORD };

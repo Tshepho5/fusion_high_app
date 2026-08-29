@@ -48,6 +48,7 @@ if (!fs.existsSync(appUploadDir)) fs.mkdirSync(appUploadDir, { recursive: true }
 const initializeAllDatabaseTables = require('./db/init_full_schema');
 const runAllTables = require('./db/verify_and_run_all_tables');
 const { fixAllUserPasswords } = require('./db/fix_all_user_passwords');
+const { seedDemoUsers } = require('./db/seed_demo_users_all_schools');
 (async () => {
   try {
     await initializeAllDatabaseTables();
@@ -55,7 +56,8 @@ const { fixAllUserPasswords } = require('./db/fix_all_user_passwords');
     await initApplicationTables();
     await NotificationService.initSchema();
     await fixAllUserPasswords();
-    console.log('[DB BOOTSTRAP] All database tables and schemas verified successfully.');
+    await seedDemoUsers();
+    console.log('[DB BOOTSTRAP] All database tables, schemas, and demo users verified successfully.');
   } catch (err) {
     console.error('[DB BOOTSTRAP] Initialization error:', err.message);
   }
