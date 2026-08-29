@@ -72,18 +72,6 @@ async function initializeAllDatabaseTables(customClient) {
 
       SELECT setval(pg_get_serial_sequence('schools', 'id'), COALESCE((SELECT MAX(id) FROM schools), 1));
 
-      -- Add school_id column to tables
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-      ALTER TABLE children ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-      ALTER TABLE employees ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-      ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-      ALTER TABLE subjects ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-      ALTER TABLE fee_invoices ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-      ALTER TABLE timetables ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-      ALTER TABLE applications ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-      ALTER TABLE events ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-
       -- 1. Core Auth & Organizational Tables
       CREATE TABLE IF NOT EXISTS roles (
         id SERIAL PRIMARY KEY,
@@ -124,6 +112,7 @@ async function initializeAllDatabaseTables(customClient) {
         country VARCHAR(100),
         race VARCHAR(50),
         parent_type VARCHAR(50),
+        school_id INTEGER DEFAULT 1,
         reset_code VARCHAR(10),
         reset_expiry TIMESTAMP,
         profile_picture_path VARCHAR(255),
@@ -145,8 +134,13 @@ async function initializeAllDatabaseTables(customClient) {
         phone VARCHAR(20),
         email VARCHAR(255),
         hired_date DATE,
+        school_id INTEGER DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- Add school_id column to tables in case they existed prior
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE employees ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
 
       CREATE TABLE IF NOT EXISTS classes (
         id SERIAL PRIMARY KEY,

@@ -131,6 +131,20 @@ async function seedDemoUsers() {
   console.log('================================================================\n');
 
   try {
+    // Ensure school_id column exists on all relevant tables
+    await db.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE employees ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE subjects ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE fee_invoices ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE applications ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE children DROP CONSTRAINT IF EXISTS children_check;
+      ALTER TABLE children ADD CONSTRAINT children_check CHECK (grade < 10 OR stream IN ('Science', 'Commerce', 'Tourism', 'Humanities', 'General', 'Technical'));
+    `);
+
     const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
 
     // Get role IDs
