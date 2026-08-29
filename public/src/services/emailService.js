@@ -328,16 +328,20 @@ const emailService = {
               <td style="color: #ffffff; font-weight: 700;">Grade ${l.grade} &bull; Stream: ${l.stream || 'General'}</td>
             </tr>
             <tr>
-              <td style="padding: 3px 0; color: #94a3b8;">Student Login Email:</td>
-              <td style="color: #38bdf8; font-family: monospace; font-weight: 700;">${l.learner_email || `${(l.learner_number || 'learner').toLowerCase().replace(/\s/g, '')}@fusionhigh.co.za`}</td>
+              <td style="padding: 3px 0; color: #94a3b8;">Learner Number:</td>
+              <td style="color: #38bdf8; font-family: monospace; font-weight: 800;">${l.learner_number || `ID-${l.id}`}</td>
             </tr>
             <tr>
-              <td style="padding: 3px 0; color: #94a3b8;">Initial Password (from ID):</td>
+              <td style="padding: 3px 0; color: #94a3b8;">Student Login Email:</td>
+              <td style="color: #38bdf8; font-family: monospace; font-weight: 700;">${l.learner_email || `${(l.learner_number || 'learner').toLowerCase().replace(/\s/g, '')}@fusionhigh.ac.za`}</td>
+            </tr>
+            <tr>
+              <td style="padding: 3px 0; color: #94a3b8;">Initial Password:</td>
               <td>
                 <span style="display: inline-block; background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(99, 102, 241, 0.4); color: #c7d2fe; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-weight: 800;">
-                  ${l.generated_password || 'FH@202601'}
+                  ${l.id_number || l.generated_password || 'Learner ID Number'}
                 </span>
-                <span style="font-size: 10px; color: #64748b; margin-left: 6px;">(Derived from ID Number)</span>
+                <span style="font-size: 10px; color: #64748b; margin-left: 6px;">(Learner South African ID Number)</span>
               </td>
             </tr>
           </table>

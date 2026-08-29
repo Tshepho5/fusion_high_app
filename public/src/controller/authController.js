@@ -200,26 +200,36 @@ async function generateOfficialLearnerNumber() {
 }
 
 /**
- * Generates initial learner password from South African ID Number:
- * Takes 1st digit, skips 2 digits, takes following digit systematically (indices: 0, 3, 6, 9, 12).
+ * Returns the school's official ac.za domain for student emails
+ */
+function getSchoolAcZaDomain(school) {
+    if (!school) return 'fusionhigh.ac.za';
+    if (typeof school === 'string') {
+        const clean = school.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return clean ? `${clean}.ac.za` : 'fusionhigh.ac.za';
+    }
+    const slug = (school.slug || school.domain || school.name || '').toLowerCase();
+    let cleanSlug = slug
+        .replace(/\.co\.za|\.org\.za|\.gov\.za|\.ac\.za/g, '')
+        .replace(/-secondary-lotus/g, 'secondary')
+        .replace(/-high|-secondary/g, '')
+        .replace(/[^a-z0-9]/g, '');
+    if (slug.includes('fusion') && slug.includes('lotus')) cleanSlug = 'fusionsecondary';
+    else if (slug.includes('fusion')) cleanSlug = 'fusionhigh';
+    return cleanSlug ? `${cleanSlug}.ac.za` : 'fusionhigh.ac.za';
+}
+
+/**
+ * Generates initial learner password from South African ID Number (Full ID Number)
  */
 function generateLearnerPasswordFromID(idNumber) {
     const cleanId = (idNumber || '').toString().replace(/\D/g, '').trim();
-    if (cleanId.length >= 13) {
-        return `${cleanId.charAt(0)}${cleanId.charAt(3)}${cleanId.charAt(6)}${cleanId.charAt(9)}${cleanId.charAt(12)}`;
-    }
-    if (cleanId.length >= 5) {
-        let result = '';
-        for (let i = 0; i < cleanId.length; i += 3) {
-            result += cleanId.charAt(i);
-        }
-        return result;
-    }
-    return cleanId && cleanId.length >= 3 ? cleanId : '123456';
+    return cleanId || '123456';
 }
 
 exports.generateOfficialLearnerNumber = generateOfficialLearnerNumber;
 exports.generateLearnerPasswordFromID = generateLearnerPasswordFromID;
+exports.getSchoolAcZaDomain = getSchoolAcZaDomain;
 
 /**
  * Registers parent user and links their child / children seamlessly.
@@ -231,6 +241,12 @@ exports.registerUser = async (req, res) => {
     } = req.body;
 
     const targetSchoolId = parseInt(school_id || req.headers['x-school-id'] || 1, 10);
+    let schoolData = { id: targetSchoolId, name: 'Fusion High School', slug: 'fusion-high' };
+    try {
+        const sRes = await db.query('SELECT id, name, slug, domain FROM schools WHERE id = $1', [targetSchoolId]);
+        if (sRes.rows.length > 0) schoolData = sRes.rows[0];
+    } catch (_) {}
+    const schoolDomain = getSchoolAcZaDomain(schoolData);
     
     const normalizedEmail = (email || '').toString().toLowerCase().trim();
     if (!normalizedEmail || !password || !full_name || !surname) {
@@ -303,12 +319,14 @@ exports.registerUser = async (req, res) => {
             // If found in children table
             if (cRes.rows.length > 0) {
                 const found = cRes.rows[0];
-                const cleanId = found.user_id_num || childIdNum || '202601';
-                const generatedPassword = generateLearnerPasswordFromID(cleanId);
-                const learnerEmail = found.learner_email || `${(found.learner_number || 'learner').toLowerCase().replace(/[\s-]/g, '')}@fusion.high`;
+                const cleanId = (found.user_id_num || childIdNum || '').toString().replace(/\D/g, '').trim();
+                const lrnNumber = found.learner_number || await generateOfficialLearnerNumber();
+                const generatedPassword = cleanId || lrnNumber;
+                const learnerEmail = `${lrnNumber.toLowerCase().replace(/[\s-]/g, '')}@${schoolDomain}`;
 
                 validatedChildren.push({
                     ...found,
+                    learner_number: lrnNumber,
                     id_number: cleanId,
                     learner_email: learnerEmail,
                     generated_password: generatedPassword,
@@ -331,14 +349,14 @@ exports.registerUser = async (req, res) => {
 
                 if (appChildRes.rows.length > 0) {
                     const appChild = appChildRes.rows[0];
-                    // Generate official unique learner number upon registration if not already issued
+                    // Generate official unique learner number upon registration
                     let lrnNumber = appChild.provisional_learner_number;
                     if (!lrnNumber || lrnNumber.startsWith('FHS-') || lrnNumber.includes('-')) {
                         lrnNumber = await generateOfficialLearnerNumber();
                     }
-                    const cleanId = (appChild.id_number || childIdNum || '202601').toString().replace(/\D/g, '');
-                    const generatedPassword = generateLearnerPasswordFromID(cleanId);
-                    const learnerEmail = `${lrnNumber.toLowerCase().replace(/[\s-]/g, '')}@fusion.high`;
+                    const cleanId = (appChild.id_number || childIdNum || '').toString().replace(/\D/g, '').trim();
+                    const generatedPassword = cleanId || lrnNumber;
+                    const learnerEmail = `${lrnNumber.toLowerCase().replace(/[\s-]/g, '')}@${schoolDomain}`;
 
                     validatedChildren.push({
                         is_from_application: true,
@@ -358,9 +376,9 @@ exports.registerUser = async (req, res) => {
                 } else if (childFirstName && childSurname) {
                     // Dynamically register new learner record with official sequential number
                     const assignedNum = await generateOfficialLearnerNumber();
-                    const cleanId = childIdNum || '202601';
-                    const generatedPassword = generateLearnerPasswordFromID(cleanId);
-                    const learnerEmail = `${assignedNum.toLowerCase().replace(/[\s-]/g, '')}@fusion.high`;
+                    const cleanId = childIdNum || '';
+                    const generatedPassword = cleanId || assignedNum;
+                    const learnerEmail = `${assignedNum.toLowerCase().replace(/[\s-]/g, '')}@${schoolDomain}`;
 
                     validatedChildren.push({
                         is_new: true,
@@ -615,8 +633,9 @@ exports.login = async (req, res) => {
                  FROM users u
                  LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                  LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
-                 LEFT JOIN schools s ON (s.id = COALESCE(u.school_id, c.school_id, 1))
+                 LEFT JOIN schools s ON (s.id::text = COALESCE(u.school_id, c.school_id, 1)::text)
                  WHERE LOWER(u.email::text) = LOWER($1)
+                    OR (c.learner_number IS NOT NULL AND LOWER(c.learner_number::text) = LOWER(SPLIT_PART($1, '@', 1)))
                     OR (LOWER($1) IN ('admin@fusionhigh.co.za', 'admin@fusion.high') AND LOWER(COALESCE(r.name, u.role_id::text, '')) = 'admin')
                  ORDER BY (CASE WHEN LOWER(u.email::text) = LOWER($1) THEN 0 ELSE 1 END), u.id ASC
                  LIMIT 1`,
@@ -628,11 +647,11 @@ exports.login = async (req, res) => {
                  FROM users u
                  LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                  LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
-                 LEFT JOIN schools s ON (s.id = COALESCE(u.school_id, c.school_id, 1))
+                 LEFT JOIN schools s ON (s.id::text = COALESCE(u.school_id, c.school_id, 1)::text)
                  WHERE (c.learner_number IS NOT NULL AND c.learner_number::text = $1)
                     OR (u.id_number IS NOT NULL AND TRIM(u.id_number::text) = $1)
                     OR (u.phone IS NOT NULL AND TRIM(u.phone::text) = $1)
-                    OR (LOWER(u.email::text) = LOWER($1 || '@fusion.high'))
+                    OR (LOWER(u.email::text) LIKE LOWER($1 || '@%'))
                     OR (c.id::text = $1)
                     OR (u.id::text = $1)
                  ORDER BY u.id ASC
