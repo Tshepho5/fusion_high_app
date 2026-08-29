@@ -100,9 +100,9 @@ export const LoginPage: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-3.5">
+          <form onSubmit={handleSubmit} className="space-y-3.5" data-theme-preserve="true">
             {/* Email / Identifier Neo-Glass Input */}
-            <div className="p-3.5 rounded-2xl bg-[#111923]/90 border border-slate-700/60 focus-within:border-cyan-400 focus-within:shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all space-y-1">
+            <div className="p-3.5 rounded-2xl bg-[#111923]/90 border border-slate-700/60 focus-within:border-cyan-400 focus-within:shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all space-y-1" data-theme-preserve="true">
               <label className="block text-[11px] font-semibold text-slate-400">Email or Learner ID</label>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-cyan-400 shrink-0" />
@@ -112,13 +112,14 @@ export const LoginPage: React.FC = () => {
                   onChange={(e) => setIdentifier(e.target.value)}
                   placeholder="Enter your email or learner ID"
                   required
-                  className="w-full bg-transparent border-none p-0 text-xs text-white placeholder-slate-500 focus:outline-none font-medium"
+                  style={{ color: '#ffffff', backgroundColor: 'transparent' }}
+                  className="w-full bg-transparent border-none p-0 text-xs text-white text-always-white placeholder:text-slate-400 focus:outline-none font-medium"
                 />
               </div>
             </div>
 
             {/* Password Neo-Glass Input */}
-            <div className="p-3.5 rounded-2xl bg-[#111923]/90 border border-slate-700/60 focus-within:border-cyan-400 focus-within:shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all space-y-1">
+            <div className="p-3.5 rounded-2xl bg-[#111923]/90 border border-slate-700/60 focus-within:border-cyan-400 focus-within:shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all space-y-1" data-theme-preserve="true">
               <label className="block text-[11px] font-semibold text-slate-400">Password</label>
               <div className="flex items-center gap-2.5">
                 <Lock className="w-4 h-4 text-cyan-400 shrink-0" />
@@ -128,7 +129,8 @@ export const LoginPage: React.FC = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full bg-transparent border-none p-0 text-xs text-white placeholder-slate-500 focus:outline-none font-medium"
+                  style={{ color: '#ffffff', backgroundColor: 'transparent' }}
+                  className="w-full bg-transparent border-none p-0 text-xs text-white text-always-white placeholder:text-slate-400 focus:outline-none font-medium"
                 />
                 <button
                   type="button"

@@ -38,9 +38,9 @@ const requireRole = (roles) => async (req, res, next) => {
         const roleRes = await db.query(
             `SELECT r.name as role_name 
              FROM users u 
-             JOIN roles r ON u.role_id = r.id 
-             WHERE u.id = $1`,
-            [req.user.id]
+             LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
+             WHERE u.id::text = $1::text`,
+            [String(req.user.id)]
         );
 
         if (roleRes.rows.length === 0) {

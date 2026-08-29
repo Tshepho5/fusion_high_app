@@ -92,40 +92,79 @@ body, html {
   color: #0F172A;
 }
 
-/* High-contrast light mode styling */
-.theme-light .text-white, html[data-theme="light"] .text-white, .light .text-white {
+/* High-contrast light mode styling with exemption for preserved dark elements/auth */
+.theme-light .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not(input):not(select):not(textarea),
+html[data-theme="light"] .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not(input):not(select):not(textarea),
+.light .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not(input):not(select):not(textarea) {
   color: #0F172A !important;
 }
 
-.theme-light .text-slate-400, html[data-theme="light"] .text-slate-400, .light .text-slate-400,
-.theme-light .text-slate-300, html[data-theme="light"] .text-slate-300, .light .text-slate-300 {
+.theme-light .text-slate-400:not([data-theme-preserve="true"]), 
+html[data-theme="light"] .text-slate-400:not([data-theme-preserve="true"]), 
+.light .text-slate-400:not([data-theme-preserve="true"]),
+.theme-light .text-slate-300:not([data-theme-preserve="true"]), 
+html[data-theme="light"] .text-slate-300:not([data-theme-preserve="true"]), 
+.light .text-slate-300:not([data-theme-preserve="true"]) {
   color: #475569 !important;
 }
 
-.theme-light .text-slate-200, html[data-theme="light"] .text-slate-200, .light .text-slate-200 {
+.theme-light .text-slate-200:not([data-theme-preserve="true"]), 
+html[data-theme="light"] .text-slate-200:not([data-theme-preserve="true"]), 
+.light .text-slate-200:not([data-theme-preserve="true"]) {
   color: #1E293B !important;
 }
 
-.theme-light .border-white\/10, html[data-theme="light"] .border-white\/10, .light .border-white\/10,
-.theme-light .border-white\/5, html[data-theme="light"] .border-white\/5, .light .border-white\/5 {
+.theme-light .border-white\/10:not([data-theme-preserve="true"]), 
+html[data-theme="light"] .border-white\/10:not([data-theme-preserve="true"]), 
+.light .border-white\/10:not([data-theme-preserve="true"]),
+.theme-light .border-white\/5:not([data-theme-preserve="true"]), 
+html[data-theme="light"] .border-white\/5:not([data-theme-preserve="true"]), 
+.light .border-white\/5:not([data-theme-preserve="true"]) {
   border-color: rgba(15, 23, 42, 0.1) !important;
 }
 
-.theme-light .bg-surface-darker, html[data-theme="light"] .bg-surface-darker, .light .bg-surface-darker {
+.theme-light .bg-surface-darker:not([data-theme-preserve="true"]), 
+html[data-theme="light"] .bg-surface-darker:not([data-theme-preserve="true"]), 
+.light .bg-surface-darker:not([data-theme-preserve="true"]) {
   background-color: #F1F5F9 !important;
 }
 
-.theme-light .bg-surface-dark, html[data-theme="light"] .bg-surface-dark, .light .bg-surface-dark {
+.theme-light .bg-surface-dark:not([data-theme-preserve="true"]), 
+html[data-theme="light"] .bg-surface-dark:not([data-theme-preserve="true"]), 
+.light .bg-surface-dark:not([data-theme-preserve="true"]) {
   background-color: #FFFFFF !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.theme-light .hover\:bg-white\/5:hover, html[data-theme="light"] .hover\:bg-white\/5:hover, .light .hover\:bg-white\/5:hover {
+.theme-light .hover\:bg-white\/5:hover:not([data-theme-preserve="true"]), 
+html[data-theme="light"] .hover\:bg-white\/5:hover:not([data-theme-preserve="true"]), 
+.light .hover\:bg-white\/5:hover:not([data-theme-preserve="true"]) {
   background-color: rgba(15, 23, 42, 0.04) !important;
 }
 
-.theme-light .hover\:bg-white\/10:hover, html[data-theme="light"] .hover\:bg-white\/10:hover, .light .hover\:bg-white\/10:hover {
+.theme-light .hover\:bg-white\/10:hover:not([data-theme-preserve="true"]), 
+html[data-theme="light"] .hover\:bg-white\/10:hover:not([data-theme-preserve="true"]), 
+.light .hover\:bg-white\/10:hover:not([data-theme-preserve="true"]) {
   background-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+/* Ensure inputs on dark surfaces always stay high-contrast white with vibrant caret */
+.text-always-white,
+input.text-always-white,
+[data-theme-preserve="true"] input {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+/* Browser autofill styling protection */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #111923 inset !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  color: #FFFFFF !important;
+  caret-color: #38bdf8 !important;
 }
 
 /* Clean, standard scrollbar */

@@ -24,9 +24,9 @@ exports.getProfile = async (req, res) => {
             const lrnNum = (user.email || '').split('@')[0];
             const childRes = await db.query(
                 `SELECT * FROM children 
-                 WHERE learner_user_id::text = $1::text OR learner_number::text = $2::text OR (id_number IS NOT NULL AND id_number::text = $3::text)
+                 WHERE learner_user_id::text = $1::text OR learner_number::text = $2::text
                  LIMIT 1`, 
-                [req.user.id, lrnNum, user.id_number || '']
+                [req.user.id, lrnNum]
             );
             user.academic = childRes.rows[0] || null;
             if (user.academic) {
