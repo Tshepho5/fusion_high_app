@@ -5,49 +5,82 @@ if (dns.setDefaultResultOrder) {
 }
 const nodemailer = require('nodemailer');
 
+const tls = require('tls');
 const net = require('net');
 
 const getSmtpUser = () => (process.env.SMTP_USER || 'tshepomakola23@gmail.com').trim().replace(/^["']|["']$/g, '');
 const getSmtpPass = () => (process.env.SMTP_PASS || 'ayauhdlmlzouiguh').trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '');
 
-let pooledTransporter = null;
-let lastSmtpUser = null;
-let lastSmtpPass = null;
+function sendViaDirectTls({ user, pass, to, subject, html, replyTo, fromName = 'Fusion High School' }) {
+  return new Promise((resolve, reject) => {
+    const socket = tls.connect(465, 'smtp.gmail.com', { servername: 'smtp.gmail.com' });
+    let step = 0;
+    let finished = false;
 
-function getPooledTransporter() {
-  const user = getSmtpUser();
-  const pass = getSmtpPass();
+    socket.setEncoding('utf8');
 
-  if (pooledTransporter && lastSmtpUser === user && lastSmtpPass === pass) {
-    return pooledTransporter;
-  }
+    const finish = (result, isErr = false) => {
+      if (!finished) {
+        finished = true;
+        socket.destroy();
+        if (isErr) reject(result);
+        else resolve(result);
+      }
+    };
 
-  pooledTransporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user, pass },
-    connectionTimeout: 5000,
-    greetingTimeout: 5000,
-    socketTimeout: 8000
-  });
+    socket.on('data', (chunk) => {
+      if (chunk.includes('220 ') && step === 0) {
+        step = 1;
+        socket.write(`EHLO localhost\r\n`);
+      } else if (chunk.includes('250 ') && step === 1) {
+        step = 2;
+        socket.write(`AUTH LOGIN\r\n`);
+      } else if (chunk.includes('334 ') && step === 2) {
+        step = 3;
+        socket.write(`${Buffer.from(user).toString('base64')}\r\n`);
+      } else if (chunk.includes('334 ') && step === 3) {
+        step = 4;
+        socket.write(`${Buffer.from(pass).toString('base64')}\r\n`);
+      } else if (chunk.includes('235 ') && step === 4) {
+        step = 5;
+        socket.write(`MAIL FROM:<${user}>\r\n`);
+      } else if (chunk.includes('250 ') && step === 5) {
+        step = 6;
+        socket.write(`RCPT TO:<${to}>\r\n`);
+      } else if (chunk.includes('250 ') && step === 6) {
+        step = 7;
+        socket.write(`DATA\r\n`);
+      } else if (chunk.includes('354 ') && step === 7) {
+        step = 8;
+        const msgLines = [
+          `From: "${fromName}" <${user}>`,
+          `To: <${to}>`,
+          `Subject: ${subject}`,
+          `MIME-Version: 1.0`,
+          `Content-Type: text/html; charset=UTF-8`,
+          ...(replyTo ? [`Reply-To: ${replyTo}`] : []),
+          ``,
+          html,
+          ``,
+          `.`
+        ];
+        socket.write(`${msgLines.join('\r\n')}\r\n`);
+      } else if (chunk.includes('250 ') && step === 8) {
+        step = 9;
+        socket.write(`QUIT\r\n`);
+        finish({ success: true, messageId: `<${Date.now()}@fusionhigh.co.za>` });
+      } else if (chunk.startsWith('5') || (chunk.startsWith('4') && !chunk.startsWith('465'))) {
+        finish(new Error(`SMTP Error: ${chunk.trim()}`), true);
+      }
+    });
 
-  lastSmtpUser = user;
-  lastSmtpPass = pass;
-  return pooledTransporter;
-}
+    socket.on('error', (err) => {
+      finish(err, true);
+    });
 
-function createDirectTransporter(port = 465, secure = true) {
-  const user = getSmtpUser();
-  const pass = getSmtpPass();
-  
-  return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port,
-    secure,
-    auth: { user, pass },
-    tls: { rejectUnauthorized: false },
-    connectionTimeout: 5000,
-    greetingTimeout: 5000,
-    socketTimeout: 8000
+    socket.setTimeout(8000, () => {
+      finish(new Error('SMTP Connection timeout after 8s'), true);
+    });
   });
 }
 
@@ -213,34 +246,22 @@ const emailService = {
     }
 
     const senderUser = getSmtpUser();
-    const mailOptions = {
-      from: `"Fusion High School" <${senderUser}>`,
-      to: targetRecipient,
-      subject,
-      html: body,
-      ...(replyTo && { replyTo })
-    };
-
-    // Safe Dispatch with Timeout Protection (prevents local firewall socket hang)
-    const sendWithTimeout = async () => {
-      try {
-        const pool = getPooledTransporter();
-        return await pool.sendMail(mailOptions);
-      } catch (e) {
-        const t2 = createDirectTransporter(587, false);
-        return await t2.sendMail(mailOptions);
-      }
-    };
+    const senderPass = getSmtpPass();
 
     try {
-      const info = await Promise.race([
-        sendWithTimeout(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout (SMTP server response took longer than 3.5s)')), 3500))
-      ]);
-      console.log(`[EMAIL DISPATCH INSTANT] Delivered to ${targetRecipient}: ${info?.messageId || 'OK'}`);
-      return { success: true, messageId: info?.messageId || 'OK' };
+      const result = await sendViaDirectTls({
+        user: senderUser,
+        pass: senderPass,
+        to: targetRecipient,
+        subject,
+        html: body,
+        replyTo,
+        fromName: 'Fusion High School'
+      });
+      console.log(`[EMAIL DISPATCH SUCCESS] Delivered to ${targetRecipient}: ${result.messageId}`);
+      return { success: true, messageId: result.messageId };
     } catch (err) {
-      console.warn(`[EMAIL NOTICE] SMTP dispatch to ${targetRecipient} (${err.message}). Notification archived.`);
+      console.warn(`[EMAIL NOTICE] Direct TLS dispatch to ${targetRecipient} error:`, err.message);
       return { success: true, delivered_via: 'archived_notice', error: err.message };
     }
   },
