@@ -48,7 +48,8 @@ async function initializeAllDatabaseTables(customClient) {
         (4, 'Turfloop High School', 'turfloop-high', 'turfloop.co.za', '911220612', 'Mankweng Circuit', 'Capricorn South', 'Limpopo', 'University Road, Turfloop, Mankweng, 0727', 'principal@turfloophigh.co.za', '+27 15 267 3300', 'Mr. N. J. Mamabolo', '#1e1b4b', '#4338ca', '#991b1b', 'Education for Progress', 'CAPS (DBE Limpopo)', '8-12'),
         (5, 'Hwiti High School', 'hwiti-high', 'hwiti.co.za', '911220323', 'Mankweng Circuit', 'Capricorn South', 'Limpopo', 'Sovenga Zone 1, Mankweng, Polokwane, 0727', 'info@hwitisecondary.co.za', '+27 15 267 4400', 'Mrs. R. M. Ramokgopa', '#581c87', '#9333ea', '#06b6d4', 'Perseverance Conquers', 'CAPS (DBE Limpopo)', '8-12'),
         (6, 'Ngwana Mohube Secondary School', 'ngwana-mohube', 'ngwanamohube.co.za', '911220501', 'Mankweng Circuit', 'Capricorn South', 'Limpopo', 'Segopje Village, Mankweng Area, Polokwane, 0727', 'admin@ngwanamohube.co.za', '+27 15 267 5500', 'Mr. S. P. Mohube', '#991b1b', '#ef4444', '#0f172a', 'Forward in Excellence', 'CAPS (DBE Limpopo)', '8-12')
-      ON CONFLICT (name) DO UPDATE SET
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
         slug = EXCLUDED.slug,
         emis_number = EXCLUDED.emis_number,
         circuit = EXCLUDED.circuit,
@@ -59,6 +60,8 @@ async function initializeAllDatabaseTables(customClient) {
         secondary_color = EXCLUDED.secondary_color,
         accent_color = EXCLUDED.accent_color,
         motto = EXCLUDED.motto;
+
+      SELECT setval(pg_get_serial_sequence('schools', 'id'), COALESCE((SELECT MAX(id) FROM schools), 1));
 
       -- Add school_id column to tables
       ALTER TABLE users ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
