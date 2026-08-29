@@ -20,11 +20,22 @@ function generateApplicationNumber(schoolSlug = 'fusion-high') {
   const randomDigits = Math.floor(10000 + Math.random() * 90000);
   const slug = String(schoolSlug).toLowerCase();
   let prefix = 'FHS';
+  
+  // Limpopo
   if (slug.includes('mountainview')) prefix = 'MTH';
   else if (slug.includes('makgoka')) prefix = 'MKG';
   else if (slug.includes('turfloop')) prefix = 'TRF';
   else if (slug.includes('hwiti')) prefix = 'HWT';
   else if (slug.includes('ngwana') || slug.includes('mohube')) prefix = 'NMH';
+  
+  // Gauteng (Lotus Gardens & Atteridgeville, Pretoria)
+  else if (slug.includes('lotus') || slug.includes('fusion-secondary')) prefix = 'FSL';
+  else if (slug.includes('saulridge')) prefix = 'SLR';
+  else if (slug.includes('phelindaba')) prefix = 'PLD';
+  else if (slug.includes('flavius') || slug.includes('mareka')) prefix = 'FVM';
+  else if (slug.includes('nkomo') || slug.includes('wf-nkomo')) prefix = 'WFN';
+  else if (slug.includes('hofmeyr')) prefix = 'HFM';
+
   return `${prefix}-${year}-${randomDigits}`;
 }
 

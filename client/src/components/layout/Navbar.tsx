@@ -143,12 +143,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
               <div>
                 <p className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                   <Building2 className="w-3.5 h-3.5 text-cyan-400" />
-                  Mankweng & Polokwane Schools
+                  Enrolled Partner Schools (Limpopo & Gauteng)
                 </p>
-                <p className="text-[10px] text-slate-400 mt-0.5">Select a school to switch institutional branding</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Select a high school to switch institutional branding</p>
               </div>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-mono font-bold">
-                {schoolsList.length} Active
+                {schoolsList.length} Schools
               </span>
             </div>
 
