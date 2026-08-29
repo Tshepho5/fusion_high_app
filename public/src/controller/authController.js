@@ -972,18 +972,21 @@ exports.forgotPassword = async (req, res) => {
             );
         } catch (nErr) {}
 
-        // Dynamically determine baseUrl from request headers
-        let baseUrl = req.get('origin');
-        if (!baseUrl && req.get('referer')) {
-            try {
-                const u = new URL(req.get('referer'));
-                baseUrl = `${u.protocol}//${u.host}`;
-            } catch (e) {}
-        }
+        // Dynamically determine baseUrl from request headers or environment
+        let baseUrl = process.env.APP_URL ? process.env.APP_URL.replace(/\/$/, '') : null;
         if (!baseUrl) {
-            const host = req.get('host') || `localhost:${process.env.PORT || 4000}`;
-            const protocol = req.protocol || 'http';
-            baseUrl = `${protocol}://${host}`;
+            baseUrl = req.get('origin');
+            if (!baseUrl && req.get('referer')) {
+                try {
+                    const u = new URL(req.get('referer'));
+                    baseUrl = `${u.protocol}//${u.host}`;
+                } catch (e) {}
+            }
+            if (!baseUrl) {
+                const proto = req.get('x-forwarded-proto') || req.protocol || 'http';
+                const host = req.get('x-forwarded-host') || req.get('host') || 'localhost:4000';
+                baseUrl = `${proto}://${host}`;
+            }
         }
 
         const tpl = emailService.templates.forgotPassword(otp, targetDeliveryEmail, baseUrl);

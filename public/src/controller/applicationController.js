@@ -144,12 +144,28 @@ function validateFormFields(body) {
   return errors;
 }
 
+const getRequestBaseUrl = (req) => {
+  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, '');
+  const origin = req.get('origin');
+  if (origin && !origin.includes('localhost')) return origin.replace(/\/$/, '');
+  const referer = req.get('referer');
+  if (referer && !referer.includes('localhost')) {
+    try {
+      const u = new URL(referer);
+      return `${u.protocol}//${u.host}`;
+    } catch (_) {}
+  }
+  const proto = req.get('x-forwarded-proto') || req.protocol || 'http';
+  const host = req.get('x-forwarded-host') || req.get('host') || 'localhost:4000';
+  return `${proto}://${host}`;
+};
+
 /**
  * Submit New Learner Admission Application
  */
 exports.submitApplication = async (req, res) => {
   try {
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl = getRequestBaseUrl(req);
     const body = req.body;
 
     // 1. Validate Form Fields
