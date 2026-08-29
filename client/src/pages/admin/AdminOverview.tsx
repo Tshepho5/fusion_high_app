@@ -29,6 +29,7 @@ import {
   Check
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useSchool } from '../../context/SchoolContext';
 
 type GridViewMode = 'grid' | 'compact' | 'list';
 
@@ -38,6 +39,7 @@ interface AdminOverviewProps {
 
 export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) => {
   const { user } = useAuth();
+  const { currentSchool } = useSchool();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -59,6 +61,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
   };
 
   useEffect(() => {
+    setLoading(true);
     adminService.getOverviewStats()
       .then((res) => setStats(res))
       .catch((err) => {
@@ -66,7 +69,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
         setStats(null);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [currentSchool?.id]);
 
   if (loading) return <LoadingSpinner text="Loading administrative control center..." />;
 

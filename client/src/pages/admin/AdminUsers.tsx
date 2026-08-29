@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/api';
+import { useSchool } from '../../context/SchoolContext';
 import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -94,6 +95,7 @@ interface SchoolMetadata {
 }
 
 export const AdminUsers: React.FC = () => {
+  const { currentSchool } = useSchool();
   const [activeTab, setActiveTab] = useState<'employees' | 'learners' | 'parents' | 'admissions' | 'all'>('employees');
   
   const [users, setUsers] = useState<UserRecord[]>([]);
@@ -241,7 +243,7 @@ export const AdminUsers: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [currentSchool?.id]);
 
   // Handle Create Employee
   const handleCreateEmployee = async (e: React.FormEvent) => {

@@ -7,11 +7,15 @@ const api = axios.create({
   },
 });
 
-// Attach JWT token automatically
+// Attach JWT token and Active School Tenant ID automatically
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  const activeSchoolId = localStorage.getItem('active_school_id');
+  if (activeSchoolId) {
+    config.headers['x-school-id'] = activeSchoolId;
   }
   return config;
 }, (error) => {

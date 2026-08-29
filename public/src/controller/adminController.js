@@ -3,11 +3,21 @@ const emailService = require('../services/emailService');
 const applicationService = require('../services/applicationService');
 
 /**
- * Fetches statistics for the admin dashboard.
- * Counts users by role.
+ * Resolves the target school tenant ID from query, header, or user token.
+ */
+const getTargetSchoolId = (req) => {
+    const raw = req.query.school_id || req.headers['x-school-id'] || req.user?.school_id || 1;
+    const parsed = parseInt(raw, 10);
+    return isNaN(parsed) ? 1 : parsed;
+};
+
+/**
+ * Fetches statistics for the admin dashboard filtered strictly by the active school.
  */
 exports.getDashboardStats = async (req, res) => {
     try {
+        const schoolId = getTargetSchoolId(req);
+
         // Run multiple stat queries in parallel for efficiency
         const [
             userStats,
@@ -30,27 +40,30 @@ exports.getDashboardStats = async (req, res) => {
             db.query(`
                 SELECT r.name AS role, COUNT(u.id) AS count
                 FROM roles r
-                LEFT JOIN users u ON u.role_id = r.id
+                LEFT JOIN users u ON u.role_id = r.id AND (u.school_id = $1 OR (u.school_id IS NULL AND $1 = 1))
                 WHERE r.name IN ('admin', 'teacher', 'parent')
                 GROUP BY r.name;
-            `),
-            db.query("SELECT COUNT(*) FROM announcements WHERE is_assignment = TRUE"),
-            db.query("SELECT COUNT(*) FROM textbooks"),
-            db.query("SELECT COUNT(*) FROM progress"),
+            `, [schoolId]),
+            db.query("SELECT COUNT(*) FROM announcements WHERE is_assignment = TRUE AND (school_id = $1 OR (school_id IS NULL AND $1 = 1))", [schoolId]),
+            db.query("SELECT COUNT(*) FROM textbooks WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1))", [schoolId]),
+            db.query("SELECT COUNT(*) FROM progress p JOIN children c ON p.child_id = c.id WHERE (c.school_id = $1 OR (c.school_id IS NULL AND $1 = 1))", [schoolId]),
             db.query(`
                 SELECT GREATEST(
-                    (SELECT COUNT(*) FROM children),
-                    (SELECT COUNT(*) FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name = 'learner')
+                    (SELECT COUNT(*) FROM children WHERE school_id = $1 OR (school_id IS NULL AND $1 = 1)),
+                    (SELECT COUNT(*) FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name = 'learner' AND (u.school_id = $1 OR (u.school_id IS NULL AND $1 = 1)))
                 ) AS count
-            `), // Get total enrolled learners
-            db.query("SELECT COUNT(*) FROM classes"),
+            `, [schoolId]),
+            db.query("SELECT COUNT(*) FROM classes WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1))", [schoolId]),
             db.query(`
                 SELECT COALESCE(
                   ROUND(
-                    (COUNT(CASE WHEN status IN ('present', 'late') THEN 1 END) * 100.0) / NULLIF(COUNT(*), 0)
+                    (COUNT(CASE WHEN a.status IN ('present', 'late') THEN 1 END) * 100.0) / NULLIF(COUNT(*), 0)
                   ), 0
-                ) as attendance_rate FROM attendance;
-            `),
+                ) as attendance_rate 
+                FROM attendance a
+                JOIN children c ON a.child_id = c.id
+                WHERE (c.school_id = $1 OR (c.school_id IS NULL AND $1 = 1));
+            `, [schoolId]),
             db.query(`
                 SELECT c.grade, COALESCE(
                   ROUND(
@@ -59,54 +72,61 @@ exports.getDashboardStats = async (req, res) => {
                 ) as rate
                 FROM children c
                 LEFT JOIN attendance a ON c.id = a.child_id
+                WHERE (c.school_id = $1 OR (c.school_id IS NULL AND $1 = 1))
                 GROUP BY c.grade
                 ORDER BY c.grade;
-            `),
+            `, [schoolId]),
             db.query(`
                 SELECT TO_CHAR(created_at, 'YYYY-MM') as month, COUNT(*) as count
                 FROM users
-                WHERE created_at >= NOW() - INTERVAL '6 months'
+                WHERE created_at >= NOW() - INTERVAL '6 months' AND (school_id = $1 OR (school_id IS NULL AND $1 = 1))
                 GROUP BY month
                 ORDER BY month;
-            `),
+            `, [schoolId]),
             db.query(`
-                SELECT status, COUNT(*) as count
-                FROM attendance
-                GROUP BY status;
-            `),
+                SELECT a.status, COUNT(*) as count
+                FROM attendance a
+                JOIN children c ON a.child_id = c.id
+                WHERE (c.school_id = $1 OR (c.school_id IS NULL AND $1 = 1))
+                GROUP BY a.status;
+            `, [schoolId]),
             db.query(`
                 SELECT COALESCE(cl.name, 'Grade ' || c.grade) as name, ROUND(AVG(p.grade), 1) as avg_grade
                 FROM progress p
                 JOIN children c ON p.child_id = c.id
                 LEFT JOIN classes cl ON c.class_id = cl.id
+                WHERE (c.school_id = $1 OR (c.school_id IS NULL AND $1 = 1))
                 GROUP BY COALESCE(cl.name, 'Grade ' || c.grade)
                 ORDER BY avg_grade DESC
                 LIMIT 5;
-            `),
+            `, [schoolId]),
             db.query(`
                 SELECT p.id, c.full_name as student_name, c.surname as student_surname, p.subject, p.grade, p.date
                 FROM progress p
                 JOIN children c ON p.child_id = c.id
+                WHERE (c.school_id = $1 OR (c.school_id IS NULL AND $1 = 1))
                 ORDER BY p.date DESC
                 LIMIT 5;
-            `),
-            db.query("SELECT COUNT(*) FROM behavior_incidents"),
+            `, [schoolId]),
+            db.query("SELECT COUNT(*) FROM behavior_incidents WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1))", [schoolId]),
             db.query(`
                 SELECT a.id, a.title, a.content, a.created_at, COALESCE(CONCAT(u.full_name, ' ', u.surname), 'Principal Admin') AS author_name 
                 FROM announcements a 
                 LEFT JOIN users u ON a.author_id = u.id 
+                WHERE (a.school_id = $1 OR (a.school_id IS NULL AND $1 = 1))
                 ORDER BY a.created_at DESC 
                 LIMIT 3;
-            `),
-            db.query("SELECT id, name, timetable_data FROM timetables ORDER BY created_at DESC LIMIT 1;"),
+            `, [schoolId]),
+            db.query("SELECT id, name, timetable_data FROM timetables WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1)) ORDER BY created_at DESC LIMIT 1;", [schoolId]),
             db.query(`
                 SELECT 
                     COUNT(*) as total,
                     COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved,
                     COUNT(CASE WHEN status = 'enrolled' THEN 1 END) as enrolled,
                     COUNT(CASE WHEN status IN ('submitted', 'action_required', 'waitlisted') THEN 1 END) as pending
-                FROM applications;
-            `)
+                FROM applications
+                WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1));
+            `, [schoolId])
         ]);
 
         // 1. Process user counts
@@ -246,6 +266,8 @@ exports.createEmployee = async (req, res) => {
     }
 
     try {
+        const targetSchoolId = getTargetSchoolId(req);
+
         // 1. Check duplicate email
         const existing = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [normalizedEmail]);
         if (existing.rows.length > 0) {
@@ -269,8 +291,8 @@ exports.createEmployee = async (req, res) => {
         }
 
         const userInsertQuery = `
-            INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, phone, physical_address)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, phone, physical_address, school_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             RETURNING id, email, full_name, surname, phone;
         `;
         const userRes = await db.query(userInsertQuery, [
@@ -283,7 +305,8 @@ exports.createEmployee = async (req, res) => {
             dobForDb,
             gender || null,
             phone || null,
-            physical_address || null
+            physical_address || null,
+            targetSchoolId
         ]);
         const newUserId = userRes.rows[0].id;
 
@@ -421,6 +444,8 @@ exports.createParent = async (req, res) => {
     }
 
     try {
+        const targetSchoolId = getTargetSchoolId(req);
+
         // 1. Check duplicate email in users table
         const existing = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [normalizedEmail]);
         if (existing.rows.length > 0) {
@@ -444,8 +469,8 @@ exports.createParent = async (req, res) => {
         }
 
         const userInsertQuery = `
-            INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, phone, physical_address)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, phone, physical_address, school_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             RETURNING id, email, full_name, surname, phone, id_number, gender, physical_address;
         `;
         const userRes = await db.query(userInsertQuery, [
@@ -458,7 +483,8 @@ exports.createParent = async (req, res) => {
             dobForDb,
             gender || null,
             phone || null,
-            physical_address || null
+            physical_address || null,
+            targetSchoolId
         ]);
         const newParentId = userRes.rows[0].id;
 
@@ -550,6 +576,7 @@ exports.createParent = async (req, res) => {
  */
 exports.getAllParents = async (req, res) => {
     try {
+        const schoolId = getTargetSchoolId(req);
         const query = `
             SELECT 
                 u.id, 
@@ -577,11 +604,11 @@ exports.getAllParents = async (req, res) => {
             JOIN roles r ON u.role_id = r.id
             LEFT JOIN parent_children pc ON pc.parent_id = u.id
             LEFT JOIN children c ON pc.child_id = c.id
-            WHERE r.name = 'parent'
+            WHERE r.name = 'parent' AND (u.school_id = $1 OR c.school_id = $1 OR (u.school_id IS NULL AND $1 = 1))
             GROUP BY u.id
             ORDER BY u.created_at DESC;
         `;
-        const { rows } = await db.query(query);
+        const { rows } = await db.query(query, [schoolId]);
         res.json({ success: true, parents: rows });
     } catch (err) {
         console.error('Error fetching parents:', err);
@@ -745,6 +772,7 @@ exports.createLearner = async (req, res) => {
  */
 exports.getAllEmployees = async (req, res) => {
     try {
+        const schoolId = getTargetSchoolId(req);
         const query = `
             SELECT 
                 e.id AS employee_id,
@@ -765,9 +793,10 @@ exports.getAllEmployees = async (req, res) => {
             JOIN users u ON e.user_id = u.id
             LEFT JOIN departments d ON e.department_id = d.id
             LEFT JOIN employee_roles er ON e.employee_role_id = er.id
+            WHERE (u.school_id = $1 OR (u.school_id IS NULL AND $1 = 1))
             ORDER BY u.surname, u.full_name;
         `;
-        const { rows } = await db.query(query);
+        const { rows } = await db.query(query, [schoolId]);
         res.json(rows);
     } catch (err) {
         console.error('Error fetching employees:', err);
@@ -780,6 +809,7 @@ exports.getAllEmployees = async (req, res) => {
  */
 exports.getAllLearners = async (req, res) => {
     try {
+        const schoolId = getTargetSchoolId(req);
         const query = `
             SELECT 
                 c.id,
@@ -801,9 +831,10 @@ exports.getAllLearners = async (req, res) => {
             LEFT JOIN users u ON c.learner_user_id = u.id
             LEFT JOIN classes cl ON c.class_id = cl.id
             LEFT JOIN users p ON c.parent_id = p.id
+            WHERE (c.school_id = $1 OR u.school_id = $1 OR (c.school_id IS NULL AND u.school_id IS NULL AND $1 = 1))
             ORDER BY c.grade, c.surname, c.full_name;
         `;
-        const { rows } = await db.query(query);
+        const { rows } = await db.query(query, [schoolId]);
         res.json(rows);
     } catch (err) {
         console.error('Error fetching learners:', err);
@@ -816,11 +847,12 @@ exports.getAllLearners = async (req, res) => {
  */
 exports.getSchoolMetadata = async (req, res) => {
     try {
+        const schoolId = getTargetSchoolId(req);
         const [deptsRes, empRolesRes, classesRes, subjectsRes] = await Promise.all([
-            db.query('SELECT id, name, description FROM departments ORDER BY id'),
+            db.query('SELECT id, name, description FROM departments WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1)) ORDER BY id', [schoolId]),
             db.query('SELECT id, name FROM employee_roles ORDER BY id'),
-            db.query('SELECT id, name, grade, stream FROM classes ORDER BY grade, name'),
-            db.query('SELECT id, name, code, grade, stream FROM subjects ORDER BY grade, name')
+            db.query('SELECT id, name, grade, stream FROM classes WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1)) ORDER BY grade, name', [schoolId]),
+            db.query('SELECT id, name, code, grade, stream FROM subjects WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1)) ORDER BY grade, name', [schoolId])
         ]);
 
         res.json({
@@ -881,9 +913,13 @@ exports.createBehaviorIncident = async (req, res) => {
  */
 exports.getAllUsers = async (req, res) => {
     try {
+        const schoolId = getTargetSchoolId(req);
         const query = `SELECT u.id, u.full_name, u.surname, u.email, u.phone, u.profile_picture_path, r.name as role, u.created_at 
-                       FROM users u JOIN roles r ON u.role_id = r.id ORDER BY u.created_at DESC`;
-        const { rows } = await db.query(query);
+                       FROM users u 
+                       JOIN roles r ON u.role_id = r.id 
+                       WHERE (u.school_id = $1 OR (u.school_id IS NULL AND $1 = 1))
+                       ORDER BY u.created_at DESC`;
+        const { rows } = await db.query(query, [schoolId]);
         res.json(rows);
     } catch (err) {
         console.error('Error fetching all users:', err.message);
@@ -900,14 +936,18 @@ exports.getUsersByRole = async (req, res) => {
         return res.status(400).json({ error: 'Invalid role specified.' });
     }
     try {
+        const schoolId = getTargetSchoolId(req);
         const query = `SELECT u.id, u.full_name, u.surname, u.email, u.phone, u.profile_picture_path, r.name as role, u.created_at 
-                       FROM users u JOIN roles r ON u.role_id = r.id 
-                       WHERE r.name = $1 ORDER BY u.created_at DESC`;
-        const { rows } = await db.query(query, [role]);
+                       FROM users u 
+                       JOIN roles r ON u.role_id = r.id 
+                       WHERE (r.name = $1 OR LOWER(u.role_id::text) = LOWER($1))
+                         AND (u.school_id = $2 OR (u.school_id IS NULL AND $2 = 1))
+                       ORDER BY u.created_at DESC`;
+        const { rows } = await db.query(query, [role, schoolId]);
         res.json(rows);
     } catch (err) {
-        console.error(`Error fetching ${role} users:`, err.message);
-        res.status(500).json({ error: `Failed to retrieve ${role} list.` });
+        console.error(`Error fetching users by role ${role}:`, err.message);
+        res.status(500).json({ error: 'Failed to retrieve users by role.' });
     }
 };
 
@@ -1333,6 +1373,7 @@ exports.getAcademicOverview = async (req, res) => {
  */
 exports.getAllAdmissions = async (req, res) => {
     try {
+        const schoolId = getTargetSchoolId(req);
         const { status, grade, stream, search } = req.query;
         let query = `
             SELECT 
@@ -1362,9 +1403,9 @@ exports.getAllAdmissions = async (req, res) => {
                 (SELECT COUNT(*) FROM application_documents d WHERE d.application_id = a.id) as documents_count
             FROM applications a
             LEFT JOIN classes c ON a.assigned_class_id = c.id
-            WHERE 1=1
+            WHERE (a.school_id = $1 OR (a.school_id IS NULL AND $1 = 1))
         `;
-        const params = [];
+        const params = [schoolId];
 
         if (status && status !== 'all') {
             params.push(status);
@@ -1559,6 +1600,7 @@ exports.inspectAdmissionDocOCR = async (req, res) => {
  */
 exports.getAcademicOverview = async (req, res) => {
     try {
+        const schoolId = getTargetSchoolId(req);
         const { grade, subject, term } = req.query;
 
         // Fetch school-wide assessment progress records
@@ -1569,9 +1611,9 @@ exports.getAcademicOverview = async (req, res) => {
             FROM progress p
             JOIN children c ON p.child_id = c.id
             LEFT JOIN classes cl ON c.class_id = cl.id
-            WHERE 1=1
+            WHERE (c.school_id = $1 OR (c.school_id IS NULL AND $1 = 1))
         `;
-        const params = [];
+        const params = [schoolId];
 
         if (grade) {
             params.push(parseInt(grade, 10));
@@ -1590,8 +1632,8 @@ exports.getAcademicOverview = async (req, res) => {
 
         const progressRes = await db.query(query, params);
 
-        // Fetch distinct subjects & grades available in database
-        const subjectsRes = await db.query(`SELECT DISTINCT name FROM subjects ORDER BY name ASC`);
+        // Fetch distinct subjects & grades available in database for this school
+        const subjectsRes = await db.query(`SELECT DISTINCT name FROM subjects WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1)) ORDER BY name ASC`, [schoolId]);
         const allSubjects = subjectsRes.rows.map(r => r.name);
 
         // Calculate overall SBA metrics
