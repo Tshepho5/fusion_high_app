@@ -87,6 +87,19 @@ function validateFormFields(body) {
     errors.push({ field: 'grade_applied', message: 'Grade must be between 8 and 12.' });
   }
 
+  // Home Language Validation
+  const validLanguages = curriculumService.SA_OFFICIAL_LANGUAGES_LIST || [
+    'Sepedi', 'Sesotho', 'Setswana', 'siSwati', 'Tshivenda', 'Xitsonga', 'Afrikaans', 'English', 'isiNdebele', 'isiXhosa', 'isiZulu'
+  ];
+  if (!body.home_language || !body.home_language.trim()) {
+    errors.push({ field: 'home_language', message: 'Please select an official South African Home Language.' });
+  } else {
+    const matchedLang = validLanguages.find(l => l.toLowerCase() === body.home_language.trim().toLowerCase());
+    if (!matchedLang) {
+      errors.push({ field: 'home_language', message: `Invalid Home Language selected. Must be an official South African language.` });
+    }
+  }
+
   // Address
   if (!body.physical_address || body.physical_address.trim().length < 5) {
     errors.push({ field: 'physical_address', message: 'Please provide a complete physical address.' });
@@ -149,7 +162,7 @@ exports.submitApplication = async (req, res) => {
       });
     }
 
-    // Resolve School Tenant ID (Default: 1 - Fusion High, or 2..6 for Mankweng schools)
+    // Resolve School Tenant ID (Default: 1 - Fusion High, or 2..12 for partner schools)
     const schoolId = parseInt(body.school_id || req.headers['x-school-id'] || 1, 10);
     let schoolSlug = 'fusion-high';
     let schoolName = 'Fusion High School';
@@ -166,7 +179,7 @@ exports.submitApplication = async (req, res) => {
 
     const gradeApplied = parseInt(body.grade_applied, 10);
     const stream = gradeApplied >= 10 ? (body.stream || 'Science') : 'General';
-    const homeLanguage = (body.home_language || 'isiZulu').trim();
+    const homeLanguage = (body.home_language || '').trim();
     const selectedSubjects = curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
 
     // 2. Prepare Uploaded Documents Metadata

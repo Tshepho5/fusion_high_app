@@ -308,7 +308,7 @@ exports.linkSibling = async (req, res) => {
         gender = 'Other',
         grade = 8,
         stream = 'General',
-        home_language = 'isiZulu',
+        home_language,
         previous_school = ''
     } = req.body;
 
@@ -316,12 +316,16 @@ exports.linkSibling = async (req, res) => {
         return res.status(400).json({ error: 'Sibling first name and surname are required.' });
     }
 
+    if (!home_language || !home_language.trim()) {
+        return res.status(400).json({ error: 'Official Home Language is required for sibling curriculum allocation.' });
+    }
+
     const cleanFirstName = first_name.trim();
     const cleanSurname = surname.trim();
     const cleanIdNum = (id_number || '').toString().replace(/\D/g, '').trim();
     const gradeInt = parseInt(grade, 10) || 8;
     const streamVal = gradeInt >= 10 ? (stream || 'Science') : 'General';
-    const homeLangVal = home_language || 'isiZulu';
+    const homeLangVal = home_language.trim();
 
     try {
         // 1. Generate official sequential Learner Number

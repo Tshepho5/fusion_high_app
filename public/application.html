@@ -186,6 +186,27 @@
             <div class="field-error"></div>
           </div>
 
+          <!-- Official Home Language -->
+          <div class="form-group">
+            <label for="home_language">Official Home Language <span class="required">*</span></label>
+            <select id="home_language" name="home_language" required>
+              <option value="" disabled selected>Select Official Home Language</option>
+              <option value="Sepedi">Sepedi (Sesotho sa Leboa)</option>
+              <option value="Setswana">Setswana</option>
+              <option value="Sesotho">Sesotho</option>
+              <option value="isiZulu">isiZulu</option>
+              <option value="isiXhosa">isiXhosa</option>
+              <option value="Xitsonga">Xitsonga (Tsonga)</option>
+              <option value="Tshivenda">Tshivenda (Venda)</option>
+              <option value="siSwati">siSwati (Swati)</option>
+              <option value="isiNdebele">isiNdebele (Ndebele)</option>
+              <option value="English">English (Home Language)</option>
+              <option value="Afrikaans">Afrikaans (Huistaal)</option>
+            </select>
+            <div class="hint">Official South African Home Language for CAPS subjects & curriculum allocation.</div>
+            <div class="field-error"></div>
+          </div>
+
           <!-- Stream Selection (Grades 10-12 only) -->
           <div class="form-group full-width" id="stream-selection-group" style="display: none;">
             <label for="stream">Curriculum Academic Stream <span class="required">*</span></label>
@@ -194,7 +215,7 @@
               <option value="Commerce">Commerce Stream (Accounting, Business Studies, Economics)</option>
               <option value="Tourism">Tourism & Services Stream (Tourism, Mathematical Literacy, Business Studies)</option>
             </select>
-            <div class="hint">Compulsory Core: English First Additional Language, Home Language, Life Orientation.</div>
+            <div class="hint" id="stream-compulsory-hint">Compulsory Core: English First Additional Language, Selected Home Language, Life Orientation.</div>
           </div>
 
           <!-- Learner Contact Number (Optional) -->

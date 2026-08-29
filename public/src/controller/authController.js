@@ -444,12 +444,15 @@ exports.registerUser = async (req, res) => {
                     await db.query('UPDATE users SET password_hash = $1, school_id = COALESCE(school_id, $2) WHERE id = $3', [childPwHash, targetSchoolId, learnerUserId]);
                 }
 
-                let childHomeLang = child.home_language || 'isiZulu';
+                let childHomeLang = child.home_language || '';
                 if (child.application_number) {
                     const appLangRes = await db.query('SELECT home_language FROM applications WHERE application_number = $1', [child.application_number]);
                     if (appLangRes.rows.length > 0 && appLangRes.rows[0].home_language) {
                         childHomeLang = appLangRes.rows[0].home_language;
                     }
+                }
+                if (!childHomeLang) {
+                    childHomeLang = (targetSchoolId <= 6) ? 'Sepedi' : 'Setswana';
                 }
                 const officialSubjects = curriculumService.getSubjectsForGradeAndStream(child.grade, child.stream, childHomeLang);
 

@@ -140,6 +140,7 @@ export const RegisterPage: React.FC = () => {
       idNumber: '',
       grade: '10',
       stream: 'Science',
+      homeLanguage: '',
       verified: false,
       verifying: false
     }
@@ -161,7 +162,7 @@ export const RegisterPage: React.FC = () => {
       const childSur = params.get('surname');
       const childGrade = params.get('grade');
       const childStream = params.get('stream');
-      const childLang = params.get('homeLanguage') || params.get('language') || 'isiZulu';
+      const childLang = params.get('homeLanguage') || params.get('language') || '';
 
       if (emailParam) {
         setFormData(prev => ({ ...prev, email: emailParam }));
@@ -361,7 +362,7 @@ export const RegisterPage: React.FC = () => {
               surname: res.learner.surname,
               grade: res.learner.grade.toString(),
               stream: res.learner.stream,
-              homeLanguage: res.learner.home_language || c.homeLanguage || 'isiZulu',
+              homeLanguage: res.learner.home_language || c.homeLanguage || '',
               learnerDetails: res.learner,
               error: undefined
             };
@@ -404,6 +405,15 @@ export const RegisterPage: React.FC = () => {
       return;
     }
 
+    for (let i = 0; i < childrenList.length; i++) {
+      const c = childrenList[i];
+      const lang = c.homeLanguage || c.learnerDetails?.home_language;
+      if (!lang) {
+        setError(`Please select an official Home Language for Child #${i + 1}.`);
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -415,7 +425,7 @@ export const RegisterPage: React.FC = () => {
         idNumber: c.idNumber.trim(),
         grade: c.grade,
         stream: c.stream,
-        home_language: c.homeLanguage || 'isiZulu'
+        home_language: c.homeLanguage || c.learnerDetails?.home_language || 'Sepedi'
       }));
 
       await authService.register({
@@ -914,21 +924,22 @@ export const RegisterPage: React.FC = () => {
                             <div>
                               <label className="block text-[11px] text-slate-400 mb-1">Official Home Language *</label>
                               <select
-                                value={child.homeLanguage || 'isiZulu'}
+                                value={child.homeLanguage || ''}
                                 onChange={(e) => updateChildField(child.id, 'homeLanguage', e.target.value)}
                                 className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500"
                               >
-                                <option value="isiZulu">isiZulu</option>
-                                <option value="isiXhosa">isiXhosa</option>
-                                <option value="Afrikaans">Afrikaans</option>
-                                <option value="English">English</option>
+                                <option value="" disabled>Select Official Home Language</option>
                                 <option value="Sepedi">Sepedi (Sesotho sa Leboa)</option>
                                 <option value="Setswana">Setswana</option>
                                 <option value="Sesotho">Sesotho</option>
-                                <option value="Xitsonga">Xitsonga</option>
-                                <option value="siSwati">siSwati</option>
-                                <option value="Tshivenda">Tshivenda</option>
-                                <option value="isiNdebele">isiNdebele</option>
+                                <option value="isiZulu">isiZulu</option>
+                                <option value="isiXhosa">isiXhosa</option>
+                                <option value="Xitsonga">Xitsonga (Tsonga)</option>
+                                <option value="Tshivenda">Tshivenda (Venda)</option>
+                                <option value="siSwati">siSwati (Swati)</option>
+                                <option value="isiNdebele">isiNdebele (Ndebele)</option>
+                                <option value="English">English (Home Language)</option>
+                                <option value="Afrikaans">Afrikaans (Huistaal)</option>
                               </select>
                             </div>
                           </div>

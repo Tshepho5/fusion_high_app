@@ -452,6 +452,13 @@ function validateStep(step) {
       isValid = false;
     }
 
+    const homeLang = document.getElementById('home_language');
+    if (!homeLang || !homeLang.value) {
+      showError('home_language', 'Please select your official Home Language.');
+      if (!firstInvalidElement) firstInvalidElement = homeLang;
+      isValid = false;
+    }
+
     if (!address.value.trim() || address.value.trim().length < 6) {
       showError('physical_address', 'Please provide a complete physical residential address.');
       if (!firstInvalidElement) firstInvalidElement = address;
@@ -760,13 +767,25 @@ function updateAgeRequirementUI(dobString) {
 function initGradeAndStream() {
   const gradeSelect = document.getElementById('grade_applied');
   const streamGroup = document.getElementById('stream-selection-group');
+  const streamSelect = document.getElementById('stream');
+  const homeLangSelect = document.getElementById('home_language');
   const gradeCapacityNotice = document.getElementById('grade-capacity-indicator');
+  const streamHint = document.getElementById('stream-compulsory-hint');
+
+  function updateStreamHint() {
+    const lang = (homeLangSelect && homeLangSelect.value) ? homeLangSelect.value : 'Selected Home Language';
+    const stream = streamSelect ? streamSelect.value : 'Science';
+    if (streamHint) {
+      streamHint.innerHTML = `Compulsory Core: English FAL, <strong>${lang} (Home Language)</strong>, Life Orientation + ${stream} Electives.`;
+    }
+  }
 
   if (gradeSelect) {
     gradeSelect.addEventListener('change', () => {
       const grade = parseInt(gradeSelect.value, 10);
       if (grade >= 10) {
         if (streamGroup) streamGroup.style.display = 'block';
+        updateStreamHint();
       } else {
         if (streamGroup) streamGroup.style.display = 'none';
       }
@@ -778,6 +797,19 @@ function initGradeAndStream() {
       } else if (gradeCapacityNotice) {
         gradeCapacityNotice.style.display = 'none';
       }
+    });
+  }
+
+  if (homeLangSelect) {
+    homeLangSelect.addEventListener('change', () => {
+      clearFieldError('home_language');
+      updateStreamHint();
+    });
+  }
+
+  if (streamSelect) {
+    streamSelect.addEventListener('change', () => {
+      updateStreamHint();
     });
   }
 }
@@ -877,7 +909,8 @@ async function checkUrlForResumption() {
     document.getElementById('physical_address').value = app.physical_address || '';
     document.getElementById('grade_applied').value = app.grade_applied || '8';
     document.getElementById('grade_applied').dispatchEvent(new Event('change'));
-    if (app.stream) document.getElementById('stream').value = app.stream;
+    if (app.stream && document.getElementById('stream')) document.getElementById('stream').value = app.stream;
+    if (app.home_language && document.getElementById('home_language')) document.getElementById('home_language').value = app.home_language;
 
     if (app.dob) {
       updateAgeRequirementUI(app.dob.split('T')[0]);
