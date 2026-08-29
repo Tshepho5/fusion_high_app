@@ -80,6 +80,7 @@ const PHONE_PATTERN = /^(\+27|0)[0-9]{9}$/;
 
 // DOM Initialization
 document.addEventListener('DOMContentLoaded', async () => {
+  initSchoolSelector();
   initRealtimeInputEnforcement();
   initStepper();
   initIDAutofill();
@@ -90,6 +91,76 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadCapacityData();
   checkUrlForResumption();
 });
+
+/**
+ * Institutional High School Selector Engine
+ */
+function initSchoolSelector() {
+  const schoolSelect = document.getElementById('school_id');
+  if (!schoolSelect) return;
+
+  const emisTag = document.getElementById('school-emis-tag');
+  const circuitText = document.getElementById('school-circuit-text');
+  const mottoText = document.getElementById('school-motto-text');
+  const brandBadge = document.getElementById('app-brand-badge');
+  const portalTitle = document.getElementById('app-portal-title');
+
+  function updateSchoolDisplay() {
+    const selectedOpt = schoolSelect.options[schoolSelect.selectedIndex];
+    if (!selectedOpt) return;
+    const schoolName = selectedOpt.textContent.split('(')[0].trim();
+    const emis = selectedOpt.getAttribute('data-emis') || '911220001';
+    const circuit = selectedOpt.getAttribute('data-circuit') || 'Polokwane Central Circuit';
+    const motto = selectedOpt.getAttribute('data-motto') || 'Innovate, Lead, Transform';
+
+    if (emisTag) emisTag.textContent = `EMIS ${emis}`;
+    if (circuitText) circuitText.textContent = `📍 Circuit: ${circuit} • Limpopo DBE`;
+    if (mottoText) mottoText.textContent = `"${motto}"`;
+    if (brandBadge) brandBadge.textContent = `⚡ ${schoolName} Admissions`;
+    if (portalTitle) portalTitle.textContent = `${schoolName} Learner Admissions`;
+  }
+
+  schoolSelect.addEventListener('change', updateSchoolDisplay);
+
+  // Auto-detect school from URL parameters (?school=makgoka-high or ?school_id=3)
+  const urlParams = new URLSearchParams(window.location.search);
+  const targetSchool = urlParams.get('school') || urlParams.get('school_id') || urlParams.get('slug');
+  if (targetSchool) {
+    for (let i = 0; i < schoolSelect.options.length; i++) {
+      const opt = schoolSelect.options[i];
+      if (opt.value === targetSchool || opt.getAttribute('data-slug') === targetSchool) {
+        schoolSelect.selectedIndex = i;
+        break;
+      }
+    }
+  }
+  updateSchoolDisplay();
+
+  // Load fresh schools directory from API
+  fetch('/api/schools')
+    .then(res => res.json())
+    .then(schools => {
+      if (Array.isArray(schools) && schools.length > 0) {
+        const currentVal = schoolSelect.value;
+        schoolSelect.innerHTML = '';
+        schools.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.setAttribute('data-slug', s.slug);
+          opt.setAttribute('data-emis', s.emis_number || '');
+          opt.setAttribute('data-circuit', s.circuit || '');
+          opt.setAttribute('data-motto', s.motto || '');
+          opt.textContent = `${s.name} (${s.circuit || 'Limpopo'})`;
+          if (String(s.id) === String(currentVal) || (targetSchool && (s.slug === targetSchool || String(s.id) === targetSchool))) {
+            opt.selected = true;
+          }
+          schoolSelect.appendChild(opt);
+        });
+        updateSchoolDisplay();
+      }
+    })
+    .catch(err => console.warn('Using static school dropdown defaults:', err));
+}
 
 /**
  * Real-Time Input Enforcement Engine
@@ -792,6 +863,10 @@ async function checkUrlForResumption() {
     const data = await res.json();
     const app = data.application;
 
+    if (app.school_id && document.getElementById('school_id')) {
+      document.getElementById('school_id').value = app.school_id;
+      document.getElementById('school_id').dispatchEvent(new Event('change'));
+    }
     document.getElementById('first_name').value = app.first_name || '';
     document.getElementById('surname').value = app.surname || '';
     document.getElementById('id_number').value = app.id_number || '';

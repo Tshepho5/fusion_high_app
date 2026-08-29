@@ -12,9 +12,9 @@
   <div class="portal-container">
     <!-- Header -->
     <header class="portal-header">
-      <div class="brand-badge">⚡ Fusion High School Admissions</div>
-      <h1>Learner Admission Application</h1>
-      <p>Official application portal for incoming Grade 8 learners and Grade 9–12 transfer candidates. Featuring real-time capacity monitoring and automated AI document verification.</p>
+      <div class="brand-badge" id="app-brand-badge">⚡ Limpopo DBE High School Admissions</div>
+      <h1 id="app-portal-title">Learner Admission Application</h1>
+      <p id="app-portal-desc">Official admissions application portal for Mankweng & Polokwane high schools. Featuring real-time capacity monitoring and automated AI document verification.</p>
     </header>
 
     <!-- School Capacity Banner -->
@@ -67,8 +67,34 @@
       <!-- ================= STEP 1: LEARNER INFORMATION ================= -->
       <div class="form-step-card active" id="step-1">
         <div class="step-header">
-          <h2>Step 1: Learner Information</h2>
-          <p>Please enter the personal details of the student applying for admission.</p>
+          <h2>Step 1: Institutional High School & Learner Information</h2>
+          <p>Please select your target secondary school and enter the applicant's personal details.</p>
+        </div>
+
+        <!-- Target High School Selection Card -->
+        <div class="form-group full-width school-select-card" style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 14px; padding: 18px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <label for="school_id" style="font-weight: 800; color: #38bdf8; font-size: 14px; margin-bottom: 0;">
+              🏛️ Select Target High School (Mankweng & Polokwane) <span class="required">*</span>
+            </label>
+            <span id="school-emis-tag" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; font-family: monospace; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; border: 1px solid rgba(56, 189, 248, 0.4);">
+              EMIS 911220001
+            </span>
+          </div>
+
+          <select id="school_id" name="school_id" required style="width: 100%; margin-top: 10px; padding: 11px 14px; background: #070b14; border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; color: #ffffff; font-size: 13px; font-weight: 600; cursor: pointer;">
+            <option value="1" data-slug="fusion-high" data-emis="911220001" data-circuit="Polokwane Central Circuit" data-motto="Innovate, Lead, Transform" selected>Fusion High School (Polokwane Central)</option>
+            <option value="2" data-slug="mountainview-high" data-emis="911220452" data-circuit="Mankweng Circuit" data-motto="Strive for Excellence">Mountainview Senior Secondary School (Mankweng Unit C)</option>
+            <option value="3" data-slug="makgoka-high" data-emis="911220411" data-circuit="Molepo Circuit" data-motto="Knowledge is Light">Makgoka High School (Ga-Molepo / Mankweng)</option>
+            <option value="4" data-slug="turfloop-high" data-emis="911220612" data-circuit="Mankweng Circuit" data-motto="Education for Progress">Turfloop High School (Turfloop / University Rd)</option>
+            <option value="5" data-slug="hwiti-high" data-emis="911220323" data-circuit="Mankweng Circuit" data-motto="Perseverance Conquers">Hwiti High School (Sovenga Zone 1)</option>
+            <option value="6" data-slug="ngwana-mohube" data-emis="911220501" data-circuit="Mankweng Circuit" data-motto="Forward in Excellence">Ngwana Mohube Secondary School (Segopje Village)</option>
+          </select>
+
+          <div id="school-motto-hint" style="margin-top: 8px; font-size: 11px; color: #94a3b8; display: flex; align-items: center; justify-content: space-between;">
+            <span id="school-circuit-text">📍 Circuit: Polokwane Central Circuit • Limpopo DBE</span>
+            <span id="school-motto-text" style="color: #fbbf24; font-style: italic;">"Innovate, Lead, Transform"</span>
+          </div>
         </div>
 
         <div class="grid-2">
