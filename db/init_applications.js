@@ -128,6 +128,8 @@ async function initApplicationTables() {
         application_number VARCHAR(50),
         subjects TEXT[] DEFAULT '{}',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       ALTER TABLE applications ADD COLUMN IF NOT EXISTS home_language VARCHAR(50);
       ALTER TABLE applications ADD COLUMN IF NOT EXISTS school_id INTEGER REFERENCES schools(id);
       ALTER TABLE applications ADD COLUMN IF NOT EXISTS admin_notes TEXT;
