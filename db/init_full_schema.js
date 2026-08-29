@@ -617,6 +617,16 @@ async function initializeAllDatabaseTables(customClient) {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      ALTER TABLE applications ADD COLUMN IF NOT EXISTS home_language VARCHAR(50);
+      ALTER TABLE applications ADD COLUMN IF NOT EXISTS school_id INTEGER REFERENCES schools(id);
+      ALTER TABLE applications ADD COLUMN IF NOT EXISTS admin_notes TEXT;
+      ALTER TABLE applications ADD COLUMN IF NOT EXISTS provisional_learner_number VARCHAR(50);
+      ALTER TABLE applications ADD COLUMN IF NOT EXISTS assigned_class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL;
+
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS home_language VARCHAR(50);
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS school_id INTEGER REFERENCES schools(id);
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS class_id INTEGER;
+
       CREATE TABLE IF NOT EXISTS application_documents (
         id SERIAL PRIMARY KEY,
         application_id INTEGER NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
