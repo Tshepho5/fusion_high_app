@@ -13,46 +13,21 @@ const getSmtpPass = () => (process.env.SMTP_PASS || 'ixuyslitvtetlmzc').trim().r
 let pooledTransporter = null;
 let lastSmtpUser = null;
 let lastSmtpPass = null;
-let cachedSmtpIp = null;
-
-function resolveHostToIp(host = 'smtp.gmail.com') {
-  if (net.isIP(host)) return Promise.resolve(host);
-  if (cachedSmtpIp) return Promise.resolve(cachedSmtpIp);
-  return new Promise((resolve) => {
-    dns.lookup(host, { family: 4 }, (err, address) => {
-      if (!err && address) {
-        cachedSmtpIp = address;
-        resolve(address);
-      } else {
-        resolve(host === 'smtp.gmail.com' ? '142.251.127.109' : host);
-      }
-    });
-  });
-}
 
 function getPooledTransporter() {
   const user = getSmtpUser();
   const pass = getSmtpPass();
-  const hostIp = cachedSmtpIp || '142.251.127.109';
 
   if (pooledTransporter && lastSmtpUser === user && lastSmtpPass === pass) {
     return pooledTransporter;
   }
 
   pooledTransporter = nodemailer.createTransport({
-    pool: true,
-    maxConnections: 5,
-    maxMessages: 500,
-    rateLimit: 14, // Gmail max 14 msgs/sec
-    host: hostIp,
-    port: 465,
-    secure: true,
-    servername: 'smtp.gmail.com',
+    service: 'gmail',
     auth: { user, pass },
-    tls: { servername: 'smtp.gmail.com', rejectUnauthorized: false },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000
+    connectionTimeout: 5000,
+    greetingTimeout: 5000,
+    socketTimeout: 8000
   });
 
   lastSmtpUser = user;
@@ -63,23 +38,18 @@ function getPooledTransporter() {
 function createDirectTransporter(port = 465, secure = true) {
   const user = getSmtpUser();
   const pass = getSmtpPass();
-  const hostIp = cachedSmtpIp || '142.251.127.109';
   
   return nodemailer.createTransport({
-    host: hostIp,
+    host: 'smtp.gmail.com',
     port,
     secure,
-    servername: 'smtp.gmail.com',
     auth: { user, pass },
-    tls: { servername: 'smtp.gmail.com', rejectUnauthorized: false, ciphers: 'SSLv3' },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000
+    tls: { rejectUnauthorized: false },
+    connectionTimeout: 5000,
+    greetingTimeout: 5000,
+    socketTimeout: 8000
   });
 }
-
-// Pre-resolve host IP in background on startup
-resolveHostToIp('smtp.gmail.com').catch(() => {});
 
 /**
  * Modern HTML Email Base Layout Wrapper
@@ -269,19 +239,14 @@ const emailService = {
         console.warn(`[EMAIL RETRY 2] Port 587 warning (${e2.message}), attempting direct service: 'gmail'...`);
         // Strategy 3: Direct Port 465 SSL
         try {
-          const hostIp = cachedSmtpIp || '142.251.127.109';
           const t3 = nodemailer.createTransport({
-            host: hostIp,
-            port: 465,
-            secure: true,
-            servername: 'smtp.gmail.com',
+            service: 'gmail',
             auth: { user: senderUser, pass: getSmtpPass() },
-            tls: { servername: 'smtp.gmail.com', rejectUnauthorized: false },
-            connectionTimeout: 10000,
-            greetingTimeout: 10000
+            connectionTimeout: 5000,
+            greetingTimeout: 5000
           });
           const info = await t3.sendMail(mailOptions);
-          console.log(`[EMAIL SUCCESS - Direct Port 465] Delivered to ${targetRecipient}: ${info.messageId}`);
+          console.log(`[EMAIL SUCCESS - Direct Gmail] Delivered to ${targetRecipient}: ${info.messageId}`);
           return { success: true, messageId: info.messageId };
         } catch (e3) {
           console.error('[EMAIL ERROR - All Transporters Failed]:', e3.message || e3);
