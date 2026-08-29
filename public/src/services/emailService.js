@@ -8,7 +8,7 @@ const nodemailer = require('nodemailer');
 const net = require('net');
 
 const getSmtpUser = () => (process.env.SMTP_USER || 'tshepomakola23@gmail.com').trim().replace(/^["']|["']$/g, '');
-const getSmtpPass = () => (process.env.SMTP_PASS || 'ixuyslitvtetlmzc').trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '');
+const getSmtpPass = () => (process.env.SMTP_PASS || 'ayauhdlmlzouiguh').trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '');
 
 let pooledTransporter = null;
 let lastSmtpUser = null;
