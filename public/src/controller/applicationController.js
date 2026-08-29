@@ -149,7 +149,19 @@ exports.submitApplication = async (req, res) => {
       });
     }
 
-    const applicationNumber = applicationService.generateApplicationNumber();
+    // Resolve School Tenant ID (Default: 1 - Fusion High, or 2..6 for Mankweng schools)
+    const schoolId = parseInt(body.school_id || req.headers['x-school-id'] || 1, 10);
+    let schoolSlug = 'fusion-high';
+    let schoolName = 'Fusion High School';
+    try {
+      const sRes = await db.query('SELECT slug, name FROM schools WHERE id = $1', [schoolId]);
+      if (sRes.rows.length > 0) {
+        schoolSlug = sRes.rows[0].slug;
+        schoolName = sRes.rows[0].name;
+      }
+    } catch (_) {}
+
+    const applicationNumber = applicationService.generateApplicationNumber(schoolSlug);
     const correctionToken = applicationService.generateCorrectionToken();
 
     const gradeApplied = parseInt(body.grade_applied, 10);
@@ -276,13 +288,14 @@ exports.submitApplication = async (req, res) => {
         ai_verification_notes,
         assigned_class_id,
         provisional_learner_number,
-        home_language
+        home_language,
+        school_id
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
         $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
         $31, $32, $33, $34, $35, $36, $37, $38, $39, $40,
-        $41, $42, $43, $44
+        $41, $42, $43, $44, $45
       ) RETURNING id;
     `;
 
@@ -330,7 +343,8 @@ exports.submitApplication = async (req, res) => {
       JSON.stringify(aiVerification.issues),
       assignedClass ? assignedClass.id : null,
       provisionalLearnerNumber,
-      homeLanguage
+      homeLanguage,
+      schoolId
     ];
 
     const appInsertResult = await db.query(insertQuery, values);
@@ -748,19 +762,27 @@ exports.getCapacity = async (req, res) => {
 };
 
 /**
- * Admin: List All Applications
+ * Admin: List All Applications (Multi-School Aware)
  */
 exports.listApplications = async (req, res) => {
   try {
-    const { status, grade, search } = req.query;
+    const { status, grade, search, school_id } = req.query;
     let query = `
       SELECT a.*, c.name as assigned_class_name,
+             s.name as school_name, s.slug as school_slug, s.circuit as school_circuit,
              (SELECT COUNT(*)::int FROM application_documents d WHERE d.application_id = a.id) as document_count
       FROM applications a
       LEFT JOIN classes c ON a.assigned_class_id = c.id
+      LEFT JOIN schools s ON a.school_id = s.id
       WHERE 1=1
     `;
     const params = [];
+
+    const targetSchoolId = school_id || req.headers['x-school-id'] || (req.user && req.user.school_id && req.user.role !== 'superadmin' ? req.user.school_id : null);
+    if (targetSchoolId && targetSchoolId !== 'all') {
+      params.push(parseInt(targetSchoolId, 10));
+      query += ` AND (a.school_id = $${params.length} OR a.school_id IS NULL)`;
+    }
 
     if (status) {
       params.push(status);

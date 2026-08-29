@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
+import { useSchool } from '../../context/SchoolContext';
 import { ParticleLogoIntro } from '../../components/landing/ParticleLogoIntro';
 import { CircularActionMenu } from '../../components/landing/CircularActionMenu';
 import { AboutUsModal } from '../../components/landing/AboutUsModal';
 import { TermsAgreementModal } from '../../components/common/TermsAgreementModal';
-import { Sparkles, Sun, Moon, RotateCcw, Info, Scale, Compass, ShieldCheck } from 'lucide-react';
+import { Sparkles, Sun, Moon, RotateCcw, Info, Scale, Compass, ShieldCheck, GraduationCap, Building2 } from 'lucide-react';
 
 export const LandingPage: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
+  const { currentSchool, schoolsList, setSchoolById } = useSchool();
 
   // 4-second particle logo assembly animation state (runs automatically on load)
   const [showIntro, setShowIntro] = useState<boolean>(true);
@@ -39,15 +41,21 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           {/* Logo & School Title */}
           <Link to="/" className="flex items-center gap-3.5 group">
-            <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-white/5 p-1.5 border border-white/15 flex items-center justify-center group-hover:scale-105 transition-transform shadow-lg shadow-indigo-500/10">
-              <img src="/assets/FH.png" alt="Fusion High Emblem" className="w-full h-full object-contain" />
+            <div
+              className="w-12 h-12 md:w-14 md:h-14 rounded-2xl p-1.5 border flex items-center justify-center group-hover:scale-105 transition-transform shadow-lg"
+              style={{
+                backgroundColor: `${currentSchool?.primary_color || '#4f46e5'}20`,
+                borderColor: `${currentSchool?.primary_color || '#4f46e5'}50`
+              }}
+            >
+              <GraduationCap className="w-8 h-8" style={{ color: currentSchool?.primary_color || '#818cf8' }} />
             </div>
             <div>
-              <span className="font-display text-xl md:text-2xl font-extrabold tracking-tight text-white block leading-tight">
-                FUSION HIGH
+              <span className="font-display text-xl md:text-2xl font-extrabold tracking-tight text-white block leading-tight uppercase">
+                {currentSchool?.name || 'FUSION HIGH'}
               </span>
               <span className="text-[10px] md:text-[11px] font-mono tracking-wider text-cyan-400 uppercase font-bold block">
-                ONE SCHOOL • LIMITLESS POTENTIAL
+                {currentSchool?.circuit || 'MANKWENG CIRCUIT'} • {currentSchool?.motto || 'LIMITLESS POTENTIAL'}
               </span>
             </div>
           </Link>
@@ -117,13 +125,13 @@ export const LandingPage: React.FC = () => {
           <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold font-display tracking-tight text-white leading-tight">
             Welcome to{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-indigo-300 to-cyan-400">
-              Fusion High
+              {currentSchool?.name || 'Fusion High'}
             </span>
           </h1>
 
           {/* Focused Subtitle */}
           <p className="text-sm sm:text-base md:text-lg text-slate-300 max-w-xl mx-auto leading-relaxed">
-            One unified digital portal for learners, teachers, and parents. Click below to sign in, submit admissions, or create an account.
+            Empowering students across {currentSchool?.circuit || 'Mankweng Circuit'}, Limpopo. One unified digital portal for learners, teachers, and parents.
           </p>
         </div>
       </main>

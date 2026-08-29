@@ -227,8 +227,10 @@ exports.generateLearnerPasswordFromID = generateLearnerPasswordFromID;
 exports.registerUser = async (req, res) => {
     let { 
         email, password, full_name, surname, role, id_number, dob, gender, phone, physical_address, country, race, parent_type, 
-        learner_number, children_to_link 
+        learner_number, children_to_link, school_id 
     } = req.body;
+
+    const targetSchoolId = parseInt(school_id || req.headers['x-school-id'] || 1, 10);
     
     const normalizedEmail = (email || '').toString().toLowerCase().trim();
     if (!normalizedEmail || !password || !full_name || !surname) {
@@ -412,9 +414,9 @@ exports.registerUser = async (req, res) => {
             );
         } else {
             // Insert new parent user
-            const query = `INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, phone, physical_address, country, race, parent_type)
-                           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id, email, full_name, surname`;
-            const result = await db.query(query, [normalizedEmail, hash, parentRoleId, full_name, surname, id_number, dobForDb, gender, phone, physical_address, country, race, parent_type || null]);
+            const query = `INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, phone, physical_address, country, race, parent_type, school_id)
+                           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id, email, full_name, surname`;
+            const result = await db.query(query, [normalizedEmail, hash, parentRoleId, full_name, surname, id_number, dobForDb, gender, phone, physical_address, country, race, parent_type || null, targetSchoolId]);
             newUserId = result.rows[0].id;
         }
 
@@ -432,14 +434,14 @@ exports.registerUser = async (req, res) => {
                 const existingChildUser = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [child.learner_email]);
                 if (existingChildUser.rows.length === 0) {
                     const newChildUserRes = await db.query(
-                        `INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number)
-                         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-                        [child.learner_email, childPwHash, learnerRoleId, child.full_name, child.surname, child.id_number]
+                        `INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, school_id)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+                        [child.learner_email, childPwHash, learnerRoleId, child.full_name, child.surname, child.id_number, targetSchoolId]
                     );
                     learnerUserId = newChildUserRes.rows[0].id;
                 } else {
                     learnerUserId = existingChildUser.rows[0].id;
-                    await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [childPwHash, learnerUserId]);
+                    await db.query('UPDATE users SET password_hash = $1, school_id = COALESCE(school_id, $2) WHERE id = $3', [childPwHash, targetSchoolId, learnerUserId]);
                 }
 
                 let childHomeLang = child.home_language || 'isiZulu';
@@ -456,14 +458,14 @@ exports.registerUser = async (req, res) => {
                 const existingChildInDb = await db.query('SELECT id FROM children WHERE learner_number = $1 OR (full_name ILIKE $2 AND surname ILIKE $3)', [child.learner_number, child.full_name, child.surname]);
                 if (existingChildInDb.rows.length === 0) {
                     const newChildRes = await db.query(
-                        `INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, stream, subjects, class_id, application_number, home_language)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
-                        [learnerUserId, child.full_name, child.surname, newUserId, child.learner_number, child.grade, child.stream, officialSubjects, child.assigned_class_id || null, child.application_number || null, childHomeLang]
+                        `INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, stream, subjects, class_id, application_number, home_language, school_id)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+                        [learnerUserId, child.full_name, child.surname, newUserId, child.learner_number, child.grade, child.stream, officialSubjects, child.assigned_class_id || null, child.application_number || null, childHomeLang, targetSchoolId]
                     );
                     childDbId = newChildRes.rows[0].id;
                 } else {
                     childDbId = existingChildInDb.rows[0].id;
-                    await db.query('UPDATE children SET parent_id = $1, learner_user_id = $2, subjects = $3, grade = $4, stream = $5, home_language = $6 WHERE id = $7', [newUserId, learnerUserId, officialSubjects, child.grade, child.stream, childHomeLang, childDbId]);
+                    await db.query('UPDATE children SET parent_id = $1, learner_user_id = $2, subjects = $3, grade = $4, stream = $5, home_language = $6, school_id = COALESCE(school_id, $7) WHERE id = $8', [newUserId, learnerUserId, officialSubjects, child.grade, child.stream, childHomeLang, targetSchoolId, childDbId]);
                 }
 
                 // 3. Insert into parent_children junction table

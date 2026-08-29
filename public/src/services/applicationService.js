@@ -12,13 +12,20 @@ const CLASS_MAX_CAPACITY = 30;
 const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
 /**
- * Generate Unique Application Reference Number
- * e.g., FHS-2026-84920
+ * Generate Unique Application Reference Number with School Prefix
+ * e.g., MTH-2026-84920 (Mountainview), MKG-2026-84920 (Makgoka), FHS-2026-84920 (Fusion)
  */
-function generateApplicationNumber() {
+function generateApplicationNumber(schoolSlug = 'fusion-high') {
   const year = new Date().getFullYear();
   const randomDigits = Math.floor(10000 + Math.random() * 90000);
-  return `FHS-${year}-${randomDigits}`;
+  const slug = String(schoolSlug).toLowerCase();
+  let prefix = 'FHS';
+  if (slug.includes('mountainview')) prefix = 'MTH';
+  else if (slug.includes('makgoka')) prefix = 'MKG';
+  else if (slug.includes('turfloop')) prefix = 'TRF';
+  else if (slug.includes('hwiti')) prefix = 'HWT';
+  else if (slug.includes('ngwana') || slug.includes('mohube')) prefix = 'NMH';
+  return `${prefix}-${year}-${randomDigits}`;
 }
 
 /**

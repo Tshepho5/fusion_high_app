@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../../services/api';
+import { useSchool } from '../../context/SchoolContext';
 import { FusionAIIcon } from '../../components/common/FusionAIIcon';
 import {
   User,
@@ -21,7 +22,8 @@ import {
   CreditCard,
   Calendar,
   MapPin,
-  GraduationCap
+  GraduationCap,
+  Building2
 } from 'lucide-react';
 
 interface ChildLinkItem {
@@ -98,6 +100,7 @@ const validateSAIDNumber = (idNumber: string) => {
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
+  const { currentSchool, schoolsList, setSchoolById } = useSchool();
   const [parentStep, setParentStep] = useState<1 | 2>(1);
 
   // Form states with standard autocomplete support
@@ -429,7 +432,8 @@ export const RegisterPage: React.FC = () => {
         physical_address: formData.physicalAddress,
         country: formData.citizenship,
         parent_type: formData.parentType,
-        children_to_link: childrenPayload
+        children_to_link: childrenPayload,
+        school_id: currentSchool?.id || 1
       });
 
       setSuccess(true);
@@ -470,15 +474,21 @@ export const RegisterPage: React.FC = () => {
 
       <div className="sm:mx-auto sm:w-full sm:max-w-xl text-center space-y-3 relative z-10">
         <Link to="/" className="inline-flex items-center gap-3 group">
-          <div className="w-14 h-14 rounded-2xl bg-white/5 p-1 border border-white/15 shadow-glow-indigo group-hover:scale-105 transition-transform backdrop-blur-md">
-            <img src="/assets/FH.png" alt="Fusion High Logo" className="w-full h-full object-contain" />
+          <div
+            className="w-14 h-14 rounded-2xl p-1 border shadow-glow-indigo group-hover:scale-105 transition-transform backdrop-blur-md flex items-center justify-center"
+            style={{
+              backgroundColor: `${currentSchool?.primary_color || '#4f46e5'}20`,
+              borderColor: `${currentSchool?.primary_color || '#4f46e5'}50`
+            }}
+          >
+            <GraduationCap className="w-8 h-8" style={{ color: currentSchool?.primary_color || '#818cf8' }} />
           </div>
           <div className="text-left">
-            <span className="font-display text-lg font-extrabold tracking-tight text-white block">
-              FUSION HIGH
+            <span className="font-display text-lg font-extrabold tracking-tight text-white block uppercase">
+              {currentSchool?.name || 'FUSION HIGH'}
             </span>
             <span className="text-[9.5px] font-mono tracking-wider text-cyan-400 uppercase font-bold block">
-              ONE SCHOOL • ONE CONNECTION • LIMITLESS POTENTIAL
+              {currentSchool?.circuit || 'MANKWENG CIRCUIT'} • {currentSchool?.motto || 'ONE SCHOOL • ONE CONNECTION'}
             </span>
           </div>
         </Link>
@@ -493,7 +503,7 @@ export const RegisterPage: React.FC = () => {
           Parent Registration
         </h1>
         <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
-          Create your parent portal account and link your enrolled high school learners using their Name, Surname, ID Number, Grade, and Stream.
+          Create your parent portal account and link your enrolled high school learners for <strong>{currentSchool?.name}</strong>.
         </p>
       </div>
 
@@ -548,6 +558,33 @@ export const RegisterPage: React.FC = () => {
             {parentStep === 1 ? (
               /* Step 1: Parent Personal Details */
               <div className="space-y-4 animate-fade-in">
+                {/* School Selection Card */}
+                <div className="p-3.5 rounded-2xl bg-surface-darker border border-white/10 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                      <Building2 className="w-4 h-4 text-cyan-400" />
+                      <span>Select Target High School *</span>
+                    </label>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-mono font-bold">
+                      EMIS {currentSchool?.emis_number || '911220001'}
+                    </span>
+                  </div>
+                  <select
+                    value={currentSchool?.id || 1}
+                    onChange={(e) => setSchoolById(parseInt(e.target.value, 10))}
+                    className="w-full rounded-xl bg-surface-dark border border-white/15 px-3 py-2.5 text-xs text-white focus:ring-2 focus:ring-brand-500 font-medium"
+                  >
+                    {schoolsList.map(s => (
+                      <option key={s.id} value={s.id} className="bg-surface-dark text-white">
+                        {s.name} ({s.circuit})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-slate-400 italic">
+                    All linked children and communication will be registered under this school's official DBE records.
+                  </p>
+                </div>
+
                 {/* SA ID Number */}
                 <div>
                   <label className="block text-xs font-bold text-slate-300 mb-1">
