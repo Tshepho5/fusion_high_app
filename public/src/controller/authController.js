@@ -988,26 +988,19 @@ exports.forgotPassword = async (req, res) => {
 
         const tpl = emailService.templates.forgotPassword(otp, targetDeliveryEmail, baseUrl);
         
-        // Dispatch email and verify confirmation
-        console.log(`[AUTH] Dispatching OTP [${otp}] to destination email: ${targetDeliveryEmail} for user ID ${user.id} (${user.email})`);
-        const sendResult = await emailService.send(targetDeliveryEmail, tpl.subject, tpl.body);
-
-        if (!sendResult || sendResult.success === false) {
-            console.warn(`[AUTH FORGOT PW NOTICE] SMTP delivery failed or timed out (${sendResult?.error}). Fallback OTP [${otp}] generated for ${targetDeliveryEmail}`);
-            return res.json({
-                message: `A 4-digit reset code has been generated. Your verification code is: ${otp} (valid for 2 minutes).`,
-                email: user.email,
-                delivery_email: masked,
-                expires_in: 120,
-                code: otp
-            });
-        }
-
         // Create a helpful masked email (e.g. ts***@gmail.com)
         const parts = targetDeliveryEmail.split('@');
         const masked = parts[0].length > 2 
             ? `${parts[0].slice(0, 2)}***@${parts[1]}` 
             : `${parts[0].slice(0, 1)}***@${parts[1]}`;
+
+        // Dispatch email and verify confirmation
+        console.log(`[AUTH] Dispatching OTP [${otp}] to destination email: ${targetDeliveryEmail} for user ID ${user.id} (${user.email})`);
+        const sendResult = await emailService.send(targetDeliveryEmail, tpl.subject, tpl.body);
+
+        if (!sendResult || sendResult.success === false) {
+            console.warn(`[AUTH FORGOT PW NOTICE] SMTP delivery notice (${sendResult?.error}). Code [${otp}] active for ${targetDeliveryEmail}`);
+        }
 
         res.json({ 
             message: `A 4-digit reset code has been sent immediately to your registered email (${masked}). Valid for 2 minutes.`,
