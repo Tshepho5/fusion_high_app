@@ -435,23 +435,6 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                   </div>
                 </div>
 
-                {/* Curriculum Pace Bar */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-400 flex items-center gap-1 font-medium">
-                      <TrendingUp className="w-3.5 h-3.5 text-brand-400" />
-                      Syllabus Coverage
-                    </span>
-                    <span className="font-mono font-bold text-white">{card.curriculum_progress}%</span>
-                  </div>
-                  <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-brand-500 via-cyan-400 to-emerald-400 transition-all duration-500 rounded-full"
-                      style={{ width: `${card.curriculum_progress}%` }}
-                    />
-                  </div>
-                </div>
-
                 {/* Action Buttons Toolbar: Marks, Resources, Attendance, AI Tools, Roster */}
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2">
                   <button

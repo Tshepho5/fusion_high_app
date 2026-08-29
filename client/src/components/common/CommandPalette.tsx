@@ -155,7 +155,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         {
           id: 'tab-overview',
           title: 'Educator Analytics Dashboard',
-          subtitle: 'Curriculum pace, class averages and lesson plans',
+          subtitle: 'Class averages, workload metrics and lesson plans',
           category: 'Pages & Portals',
           icon: LayoutDashboard,
           iconColor: 'text-brand-400',

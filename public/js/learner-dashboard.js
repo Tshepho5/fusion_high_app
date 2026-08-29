@@ -195,16 +195,6 @@ export function renderLearnerCarouselSubjects(cards) {
                     <span>${teacher}</span>
                 </div>
 
-                <div class="carousel-subject-progress">
-                    <div class="carousel-progress-labels">
-                        <span>Curriculum Pace</span>
-                        <span style="color: var(--accent); font-weight: 700;">${progress}%</span>
-                    </div>
-                    <div class="carousel-progress-bar-bg">
-                        <div class="carousel-progress-bar-fill" style="width: ${progress}%;"></div>
-                    </div>
-                </div>
-
                 <div class="carousel-subject-actions">
                     <button type="button" class="subject-action-btn-sm" onclick="window.openSubjectResourcesModal('${safeName}', ${grade})" title="Study Resources">
                         <i class="fas fa-file-pdf" style="color: var(--accent-text);"></i> Resources
@@ -306,20 +296,10 @@ export function renderLearnerSubjectCards(cards) {
                     </div>
                 </div>
 
-                <div class="subject-details-list" style="margin-bottom: 0.25rem;">
+                <div class="subject-details-list" style="margin-bottom: 0.5rem;">
                     <div style="display:flex; justify-content:space-between; color:#cbd5e1; font-size:0.85rem; background:#1e293b; padding:0.5rem 0.75rem; border-radius:6px; border: 1px solid #334155;">
                         <span><i class="fas fa-chalkboard-teacher me-1" style="color:#6366f1;"></i> Teacher: <strong style="color:#f8fafc;">${c.teacher || 'Subject Teacher'}</strong></span>
                         <span>Class: <strong style="color:#38bdf8;">${c.class_name || 'Grade 10A'}</strong></span>
-                    </div>
-                </div>
-
-                <div class="curriculum-progress-wrapper" style="margin-bottom: 0.25rem;">
-                    <div class="curriculum-progress-labels" style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:600; color:#cbd5e1; margin-bottom: 4px;">
-                        <span>CAPS Curriculum Pace</span>
-                        <span style="color:#a855f7; font-weight:700;">${c.curriculum_progress || 80}%</span>
-                    </div>
-                    <div class="curriculum-progress-bar-bg" style="width:100%; height:10px; background:#1e293b; border-radius:20px; overflow:hidden;">
-                        <div class="curriculum-progress-bar-fill" style="width: ${c.curriculum_progress || 80}%; height:100%; background: linear-gradient(90deg, #6366f1 0%, #a855f7 100%); border-radius:20px;"></div>
                     </div>
                 </div>
 

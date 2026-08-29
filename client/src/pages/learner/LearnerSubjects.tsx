@@ -843,20 +843,6 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                         </p>
                       </div>
 
-                      {/* Curriculum Pace */}
-                      <div className="space-y-1.5 pt-2">
-                        <div className="flex justify-between text-[11px] font-semibold text-slate-400">
-                          <span>Curriculum Pace</span>
-                          <span className="text-purple-400 font-bold">{sub.curriculum_progress || 80}%</span>
-                        </div>
-                        <div className="w-full h-2 bg-surface-darker rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-brand-500 to-purple-500 rounded-full"
-                            style={{ width: `${sub.curriculum_progress || 80}%` }}
-                          />
-                        </div>
-                      </div>
-
                       {/* Classmates & Resources Pill */}
                       <div className="flex items-center justify-between text-[11px] text-slate-400 bg-surface-darker p-2.5 rounded-xl border border-white/5">
                         <span className="flex items-center gap-1.5">

@@ -285,20 +285,6 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 </p>
               </div>
 
-              {/* Progress Bar */}
-              <div className="p-2.5 rounded-xl bg-surface-darker border border-white/5 space-y-1.5">
-                <div className="flex justify-between text-xs font-semibold">
-                  <span className="text-slate-400">Curriculum Pace</span>
-                  <span className="text-indigo-400">{sub.progress}%</span>
-                </div>
-                <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 rounded-full transition-all duration-500"
-                    style={{ width: `${sub.progress}%` }}
-                  />
-                </div>
-              </div>
-
               {/* Action Buttons */}
               <div className="grid grid-cols-3 gap-1.5 pt-1">
                 <button

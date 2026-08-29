@@ -74,16 +74,6 @@ export function renderSubjectCards(cards) {
                 </div>
             </div>
 
-            <div class="curriculum-progress-wrapper" style="margin-bottom: 0.75rem;">
-                <div class="curriculum-progress-labels">
-                    <span>CAPS Curriculum Pace</span>
-                    <span>${c.curriculum_progress}%</span>
-                </div>
-                <div class="curriculum-progress-bar-bg">
-                    <div class="curriculum-progress-bar-fill" style="width: ${c.curriculum_progress}%;"></div>
-                </div>
-            </div>
-
             <div class="student-count-box" style="margin-bottom: 1rem; cursor:pointer;" onclick="window.toggleSubjectLearnersSection('${c.subject_name}', ${c.grade}, '${sectionId}', '${listId}')">
                 <div class="student-count-value">
                     <i class="fas fa-users" style="color: #6366f1;"></i> ${c.learner_count} Enrolled Learners <span style="font-size:0.75rem; color:#38bdf8; font-weight:normal; margin-left:auto;"><i class="fas fa-chevron-down"></i> Expand Roster</span>
