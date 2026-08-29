@@ -40,6 +40,48 @@ async function initializeAllDatabaseTables(customClient) {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS slug VARCHAR(100);
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS domain VARCHAR(255);
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS emis_number VARCHAR(50);
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS circuit VARCHAR(100);
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS district VARCHAR(100) DEFAULT 'Capricorn South';
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS province VARCHAR(50) DEFAULT 'Limpopo';
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS physical_address TEXT;
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS contact_email VARCHAR(255);
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(50);
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS principal_name VARCHAR(255);
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS logo_url TEXT;
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS badge_url TEXT;
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS primary_color VARCHAR(20) DEFAULT '#4f46e5';
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS secondary_color VARCHAR(20) DEFAULT '#06b6d4';
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS accent_color VARCHAR(20) DEFAULT '#f59e0b';
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS motto TEXT;
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS curriculum_type VARCHAR(50) DEFAULT 'CAPS (DBE Limpopo)';
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS grade_range VARCHAR(50) DEFAULT '8-12';
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS settings JSONB DEFAULT '{}'::jsonb;
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+      -- Drop legacy constraints if they exist
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'schools' AND column_name = 'code') THEN
+          ALTER TABLE schools ALTER COLUMN code DROP NOT NULL;
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'schools' AND column_name = 'contactEmail') THEN
+          ALTER TABLE schools ALTER COLUMN "contactEmail" DROP NOT NULL;
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'schools' AND column_name = 'address') THEN
+          ALTER TABLE schools ALTER COLUMN "address" DROP NOT NULL;
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'schools' AND column_name = 'activeYear') THEN
+          ALTER TABLE schools ALTER COLUMN "activeYear" DROP NOT NULL;
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'schools' AND column_name = 'currentTerm') THEN
+          ALTER TABLE schools ALTER COLUMN "currentTerm" DROP NOT NULL;
+        END IF;
+      END $$;
+
       INSERT INTO schools (id, name, slug, domain, emis_number, circuit, district, province, physical_address, contact_email, contact_phone, principal_name, primary_color, secondary_color, accent_color, motto, curriculum_type, grade_range)
       VALUES
         -- 1. Limpopo (Polokwane & Mankweng - Capricorn South District)
@@ -70,7 +112,14 @@ async function initializeAllDatabaseTables(customClient) {
         accent_color = EXCLUDED.accent_color,
         motto = EXCLUDED.motto;
 
-      SELECT setval(pg_get_serial_sequence('schools', 'id'), COALESCE((SELECT MAX(id) FROM schools), 1));
+      DO $$
+      BEGIN
+        IF pg_get_serial_sequence('schools', 'id') IS NOT NULL THEN
+          EXECUTE 'SELECT setval(pg_get_serial_sequence(''schools'', ''id''), COALESCE((SELECT MAX(id::integer) FROM schools WHERE id::text ~ ''^[0-9]+$''), 1))';
+        END IF;
+      EXCEPTION WHEN OTHERS THEN
+        NULL;
+      END $$;
 
       -- 1. Core Auth & Organizational Tables
       CREATE TABLE IF NOT EXISTS roles (
