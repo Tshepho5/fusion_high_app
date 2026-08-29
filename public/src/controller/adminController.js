@@ -1446,7 +1446,61 @@ exports.updateAdmissionStatus = async (req, res) => {
             return res.status(404).json({ error: 'Application not found.' });
         }
 
-        res.json({ message: 'Admission status updated successfully.', application: updateRes.rows[0] });
+        const app = updateRes.rows[0];
+        const baseUrl = process.env.APP_URL || 'https://educonnect-cmyh.onrender.com';
+        const learnerFullName = `${app.first_name} ${app.surname}`;
+        const parentFullName = `${app.primary_parent_name} ${app.primary_parent_surname}`;
+
+        // Trigger email notification based on status
+        if (app.primary_parent_email) {
+            setImmediate(async () => {
+                try {
+                    if (status === 'approved') {
+                        const registrationUrl = `${baseUrl}/register?appRef=${app.application_number}&email=${encodeURIComponent(app.primary_parent_email)}&firstName=${encodeURIComponent(app.first_name)}&surname=${encodeURIComponent(app.surname)}&idNumber=${encodeURIComponent(app.id_number || '')}&grade=${encodeURIComponent(app.grade_applied)}&stream=${encodeURIComponent(app.stream || 'General')}`;
+                        await emailService.sendApplicationAccepted({
+                            parentEmail: app.primary_parent_email,
+                            parentName: parentFullName,
+                            learnerName: learnerFullName,
+                            grade: app.grade_applied,
+                            stream: app.stream,
+                            applicationNumber: app.application_number,
+                            registrationUrl
+                        });
+                    } else if (status === 'waitlisted') {
+                        await emailService.sendApplicationWaitlisted({
+                            parentEmail: app.primary_parent_email,
+                            parentName: parentFullName,
+                            learnerName: learnerFullName,
+                            grade: app.grade_applied,
+                            applicationNumber: app.application_number
+                        });
+                    } else if (status === 'action_required') {
+                        const resumptionUrl = `${baseUrl}/application.html?resume=${app.correction_token || app.application_number}`;
+                        await emailService.sendApplicationCorrection({
+                            parentEmail: app.primary_parent_email,
+                            parentName: parentFullName,
+                            learnerName: learnerFullName,
+                            applicationNumber: app.application_number,
+                            issues: Array.isArray(notes) ? notes : [notes || 'Document or detail verification needed.'],
+                            resumptionUrl
+                        });
+                    } else if (status === 'rejected') {
+                        await emailService.sendApplicationUnsuccessful({
+                            parentEmail: app.primary_parent_email,
+                            parentName: parentFullName,
+                            learnerName: learnerFullName,
+                            grade: app.grade_applied,
+                            applicationNumber: app.application_number,
+                            reason: typeof notes === 'string' ? notes : 'Statutory capacity and admissions criteria.'
+                        });
+                    }
+                } catch (eErr) {
+                    console.warn('[ADMIN ADMISSION STATUS EMAIL ERROR]:', eErr.message);
+                }
+            });
+        }
+
+        res.json({ message: 'Admission status updated successfully and notification email dispatched.', application: app });
     } catch (err) {
         console.error('Error updating admission status:', err);
         res.status(500).json({ error: 'Failed to update application status.' });
@@ -1853,6 +1907,26 @@ exports.sendSundayParentDigest = async (req, res) => {
                     pendingHomework: 'Check Active Homework tab in Parent Portal',
                     feeBalance
                 });
+
+                // Also record in in-app messages and notifications
+                await db.query(`
+                    INSERT INTO messages (sender_id, recipient_id, child_id, subject, body, content, created_at)
+                    VALUES (1, $1, $2, $3, $4, $4, NOW())
+                `, [
+                    learner.parent_id,
+                    learner.learner_id,
+                    `[Fusion High] Weekly Academic Digest: ${learnerFullName}`,
+                    `Weekly Summary for ${learnerFullName} (Grade ${learner.grade}): Attendance: ${attendancePct}% | Outstanding Fees: R${feeBalance}. Upcoming formal tests and homework tasks are updated in your portal.`
+                ]);
+
+                await db.query(`
+                    INSERT INTO notifications (user_id, title, message, type, target_tab, created_at)
+                    VALUES ($1, $2, $3, 'announcement', 'overview', NOW())
+                `, [
+                    learner.parent_id,
+                    `Weekly Academic Digest: ${learnerFullName}`,
+                    `Your Sunday executive academic & attendance summary for ${learnerFullName} has been compiled.`
+                ]);
 
                 sentCount++;
             } catch (e) {

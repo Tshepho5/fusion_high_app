@@ -533,6 +533,35 @@ exports.registerUser = async (req, res) => {
             console.warn('Registration email dispatch warning:', e.message);
         }
 
+        // Insert initial in-app welcome notification and message
+        try {
+            await db.query(`
+                INSERT INTO notifications (user_id, title, message, type, target_tab, created_at)
+                VALUES ($1, 'Welcome to Fusion High School', 'Your parent account and student linkages have been confirmed. Access academic tracking, timetables, and teacher consultations.', 'announcement', 'overview', NOW())
+            `, [newUserId]);
+
+            await db.query(`
+                INSERT INTO messages (sender_id, recipient_id, subject, body, content, created_at)
+                VALUES (1, $1, 'Welcome to Fusion High School Parent Portal', 'Dear Parent/Guardian, Welcome to the Fusion High School digital portal. You can now monitor classroom attendance, communicate with subject educators, view term report cards, and track student homework.', 'Dear Parent/Guardian, Welcome to the Fusion High School digital portal.', NOW())
+            `, [newUserId]);
+
+            for (const child of finalLinkedChildren) {
+                if (child.learner_user_id) {
+                    await db.query(`
+                        INSERT INTO notifications (user_id, title, message, type, target_tab, created_at)
+                        VALUES ($1, 'Welcome to Fusion High School', 'Your student account is active. Access your daily timetable, AI subject tutor, study guides, and assignments.', 'announcement', 'subjects', NOW())
+                    `, [child.learner_user_id]);
+
+                    await db.query(`
+                        INSERT INTO messages (sender_id, recipient_id, subject, body, content, created_at)
+                        VALUES (1, $1, 'Welcome to Fusion High School Student Portal', 'Welcome to Fusion High School! Your daily timetable, study notes, past papers, and CAPS homework assignments are now accessible in your learner dashboard.', 'Welcome to Fusion High School! Your daily timetable and study notes are live.', NOW())
+                    `, [child.learner_user_id]);
+                }
+            }
+        } catch (notifErr) {
+            console.warn('Welcome in-app notification insertion warning:', notifErr.message);
+        }
+
         res.json({ 
             message: 'Parent registered successfully. Your linked children credentials have been emailed to you.', 
             user: { id: newUserId, email: normalizedEmail, full_name, surname }, 

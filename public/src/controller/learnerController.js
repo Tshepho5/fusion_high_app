@@ -2564,6 +2564,7 @@ exports.getCareerPathway = async (req, res) => {
         const faculties = ["all", "Health Sciences", "Engineering & Built Environment", "Science & Technology", "Commerce, Law & Management", "Law & Humanities"];
 
         res.json({
+            success: true,
             learner_name: childRes.rows[0] ? `${childRes.rows[0].full_name} ${childRes.rows[0].surname}` : "Learner",
             grade: grade,
             stream: stream,

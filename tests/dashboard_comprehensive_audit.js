@@ -52,8 +52,14 @@ async function runFullAudit() {
     teacherUser = uRes.rows.find(u => u.role_name === 'teacher');
     // Select an enrolled learner (Jane Walters, id=7)
     learnerUser = uRes.rows.find(u => u.id === 7 || u.email === '20250001@fusion.high') || uRes.rows.find(u => u.role_name === 'learner');
-    // Select parent user (Grace Makola, id=29)
-    parentUser = uRes.rows.find(u => u.role_name === 'parent' || u.email === 'parent@fusion.high');
+    // Select parent user who has active linked children
+    const parentWithKids = await db.query(`
+      SELECT u.id, u.email, u.full_name, u.role_id, 'parent' as role_name
+      FROM users u
+      WHERE u.id IN (SELECT parent_id FROM children WHERE parent_id IS NOT NULL UNION SELECT parent_id FROM parent_children)
+      LIMIT 1
+    `);
+    parentUser = parentWithKids.rows[0] || uRes.rows.find(u => u.role_name === 'parent');
 
     if (!adminUser) throw new Error('Missing admin user in DB');
     if (!teacherUser) throw new Error('Missing teacher user in DB');

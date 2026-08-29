@@ -13,17 +13,21 @@ exports.createAnnouncement = async (req, res) => {
         const authorRes = await db.query('SELECT full_name, surname FROM users WHERE id = $1', [req.user.id]);
         const authorName = authorRes.rows[0] ? `${authorRes.rows[0].full_name} ${authorRes.rows[0].surname || ''}`.trim() : 'School Administration';
 
-        // Dispatch targeted notification
+        // Dispatch targeted notification to in-app notifications, messages inbox, and email straight
         NotificationService.sendTargeted({
-            targetRole: role_target === 'all' ? 'learner' : role_target,
+            targetRole: role_target || 'all',
             grade: grade_target,
             stream: stream_target,
             subject: subject_target,
             includeParents: true,
+            authorId: req.user.id,
             title: `Announcement: ${title}`,
             message: `${authorName}: ${content ? (content.length > 120 ? content.substring(0, 117) + '...' : content) : 'New school announcement published.'}`,
+            fullContent: content,
             type: 'announcement',
             targetTab: 'announcements',
+            sendToMessages: true,
+            sendEmail: true,
             metadata: { announcement_id: result.rows[0].id }
         }).catch(err => console.error('[ANNOUNCEMENT NOTIFICATION ERROR]', err));
 

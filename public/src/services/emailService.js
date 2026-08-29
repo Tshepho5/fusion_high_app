@@ -5,16 +5,35 @@ if (dns.setDefaultResultOrder) {
 }
 const nodemailer = require('nodemailer');
 
+const net = require('net');
+
 const getSmtpUser = () => (process.env.SMTP_USER || 'tshepomakola23@gmail.com').trim().replace(/^["']|["']$/g, '');
 const getSmtpPass = () => (process.env.SMTP_PASS || 'ixuyslitvtetlmzc').trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '');
 
 let pooledTransporter = null;
 let lastSmtpUser = null;
 let lastSmtpPass = null;
+let cachedSmtpIp = null;
+
+function resolveHostToIp(host = 'smtp.gmail.com') {
+  if (net.isIP(host)) return Promise.resolve(host);
+  if (cachedSmtpIp) return Promise.resolve(cachedSmtpIp);
+  return new Promise((resolve) => {
+    dns.lookup(host, { family: 4 }, (err, address) => {
+      if (!err && address) {
+        cachedSmtpIp = address;
+        resolve(address);
+      } else {
+        resolve(host === 'smtp.gmail.com' ? '142.251.127.109' : host);
+      }
+    });
+  });
+}
 
 function getPooledTransporter() {
   const user = getSmtpUser();
   const pass = getSmtpPass();
+  const hostIp = cachedSmtpIp || '142.251.127.109';
 
   if (pooledTransporter && lastSmtpUser === user && lastSmtpPass === pass) {
     return pooledTransporter;
@@ -25,15 +44,15 @@ function getPooledTransporter() {
     maxConnections: 5,
     maxMessages: 500,
     rateLimit: 14, // Gmail max 14 msgs/sec
-    host: 'smtp.gmail.com',
+    host: hostIp,
     port: 465,
     secure: true,
+    servername: 'smtp.gmail.com',
     auth: { user, pass },
-    tls: { rejectUnauthorized: false },
-    family: 4,
-    connectionTimeout: 6000,
-    greetingTimeout: 6000,
-    socketTimeout: 10000
+    tls: { servername: 'smtp.gmail.com', rejectUnauthorized: false },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000
   });
 
   lastSmtpUser = user;
@@ -44,19 +63,23 @@ function getPooledTransporter() {
 function createDirectTransporter(port = 465, secure = true) {
   const user = getSmtpUser();
   const pass = getSmtpPass();
+  const hostIp = cachedSmtpIp || '142.251.127.109';
   
   return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
+    host: hostIp,
     port,
     secure,
+    servername: 'smtp.gmail.com',
     auth: { user, pass },
-    tls: { rejectUnauthorized: false, ciphers: 'SSLv3' },
-    family: 4,
-    connectionTimeout: 6000,
-    greetingTimeout: 6000,
-    socketTimeout: 10000
+    tls: { servername: 'smtp.gmail.com', rejectUnauthorized: false, ciphers: 'SSLv3' },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000
   });
 }
+
+// Pre-resolve host IP in background on startup
+resolveHostToIp('smtp.gmail.com').catch(() => {});
 
 /**
  * Modern HTML Email Base Layout Wrapper
@@ -244,18 +267,21 @@ const emailService = {
         return { success: true, messageId: info.messageId };
       } catch (e2) {
         console.warn(`[EMAIL RETRY 2] Port 587 warning (${e2.message}), attempting direct service: 'gmail'...`);
-        // Strategy 3: Direct service: 'gmail'
+        // Strategy 3: Direct Port 465 SSL
         try {
+          const hostIp = cachedSmtpIp || '142.251.127.109';
           const t3 = nodemailer.createTransport({
-            service: 'gmail',
+            host: hostIp,
+            port: 465,
+            secure: true,
+            servername: 'smtp.gmail.com',
             auth: { user: senderUser, pass: getSmtpPass() },
-            family: 4,
-            tls: { rejectUnauthorized: false },
-            connectionTimeout: 6000,
-            greetingTimeout: 6000
+            tls: { servername: 'smtp.gmail.com', rejectUnauthorized: false },
+            connectionTimeout: 10000,
+            greetingTimeout: 10000
           });
           const info = await t3.sendMail(mailOptions);
-          console.log(`[EMAIL SUCCESS - Service Gmail] Delivered to ${targetRecipient}: ${info.messageId}`);
+          console.log(`[EMAIL SUCCESS - Direct Port 465] Delivered to ${targetRecipient}: ${info.messageId}`);
           return { success: true, messageId: info.messageId };
         } catch (e3) {
           console.error('[EMAIL ERROR - All Transporters Failed]:', e3.message || e3);
@@ -1340,67 +1366,347 @@ const emailService = {
           ctaLink: loginUrl
         })
       };
+    },
+
+    // 14. Formal School Announcement & Communique
+    schoolAnnouncement: ({ recipientName, title, content, authorName, authorRole, targetAudience, date, baseUrl = 'https://educonnect-cmyh.onrender.com' }) => {
+      const loginUrl = `${(baseUrl || 'https://educonnect-cmyh.onrender.com').replace(/\/+$/, '')}/login`;
+      const displayDate = date || new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
+      const audienceBadge = targetAudience ? targetAudience.toUpperCase() : 'GENERAL';
+
+      const contentHtml = `
+        <p style="color: #cbd5e1; font-size: 15px; margin-top: 0;">Dear <strong>${recipientName || 'Member of Fusion High Community'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          An official school communique has been issued by <strong>${authorName || 'School Administration'}</strong>${authorRole ? ` (${authorRole})` : ''}:
+        </p>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #38bdf8; border-radius: 12px; padding: 22px 24px; margin: 20px 0;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span style="font-size: 11px; font-weight: 800; color: #38bdf8; background: rgba(56, 189, 248, 0.15); padding: 4px 10px; border-radius: 6px; text-transform: uppercase; border: 1px solid rgba(56, 189, 248, 0.3);">
+              Audience: ${audienceBadge}
+            </span>
+            <span style="font-size: 12px; color: #94a3b8;">${displayDate}</span>
+          </div>
+          <h3 style="margin: 0 0 12px 0; color: #ffffff; font-size: 18px; font-weight: 800;">${title}</h3>
+          <div style="color: #e2e8f0; font-size: 14px; line-height: 1.7; white-space: pre-wrap;">${content}</div>
+        </div>
+
+        <p style="color: #94a3b8; font-size: 12px; line-height: 1.5;">
+          This formal announcement is also recorded in your portal <strong>Message Center</strong> and Notice Board.
+        </p>
+      `;
+
+      return {
+        subject: `[Fusion High Official Communique] ${title}`,
+        body: createBaseEmailTemplate({
+          preheader: `${title} - Official communique from ${authorName || 'School Administration'}.`,
+          title: 'Official School Announcement',
+          subtitle: 'Executive Communique & Circular',
+          contentHtml,
+          ctaText: 'View In Portal Notice Board',
+          ctaLink: loginUrl
+        })
+      };
+    },
+
+    // 15. Application Accepted / Approved
+    applicationAccepted: ({ parentName, learnerName, grade, stream, applicationNumber, learnerNumber, registrationUrl, baseUrl = 'https://educonnect-cmyh.onrender.com' }) => {
+      const loginUrl = registrationUrl || `${(baseUrl || 'https://educonnect-cmyh.onrender.com').replace(/\/+$/, '')}/register`;
+      const contentHtml = `
+        <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          We are pleased to inform you that the admission application for <strong>${learnerName}</strong> has been <strong style="color: #34d399;">OFFICIALLY APPROVED</strong> for admission to Fusion High School.
+        </p>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #10b981; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
+          <h4 style="margin: 0 0 14px 0; color: #34d399; font-size: 14px; font-weight: 800; text-transform: uppercase;">
+            Admission Details
+          </h4>
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
+            <tr>
+              <td style="padding: 5px 0; color: #94a3b8; width: 150px;">Learner Name:</td>
+              <td style="color: #ffffff; font-weight: 700;">${learnerName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 5px 0; color: #94a3b8;">Grade & Stream:</td>
+              <td style="color: #38bdf8; font-weight: 700;">Grade ${grade || '8'} (${stream || 'General'})</td>
+            </tr>
+            <tr>
+              <td style="padding: 5px 0; color: #94a3b8;">Application Reference:</td>
+              <td style="color: #fbbf24; font-family: monospace; font-weight: 700;">${applicationNumber || 'APP-2026'}</td>
+            </tr>
+            ${learnerNumber ? `<tr>
+              <td style="padding: 5px 0; color: #94a3b8;">Allocated Student ID:</td>
+              <td style="color: #34d399; font-family: monospace; font-weight: 700;">${learnerNumber}</td>
+            </tr>` : ''}
+          </table>
+        </div>
+
+        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 14px 18px; margin: 18px 0;">
+          <p style="margin: 0; font-size: 13px; color: #34d399; font-weight: 700;">Next Step: Complete Registration</p>
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: #cbd5e1; line-height: 1.5;">
+            Please click the button below to complete Parent Registration and activate your child's student portal account.
+          </p>
+        </div>
+      `;
+
+      return {
+        subject: `[Fusion High] Admission Approved: Welcome ${learnerName} to Grade ${grade || '8'}!`,
+        body: createBaseEmailTemplate({
+          preheader: `Congratulations! ${learnerName} has been accepted to Fusion High School.`,
+          title: 'Admission Application Approved',
+          subtitle: 'Official Letter of Acceptance',
+          contentHtml,
+          ctaText: 'Complete Parent Registration & Link Student',
+          ctaLink: loginUrl
+        })
+      };
+    },
+
+    // 16. Application Waitlisted
+    applicationWaitlisted: ({ parentName, learnerName, grade, applicationNumber }) => {
+      const loginUrl = (process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim() + '/application-status.html';
+      const contentHtml = `
+        <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Thank you for submitting an admission application for <strong>${learnerName}</strong> for <strong>Grade ${grade || '8'}</strong> at Fusion High School.
+        </p>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #f59e0b; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
+          <h4 style="margin: 0 0 10px 0; color: #fbbf24; font-size: 14px; font-weight: 800;">
+            Status: Priority Waitlist
+          </h4>
+          <p style="margin: 0; color: #cbd5e1; font-size: 13px; line-height: 1.6;">
+            The application meets all academic requirements; however, Grade ${grade || '8'} is currently at maximum statutory capacity (&le; 30 learners per class). ${learnerName} has been placed on our <strong>Priority Waiting List</strong> (Application Ref: <strong>${applicationNumber}</strong>).
+          </p>
+        </div>
+
+        <p style="color: #94a3b8; font-size: 13px; line-height: 1.6;">
+          Our Admissions Office continuously monitors capacity. As vacancies arise, offers are extended in order of waitlist queue. You will be notified immediately via email if a placement opens.
+        </p>
+      `;
+
+      return {
+        subject: `[Fusion High] Application Update: ${learnerName} Placed on Priority Waitlist (Grade ${grade})`,
+        body: createBaseEmailTemplate({
+          preheader: `Application update for ${learnerName} (Ref: ${applicationNumber}).`,
+          title: 'Admission Status Update',
+          subtitle: 'Priority Waitlist Placement',
+          contentHtml,
+          ctaText: 'Track Application Status Online',
+          ctaLink: loginUrl
+        })
+      };
+    },
+
+    // 17. Application Correction / Action Required
+    applicationCorrection: ({ parentName, learnerName, applicationNumber, issues = [], resumptionUrl }) => {
+      const loginUrl = resumptionUrl || (process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim() + '/application.html';
+      const issuesList = Array.isArray(issues) && issues.length > 0 
+        ? issues.map(i => `<li style="margin-bottom: 6px; color: #f87171;">${i}</li>`).join('')
+        : '<li style="color: #f87171;">Document clarity or information verification required.</li>';
+
+      const contentHtml = `
+        <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          During the automated verification of the admission application for <strong>${learnerName}</strong> (Ref: <strong>${applicationNumber}</strong>), our system noted items that require your attention:
+        </p>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #ef4444; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
+          <h4 style="margin: 0 0 10px 0; color: #f87171; font-size: 14px; font-weight: 800;">
+            Action Required Items:
+          </h4>
+          <ul style="margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.6;">
+            ${issuesList}
+          </ul>
+        </div>
+
+        <p style="color: #cbd5e1; font-size: 13px; line-height: 1.6;">
+          Please click the button below to resume your application, update the necessary fields or re-upload clearer documents. Your existing details have been securely saved.
+        </p>
+      `;
+
+      return {
+        subject: `[Action Required] Update Admission Application for ${learnerName} (Ref: ${applicationNumber})`,
+        body: createBaseEmailTemplate({
+          preheader: `Document update required for ${learnerName}'s admission application.`,
+          title: 'Application Action Required',
+          subtitle: 'Verification & Document Resubmission',
+          contentHtml,
+          ctaText: 'Resume & Update Application',
+          ctaLink: loginUrl
+        })
+      };
+    },
+
+    // 18. Application Unsuccessful / Rejected
+    applicationUnsuccessful: ({ parentName, learnerName, grade, applicationNumber, reason }) => {
+      const loginUrl = (process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim() + '/application-status.html';
+      const contentHtml = `
+        <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Thank you for considering Fusion High School for <strong>${learnerName}</strong> (Ref: <strong>${applicationNumber || 'N/A'}</strong>).
+        </p>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #64748b; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
+          <h4 style="margin: 0 0 10px 0; color: #94a3b8; font-size: 14px; font-weight: 800;">
+            Application Status: Unsuccessful
+          </h4>
+          <p style="margin: 0; color: #cbd5e1; font-size: 13px; line-height: 1.6;">
+            After careful review of submitted academic records and statutory grade capacity, we regret to inform you that we are unable to offer a placement for Grade ${grade || '8'} for the upcoming academic cycle.
+          </p>
+          ${reason ? `<p style="margin: 8px 0 0 0; color: #f87171; font-size: 12px;"><strong>Note:</strong> ${reason}</p>` : ''}
+        </div>
+
+        <p style="color: #94a3b8; font-size: 13px; line-height: 1.6;">
+          We appreciate your interest in Fusion High School and wish ${learnerName} every success in their academic journey.
+        </p>
+      `;
+
+      return {
+        subject: `[Fusion High] Admission Application Outcome: ${learnerName} (Ref: ${applicationNumber || 'N/A'})`,
+        body: createBaseEmailTemplate({
+          preheader: `Admission application outcome for ${learnerName}.`,
+          title: 'Admission Outcome Notification',
+          subtitle: 'Formal Admissions Decision',
+          contentHtml,
+          ctaText: 'View Application Record',
+          ctaLink: loginUrl
+        })
+      };
+    },
+
+    // 19. Employee Welcome & Onboarding
+    employeeWelcome: ({ name, email, employeeNumber, role, temporaryPassword, baseUrl = 'https://educonnect-cmyh.onrender.com' }) => {
+      const loginUrl = `${(baseUrl || 'https://educonnect-cmyh.onrender.com').replace(/\/+$/, '')}/login`;
+      const contentHtml = `
+        <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${name || 'Staff Member'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Welcome to the staff body at Fusion High School. Your official staff portal account has been provisioned:
+        </p>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #6366f1; border-radius: 12px; padding: 20px 24px; margin: 20px 0;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
+            <tr><td style="padding: 4px 0; color: #94a3b8; width: 140px;">Staff ID:</td><td style="color: #ffffff; font-weight: 700;">${employeeNumber || 'EMP-001'}</td></tr>
+            <tr><td style="padding: 4px 0; color: #94a3b8;">Designated Role:</td><td style="color: #818cf8; font-weight: 700; text-transform: capitalize;">${role || 'Educator'}</td></tr>
+            <tr><td style="padding: 4px 0; color: #94a3b8;">Portal Email:</td><td style="color: #38bdf8; font-family: monospace; font-weight: 700;">${email}</td></tr>
+            <tr><td style="padding: 4px 0; color: #94a3b8;">Temporary Password:</td><td style="color: #34d399; font-family: monospace; font-weight: 700;">${temporaryPassword || 'ChangeMe@2026'}</td></tr>
+          </table>
+        </div>
+      `;
+
+      return {
+        subject: `Welcome to Fusion High School — Staff Account Credentials`,
+        body: createBaseEmailTemplate({
+          preheader: `Your staff portal account credentials for Fusion High School.`,
+          title: 'Welcome to Fusion High Staff Portal',
+          subtitle: 'Staff Onboarding & Credentials',
+          contentHtml,
+          ctaText: 'Sign In to Staff Portal',
+          ctaLink: loginUrl
+        })
+      };
+    },
+
+    // 20. Parent Welcome & Portal Access
+    parentWelcome: ({ name, email, temporaryPassword, baseUrl = 'https://educonnect-cmyh.onrender.com' }) => {
+      const loginUrl = `${(baseUrl || 'https://educonnect-cmyh.onrender.com').replace(/\/+$/, '')}/login`;
+      const contentHtml = `
+        <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${name || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Welcome to the Fusion High School Parent Portal. Your official access credentials are confirmed below:
+        </p>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #38bdf8; border-radius: 12px; padding: 20px 24px; margin: 20px 0;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
+            <tr><td style="padding: 4px 0; color: #94a3b8; width: 140px;">Login Email:</td><td style="color: #38bdf8; font-family: monospace; font-weight: 700;">${email}</td></tr>
+            ${temporaryPassword ? `<tr><td style="padding: 4px 0; color: #94a3b8;">Password:</td><td style="color: #34d399; font-family: monospace; font-weight: 700;">${temporaryPassword}</td></tr>` : ''}
+          </table>
+        </div>
+      `;
+
+      return {
+        subject: `Welcome to Fusion High School — Parent Portal Details`,
+        body: createBaseEmailTemplate({
+          preheader: `Parent Portal access credentials for Fusion High School.`,
+          title: 'Welcome to Parent Portal',
+          subtitle: 'Parent & Guardian Portal Access',
+          contentHtml,
+          ctaText: 'Sign In to Parent Portal',
+          ctaLink: loginUrl
+        })
+      };
     }
+  },
+
+  sendSchoolAnnouncement: async (params) => {
+    const template = emailService.templates.schoolAnnouncement(params);
+    return await emailService.send(params.recipientEmail, template.subject, template.body);
   },
 
   sendApplicationCorrection: async (params) => {
     const template = emailService.templates.applicationCorrection(params);
-    return await emailService.sendEmail(params.parentEmail, template.subject, template.body);
+    return await emailService.send(params.parentEmail, template.subject, template.body);
   },
 
   sendApplicationAccepted: async (params) => {
     const template = emailService.templates.applicationAccepted(params);
-    return await emailService.sendEmail(params.parentEmail, template.subject, template.body);
+    return await emailService.send(params.parentEmail, template.subject, template.body);
   },
 
   sendApplicationWaitlisted: async (params) => {
     const template = emailService.templates.applicationWaitlisted(params);
-    return await emailService.sendEmail(params.parentEmail, template.subject, template.body);
+    return await emailService.send(params.parentEmail, template.subject, template.body);
+  },
+
+  sendApplicationUnsuccessful: async (params) => {
+    const template = emailService.templates.applicationUnsuccessful(params);
+    return await emailService.send(params.parentEmail, template.subject, template.body);
   },
 
   sendEmployeeWelcome: async (params) => {
     const template = emailService.templates.employeeWelcome(params);
-    return await emailService.sendEmail(params.email, template.subject, template.body);
+    return await emailService.send(params.email, template.subject, template.body);
   },
 
   sendParentWelcome: async (params) => {
     const template = emailService.templates.parentWelcome(params);
-    return await emailService.sendEmail(params.email, template.subject, template.body);
+    return await emailService.send(params.email, template.subject, template.body);
   },
 
   sendTimetableDraftToTeacher: async (params) => {
     const template = emailService.templates.timetableDraft(params);
-    return await emailService.sendEmail(params.teacherEmail, template.subject, template.body);
+    return await emailService.send(params.teacherEmail, template.subject, template.body);
   },
 
   sendTimetableReleased: async (params) => {
     const template = emailService.templates.timetableReleased(params);
-    return await emailService.sendEmail(params.email, template.subject, template.body);
+    return await emailService.send(params.email, template.subject, template.body);
   },
 
   sendExamInvigilationNotice: async (params) => {
     const template = emailService.templates.examInvigilationNotice(params);
-    return await emailService.sendEmail(params.email, template.subject, template.body);
+    return await emailService.send(params.email, template.subject, template.body);
   },
 
   sendMatricRemedialNotice: async (params) => {
     const template = emailService.templates.matricRemedialNotice(params);
-    return await emailService.sendEmail(params.email, template.subject, template.body);
+    return await emailService.send(params.email, template.subject, template.body);
   },
 
   sendTextbookOverdueNotice: async (params) => {
     const template = emailService.templates.textbookOverdueNotice(params);
-    return await emailService.sendEmail(params.email, template.subject, template.body);
+    return await emailService.send(params.email, template.subject, template.body);
   },
 
   sendConsultationBookedNotice: async (params) => {
     const template = emailService.templates.consultationBookedNotice(params);
-    return await emailService.sendEmail(params.email, template.subject, template.body);
+    return await emailService.send(params.email, template.subject, template.body);
   },
 
   sendSundayParentDigest: async (params) => {
     const template = emailService.templates.sundayParentDigest(params);
-    return await emailService.sendEmail(params.email, template.subject, template.body);
+    return await emailService.send(params.email, template.subject, template.body);
   }
 };
 

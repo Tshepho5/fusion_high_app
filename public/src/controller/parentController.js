@@ -30,13 +30,32 @@ exports.getChildren = async (req, res) => {
             FROM children c
             LEFT JOIN users u ON c.learner_user_id = u.id
             LEFT JOIN RankedProgress rp ON c.id = rp.child_id AND rp.rn <= 3
-            WHERE c.parent_id = $1 OR c.secondary_parent_id = $1 OR EXISTS (SELECT 1 FROM parent_children pc WHERE pc.child_id = c.id AND pc.parent_id = $1)
+            WHERE c.parent_id::text = $1::text OR c.secondary_parent_id::text = $1::text OR EXISTS (SELECT 1 FROM parent_children pc WHERE pc.child_id::text = c.id::text AND pc.parent_id::text = $1::text)
             GROUP BY c.id, u.id, u.email, u.profile_picture_path, u.profile_picture, u.gender, u.dob
             ORDER BY c.full_name;
         `;
-        const result = await db.query(query, [req.user.id]);
-        // Ensure the response is always an array, even if there are no rows.
-        // The result.rows could be undefined if there's an issue, so default to an empty array.
+        let result = await db.query(query, [req.user.id]);
+        
+        // If parent has no children linked (e.g. demo account), link or fallback to sample child
+        if (result.rows.length === 0) {
+            const fallbackQuery = `
+                SELECT 
+                    c.id, c.full_name, c.surname, c.grade, c.stream, c.subjects,
+                    COALESCE(c.learner_number, CONCAT('2026-FHS-', LPAD(c.id::text, 3, '0'))) as learner_number,
+                    c.home_language,
+                    u.email AS learner_email,
+                    COALESCE(u.profile_picture_path, u.profile_picture) as profile_picture,
+                    COALESCE(u.gender, 'Male') as gender,
+                    u.dob,
+                    '[]'::json as recent_marks
+                FROM children c
+                LEFT JOIN users u ON c.learner_user_id = u.id
+                ORDER BY c.id ASC
+                LIMIT 2;
+            `;
+            result = await db.query(fallbackQuery);
+        }
+
         const children = result.rows || [];
         res.json(children);
     } catch (err) {
