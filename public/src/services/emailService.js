@@ -1653,6 +1653,15 @@ const emailService = {
     return await emailService.send(params.email, template.subject, template.body);
   },
 
+  sendParentRegistrationSuccessWithLearners: async (params) => {
+    const parentName = params.parentName || 'Parent';
+    const learners = params.learners || [];
+    const baseUrl = params.baseUrl || 'https://fusionhigh.co.za';
+    const parentEmail = params.parentEmail || params.email;
+    const template = emailService.templates.parentRegistrationSuccessWithLearners(parentName, learners, baseUrl);
+    return await emailService.send(parentEmail, template.subject, template.body);
+  },
+
   sendTimetableDraftToTeacher: async (params) => {
     const template = emailService.templates.timetableDraft(params);
     return await emailService.send(params.teacherEmail, template.subject, template.body);
