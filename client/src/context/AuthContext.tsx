@@ -86,6 +86,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       localStorage.setItem('user', JSON.stringify(userData));
 
+      // Auto-sync school profile to school context and CSS root
+      if (data.school) {
+        localStorage.setItem('active_school_profile', JSON.stringify(data.school));
+        localStorage.setItem('active_school_id', String(data.school.id));
+        const root = document.documentElement;
+        root.style.setProperty('--school-primary', data.school.primary_color || '#4f46e5');
+        root.style.setProperty('--school-secondary', data.school.secondary_color || '#06b6d4');
+        root.style.setProperty('--school-accent', data.school.accent_color || '#f59e0b');
+        root.setAttribute('data-school-slug', data.school.slug || 'fusion-high');
+      } else if (data.school_id || userData.school_id) {
+        const sid = String(data.school_id || userData.school_id);
+        localStorage.setItem('active_school_id', sid);
+      }
+
       return { data, role: userRole };
     } finally {
       setIsLoading(false);

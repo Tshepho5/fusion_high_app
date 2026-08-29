@@ -595,28 +595,37 @@ exports.login = async (req, res) => {
     try {
         // Separate lookup for email vs learner number/ID to prevent accidental regex collision
         let result;
+        const selectCols = `
+            u.id, u.email, u.password_hash, u.id_number::text as id_number, u.phone::text as phone, u.full_name, u.surname, 
+            COALESCE(u.school_id, c.school_id, 1) as school_id,
+            COALESCE(r.name, u.role_id::text, 'learner') as role_name,
+            c.id as child_id, c.learner_number::text as learner_number, c.grade, c.stream,
+            s.name as school_name, s.slug as school_slug, s.domain as school_domain, s.emis_number,
+            s.circuit, s.district, s.province, s.physical_address, s.contact_email, s.contact_phone,
+            s.principal_name, s.logo_url, s.badge_url, s.primary_color, s.secondary_color, s.accent_color,
+            s.motto, s.curriculum_type
+        `;
+
         if (rawIdentifier.includes('@')) {
             result = await db.query(
-                `SELECT u.id, u.email, u.password_hash, u.id_number::text as id_number, u.phone::text as phone, u.full_name, u.surname, 
-                        COALESCE(r.name, u.role_id::text, 'learner') as role_name,
-                        c.id as child_id, c.learner_number::text as learner_number, c.grade, c.stream
+                `SELECT ${selectCols}
                  FROM users u
                  LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                  LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
+                 LEFT JOIN schools s ON (s.id = COALESCE(u.school_id, c.school_id, 1))
                  WHERE LOWER(u.email::text) = LOWER($1)
                     OR (LOWER($1) IN ('admin@fusionhigh.co.za', 'admin@fusion.high') AND LOWER(COALESCE(r.name, u.role_id::text, '')) = 'admin')
-                 ORDER BY u.id ASC
+                 ORDER BY (CASE WHEN LOWER(u.email::text) = LOWER($1) THEN 0 ELSE 1 END), u.id ASC
                  LIMIT 1`,
                 [rawIdentifier]
             );
         } else {
             result = await db.query(
-                `SELECT u.id, u.email, u.password_hash, u.id_number::text as id_number, u.phone::text as phone, u.full_name, u.surname, 
-                        COALESCE(r.name, u.role_id::text, 'learner') as role_name,
-                        c.id as child_id, c.learner_number::text as learner_number, c.grade, c.stream
+                `SELECT ${selectCols}
                  FROM users u
                  LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                  LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
+                 LEFT JOIN schools s ON (s.id = COALESCE(u.school_id, c.school_id, 1))
                  WHERE (c.learner_number IS NOT NULL AND c.learner_number::text = $1)
                     OR (u.id_number IS NOT NULL AND TRIM(u.id_number::text) = $1)
                     OR (u.phone IS NOT NULL AND TRIM(u.phone::text) = $1)
@@ -809,14 +818,42 @@ exports.login = async (req, res) => {
             { expiresIn: '7d' }
         );
 
+        const schoolObj = user.school_id ? {
+            id: user.school_id,
+            name: user.school_name,
+            slug: user.school_slug,
+            domain: user.school_domain,
+            emis_number: user.emis_number,
+            circuit: user.circuit,
+            district: user.district,
+            province: user.province,
+            physical_address: user.physical_address,
+            contact_email: user.contact_email,
+            contact_phone: user.contact_phone,
+            principal_name: user.principal_name,
+            logo_url: user.logo_url,
+            badge_url: user.badge_url,
+            primary_color: user.primary_color || '#4f46e5',
+            secondary_color: user.secondary_color || '#06b6d4',
+            accent_color: user.accent_color || '#f59e0b',
+            motto: user.motto,
+            curriculum_type: user.curriculum_type,
+            is_active: true
+        } : null;
+
         res.json({
             token,
             role: user.role_name,
+            school_id: user.school_id,
+            school: schoolObj,
             user: {
                 id: user.id,
                 email: user.email,
                 full_name: `${user.full_name || ''} ${user.surname || ''}`.trim(),
                 role: user.role_name,
+                school_id: user.school_id,
+                school_name: user.school_name,
+                school_slug: user.school_slug,
                 learner_number: user.learner_number || (user.role_name === 'learner' ? rawIdentifier : undefined),
                 grade: user.grade,
                 stream: user.stream

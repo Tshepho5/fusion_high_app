@@ -211,6 +211,8 @@ async function initializeAllDatabaseTables(customClient) {
       ALTER TABLE children ADD COLUMN IF NOT EXISTS home_language VARCHAR(50) DEFAULT 'isiZulu';
       ALTER TABLE children ADD COLUMN IF NOT EXISTS profile_picture_path VARCHAR(255);
       ALTER TABLE children ADD COLUMN IF NOT EXISTS profile_picture VARCHAR(255);
+      ALTER TABLE children DROP CONSTRAINT IF EXISTS children_check;
+      ALTER TABLE children ADD CONSTRAINT children_check CHECK (grade < 10 OR stream IN ('Science', 'Commerce', 'Tourism', 'Humanities', 'General', 'Technical'));
 
       CREATE TABLE IF NOT EXISTS parent_children (
         id SERIAL PRIMARY KEY,
