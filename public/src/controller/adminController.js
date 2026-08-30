@@ -960,17 +960,18 @@ exports.getAllEmployees = async (req, res) => {
             SELECT 
                 e.id AS employee_id,
                 u.id AS user_id,
-                u.full_name,
-                u.surname,
-                u.email,
-                u.phone,
+                u.full_name, 
+                u.surname, 
+                u.email, 
+                u.phone, 
                 u.profile_picture_path,
+                u.profile_edit_unlocked,
                 d.name AS department_name,
                 er.name AS employee_role,
-                e.subjects,
-                e.grades_taught,
-                e.classes_taught,
-                e.hired_date,
+                e.subjects, 
+                e.grades_taught, 
+                e.classes_taught, 
+                e.hired_date, 
                 e.created_at
             FROM employees e
             JOIN users u ON e.user_id = u.id
@@ -995,19 +996,20 @@ exports.getAllLearners = async (req, res) => {
         const schoolId = getTargetSchoolId(req);
         const query = `
             SELECT 
-                c.id,
+                c.id, 
                 c.id AS learner_id,
                 COALESCE(u.id, c.learner_user_id) AS user_id,
-                c.full_name,
-                c.surname,
-                c.learner_number,
-                c.grade,
-                c.stream,
-                c.subjects,
-                cl.name AS class_name,
+                c.full_name, 
+                c.surname, 
+                c.learner_number, 
+                c.grade, 
+                c.stream, 
+                c.subjects, 
+                cl.name AS class_name, 
                 COALESCE(u.email, CONCAT(LOWER(REPLACE(c.full_name, ' ', '.')), '@fusionhigh.co.za')) AS email,
                 COALESCE(u.phone, '-') AS phone,
                 u.profile_picture_path,
+                u.profile_edit_unlocked,
                 CONCAT(p.full_name, ' ', p.surname) AS parent_name,
                 c.created_at
             FROM children c
@@ -1022,6 +1024,34 @@ exports.getAllLearners = async (req, res) => {
     } catch (err) {
         console.error('Error fetching learners:', err);
         res.status(500).json({ error: 'Failed to fetch learner list.' });
+    }
+};
+
+/**
+ * Locks or Unlocks profile editing permissions for an individual user.
+ */
+exports.toggleUserProfileLock = async (req, res) => {
+    const { userId } = req.params;
+    if (!userId) return res.status(400).json({ error: 'User ID is required.' });
+
+    try {
+        const userRes = await db.query('SELECT id, full_name, surname, profile_edit_unlocked FROM users WHERE id = $1', [userId]);
+        if (userRes.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+        const currentStatus = Boolean(userRes.rows[0].profile_edit_unlocked);
+        const newStatus = !currentStatus;
+
+        await db.query('UPDATE users SET profile_edit_unlocked = $1 WHERE id = $2', [newStatus, userId]);
+
+        res.json({
+            success: true,
+            message: `Profile editing has been ${newStatus ? 'UNLOCKED' : 'LOCKED'} for ${userRes.rows[0].full_name} ${userRes.rows[0].surname}.`,
+            profile_edit_unlocked: newStatus
+        });
+    } catch (err) {
+        console.error('Error toggling profile lock:', err);
+        res.status(500).json({ error: 'Failed to toggle profile edit status: ' + err.message });
     }
 };
 

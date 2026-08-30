@@ -77,23 +77,34 @@ export const LearnerProfile: React.FC = () => {
     }
   };
 
-  const handleUpdateContactDetails = async (e: React.FormEvent) => {
+  const isProfileUnlocked = Boolean(profile.profile_edit_unlocked || user?.profile_edit_unlocked || role === 'admin');
+
+  const handleUpdatePersonalDetails = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setStatusMsg(null);
 
-    // Safeguard: Only submit non-sensitive, editable contact fields
-    const editablePayload = {
+    const payload: any = {
       phone: profile.phone || '',
       physical_address: profile.physical_address || '',
     };
 
+    if (isProfileUnlocked) {
+      payload.full_name = profile.full_name || '';
+      payload.surname = profile.surname || '';
+    }
+
     try {
-      await userService.updateProfile(editablePayload);
-      updateUser({ ...user, ...editablePayload });
-      setStatusMsg({ type: 'success', text: 'Contact details and residential address saved successfully!' });
+      const res = await userService.updateProfile(payload);
+      updateUser({ ...user, ...payload });
+      setStatusMsg({ 
+        type: 'success', 
+        text: isProfileUnlocked 
+          ? 'Profile details and official credentials saved successfully!' 
+          : 'Contact details and residential address saved successfully!' 
+      });
     } catch (err: any) {
-      setStatusMsg({ type: 'error', text: err.response?.data?.error || 'Failed to update contact details.' });
+      setStatusMsg({ type: 'error', text: err.response?.data?.error || 'Failed to update profile details.' });
     } finally {
       setLoading(false);
     }
@@ -270,150 +281,189 @@ export const LearnerProfile: React.FC = () => {
         <div className="lg:col-span-7 rounded-3xl bg-surface-dark border border-white/10 p-6 shadow-xl space-y-5">
           <div className="border-b border-white/10 pb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-cyan-400" />
+              <ShieldCheck className={`w-4 h-4 ${isProfileUnlocked ? 'text-emerald-400' : 'text-cyan-400'}`} />
               <h3 className="text-sm font-bold font-display text-white">
                 {role === 'teacher' ? 'Educator Credentials & Information' : role === 'parent' ? 'Parent Information & Contact' : role === 'admin' ? 'Administrator Account Details' : 'Learner Profile & Credentials'}
               </h3>
             </div>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20">
-              <Lock className="w-3 h-3" /> Credentials Locked
+            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+              isProfileUnlocked 
+                ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30' 
+                : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
+            }`}>
+              {isProfileUnlocked ? (
+                <>
+                  <CheckCircle className="w-3 h-3 text-emerald-400" /> Profile Unlocked by Admin
+                </>
+              ) : (
+                <>
+                  <Lock className="w-3 h-3 text-amber-400" /> Profile Locked (Read-Only)
+                </>
+              )}
             </span>
           </div>
 
           {/* Security Notice Box */}
-          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200/90 flex items-start gap-3">
-            <Lock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className={`p-3.5 rounded-2xl border text-xs flex items-start gap-3 ${
+            isProfileUnlocked 
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200' 
+              : 'bg-amber-500/10 border-amber-500/20 text-amber-200/90'
+          }`}>
+            {isProfileUnlocked ? (
+              <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            ) : (
+              <Lock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            )}
             <div className="space-y-0.5 leading-relaxed text-[11px]">
-              <p className="font-bold text-amber-300">Official Student Records Safeguarded</p>
+              <p className={`font-bold ${isProfileUnlocked ? 'text-emerald-300' : 'text-amber-300'}`}>
+                {isProfileUnlocked ? 'Admin Clearance Active: Profile Editing Enabled' : 'Official School Records Safeguarded'}
+              </p>
               <p className="text-slate-300">
-                Legal identity records (Full Name, Surname, National SA ID, Student Number, Grade, and School Email) are locked to protect institutional and academic integrity. To request legal credential updates, please visit the Administration Office.
+                {isProfileUnlocked
+                  ? 'Your School Administrator has granted permission to update your profile details. You can now edit your First Name, Surname, Phone, and Residential Address.'
+                  : 'Legal identity records (Full Name, Surname, National SA ID, Student Number, Grade, and School Email) are locked by administration. To request legal changes, please contact your School Administrator.'}
               </p>
             </div>
           </div>
 
-          {/* Section: Locked Official Identity Credentials */}
-          <div className="space-y-3 pt-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Lock className="w-3 h-3 text-slate-500" />
-              Verified School Credentials (Read-Only)
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
-                  <span>First Name</span>
-                  <span className="text-[9px] text-amber-400/80 font-mono">LOCKED</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={fullName}
-                    disabled
-                    readOnly
-                    className="w-full rounded-xl bg-surface-darker/60 border border-white/5 px-3.5 py-2.5 text-xs text-slate-300 cursor-not-allowed select-none opacity-80"
-                  />
-                  <Lock className="w-3.5 h-3.5 absolute right-3 top-3 text-slate-500" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
-                  <span>Surname</span>
-                  <span className="text-[9px] text-amber-400/80 font-mono">LOCKED</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={surname}
-                    disabled
-                    readOnly
-                    className="w-full rounded-xl bg-surface-darker/60 border border-white/5 px-3.5 py-2.5 text-xs text-slate-300 cursor-not-allowed select-none opacity-80"
-                  />
-                  <Lock className="w-3.5 h-3.5 absolute right-3 top-3 text-slate-500" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
-                  <span>National SA ID</span>
-                  <span className="text-[9px] text-amber-400/80 font-mono">VERIFIED</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={idNumber}
-                    disabled
-                    readOnly
-                    className="w-full rounded-xl bg-surface-darker/60 border border-white/5 px-3.5 py-2.5 text-xs text-slate-300 font-mono cursor-not-allowed select-none opacity-80"
-                  />
-                  <Lock className="w-3.5 h-3.5 absolute right-3 top-3 text-slate-500" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
-                  <span>Student Number</span>
-                  <span className="text-[9px] text-cyan-400/80 font-mono">OFFICIAL</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={learnerNumber}
-                    disabled
-                    readOnly
-                    className="w-full rounded-xl bg-surface-darker/60 border border-white/5 px-3.5 py-2.5 text-xs text-cyan-300 font-mono font-bold cursor-not-allowed select-none opacity-80"
-                  />
-                  <Lock className="w-3.5 h-3.5 absolute right-3 top-3 text-slate-500" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
-                  <span>Grade & Stream</span>
-                  <span className="text-[9px] text-indigo-400/80 font-mono">CAPS</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={`Grade ${grade} (${stream})`}
-                    disabled
-                    readOnly
-                    className="w-full rounded-xl bg-surface-darker/60 border border-white/5 px-3.5 py-2.5 text-xs text-slate-300 cursor-not-allowed select-none opacity-80"
-                  />
-                  <Lock className="w-3.5 h-3.5 absolute right-3 top-3 text-slate-500" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
-                  <span>Registered Email</span>
-                  <span className="text-[9px] text-amber-400/80 font-mono">LOCKED</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="email"
-                    value={email}
-                    disabled
-                    readOnly
-                    className="w-full rounded-xl bg-surface-darker/60 border border-white/5 px-3.5 py-2.5 text-xs text-slate-300 font-mono cursor-not-allowed select-none opacity-80"
-                  />
-                  <Lock className="w-3.5 h-3.5 absolute right-3 top-3 text-slate-500" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Section: Editable Contact & Residential Details */}
-          <div className="pt-4 border-t border-white/10 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
-                <Sparkles className="w-3 h-3 text-cyan-400" />
-                Editable Contact Information
+          {/* Form for Profile Updates */}
+          <form onSubmit={handleUpdatePersonalDetails} className="space-y-4">
+            {/* Section: Official Identity Credentials */}
+            <div className="space-y-3 pt-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                {isProfileUnlocked ? <Sparkles className="w-3 h-3 text-emerald-400" /> : <Lock className="w-3 h-3 text-slate-500" />}
+                {isProfileUnlocked ? 'Personal Information (Editable)' : 'Verified School Credentials (Read-Only)'}
               </p>
-              <span className="text-[9px] text-slate-400 font-mono">You can modify these fields</span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                    <span>First Name</span>
+                    <span className={`text-[9px] font-mono ${isProfileUnlocked ? 'text-emerald-400' : 'text-amber-400/80'}`}>
+                      {isProfileUnlocked ? 'EDITABLE' : 'LOCKED'}
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={profile.full_name !== undefined ? profile.full_name : fullName}
+                      onChange={(e) => isProfileUnlocked && setProfile({ ...profile, full_name: e.target.value })}
+                      disabled={!isProfileUnlocked}
+                      readOnly={!isProfileUnlocked}
+                      className={`w-full rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition-all ${
+                        isProfileUnlocked
+                          ? 'bg-surface-darker border border-emerald-500/40 focus:ring-2 focus:ring-emerald-500'
+                          : 'bg-surface-darker/60 border border-white/5 text-slate-300 cursor-not-allowed select-none opacity-80'
+                      }`}
+                    />
+                    {!isProfileUnlocked && <Lock className="w-3.5 h-3.5 absolute right-3 top-3 text-slate-500" />}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                    <span>Surname</span>
+                    <span className={`text-[9px] font-mono ${isProfileUnlocked ? 'text-emerald-400' : 'text-amber-400/80'}`}>
+                      {isProfileUnlocked ? 'EDITABLE' : 'LOCKED'}
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={profile.surname !== undefined ? profile.surname : surname}
+                      onChange={(e) => isProfileUnlocked && setProfile({ ...profile, surname: e.target.value })}
+                      disabled={!isProfileUnlocked}
+                      readOnly={!isProfileUnlocked}
+                      className={`w-full rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition-all ${
+                        isProfileUnlocked
+                          ? 'bg-surface-darker border border-emerald-500/40 focus:ring-2 focus:ring-emerald-500'
+                          : 'bg-surface-darker/60 border border-white/5 text-slate-300 cursor-not-allowed select-none opacity-80'
+                      }`}
+                    />
+                    {!isProfileUnlocked && <Lock className="w-3.5 h-3.5 absolute right-3 top-3 text-slate-500" />}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                    <span>National SA ID</span>
+                    <span className="text-[9px] text-cyan-400 font-mono">VERIFIED</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={idNumber}
+                      disabled
+                      readOnly
+                      className="w-full rounded-xl bg-surface-darker/60 border border-white/5 px-3.5 py-2.5 text-xs text-slate-300 font-mono cursor-not-allowed select-none opacity-80"
+                    />
+                    <Lock className="w-3.5 h-3.5 absolute right-3 top-3 text-slate-500" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                    <span>Student Number</span>
+                    <span className="text-[9px] text-cyan-400/80 font-mono">OFFICIAL</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={learnerNumber}
+                      disabled
+                      readOnly
+                      className="w-full rounded-xl bg-surface-darker/60 border border-white/5 px-3.5 py-2.5 text-xs text-cyan-300 font-mono font-bold cursor-not-allowed select-none opacity-80"
+                    />
+                    <Lock className="w-3.5 h-3.5 absolute right-3 top-3 text-slate-500" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                    <span>Grade & Stream</span>
+                    <span className="text-[9px] text-indigo-400/80 font-mono">CAPS</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={`Grade ${grade} (${stream})`}
+                      disabled
+                      readOnly
+                      className="w-full rounded-xl bg-surface-darker/60 border border-white/5 px-3.5 py-2.5 text-xs text-slate-300 cursor-not-allowed select-none opacity-80"
+                    />
+                    <Lock className="w-3.5 h-3.5 absolute right-3 top-3 text-slate-500" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                    <span>Registered Email</span>
+                    <span className="text-[9px] text-amber-400/80 font-mono">LOCKED</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      value={email}
+                      disabled
+                      readOnly
+                      className="w-full rounded-xl bg-surface-darker/60 border border-white/5 px-3.5 py-2.5 text-xs text-slate-300 font-mono cursor-not-allowed select-none opacity-80"
+                    />
+                    <Lock className="w-3.5 h-3.5 absolute right-3 top-3 text-slate-500" />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <form onSubmit={handleUpdateContactDetails} className="space-y-4">
+            {/* Section: Editable Contact & Residential Details */}
+            <div className="pt-4 border-t border-white/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3 text-cyan-400" />
+                  Contact & Residential Information
+                </p>
+                <span className="text-[9px] text-slate-400 font-mono">Modify anytime</span>
+              </div>
+
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1 flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5 text-cyan-400" />
@@ -447,10 +497,10 @@ export const LearnerProfile: React.FC = () => {
                 disabled={loading}
                 className="w-full py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-bold text-xs shadow-glow-indigo transition-all disabled:opacity-50 active:scale-[0.99]"
               >
-                {loading ? 'Saving Contact Details...' : 'Save Contact Details'}
+                {loading ? 'Saving Profile Details...' : isProfileUnlocked ? 'Save Official Profile Changes' : 'Save Contact Details'}
               </button>
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
 
         {/* Password & Security Card */}

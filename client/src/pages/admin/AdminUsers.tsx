@@ -29,7 +29,9 @@ import {
   Sparkles,
   ExternalLink,
   ShieldAlert,
-  UserPlus
+  UserPlus,
+  Lock,
+  Unlock
 } from 'lucide-react';
 
 interface UserRecord {
@@ -41,6 +43,7 @@ interface UserRecord {
   id_number?: string;
   role: string;
   profile_picture_path?: string;
+  profile_edit_unlocked?: boolean;
   created_at?: string;
 }
 
@@ -51,6 +54,7 @@ interface EmployeeRecord {
   surname: string;
   email: string;
   phone?: string;
+  profile_edit_unlocked?: boolean;
   department_name?: string;
   employee_role?: string;
   subjects?: string[];
@@ -67,6 +71,7 @@ interface LearnerRecord {
   learner_number: string;
   grade: number;
   stream: string;
+  profile_edit_unlocked?: boolean;
   subjects?: string[];
   class_name?: string;
   email?: string;
@@ -83,6 +88,7 @@ interface ParentRecord {
   id_number?: string;
   gender?: string;
   physical_address?: string;
+  profile_edit_unlocked?: boolean;
   created_at?: string;
   linked_children_count?: number;
   linked_children?: any[];
@@ -514,6 +520,25 @@ export const AdminUsers: React.FC = () => {
     }
   };
 
+  const handleToggleProfileLock = async (userId: number, userName: string) => {
+    setError(null);
+    try {
+      const res = await adminService.toggleUserProfileLock(userId);
+      const isUnlocked = res.profile_edit_unlocked;
+      setActionSuccess(`${userName}'s profile edit permissions are now ${isUnlocked ? 'UNLOCKED (Editable)' : 'LOCKED (Read-Only)'}.`);
+      
+      // Immediately reflect state across all tabs
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, profile_edit_unlocked: isUnlocked } : u));
+      setEmployees(prev => prev.map(e => e.user_id === userId ? { ...e, profile_edit_unlocked: isUnlocked } : e));
+      setLearners(prev => prev.map(l => l.user_id === userId ? { ...l, profile_edit_unlocked: isUnlocked } : l));
+      setParents(prev => prev.map(p => p.id === userId ? { ...p, profile_edit_unlocked: isUnlocked } : p));
+      setTimeout(() => setActionSuccess(null), 5000);
+    } catch (err: any) {
+      console.error('Error toggling profile lock:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to toggle profile edit permissions.');
+    }
+  };
+
   // Filtered Lists
   const q = searchQuery.toLowerCase();
   
@@ -773,6 +798,7 @@ export const AdminUsers: React.FC = () => {
                   <th className="pb-3 px-3">Designation & Department</th>
                   <th className="pb-3 px-3">Assigned Subjects</th>
                   <th className="pb-3 px-3">Grades & Classes</th>
+                  <th className="pb-3 px-3">Profile Edit</th>
                   <th className="pb-3 px-3">Contact</th>
                   <th className="pb-3 px-3 text-right">Actions</th>
                 </tr>
@@ -801,6 +827,29 @@ export const AdminUsers: React.FC = () => {
                       <div className="space-y-0.5">
                         <p className="text-white font-mono text-[11px]">Grades: {(e.grades_taught || []).join(', ') || '10, 11'}</p>
                         <p className="text-slate-400 text-[10px]">Classes: {(e.classes_taught || []).join(', ') || '10A'}</p>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+                          e.profile_edit_unlocked 
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                            : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
+                        }`}>
+                          {e.profile_edit_unlocked ? <Unlock className="w-2.5 h-2.5" /> : <Lock className="w-2.5 h-2.5" />}
+                          {e.profile_edit_unlocked ? 'Unlocked' : 'Locked'}
+                        </span>
+                        <button
+                          onClick={() => handleToggleProfileLock(e.user_id, `${e.full_name} ${e.surname}`)}
+                          className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-all border ${
+                            e.profile_edit_unlocked 
+                              ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30' 
+                              : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                          }`}
+                          title={e.profile_edit_unlocked ? 'Click to Lock Profile Editing' : 'Click to Unlock Profile Editing for Employee'}
+                        >
+                          {e.profile_edit_unlocked ? 'Lock' : 'Unlock'}
+                        </button>
                       </div>
                     </td>
                     <td className="py-3.5 px-3 text-slate-400 font-mono text-[11px]">
@@ -834,6 +883,7 @@ export const AdminUsers: React.FC = () => {
                   <th className="pb-3 px-3">Contact Phone</th>
                   <th className="pb-3 px-3">National ID</th>
                   <th className="pb-3 px-3">Linked Children</th>
+                  <th className="pb-3 px-3">Profile Edit</th>
                   <th className="pb-3 px-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -859,6 +909,29 @@ export const AdminUsers: React.FC = () => {
                       ) : (
                         <span className="text-[10px] text-slate-500 italic">No learners linked yet</span>
                       )}
+                    </td>
+                    <td className="py-3.5 px-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+                          p.profile_edit_unlocked 
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                            : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
+                        }`}>
+                          {p.profile_edit_unlocked ? <Unlock className="w-2.5 h-2.5" /> : <Lock className="w-2.5 h-2.5" />}
+                          {p.profile_edit_unlocked ? 'Unlocked' : 'Locked'}
+                        </span>
+                        <button
+                          onClick={() => handleToggleProfileLock(p.id, `${p.full_name} ${p.surname || ''}`)}
+                          className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-all border ${
+                            p.profile_edit_unlocked 
+                              ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30' 
+                              : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                          }`}
+                          title={p.profile_edit_unlocked ? 'Click to Lock Profile Editing' : 'Click to Unlock Profile Editing for Parent'}
+                        >
+                          {p.profile_edit_unlocked ? 'Lock' : 'Unlock'}
+                        </button>
+                      </div>
                     </td>
                     <td className="py-3.5 px-3 text-right">
                       <button
@@ -888,6 +961,7 @@ export const AdminUsers: React.FC = () => {
                   <th className="pb-3 px-3">Grade & Stream</th>
                   <th className="pb-3 px-3">Assigned Class</th>
                   <th className="pb-3 px-3">Parent Link</th>
+                  <th className="pb-3 px-3">Profile Edit</th>
                   <th className="pb-3 px-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -912,6 +986,29 @@ export const AdminUsers: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-3 text-slate-300">
                       {l.parent_name || 'Unlinked'}
+                    </td>
+                    <td className="py-3.5 px-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+                          l.profile_edit_unlocked 
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                            : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
+                        }`}>
+                          {l.profile_edit_unlocked ? <Unlock className="w-2.5 h-2.5" /> : <Lock className="w-2.5 h-2.5" />}
+                          {l.profile_edit_unlocked ? 'Unlocked' : 'Locked'}
+                        </span>
+                        <button
+                          onClick={() => handleToggleProfileLock(l.user_id, `${l.full_name} ${l.surname}`)}
+                          className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-all border ${
+                            l.profile_edit_unlocked 
+                              ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30' 
+                              : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                          }`}
+                          title={l.profile_edit_unlocked ? 'Click to Lock Profile Editing' : 'Click to Unlock Profile Editing for Learner'}
+                        >
+                          {l.profile_edit_unlocked ? 'Lock' : 'Unlock'}
+                        </button>
+                      </div>
                     </td>
                     <td className="py-3.5 px-3 text-right">
                       <button
@@ -1098,6 +1195,7 @@ export const AdminUsers: React.FC = () => {
                   <th className="pb-3 px-3">Role</th>
                   <th className="pb-3 px-3">Email</th>
                   <th className="pb-3 px-3">Phone</th>
+                  <th className="pb-3 px-3">Profile Edit</th>
                   <th className="pb-3 px-3">Registered Date</th>
                   <th className="pb-3 px-3 text-right">Actions</th>
                 </tr>
@@ -1115,6 +1213,33 @@ export const AdminUsers: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-3 text-slate-300 font-mono">{u.email}</td>
                     <td className="py-3.5 px-3 text-slate-400 font-mono">{u.phone || '-'}</td>
+                    <td className="py-3.5 px-3">
+                      {u.role !== 'admin' ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+                            u.profile_edit_unlocked 
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                              : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
+                          }`}>
+                            {u.profile_edit_unlocked ? <Unlock className="w-2.5 h-2.5" /> : <Lock className="w-2.5 h-2.5" />}
+                            {u.profile_edit_unlocked ? 'Unlocked' : 'Locked'}
+                          </span>
+                          <button
+                            onClick={() => handleToggleProfileLock(u.id, `${u.full_name} ${u.surname || ''}`)}
+                            className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-all border ${
+                              u.profile_edit_unlocked 
+                                ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30' 
+                                : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                            }`}
+                            title={u.profile_edit_unlocked ? 'Click to Lock Profile Editing' : 'Click to Unlock Profile Editing for User'}
+                          >
+                            {u.profile_edit_unlocked ? 'Lock' : 'Unlock'}
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-500 italic">Admin Access</span>
+                      )}
+                    </td>
                     <td className="py-3.5 px-3 text-slate-400">
                       {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'Active'}
                     </td>

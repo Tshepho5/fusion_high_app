@@ -7,7 +7,7 @@ const { validatePassword } = require('./authController');
 exports.getProfile = async (req, res) => {
     try {
         const userRes = await db.query(
-            `SELECT u.id, u.email, u.full_name, u.surname, u.phone, u.id_number, u.gender, u.physical_address, u.country, u.race, u.preferences, u.profile_picture_path, 
+            `SELECT u.id, u.email, u.full_name, u.surname, u.phone, u.id_number, u.dob, u.gender, u.physical_address, u.country, u.race, u.parent_type, u.preferences, u.profile_picture_path, u.school_id, u.is_superadmin, u.profile_edit_unlocked,
                     COALESCE(r.name, u.role_id::text, 'learner') as role 
              FROM users u 
              LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text)) 
@@ -33,8 +33,23 @@ exports.getProfile = async (req, res) => {
                 user.grade = user.academic.grade;
                 user.stream = user.academic.stream;
                 user.learner_number = user.academic.learner_number;
+                if (user.academic.school_id) {
+                    user.school_id = user.academic.school_id;
+                }
             }
+        } else if (user.role === 'parent') {
+            const childrenRes = await db.query(
+                `SELECT c.id, c.full_name, c.surname, c.grade, c.stream, c.school_id, s.name as school_name, s.slug as school_slug, s.primary_color
+                 FROM children c
+                 LEFT JOIN schools s ON c.school_id = s.id
+                 WHERE c.parent_id = $1 OR c.secondary_parent_id = $1 OR EXISTS (SELECT 1 FROM parent_children pc WHERE pc.child_id = c.id AND pc.parent_id = $1)`,
+                [req.user.id]
+            );
+            user.children = childrenRes.rows;
+            const distinctSchoolIds = [...new Set(childrenRes.rows.map(ch => ch.school_id).filter(Boolean))];
+            user.enrolled_schools = distinctSchoolIds;
         }
+
         res.json({ success: true, user, ...user });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -83,7 +98,7 @@ exports.updateProfile = async (req, res) => {
 
     try {
         const userRes = await db.query(
-            `SELECT u.id, u.email, u.full_name, r.name as role 
+            `SELECT u.id, u.email, u.full_name, u.surname, u.profile_edit_unlocked, u.is_superadmin, r.name as role 
              FROM users u 
              JOIN roles r ON u.role_id = r.id 
              WHERE u.id = $1`,
@@ -95,13 +110,27 @@ exports.updateProfile = async (req, res) => {
 
         const currentUser = userRes.rows[0];
         const userRole = currentUser.role;
+        const isAdmin = userRole === 'admin' || currentUser.is_superadmin;
+        const isUnlocked = Boolean(currentUser.profile_edit_unlocked) || isAdmin;
 
-        // For learners, restrict editing of sensitive personal credentials (name, surname, email, ID)
+        // If locked by administration, only contact details (phone, physical_address) can be edited, or reject if sensitive fields were sent
         let allowedFields;
-        if (userRole === 'learner') {
-            allowedFields = ['phone', 'physical_address'];
+        if (isUnlocked) {
+            // Unlocked by Admin: Full name, surname, and personal fields can be edited
+            allowedFields = ['full_name', 'surname', 'phone', 'gender', 'physical_address', 'country', 'race', 'dob'];
         } else {
-            allowedFields = ['full_name', 'surname', 'phone', 'gender', 'physical_address', 'country', 'race', 'email'];
+            // Locked by default: Only phone and address
+            allowedFields = ['phone', 'physical_address'];
+        }
+
+        const requestedKeys = Object.keys(updates);
+        const attemptedLockedFields = requestedKeys.filter(k => ['full_name', 'surname', 'id_number', 'dob', 'grade', 'stream', 'email'].includes(k));
+        
+        if (!isUnlocked && attemptedLockedFields.length > 0) {
+            return res.status(403).json({
+                success: false,
+                error: `Profile editing is locked by school administration. You cannot modify personal details (${attemptedLockedFields.join(', ')}). Please request your school administrator to unlock your profile to submit changes.`
+            });
         }
 
         const keys = Object.keys(updates).filter(key => allowedFields.includes(key));
@@ -109,50 +138,28 @@ exports.updateProfile = async (req, res) => {
         if (keys.length === 0) {
             return res.status(400).json({ 
                 success: false, 
-                error: userRole === 'learner' 
-                    ? "Personal credentials (name, ID number, and email) are locked. Only contact details and address can be updated." 
-                    : "No valid fields provided for update" 
+                error: isUnlocked 
+                    ? "No valid fields provided for update" 
+                    : "Profile editing is locked by school administration. Please request your School Admin to unlock your profile to edit personal details." 
             });
         }
 
-        const oldEmail = currentUser.email.toLowerCase();
-
         const setClause = keys.map((key, index) => `${key} = $${index + 1}`).join(', ');
-        const values = keys.map(key => key === 'email' ? updates[key].toLowerCase().trim() : updates[key]);
-
+        const values = keys.map(key => updates[key]);
         values.push(userId);
-        const queryText = `UPDATE users SET ${setClause} WHERE id = $${values.length} RETURNING id, full_name, email, phone, physical_address`;
 
+        const queryText = `UPDATE users SET ${setClause} WHERE id = $${values.length} RETURNING id, full_name, surname, email, phone, physical_address, profile_edit_unlocked`;
         const result = await db.query(queryText, values);
 
-        if (result.rowCount === 0) {
-            return res.status(404).json({ success: false, error: "User not found" });
-        }
-
         const updatedUser = result.rows[0];
-        const newEmail = updatedUser.email ? updatedUser.email.toLowerCase() : oldEmail;
-
-        let subject = 'Profile Updated Successfully';
-        let body = `Hello ${updatedUser.full_name || 'User'},\n\nThis is a confirmation that your profile on FUSION_HIGH_APP has been updated.`;
-
-        if (newEmail !== oldEmail) {
-            subject = 'Email Address Changed';
-            body += `\n\nYour email address was specifically updated from ${oldEmail} to ${newEmail}.`;
-        }
-
-        emailService.send(newEmail, subject, body).catch(e => console.warn('Email dispatch warning:', e.message));
-
         res.status(200).json({
             success: true,
-            message: "Profile updated successfully",
+            message: isUnlocked ? "Profile details updated successfully." : "Contact details saved successfully.",
             user: updatedUser
         });
     } catch (err) {
         console.error('Database Error:', err);
-        if (err.code === '23505') {
-            return res.status(409).json({ success: false, error: "Username or Email already in use" });
-        }
-        res.status(500).json({ success: false, error: "Internal server error" });
+        res.status(500).json({ success: false, error: "Internal server error: " + err.message });
     }
 };
 

@@ -197,6 +197,7 @@ export const adminService = {
   getOverviewStats: () => api.get('/api/admin/stats').then(res => res.data),
   getUsers: (role?: string) => role && role !== 'all' ? api.get(`/api/admin/users/${role}`).then(res => res.data) : api.get('/api/admin/users').then(res => res.data),
   deleteUser: (id: number | string) => api.delete(`/api/admin/users/${id}`).then(res => res.data),
+  toggleUserProfileLock: (userId: number | string) => api.put(`/api/admin/users/${userId}/toggle-profile-lock`).then(res => res.data),
   getAllTeachers: () => api.get('/api/admin/teachers').then(res => res.data),
   getSchoolAdmins: () => api.get('/api/admin/school-admins').then(res => res.data),
   createSchoolAdmin: (payload: any) => api.post('/api/admin/school-admins', payload).then(res => res.data),

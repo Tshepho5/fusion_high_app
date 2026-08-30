@@ -87,6 +87,7 @@ pool.connect(async (err, client, release) => {
 
             ALTER TABLE users ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
             ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT FALSE;
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_edit_unlocked BOOLEAN DEFAULT FALSE;
 
             CREATE TABLE IF NOT EXISTS children (
                 id SERIAL PRIMARY KEY,

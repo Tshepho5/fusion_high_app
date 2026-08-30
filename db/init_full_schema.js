@@ -251,6 +251,7 @@ async function initializeAllDatabaseTables(customClient) {
 
       ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_picture_path VARCHAR(255);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_picture VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_edit_unlocked BOOLEAN DEFAULT FALSE;
       UPDATE users SET profile_picture_path = profile_picture WHERE profile_picture_path IS NULL AND profile_picture IS NOT NULL;
       UPDATE users SET profile_picture = profile_picture_path WHERE profile_picture IS NULL AND profile_picture_path IS NOT NULL;
 

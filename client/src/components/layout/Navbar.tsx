@@ -107,7 +107,42 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
       {/* Middle: Dynamic Multi-School Header & Switcher */}
       {(() => {
         const isMasterAdmin = Boolean(user?.is_superadmin || (user?.email && user.email.toLowerCase() === '202247878@myturf.ul.ac.za'));
-        const canSwitch = isMasterAdmin || role !== 'admin';
+        const userRole = (role || user?.role || '').toLowerCase();
+
+        // Enrolled schools for a parent (if children attend different schools)
+        const parentEnrolledSchoolIds: number[] = (user?.enrolled_schools && Array.isArray(user.enrolled_schools) && user.enrolled_schools.length > 0)
+          ? user.enrolled_schools.map((id: any) => Number(id))
+          : (user?.children && Array.isArray(user.children) && user.children.length > 0)
+          ? [...new Set(user.children.map((c: any) => Number(c.school_id)).filter(Boolean))] as number[]
+          : [];
+
+        // Determine if this user has permission to switch schools:
+        // 1. SuperAdmin: can switch to any school
+        // 2. Parent: can switch ONLY IF they have children enrolled in different schools (> 1 distinct schools)
+        // 3. Teachers, Learners, Institutional Admins: strictly locked to their single school
+        const isParentWithMultipleSchools = userRole === 'parent' && parentEnrolledSchoolIds.length > 1;
+        const canSwitch = isMasterAdmin || isParentWithMultipleSchools;
+
+        // Filter the available schools to switch between:
+        // - For SuperAdmin: all partner schools
+        // - For Parent: ONLY the schools where their children are enrolled
+        const availableSchools = isMasterAdmin 
+          ? schoolsList 
+          : isParentWithMultipleSchools 
+          ? schoolsList.filter(s => parentEnrolledSchoolIds.includes(s.id))
+          : [];
+
+        const switcherTooltip = isMasterAdmin
+          ? 'Master Superadmin: Click to switch and monitor any school'
+          : isParentWithMultipleSchools
+          ? `Multi-School Parent: Switch between your children's ${parentEnrolledSchoolIds.length} enrolled schools`
+          : userRole === 'parent'
+          ? `Parent Portal: Scoped to your child's enrolled school (${currentSchool?.name || 'Assigned School'})`
+          : userRole === 'teacher'
+          ? `Educator Portal: Scoped to your appointed school (${currentSchool?.name || 'Assigned School'})`
+          : userRole === 'learner'
+          ? `Student Portal: Scoped to your enrolled school (${currentSchool?.name || 'Assigned School'})`
+          : `Institutional Admin: Strictly scoped to ${currentSchool?.name || 'your school'}`;
 
         return (
           <div className="relative">
@@ -118,13 +153,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
               className={`flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-dark/80 border border-white/10 transition-all text-left shadow-sm group ${
                 canSwitch ? 'hover:bg-surface-dark hover:border-brand-500/40 cursor-pointer' : 'cursor-default opacity-95'
               }`}
-              title={
-                isMasterAdmin
-                  ? 'Master Superadmin: Click to switch and monitor any school'
-                  : role === 'admin'
-                  ? 'Institutional Admin: Strictly scoped to your school'
-                  : 'Click to Switch School Environment'
-              }
+              title={switcherTooltip}
             >
               <div
                 className="w-7 h-7 rounded-lg flex items-center justify-center border shadow-sm transition-transform group-hover:scale-105"
@@ -148,6 +177,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
                     <span className="hidden md:inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-mono">
                       School Admin
                     </span>
+                  ) : isParentWithMultipleSchools ? (
+                    <span className="hidden md:inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
+                      {parentEnrolledSchoolIds.length} Schools
+                    </span>
                   ) : null}
                 </div>
                 <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
@@ -162,7 +195,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
             </button>
 
         {/* Multi-School Switcher Dropdown */}
-        {showSchoolMenu && (
+        {showSchoolMenu && canSwitch && (
           <div
             className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-80 md:w-96 rounded-2xl bg-surface-dark border border-white/15 shadow-2xl p-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl"
             onMouseLeave={() => setShowSchoolMenu(false)}
@@ -171,17 +204,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
               <div>
                 <p className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                   <Building2 className="w-3.5 h-3.5 text-cyan-400" />
-                  Enrolled Partner Schools (Limpopo & Gauteng)
+                  {isMasterAdmin ? 'Enrolled Partner Schools (Limpopo & Gauteng)' : "Your Children's Enrolled Schools"}
                 </p>
-                <p className="text-[10px] text-slate-400 mt-0.5">Select a high school to switch institutional branding</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {isMasterAdmin ? 'Select a high school to switch institutional branding' : 'Switch institutional view to monitor your enrolled child'}
+                </p>
               </div>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-mono font-bold">
-                {schoolsList.length} Schools
+                {availableSchools.length} Schools
               </span>
             </div>
 
             <div className="space-y-1 max-h-72 overflow-y-auto custom-scrollbar">
-              {schoolsList.map(school => {
+              {availableSchools.map(school => {
                 const isSelected = currentSchool?.id === school.id;
                 return (
                   <button
