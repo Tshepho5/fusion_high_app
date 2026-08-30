@@ -266,7 +266,7 @@ ON CONFLICT (code) DO NOTHING;
 
 
 SELECT *
-FROM children;
+FROM users;
 
 
 CREATE TABLE children
@@ -386,13 +386,6 @@ CREATE TABLE IF NOT EXISTS events (
    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-
-SELECT *
-FROM users;
-
-select * from employees;
-
-
 -- SEEDING SAMPLE DATA (Employees & Workload)
 -- 1. Master Admin (Global Overseer across all schools) & Dedicated School Admins (Auth Records)
 INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, dob, gender, phone, physical_address, country, race, parent_type)
@@ -447,34 +440,36 @@ ON CONFLICT (email) DO UPDATE SET
   full_name = EXCLUDED.full_name,
   surname = EXCLUDED.surname;
 
+
+select * from users;
 --create a new learners in each school who can be linked to their school, 
 --stream, Grade, and their home lanhuage
-INSERT INTO users (email, password_hash, role_id, school_id, is_active, full_name, surname)
-VALUES   ('202526772@fusionhigh.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),1,TRUE, 'Dudu','Mahlangu'),
-        ('202533321@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2,TRUE, 'Thapelo','Leshabane'), 
-        ('202534683@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),3,TRUE, 'Matome','Modiba'), 
-        ('202536027@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),4,TRUE, 'Thapelo','Leshabane'), 
-        ('202524246@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),5,TRUE, 'Lesedi','Letshedi'), 
-        ('202524112@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),6,TRUE, 'Kgadi','Mahlangu'), 
-        ('202524421@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),7,TRUE, 'Neo','Mamadise'), 
-        ('202524220@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),8,TRUE, 'Kgothatsoi','Setshedi'), 
-        ('202524243@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),9,TRUE, 'Lesiba','Aphane'), 
-        ('202524240@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),10,TRUE, 'Neo','Kgomo'), 
-        ('202524001@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),11,TRUE, 'Katlego','Kekana'), 
-        ('202524201@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),12,TRUE, 'Mokgethwa','Ramushu'),
-        ('202524221@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),1,TRUE, 'Bokang','Lekganyane'),
-        ('202524222@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2,TRUE, 'Motsoaledi','Rangata'),
-        ('202524223@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),3,TRUE, 'Mmakgosi','Ramakgwakgwa'),
-        ('202524224@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),4,TRUE, 'Lesiba','Makhubela'),
-        ('202524225@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),5,TRUE, 'Kgothatso','Malebe'),
-        ('202524226@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),6,TRUE, 'Kgomotso','Marule'),
-        ('202524227@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),7,TRUE, 'Pinki','Matsapola'),
-        ('202524228@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),8,TRUE, 'Lerato','Nkoana'),
-        ('202524229@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),9,TRUE, 'Precious','Makola'),
-        ('202524230@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),10,TRUE, 'Pinki','Matsapola'),
-        ('202524231@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),11,TRUE, 'Lerato','Nkoana'),
-        ('202524232@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),12,TRUE, 'Precious','Makola');
-        
+INSERT INTO users (email, password_hash, role_id, school_id,  dob, gender, id_number, country, race, full_name, surname) 
+VALUES   ('202526772@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2007-01-05', 'female', '0701051234567', 'South Africa', 'Black', 'Dudu','Mahlangu'),
+        ('202533321@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2007-05-06', 'male', '0705061234567', 'South Africa', 'Black', 'Thapelo','Leshabane'), 
+        ('202534683@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2007-07-12', 'male', '0707121234567', 'South Africa', 'Black', 'Matome','Modiba'), 
+        ('202536027@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2008-06-01', 'male', '0806011234567', 'South Africa', 'Black', 'Thapelo','Leshabane'), 
+        ('202524246@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2008-08-10', 'female', '0808101234567', 'South Africa', 'Black', 'Lesedi','Letshedi'), 
+        ('202524112@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2008-03-03', 'female', '0803031234567', 'South Africa', 'Black', 'Kgadi','Mahlangu'), 
+        ('202524421@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2,'2008-05-06', 'female','0805061234567', 'South Africa', 'Black', 'Neo','Mamadise'), 
+        ('202524220@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2008-06-09', 'female','0806091234567', 'South Africa', 'Black', 'Kgothatsoi','Setshedi'), 
+        ('202524243@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2008-07-12', 'male','0807121234567', 'South Africa', 'Black', 'Lesiba','Aphane'), 
+        ('202524240@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2008-08-15', 'female','0808151234567', 'South Africa', 'Black', 'Neo','Kgomo'), 
+        ('202524001@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2008-09-18', 'male','0809181234567', 'South Africa', 'Black', 'Katlego','Kekana'), 
+        ('202524201@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2008-10-19', 'male', '0809181234567', 'South Africa', 'Black', 'Mokgethwa','Ramushu'),
+        ('202524221@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2008-11-20', 'female', '0809181234567', 'South Africa', 'Black', 'Bokang','Lekganyane'),
+        ('202524222@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2008-12-21', 'male', '0809181234567', 'South Africa', 'Black', 'Motsoaledi','Rangata'),
+        ('202524223@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2009-01-22', 'female', '0809181234567', 'South Africa', 'Black', 'Mmakgosi','Ramakgwakgwa'),
+        ('202524224@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2009-02-23', 'male', '0809181234567', 'South Africa', 'Black', 'Lesiba','Makhubela'),
+        ('202524225@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2009-03-24', 'female', '0809181234567', 'South Africa', 'Black', 'Kgothatso','Malebe'),
+        ('202524226@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2009-04-25', 'female', '0809181234567', 'South Africa', 'Black', 'Kgomotso','Marule'),
+        ('202524227@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2009-05-26', 'male', '0809181234567', 'South Africa', 'Black', 'Pinki','Matsapola'),
+        ('202524228@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2009-06-27', 'female', '0809181234567', 'South Africa', 'Black', 'Lerato','Nkoana'),
+        ('202524229@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2009-07-28', 'male', '0809181234567', 'South Africa', 'Black', 'Princess','Manaka'),
+        ('202524230@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2009-08-29', 'male', '0809181234567', 'South Africa', 'Black', 'Karabo','Kekana'),
+        ('202524231@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2009-09-30', 'female', '0809181234567', 'South Africa', 'Black', 'Lerato','Nkoana'),
+        ('202524232@mountainview.co.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2, '2009-10-01', 'female', '0809181234567', 'South Africa', 'Black', 'Mmapaseka','Makgopa');
+
 --Now we assigne this learners grades, classes and stream and subjects with respect to their school_id
 
 --insert into learners_streams table with the following data:
@@ -493,6 +488,7 @@ WHERE u.email = '202526772@fusion.high' ON CONFLICT (learner_user_id) DO
   UPDATE
   SET grade = 10;
 
+select * from children;
 
           
 
@@ -512,7 +508,7 @@ WHERE u.role_id = (SELECT id FROM roles WHERE name = 'admin')
 ON CONFLICT (user_id) DO NOTHING;
 
 -- Insert Thapelo Leshabane as the Mathematics (Science Stream) teacher
-
+select * from employees;
 INSERT INTO employees (user_id, employee_role_id, full_name, surname, department_id, subjects, subject_codes, grades_taught, classes_taught, phone, email, hired_date)
 SELECT u.id,
        er.id,
@@ -552,7 +548,7 @@ WHERE u.email = '202256986@myturf.ul.ac.za' ON CONFLICT (user_id) DO NOTHING;
 
 
 SELECT *
-FROM users;
+FROM schools;
 
 Select * from children;
 
@@ -928,9 +924,70 @@ WHERE u.email = '20250021@fusion.high' ON CONFLICT (learner_user_id) DO
   UPDATE
   SET grade = 12;
 
+--========================================================
+--INSERTING school_id = 2 LEARNERS
+--========================================================
+-- ============================================================================
+-- INSERT ALL 24 LEARNERS INTO CHILDREN TABLE (Mountainview - school_id = 2)
+-- ============================================================================
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects, school_id)
+SELECT 
+    u.id AS learner_user_id,
+    d.full_name,
+    d.surname,
+    NULL AS parent_id,
+    d.learner_number,
+    d.grade,
+    c.id AS class_id,
+    d.stream,
+    d.subjects,
+    2 AS school_id
+FROM (
+    VALUES
+        -- Grade 10 Learners
+        ('202526772@mountainview.co.za', 'Dudu', 'Mahlangu', '202526772', 10, '10A', 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202533321@mountainview.co.za', 'Thapelo', 'Leshabane', '202533321', 10, '10A', 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202534683@mountainview.co.za', 'Matome', 'Modiba', '202534683', 10, '10B', 'Commerce', ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202536027@mountainview.co.za', 'Thapelo', 'Leshabane', '202536027', 10, '10B', 'Commerce', ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524246@mountainview.co.za', 'Lesedi', 'Letshedi', '202524246', 10, '10A', 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524112@mountainview.co.za', 'Kgadi', 'Mahlangu', '202524112', 10, '10B', 'Commerce', ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524421@mountainview.co.za', 'Neo', 'Mamadise', '202524421', 10, '10A', 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524220@mountainview.co.za', 'Kgothatsoi', 'Setshedi', '202524220', 10, '10B', 'Commerce', ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Home Language', 'Life Orientation']),
+
+        -- Grade 11 Learners
+        ('202524243@mountainview.co.za', 'Lesiba', 'Aphane', '202524243', 11, '11A', 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524240@mountainview.co.za', 'Neo', 'Kgomo', '202524240', 11, '11A', 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524001@mountainview.co.za', 'Katlego', 'Kekana', '202524001', 11, '11B', 'Tourism', ARRAY['Tourism', 'Geography', 'Mathematical Literacy', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524201@mountainview.co.za', 'Mokgethwa', 'Ramushu', '202524201', 11, '11B', 'Tourism', ARRAY['Tourism', 'Geography', 'Mathematical Literacy', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524221@mountainview.co.za', 'Bokang', 'Lekganyane', '202524221', 11, '11A', 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524222@mountainview.co.za', 'Motsoaledi', 'Rangata', '202524222', 11, '11B', 'Tourism', ARRAY['Tourism', 'Geography', 'Mathematical Literacy', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524223@mountainview.co.za', 'Mmakgosi', 'Ramakgwakgwa', '202524223', 11, '11A', 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524224@mountainview.co.za', 'Lesiba', 'Makhubela', '202524224', 11, '11B', 'Tourism', ARRAY['Tourism', 'Geography', 'Mathematical Literacy', 'English FAL', 'Home Language', 'Life Orientation']),
+
+        -- Grade 12 Learners
+        ('202524225@mountainview.co.za', 'Kgothatso', 'Malebe', '202524225', 12, '12A', 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524226@mountainview.co.za', 'Kgomotso', 'Marule', '202524226', 12, '12A', 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524227@mountainview.co.za', 'Pinki', 'Matsapola', '202524227', 12, '12B', 'Commerce', ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524228@mountainview.co.za', 'Lerato', 'Nkoana', '202524228', 11, '11A', 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524229@mountainview.co.za', 'Princess', 'Manaka', '202524229', 12, '12A', 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524230@mountainview.co.za', 'Karabo', 'Kekana', '202524230', 12, '12B', 'Commerce', ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524231@mountainview.co.za', 'Lerato', 'Nkoana', '202524231', 12, '12A', 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation']),
+        ('202524232@mountainview.co.za', 'Mmapaseka', 'Makgopa', '202524232', 12, '12B', 'Commerce', ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Home Language', 'Life Orientation'])
+) AS d(email, full_name, surname, learner_number, grade, class_name, stream, subjects)
+JOIN users u ON u.email = d.email AND u.school_id = 2
+LEFT JOIN classes c ON c.name = d.class_name
+ON CONFLICT (learner_user_id) DO UPDATE SET
+    full_name = EXCLUDED.full_name,
+    surname = EXCLUDED.surname,
+    learner_number = EXCLUDED.learner_number,
+    grade = EXCLUDED.grade,
+    class_id = EXCLUDED.class_id,
+    stream = EXCLUDED.stream,
+    subjects = EXCLUDED.subjects,
+    school_id = EXCLUDED.school_id;
 
 SELECT *
-FROM users;
+FROM classes;
 
 
 select *
