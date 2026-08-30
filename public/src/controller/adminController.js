@@ -2317,7 +2317,7 @@ exports.getMultiSchoolCommandCenterStats = async (req, res) => {
                     FROM attendance att
                     JOIN children c ON att.child_id = c.id
                     WHERE c.school_id = s.id
-                ), 95.0) AS avg_attendance_pct,
+                ), 0.0) AS avg_attendance_pct,
                 -- Appointed SubAdmins
                 COALESCE((
                     SELECT json_agg(json_build_object(

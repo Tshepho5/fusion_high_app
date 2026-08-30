@@ -76,16 +76,24 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
 
   if (loading) return <LoadingSpinner text="Loading administrative control center..." />;
 
-  const totalLearners = stats?.enrolled_learners || stats?.total_learners || stats?.totalLearners || 21;
-  const totalTeachers = (stats?.role_counts && stats.role_counts.teacher) || stats?.totalTeachers || 4;
-  const totalClasses = stats?.total_classes || 13;
-  const overallAttendance = stats?.overall_attendance !== undefined ? `${stats.overall_attendance}%` : '96%';
+  const totalLearners = stats?.enrolled_learners !== undefined 
+    ? Number(stats.enrolled_learners) 
+    : (stats?.total_learners !== undefined ? Number(stats.total_learners) : (stats?.totalLearners !== undefined ? Number(stats.totalLearners) : 0));
+  const totalTeachers = stats?.teacher !== undefined 
+    ? Number(stats.teacher) 
+    : (stats?.role_counts?.teacher !== undefined ? Number(stats.role_counts.teacher) : (stats?.totalTeachers !== undefined ? Number(stats.totalTeachers) : 0));
+  const totalClasses = stats?.total_classes !== undefined 
+    ? Number(stats.total_classes) 
+    : (stats?.classes !== undefined ? Number(stats.classes) : 0);
+  const overallAttendance = stats?.overall_attendance !== undefined && stats.overall_attendance !== null 
+    ? `${stats.overall_attendance}%` 
+    : (stats?.attendance_rate !== undefined && stats.attendance_rate !== null ? `${stats.attendance_rate}%` : '0%');
 
   const metricCards = [
     { title: 'Enrolled Learners', value: totalLearners, sub: 'Active CAPS Students', icon: GraduationCap, color: 'text-indigo-400', tab: 'users' },
     { title: 'Teaching Staff', value: totalTeachers, sub: 'Subject Specialists', icon: Briefcase, color: 'text-cyan-400', tab: 'users' },
-    { title: 'Class Units', value: totalClasses, sub: 'Grade 10-12 Rooms', icon: BookOpen, color: 'text-emerald-400', tab: 'timetable' },
-    { title: 'School Attendance', value: overallAttendance, sub: 'Term 2 Average', icon: CalendarCheck, color: 'text-amber-400', tab: 'marks' },
+    { title: 'Class Units', value: totalClasses, sub: 'Grade 8-12 Rooms', icon: BookOpen, color: 'text-emerald-400', tab: 'timetable' },
+    { title: 'School Attendance', value: overallAttendance, sub: 'Daily Average', icon: CalendarCheck, color: 'text-amber-400', tab: 'marks' },
   ];
 
   // ADMIN MODULES (ICON + NAME ONLY)

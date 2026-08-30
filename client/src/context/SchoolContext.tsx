@@ -53,11 +53,7 @@ export const DEFAULT_SCHOOLS: SchoolProfile[] = [
     motto: 'Innovate, Lead, Transform',
     curriculum_type: 'CAPS (DBE Limpopo)',
     grade_range: '8-12',
-    is_active: true,
-    enrolled_learners_count: 1,
-    staff_count: 5,
-    classes_count: 13,
-    parents_count: 1
+    is_active: true
   },
   {
     id: 2,
