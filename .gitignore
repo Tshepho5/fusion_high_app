@@ -21,6 +21,10 @@ yarn-error.log*
 uploads/
 public/uploads/
 
+# Build Artifacts
+dist/
+client/dist/
+
 # OS Metadata & Office Lock Files
 .DS_Store
 Thumbs.db
