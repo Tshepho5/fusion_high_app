@@ -873,9 +873,50 @@ async function initializeAllDatabaseTables(customClient) {
       `);
     }
 
-    // Auto-migrate schema columns for existing production databases
+    // Auto-migrate schema columns for existing and multi-tenant tables
     try {
       await runner.query(`
+        -- Multi-School & Governance Tenant Columns
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT FALSE;
+        ALTER TABLE children ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE children ADD COLUMN IF NOT EXISTS home_language VARCHAR(50) DEFAULT 'English';
+        ALTER TABLE employees ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE departments ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE subjects ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE timetables ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE tests ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE exams ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE assignments ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE assessment_results ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE marks ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE attendance ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE conduct_logs ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE merits ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE fee_invoices ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE fee_payments ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE ptc_sessions ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE ptc_slots ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE ptc_bookings ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE teacher_consultations ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE report_cards ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE generated_reports ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE inter_school_competitions ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE extracurricular_activities ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE exam_seatings ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE bursaries ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+
+        -- Inter-School and Announcements columns
+        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_inter_school BOOLEAN DEFAULT FALSE;
         ALTER TABLE announcements ADD COLUMN IF NOT EXISTS role_target VARCHAR(50) DEFAULT 'all';
         ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
         ALTER TABLE announcements ADD COLUMN IF NOT EXISTS grade_target INTEGER;
@@ -884,7 +925,19 @@ async function initializeAllDatabaseTables(customClient) {
         ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_assignment BOOLEAN DEFAULT FALSE;
         ALTER TABLE announcements ADD COLUMN IF NOT EXISTS due_date TIMESTAMP;
         ALTER TABLE announcements ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
-        ALTER TABLE children ADD COLUMN IF NOT EXISTS home_language VARCHAR(50);
+
+        -- Event and Calendar Columns
+        ALTER TABLE events ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        ALTER TABLE events ADD COLUMN IF NOT EXISTS is_inter_school BOOLEAN DEFAULT FALSE;
+        ALTER TABLE events ADD COLUMN IF NOT EXISTS is_global BOOLEAN DEFAULT FALSE;
+
+        -- Ensure initial department and class records have school_id = 1
+        UPDATE departments SET school_id = 1 WHERE school_id IS NULL;
+        UPDATE classes SET school_id = 1 WHERE school_id IS NULL;
+        UPDATE subjects SET school_id = 1 WHERE school_id IS NULL;
+        UPDATE users SET school_id = 1 WHERE school_id IS NULL;
+        UPDATE children SET school_id = 1 WHERE school_id IS NULL;
+        UPDATE employees SET school_id = 1 WHERE school_id IS NULL;
       `);
     } catch (migErr) {
       console.warn('[SCHEMA MIGRATION WARNING]:', migErr.message);
