@@ -11,16 +11,16 @@ exports.getActivities = async (req, res) => {
       SELECT 
         a.*,
         u.full_name AS coach_name, u.surname AS coach_surname,
-        (SELECT COUNT(*) FROM extracurricular_members m WHERE m.activity_id = a.id) AS member_count,
-        (SELECT COUNT(*) FROM extracurricular_events e WHERE e.activity_id = a.id AND e.event_date >= CURRENT_DATE) AS upcoming_events_count
+        (SELECT COUNT(*) FROM extracurricular_members m WHERE m.activity_id::text = a.id::text) AS member_count,
+        (SELECT COUNT(*) FROM extracurricular_events e WHERE e.activity_id::text = a.id::text AND e.event_date >= CURRENT_DATE) AS upcoming_events_count
       FROM extracurricular_activities a
-      LEFT JOIN users u ON a.coach_user_id = u.id
+      LEFT JOIN users u ON a.coach_user_id::text = u.id::text
       WHERE a.is_active = TRUE
     `;
     const params = [];
-    if (category && category !== 'All') {
-      params.push(category);
-      query += ` AND a.category = $${params.length}`;
+    if (category && category !== 'All' && category !== 'all') {
+      params.push(`%${category}%`);
+      query += ` AND (a.category ILIKE $${params.length} OR a.category = $${params.length})`;
     }
     query += ` ORDER BY a.name ASC;`;
 
@@ -42,9 +42,9 @@ exports.getActivityDetails = async (req, res) => {
     const actRes = await db.query(`
       SELECT a.*, u.full_name AS coach_name, u.surname AS coach_surname, u.email AS coach_email
       FROM extracurricular_activities a
-      LEFT JOIN users u ON a.coach_user_id = u.id
-      WHERE a.id = $1;
-    `, [id]);
+      LEFT JOIN users u ON a.coach_user_id::text = u.id::text
+      WHERE a.id::text = $1::text;
+    `, [String(id)]);
 
     if (actRes.rows.length === 0) {
       return res.status(404).json({ error: 'Activity not found.' });
@@ -55,17 +55,17 @@ exports.getActivityDetails = async (req, res) => {
       SELECT m.id, m.role, m.jersey_number, m.joined_at,
              c.id AS child_id, c.full_name AS learner_name, c.surname AS learner_surname, c.grade, c.learner_number
       FROM extracurricular_members m
-      JOIN children c ON m.child_id = c.id
-      WHERE m.activity_id = $1
+      JOIN children c ON m.child_id::text = c.id::text
+      WHERE m.activity_id::text = $1::text
       ORDER BY m.role = 'Captain' DESC, m.role = 'Vice-Captain' DESC, c.surname ASC;
-    `, [id]);
+    `, [String(id)]);
 
     // Events / Fixtures
     const eventsRes = await db.query(`
       SELECT * FROM extracurricular_events
-      WHERE activity_id = $1
+      WHERE activity_id::text = $1::text
       ORDER BY event_date DESC, start_time DESC;
-    `, [id]);
+    `, [String(id)]);
 
     res.json({
       activity: actRes.rows[0],
@@ -117,7 +117,7 @@ exports.joinActivity = async (req, res) => {
     let targetChildId = child_id;
     // If learner is requesting for themselves
     if (req.user.role === 'learner') {
-      const chRes = await db.query('SELECT id FROM children WHERE learner_user_id = $1', [req.user.id]);
+      const chRes = await db.query('SELECT id FROM children WHERE learner_user_id::text = $1::text OR id::text = $1::text LIMIT 1', [String(req.user.id)]);
       if (chRes.rows.length === 0) return res.status(404).json({ error: 'Learner profile not found.' });
       targetChildId = chRes.rows[0].id;
     }
@@ -165,9 +165,9 @@ exports.createEvent = async (req, res) => {
     const membersRes = await db.query(`
       SELECT c.learner_user_id, c.parent_id 
       FROM extracurricular_members m
-      JOIN children c ON m.child_id = c.id
-      WHERE m.activity_id = $1;
-    `, [activity_id]);
+      JOIN children c ON m.child_id::text = c.id::text
+      WHERE m.activity_id::text = $1::text;
+    `, [String(activity_id)]);
 
     const userIds = [];
     membersRes.rows.forEach(m => {
@@ -207,9 +207,9 @@ exports.updateEventScore = async (req, res) => {
     const result = await db.query(`
       UPDATE extracurricular_events 
       SET result_score = $1, notes = COALESCE($2, notes)
-      WHERE id = $3
+      WHERE id::text = $3::text
       RETURNING *;
-    `, [result_score, notes, id]);
+    `, [result_score, notes, String(id)]);
 
     res.json({
       success: true,
@@ -229,7 +229,7 @@ exports.getLearnerActivities = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const childRes = await db.query('SELECT id, full_name, surname FROM children WHERE learner_user_id = $1', [userId]);
+    const childRes = await db.query('SELECT id, full_name, surname FROM children WHERE learner_user_id::text = $1::text OR id::text = $1::text LIMIT 1', [String(userId)]);
     if (childRes.rows.length === 0) {
       return res.status(404).json({ error: 'Learner profile not found.' });
     }
@@ -240,14 +240,14 @@ exports.getLearnerActivities = async (req, res) => {
       SELECT 
         a.id, a.name, a.category, a.season, a.venue, a.practice_schedule, a.description,
         m.role, m.jersey_number, m.joined_at,
-        (SELECT COUNT(*) FROM extracurricular_events e WHERE e.activity_id = a.id AND e.event_date >= CURRENT_DATE) AS upcoming_events_count
+        (SELECT COUNT(*) FROM extracurricular_events e WHERE e.activity_id::text = a.id::text AND e.event_date >= CURRENT_DATE) AS upcoming_events_count
       FROM extracurricular_members m
-      JOIN extracurricular_activities a ON m.activity_id = a.id
-      WHERE m.child_id = $1 AND a.is_active = TRUE
+      JOIN extracurricular_activities a ON m.activity_id::text = a.id::text
+      WHERE m.child_id::text = $1::text AND a.is_active = TRUE
       ORDER BY a.name ASC;
     `;
 
-    const { rows } = await db.query(query, [childId]);
+    const { rows } = await db.query(query, [String(childId)]);
     res.json(rows);
   } catch (err) {
     console.error('Error fetching learner activities:', err);

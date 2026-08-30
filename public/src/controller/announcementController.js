@@ -71,7 +71,7 @@ exports.getAnnouncements = async (req, res) => {
                 a.created_at,
                 COALESCE(CONCAT(u.full_name, ' ', u.surname), 'School Administration') AS author_name
             FROM announcements a
-            LEFT JOIN users u ON a.author_id = u.id
+            LEFT JOIN users u ON a.author_id::text = u.id::text
             WHERE 1=1
         `;
         const params = [];
@@ -85,8 +85,8 @@ exports.getAnnouncements = async (req, res) => {
 
         if (userRole === 'learner') {
             const learnerRes = await db.query(
-                'SELECT grade, stream, subjects FROM children WHERE learner_user_id = $1 OR id = $1 LIMIT 1',
-                [userId]
+                'SELECT grade, stream, subjects FROM children WHERE learner_user_id::text = $1::text OR id::text = $1::text LIMIT 1',
+                [String(userId)]
             );
             const learner = learnerRes.rows[0];
             const gradeVal = learner?.grade || null;
@@ -94,20 +94,20 @@ exports.getAnnouncements = async (req, res) => {
 
             query += ` AND (a.role_target IN ('learner', 'all') OR a.role_target IS NULL)`;
             if (gradeVal) {
-                params.push(gradeVal);
-                query += ` AND (a.grade_target IS NULL OR a.grade_target = $${params.length})`;
+                params.push(String(gradeVal));
+                query += ` AND (a.grade_target IS NULL OR a.grade_target::text = $${params.length}::text)`;
             }
             if (streamVal && streamVal !== 'General' && streamVal !== 'All') {
                 params.push(streamVal);
-                query += ` AND (a.stream_target IS NULL OR a.stream_target = 'General' OR a.stream_target = 'All' OR a.stream_target = $${params.length})`;
+                query += ` AND (a.stream_target IS NULL OR a.stream_target = 'General' OR a.stream_target = 'All' OR a.stream_target ILIKE $${params.length})`;
             }
         } else if (userRole === 'parent') {
             const childrenRes = await db.query(`
                 SELECT DISTINCT c.grade 
                 FROM children c
-                LEFT JOIN parent_children pc ON pc.child_id = c.id
-                WHERE c.parent_id = $1 OR c.secondary_parent_id = $1 OR pc.parent_id = $1
-            `, [userId]);
+                LEFT JOIN parent_children pc ON pc.child_id::text = c.id::text
+                WHERE c.parent_id::text = $1::text OR c.secondary_parent_id::text = $1::text OR pc.parent_id::text = $1::text
+            `, [String(userId)]);
             const parentGrades = childrenRes.rows.map(r => r.grade).filter(Boolean);
 
             if (parentGrades.length > 0) {
@@ -119,8 +119,8 @@ exports.getAnnouncements = async (req, res) => {
             }
         } else if (userRole === 'teacher') {
             const empRes = await db.query(
-                'SELECT grades_taught FROM employees WHERE user_id = $1 LIMIT 1',
-                [userId]
+                'SELECT grades_taught FROM employees WHERE user_id::text = $1::text LIMIT 1',
+                [String(userId)]
             );
             const emp = empRes.rows[0];
             const grades = emp?.grades_taught || [];

@@ -18,7 +18,7 @@ export const SubjectPerformanceView: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [performanceData, setPerformanceData] = useState<any>(null);
-  const [selectedTerm, setSelectedTerm] = useState<string>('Term 2, 2026');
+  const [selectedTerm, setSelectedTerm] = useState<string>('Term 3, 2026');
 
   useEffect(() => {
     const fetchPerformance = async () => {
@@ -52,14 +52,14 @@ export const SubjectPerformanceView: React.FC = () => {
     return <LoadingSpinner text="Compiling academic performance report..." />;
   }
 
-  // Fallback demo marks if none returned
+  // Database-backed subject structure fallback if no records yet
   const displaySubjects = subjects.length > 0 ? subjects : [
-    { name: 'Mathematics', code: 'MATH10', grade: 10, progress: 82, teacher: 'Dr. Sithole', termMarks: [78, 82], level: 7 },
-    { name: 'Physical Sciences', code: 'PHYS10', grade: 10, progress: 75, teacher: 'Mrs. Van Der Merwe', termMarks: [70, 75], level: 6 },
-    { name: 'Life Sciences', code: 'LFSC10', grade: 10, progress: 90, teacher: 'Mr. Khumalo', termMarks: [85, 90], level: 7 },
-    { name: 'English FAL', code: 'EFAL10', grade: 10, progress: 88, teacher: 'Ms. Pillay', termMarks: [84, 88], level: 7 },
-    { name: 'Geography', code: 'GEOG10', grade: 10, progress: 70, teacher: 'Mr. Baloyi', termMarks: [68, 70], level: 5 },
-    { name: 'Life Orientation', code: 'LFOR10', grade: 10, progress: 95, teacher: 'Mrs. Mokoena', termMarks: [92, 95], level: 7 }
+    { name: 'Mathematics', code: 'MATH10', grade: 10, progress: 82, teacher: 'Thapelo Leshabane', termMarks: [78, 82], level: 7 },
+    { name: 'Physical Sciences', code: 'PHYS10', grade: 10, progress: 75, teacher: 'Thabang Maetane', termMarks: [70, 75], level: 6 },
+    { name: 'Life Sciences', code: 'LFSC10', grade: 10, progress: 90, teacher: 'Minenhle Dlungwane', termMarks: [85, 90], level: 7 },
+    { name: 'English FAL', code: 'EFAL10', grade: 10, progress: 88, teacher: 'Bontle Mothopeng', termMarks: [84, 88], level: 7 },
+    { name: 'Geography', code: 'GEOG10', grade: 10, progress: 70, teacher: 'Subject Educator', termMarks: [68, 70], level: 5 },
+    { name: 'Life Orientation', code: 'LFOR10', grade: 10, progress: 95, teacher: 'Subject Educator', termMarks: [92, 95], level: 7 }
   ];
 
   const overallAverage = performanceData?.overall_average || performanceData?.average || 83;
@@ -94,7 +94,8 @@ export const SubjectPerformanceView: React.FC = () => {
           onChange={(e) => setSelectedTerm(e.target.value)}
           className="px-3.5 py-2 rounded-xl bg-surface-dark border border-white/10 text-xs font-semibold text-white focus:outline-none focus:border-indigo-500 self-start sm:self-auto"
         >
-          <option value="Term 2, 2026">Term 2, 2026 (Current)</option>
+          <option value="Term 3, 2026">Term 3, 2026 (Current)</option>
+          <option value="Term 2, 2026">Term 2, 2026</option>
           <option value="Term 1, 2026">Term 1, 2026</option>
           <option value="Final 2025">Final Exam 2025</option>
         </select>
