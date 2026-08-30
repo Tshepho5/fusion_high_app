@@ -266,7 +266,7 @@ ON CONFLICT (code) DO NOTHING;
 
 
 SELECT *
-FROM subjects;
+FROM children;
 
 
 CREATE TABLE children
@@ -446,6 +446,60 @@ ON CONFLICT (email) DO UPDATE SET
   is_superadmin = EXCLUDED.is_superadmin,
   full_name = EXCLUDED.full_name,
   surname = EXCLUDED.surname;
+
+--create a new learners in each school who can be linked to their school, 
+--stream, Grade, and their home lanhuage
+INSERT INTO users (email, password_hash, role_id, school_id, is_active, full_name, surname)
+VALUES   ('202526772@fusionhigh.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),1,TRUE, 'Dudu','Mahlangu'),
+        ('202533321@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2,TRUE, 'Thapelo','Leshabane'), 
+        ('202534683@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),3,TRUE, 'Matome','Modiba'), 
+        ('202536027@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),4,TRUE, 'Thapelo','Leshabane'), 
+        ('202524246@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),5,TRUE, 'Lesedi','Letshedi'), 
+        ('202524112@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),6,TRUE, 'Kgadi','Mahlangu'), 
+        ('202524421@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),7,TRUE, 'Neo','Mamadise'), 
+        ('202524220@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),8,TRUE, 'Kgothatsoi','Setshedi'), 
+        ('202524243@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),9,TRUE, 'Lesiba','Aphane'), 
+        ('202524240@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),10,TRUE, 'Neo','Kgomo'), 
+        ('202524001@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),11,TRUE, 'Katlego','Kekana'), 
+        ('202524201@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),12,TRUE, 'Mokgethwa','Ramushu'),
+        ('202524221@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),1,TRUE, 'Bokang','Lekganyane'),
+        ('202524222@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),2,TRUE, 'Motsoaledi','Rangata'),
+        ('202524223@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),3,TRUE, 'Mmakgosi','Ramakgwakgwa'),
+        ('202524224@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),4,TRUE, 'Lesiba','Makhubela'),
+        ('202524225@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),5,TRUE, 'Kgothatso','Malebe'),
+        ('202524226@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),6,TRUE, 'Kgomotso','Marule'),
+        ('202524227@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),7,TRUE, 'Pinki','Matsapola'),
+        ('202524228@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),8,TRUE, 'Lerato','Nkoana'),
+        ('202524229@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),9,TRUE, 'Precious','Makola'),
+        ('202524230@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),10,TRUE, 'Pinki','Matsapola'),
+        ('202524231@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),11,TRUE, 'Lerato','Nkoana'),
+        ('202524232@myturf.ul.ac.za','$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7',(SELECT id FROM roles WHERE name = 'learner'),12,TRUE, 'Precious','Makola');
+        
+--Now we assigne this learners grades, classes and stream and subjects with respect to their school_id
+
+--insert into learners_streams table with the following data:
+INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
+SELECT u.id,
+       'Dudu',
+       'Mahlangu',
+       NULL,
+       '202526772',
+       10,
+  (SELECT id
+   FROM classes
+   WHERE name = '10A'), 'Science', ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation']
+FROM users u
+WHERE u.email = '202526772@fusion.high' ON CONFLICT (learner_user_id) DO
+  UPDATE
+  SET grade = 10;
+
+
+          
+
+
+
+
+
 
 
 -- 2. Create the Employee Profiles (Principals & Teachers)
@@ -912,27 +966,6 @@ CREATE TABLE IF NOT EXISTS progress
 SELECT *
 FROM progress;
 
--- Seed sample progress records across Tests, Quizzes, Assignments, Exams
-INSERT INTO progress (child_id, subject, term, grade, time_taken_seconds, notes, date)
-SELECT child_id, subject, term, grade, time_taken_seconds, notes, date FROM (VALUES
-    ((SELECT id FROM children WHERE learner_number = '20250001'), 'Mathematics', 'Term 2', 88.0, 1800, 'Test: Trigonometry & Equations', NOW() - INTERVAL '4 days'),
-    ((SELECT id FROM children WHERE learner_number = '20250001'), 'Physical Sciences', 'Term 2', 92.5, 1200, 'Quiz: Kinematics & Motion', NOW() - INTERVAL '2 days'),
-    ((SELECT id FROM children WHERE learner_number = '20250001'), 'Life Sciences', 'Term 2', 85.0, 1500, 'Assignment: Cell Structure Research', NOW() - INTERVAL '6 days'),
-    ((SELECT id FROM children WHERE learner_number = '20250001'), 'English FAL', 'Term 2', 82.0, 2400, 'Exam: Literature & Essay', NOW() - INTERVAL '8 days'),
-    ((SELECT id FROM children WHERE learner_number = '20250001'), 'Home Language', 'Term 2', 89.0, 1900, 'Test: Language Mechanics', NOW() - INTERVAL '10 days'),
-    ((SELECT id FROM children WHERE learner_number = '20250001'), 'Life Orientation', 'Term 2', 95.0, 900, 'Assignment: Physical Fitness Log', NOW() - INTERVAL '12 days'),
-
-    ((SELECT id FROM children WHERE learner_number = '20250013'), 'Mathematics', 'Term 2', 80.0, 1800, 'Test: Algebra & Functions', NOW() - INTERVAL '3 days'),
-    ((SELECT id FROM children WHERE learner_number = '20250013'), 'Physical Sciences', 'Term 2', 78.5, 1400, 'Quiz: Matter and Materials', NOW() - INTERVAL '5 days'),
-    ((SELECT id FROM children WHERE learner_number = '20250013'), 'Life Sciences', 'Term 2', 84.0, 1600, 'Assignment: Ecosystem Diversity', NOW() - INTERVAL '7 days'),
-    ((SELECT id FROM children WHERE learner_number = '20250013'), 'English FAL', 'Term 2', 88.0, 2100, 'Exam: Comprehension & Grammar', NOW() - INTERVAL '9 days'),
-
-    ((SELECT id FROM children WHERE learner_number = '20250014'), 'Mathematics', 'Term 2', 75.0, 1800, 'Test: Analytical Geometry', NOW() - INTERVAL '4 days'),
-    ((SELECT id FROM children WHERE learner_number = '20250014'), 'Physical Sciences', 'Term 2', 82.0, 1500, 'Test: Chemical Change', NOW() - INTERVAL '2 days'),
-    ((SELECT id FROM children WHERE learner_number = '20250014'), 'Life Sciences', 'Term 2', 86.0, 1300, 'Quiz: Biodiversity & Classification', NOW() - INTERVAL '6 days'),
-    ((SELECT id FROM children WHERE learner_number = '20250014'), 'English FAL', 'Term 2', 90.0, 2200, 'Assignment: Creative Writing Essay', NOW() - INTERVAL '8 days')
-) AS v(child_id, subject, term, grade, time_taken_seconds, notes, date)
-ON CONFLICT DO NOTHING;
 
 
 
@@ -999,22 +1032,6 @@ CREATE TABLE IF NOT EXISTS attendance (
 );
 
 CREATE INDEX IF NOT EXISTS idx_attendance_child_id ON attendance (child_id);
-
--- Seed sample per-subject period attendance logs
-INSERT INTO attendance (child_id, class_id, subject_name, attendance_date, status, recorded_by_teacher_id)
-SELECT child_id, class_id, subject_name, attendance_date, status, recorded_by_teacher_id FROM (VALUES
-    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT class_id FROM children WHERE learner_number = '20250001'), 'Mathematics', CURRENT_DATE, 'present', (SELECT id FROM users WHERE email = 'thapeloleshabane05@gmail.com')),
-    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT class_id FROM children WHERE learner_number = '20250001'), 'Physical Sciences', CURRENT_DATE, 'present', (SELECT id FROM users WHERE email = 'tbjmaetane1010@gmail.com')),
-    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT class_id FROM children WHERE learner_number = '20250001'), 'Life Sciences', CURRENT_DATE - INTERVAL '1 day', 'late', (SELECT id FROM users WHERE email = '202256986@myturf.ul.ac.za')),
-    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT class_id FROM children WHERE learner_number = '20250001'), 'English FAL', CURRENT_DATE - INTERVAL '2 days', 'present', (SELECT id FROM users WHERE email = 'thapeloleshabane05@gmail.com')),
-
-    ((SELECT id FROM children WHERE learner_number = '20250013'), (SELECT class_id FROM children WHERE learner_number = '20250013'), 'Mathematics', CURRENT_DATE, 'present', (SELECT id FROM users WHERE email = 'thapeloleshabane05@gmail.com')),
-    ((SELECT id FROM children WHERE learner_number = '20250013'), (SELECT class_id FROM children WHERE learner_number = '20250013'), 'Physical Sciences', CURRENT_DATE, 'absent', (SELECT id FROM users WHERE email = 'tbjmaetane1010@gmail.com')),
-
-    ((SELECT id FROM children WHERE learner_number = '20250014'), (SELECT class_id FROM children WHERE learner_number = '20250014'), 'Mathematics', CURRENT_DATE, 'present', (SELECT id FROM users WHERE email = 'thapeloleshabane05@gmail.com')),
-    ((SELECT id FROM children WHERE learner_number = '20250014'), (SELECT class_id FROM children WHERE learner_number = '20250014'), 'Physical Sciences', CURRENT_DATE, 'late', (SELECT id FROM users WHERE email = 'tbjmaetane1010@gmail.com'))
-) AS v(child_id, class_id, subject_name, attendance_date, status, recorded_by_teacher_id)
-ON CONFLICT DO NOTHING;
 
 
 
@@ -1150,172 +1167,6 @@ CREATE TABLE exams (
 CREATE INDEX idx_exams_child_id ON exams (child_id);
 CREATE INDEX idx_exams_subject_id ON exams (subject_id);
 
-
--- ==========================================
--- SEEDING SAMPLE ASSESSMENT RESULTS
--- ==========================================
-
--- Insert sample quiz results for a few learners
-INSERT INTO quizzes (child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback)
-
-SELECT child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback FROM (VALUES
-    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 8.5, 10, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Good effort on algebra.'),
-    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT id FROM subjects WHERE code = 'PHSC10'), 7, 10, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Well done on the practical.'),
-    ((SELECT id FROM children WHERE learner_number = '20250002'), (SELECT id FROM subjects WHERE code = 'MATH11S'), 6, 10, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Good start.'),
-    ((SELECT id FROM children WHERE learner_number = '20250003'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 9, 10, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Excellent.'),
-    ((SELECT id FROM children WHERE learner_number = '20250004'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 9, 10, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Excellent work!'),
-    ((SELECT id FROM children WHERE learner_number = '20250005'), (SELECT id FROM subjects WHERE code = 'PHSC11'), 7.5, 10, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Good.'),
-    ((SELECT id FROM children WHERE learner_number = '20250006'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 8, 10, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Well done.'),
-    ((SELECT id FROM children WHERE learner_number = '20250007'), (SELECT id FROM subjects WHERE code = 'LFSC10'), 6, 10, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Needs more attention to detail.'),
-    ((SELECT id FROM children WHERE learner_number = '20250008'), (SELECT id FROM subjects WHERE code = 'MATH11S'), 4, 10, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Please review the material.'),
-    ((SELECT id FROM children WHERE learner_number = '20250009'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 9.5, 10, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Outstanding!'),
-    ((SELECT id FROM children WHERE learner_number = '20250010'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 5.5, 10, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Struggling with trigonometry.'),
-    ((SELECT id FROM children WHERE learner_number = '20250011'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 8, 10, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good work.'),
-    ((SELECT id FROM children WHERE learner_number = '20250012'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 7, 10, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Solid effort.'),
-    ((SELECT id FROM children WHERE learner_number = '20250013'), (SELECT id FROM subjects WHERE code = 'PHSC10'), 8, 10, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Good understanding of concepts.'),
-    ((SELECT id FROM children WHERE learner_number = '20250014'), (SELECT id FROM subjects WHERE code = 'PHSC11'), 6.5, 10, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Room for improvement.'),
-    ((SELECT id FROM children WHERE learner_number = '20250015'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 7, 10, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good.'),
-    ((SELECT id FROM children WHERE learner_number = '20250016'), (SELECT id FROM subjects WHERE code = 'LFSC10'), 9.5, 10, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Outstanding!'),
-    ((SELECT id FROM children WHERE learner_number = '20250019'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 7, 10, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Solid performance.')
-) AS data(child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback)
-ON CONFLICT DO NOTHING;
-
-
--- Insert sample assignment results
-INSERT INTO assignments (child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback)
-
-SELECT child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback FROM (VALUES
-    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT id FROM subjects WHERE code = 'LFSC10'), 35, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good, but could use more detail in the conclusion.'),
-    ((SELECT id FROM children WHERE learner_number = '20250002'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 42, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'A well-researched assignment. Please check your referencing.'),
-    ((SELECT id FROM children WHERE learner_number = '20250003'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 40, 50, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Good work.'),
-    ((SELECT id FROM children WHERE learner_number = '20250004'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 45, 50, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Excellent.'),
-    ((SELECT id FROM children WHERE learner_number = '20250005'), (SELECT id FROM subjects WHERE code = 'PHSC11'), 38, 50, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Good analysis, but submitted late.'),
-    ((SELECT id FROM children WHERE learner_number = '20250006'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 33, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Please follow the rubric more closely.'),
-    ((SELECT id FROM children WHERE learner_number = '20250007'), (SELECT id FROM subjects WHERE code = 'LFSC10'), 28, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'More detail needed.'),
-    ((SELECT id FROM children WHERE learner_number = '20250008'), (SELECT id FROM subjects WHERE code = 'MATH11S'), 25, 50, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Please see me for extra help.'),
-    ((SELECT id FROM children WHERE learner_number = '20250009'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 48, 50, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Outstanding.'),
-    ((SELECT id FROM children WHERE learner_number = '20250010'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 31, 50, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Showing improvement.'),
-    ((SELECT id FROM children WHERE learner_number = '20250011'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 48, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Exceptional work.'),
-    ((SELECT id FROM children WHERE learner_number = '20250012'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 39, 50, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Good.'),
-    ((SELECT id FROM children WHERE learner_number = '20250013'), (SELECT id FROM subjects WHERE code = 'PHSC10'), 41, 50, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Well done.'),
-    ((SELECT id FROM children WHERE learner_number = '20250014'), (SELECT id FROM subjects WHERE code = 'PHSC11'), 33, 50, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Average submission.'),
-    ((SELECT id FROM children WHERE learner_number = '20250015'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 37, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good.'),
-    ((SELECT id FROM children WHERE learner_number = '20250016'), (SELECT id FROM subjects WHERE code = 'LFSC10'), 44, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Excellent.'),
-    ((SELECT id FROM children WHERE learner_number = '20250017'), (SELECT id FROM subjects WHERE code = 'MATH11S'), 45, 50, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Very well done.'),
-    ((SELECT id FROM children WHERE learner_number = '20250020'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 30, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Incomplete. Please resubmit the missing sections.'),
-    ((SELECT id FROM children WHERE learner_number = '20250018'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 42, 50, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Good.'),
-    ((SELECT id FROM children WHERE learner_number = '20250019'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 36, 50, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Solid work.'),
-    ((SELECT id FROM children WHERE learner_number = '20250020'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 30, 50, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Incomplete. Please resubmit the missing sections.'),
-    ((SELECT id FROM children WHERE learner_number = '20250021'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 43, 50, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Very good.')
-) AS data(child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback) ON CONFLICT DO NOTHING;
-
--- Insert sample test results
-INSERT INTO tests (child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback)
-
-SELECT child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback FROM (VALUES
-    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 78, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Great improvement in geometry.'),
-    ((SELECT id FROM children WHERE learner_number = '20250002'), (SELECT id FROM subjects WHERE code = 'MATH11S'), 65, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Struggled with calculus, let''s review in class.'),
-    ((SELECT id FROM children WHERE learner_number = '20250003'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 88, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Excellent performance.'),
-    ((SELECT id FROM children WHERE learner_number = '20250004'), (SELECT id FROM subjects WHERE code = 'PHSC10'), 72, 100, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Good.'),
-    ((SELECT id FROM children WHERE learner_number = '20250005'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 68, 100, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Solid pass.'),
-    ((SELECT id FROM children WHERE learner_number = '20250006'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 55, 100, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Needs to work on exam technique.'),
-    ((SELECT id FROM children WHERE learner_number = '20250007'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 61, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Passed. Review algebra section.'),
-    ((SELECT id FROM children WHERE learner_number = '20250008'), (SELECT id FROM subjects WHERE code = 'PHSC11'), 59, 100, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Just below 60%. More practice needed.'),
-    ((SELECT id FROM children WHERE learner_number = '20250009'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 92, 100, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Top of the class!'),
-    ((SELECT id FROM children WHERE learner_number = '20250010'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 52, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Passed. Keep practicing.'),
-    ((SELECT id FROM children WHERE learner_number = '20250011'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 85, 100, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Excellent.'),
-    ((SELECT id FROM children WHERE learner_number = '20250012'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 75, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Good, consistent work.'),
-    ((SELECT id FROM children WHERE learner_number = '20250013'), (SELECT id FROM subjects WHERE code = 'PHSC10'), 80, 100, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Very good.'),
-    ((SELECT id FROM children WHERE learner_number = '20250014'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 71, 100, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good work.'),
-    ((SELECT id FROM children WHERE learner_number = '20250015'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 68, 100, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'A solid pass.'),
-    ((SELECT id FROM children WHERE learner_number = '20250016'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 90, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Fantastic!'),
-    ((SELECT id FROM children WHERE learner_number = '20250017'), (SELECT id FROM subjects WHERE code = 'PHSC11'), 77, 100, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Well done.'),
-    ((SELECT id FROM children WHERE learner_number = '20250018'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 81, 100, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Very good understanding.'),
-    ((SELECT id FROM children WHERE learner_number = '20250019'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 68, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Good pass.'),
-    ((SELECT id FROM children WHERE learner_number = '20250020'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 63, 100, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Passed.'),
-    ((SELECT id FROM children WHERE learner_number = '20250021'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 49, 100, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Just missed the 50% mark. Let''s work on it.')
-) 
- AS data(child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback) ON CONFLICT DO NOTHING;
-
--- Insert sample exam results
-INSERT INTO exams (child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback)
-SELECT child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback FROM (VALUES
-    ((SELECT id FROM children WHERE learner_number = '20250001'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 120, 150, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Excellent final mark.'),
-    ((SELECT id FROM children WHERE learner_number = '20250002'), (SELECT id FROM subjects WHERE code = 'PHSC11'), 95, 150, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Good pass.'),
-    ((SELECT id FROM children WHERE learner_number = '20250003'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 72, 150, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Solid understanding of mechanics.'),
-    ((SELECT id FROM children WHERE learner_number = '20250003'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 110, 150, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Very strong on genetics.'),
-    ((SELECT id FROM children WHERE learner_number = '20250004'), (SELECT id FROM subjects WHERE code = 'LFSC10'), 105, 150, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good result.'),
-    ((SELECT id FROM children WHERE learner_number = '20250005'), (SELECT id FROM subjects WHERE code = 'MATH11S'), 88, 150, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Passed well.'),
-    ((SELECT id FROM children WHERE learner_number = '20250006'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 95, 150, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Good result.'),
-    ((SELECT id FROM children WHERE learner_number = '20250007'), (SELECT id FROM subjects WHERE code = 'PHSC10'), 85, 150, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'A comfortable pass.'),
-    ((SELECT id FROM children WHERE learner_number = '20250008'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 75, 150, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Passed. Can improve.'),
-    ((SELECT id FROM children WHERE learner_number = '20250009'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 125, 150, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Distinction. Well done.'),
-    ((SELECT id FROM children WHERE learner_number = '20250010'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 80, 150, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Good pass.'),
-    ((SELECT id FROM children WHERE learner_number = '20250011'), (SELECT id FROM subjects WHERE code = 'PHSC11'), 110, 150, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Very good.'),
-    ((SELECT id FROM children WHERE learner_number = '20250012'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 100, 150, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good performance.'),
-    ((SELECT id FROM children WHERE learner_number = '20250013'), (SELECT id FROM subjects WHERE code = 'MATH10S'), 115, 150, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Great work.'),
-    ((SELECT id FROM children WHERE learner_number = '20250014'), (SELECT id FROM subjects WHERE code = 'LFSC11'), 99, 150, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good.'),
-    ((SELECT id FROM children WHERE learner_number = '20250015'), (SELECT id FROM subjects WHERE code = 'MATH12S'), 80, 150, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Passed comfortably.'),
-    ((SELECT id FROM children WHERE learner_number = '20250016'), (SELECT id FROM subjects WHERE code = 'PHSC10'), 122, 150, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Excellent.'),
-    ((SELECT id FROM children WHERE learner_number = '20250017'), (SELECT id FROM subjects WHERE code = 'MATH11S'), 130, 150, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Outstanding result.'),
-    ((SELECT id FROM children WHERE learner_number = '20250018'), (SELECT id FROM subjects WHERE code = 'PHSC12'), 115, 150, (SELECT user_id FROM employees WHERE email = 'tbjmaetane1010@gmail.com'), 'Excellent application of formulas.'),
-    ((SELECT id FROM children WHERE learner_number = '20250019'), (SELECT id FROM subjects WHERE code = 'LFSC10'), 92, 150, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'Good pass.'),
-    ((SELECT id FROM children WHERE learner_number = '20250020'), (SELECT id FROM subjects WHERE code = 'MATH11S'), 78, 150, (SELECT user_id FROM employees WHERE email = 'thapeloleshabane05@gmail.com'), 'Passed.'),
-    ((SELECT id FROM children WHERE learner_number = '20250021'), (SELECT id FROM subjects WHERE code = 'LFSC12'), 98, 150, (SELECT user_id FROM employees WHERE email = '202256986@myturf.ul.ac.za'), 'A good final result.')
-
-) AS data(child_id, subject_id, score, total_marks, recorded_by_teacher_id, feedback) ON CONFLICT DO NOTHING;
-
-
--- ==========================================
--- VERIFYING ASSESSMENT RESULTS
--- ==========================================
-
--- Verify Quizzes
-SELECT
-    q.id,
-    c.full_name AS learner_name,
-    s.name AS subject_name,
-    q.score,
-    q.total_marks,
-    u.full_name AS teacher_name
-FROM quizzes q
-JOIN children c ON q.child_id = c.id
-JOIN subjects s ON q.subject_id = s.id
-JOIN users u ON q.recorded_by_teacher_id = u.id;
-
--- Verify Assignments
-SELECT
-    a.id,
-    c.full_name AS learner_name,
-    s.name AS subject_name,
-    a.score,
-    a.total_marks
-FROM assignments a
-JOIN children c ON a.child_id = c.id
-JOIN subjects s ON a.subject_id = s.id;
-
--- Verify Tests
-SELECT
-    t.id,
-    c.full_name AS learner_name,
-    s.name AS subject_name,
-    t.score,
-    t.total_marks
-FROM tests t
-JOIN children c ON t.child_id = c.id
-JOIN subjects s ON t.subject_id = s.id;
-
--- Verify Exams
-SELECT
-    e.id,
-    c.full_name AS learner_name,
-    s.name AS subject_name,
-    e.score,
-    e.total_marks
-FROM exams e
-JOIN children c ON e.child_id = c.id
-JOIN subjects s ON e.subject_id = s.id;
-
 -- ==========================================
 -- BEHAVIOR INCIDENTS & DISCIPLINARY LOGS
 -- ==========================================
@@ -1334,14 +1185,6 @@ CREATE TABLE IF NOT EXISTS behavior_incidents (
 CREATE INDEX IF NOT EXISTS idx_behavior_incidents_child ON behavior_incidents(child_id);
 CREATE INDEX IF NOT EXISTS idx_behavior_incidents_date ON behavior_incidents(incident_date);
 
--- Seed sample behavior incidents
-INSERT INTO behavior_incidents (child_id, incident_type, severity, description, action_taken, recorded_by_user_id, incident_date)
-SELECT child_id, incident_type, severity, description, action_taken, recorded_by_user_id, incident_date::DATE FROM (VALUES
-    ((SELECT id FROM children WHERE learner_number = '20250001'), 'Classroom Disruption', 'Low', 'Talking during test', 'Verbal warning given by teacher.', (SELECT id FROM users WHERE email = 'tbjmaetane1010@gmail.com'), '2026-03-01'),
-    ((SELECT id FROM children WHERE learner_number = '20250008'), 'Chronic Late Arrival', 'Medium', 'Late to period 1 three times this week', 'Parent notification sent', (SELECT id FROM users WHERE email = 'thapeloleshabane05@gmail.com'), '2026-03-05'),
-    ((SELECT id FROM children WHERE learner_number = '20250010'), 'Incomplete Homework', 'Low', 'Failed to submit Mathematics assignment', 'After school study hall assigned', (SELECT id FROM users WHERE email = 'thapeloleshabane05@gmail.com'), '2026-03-06')
-) AS data(child_id, incident_type, severity, description, action_taken, recorded_by_user_id, incident_date)
-ON CONFLICT DO NOTHING;
 
 -- GENERATED REPORTS HISTORY TABLE
 CREATE TABLE IF NOT EXISTS generated_reports (
@@ -1752,4 +1595,4 @@ CREATE TABLE IF NOT EXISTS marks (
   weight NUMERIC(3,2) DEFAULT 1.0,
   recorded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+);

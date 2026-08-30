@@ -294,8 +294,8 @@ exports.getLearnerAssignments = async (req, res) => {
 
   try {
     const childRes = await db.query(
-      `SELECT id, full_name, surname, grade, stream, subjects FROM children WHERE learner_user_id = $1`,
-      [userId]
+      `SELECT id, full_name, surname, grade, stream, subjects FROM children WHERE learner_user_id::text = $1::text OR id::text = $1::text LIMIT 1`,
+      [String(userId)]
     );
 
     if (childRes.rows.length === 0) {
@@ -359,7 +359,7 @@ exports.submitHomework = async (req, res) => {
 
   try {
     // Resolve Child Record
-    const childRes = await db.query(`SELECT id, full_name, surname, grade, parent_id FROM children WHERE learner_user_id = $1`, [userId]);
+    const childRes = await db.query(`SELECT id, full_name, surname, grade, parent_id FROM children WHERE learner_user_id::text = $1::text OR id::text = $1::text LIMIT 1`, [String(userId)]);
     if (childRes.rows.length === 0) {
       return res.status(403).json({ error: 'Learner profile not found.' });
     }
