@@ -220,13 +220,31 @@ function getTransporter() {
       pool: true,
       maxConnections: 5,
       maxMessages: 100,
-      rateLimit: 10
+      rateLimit: 10,
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 8000
     });
   }
   return pooledTransporter;
 }
 
 const emailService = {
+  /**
+   * Pre-verifies and warms up the SMTP transporter on server startup.
+   */
+  verifyConnection: async () => {
+    try {
+      const transporter = getTransporter();
+      await transporter.verify();
+      console.log(`[SMTP READY] High-speed email delivery transport initialized and verified (${getSmtpUser()}).`);
+      return { ready: true };
+    } catch (err) {
+      console.warn(`[SMTP NOTICE] Primary port 465 warming notice (${err.message}). Port 587 STARTTLS and Direct TLS fallbacks are active.`);
+      return { ready: false, error: err.message };
+    }
+  },
+
   /**
    * High-speed email sender using Nodemailer connection pooling with automatic fallback.
    * Strictly delivers to the specified recipient email address without changing destination.
