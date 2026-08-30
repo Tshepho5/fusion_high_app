@@ -45,14 +45,100 @@ const getSchoolIdFromReq = (req) => {
     return isNaN(parsed) ? 1 : parsed;
 };
 
+// Official Department of Basic Education CAPS Stream Subjects Matrix
+const CAPS_STREAM_SUBJECTS = {
+    // GET Phase (Grades 8 and 9 - General Standard Curriculum)
+    GET: [
+        'Mathematics',
+        'Natural Sciences',
+        'English FAL',
+        'Home Language',
+        'Social Sciences',
+        'Economic and Management Sciences (EMS)',
+        'Technology',
+        'Creative Arts',
+        'Life Orientation'
+    ],
+    // FET Phase (Grades 10, 11, 12 - Pure Sciences / STEM)
+    SCIENCE: [
+        'Mathematics',
+        'Physical Sciences',
+        'Life Sciences',
+        'English FAL',
+        'Home Language',
+        'Life Orientation',
+        'Computer Applications Technology (CAT)'
+    ],
+    // FET Phase (Grades 10, 11, 12 - Commercial / Business)
+    COMMERCE: [
+        'Accounting',
+        'Business Studies',
+        'Economics',
+        'English FAL',
+        'Home Language',
+        'Life Orientation',
+        'Mathematical Literacy'
+    ],
+    // FET Phase (Grades 10, 11, 12 - Services & Tourism)
+    TOURISM: [
+        'Tourism',
+        'Geography',
+        'History',
+        'English FAL',
+        'Home Language',
+        'Life Orientation',
+        'Mathematical Literacy'
+    ],
+    // FET Phase (Grades 10, 11, 12 - Humanities / Arts & Social Sciences)
+    HUMANITIES: [
+        'Geography',
+        'History',
+        'Tourism',
+        'English FAL',
+        'Home Language',
+        'Life Orientation',
+        'Mathematical Literacy'
+    ],
+    // FET Phase (Grades 10, 11, 12 - General Stream)
+    GENERAL_FET: [
+        'Mathematics',
+        'Geography',
+        'History',
+        'English FAL',
+        'Home Language',
+        'Life Orientation',
+        'Tourism'
+    ]
+};
+
+/**
+ * Returns strictly isolated, CAPS-compliant subject roster for a given grade and stream.
+ */
+function getStreamSubjects(grade, streamName) {
+    const gr = parseInt(grade, 10) || 10;
+    const str = (streamName || 'General').toLowerCase().trim();
+
+    if (gr <= 9) {
+        return [...CAPS_STREAM_SUBJECTS.GET];
+    }
+
+    if (str.includes('science') || str.includes('stem') || str.includes('pure')) {
+        return [...CAPS_STREAM_SUBJECTS.SCIENCE];
+    }
+    if (str.includes('commerc') || str.includes('business') || str.includes('econ') || str.includes('account')) {
+        return [...CAPS_STREAM_SUBJECTS.COMMERCE];
+    }
+    if (str.includes('touris') || str.includes('service')) {
+        return [...CAPS_STREAM_SUBJECTS.TOURISM];
+    }
+    if (str.includes('humanit') || str.includes('social') || str.includes('art')) {
+        return [...CAPS_STREAM_SUBJECTS.HUMANITIES];
+    }
+
+    return [...CAPS_STREAM_SUBJECTS.GENERAL_FET];
+}
+
 // Standard 1-hour CAPS Class Periods (60 minutes each) with 45-minute nutrition break:
-// Period 1: 08:00 - 09:00 (60 min)
-// Period 2: 09:00 - 10:00 (60 min)
-// Period 3: 10:00 - 11:00 (60 min)
-// [BREAK: 11:00 - 11:45 (45 min Interval & Nutrition)]
-// Period 4: 11:45 - 12:45 (60 min)
-// Period 5: 12:45 - 13:45 (60 min)
-// Period 6: 13:45 - 14:45 (60 min)
 const PERIODS_1_HOUR = [
     "08:00 - 09:00",
     "09:00 - 10:00",
@@ -124,25 +210,8 @@ exports.generateAITimetable = async (req, res) => {
             teachers = allTeachersRes.rows;
         }
 
-        let subjects = subjectsRes.rows.map(s => s.name);
-        if (subjects.length < 6) {
-            const coreSubjects = [
-                'Mathematics',
-                'Physical Sciences',
-                'Life Sciences',
-                'English FAL',
-                'Life Orientation',
-                'Accounting',
-                'Geography',
-                'History',
-                'Business Studies',
-                'Economics',
-                'Tourism'
-            ];
-            coreSubjects.forEach(cs => {
-                if (!subjects.includes(cs)) subjects.push(cs);
-            });
-        }
+        // Strictly enforce CAPS stream subject roster to prevent mixing (e.g. no Business Studies in Science)
+        let subjects = getStreamSubjects(targetGrade, stream);
 
         // If a specific target subject was prioritized by the admin, place it at the front
         if (target_subject && subjects.includes(target_subject)) {
@@ -249,23 +318,11 @@ exports.generateSchoolWideTimetable = async (req, res) => {
                 gradeClasses = [
                     { id: gr * 10 + 1, name: `Grade ${gr}A`, grade: gr, stream: gr >= 10 ? 'Science' : 'General' },
                     { id: gr * 10 + 2, name: `Grade ${gr}B`, grade: gr, stream: gr >= 10 ? 'Commerce' : 'General' },
-                    { id: gr * 10 + 3, name: `Grade ${gr}C`, grade: gr, stream: gr >= 10 ? 'General' : 'General' }
+                    { id: gr * 10 + 3, name: `Grade ${gr}C`, grade: gr, stream: gr >= 10 ? 'Tourism' : 'General' }
                 ];
             }
 
-            const stream = gr >= 10 ? 'General' : 'General';
-            let subjects;
-            if (gr === 8 || gr === 9) {
-                subjects = [
-                    'Mathematics', 'Natural Sciences', 'English FAL', 'English HL',
-                    'Social Sciences', 'EMS', 'Technology', 'Creative Arts', 'Life Orientation'
-                ];
-            } else {
-                subjects = [
-                    'Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL',
-                    'Accounting', 'Business Studies', 'Economics', 'Geography', 'History', 'Tourism', 'Life Orientation'
-                ];
-            }
+            const stream = gr >= 10 ? 'Multi-Stream' : 'General';
 
             const timetableData = {};
             gradeClasses.forEach(c => {
@@ -279,7 +336,7 @@ exports.generateSchoolWideTimetable = async (req, res) => {
                 timetableData,
                 { grade: gr, stream, max_teacher_daily_slots: 3 },
                 allTeachers,
-                subjects,
+                null,
                 gradeClasses,
                 runningActiveTimetables
             );
@@ -346,8 +403,9 @@ exports.generateSchoolWideTimetable = async (req, res) => {
  * - Rotates morning and afternoon periods across the week.
  * - Checks other active school timetables to guarantee zero double-booking.
  * - No subject repeated more than once per day for the same class.
+ * - Strictly isolated CAPS stream subjects (no Business Studies in Science, no Physics in Commerce).
  */
-function autoScheduleFullTimetableLogic(timetable_data, generation_details, allTeachers, availableSubjects, classesList, otherActiveTimetables = []) {
+function autoScheduleFullTimetableLogic(timetable_data, generation_details, allTeachers, availableSubjects, classesList = [], otherActiveTimetables = []) {
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
     const periods = PERIODS_1_HOUR; // 6 slots of 1 hour each
     const maxDailySlotsPerTeacher = generation_details.max_teacher_daily_slots || 3;
@@ -401,16 +459,6 @@ function autoScheduleFullTimetableLogic(timetable_data, generation_details, allT
     });
 
     let filledSlots = 0;
-    const subjectsList = availableSubjects && availableSubjects.length >= 6 ? availableSubjects : [
-        'Mathematics',
-        'Physical Sciences',
-        'Life Sciences',
-        'English FAL',
-        'Life Orientation',
-        'Accounting',
-        'Geography',
-        'Business Studies'
-    ];
 
     // 3. Schedule slots with workload distribution
     for (let dIdx = 0; dIdx < days.length; dIdx++) {
@@ -430,31 +478,52 @@ function autoScheduleFullTimetableLogic(timetable_data, generation_details, allT
                 }
 
                 const targetGrade = parseInt(generation_details.grade, 10) || 10;
-                const isSeniorGET = targetGrade === 8 || targetGrade === 9;
-                const isFET = targetGrade >= 10 && targetGrade <= 12;
+                
+                // Identify class stream
+                const matchedClass = classesList.find(c => c.name === className);
+                let classStream = matchedClass?.stream || generation_details.stream || 'General';
+                if (className.toLowerCase().includes('science') || className.toLowerCase().endsWith('a')) {
+                    if (targetGrade >= 10 && (!matchedClass?.stream || matchedClass.stream === 'General')) {
+                        classStream = 'Science';
+                    }
+                } else if (className.toLowerCase().includes('commerce') || className.toLowerCase().endsWith('b')) {
+                    if (targetGrade >= 10 && (!matchedClass?.stream || matchedClass.stream === 'General')) {
+                        classStream = 'Commerce';
+                    }
+                } else if (className.toLowerCase().includes('tourism') || className.toLowerCase().endsWith('c')) {
+                    if (targetGrade >= 10 && (!matchedClass?.stream || matchedClass.stream === 'General')) {
+                        classStream = 'Tourism';
+                    }
+                }
+
+                // Resolve stream-isolated subject list for this class
+                const classSubjectsList = (availableSubjects && availableSubjects.length >= 6 && generation_details.stream !== 'Multi-Stream') 
+                    ? availableSubjects 
+                    : getStreamSubjects(targetGrade, classStream);
+
                 const prioritySubject = generation_details.target_subject && generation_details.target_subject !== 'all'
                     ? generation_details.target_subject.trim()
                     : null;
 
                 // Pick a subject not yet taken today by this class
-                let unusedSubjects = subjectsList.filter(s => !classDaySubjects[className][day].has(s));
+                let unusedSubjects = classSubjectsList.filter(s => !classDaySubjects[className][day].has(s));
                 if (unusedSubjects.length === 0) {
-                    unusedSubjects = subjectsList;
+                    unusedSubjects = classSubjectsList;
                 }
 
                 let currentSubject = null;
 
                 // Guaranteed Focus Subject Priority: If admin specified a priority subject, guarantee prime daily placement for each class!
                 if (prioritySubject) {
-                    const matchedPriority = subjectsList.find(s => 
+                    const matchedPriority = classSubjectsList.find(s => 
                         s.toLowerCase().trim() === prioritySubject.toLowerCase().trim() ||
                         s.toLowerCase().includes(prioritySubject.toLowerCase().trim()) ||
                         prioritySubject.toLowerCase().includes(s.toLowerCase().trim())
-                    ) || (subjectsList.includes(prioritySubject) ? prioritySubject : null);
+                    ) || (classSubjectsList.includes(prioritySubject) ? prioritySubject : null);
 
                     if (matchedPriority && !classDaySubjects[className][day].has(matchedPriority)) {
                         // Prioritize in prime morning slot (Period 1 or 2) or the first available period of the day
-                        const isPrimePeriodForClass = (pIdx === 0 && cIdx % 2 === 0) || (pIdx === 1 && cIdx % 2 === 1) || pIdx === 0 || unusedSubjects.length === subjectsList.length;
+                        const isPrimePeriodForClass = (pIdx === 0 && cIdx % 2 === 0) || (pIdx === 1 && cIdx % 2 === 1) || pIdx === 0 || unusedSubjects.length === classSubjectsList.length;
                         if (isPrimePeriodForClass) {
                             currentSubject = matchedPriority;
                         }
@@ -622,6 +691,7 @@ function autoScheduleFullTimetableLogic(timetable_data, generation_details, allT
                     teacherFullName = 'Unassigned (Pending Allocation)';
                 }
 
+                const isSeniorGET = targetGrade === 8 || targetGrade === 9;
                 const syllabusPhase = isSeniorGET ? 'GET Senior Phase' : 'FET Phase';
 
                 timetable_data[className][day][period] = {

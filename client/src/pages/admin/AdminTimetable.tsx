@@ -312,7 +312,16 @@ export const AdminTimetable: React.FC = () => {
             </label>
             <select
               value={grade}
-              onChange={(e) => setGrade(parseInt(e.target.value, 10))}
+              onChange={(e) => {
+                const newGrade = parseInt(e.target.value, 10);
+                setGrade(newGrade);
+                if (newGrade <= 9) {
+                  setStream('General');
+                } else if (stream === 'General') {
+                  setStream('Science');
+                }
+                setTargetSubject('all');
+              }}
               className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
               <option value={8}>Grade 8</option>
@@ -329,13 +338,23 @@ export const AdminTimetable: React.FC = () => {
             </label>
             <select
               value={stream}
-              onChange={(e) => setStream(e.target.value)}
+              onChange={(e) => {
+                const newStream = e.target.value;
+                setStream(newStream);
+                setTargetSubject('all');
+              }}
               className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
-              <option value="General">General Stream</option>
-              <option value="Science">Science (Maths & Sciences)</option>
-              <option value="Commerce">Commerce (Accounting & Business)</option>
-              <option value="Tourism">Services & Tourism</option>
+              {grade <= 9 ? (
+                <option value="General">General (GET Phase 9 Subjects)</option>
+              ) : (
+                <>
+                  <option value="Science">Science (Maths & Sciences)</option>
+                  <option value="Commerce">Commerce (Accounting & Business)</option>
+                  <option value="Tourism">Humanities & Tourism</option>
+                  <option value="General">General Stream</option>
+                </>
+              )}
             </select>
           </div>
 
@@ -349,35 +368,60 @@ export const AdminTimetable: React.FC = () => {
               className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
               <option value="all">All Subjects (Balanced Distribution)</option>
-              <option value="Mathematics">Mathematics</option>
               {grade <= 9 ? (
                 <>
+                  <option value="Mathematics">Mathematics</option>
                   <option value="Natural Sciences">Natural Sciences</option>
                   <option value="Social Sciences">Social Sciences</option>
                   <option value="Economic and Management Sciences (EMS)">EMS</option>
                   <option value="Technology">Technology</option>
                   <option value="Creative Arts">Creative Arts</option>
+                  <option value="English FAL">English FAL</option>
+                  <option value="Home Language">Home Language</option>
+                  <option value="Life Orientation">Life Orientation</option>
                 </>
-              ) : (
+              ) : stream === 'Science' ? (
                 <>
+                  <option value="Mathematics">Mathematics (Pure)</option>
                   <option value="Physical Sciences">Physical Sciences</option>
                   <option value="Life Sciences">Life Sciences</option>
+                  <option value="Computer Applications Technology (CAT)">Computer Applications Tech (CAT)</option>
+                  <option value="English FAL">English FAL</option>
+                  <option value="Home Language">Home Language</option>
+                  <option value="Life Orientation">Life Orientation</option>
+                </>
+              ) : stream === 'Commerce' ? (
+                <>
                   <option value="Accounting">Accounting</option>
                   <option value="Business Studies">Business Studies</option>
                   <option value="Economics">Economics</option>
+                  <option value="Mathematical Literacy">Mathematical Literacy</option>
+                  <option value="Mathematics">Mathematics</option>
+                  <option value="English FAL">English FAL</option>
+                  <option value="Home Language">Home Language</option>
+                  <option value="Life Orientation">Life Orientation</option>
+                </>
+              ) : stream === 'Tourism' ? (
+                <>
+                  <option value="Tourism">Tourism</option>
+                  <option value="Geography">Geography</option>
+                  <option value="History">History</option>
+                  <option value="Mathematical Literacy">Mathematical Literacy</option>
+                  <option value="English FAL">English FAL</option>
+                  <option value="Home Language">Home Language</option>
+                  <option value="Life Orientation">Life Orientation</option>
+                </>
+              ) : (
+                <>
+                  <option value="Mathematics">Mathematics / Mathematical Literacy</option>
                   <option value="Geography">Geography</option>
                   <option value="History">History</option>
                   <option value="Tourism">Tourism</option>
+                  <option value="English FAL">English FAL</option>
+                  <option value="Home Language">Home Language</option>
+                  <option value="Life Orientation">Life Orientation</option>
                 </>
               )}
-              <option value="English FAL">English FAL</option>
-              <option value="English HL">English HL</option>
-              <option value="Sepedi Home Language">Sepedi Home Language</option>
-              <option value="isiZulu Home Language">isiZulu Home Language</option>
-              <option value="Afrikaans Home Language">Afrikaans Home Language</option>
-              <option value="Sesotho Home Language">Sesotho Home Language</option>
-              <option value="Setswana Home Language">Setswana Home Language</option>
-              <option value="Life Orientation">Life Orientation</option>
             </select>
           </div>
 
