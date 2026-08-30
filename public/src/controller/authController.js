@@ -548,12 +548,12 @@ exports.registerUser = async (req, res) => {
             baseUrl = `${protocol}://${host}`;
         }
 
-        // Send rich parent confirmation email with Child Learner Number and ID-generated passwords
+        // Send rich parent confirmation email with Child Learner Number and ID-generated passwords (non-blocking)
         try {
             const tpl = emailService.templates.parentRegistrationSuccessWithLearners(full_name || normalizedEmail, finalLinkedChildren, baseUrl);
-            await emailService.send(normalizedEmail, tpl.subject, tpl.body);
+            emailService.send(normalizedEmail, tpl.subject, tpl.body).catch(e => console.warn('Registration email dispatch warning:', e.message));
         } catch (e) {
-            console.warn('Registration email dispatch warning:', e.message);
+            console.warn('Registration email preparation warning:', e.message);
         }
 
         // Insert initial in-app welcome notification and message
@@ -1004,13 +1004,17 @@ exports.forgotPassword = async (req, res) => {
             ? `${parts[0].slice(0, 2)}***@${parts[1]}` 
             : `${parts[0].slice(0, 1)}***@${parts[1]}`;
 
-        // Dispatch email and verify confirmation
+        // Dispatch email immediately in background with zero UI latency
         console.log(`[AUTH] Dispatching OTP [${otp}] to destination email: ${targetDeliveryEmail} for user ID ${user.id} (${user.email})`);
-        const sendResult = await emailService.send(targetDeliveryEmail, tpl.subject, tpl.body);
-
-        if (!sendResult || sendResult.success === false) {
-            console.warn(`[AUTH FORGOT PW NOTICE] SMTP delivery notice (${sendResult?.error}). Code [${otp}] active for ${targetDeliveryEmail}`);
-        }
+        emailService.send(targetDeliveryEmail, tpl.subject, tpl.body).then((sendResult) => {
+            if (sendResult?.success) {
+                console.log(`[AUTH FORGOT PW SUCCESS] OTP [${otp}] delivered to ${targetDeliveryEmail}`);
+            } else {
+                console.warn(`[AUTH FORGOT PW NOTICE] SMTP delivery notice (${sendResult?.error}). Code [${otp}] active for ${targetDeliveryEmail}`);
+            }
+        }).catch(err => {
+            console.error('[AUTH FORGOT PW EMAIL ERROR]:', err.message);
+        });
 
         res.json({ 
             message: `A 4-digit reset code has been sent immediately to your registered email (${masked}). Please check your Inbox and Spam/Junk folder (valid for 5 minutes).`,
@@ -1168,7 +1172,7 @@ exports.resetPassword = async (req, res) => {
         const normalizedEmail = (user.email || '').toLowerCase().trim();
         await db.query('UPDATE users SET password_hash = $1, reset_code = NULL, reset_expiry = NULL WHERE id = $2', [hash, user.id]);
         if (normalizedEmail && !normalizedEmail.endsWith('@fusion.high')) {
-            await emailService.send(normalizedEmail, emailService.templates.passwordResetSuccess().subject, emailService.templates.passwordResetSuccess().body);
+            emailService.send(normalizedEmail, emailService.templates.passwordResetSuccess().subject, emailService.templates.passwordResetSuccess().body).catch(() => {});
         }
         res.json({ message: 'Password updated successfully! Your old password has been replaced with your new one.' });
     } catch (err) { res.status(500).json({ error: err.message }); }
