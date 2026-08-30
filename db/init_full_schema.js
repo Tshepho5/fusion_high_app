@@ -999,8 +999,8 @@ async function initializeAllDatabaseTables(customClient) {
       -- 19. Positive Merits & Badges Table
       CREATE TABLE IF NOT EXISTS merits (
         id SERIAL PRIMARY KEY,
-        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
-        teacher_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        child_id INTEGER,
+        teacher_user_id INTEGER,
         category VARCHAR(100) NOT NULL,
         points INTEGER DEFAULT 10,
         title VARCHAR(255) NOT NULL,
@@ -1013,8 +1013,8 @@ async function initializeAllDatabaseTables(customClient) {
       -- 20. Disciplinary Infractions & Records Table
       CREATE TABLE IF NOT EXISTS disciplinary_records (
         id SERIAL PRIMARY KEY,
-        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
-        teacher_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        child_id INTEGER,
+        teacher_user_id INTEGER,
         category VARCHAR(100) NOT NULL,
         severity VARCHAR(50) DEFAULT 'Minor',
         description TEXT NOT NULL,
@@ -1026,18 +1026,36 @@ async function initializeAllDatabaseTables(customClient) {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- 21. General Conduct Logs View / Table Compatibility
-      CREATE TABLE IF NOT EXISTS conduct_logs (
-        id SERIAL PRIMARY KEY,
-        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
-        recorded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-        log_type VARCHAR(50) DEFAULT 'merit',
-        title VARCHAR(255),
-        description TEXT,
-        points INTEGER DEFAULT 0,
-        school_id INTEGER DEFAULT 1,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      );
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'merits_child_id_fkey') THEN
+          BEGIN
+            ALTER TABLE merits ADD CONSTRAINT merits_child_id_fkey FOREIGN KEY (child_id) REFERENCES children(id) ON DELETE CASCADE;
+          EXCEPTION WHEN OTHERS THEN NULL;
+          END;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'merits_teacher_user_id_fkey') THEN
+          BEGIN
+            ALTER TABLE merits ADD CONSTRAINT merits_teacher_user_id_fkey FOREIGN KEY (teacher_user_id) REFERENCES users(id) ON DELETE SET NULL;
+          EXCEPTION WHEN OTHERS THEN NULL;
+          END;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'disciplinary_records_child_id_fkey') THEN
+          BEGIN
+            ALTER TABLE disciplinary_records ADD CONSTRAINT disciplinary_records_child_id_fkey FOREIGN KEY (child_id) REFERENCES children(id) ON DELETE CASCADE;
+          EXCEPTION WHEN OTHERS THEN NULL;
+          END;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'disciplinary_records_teacher_user_id_fkey') THEN
+          BEGIN
+            ALTER TABLE disciplinary_records ADD CONSTRAINT disciplinary_records_teacher_user_id_fkey FOREIGN KEY (teacher_user_id) REFERENCES users(id) ON DELETE SET NULL;
+          EXCEPTION WHEN OTHERS THEN NULL;
+          END;
+        END IF;
+      END $$;
     `);
 
     // Ensure default bursary entries exist in database
