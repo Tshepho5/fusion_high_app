@@ -131,8 +131,43 @@ async function seedAllSchoolsData() {
     { first: 'Amogelang', last: 'Kekana', gender: 'female' }
   ];
 
+  // School Administrator Roster
+  const adminRoster = [
+    { schoolId: 1, email: 'admin@fusionhigh.co.za', name: 'Tshepho Letlalo', surname: 'Makula', phone: '0692606618', isSuper: true },
+    { schoolId: 2, email: 'admin@mountainviewhigh.co.za', name: 'M. S.', surname: 'Phasha', phone: '0152671100', isSuper: false },
+    { schoolId: 2, email: 'admin@mountainview.co.za', name: 'M. S.', surname: 'Phasha', phone: '0152671100', isSuper: false },
+    { schoolId: 3, email: 'admin@makgoka.co.za', name: 'K. E.', surname: 'Molepo', phone: '0152660022', isSuper: false },
+    { schoolId: 4, email: 'principal@turfloophigh.co.za', name: 'N. J.', surname: 'Mamabolo', phone: '0152673300', isSuper: false },
+    { schoolId: 4, email: 'admin@turfloop.co.za', name: 'N. J.', surname: 'Mamabolo', phone: '0152673300', isSuper: false },
+    { schoolId: 5, email: 'admin@hwiti.co.za', name: 'R. M.', surname: 'Ramokgopa', phone: '0152674400', isSuper: false },
+    { schoolId: 6, email: 'admin@ngwanamohube.co.za', name: 'S. P.', surname: 'Mohube', phone: '0152675500', isSuper: false },
+    { schoolId: 7, email: 'admin@fusionsecondary.co.za', name: 'Tshepo', surname: 'Makola', phone: '0123730000', isSuper: false },
+    { schoolId: 8, email: 'admin@saulridge.co.za', name: 'K. E.', surname: 'Masemola', phone: '0123756000', isSuper: false },
+    { schoolId: 9, email: 'admin@phelindaba.co.za', name: 'M. T.', surname: 'Sithole', phone: '0123738100', isSuper: false },
+    { schoolId: 10, email: 'admin@flaviusmareka.co.za', name: 'L. N.', surname: 'Maluleke', phone: '0123739200', isSuper: false },
+    { schoolId: 11, email: 'admin@wfnkomo.co.za', name: 'D. M.', surname: 'Ndlovu', phone: '0123757300', isSuper: false },
+    { schoolId: 12, email: 'admin@hofmeyr.co.za', name: 'S. R.', surname: 'Mogale', phone: '0123737400', isSuper: false }
+  ];
+
+  // 0. Process School Administrators
+  console.log('--- 0. SEEDING ADMINISTRATORS FOR ALL 12 SCHOOLS ---');
+  for (const adm of adminRoster) {
+    await db.query(`
+      INSERT INTO users (email, password_hash, role_id, school_id, full_name, surname, phone, is_superadmin)
+      VALUES ($1, $2, (SELECT id FROM roles WHERE name = 'admin'), $3, $4, $5, $6, $7)
+      ON CONFLICT (email) DO UPDATE SET
+        password_hash = EXCLUDED.password_hash,
+        school_id = EXCLUDED.school_id,
+        full_name = EXCLUDED.full_name,
+        surname = EXCLUDED.surname,
+        role_id = EXCLUDED.role_id,
+        is_superadmin = EXCLUDED.is_superadmin;
+    `, [adm.email, passwordHash, adm.schoolId, adm.name, adm.surname, adm.phone, adm.isSuper]);
+  }
+  console.log('✅ Seeded dedicated administrators across all 12 schools.');
+
   // 1. Process Teachers
-  console.log('--- 1. SEEDING TEACHERS FOR ALL 12 SCHOOLS ---');
+  console.log('\n--- 1. SEEDING TEACHERS FOR ALL 12 SCHOOLS ---');
   for (const school of schools) {
     const teachers = teacherRosterBySchool[school.id] || [];
     for (const t of teachers) {
@@ -141,6 +176,7 @@ async function seedAllSchoolsData() {
         INSERT INTO users (email, password_hash, role_id, school_id, full_name, surname, phone, gender)
         VALUES ($1, $2, (SELECT id FROM roles WHERE name = 'teacher'), $3, $4, $5, $6, $7)
         ON CONFLICT (email) DO UPDATE SET
+          password_hash = EXCLUDED.password_hash,
           school_id = EXCLUDED.school_id,
           full_name = EXCLUDED.full_name,
           surname = EXCLUDED.surname,
@@ -184,6 +220,7 @@ async function seedAllSchoolsData() {
             INSERT INTO users (email, password_hash, role_id, school_id, full_name, surname, dob, gender)
             VALUES ($1, $2, (SELECT id FROM roles WHERE name = 'learner'), $3, $4, $5, $6::DATE, $7)
             ON CONFLICT (email) DO UPDATE SET
+              password_hash = EXCLUDED.password_hash,
               school_id = EXCLUDED.school_id,
               full_name = EXCLUDED.full_name,
               surname = EXCLUDED.surname
@@ -208,6 +245,12 @@ async function seedAllSchoolsData() {
       console.log(`✅ Seeded 18 learners across Grades 10-12 for [${school.id}] ${school.name}`);
     } else {
       console.log(`ℹ️ [${school.id}] ${school.name} already has custom seeded learners (${school.id === 1 ? 21 : 24} students).`);
+      // Update password hash for custom learners of schools 1 & 2
+      await db.query(`
+        UPDATE users 
+        SET password_hash = $1 
+        WHERE school_id = $2 AND role_id = (SELECT id FROM roles WHERE name = 'learner')
+      `, [passwordHash, school.id]);
     }
   }
 
