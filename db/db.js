@@ -212,9 +212,9 @@ pool.connect(async (err, client, release) => {
             CREATE TABLE IF NOT EXISTS teacher_consultations (
                 id SERIAL PRIMARY KEY,
                 school_id INTEGER DEFAULT 1,
-                teacher_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                parent_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                child_id INTEGER REFERENCES children(id) ON DELETE SET NULL,
+                teacher_id INTEGER,
+                parent_id INTEGER,
+                child_id INTEGER,
                 subject VARCHAR(150) DEFAULT 'General Academic Consultation',
                 consultation_date DATE NOT NULL,
                 start_time VARCHAR(20) NOT NULL,
@@ -225,6 +225,30 @@ pool.connect(async (err, client, release) => {
                 status VARCHAR(30) DEFAULT 'scheduled',
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
+
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'teacher_consultations_teacher_id_fkey') THEN
+                    BEGIN
+                        ALTER TABLE teacher_consultations ADD CONSTRAINT teacher_consultations_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE;
+                    EXCEPTION WHEN OTHERS THEN NULL;
+                    END;
+                END IF;
+
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'teacher_consultations_parent_id_fkey') THEN
+                    BEGIN
+                        ALTER TABLE teacher_consultations ADD CONSTRAINT teacher_consultations_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES users(id) ON DELETE CASCADE;
+                    EXCEPTION WHEN OTHERS THEN NULL;
+                    END;
+                END IF;
+
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'teacher_consultations_child_id_fkey') THEN
+                    BEGIN
+                        ALTER TABLE teacher_consultations ADD CONSTRAINT teacher_consultations_child_id_fkey FOREIGN KEY (child_id) REFERENCES children(id) ON DELETE SET NULL;
+                    EXCEPTION WHEN OTHERS THEN NULL;
+                    END;
+                END IF;
+            END $$;
 
             CREATE TABLE IF NOT EXISTS inter_school_competitions (
                 id SERIAL PRIMARY KEY,
