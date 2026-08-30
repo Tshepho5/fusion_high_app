@@ -17,6 +17,9 @@ import { EducatorLeaveReliefManager } from '../../components/admin/EducatorLeave
 import { AcademicAssessmentAudits } from '../../components/admin/AcademicAssessmentAudits';
 import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
 import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
+import { MultiSchoolCommandCenter } from '../../components/admin/MultiSchoolCommandCenter';
+import { InterSchoolCompetitions } from '../../components/common/InterSchoolCompetitions';
+import { ParentTeacherConsultations } from '../../components/parent/ParentTeacherConsultations';
 import { ArrowLeft, ChevronRight, Home } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -38,6 +41,9 @@ export const AdminDashboard: React.FC = () => {
 
   const getTabTitle = () => {
     switch (activeTab) {
+      case 'command-center': return 'Multi-School Command Center & Comparative Analytics';
+      case 'inter-school': return 'Inter-School Derbies, Sports & Academic Olympiads';
+      case 'consultations': return 'Parent-Educator Academic Consultation Schedule';
       case 'users': return 'User Directory & Permissions';
       case 'finance': return 'School Fees, Invoicing & Collection Analytics';
       case 'marks': return 'CAPS Academic Assessment & SBA Mark Audits';
@@ -84,7 +90,7 @@ export const AdminDashboard: React.FC = () => {
               <Home className="w-3.5 h-3.5 text-brand-400" />
               <span>Admin Hub</span>
             </button>
-            <ChevronRight className="w-3 h-3 text-slate-600" />
+            <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
             <span className="text-cyan-300 font-bold">{getTabTitle()}</span>
           </div>
         </div>
@@ -93,6 +99,9 @@ export const AdminDashboard: React.FC = () => {
       {activeTab === 'overview' && (
         <AdminOverview onNavigateTab={handleSelectTab} />
       )}
+      {activeTab === 'command-center' && <MultiSchoolCommandCenter />}
+      {activeTab === 'inter-school' && <InterSchoolCompetitions />}
+      {activeTab === 'consultations' && <ParentTeacherConsultations />}
       {activeTab === 'users' && <AdminUsers />}
       {activeTab === 'marks' && <AcademicAssessmentAudits />}
       {activeTab === 'finance' && <SchoolFeesManager userRole="admin" />}

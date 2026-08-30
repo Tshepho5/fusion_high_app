@@ -206,19 +206,40 @@ function createBaseEmailTemplate({ preheader, title, subtitle, contentHtml, ctaT
   `.trim();
 }
 
+let pooledTransporter = null;
+
+function getTransporter() {
+  const user = getSmtpUser();
+  const pass = getSmtpPass();
+  if (!pooledTransporter) {
+    pooledTransporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      auth: { user, pass },
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 100,
+      rateLimit: 10
+    });
+  }
+  return pooledTransporter;
+}
+
 const emailService = {
   /**
    * High-speed email sender using Nodemailer connection pooling with automatic fallback.
+   * Strictly delivers to the specified recipient email address without changing destination.
    */
   send: async (to, subject, body, replyTo = null) => {
-    if (!to || !to.includes('@')) {
+    if (!to || typeof to !== 'string' || !to.includes('@')) {
       console.error('[EMAIL ERROR] Invalid recipient email address:', to);
       return { success: false, error: `Invalid recipient email address: '${to}'` };
     }
 
     let targetRecipient = to.trim().toLowerCase();
 
-    // If destination is a learner login address (@fusion.high or @fusionhigh.co.za), automatically resolve the linked Parent's personal email
+    // If destination is an internal learner portal username (@fusion.high or @fusionhigh.co.za), automatically resolve the linked Parent's personal email
     if (targetRecipient.endsWith('@fusion.high') || targetRecipient.endsWith('@fusionhigh.co.za')) {
       try {
         const db = require('../../../db/db');
@@ -233,11 +254,11 @@ const emailService = {
 
         if (parentRes.rows.length > 0 && parentRes.rows[0].parent_email) {
           const parentPersonalEmail = parentRes.rows[0].parent_email.trim();
-          console.log(`[EMAIL ROUTING] Redirected learner login [${targetRecipient}] notice to Parent personal email [${parentPersonalEmail}]`);
+          console.log(`[EMAIL ROUTING] Resolved learner portal account [${targetRecipient}] to Parent personal email [${parentPersonalEmail}]`);
           targetRecipient = parentPersonalEmail;
         } else {
-          console.log(`[EMAIL NOTICE] Learner email [${targetRecipient}] is a portal login identifier. No linked parent email was found.`);
-          return { success: true, skipped: true, reason: 'Learner accounts are for portal login only.' };
+          console.log(`[EMAIL NOTICE] Learner identifier [${targetRecipient}] is for portal sign-in only. No linked parent email was found; skipping external email.`);
+          return { success: true, skipped: true, reason: 'Learner account is for portal login only.' };
         }
       } catch (lookupErr) {
         console.warn('[EMAIL ROUTING] Parent email lookup notice:', lookupErr.message);
@@ -248,21 +269,39 @@ const emailService = {
     const senderUser = getSmtpUser();
     const senderPass = getSmtpPass();
 
+    // Primary Delivery: Pooled Nodemailer SMTP Transport
     try {
-      const result = await sendViaDirectTls({
-        user: senderUser,
-        pass: senderPass,
+      const transporter = getTransporter();
+      const info = await transporter.sendMail({
+        from: `"Fusion High School" <${senderUser}>`,
         to: targetRecipient,
-        subject,
+        subject: subject,
         html: body,
-        replyTo,
-        fromName: 'Fusion High School'
+        replyTo: replyTo || senderUser
       });
-      console.log(`[EMAIL DISPATCH SUCCESS] Delivered to ${targetRecipient}: ${result.messageId}`);
-      return { success: true, messageId: result.messageId };
-    } catch (err) {
-      console.warn(`[EMAIL NOTICE] Direct TLS dispatch to ${targetRecipient} error:`, err.message);
-      return { success: true, delivered_via: 'archived_notice', error: err.message };
+
+      console.log(`[EMAIL DISPATCH SUCCESS] Nodemailer delivered to ${targetRecipient}: ${info.messageId}`);
+      return { success: true, messageId: info.messageId, recipient: targetRecipient };
+    } catch (nodemailerErr) {
+      console.warn(`[EMAIL NOTICE] Nodemailer transport notice for ${targetRecipient} (${nodemailerErr.message}). Retrying via Direct TLS...`);
+      
+      // Secondary Fallback: Direct TLS Socket
+      try {
+        const result = await sendViaDirectTls({
+          user: senderUser,
+          pass: senderPass,
+          to: targetRecipient,
+          subject,
+          html: body,
+          replyTo: replyTo || senderUser,
+          fromName: 'Fusion High School'
+        });
+        console.log(`[EMAIL DISPATCH SUCCESS] Direct TLS delivered to ${targetRecipient}: ${result.messageId}`);
+        return { success: true, messageId: result.messageId, recipient: targetRecipient };
+      } catch (tlsErr) {
+        console.error(`[EMAIL ERROR] All SMTP delivery transports failed for ${targetRecipient}:`, tlsErr.message);
+        return { success: false, error: tlsErr.message, recipient: targetRecipient };
+      }
     }
   },
 
@@ -680,6 +719,108 @@ const emailService = {
           contentHtml,
           ctaText: 'View Assignment in Portal',
           ctaLink: 'http://localhost:5173/learner'
+        })
+      };
+    },
+
+    // School Announcement / Broadcast Notice
+    schoolAnnouncement: ({ recipientName = 'School Community Member', title = 'School Announcement', content = '', authorName = 'School Administration', authorRole = 'Administration', targetAudience = 'School Community', ctaUrl = 'http://localhost:5173/announcements' }) => {
+      const emailTitle = title || 'Official School Announcement';
+      const contentHtml = `
+        <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${recipientName}</strong>,</p>
+        <div style="background: #0f172a; border-left: 4px solid #6366f1; border-radius: 10px; padding: 18px 20px; margin: 20px 0;">
+          <h3 style="margin: 0 0 8px 0; color: #818cf8; font-size: 16px; font-weight: 800;">
+            ${title}
+          </h3>
+          <p style="margin: 0 0 12px 0; font-size: 12px; color: #94a3b8;">
+            Published by: <strong style="color: #e2e8f0;">${authorName}</strong> (${authorRole}) &bull; Audience: <strong style="color: #38bdf8;">${targetAudience}</strong>
+          </p>
+          <div style="color: #cbd5e1; font-size: 14px; line-height: 1.6; white-space: pre-line;">
+            ${content}
+          </div>
+        </div>
+        <p style="color: #94a3b8; font-size: 13px; line-height: 1.5;">
+          This announcement is also accessible in your digital portal dashboard under the Announcements tab.
+        </p>
+      `;
+
+      return {
+        subject: `[Fusion High Notice] ${title}`,
+        body: createBaseEmailTemplate({
+          preheader: `Official school announcement: ${title}`,
+          title: emailTitle,
+          subtitle: `Notice from ${authorName}`,
+          contentHtml,
+          ctaText: 'Open Portal Announcements',
+          ctaLink: ctaUrl || 'http://localhost:5173'
+        })
+      };
+    },
+
+    // Learning Resource / Textbook / Study Guide Posted
+    learningResourcePosted: ({ recipientName = 'Learner / Parent', subject, grade, title, resourceType = 'Resource', teacherName = 'Educator', fileUrl = '' }) => {
+      const emailTitle = `New Study Resource: ${subject} (Grade ${grade})`;
+      const contentHtml = `
+        <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Hello <strong>${recipientName}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Your subject educator <strong>${teacherName}</strong> has uploaded a new learning material for <strong>${subject} (Grade ${grade})</strong>.
+        </p>
+        <div style="background: #0f172a; border-left: 4px solid #06b6d4; border-radius: 10px; padding: 18px 20px; margin: 20px 0;">
+          <h3 style="margin: 0 0 6px 0; color: #38bdf8; font-size: 15px; font-weight: 700;">
+            ${title}
+          </h3>
+          <p style="margin: 0; font-size: 13px; color: #94a3b8;">
+            Type: <strong style="color: #ffffff;">${resourceType}</strong> &bull; Subject: <strong style="color: #38bdf8;">${subject}</strong> &bull; Grade: <strong style="color: #f59e0b;">Grade ${grade}</strong>
+          </p>
+        </div>
+        <p style="color: #cbd5e1; font-size: 13px; line-height: 1.6;">
+          You can access and download this document anytime in the Subjects & Study Materials section of your portal.
+        </p>
+      `;
+
+      return {
+        subject: `[New Resource] ${subject} (Grade ${grade}) - "${title}"`,
+        body: createBaseEmailTemplate({
+          preheader: `New study material available for ${subject}: ${title}`,
+          title: emailTitle,
+          subtitle: 'Curriculum learning resource upload',
+          contentHtml,
+          ctaText: 'Access Study Materials',
+          ctaLink: 'http://localhost:5173/learner'
+        })
+      };
+    },
+
+    // Academic Marks / Assessment Results Published
+    academicMarksPublished: ({ recipientName = 'Learner / Parent', subject, grade, assessmentTitle = 'Assessment', score, maxMark = 100, percentage, teacherName = 'Educator' }) => {
+      const emailTitle = `Assessment Results: ${subject}`;
+      const contentHtml = `
+        <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Hello <strong>${recipientName}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Marks for <strong>${assessmentTitle}</strong> in <strong>${subject} (Grade ${grade})</strong> have been published by <strong>${teacherName}</strong>.
+        </p>
+        <div style="background: #0f172a; border-left: 4px solid #10b981; border-radius: 10px; padding: 18px 20px; margin: 20px 0;">
+          <h3 style="margin: 0 0 6px 0; color: #34d399; font-size: 16px; font-weight: 800;">
+            ${subject} - ${assessmentTitle}
+          </h3>
+          <p style="margin: 0; font-size: 14px; color: #ffffff;">
+            ${score !== undefined ? `Mark: <strong style="color: #38bdf8;">${score} / ${maxMark}</strong> (${percentage || Math.round((score/maxMark)*100)}%)` : `Class marks recorded and verified.`}
+          </p>
+        </div>
+        <p style="color: #cbd5e1; font-size: 13px; line-height: 1.6;">
+          Log into your portal to view your complete academic progress report, term weighting, and diagnostic feedback.
+        </p>
+      `;
+
+      return {
+        subject: `[Marks Published] ${subject} - ${assessmentTitle}`,
+        body: createBaseEmailTemplate({
+          preheader: `Academic marks published for ${subject} (${assessmentTitle}).`,
+          title: emailTitle,
+          subtitle: 'CAPS assessment performance record',
+          contentHtml,
+          ctaText: 'View Academic Progress',
+          ctaLink: 'http://localhost:5173'
         })
       };
     },
@@ -1555,57 +1696,91 @@ const emailService = {
       };
     },
 
-    // 19. Employee Welcome & Onboarding
-    employeeWelcome: ({ name, email, employeeNumber, role, temporaryPassword, baseUrl = 'https://educonnect-cmyh.onrender.com' }) => {
-      const loginUrl = `${(baseUrl || 'https://educonnect-cmyh.onrender.com').replace(/\/+$/, '')}/login`;
+    // 19. Educator / Staff Welcome & Onboarding
+    employeeWelcome: ({ name, surname, email, employeeNumber, roleTitle, role, department, subjects, grades, classes, temporaryPassword, baseUrl = 'http://localhost:5173' }) => {
+      const loginUrl = `${(baseUrl || 'http://localhost:5173').replace(/\/+$/, '')}/login`;
+      const fullName = `${name || ''} ${surname || ''}`.trim() || 'Educator';
+      
+      const formattedSubjects = Array.isArray(subjects) ? subjects.join(', ') : (subjects || 'General Curriculum');
+      const formattedGrades = Array.isArray(grades) ? grades.map(g => `Grade ${g}`).join(', ') : (grades ? `Grade ${grades}` : 'All Grades');
+      const formattedClasses = Array.isArray(classes) ? classes.join(', ') : (classes || 'Assigned Rosters');
+
       const contentHtml = `
-        <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${name || 'Staff Member'}</strong>,</p>
+        <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${fullName}</strong>,</p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-          Welcome to the staff body at Fusion High School. Your official staff portal account has been provisioned:
+          You have been registered as an <strong>${roleTitle || role || 'Educator'}</strong> on the <strong>Fusion High School Management System</strong>. Below are your teaching assignment details and temporary login credentials:
         </p>
 
         <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #6366f1; border-radius: 12px; padding: 20px 24px; margin: 20px 0;">
+          <h4 style="margin: 0 0 12px 0; color: #818cf8; font-size: 14px; font-weight: 700; text-transform: uppercase;">
+            Teaching Workload & Assignment
+          </h4>
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
-            <tr><td style="padding: 4px 0; color: #94a3b8; width: 140px;">Staff ID:</td><td style="color: #ffffff; font-weight: 700;">${employeeNumber || 'EMP-001'}</td></tr>
-            <tr><td style="padding: 4px 0; color: #94a3b8;">Designated Role:</td><td style="color: #818cf8; font-weight: 700; text-transform: capitalize;">${role || 'Educator'}</td></tr>
-            <tr><td style="padding: 4px 0; color: #94a3b8;">Portal Email:</td><td style="color: #38bdf8; font-family: monospace; font-weight: 700;">${email}</td></tr>
-            <tr><td style="padding: 4px 0; color: #94a3b8;">Temporary Password:</td><td style="color: #34d399; font-family: monospace; font-weight: 700;">${temporaryPassword || 'ChangeMe@2026'}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8; width: 150px;">Department:</td><td style="color: #ffffff; font-weight: 600;">${department || 'Academic Department'}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Designated Role:</td><td style="color: #818cf8; font-weight: 700;">${roleTitle || role || 'Educator'}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Assigned Subject(s):</td><td style="color: #38bdf8; font-weight: 700;">${formattedSubjects}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Assigned Grade(s):</td><td style="color: #f59e0b; font-weight: 700;">${formattedGrades}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Class Roster(s):</td><td style="color: #e2e8f0; font-weight: 600;">${formattedClasses}</td></tr>
           </table>
+
+          <div style="margin-top: 16px; padding-top: 14px; border-top: 1px dashed #334155;">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
+              <tr><td style="padding: 5px 0; color: #94a3b8; width: 150px;">Sign-in Email:</td><td style="color: #38bdf8; font-family: monospace; font-weight: 700;">${email}</td></tr>
+              <tr><td style="padding: 5px 0; color: #94a3b8;">Temporary Password:</td><td style="color: #34d399; font-family: monospace; font-weight: 700; font-size: 14px;">${temporaryPassword || 'Teacher@2026'}</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 10px; padding: 14px 18px; margin: 20px 0;">
+          <p style="margin: 0; color: #cbd5e1; font-size: 13px; line-height: 1.5;">
+            <strong style="color: #818cf8;">🔒 Password Notice:</strong> Please sign in with the temporary password provided above. You can update your password at any time in your <strong>Profile Settings</strong>, or click <strong>"Forgot Password"</strong> on the login screen at any time to set your own personalized secure password.
+          </p>
         </div>
       `;
 
       return {
-        subject: `Welcome to Fusion High School — Staff Account Credentials`,
+        subject: `Welcome to Fusion High School — Educator Profile & Workload Assignment`,
         body: createBaseEmailTemplate({
-          preheader: `Your staff portal account credentials for Fusion High School.`,
-          title: 'Welcome to Fusion High Staff Portal',
-          subtitle: 'Staff Onboarding & Credentials',
+          preheader: `Your educator portal access credentials and teaching subjects for Fusion High School.`,
+          title: 'Welcome to Fusion High Educator Portal',
+          subtitle: 'Staff Onboarding & Workload Details',
           contentHtml,
-          ctaText: 'Sign In to Staff Portal',
+          ctaText: 'Sign In to Educator Portal',
           ctaLink: loginUrl
         })
       };
     },
 
     // 20. Parent Welcome & Portal Access
-    parentWelcome: ({ name, email, temporaryPassword, baseUrl = 'https://educonnect-cmyh.onrender.com' }) => {
-      const loginUrl = `${(baseUrl || 'https://educonnect-cmyh.onrender.com').replace(/\/+$/, '')}/login`;
+    parentWelcome: ({ name, surname, email, temporaryPassword, childName, learnerNumber, grade, baseUrl = 'http://localhost:5173' }) => {
+      const loginUrl = `${(baseUrl || 'http://localhost:5173').replace(/\/+$/, '')}/login`;
+      const fullName = `${name || ''} ${surname || ''}`.trim() || 'Parent / Guardian';
       const contentHtml = `
-        <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${name || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${fullName}</strong>,</p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-          Welcome to the Fusion High School Parent Portal. Your official access credentials are confirmed below:
+          You have been registered as a <strong>Parent / Guardian</strong> on the <strong>Fusion High School Portal</strong>. You now have full access to monitor academic progress, attendance registers, homework assignments, and term reports.
         </p>
 
         <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #38bdf8; border-radius: 12px; padding: 20px 24px; margin: 20px 0;">
+          <h4 style="margin: 0 0 12px 0; color: #38bdf8; font-size: 14px; font-weight: 700; text-transform: uppercase;">
+            Portal Sign-In Credentials
+          </h4>
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
-            <tr><td style="padding: 4px 0; color: #94a3b8; width: 140px;">Login Email:</td><td style="color: #38bdf8; font-family: monospace; font-weight: 700;">${email}</td></tr>
-            ${temporaryPassword ? `<tr><td style="padding: 4px 0; color: #94a3b8;">Password:</td><td style="color: #34d399; font-family: monospace; font-weight: 700;">${temporaryPassword}</td></tr>` : ''}
+            <tr><td style="padding: 5px 0; color: #94a3b8; width: 150px;">Sign-in Email:</td><td style="color: #38bdf8; font-family: monospace; font-weight: 700;">${email}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Temporary Password:</td><td style="color: #34d399; font-family: monospace; font-weight: 700; font-size: 14px;">${temporaryPassword || 'Parent@2026'}</td></tr>
+            ${childName ? `<tr><td style="padding: 5px 0; color: #94a3b8;">Linked Child:</td><td style="color: #ffffff; font-weight: 600;">${childName} ${grade ? `(Grade ${grade})` : ''} ${learnerNumber ? `[${learnerNumber}]` : ''}</td></tr>` : ''}
           </table>
+        </div>
+
+        <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 10px; padding: 14px 18px; margin: 20px 0;">
+          <p style="margin: 0; color: #cbd5e1; font-size: 13px; line-height: 1.5;">
+            <strong style="color: #38bdf8;">🔒 Password Notice:</strong> Please sign in with the temporary password provided above. You can update your password at any time in your <strong>Profile Settings</strong>, or click <strong>"Forgot Password"</strong> on the login screen at any time to set your own personalized secure password.
+          </p>
         </div>
       `;
 
       return {
-        subject: `Welcome to Fusion High School — Parent Portal Details`,
+        subject: `Welcome to Fusion High School — Parent Portal Credentials`,
         body: createBaseEmailTemplate({
           preheader: `Parent Portal access credentials for Fusion High School.`,
           title: 'Welcome to Parent Portal',
@@ -1615,12 +1790,84 @@ const emailService = {
           ctaLink: loginUrl
         })
       };
+    },
+
+    // 21. SubAdmin / School Administrator Welcome & Portal Access
+    schoolAdminWelcome: ({ name, surname, email, temporaryPassword, schoolName, circuit, province, emisNumber, baseUrl = 'http://localhost:5173' }) => {
+      const loginUrl = `${(baseUrl || 'http://localhost:5173').replace(/\/+$/, '')}/login`;
+      const fullName = `${name || ''} ${surname || ''}`.trim() || 'School Administrator';
+      const targetSchool = schoolName || 'Fusion Educational Institution';
+
+      const contentHtml = `
+        <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${fullName}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          You have been appointed and created as a <strong>School Administrator (SubAdmin)</strong> for <strong>${targetSchool}</strong> by the Main Executive Administrator.
+        </p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          You now have administrative jurisdiction to manage your school's digital operations, including adding faculty staff/educators, registering parents, enrolling learners, overseeing admissions, generating conflict-free timetables, and publishing announcements.
+        </p>
+
+        <!-- School Information Card -->
+        <div style="background: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 20px 24px; margin: 20px 0;">
+          <h4 style="margin: 0 0 12px 0; color: #818cf8; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+            Assigned School Institution
+          </h4>
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
+            <tr><td style="padding: 5px 0; color: #94a3b8; width: 150px;">Institution Name:</td><td style="color: #ffffff; font-weight: 700;">${targetSchool}</td></tr>
+            ${circuit ? `<tr><td style="padding: 5px 0; color: #94a3b8;">Circuit / District:</td><td style="color: #38bdf8;">${circuit}</td></tr>` : ''}
+            ${province ? `<tr><td style="padding: 5px 0; color: #94a3b8;">Province:</td><td style="color: #38bdf8;">${province}</td></tr>` : ''}
+            ${emisNumber ? `<tr><td style="padding: 5px 0; color: #94a3b8;">EMIS Number:</td><td style="color: #34d399; font-family: monospace;">${emisNumber}</td></tr>` : ''}
+          </table>
+        </div>
+
+        <!-- Credentials Box -->
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #818cf8; border-radius: 12px; padding: 20px 24px; margin: 20px 0;">
+          <h4 style="margin: 0 0 12px 0; color: #818cf8; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+            Administrator Sign-In Credentials
+          </h4>
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
+            <tr><td style="padding: 5px 0; color: #94a3b8; width: 150px;">Sign-in Email:</td><td style="color: #38bdf8; font-family: monospace; font-weight: 700;">${email}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Temporary Password:</td><td style="color: #34d399; font-family: monospace; font-weight: 700; font-size: 14px;">${temporaryPassword || 'Admin@2026'}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Admin Role:</td><td style="color: #fbbf24; font-weight: 700;">School Administrator (SubAdmin)</td></tr>
+          </table>
+        </div>
+
+        <!-- Core Guidance -->
+        <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 10px; padding: 14px 18px; margin: 20px 0;">
+          <p style="margin: 0 0 6px 0; color: #818cf8; font-size: 13px; font-weight: 700;">
+            🚀 Getting Started as School Administrator:
+          </p>
+          <ul style="margin: 0; padding-left: 18px; color: #cbd5e1; font-size: 12px; line-height: 1.6;">
+            <li>Sign in using your temporary password and access your dedicated school dashboard.</li>
+            <li>Onboard your teachers and staff via <strong>Staff & Employee Management</strong>.</li>
+            <li>Register parents and learners for your classes and review online admissions.</li>
+            <li>You can change your password anytime under <strong>Settings</strong> or use <strong>"Forgot Password"</strong>.</li>
+          </ul>
+        </div>
+      `;
+
+      return {
+        subject: `Welcome to ${targetSchool} — School Administrator Account Credentials`,
+        body: createBaseEmailTemplate({
+          preheader: `Administrator portal credentials for ${targetSchool}.`,
+          title: `Welcome to ${targetSchool}`,
+          subtitle: 'School Administrator Account Activation',
+          contentHtml,
+          ctaText: 'Access Admin Dashboard',
+          ctaLink: loginUrl
+        })
+      };
     }
   },
 
   sendSchoolAnnouncement: async (params) => {
     const template = emailService.templates.schoolAnnouncement(params);
     return await emailService.send(params.recipientEmail, template.subject, template.body);
+  },
+
+  sendSchoolAdminWelcome: async (params) => {
+    const template = emailService.templates.schoolAdminWelcome(params);
+    return await emailService.send(params.email, template.subject, template.body);
   },
 
   sendApplicationCorrection: async (params) => {

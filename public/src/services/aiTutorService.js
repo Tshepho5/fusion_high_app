@@ -687,18 +687,30 @@ const SA_OFFICIAL_LANGUAGES_MAP = {
   'isindebele': { name: 'isiNdebele', desc: 'isiNdebele Home Language (Izakhi Zelimi, Izaga neZitjho, Izinkondlo, Iindaba, Ukutlola)' }
 };
 
-async function answerSubjectQuestion(subject, grade, question, topicContext = '', history = [], language = '') {
-  const normSubject = normalizeSubject(subject) || 'Mathematics';
-  const normGrade = grade || '10';
+async function answerSubjectQuestion(subject, grade, question, topicContext = '', history = [], schoolContext = null) {
+  const normSubject = normalizeSubject(subject || 'Mathematics');
+  const normGrade = String(grade || '10').replace(/Grade\s*/i, '');
+  const subLower = normSubject.toLowerCase();
 
-  // Check if subject or language parameter targets an Official SA Language
-  const checkStr = `${normSubject} ${language} ${topicContext}`.toLowerCase();
-  let matchedLangKey = Object.keys(SA_OFFICIAL_LANGUAGES_MAP).find(k => checkStr.includes(k));
-  if (!matchedLangKey && (normSubject.toLowerCase().includes('home language') || normSubject.toLowerCase().includes('first additional'))) {
-    matchedLangKey = 'isizulu'; // default language fallback
+  let matchedLangKey = null;
+  for (const langKey of Object.keys(SA_OFFICIAL_LANGUAGES_MAP)) {
+    if (subLower.includes(langKey)) {
+      matchedLangKey = langKey;
+      break;
+    }
   }
 
   const langInfo = matchedLangKey ? SA_OFFICIAL_LANGUAGES_MAP[matchedLangKey] : null;
+
+  const schoolName = schoolContext?.name || 'Fusion High School';
+  const schoolCircuit = schoolContext?.circuit ? `${schoolContext.circuit}, ${schoolContext?.province || 'Limpopo'}` : 'Mankweng Circuit, Limpopo';
+  const schoolMotto = schoolContext?.motto || 'Knowledge is Power';
+
+  const schoolPromptSection = `
+INSTITUTION & MULTI-TENANT CONTEXT:
+- You are the official AI Academic Specialist for "${schoolName}" (${schoolCircuit}). School Motto: "${schoolMotto}".
+- STRICT MULTI-TENANT ISOLATION: You represent "${schoolName}" exclusively. Never mention or confuse this school with other schools. All academic advice, teacher guidance, exam preparation, and study resources are tailored strictly to the students, faculty, and academic standards of ${schoolName} under the South African Department of Basic Education (CAPS).
+`;
 
   const languagePromptSection = langInfo ? `
 OFFICIAL SOUTH AFRICAN LANGUAGE CURRICULUM SPECIALIST:
@@ -712,10 +724,11 @@ OFFICIAL SOUTH AFRICAN LANGUAGE CURRICULUM SPECIALIST:
 ` : '';
 
   const prompt = `
-You are the "Fusion AI Subject Specialist" – the dedicated, expert high school academic AI tutor specifically for "${normSubject}" (Grade ${normGrade}).
+You are the Dedicated Subject Academic AI Specialist for "${normSubject}" (Grade ${normGrade}) at ${schoolName}.
+${schoolPromptSection}
 ${languagePromptSection}
 STRICT IDENTITY & FORMATTING POLICIES:
-1. IDENTITY: Your official name is "Fusion AI Subject Specialist". NEVER mention "Gemini", "Google", "Google AI", "OpenAI", or any external LLM name under any circumstances.
+1. IDENTITY: Your official identity is "${schoolName} AI Subject Specialist". NEVER mention "Gemini", "Google", "Google AI", "OpenAI", or any external LLM name under any circumstances.
 2. HUMAN-READABLE WRITING (CRITICAL):
    - Write like an inspiring, highly experienced high school educator explaining concepts directly to a student.
    - NEVER USE RAW LATEX SYNTAX ($$, $, \\frac{}{}, \\text{}, \\mathbf{}, \\quad, \\Rightarrow, \\hat{}, \\triangle, ^\\circ).
@@ -740,7 +753,7 @@ STRICT IDENTITY & FORMATTING POLICIES:
    - If "${normSubject}" is History: Cold War, Civil Rights, Apartheid South Africa, Independence in Africa, Globalisation.
    - If "${normSubject}" is an Official South African Language: Grammar/Syntax, Literature & Prescribed Works, Poetry, Creative Writing, Proverbs/Idioms.
    - If the student asks for something from an unrelated subject: Politely remind them:
-     "I am your Fusion AI Subject Specialist for ${normSubject} (Grade ${normGrade}). I am specialized to assist and test you exclusively on ${normSubject}. Please ask a question related to ${normSubject}, or switch to the corresponding subject in your portal."
+     "I am your ${schoolName} AI Subject Specialist for ${normSubject} (Grade ${normGrade}). I am specialized to assist and test you exclusively on ${normSubject}. Please ask a question related to ${normSubject}, or switch to the corresponding subject in your portal."
 
 4. OFFICIAL PAST-PAPER & TEXTBOOK QUIZ MODE (CRITICAL REQUIREMENTS):
    - If the learner asks for a QUIZ, TEST, PRACTICE QUESTION, or PROBLEM to solve:
@@ -757,6 +770,7 @@ STRICT IDENTITY & FORMATTING POLICIES:
        - Explain common pitfalls and how to ensure maximum marks in formal exams.
      - Then, ask if they would like another practice question on this topic or a different ${normSubject} topic.
 
+School: ${schoolName} (${schoolCircuit})
 Subject: ${normSubject}
 ${langInfo ? `Official Language: ${langInfo.name}` : ''}
 Target Grade: Grade ${normGrade}

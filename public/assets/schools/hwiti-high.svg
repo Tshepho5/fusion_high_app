@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="hw-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#581c87" />
+      <stop offset="100%" stop-color="#9333ea" />
+    </linearGradient>
+    <linearGradient id="hw-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+    <filter id="hw-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <!-- Outer Gold Rim -->
+  <circle cx="200" cy="200" r="190" fill="#180726" stroke="url(#hw-gold)" stroke-width="6" filter="url(#hw-shadow)"/>
+  <circle cx="200" cy="200" r="176" fill="none" stroke="#06b6d4" stroke-width="3" stroke-dasharray="6,4"/>
+
+  <!-- Central Shield -->
+  <path d="M200 65 L285 105 V220 C285 285 200 325 200 325 C200 325 115 285 115 220 V105 Z" fill="url(#hw-grad)" stroke="url(#hw-gold)" stroke-width="4"/>
+  <path d="M200 80 L270 115 V215 C270 268 200 305 200 305 C200 305 130 268 130 215 V115 Z" fill="#10041b" opacity="0.45"/>
+
+  <!-- Imperial Crown of Perseverance -->
+  <path d="M165 160 L175 130 L200 148 L225 130 L235 160 Z" fill="url(#hw-gold)" stroke="#ffffff" stroke-width="1.5"/>
+  <circle cx="175" cy="128" r="3.5" fill="#06b6d4"/>
+  <circle cx="200" cy="146" r="3.5" fill="#06b6d4"/>
+  <circle cx="225" cy="128" r="3.5" fill="#06b6d4"/>
+
+  <!-- Crossed Torches & Quill -->
+  <line x1="165" y1="235" x2="235" y2="185" stroke="url(#hw-gold)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="235" y1="235" x2="165" y2="185" stroke="#06b6d4" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Open Book at Base -->
+  <path d="M160 250 Q200 240 200 255 Q200 240 240 250 V280 Q200 270 200 285 Q200 270 160 280 Z" fill="#ffffff" stroke="url(#hw-gold)" stroke-width="2"/>
+
+  <!-- Arc Text -->
+  <path id="hw-arc" d="M 55 200 A 145 145 0 0 1 345 200" fill="none"/>
+  <text fill="#ffffff" font-family="Arial, sans-serif" font-size="19" font-weight="900" letter-spacing="2">
+    <textPath href="#hw-arc" startOffset="50%" text-anchor="middle">HWITI HIGH SCHOOL</textPath>
+  </text>
+
+  <!-- Motto Ribbon -->
+  <path d="M105 340 L135 325 L200 345 L265 325 L295 340 L280 365 L200 352 L120 365 Z" fill="#10041b" stroke="url(#hw-gold)" stroke-width="2.5"/>
+  <text x="200" y="353" fill="url(#hw-gold)" font-family="Arial, sans-serif" font-size="12" font-weight="800" text-anchor="middle" letter-spacing="1">TSEBO KE MAATLA</text>
+</svg>

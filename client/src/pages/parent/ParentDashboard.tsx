@@ -11,7 +11,8 @@ import { SchoolCalendar } from '../../components/common/SchoolCalendar';
 import { LearnerMessages } from '../learner/LearnerMessages';
 import { LearnerProfile } from '../learner/LearnerProfile';
 import { LearnerSettings } from '../learner/LearnerSettings';
-import { ParentPTC } from '../../components/parent/ParentPTC';
+import { ParentTeacherConsultations } from '../../components/parent/ParentTeacherConsultations';
+import { InterSchoolCompetitions } from '../../components/common/InterSchoolCompetitions';
 import { SportsExtracurriculars } from '../../components/common/SportsExtracurriculars';
 import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
 import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
@@ -94,7 +95,8 @@ export const ParentDashboard: React.FC = () => {
       {activeTab === 'finance' && <SchoolFeesManager userRole="parent" />}
       {activeTab === 'bursaries' && <BursaryScholarshipHub isParentView={true} />}
       {activeTab === 'reports' && <CapsReportCard />}
-      {activeTab === 'ptc' && <ParentPTC />}
+      {(activeTab === 'ptc' || activeTab === 'consultations') && <ParentTeacherConsultations />}
+      {activeTab === 'inter-school' && <InterSchoolCompetitions />}
       {activeTab === 'sports' && <SportsExtracurriculars />}
       {activeTab === 'timetable' && <ParentTimetable />}
       {activeTab === 'calendar' && <SchoolCalendar />}

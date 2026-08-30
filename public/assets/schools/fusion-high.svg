@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="fh-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+    <linearGradient id="fh-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+    <filter id="fh-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <!-- Outer Gold Rim -->
+  <circle cx="200" cy="200" r="190" fill="#0f172a" stroke="url(#fh-gold)" stroke-width="6" filter="url(#fh-shadow)"/>
+  <circle cx="200" cy="200" r="176" fill="none" stroke="url(#fh-grad)" stroke-width="3" stroke-dasharray="6,4"/>
+  
+  <!-- Central Shield -->
+  <path d="M200 65 L285 105 V220 C285 285 200 325 200 325 C200 325 115 285 115 220 V105 Z" fill="url(#fh-grad)" stroke="url(#fh-gold)" stroke-width="4"/>
+  
+  <!-- Shield Internal Accent -->
+  <path d="M200 80 L270 115 V215 C270 268 200 305 200 305 C200 305 130 268 130 215 V115 Z" fill="#090d16" opacity="0.45"/>
+
+  <!-- Atom Orbital Rings -->
+  <ellipse cx="200" cy="180" rx="48" ry="18" fill="none" stroke="#38bdf8" stroke-width="2.5" transform="rotate(-30 200 180)"/>
+  <ellipse cx="200" cy="180" rx="48" ry="18" fill="none" stroke="#a78bfa" stroke-width="2.5" transform="rotate(30 200 180)"/>
+  <circle cx="200" cy="180" r="7" fill="url(#fh-gold)"/>
+
+  <!-- Open Book of Knowledge -->
+  <path d="M165 240 Q200 230 200 245 Q200 230 235 240 V270 Q200 260 200 275 Q200 260 165 270 Z" fill="#ffffff" stroke="url(#fh-gold)" stroke-width="2"/>
+  <line x1="200" y1="245" x2="200" y2="275" stroke="#4f46e5" stroke-width="2"/>
+
+  <!-- Central Star Cluster -->
+  <polygon points="200,105 204,117 217,117 206,124 210,136 200,128 190,136 194,124 183,117 196,117" fill="url(#fh-gold)"/>
+  <polygon points="160,125 163,133 172,133 164,138 167,146 160,141 153,146 156,138 148,133 157,133" fill="url(#fh-gold)" transform="scale(0.8) translate(40,15)"/>
+  <polygon points="240,125 243,133 252,133 244,138 247,146 240,141 233,146 236,138 228,133 237,133" fill="url(#fh-gold)" transform="scale(0.8) translate(60,15)"/>
+
+  <!-- Top Title Banner Arc -->
+  <path id="fh-arc" d="M 60 200 A 140 140 0 0 1 340 200" fill="none"/>
+  <text fill="#ffffff" font-family="Arial, sans-serif" font-size="19" font-weight="900" letter-spacing="2">
+    <textPath href="#fh-arc" startOffset="50%" text-anchor="middle">FUSION HIGH SCHOOL</textPath>
+  </text>
+
+  <!-- Motto Ribbon -->
+  <path d="M100 340 L130 325 L200 345 L270 325 L300 340 L285 365 L200 352 L115 365 Z" fill="#0f172a" stroke="url(#fh-gold)" stroke-width="2.5"/>
+  <text x="200" y="353" fill="url(#fh-gold)" font-family="Arial, sans-serif" font-size="11" font-weight="800" text-anchor="middle" letter-spacing="1">INNOVATE • LEAD • TRANSFORM</text>
+</svg>

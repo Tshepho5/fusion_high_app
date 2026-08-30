@@ -1,11 +1,13 @@
 const db = require('../../../../db/db');
+const NotificationService = require('../../services/notificationService');
 
 /**
- * Gets a consolidated list of all learners a teacher is responsible for.
+ * Gets a consolidated list of all learners a teacher is responsible for in their school.
  */
 exports.getMyLearners = async (req, res) => {
     try {
         const teacherId = req.user ? req.user.id : null;
+        const schoolId = req.user?.school_id || 1;
 
         const query = `
             SELECT DISTINCT ON (c.id)
@@ -31,11 +33,12 @@ exports.getMyLearners = async (req, res) => {
             LEFT JOIN users u ON c.parent_id = u.id
             LEFT JOIN progress p ON p.child_id = c.id
             LEFT JOIN attendance att ON att.child_id = c.id
+            WHERE c.school_id = $1
             GROUP BY c.id, cl.name, u.full_name, u.surname, u.phone, u.email
             ORDER BY c.id, c.grade, c.surname, c.full_name;
         `;
 
-        const { rows } = await db.query(query);
+        const { rows } = await db.query(query, [schoolId]);
         res.json(rows);
     } catch (err) {
         console.error('Error fetching my learners:', err);
@@ -44,16 +47,17 @@ exports.getMyLearners = async (req, res) => {
 };
 
 /**
- * Gets class roster filtered by class name, grade, and subject.
+ * Gets class roster filtered by class name, grade, and subject within the teacher's school.
  */
 exports.getClassList = async (req, res) => {
     const classParam = (req.query.class || req.query.class_id || req.query.className || '').toString().trim();
     const gradeParam = req.query.grade || (classParam ? classParam.replace(/[^0-9]/g, '') : null);
     const subjectParam = (req.query.subject || '').toString().trim();
+    const schoolId = req.user?.school_id || 1;
 
     try {
-        const params = [subjectParam];
-        let conditions = [];
+        const params = [subjectParam, schoolId];
+        let conditions = [`c.school_id = $2`];
 
         if (classParam) {
             params.push(classParam);
@@ -67,10 +71,7 @@ exports.getClassList = async (req, res) => {
             conditions.push(`c.grade = $${pIdx}`);
         }
 
-        let whereClause = '';
-        if (conditions.length > 0) {
-            whereClause = `WHERE ` + conditions.join(' AND ');
-        }
+        let whereClause = `WHERE ` + conditions.join(' AND ');
 
         const query = `
             SELECT c.id, 
@@ -262,9 +263,43 @@ exports.saveClassMarks = async (req, res) => {
             }
         }
 
+        // Create official announcement so learners and parents can check the notice in the announcements feed
+        const markAnnouncementTitle = `Assessment Marks Published: ${subject} - ${assessmentTitle}`;
+        const markAnnouncementContent = `Marks for ${assessmentTitle} in ${subject} (Grade ${grade}) have been finalized and recorded by your educator. Learners and parents can check their subject marks, percentage mastery, and academic progress in their portal.`;
+
+        try {
+            await db.query(`
+                INSERT INTO announcements (title, content, role_target, author_id, grade_target, subject_target, created_at)
+                VALUES ($1, $2, 'learner', $3, $4, $5, NOW())
+            `, [markAnnouncementTitle, markAnnouncementContent, teacherId || 1, grade, subject]);
+        } catch (annErr) {
+            console.warn('[MARKS ANNOUNCEMENT NOTICE]', annErr.message);
+        }
+
+        // Dispatch targeted in-app notification and email update to learners and parents
+        NotificationService.sendTargeted({
+            targetRole: 'learner',
+            grade: grade,
+            subject: subject,
+            includeParents: true,
+            authorId: teacherId || 1,
+            title: markAnnouncementTitle,
+            message: markAnnouncementContent,
+            fullContent: markAnnouncementContent,
+            type: 'marks',
+            targetTab: 'academics',
+            sendToMessages: false, // Individual messages were already created per-learner above
+            sendEmail: true,
+            metadata: {
+                subject: subject,
+                grade: grade,
+                assessment_name: assessmentTitle
+            }
+        }).catch(err => console.error('[MARKS NOTIFICATION DISPATCH ERROR]', err));
+
         res.json({
             success: true,
-            message: `Successfully saved and published marks for ${savedCount} learners.`,
+            message: `Successfully saved marks for ${savedCount} learners, published announcement, and notified recipients!`,
             saved_count: savedCount
         });
     } catch (err) {
@@ -290,7 +325,32 @@ exports.recordMark = async (req, res) => {
             `INSERT INTO progress (child_id, subject, term, grade, notes) VALUES ($1, $2, $3, $4, $5)`,
             [childId, subject, term, parseInt(mark, 10), notes || assessmentTitle || 'Recorded mark']
         );
-        res.json({ message: 'Mark recorded successfully.' });
+
+        // Fetch child details for parent/learner notification
+        const childRes = await db.query(`
+            SELECT c.id, c.learner_user_id, c.parent_id, c.full_name, c.surname, c.grade
+            FROM children c WHERE c.id = $1 LIMIT 1
+        `, [childId]);
+
+        if (childRes.rows.length > 0) {
+            const child = childRes.rows[0];
+            const targetIds = [child.learner_user_id, child.parent_id].filter(Boolean);
+            const noticeTitle = `New Mark Recorded: ${subject} (${mark}%)`;
+            const noticeMsg = `A new mark of ${mark}% for ${notes || assessmentTitle || 'Class Assessment'} in ${subject} has been recorded for ${child.full_name || 'student'}.`;
+
+            NotificationService.sendToUsers({
+                userIds: targetIds,
+                title: noticeTitle,
+                message: noticeMsg,
+                type: 'marks',
+                targetTab: 'academics',
+                authorId: req.user?.id || 1,
+                sendToMessages: true,
+                sendEmail: true
+            }).catch(err => console.error('[RECORD MARK NOTIFICATION ERROR]', err));
+        }
+
+        res.json({ message: 'Mark recorded successfully and notification sent.' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

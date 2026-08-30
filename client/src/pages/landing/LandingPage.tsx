@@ -62,13 +62,31 @@ export const LandingPage: React.FC = () => {
 
           {/* Actions & Navigation Controls */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* School Selector Dropdown */}
+            {schoolsList && schoolsList.length > 1 && (
+              <div className="relative">
+                <select
+                  value={currentSchool?.id || 1}
+                  onChange={(e) => setSchoolById(Number(e.target.value))}
+                  className="bg-white/5 hover:bg-white/10 text-slate-200 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer max-w-[140px] sm:max-w-[200px] truncate"
+                  title="Select Active School"
+                >
+                  {schoolsList.map((s) => (
+                    <option key={s.id} value={s.id} className="bg-slate-900 text-white">
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <button
               onClick={() => setIsAboutOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-500/10 hover:bg-brand-500/20 text-brand-300 hover:text-white border border-brand-500/30 text-xs font-semibold transition-all"
-              title="About Fusion High School"
+              title="About School"
             >
               <Info className="w-3.5 h-3.5 text-cyan-400" />
-              <span>About Us</span>
+              <span className="hidden sm:inline">About Us</span>
             </button>
 
             <button
@@ -109,8 +127,8 @@ export const LandingPage: React.FC = () => {
       <main className="flex-1 flex flex-col justify-center items-center px-4 md:px-8 text-center pb-36 sm:pb-44">
         <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
           {/* School Emblem Large Display */}
-          <div className="w-56 h-56 md:w-72 md:h-72 lg:w-80 lg:h-80 mx-auto rounded-3xl bg-surface-dark/95 border border-white/15 p-6 shadow-2xl shadow-indigo-500/10 flex items-center justify-center backdrop-blur-md hover:scale-105 transition-transform duration-500">
-            <img src="/assets/FH.png" alt="Fusion High School Emblem" className="w-full h-full object-contain drop-shadow-2xl" />
+          <div className="w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 mx-auto rounded-3xl bg-surface-dark/95 border border-white/15 p-5 shadow-2xl shadow-indigo-500/10 flex items-center justify-center backdrop-blur-md hover:scale-105 transition-transform duration-500">
+            <img src="/assets/FH.png" alt="School Emblem" className="w-full h-full object-contain drop-shadow-2xl" />
           </div>
 
           {/* CAPS Curriculum Badge */}
@@ -122,7 +140,7 @@ export const LandingPage: React.FC = () => {
           </div>
 
           {/* Welcoming Headline */}
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold font-display tracking-tight text-white leading-tight">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold font-display tracking-tight text-white leading-tight">
             Welcome to{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-indigo-300 to-cyan-400">
               {currentSchool?.name || 'Fusion High'}
@@ -130,9 +148,43 @@ export const LandingPage: React.FC = () => {
           </h1>
 
           {/* Focused Subtitle */}
-          <p className="text-sm sm:text-base md:text-lg text-slate-300 max-w-xl mx-auto leading-relaxed">
-            Empowering students across {currentSchool?.circuit || 'Mankweng Circuit'}, Limpopo. One unified digital portal for learners, teachers, and parents.
+          <p className="text-xs sm:text-sm md:text-base text-slate-300 max-w-xl mx-auto leading-relaxed">
+            {currentSchool?.motto ? `"${currentSchool.motto}" — ` : ''}
+            Empowering students across {currentSchool?.circuit || 'Mankweng Circuit'}, {currentSchool?.province || 'Limpopo'}. One unified digital portal for learners, teachers, and parents.
           </p>
+
+          {/* Real-time Live Database School Statistics */}
+          <div className="grid grid-cols-3 gap-3 max-w-xl mx-auto pt-2">
+            <div className="p-3.5 rounded-2xl bg-surface-dark/80 border border-white/10 backdrop-blur-sm shadow-md">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block font-bold">Enrolled Learners</span>
+              <span className="text-xl sm:text-2xl font-extrabold font-mono text-cyan-400 mt-1 block">
+                {currentSchool?.enrolled_learners_count ?? 0}
+              </span>
+              <span className="text-[10px] text-slate-500 font-medium block">
+                {(currentSchool?.enrolled_learners_count ?? 0) > 0 ? 'Active Students' : 'Awaiting Enrolment'}
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-surface-dark/80 border border-white/10 backdrop-blur-sm shadow-md">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block font-bold">Faculty Staff</span>
+              <span className="text-xl sm:text-2xl font-extrabold font-mono text-amber-400 mt-1 block">
+                {currentSchool?.staff_count ?? 0}
+              </span>
+              <span className="text-[10px] text-slate-500 font-medium block">
+                {(currentSchool?.staff_count ?? 0) > 0 ? 'Active Educators' : 'Ready for Staff'}
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-surface-dark/80 border border-white/10 backdrop-blur-sm shadow-md">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block font-bold">Classes & Grades</span>
+              <span className="text-xl sm:text-2xl font-extrabold font-mono text-emerald-400 mt-1 block">
+                {currentSchool?.classes_count ?? 0}
+              </span>
+              <span className="text-[10px] text-slate-500 font-medium block">
+                {(currentSchool?.classes_count ?? 0) > 0 ? 'Active Stream Classes' : 'Grade 8-12 Ready'}
+              </span>
+            </div>
+          </div>
         </div>
       </main>
 

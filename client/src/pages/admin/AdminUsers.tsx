@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/api';
 import { useSchool } from '../../context/SchoolContext';
+import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -95,14 +96,22 @@ interface SchoolMetadata {
 }
 
 export const AdminUsers: React.FC = () => {
-  const { currentSchool } = useSchool();
-  const [activeTab, setActiveTab] = useState<'employees' | 'learners' | 'parents' | 'admissions' | 'all'>('employees');
+  const { currentSchool, schoolsList } = useSchool();
+  const { user: currentUser } = useAuth();
+  const isSuperAdmin = Boolean(
+    currentUser?.is_superadmin || 
+    (currentUser?.email && currentUser?.email.toLowerCase() === '202247878@myturf.ul.ac.za') ||
+    (currentUser?.email && currentUser?.email.toLowerCase() === 'sthepomakola23@gmail.com')
+  );
+
+  const [activeTab, setActiveTab] = useState<'employees' | 'learners' | 'parents' | 'admissions' | 'admins' | 'all'>('employees');
   
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [learners, setLearners] = useState<LearnerRecord[]>([]);
   const [parents, setParents] = useState<ParentRecord[]>([]);
   const [admissions, setAdmissions] = useState<any[]>([]);
+  const [schoolAdmins, setSchoolAdmins] = useState<any[]>([]);
   
   const [metadata, setMetadata] = useState<SchoolMetadata>({
     departments: [],
@@ -121,11 +130,25 @@ export const AdminUsers: React.FC = () => {
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
   const [isAddLearnerModalOpen, setIsAddLearnerModalOpen] = useState(false);
   const [isAddParentModalOpen, setIsAddParentModalOpen] = useState(false);
+  const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
   const [isOcrModalOpen, setIsOcrModalOpen] = useState(false);
   const [selectedAdmission, setSelectedAdmission] = useState<any | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrResult, setOcrResult] = useState<any | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  // SubAdmin Form State
+  const [adminForm, setAdminForm] = useState({
+    full_name: '',
+    surname: '',
+    email: '',
+    phone: '',
+    id_number: '',
+    school_id: currentSchool?.id || 2,
+    password: 'Admin@2026',
+    gender: 'Male',
+    physical_address: ''
+  });
 
   const handleInspectAdmission = async (adm: any) => {
     setSelectedAdmission(adm);
@@ -214,13 +237,14 @@ export const AdminUsers: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [usersData, empData, lrnData, metaData, admData, parentsData] = await Promise.allSettled([
+      const [usersData, empData, lrnData, metaData, admData, parentsData, adminsData] = await Promise.allSettled([
         adminService.getUsers(),
         adminService.getEmployees(),
         adminService.getLearners(),
         adminService.getSchoolMetadata(),
         adminService.getAdmissions(),
-        adminService.getParents()
+        adminService.getParents(),
+        isSuperAdmin ? adminService.getSchoolAdmins() : Promise.resolve({ admins: [] })
       ]);
 
       if (usersData.status === 'fulfilled') setUsers(Array.isArray(usersData.value) ? usersData.value : []);
@@ -231,6 +255,10 @@ export const AdminUsers: React.FC = () => {
       if (parentsData.status === 'fulfilled') {
         const pList = parentsData.value?.parents || (Array.isArray(parentsData.value) ? parentsData.value : []);
         setParents(pList);
+      }
+      if (adminsData.status === 'fulfilled') {
+        const aList = adminsData.value?.admins || (Array.isArray(adminsData.value) ? adminsData.value : []);
+        setSchoolAdmins(aList);
       }
 
     } catch (err: any) {
@@ -243,7 +271,60 @@ export const AdminUsers: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [currentSchool?.id]);
+  }, [currentSchool?.id, isSuperAdmin]);
+
+  // Handle Create School Admin (SubAdmin) - Main Admin Only
+  const handleCreateSchoolAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (/\d/.test(adminForm.full_name)) {
+      setError('First name cannot contain numbers.');
+      return;
+    }
+    if (/\d/.test(adminForm.surname)) {
+      setError('Surname cannot contain numbers.');
+      return;
+    }
+    if (!adminForm.email) {
+      setError('Official email address is required.');
+      return;
+    }
+    if (!adminForm.school_id) {
+      setError('Please assign a specific school to this SubAdmin.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await adminService.createSchoolAdmin({
+        ...adminForm,
+        school_id: parseInt(String(adminForm.school_id), 10),
+        password: adminForm.password || 'Admin@2026'
+      });
+
+      setActionSuccess(res.message || `SubAdmin ${adminForm.full_name} ${adminForm.surname} appointed successfully. Official credentials emailed.`);
+      setIsAddAdminModalOpen(false);
+      setAdminForm({
+        full_name: '',
+        surname: '',
+        email: '',
+        phone: '',
+        id_number: '',
+        school_id: currentSchool?.id || 2,
+        password: 'Admin@2026',
+        gender: 'Male',
+        physical_address: ''
+      });
+      fetchData();
+      setTimeout(() => setActionSuccess(null), 5000);
+    } catch (err: any) {
+      console.error('Create school admin error:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to appoint school administrator.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   // Handle Create Employee
   const handleCreateEmployee = async (e: React.FormEvent) => {
@@ -471,6 +552,13 @@ export const AdminUsers: React.FC = () => {
     (u.role || '').toLowerCase().includes(q)
   );
 
+  const filteredSchoolAdmins = schoolAdmins.filter(a =>
+    `${a.full_name} ${a.surname || ''}`.toLowerCase().includes(q) ||
+    (a.email || '').toLowerCase().includes(q) ||
+    (a.school_name || '').toLowerCase().includes(q) ||
+    (a.school_circuit || '').toLowerCase().includes(q)
+  );
+
   const [enrollingAdmissionId, setEnrollingAdmissionId] = useState<number | null>(null);
 
   const handleQuickApproveAndEnroll = async (admId: number, admName: string) => {
@@ -516,15 +604,29 @@ export const AdminUsers: React.FC = () => {
         <div>
           <h2 className="text-xl md:text-2xl font-extrabold font-display text-white tracking-tight flex items-center gap-2">
             <Users className="w-6 h-6 text-brand-400" />
-            School Directory & Enrollment
+            School Directory & Multi-Tenant Access
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Register teachers and staff, enroll learners, add parents with temporary passwords, and manage system accounts in PostgreSQL.
+            {isSuperAdmin
+              ? 'Main Executive Administrator Hub: Appoint School SubAdmins, oversee all schools, and manage isolated school staff, parents, and learners.'
+              : `School Administrator Hub for ${currentSchool?.name || 'Your School'}: Onboard faculty staff, register parents, enroll learners, and review applications.`}
           </p>
         </div>
 
         {/* Primary Action Buttons */}
         <div className="flex flex-wrap items-center gap-3">
+          {/* Main Admin Only: Appoint SubAdmin for any School */}
+          {isSuperAdmin && (
+            <button
+              onClick={() => setIsAddAdminModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-brand-600 hover:from-purple-500 hover:to-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all transform hover:scale-[1.02]"
+              title="Appoint a Dedicated SubAdmin for an Individual School"
+            >
+              <Shield className="w-4 h-4 text-purple-200" />
+              <span>+ Appoint School SubAdmin</span>
+            </button>
+          )}
+
           <button
             onClick={() => setIsAddEmployeeModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-xs shadow-glow-indigo transition-all"
@@ -568,6 +670,21 @@ export const AdminUsers: React.FC = () => {
       {/* Directory Category Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
         <div className="flex items-center gap-2 overflow-x-auto">
+          {/* Main Admin Only: School SubAdmins Tab */}
+          {isSuperAdmin && (
+            <button
+              onClick={() => setActiveTab('admins')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'admins'
+                  ? 'bg-purple-600 text-white shadow-glow-indigo'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5 text-purple-300" />
+              <span>School Admins ({schoolAdmins.length})</span>
+            </button>
+          )}
+
           <button
             onClick={() => setActiveTab('employees')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -620,7 +737,7 @@ export const AdminUsers: React.FC = () => {
             onClick={() => setActiveTab('all')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'all'
-                ? 'bg-purple-600 text-white shadow-md'
+                ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -910,6 +1027,65 @@ export const AdminUsers: React.FC = () => {
             </table>
             {filteredAdmissions.length === 0 && (
               <div className="p-8 text-center text-slate-400 text-xs">No admission applications found.</div>
+            )}
+          </div>
+        ) : activeTab === 'admins' ? (
+          /* School Administrators (SubAdmins) Table */
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
+                  <th className="pb-3 px-3">Administrator</th>
+                  <th className="pb-3 px-3">Jurisdiction Level</th>
+                  <th className="pb-3 px-3">Assigned School</th>
+                  <th className="pb-3 px-3">Circuit / Province</th>
+                  <th className="pb-3 px-3">Email Address</th>
+                  <th className="pb-3 px-3">Phone</th>
+                  <th className="pb-3 px-3">Appointed Date</th>
+                  <th className="pb-3 px-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filteredSchoolAdmins.map((adm) => (
+                  <tr key={adm.id} className="hover:bg-white/5 transition-colors">
+                    <td className="py-3.5 px-3">
+                      <p className="font-bold text-white text-sm">{adm.full_name} {adm.surname}</p>
+                      <span className="text-[10px] font-mono text-slate-400">Account ID: {adm.id}</span>
+                    </td>
+                    <td className="py-3.5 px-3">
+                      <Badge variant={adm.is_superadmin ? 'rose' : 'indigo'} size="sm">
+                        {adm.is_superadmin ? 'Main Executive Admin' : 'School SubAdmin'}
+                      </Badge>
+                    </td>
+                    <td className="py-3.5 px-3">
+                      <span className="font-bold text-cyan-400">{adm.school_name || 'Fusion Educational Institution'}</span>
+                    </td>
+                    <td className="py-3.5 px-3 text-slate-300">
+                      <span>{adm.school_circuit || 'Mankweng Circuit'}</span>
+                      <span className="text-slate-500 block text-[10px]">{adm.school_province || 'Limpopo'}</span>
+                    </td>
+                    <td className="py-3.5 px-3 font-mono text-slate-300">{adm.email}</td>
+                    <td className="py-3.5 px-3 font-mono text-slate-400">{adm.phone || '-'}</td>
+                    <td className="py-3.5 px-3 text-slate-400 font-mono text-[11px]">
+                      {adm.created_at ? new Date(adm.created_at).toLocaleDateString() : 'Active'}
+                    </td>
+                    <td className="py-3.5 px-3 text-right">
+                      {!adm.is_superadmin && (
+                        <button
+                          onClick={() => handleDeleteUser(adm.id, adm.email)}
+                          className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
+                          title="Revoke SubAdmin Access"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredSchoolAdmins.length === 0 && (
+              <div className="p-8 text-center text-slate-400 text-xs">No School Administrators found matching your search query.</div>
             )}
           </div>
         ) : (
@@ -1538,6 +1714,139 @@ export const AdminUsers: React.FC = () => {
               <p className="text-slate-400">No OCR preview available for this document.</p>
             )}
           </div>
+        </Modal>
+      )}
+
+      {/* ========================================================================= */}
+      {/* APPOINT SCHOOL SUBADMIN MODAL (Main Executive Admin Only) */}
+      {/* ========================================================================= */}
+      {isSuperAdmin && (
+        <Modal
+          isOpen={isAddAdminModalOpen}
+          onClose={() => setIsAddAdminModalOpen(false)}
+          title="Appoint Dedicated School Administrator (SubAdmin)"
+          maxWidth="2xl"
+        >
+          <form onSubmit={handleCreateSchoolAdmin} className="space-y-4 text-xs">
+            <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs flex items-start gap-2.5">
+              <Shield className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+              <span>
+                As the <strong>Main Executive Administrator</strong>, you are appointing an isolated SubAdmin for a specific school.
+                The SubAdmin will receive an automated welcome email with their login credentials and administrative access strictly for their individual school.
+              </span>
+            </div>
+
+            {/* School Selector */}
+            <div className="space-y-1">
+              <label className="block text-slate-300 font-bold">Assigned School Institution *</label>
+              <select
+                required
+                value={adminForm.school_id}
+                onChange={(e) => setAdminForm(prev => ({ ...prev, school_id: Number(e.target.value) }))}
+                className="w-full rounded-xl bg-surface-darker border border-white/15 px-3 py-2.5 text-white font-bold focus:ring-2 focus:ring-purple-500"
+              >
+                {schoolsList && schoolsList.length > 0 ? (
+                  schoolsList.map((s) => (
+                    <option key={s.id} value={s.id} className="bg-slate-900 text-white">
+                      {s.name} — {s.circuit || 'Circuit'}, {s.province || 'Limpopo'}
+                    </option>
+                  ))
+                ) : (
+                  <option value="1">Fusion High School</option>
+                )}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">First Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={adminForm.full_name}
+                  onChange={(e) => setAdminForm(prev => ({ ...prev, full_name: e.target.value.replace(/\d/g, '') }))}
+                  placeholder="e.g. Kagiso"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Surname *</label>
+                <input
+                  type="text"
+                  required
+                  value={adminForm.surname}
+                  onChange={(e) => setAdminForm(prev => ({ ...prev, surname: e.target.value.replace(/\d/g, '') }))}
+                  placeholder="e.g. Masemola"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Official Sign-in Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  value={adminForm.email}
+                  onChange={(e) => setAdminForm(prev => ({ ...prev, email: e.target.value.toLowerCase().trim() }))}
+                  placeholder="e.g. admin@mountainviewhigh.co.za"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-purple-500 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Contact Phone Number</label>
+                <input
+                  type="text"
+                  value={adminForm.phone}
+                  onChange={(e) => setAdminForm(prev => ({ ...prev, phone: e.target.value.replace(/[^\d+\s-]/g, '') }))}
+                  placeholder="e.g. 0812345678"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-purple-500 font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">National ID Number (Optional)</label>
+                <input
+                  type="text"
+                  value={adminForm.id_number}
+                  onChange={(e) => setAdminForm(prev => ({ ...prev, id_number: e.target.value.replace(/\D/g, '').slice(0, 13) }))}
+                  placeholder="13-digit SA ID"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-purple-500 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Temporary Initial Password</label>
+                <input
+                  type="text"
+                  value={adminForm.password}
+                  onChange={(e) => setAdminForm(prev => ({ ...prev, password: e.target.value }))}
+                  placeholder="Defaults to Admin@2026"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-purple-500 font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setIsAddAdminModalOpen(false)}
+                className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-brand-600 hover:from-purple-500 hover:to-brand-500 text-white font-extrabold shadow-glow-indigo transition-all disabled:opacity-50 flex items-center gap-2"
+              >
+                <Shield className="w-4 h-4 text-purple-200" />
+                <span>{submitting ? 'Appointing SubAdmin & Sending Email...' : 'Appoint SubAdmin & Dispatch Email'}</span>
+              </button>
+            </div>
+          </form>
         </Modal>
       )}
     </div>

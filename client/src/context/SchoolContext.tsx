@@ -24,6 +24,10 @@ export interface SchoolProfile {
   grade_range?: string;
   is_active: boolean;
   settings?: Record<string, any>;
+  enrolled_learners_count?: number;
+  staff_count?: number;
+  classes_count?: number;
+  parents_count?: number;
 }
 
 export const DEFAULT_SCHOOLS: SchoolProfile[] = [
@@ -41,15 +45,19 @@ export const DEFAULT_SCHOOLS: SchoolProfile[] = [
     contact_email: 'admin@fusionhigh.co.za',
     contact_phone: '+27 15 291 0000',
     principal_name: 'Dr. T. Makola',
-    logo_url: '/assets/FH.png',
-    badge_url: '/assets/FH.png',
+    logo_url: '/assets/schools/fusion-high.svg',
+    badge_url: '/assets/schools/fusion-high.svg',
     primary_color: '#4f46e5',
     secondary_color: '#06b6d4',
     accent_color: '#f59e0b',
     motto: 'Innovate, Lead, Transform',
     curriculum_type: 'CAPS (DBE Limpopo)',
     grade_range: '8-12',
-    is_active: true
+    is_active: true,
+    enrolled_learners_count: 1,
+    staff_count: 5,
+    classes_count: 13,
+    parents_count: 1
   },
   {
     id: 2,
@@ -64,6 +72,8 @@ export const DEFAULT_SCHOOLS: SchoolProfile[] = [
     contact_email: 'info@mountainviewhigh.co.za',
     contact_phone: '+27 15 267 1100',
     principal_name: 'Mr. M. S. Phasha',
+    logo_url: '/assets/schools/mountainview-high.svg',
+    badge_url: '/assets/schools/mountainview-high.svg',
     primary_color: '#1e40af',
     secondary_color: '#3b82f6',
     accent_color: '#f59e0b',
@@ -85,10 +95,12 @@ export const DEFAULT_SCHOOLS: SchoolProfile[] = [
     contact_email: 'admin@makgoka.co.za',
     contact_phone: '+27 15 266 0022',
     principal_name: 'Mrs. K. E. Molepo',
+    logo_url: '/assets/schools/makgoka-high.svg',
+    badge_url: '/assets/schools/makgoka-high.svg',
     primary_color: '#065f46',
     secondary_color: '#10b981',
     accent_color: '#fbbf24',
-    motto: 'Knowledge is Light',
+    motto: 'Thuto Ke Lesedi',
     curriculum_type: 'CAPS (DBE Limpopo)',
     grade_range: '8-12',
     is_active: true
@@ -106,6 +118,8 @@ export const DEFAULT_SCHOOLS: SchoolProfile[] = [
     contact_email: 'principal@turfloophigh.co.za',
     contact_phone: '+27 15 267 3300',
     principal_name: 'Mr. N. J. Mamabolo',
+    logo_url: '/assets/schools/turfloop-high.svg',
+    badge_url: '/assets/schools/turfloop-high.svg',
     primary_color: '#1e1b4b',
     secondary_color: '#4338ca',
     accent_color: '#991b1b',
@@ -127,10 +141,12 @@ export const DEFAULT_SCHOOLS: SchoolProfile[] = [
     contact_email: 'info@hwitisecondary.co.za',
     contact_phone: '+27 15 267 4400',
     principal_name: 'Mrs. R. M. Ramokgopa',
+    logo_url: '/assets/schools/hwiti-high.svg',
+    badge_url: '/assets/schools/hwiti-high.svg',
     primary_color: '#581c87',
     secondary_color: '#9333ea',
     accent_color: '#06b6d4',
-    motto: 'Perseverance Conquers',
+    motto: 'Tsebo Ke Maatla',
     curriculum_type: 'CAPS (DBE Limpopo)',
     grade_range: '8-12',
     is_active: true
@@ -148,10 +164,12 @@ export const DEFAULT_SCHOOLS: SchoolProfile[] = [
     contact_email: 'admin@ngwanamohube.co.za',
     contact_phone: '+27 15 267 5500',
     principal_name: 'Mr. S. P. Mohube',
+    logo_url: '/assets/schools/ngwana-mohube.svg',
+    badge_url: '/assets/schools/ngwana-mohube.svg',
     primary_color: '#991b1b',
     secondary_color: '#ef4444',
     accent_color: '#0f172a',
-    motto: 'Forward in Excellence',
+    motto: 'Thuto Ke Maatla',
     curriculum_type: 'CAPS (DBE Limpopo)',
     grade_range: '8-12',
     is_active: true
@@ -170,6 +188,8 @@ export const DEFAULT_SCHOOLS: SchoolProfile[] = [
     contact_email: 'admin@fusionsecondary.co.za',
     contact_phone: '+27 12 373 0000',
     principal_name: 'Dr. T. Makola',
+    logo_url: '/assets/schools/fusion-secondary-lotus.svg',
+    badge_url: '/assets/schools/fusion-secondary-lotus.svg',
     primary_color: '#4f46e5',
     secondary_color: '#06b6d4',
     accent_color: '#f59e0b',
@@ -191,6 +211,8 @@ export const DEFAULT_SCHOOLS: SchoolProfile[] = [
     contact_email: 'info@saulridge.co.za',
     contact_phone: '+27 12 375 6000',
     principal_name: 'Mr. K. E. Masemola',
+    logo_url: '/assets/schools/saulridge-secondary.svg',
+    badge_url: '/assets/schools/saulridge-secondary.svg',
     primary_color: '#1e3a8a',
     secondary_color: '#f59e0b',
     accent_color: '#3b82f6',
@@ -212,6 +234,8 @@ export const DEFAULT_SCHOOLS: SchoolProfile[] = [
     contact_email: 'admin@phelindaba.co.za',
     contact_phone: '+27 12 373 8100',
     principal_name: 'Mrs. M. T. Sithole',
+    logo_url: '/assets/schools/phelindaba-secondary.svg',
+    badge_url: '/assets/schools/phelindaba-secondary.svg',
     primary_color: '#14532d',
     secondary_color: '#eab308',
     accent_color: '#10b981',
@@ -233,6 +257,8 @@ export const DEFAULT_SCHOOLS: SchoolProfile[] = [
     contact_email: 'principal@flaviusmareka.co.za',
     contact_phone: '+27 12 373 9200',
     principal_name: 'Mr. L. N. Maluleke',
+    logo_url: '/assets/schools/flavius-mareka.svg',
+    badge_url: '/assets/schools/flavius-mareka.svg',
     primary_color: '#1d4ed8',
     secondary_color: '#38bdf8',
     accent_color: '#fbbf24',
@@ -254,6 +280,8 @@ export const DEFAULT_SCHOOLS: SchoolProfile[] = [
     contact_email: 'info@wfnkomo.co.za',
     contact_phone: '+27 12 375 7300',
     principal_name: 'Mr. D. M. Ndlovu',
+    logo_url: '/assets/schools/wf-nkomo-secondary.svg',
+    badge_url: '/assets/schools/wf-nkomo-secondary.svg',
     primary_color: '#881337',
     secondary_color: '#f43f5e',
     accent_color: '#fbbf24',
@@ -275,6 +303,8 @@ export const DEFAULT_SCHOOLS: SchoolProfile[] = [
     contact_email: 'admin@hofmeyr.co.za',
     contact_phone: '+27 12 373 7400',
     principal_name: 'Mrs. S. R. Mogale',
+    logo_url: '/assets/schools/hofmeyr-secondary.svg',
+    badge_url: '/assets/schools/hofmeyr-secondary.svg',
     primary_color: '#581c87',
     secondary_color: '#14b8a6',
     accent_color: '#f59e0b',

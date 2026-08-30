@@ -119,10 +119,17 @@ class NotificationService {
       if (sendEmail) {
         setImmediate(async () => {
           try {
-            const userRes = await db.query(
-              'SELECT id, email, full_name, surname FROM users WHERE id = ANY($1::int[]) AND email IS NOT NULL AND email != \'\'',
-              [uniqueIds]
-            );
+            const userRes = await db.query(`
+              SELECT u.id, u.email, u.full_name, u.surname, COALESCE(r.name, u.role_id::text, '') as role_name,
+                     COALESCE(pu.email, pc_u.email) as parent_personal_email
+              FROM users u 
+              LEFT JOIN roles r ON (u.role_id = r.id OR u.role_id::text = r.name)
+              LEFT JOIN children c ON (c.learner_user_id = u.id)
+              LEFT JOIN users pu ON (c.parent_id = pu.id)
+              LEFT JOIN parent_children pc ON (pc.child_id = c.id)
+              LEFT JOIN users pc_u ON (pc.parent_id = pc_u.id)
+              WHERE u.id = ANY($1::int[])
+            `, [uniqueIds]);
 
             // Fetch author details
             let authorName = 'School Administration';
@@ -138,9 +145,28 @@ class NotificationService {
               }
             }
 
+            const deliveredEmails = new Set();
+
             for (const u of userRes.rows) {
+              let targetEmail = (u.email || '').trim();
+
+              // If this is a learner account with internal login address, route to their registered parent's email
+              if (targetEmail.endsWith('@fusion.high') || targetEmail.endsWith('@fusionhigh.co.za')) {
+                if (u.parent_personal_email && u.parent_personal_email.includes('@') && !u.parent_personal_email.endsWith('@fusion.high')) {
+                  targetEmail = u.parent_personal_email.trim();
+                } else {
+                  continue;
+                }
+              }
+
+              if (!targetEmail || !targetEmail.includes('@') || deliveredEmails.has(targetEmail.toLowerCase())) {
+                continue;
+              }
+
+              deliveredEmails.add(targetEmail.toLowerCase());
+
               try {
-                const recipientFullName = `${u.full_name || ''} ${u.surname || ''}`.trim() || 'User';
+                const recipientFullName = `${u.full_name || ''} ${u.surname || ''}`.trim() || 'School Community Member';
                 const tpl = emailService.templates.schoolAnnouncement({
                   recipientName: recipientFullName,
                   title,
@@ -149,9 +175,10 @@ class NotificationService {
                   authorRole,
                   targetAudience: metadata.targetAudience || type || 'School Community'
                 });
-                await emailService.send(u.email, tpl.subject, tpl.body);
+                await emailService.send(targetEmail, tpl.subject, tpl.body);
+                console.log(`[ANNOUNCEMENT EMAIL DISPATCH] Delivered to ${targetEmail} (${recipientFullName})`);
               } catch (eErr) {
-                console.warn(`[NOTIFICATION EMAIL DISPATCH ERROR] User ${u.email}:`, eErr.message);
+                console.warn(`[NOTIFICATION EMAIL DISPATCH ERROR] User ${targetEmail}:`, eErr.message);
               }
             }
           } catch (batchErr) {
@@ -197,16 +224,45 @@ class NotificationService {
         const teacherRes = await db.query(`
           SELECT u.id 
           FROM users u 
-          JOIN roles r ON u.role_id = r.id 
-          WHERE r.name = 'teacher'
+          JOIN roles r ON (u.role_id = r.id OR u.role_id::text = r.name)
+          WHERE LOWER(r.name) = 'teacher' OR u.role_id = 4
         `);
         teacherRes.rows.forEach(r => recipientUserIds.add(r.id));
       }
 
-      // 2. Fetch targeted Learners if targetRole is 'all', 'learner', or 'parent'
-      if (normalizedRole === 'all' || normalizedRole === 'learner' || normalizedRole === 'parent') {
+      // 2. Fetch targeted Parents if targetRole is 'all' or 'parent'
+      if (normalizedRole === 'all' || normalizedRole === 'parent' || includeParents) {
+        if (grade || (stream && stream !== 'All' && stream !== 'General') || classId) {
+          const parentQuery = `
+            SELECT DISTINCT c.parent_id, c.secondary_parent_id, pc.parent_id as junction_parent_id
+            FROM children c
+            LEFT JOIN parent_children pc ON pc.child_id = c.id
+            WHERE 1=1
+              ${grade ? `AND c.grade = ${parseInt(grade, 10)}` : ''}
+              ${stream && stream !== 'All' && stream !== 'General' ? `AND (c.stream = '${stream}' OR c.stream IS NULL OR c.stream = 'General')` : ''}
+              ${classId ? `AND c.class_id = ${parseInt(classId, 10)}` : ''}
+          `;
+          const parentRes = await db.query(parentQuery);
+          parentRes.rows.forEach(r => {
+            if (r.parent_id) recipientUserIds.add(r.parent_id);
+            if (r.secondary_parent_id) recipientUserIds.add(r.secondary_parent_id);
+            if (r.junction_parent_id) recipientUserIds.add(r.junction_parent_id);
+          });
+        } else if (normalizedRole === 'parent' || normalizedRole === 'all') {
+          const allParents = await db.query(`
+            SELECT u.id 
+            FROM users u 
+            JOIN roles r ON (u.role_id = r.id OR u.role_id::text = r.name)
+            WHERE LOWER(r.name) = 'parent' OR u.role_id = 2
+          `);
+          allParents.rows.forEach(r => recipientUserIds.add(r.id));
+        }
+      }
+
+      // 3. Fetch targeted Learners if targetRole is 'all' or 'learner'
+      if (normalizedRole === 'all' || normalizedRole === 'learner') {
         let learnerQuery = `
-          SELECT DISTINCT c.learner_user_id AS user_id, c.parent_id
+          SELECT DISTINCT c.learner_user_id AS user_id, c.id
           FROM children c
           WHERE 1=1
         `;
@@ -226,45 +282,19 @@ class NotificationService {
         }
 
         const { rows: matchedLearners } = await db.query(learnerQuery, params);
+        matchedLearners.forEach(l => {
+          if (l.user_id) recipientUserIds.add(l.user_id);
+        });
 
-        for (const learner of matchedLearners) {
-          if ((normalizedRole === 'all' || normalizedRole === 'learner') && learner.user_id) {
-            recipientUserIds.add(learner.user_id);
-          }
-          if ((normalizedRole === 'all' || normalizedRole === 'parent' || includeParents) && learner.parent_id) {
-            recipientUserIds.add(learner.parent_id);
-          }
+        if (matchedLearners.length === 0 && !grade && !stream) {
+          const allLearners = await db.query(`
+            SELECT u.id 
+            FROM users u 
+            JOIN roles r ON (u.role_id = r.id OR u.role_id::text = r.name)
+            WHERE LOWER(r.name) = 'learner' OR u.role_id = 3
+          `);
+          allLearners.rows.forEach(r => recipientUserIds.add(r.id));
         }
-
-        // Also find parents linked via parent_children table
-        if ((normalizedRole === 'all' || normalizedRole === 'parent' || includeParents) && matchedLearners.length > 0) {
-          const childUserIds = matchedLearners.map(m => m.user_id).filter(Boolean);
-          if (childUserIds.length > 0) {
-            const parentRes = await db.query(`
-              SELECT DISTINCT pc.parent_id 
-              FROM parent_children pc
-              JOIN children c ON pc.child_id = c.id
-              WHERE c.learner_user_id = ANY($1::int[])
-            `, [childUserIds]);
-            parentRes.rows.forEach(r => recipientUserIds.add(r.parent_id));
-          }
-        }
-      }
-
-      // 3. Fallback to all parents if parent role chosen and none linked via children table yet
-      if (normalizedRole === 'parent' && recipientUserIds.size === 0) {
-        const pRes = await db.query(`
-          SELECT u.id FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name = 'parent' LIMIT 100
-        `);
-        pRes.rows.forEach(r => recipientUserIds.add(r.id));
-      }
-
-      // Fallback for learners
-      if (normalizedRole === 'learner' && recipientUserIds.size === 0) {
-        const lRes = await db.query(`
-          SELECT u.id FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name = 'learner' LIMIT 100
-        `);
-        lRes.rows.forEach(r => recipientUserIds.add(r.id));
       }
 
       const finalUserIds = Array.from(recipientUserIds);

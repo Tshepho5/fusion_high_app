@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="fsl-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+    <linearGradient id="fsl-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+    <filter id="fsl-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <!-- Outer Gold Rim -->
+  <circle cx="200" cy="200" r="190" fill="#0b1120" stroke="url(#fsl-gold)" stroke-width="6" filter="url(#fsl-shadow)"/>
+  <circle cx="200" cy="200" r="176" fill="none" stroke="url(#fsl-grad)" stroke-width="3" stroke-dasharray="6,4"/>
+
+  <!-- Central Shield -->
+  <path d="M200 65 L285 105 V220 C285 285 200 325 200 325 C200 325 115 285 115 220 V105 Z" fill="url(#fsl-grad)" stroke="url(#fsl-gold)" stroke-width="4"/>
+  <path d="M200 80 L270 115 V215 C270 268 200 305 200 305 C200 305 130 268 130 215 V115 Z" fill="#060913" opacity="0.45"/>
+
+  <!-- Lotus Blossom Emblem (Lotus Gardens) -->
+  <path d="M200 135 C190 160 180 185 200 205 C220 185 210 160 200 135 Z" fill="url(#fsl-gold)"/>
+  <path d="M200 160 C175 165 155 180 165 205 C185 205 195 190 200 160 Z" fill="#38bdf8"/>
+  <path d="M200 160 C225 165 245 180 235 205 C215 205 205 190 200 160 Z" fill="#38bdf8"/>
+
+  <!-- Technology Nodes / Connection Lines -->
+  <circle cx="160" cy="225" r="4" fill="url(#fsl-gold)"/>
+  <circle cx="240" cy="225" r="4" fill="url(#fsl-gold)"/>
+  <line x1="160" y1="225" x2="200" y2="245" stroke="#38bdf8" stroke-width="2"/>
+  <line x1="240" y1="225" x2="200" y2="245" stroke="#38bdf8" stroke-width="2"/>
+
+  <!-- Open Book of Knowledge -->
+  <path d="M160 250 Q200 240 200 255 Q200 240 240 250 V280 Q200 270 200 285 Q200 270 160 280 Z" fill="#ffffff" stroke="url(#fsl-gold)" stroke-width="2"/>
+
+  <!-- Arc Text -->
+  <path id="fsl-arc" d="M 55 200 A 145 145 0 0 1 345 200" fill="none"/>
+  <text fill="#ffffff" font-family="Arial, sans-serif" font-size="15.5" font-weight="900" letter-spacing="1">
+    <textPath href="#fsl-arc" startOffset="50%" text-anchor="middle">FUSION SEC - LOTUS GARDENS</textPath>
+  </text>
+
+  <!-- Motto Ribbon -->
+  <path d="M105 340 L135 325 L200 345 L265 325 L295 340 L280 365 L200 352 L120 365 Z" fill="#060913" stroke="url(#fsl-gold)" stroke-width="2.5"/>
+  <text x="200" y="353" fill="url(#fsl-gold)" font-family="Arial, sans-serif" font-size="11" font-weight="800" text-anchor="middle" letter-spacing="1">INNOVATE • ASPIRE • ACHIEVE</text>
+</svg>

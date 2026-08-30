@@ -26,7 +26,10 @@ import {
   TrendingUp,
   FileText,
   CheckCircle2,
-  Check
+  Check,
+  Building2,
+  Swords,
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSchool } from '../../context/SchoolContext';
@@ -86,7 +89,14 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
   ];
 
   // ADMIN MODULES (ICON + NAME ONLY)
+  const isSuperAdmin = !!user?.is_superadmin;
+
   const adminModules = [
+    ...(isSuperAdmin
+      ? [{ id: 'command-center', label: 'Multi-School Command', icon: Building2, color: 'text-purple-400 bg-purple-500/20 border-purple-500/40' }]
+      : []),
+    { id: 'inter-school', label: 'Inter-School Derbies & League', icon: Swords, color: 'text-amber-400 bg-amber-500/15 border-amber-500/30' },
+    { id: 'consultations', label: 'Parent-Educator Consultations', icon: MessageSquare, color: 'text-cyan-400 bg-cyan-500/15 border-cyan-500/30' },
     { id: 'users', label: 'User Directory & Roles', icon: Users, color: 'text-cyan-400 bg-cyan-500/15 border-cyan-500/30' },
     { id: 'finance', label: 'School Fees & Invoicing', icon: CreditCard, color: 'text-teal-400 bg-teal-500/15 border-teal-500/30' },
     { id: 'marks', label: 'CAPS Mark Audits & SBA', icon: FileSpreadsheet, color: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' },

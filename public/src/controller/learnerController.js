@@ -540,18 +540,44 @@ exports.askAITutor = async (req, res) => {
             return res.status(400).json({ error: 'Please provide a question for the AI Tutor.' });
         }
 
-        // Fetch learner grade if not provided in body
+        // Fetch learner grade & school details
         let targetGrade = grade;
-        if (!targetGrade) {
-            const childRes = await db.query(`SELECT grade FROM children WHERE learner_user_id = $1`, [userId]);
-            targetGrade = childRes.rows[0]?.grade || 10;
+        let schoolContext = null;
+
+        const childRes = await db.query(`
+            SELECT c.grade, c.school_id, s.name, s.circuit, s.district, s.province, s.motto
+            FROM children c
+            LEFT JOIN schools s ON c.school_id = s.id
+            WHERE c.learner_user_id = $1
+            LIMIT 1
+        `, [userId]);
+
+        if (childRes.rows.length > 0) {
+            targetGrade = targetGrade || childRes.rows[0].grade || 10;
+            if (childRes.rows[0].name) {
+                schoolContext = {
+                    name: childRes.rows[0].name,
+                    circuit: childRes.rows[0].circuit,
+                    district: childRes.rows[0].district,
+                    province: childRes.rows[0].province,
+                    motto: childRes.rows[0].motto
+                };
+            }
+        } else if (req.user.school_id) {
+            const schRes = await db.query(`SELECT name, circuit, district, province, motto FROM schools WHERE id = $1`, [req.user.school_id]);
+            if (schRes.rows.length > 0) {
+                schoolContext = schRes.rows[0];
+            }
         }
 
-        const answer = await aiTutor.answerSubjectQuestion(subject, targetGrade, question, topic, history);
+        targetGrade = targetGrade || 10;
+
+        const answer = await aiTutor.answerSubjectQuestion(subject, targetGrade, question, topic, history, schoolContext);
         res.json({
             success: true,
             subject: subject || 'General',
             grade: targetGrade,
+            school: schoolContext?.name || 'Your School',
             answer: answer,
             response: answer
         });

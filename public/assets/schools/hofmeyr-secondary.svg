@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="hf-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#581c87" />
+      <stop offset="100%" stop-color="#14b8a6" />
+    </linearGradient>
+    <linearGradient id="hf-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+    <filter id="hf-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <!-- Outer Gold Rim -->
+  <circle cx="200" cy="200" r="190" fill="#150624" stroke="url(#hf-gold)" stroke-width="6" filter="url(#hf-shadow)"/>
+  <circle cx="200" cy="200" r="176" fill="none" stroke="#14b8a6" stroke-width="3" stroke-dasharray="6,4"/>
+
+  <!-- Central Shield -->
+  <path d="M200 65 L285 105 V220 C285 285 200 325 200 325 C200 325 115 285 115 220 V105 Z" fill="url(#hf-grad)" stroke="url(#hf-gold)" stroke-width="4"/>
+  <path d="M200 80 L270 115 V215 C270 268 200 305 200 305 C200 305 130 268 130 215 V115 Z" fill="#0d0317" opacity="0.45"/>
+
+  <!-- Unbroken Chain to Open Wings of Liberation -->
+  <path d="M165 160 Q200 130 235 160" fill="none" stroke="url(#hf-gold)" stroke-width="3.5"/>
+  <circle cx="170" cy="160" r="5" fill="#14b8a6"/>
+  <circle cx="230" cy="160" r="5" fill="#14b8a6"/>
+  
+  <!-- Torch of Liberation -->
+  <polygon points="196,170 204,170 201,210 199,210" fill="url(#hf-gold)"/>
+  <path d="M192 168 Q200 145 200 140 Q208 145 208 168 Z" fill="#ef4444"/>
+
+  <!-- Open Book at Base -->
+  <path d="M160 245 Q200 235 200 250 Q200 235 240 245 V275 Q200 265 200 280 Q200 265 160 275 Z" fill="#ffffff" stroke="url(#hf-gold)" stroke-width="2"/>
+
+  <!-- Arc Text -->
+  <path id="hf-arc" d="M 55 200 A 145 145 0 0 1 345 200" fill="none"/>
+  <text fill="#ffffff" font-family="Arial, sans-serif" font-size="16.5" font-weight="900" letter-spacing="1">
+    <textPath href="#hf-arc" startOffset="50%" text-anchor="middle">HOFMEYR SECONDARY</textPath>
+  </text>
+
+  <!-- Motto Ribbon -->
+  <path d="M105 340 L135 325 L200 345 L265 325 L295 340 L280 365 L200 352 L120 365 Z" fill="#0d0317" stroke="url(#hf-gold)" stroke-width="2.5"/>
+  <text x="200" y="353" fill="url(#hf-gold)" font-family="Arial, sans-serif" font-size="11" font-weight="800" text-anchor="middle" letter-spacing="1">EDUCATION FOR LIBERATION</text>
+</svg>

@@ -18,14 +18,71 @@ DROP TABLE IF EXISTS subjects CASCADE;
 DROP TABLE IF EXISTS employee_roles CASCADE;
 DROP TABLE IF EXISTS departments CASCADE;
 DROP TABLE IF EXISTS roles CASCADE;
+DROP TABLE IF EXISTS schools CASCADE;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- 0. Core Schools Registry (Multi-School Hierarchy)
+CREATE TABLE IF NOT EXISTS schools (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  slug VARCHAR(100) UNIQUE NOT NULL,
+  domain VARCHAR(255),
+  emis_number VARCHAR(50),
+  circuit VARCHAR(100),
+  district VARCHAR(100),
+  province VARCHAR(100),
+  physical_address TEXT,
+  contact_email VARCHAR(255),
+  contact_phone VARCHAR(50),
+  principal_name VARCHAR(255),
+  logo_url TEXT DEFAULT '/assets/FH.png',
+  badge_url TEXT DEFAULT '/assets/FH.png',
+  primary_color VARCHAR(20) DEFAULT '#4f46e5',
+  secondary_color VARCHAR(20) DEFAULT '#06b6d4',
+  accent_color VARCHAR(20) DEFAULT '#f59e0b',
+  motto TEXT DEFAULT 'Innovate, Lead, Transform',
+  curriculum_type VARCHAR(100) DEFAULT 'CAPS (DBE Limpopo)',
+  grade_range VARCHAR(50) DEFAULT '8-12',
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO schools (id, name, slug, domain, emis_number, circuit, district, province, physical_address, contact_email, contact_phone, principal_name, logo_url, badge_url, primary_color, secondary_color, accent_color, motto, curriculum_type, grade_range)
+VALUES
+  -- 1. Limpopo (Polokwane & Mankweng - Capricorn South District)
+  (1, 'Fusion High School', 'fusion-high', 'fusion-high.co.za', '911220001', 'Polokwane Central Circuit', 'Capricorn South', 'Limpopo', 'Polokwane Central, Limpopo, 0700', 'admin@fusionhigh.co.za', '+27 15 291 0000', 'Dr. T. Makola', '/assets/schools/fusion-high.svg', '/assets/schools/fusion-high.svg', '#4f46e5', '#06b6d4', '#f59e0b', 'Innovate, Lead, Transform', 'CAPS (DBE Limpopo)', '8-12'),
+  (2, 'Mountainview Senior Secondary School', 'mountainview-high', 'mountainview.co.za', '923241054', 'Mankweng Circuit', 'Capricorn South', 'Limpopo', 'Mankweng Unit B/C, Polokwane, 0727', 'info@mountainviewhigh.co.za', '+27 15 267 1100', 'Mr. M. S. Phasha', '/assets/schools/mountainview-high.svg', '/assets/schools/mountainview-high.svg', '#1e40af', '#3b82f6', '#f59e0b', 'Strive for Excellence', 'CAPS (DBE Limpopo)', '8-12'),
+  (3, 'Makgoka High School', 'makgoka-high', 'makgoka.co.za', '923240457', 'Molepo Circuit', 'Capricorn South', 'Limpopo', 'Maclean Farm, Boyne, Mankweng Area, 0727', 'admin@makgoka.co.za', '+27 15 266 0022', 'Mrs. K. E. Molepo', '/assets/schools/makgoka-high.svg', '/assets/schools/makgoka-high.svg', '#065f46', '#10b981', '#fbbf24', 'Thuto Ke Lesedi', 'CAPS (DBE Limpopo)', '8-12'),
+  (4, 'Turfloop High School', 'turfloop-high', 'turfloop.co.za', '923240890', 'Mankweng Circuit', 'Capricorn South', 'Limpopo', 'University Road, Turfloop, Mankweng, 0727', 'principal@turfloophigh.co.za', '+27 15 267 3300', 'Mr. N. J. Mamabolo', '/assets/schools/turfloop-high.svg', '/assets/schools/turfloop-high.svg', '#1e1b4b', '#4338ca', '#991b1b', 'Education for Progress', 'CAPS (DBE Limpopo)', '8-12'),
+  (5, 'Hwiti High School', 'hwiti-high', 'hwiti.co.za', '923240150', 'Mankweng Circuit', 'Capricorn South', 'Limpopo', '118 Zone 1, Hwiti St, Mankweng/Sovenga, 0727', 'info@hwitisecondary.co.za', '+27 15 267 4400', 'Mrs. R. M. Ramokgopa', '/assets/schools/hwiti-high.svg', '/assets/schools/hwiti-high.svg', '#581c87', '#9333ea', '#06b6d4', 'Tsebo Ke Maatla', 'CAPS (DBE Limpopo)', '8-12'),
+  (6, 'Ngwana Mohube Secondary School', 'ngwana-mohube', 'ngwanamohube.co.za', '923260994', 'Mankweng Circuit', 'Capricorn South', 'Limpopo', 'Gamphahlele, Seleteng, Limpopo, 0734', 'admin@ngwanamohube.co.za', '+27 15 267 5500', 'Mr. S. P. Mohube', '/assets/schools/ngwana-mohube.svg', '/assets/schools/ngwana-mohube.svg', '#991b1b', '#ef4444', '#0f172a', 'Thuto Ke Maatla', 'CAPS (DBE Limpopo)', '8-12'),
+  
+  -- 2. Gauteng (Lotus Gardens & Atteridgeville, Pretoria - GDE)
+  (7, 'Fusion Secondary School (Lotus Gardens)', 'fusion-secondary-lotus', 'fusionsecondary.co.za', '700232348', 'Tshwane West District', 'Tshwane West', 'Gauteng', '809 Cyme Crescent, Lotus Gardens, Pretoria, 0008', 'admin@fusionsecondary.co.za', '+27 12 373 0000', 'Dr. T. Makola', '/assets/schools/fusion-secondary-lotus.svg', '/assets/schools/fusion-secondary-lotus.svg', '#4f46e5', '#06b6d4', '#f59e0b', 'Innovate, Aspire, Achieve', 'CAPS (GDE Gauteng)', '8-12'),
+  (8, 'Saulridge Secondary School', 'saulridge-secondary', 'saulridge.co.za', '700232223', 'Tshwane South District (D4)', 'Tshwane South', 'Gauteng', 'Ramokgopa St, Saulsville, Atteridgeville, Pretoria, 0008', 'info@saulridge.co.za', '+27 12 375 6000', 'Mr. K. E. Masemola', '/assets/schools/saulridge-secondary.svg', '/assets/schools/saulridge-secondary.svg', '#1e3a8a', '#f59e0b', '#3b82f6', 'Knowledge is Power', 'CAPS (GDE Gauteng)', '8-12'),
+  (9, 'Phelindaba Secondary School', 'phelindaba-secondary', 'phelindaba.co.za', '700232124', 'Tshwane South District (D4)', 'Tshwane South', 'Gauteng', 'Kgwale St, Atteridgeville, Pretoria, 0008', 'admin@phelindaba.co.za', '+27 12 373 8100', 'Mrs. M. T. Sithole', '/assets/schools/phelindaba-secondary.svg', '/assets/schools/phelindaba-secondary.svg', '#14532d', '#eab308', '#10b981', 'Strive for Success', 'CAPS (GDE Gauteng)', '8-12'),
+  (10, 'Flavius Mareka Secondary School', 'flavius-mareka', 'flaviusmareka.co.za', '700231670', 'Tshwane South District (D4)', 'Tshwane South', 'Gauteng', 'Khoza St, Atteridgeville, Pretoria, 0008', 'principal@flaviusmareka.co.za', '+27 12 373 9200', 'Mr. L. N. Maluleke', '/assets/schools/flavius-mareka.svg', '/assets/schools/flavius-mareka.svg', '#1d4ed8', '#38bdf8', '#fbbf24', 'Excellence in Action', 'CAPS (GDE Gauteng)', '8-12'),
+  (11, 'Dr. W.F. Nkomo Secondary School', 'wf-nkomo-secondary', 'wfnkomo.co.za', '700231613', 'Tshwane South District (D4)', 'Tshwane South', 'Gauteng', '84 Khudu St, Atteridgeville, Pretoria, 0008', 'info@wfnkomo.co.za', '+27 12 375 7300', 'Mr. D. M. Ndlovu', '/assets/schools/wf-nkomo-secondary.svg', '/assets/schools/wf-nkomo-secondary.svg', '#881337', '#f43f5e', '#fbbf24', 'Labor Omnia Vincit (Work Conquers All)', 'CAPS (GDE Gauteng)', '8-12'),
+  (12, 'Hofmeyr Secondary School', 'hofmeyr-secondary', 'hofmeyr.co.za', '700231746', 'Tshwane South District (D4)', 'Tshwane South', 'Gauteng', '1 Mngadi and Mafole St, Atteridgeville, Pretoria, 0008', 'admin@hofmeyr.co.za', '+27 12 373 7400', 'Mrs. S. R. Mogale', '/assets/schools/hofmeyr-secondary.svg', '/assets/schools/hofmeyr-secondary.svg', '#581c87', '#14b8a6', '#f59e0b', 'Education for Liberation', 'CAPS (GDE Gauteng)', '8-12')
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  slug = EXCLUDED.slug,
+  emis_number = EXCLUDED.emis_number,
+  circuit = EXCLUDED.circuit,
+  district = EXCLUDED.district,
+  province = EXCLUDED.province,
+  physical_address = EXCLUDED.physical_address,
+  logo_url = EXCLUDED.logo_url,
+  badge_url = EXCLUDED.badge_url,
+  primary_color = EXCLUDED.primary_color,
+  secondary_color = EXCLUDED.secondary_color,
+  accent_color = EXCLUDED.accent_color,
+  motto = EXCLUDED.motto;
 
 CREATE TABLE roles (
   id SERIAL PRIMARY KEY,
   name VARCHAR(50) UNIQUE NOT NULL);
-
 
 INSERT INTO roles (name)
 VALUES ('admin'),
@@ -33,13 +90,11 @@ VALUES ('admin'),
        ('learner'),
        ('teacher') ON CONFLICT DO NOTHING;
 
-
 CREATE TABLE departments (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) UNIQUE NOT NULL,
   description TEXT
 );
-
 
 INSERT INTO departments (name, description)
 VALUES ('Administration', 'Handles overall school management and administration.'),
@@ -47,24 +102,23 @@ VALUES ('Administration', 'Handles overall school management and administration.
        ('Maintenance', 'Manages cleaning, repairs, and facilities.'),
        ('IT', 'Oversees technology infrastructure and support.') ON CONFLICT DO NOTHING;
 
-
 CREATE TABLE employee_roles (
   id SERIAL PRIMARY KEY,
   name VARCHAR(50) UNIQUE NOT NULL
 );
-
 
 INSERT INTO employee_roles (name)
 VALUES ('teacher'),
        ('Principal'),
        ('Vice_Principal') ON CONFLICT DO NOTHING;
 
-
 CREATE TABLE users
   (id SERIAL PRIMARY KEY,
   email VARCHAR(255) UNIQUE,
   password_hash VARCHAR(255),
   role_id INTEGER REFERENCES roles(id) ON DELETE SET NULL, 
+  school_id INTEGER REFERENCES schools(id) ON DELETE SET NULL,
+  is_superadmin BOOLEAN DEFAULT FALSE,
   full_name VARCHAR(255),
   surname VARCHAR(255),
   id_number VARCHAR(20),
@@ -245,64 +299,68 @@ select * from employees;
 
 
 -- SEEDING SAMPLE DATA (Employees & Workload)
--- 1. Create a Teacher User (Auth Record) 
-
-INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, phone, physical_address, country, race, parent_type)
+-- 1. Master Admin (Global Overseer across all schools) & Dedicated School Admins (Auth Records)
+INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, dob, gender, phone, physical_address, country, race, parent_type)
 VALUES
-       ('202247878@myturf.ul.ac.za', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'admin'), 'Tshepho Letlalo', 'Makula', '0209205494088', '2002-09-20', 'male', '0692606618', '556 Mokgobu street, Maknweng A, Polokwane', 'South Africa', 'Black', 'Father'),
-       ('tbjmaetane1010@gmail.com', '$2a$10$xZ.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 'Thabang', 'Maetane', '0208285930086', '2002-08-28', 'male', '0827637087', '123 maetane street', 'South Sudan', 'Black', 'father'),
-       ('thapeloleshabane05@gmail.com', '$2a$10$yB.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 'Thapelo', 'Leshabane', '0504225825083', '2005-05-22', 'male', '0661420527', '243 Rabothata street', 'South Africa', 'Black', 'Father'),
-       ('202256986@myturf.ul.ac.za', '$2a$10$zC.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 'Minenhle', 'Dlungwane', '0205101032085', '2002-05-10', 'female', '0711943962', 'PV 8364, Atteridgeville, Pretoria', 'South Africa', 'Black', 'Mother'),
-       ('mini.dludlu@gmail.com', '$2a$10$1C.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 'Putla', 'Dludlu', '9907311032084', '2002-05-10', 'female', '0711943962', 'PV 8364, Atteridgeville, Pretoria', 'South Africa', 'Black', 'Mother'),
-       ('mapula@gmail.com', '$2a$10$2C.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 'Mapula', 'Modiba', '9907311032084', '2002-05-10', 'female', '0711943962', 'PV 8364, Atteridgeville, Pretoria', 'South Africa', 'Black', 'Mother')
-       ON CONFLICT DO NOTHING;
+       -- Master Superadmin (Monitors entire multi-school ecosystem)
+       ('202247878@myturf.ul.ac.za', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'admin'), 1, TRUE, 'Tshepho Letlalo', 'Makula', '0209205494088', '2002-09-20', 'male', '0692606618', '556 Mokgobu street, Mankweng A, Polokwane', 'South Africa', 'Black', 'Father'),
+       ('admin@fusionhigh.co.za', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'admin'), 1, TRUE, 'Tshepho Letlalo', 'Makula', '0209205494088', '2002-09-20', 'male', '0692606618', 'Polokwane Central, Limpopo, 0700', 'South Africa', 'Black', 'Father'),
+
+       -- School 2: Mountainview Senior Secondary School Admin
+       ('admin@mountainviewhigh.co.za', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'admin'), 2, FALSE, 'M. S.', 'Phasha', '7803155494081', '1978-03-15', 'male', '0152671100', 'Mankweng Unit B/C, Polokwane, 0727', 'South Africa', 'Black', 'Father'),
+
+       -- School 3: Makgoka High School Admin
+       ('admin@makgoka.co.za', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'admin'), 3, FALSE, 'K. E.', 'Molepo', '8005200494082', '1980-05-20', 'female', '0152660022', 'Maclean Farm, Boyne, Mankweng Area, 0727', 'South Africa', 'Black', 'Mother'),
+
+       -- School 4: Turfloop High School Admin
+       ('principal@turfloophigh.co.za', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'admin'), 4, FALSE, 'N. J.', 'Mamabolo', '7508125494083', '1975-08-12', 'male', '0152673300', 'University Road, Turfloop, Mankweng, 0727', 'South Africa', 'Black', 'Father'),
+
+       -- School 5: Hwiti High School Admin
+       ('admin@hwiti.co.za', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'admin'), 5, FALSE, 'R. M.', 'Ramokgopa', '7909180494084', '1979-09-18', 'female', '0152674400', '118 Zone 1, Hwiti St, Mankweng/Sovenga, 0727', 'South Africa', 'Black', 'Mother'),
+
+       -- School 6: Ngwana Mohube Secondary School Admin
+       ('admin@ngwanamohube.co.za', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'admin'), 6, FALSE, 'S. P.', 'Mohube', '7604105494085', '1976-04-10', 'male', '0152675500', 'Gamphahlele, Seleteng, Limpopo, 0734', 'South Africa', 'Black', 'Father'),
+
+       -- School 7: Fusion Secondary School (Lotus Gardens) Admin
+       ('admin@fusionsecondary.co.za', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'admin'), 7, FALSE, 'Tshepo', 'Makola', '8201015494086', '1982-01-01', 'male', '0123730000', '809 Cyme Crescent, Lotus Gardens, Pretoria, 0008', 'South Africa', 'Black', 'Father'),
+
+       -- School 8: Saulridge Secondary School Admin
+       ('admin@saulridge.co.za', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'admin'), 8, FALSE, 'K. E.', 'Masemola', '7406225494087', '1974-06-22', 'male', '0123756000', 'Ramokgopa St, Saulsville, Atteridgeville, Pretoria, 0008', 'South Africa', 'Black', 'Father'),
+
+       -- School 9: Phelindaba Secondary School Admin
+       ('admin@phelindaba.co.za', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'admin'), 9, FALSE, 'M. T.', 'Sithole', '7709300494088', '1977-09-30', 'female', '0123738100', 'Kgwale St, Atteridgeville, Pretoria, 0008', 'South Africa', 'Black', 'Mother'),
+
+       -- School 10: Flavius Mareka Secondary School Admin
+       ('admin@flaviusmareka.co.za', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'admin'), 10, FALSE, 'L. N.', 'Maluleke', '7302145494089', '1973-02-14', 'male', '0123739200', 'Khoza St, Atteridgeville, Pretoria, 0008', 'South Africa', 'Black', 'Father'),
+
+       -- School 11: Dr. W.F. Nkomo Secondary School Admin
+       ('admin@wfnkomo.co.za', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'admin'), 11, FALSE, 'D. M.', 'Ndlovu', '7107085494080', '1971-07-08', 'male', '0123757300', '84 Khudu St, Atteridgeville, Pretoria, 0008', 'South Africa', 'Black', 'Father'),
+
+       -- School 12: Hofmeyr Secondary School Admin
+       ('admin@hofmeyr.co.za', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'admin'), 12, FALSE, 'S. R.', 'Mogale', '8103250494081', '1981-03-25', 'female', '0123737400', '1 Mngadi and Mafole St, Atteridgeville, Pretoria, 0008', 'South Africa', 'Black', 'Mother'),
+
+       -- Academic Teachers
+       ('tbjmaetane1010@gmail.com', '$2a$10$xZ.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 1, FALSE, 'Thabang', 'Maetane', '0208285930086', '2002-08-28', 'male', '0827637087', '123 maetane street', 'South Sudan', 'Black', 'father'),
+       ('thapeloleshabane05@gmail.com', '$2a$10$yB.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 1, FALSE, 'Thapelo', 'Leshabane', '0504225825083', '2005-05-22', 'male', '0661420527', '243 Rabothata street', 'South Africa', 'Black', 'Father'),
+       ('202256986@myturf.ul.ac.za', '$2a$10$zC.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 1, FALSE, 'Minenhle', 'Dlungwane', '0205101032085', '2002-05-10', 'female', '0711943962', 'PV 8364, Atteridgeville, Pretoria', 'South Africa', 'Black', 'Mother'),
+       ('mini.dludlu@gmail.com', '$2a$10$1C.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 1, FALSE, 'Putla', 'Dludlu', '9907311032084', '2002-05-10', 'female', '0711943962', 'PV 8364, Atteridgeville, Pretoria', 'South Africa', 'Black', 'Mother'),
+       ('mapula@gmail.com', '$2a$10$2C.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5.p6.p7', (SELECT id FROM roles WHERE name = 'teacher'), 1, FALSE, 'Mapula', 'Modiba', '9907311032084', '2002-05-10', 'female', '0711943962', 'PV 8364, Atteridgeville, Pretoria', 'South Africa', 'Black', 'Mother')
+ON CONFLICT (email) DO UPDATE SET
+  role_id = EXCLUDED.role_id,
+  school_id = EXCLUDED.school_id,
+  is_superadmin = EXCLUDED.is_superadmin,
+  full_name = EXCLUDED.full_name,
+  surname = EXCLUDED.surname;
 
 
-Select *
-from users; -- 2. Create the Employee Profile (Professional Workload)
-
-
+-- 2. Create the Employee Profiles (Principals & Teachers)
 INSERT INTO employees (user_id, employee_role_id, full_name, surname, department_id, subjects, subject_codes, grades_taught, classes_taught, phone, email, hired_date)
-SELECT u.id, -- user_id
- er.id, -- employee_role_id
- u.full_name, -- full_name (from users)
- u.surname, -- surname (from users)
- d.id, -- department_id
- ARRAY['Physical Sciences'], -- subjects
- ARRAY['PHSC10', 'PHSC11', 'PHSC12'], -- subject_codes
- ARRAY[10, 11, 12], -- grades_taught
- ARRAY['10A', '11A', '12A'], -- classes_taught
- u.phone, -- phone (from users)
- u.email, -- email (from users)
- '2026-01-15'::DATE -- hired_date
-FROM users u
-JOIN employee_roles er ON er.name = 'teacher'
-JOIN departments d ON d.name = 'Academic'
-WHERE u.email = 'tbjmaetane1010@gmail.com' ON CONFLICT (user_id) DO NOTHING;
-
-
-select *
-from employees;
-
---want to insert the principal in the employee table and he does not teach any subject
-
-INSERT INTO employees (user_id, employee_role_id, full_name, surname, department_id, subjects, subject_codes, grades_taught, classes_taught, phone, email, hired_date)
-SELECT u.id,
-       er.id,
-       u.full_name,
-       u.surname,
-       d.id, -- No academic subjects for the Principal
- '{}', 
- ARRAY[]::TEXT[],
- ARRAY[]::INTEGER[], 
- ARRAY[]::TEXT[], 
- u.phone,
- u.email,
- '2024-01-15'::DATE
+SELECT u.id, er.id, u.full_name, u.surname, d.id, '{}', ARRAY[]::TEXT[], ARRAY[]::INTEGER[], ARRAY[]::TEXT[], u.phone, u.email, '2024-01-15'::DATE
 FROM users u
 JOIN employee_roles er ON er.name = 'Principal'
 JOIN departments d ON d.name = 'Administration'
-WHERE u.email = '202247878@myturf.ul.ac.za' ON CONFLICT (user_id) DO NOTHING;
+WHERE u.role_id = (SELECT id FROM roles WHERE name = 'admin')
+ON CONFLICT (user_id) DO NOTHING;
 
 -- Insert Thapelo Leshabane as the Mathematics (Science Stream) teacher
 

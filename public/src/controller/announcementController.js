@@ -2,7 +2,7 @@ const db = require('../../../db/db');
 const NotificationService = require('../services/notificationService');
 
 exports.createAnnouncement = async (req, res) => {
-    const { title, content, role_target = 'all', grade_target, stream_target, subject_target } = req.body;
+    const { title, content, role_target = 'all', grade_target, stream_target, subject_target, priority = 'Normal' } = req.body;
     try {
         const result = await db.query(
             'INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, subject_target) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
@@ -13,7 +13,9 @@ exports.createAnnouncement = async (req, res) => {
         const authorRes = await db.query('SELECT full_name, surname FROM users WHERE id = $1', [req.user.id]);
         const authorName = authorRes.rows[0] ? `${authorRes.rows[0].full_name} ${authorRes.rows[0].surname || ''}`.trim() : 'School Administration';
 
-        // Dispatch targeted notification to in-app notifications, messages inbox, and email straight
+        const displayTitle = priority === 'Urgent' ? `[URGENT] ${title}` : title;
+
+        // Dispatch targeted notification to in-app notifications, messages inbox, and direct email broadcast
         NotificationService.sendTargeted({
             targetRole: role_target || 'all',
             grade: grade_target,
@@ -21,14 +23,17 @@ exports.createAnnouncement = async (req, res) => {
             subject: subject_target,
             includeParents: true,
             authorId: req.user.id,
-            title: `Announcement: ${title}`,
+            title: displayTitle,
             message: `${authorName}: ${content ? (content.length > 120 ? content.substring(0, 117) + '...' : content) : 'New school announcement published.'}`,
             fullContent: content,
             type: 'announcement',
             targetTab: 'announcements',
             sendToMessages: true,
             sendEmail: true,
-            metadata: { announcement_id: result.rows[0].id }
+            metadata: { 
+                announcement_id: result.rows[0].id,
+                targetAudience: role_target === 'all' ? 'All Portals' : (role_target === 'parent' ? 'Parents' : (role_target === 'learner' ? 'Learners' : 'Teachers'))
+            }
         }).catch(err => console.error('[ANNOUNCEMENT NOTIFICATION ERROR]', err));
 
         res.json(result.rows[0]);
@@ -87,20 +92,31 @@ exports.getAnnouncements = async (req, res) => {
             const gradeVal = learner?.grade || null;
             const streamVal = learner?.stream || null;
 
-            params.push(gradeVal);
-            const pGrade = `$${params.length}`;
-            params.push(streamVal);
-            const pStream = `$${params.length}`;
-
-            query += ` AND (a.role_target = 'learner' OR a.role_target = 'all' OR a.role_target IS NULL)`;
+            query += ` AND (a.role_target IN ('learner', 'all') OR a.role_target IS NULL)`;
             if (gradeVal) {
-                query += ` AND (a.grade_target IS NULL OR a.grade_target = ${pGrade})`;
+                params.push(gradeVal);
+                query += ` AND (a.grade_target IS NULL OR a.grade_target = $${params.length})`;
             }
-            if (streamVal) {
-                query += ` AND (a.stream_target IS NULL OR a.stream_target = 'General' OR a.stream_target = ${pStream})`;
+            if (streamVal && streamVal !== 'General' && streamVal !== 'All') {
+                params.push(streamVal);
+                query += ` AND (a.stream_target IS NULL OR a.stream_target = 'General' OR a.stream_target = 'All' OR a.stream_target = $${params.length})`;
             }
         } else if (userRole === 'parent') {
-            query += ` AND (a.role_target = 'parent' OR a.role_target = 'all' OR a.role_target IS NULL)`;
+            const childrenRes = await db.query(`
+                SELECT DISTINCT c.grade 
+                FROM children c
+                LEFT JOIN parent_children pc ON pc.child_id = c.id
+                WHERE c.parent_id = $1 OR c.secondary_parent_id = $1 OR pc.parent_id = $1
+            `, [userId]);
+            const parentGrades = childrenRes.rows.map(r => r.grade).filter(Boolean);
+
+            if (parentGrades.length > 0) {
+                params.push(parentGrades);
+                const pGrades = `$${params.length}`;
+                query += ` AND (a.role_target IN ('parent', 'all') OR (a.role_target = 'learner' AND (a.grade_target IS NULL OR a.grade_target = ANY(${pGrades}::int[]))) OR a.role_target IS NULL)`;
+            } else {
+                query += ` AND (a.role_target IN ('parent', 'all', 'learner') OR a.role_target IS NULL)`;
+            }
         } else if (userRole === 'teacher') {
             const empRes = await db.query(
                 'SELECT grades_taught FROM employees WHERE user_id = $1 LIMIT 1',
@@ -109,7 +125,7 @@ exports.getAnnouncements = async (req, res) => {
             const emp = empRes.rows[0];
             const grades = emp?.grades_taught || [];
 
-            query += ` AND (a.role_target = 'teacher' OR a.role_target = 'all' OR a.role_target IS NULL)`;
+            query += ` AND (a.role_target IN ('teacher', 'all') OR a.role_target IS NULL)`;
             if (grades.length > 0) {
                 params.push(grades);
                 const pGrades = `$${params.length}`;

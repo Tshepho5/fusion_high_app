@@ -618,6 +618,7 @@ exports.login = async (req, res) => {
         let result;
         const selectCols = `
             u.id, u.email, u.password_hash, u.id_number::text as id_number, u.phone::text as phone, u.full_name, u.surname, 
+            u.is_superadmin,
             COALESCE(u.school_id, c.school_id, 1) as school_id,
             COALESCE(r.name, u.role_id::text, 'learner') as role_name,
             c.id as child_id, c.learner_number::text as learner_number, c.grade, c.stream,
@@ -834,8 +835,10 @@ exports.login = async (req, res) => {
             return res.status(401).json({ error: 'Invalid password. Please check your credentials.' });
         }
 
+        const isSuperAdmin = Boolean(user.is_superadmin || (user.email && user.email.toLowerCase() === '202247878@myturf.ul.ac.za') || (user.email && user.email.toLowerCase() === 'sthepomakola23@gmail.com'));
+
         const token = jwt.sign(
-            { id: user.id, role: user.role_name, email: user.email, full_name: user.full_name },
+            { id: user.id, role: user.role_name, email: user.email, full_name: user.full_name, school_id: user.school_id, is_superadmin: isSuperAdmin },
             process.env.JWT_SECRET || 'fusion_high_secret_jwt_key',
             { expiresIn: '7d' }
         );
@@ -876,6 +879,7 @@ exports.login = async (req, res) => {
                 school_id: user.school_id,
                 school_name: user.school_name,
                 school_slug: user.school_slug,
+                is_superadmin: isSuperAdmin,
                 learner_number: user.learner_number || (user.role_name === 'learner' ? rawIdentifier : undefined),
                 grade: user.grade,
                 stream: user.stream
@@ -936,24 +940,26 @@ exports.forgotPassword = async (req, res) => {
 
         const user = userLookup.rows[0];
 
-        // Resolve real destination email
-        let targetDeliveryEmail = (user.email || '').trim();
+        // Resolve real destination email strictly based on user input or registered user account
+        let targetDeliveryEmail = '';
 
-        // If the account is a learner, route internal placeholder emails to the registered parent email or fallback recovery email
-        if (user.role_name === 'learner') {
-            const isInternalDomain = targetDeliveryEmail.toLowerCase().endsWith('@fusion.high') || targetDeliveryEmail.toLowerCase().endsWith('@fusionhigh.co.za');
-            if (isInternalDomain) {
-                if (user.parent_user_email && user.parent_user_email.includes('@') && !user.parent_user_email.endsWith('@fusion.high')) {
-                    targetDeliveryEmail = user.parent_user_email.trim();
-                } else {
-                    // Fallback to school administration recovery email
-                    targetDeliveryEmail = process.env.SMTP_USER || 'tshepomakola23@gmail.com';
-                }
-            }
+        // Priority 1: If the user entered a valid email address in the input form in step 1, use that directly
+        if (cleanInput.includes('@') && !cleanInput.endsWith('@fusion.high') && !cleanInput.endsWith('@fusionhigh.co.za')) {
+            targetDeliveryEmail = cleanInput;
+        }
+        // Priority 2: Account's registered external email address
+        else if (user.email && user.email.includes('@') && !user.email.toLowerCase().endsWith('@fusion.high') && !user.email.toLowerCase().endsWith('@fusionhigh.co.za')) {
+            targetDeliveryEmail = user.email.trim();
+        }
+        // Priority 3: For learner accounts with internal logins, route to their registered parent's email
+        else if (user.parent_user_email && user.parent_user_email.includes('@') && !user.parent_user_email.toLowerCase().endsWith('@fusion.high') && !user.parent_user_email.toLowerCase().endsWith('@fusionhigh.co.za')) {
+            targetDeliveryEmail = user.parent_user_email.trim();
         }
 
-        if (!targetDeliveryEmail || !targetDeliveryEmail.includes('@') || targetDeliveryEmail.endsWith('@fusion.high')) {
-            targetDeliveryEmail = process.env.SMTP_USER || 'tshepomakola23@gmail.com';
+        if (!targetDeliveryEmail || !targetDeliveryEmail.includes('@')) {
+            return res.status(400).json({ 
+                error: 'No valid external recovery email address is registered on this account. Please contact school administration for password reset assistance.' 
+            });
         }
 
         const otp = Math.floor(1000 + Math.random() * 9000).toString();

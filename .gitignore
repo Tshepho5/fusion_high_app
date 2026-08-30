@@ -21,6 +21,7 @@ yarn-error.log*
 uploads/
 public/uploads/
 
-# OS Metadata
+# OS Metadata & Office Lock Files
 .DS_Store
 Thumbs.db
+~$*

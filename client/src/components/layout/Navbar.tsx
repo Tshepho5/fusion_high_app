@@ -105,33 +105,61 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
       </div>
 
       {/* Middle: Dynamic Multi-School Header & Switcher */}
-      <div className="relative">
-        <button
-          onClick={() => setShowSchoolMenu(!showSchoolMenu)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-dark/80 hover:bg-surface-dark border border-white/10 hover:border-brand-500/40 transition-all text-left shadow-sm group"
-          title="Click to Switch School Environment (Mankweng / Polokwane)"
-        >
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center border shadow-sm transition-transform group-hover:scale-105"
-            style={{
-              backgroundColor: `${currentSchool?.primary_color || '#4f46e5'}20`,
-              borderColor: `${currentSchool?.primary_color || '#4f46e5'}50`
-            }}
-          >
-            <GraduationCap className="w-4 h-4" style={{ color: currentSchool?.primary_color || '#818cf8' }} />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs md:text-sm font-extrabold font-display text-white tracking-wide uppercase line-clamp-1 max-w-[180px] md:max-w-[260px]">
-              {currentSchool?.name || 'Fusion High School'}
-            </span>
-            <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
-              <span>{currentSchool?.circuit || 'Mankweng Circuit'}</span>
-              <span className="text-slate-500">•</span>
-              <span className="text-cyan-400 font-bold">EMIS {currentSchool?.emis_number || '911220001'}</span>
-            </span>
-          </div>
-          <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showSchoolMenu ? 'rotate-180 text-brand-400' : ''}`} />
-        </button>
+      {(() => {
+        const isMasterAdmin = Boolean(user?.is_superadmin || (user?.email && user.email.toLowerCase() === '202247878@myturf.ul.ac.za'));
+        const canSwitch = isMasterAdmin || role !== 'admin';
+
+        return (
+          <div className="relative">
+            <button
+              onClick={() => {
+                if (canSwitch) setShowSchoolMenu(!showSchoolMenu);
+              }}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-dark/80 border border-white/10 transition-all text-left shadow-sm group ${
+                canSwitch ? 'hover:bg-surface-dark hover:border-brand-500/40 cursor-pointer' : 'cursor-default opacity-95'
+              }`}
+              title={
+                isMasterAdmin
+                  ? 'Master Superadmin: Click to switch and monitor any school'
+                  : role === 'admin'
+                  ? 'Institutional Admin: Strictly scoped to your school'
+                  : 'Click to Switch School Environment'
+              }
+            >
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center border shadow-sm transition-transform group-hover:scale-105"
+                style={{
+                  backgroundColor: `${currentSchool?.primary_color || '#4f46e5'}20`,
+                  borderColor: `${currentSchool?.primary_color || '#4f46e5'}50`
+                }}
+              >
+                <GraduationCap className="w-4 h-4" style={{ color: currentSchool?.primary_color || '#818cf8' }} />
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs md:text-sm font-extrabold font-display text-white tracking-wide uppercase line-clamp-1 max-w-[180px] md:max-w-[260px]">
+                    {currentSchool?.name || 'Fusion High School'}
+                  </span>
+                  {isMasterAdmin ? (
+                    <span className="hidden md:inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
+                      Master Admin
+                    </span>
+                  ) : role === 'admin' ? (
+                    <span className="hidden md:inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-mono">
+                      School Admin
+                    </span>
+                  ) : null}
+                </div>
+                <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+                  <span>{currentSchool?.circuit || 'Mankweng Circuit'}</span>
+                  <span className="text-slate-500">•</span>
+                  <span className="text-cyan-400 font-bold">EMIS {currentSchool?.emis_number || '911220001'}</span>
+                </span>
+              </div>
+              {canSwitch && (
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showSchoolMenu ? 'rotate-180 text-brand-400' : ''}`} />
+              )}
+            </button>
 
         {/* Multi-School Switcher Dropdown */}
         {showSchoolMenu && (
@@ -195,6 +223,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
           </div>
         )}
       </div>
+    );
+  })()}
 
       {/* Right: Quick Search, Role, Dark/Light Mode, Theme Palette, Notifications */}
       <div className="flex items-center gap-2 md:gap-3">

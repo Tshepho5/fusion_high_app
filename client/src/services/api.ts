@@ -198,6 +198,8 @@ export const adminService = {
   getUsers: (role?: string) => role && role !== 'all' ? api.get(`/api/admin/users/${role}`).then(res => res.data) : api.get('/api/admin/users').then(res => res.data),
   deleteUser: (id: number | string) => api.delete(`/api/admin/users/${id}`).then(res => res.data),
   getAllTeachers: () => api.get('/api/admin/teachers').then(res => res.data),
+  getSchoolAdmins: () => api.get('/api/admin/school-admins').then(res => res.data),
+  createSchoolAdmin: (payload: any) => api.post('/api/admin/school-admins', payload).then(res => res.data),
   getEmployees: () => api.get('/api/admin/employees').then(res => res.data),
   createEmployee: (payload: any) => api.post('/api/admin/employees', payload).then(res => res.data),
   getParents: () => api.get('/api/admin/parents').then(res => res.data),
@@ -423,6 +425,64 @@ export const bursaryService = {
     learnerId?: number | string;
   }) => api.post('/api/bursaries/track', payload).then(res => res.data),
 };
+
+// Inter-School Competitions & Derby League APIs
+export const interSchoolService = {
+  getCompetitions: (params?: { category?: string; status?: string; school_id?: number | string }) =>
+    api.get('/api/inter-school', { params }).then(res => res.data),
+  getLeaderboard: (params?: { category?: string }) =>
+    api.get('/api/inter-school/leaderboard', { params }).then(res => res.data),
+  createCompetition: (payload: any) =>
+    api.post('/api/inter-school', payload).then(res => res.data),
+  updateScoreAndStatus: (id: number | string, payload: any) =>
+    api.put(`/api/inter-school/${id}`, payload).then(res => res.data),
+};
+
+// Parent-Teacher Consultation Scheduler APIs
+export const consultationService = {
+  getAvailableSlots: (teacherId: number | string, date: string) =>
+    api.get('/api/consultations/available-slots', { params: { teacher_id: teacherId, date } }).then(res => res.data),
+  bookConsultation: (payload: {
+    teacher_id: number | string;
+    child_id?: number | string;
+    subject?: string;
+    consultation_date: string;
+    start_time: string;
+    end_time: string;
+    venue_or_link?: string;
+    parent_notes?: string;
+  }) => api.post('/api/consultations/book', payload).then(res => res.data),
+  getMyConsultations: () =>
+    api.get('/api/consultations/my-consultations').then(res => res.data),
+  updateConsultation: (id: number | string, payload: { status?: string; teacher_notes?: string; venue_or_link?: string }) =>
+    api.put(`/api/consultations/${id}`, payload).then(res => res.data),
+};
+
+// Official CAPS Report Card APIs
+export const reportCardService = {
+  getLearnerReportCards: (childId?: number | string) =>
+    api.get('/api/report-cards/learner', { params: { child_id: childId } }).then(res => res.data),
+  compileReportCard: (payload: {
+    child_id: number | string;
+    term: number | string;
+    academic_year?: number | string;
+    teacher_comment?: string;
+    principal_comment?: string;
+  }) => api.post('/api/report-cards/compile', payload).then(res => res.data),
+  batchCompileAndEmail: (payload: {
+    grade: number | string;
+    term: number | string;
+    academic_year?: number | string;
+    school_id?: number | string;
+  }) => api.post('/api/report-cards/batch-compile-and-email', payload).then(res => res.data),
+};
+
+// Multi-School Command Center (Main Executive Admin Only)
+export const commandCenterService = {
+  getCommandCenterStats: () =>
+    api.get('/api/admin/command-center-stats').then(res => res.data),
+};
+
 
 
 

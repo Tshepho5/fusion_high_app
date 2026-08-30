@@ -38,14 +38,15 @@ exports.getOverviewStats = async (req, res) => {
         const teacherName = `${emp.full_name || req.user.full_name || ''} ${emp.surname || req.user.surname || ''}`.trim();
         const subjectsList = emp.subjects || [];
         const gradesList = emp.grades_taught || [];
+        const schoolId = req.user?.school_id || 1;
 
         const [learnersRes, announcementsRes, assignmentsRes] = await Promise.all([
             db.query(
-                `SELECT COUNT(DISTINCT id) FROM children WHERE ($1::int[] IS NULL OR grade = ANY($1::int[])) OR ($2::text[] IS NULL OR subjects && $2::text[])`,
-                [gradesList.length ? gradesList : null, subjectsList.length ? subjectsList : null]
+                `SELECT COUNT(DISTINCT id) FROM children WHERE school_id = $3 AND (($1::int[] IS NULL OR grade = ANY($1::int[])) OR ($2::text[] IS NULL OR subjects && $2::text[]))`,
+                [gradesList.length ? gradesList : null, subjectsList.length ? subjectsList : null, schoolId]
             ),
-            db.query('SELECT COUNT(*) FROM announcements WHERE created_at >= NOW() - INTERVAL \'30 days\''),
-            db.query('SELECT COUNT(*) FROM announcements WHERE is_assignment = TRUE')
+            db.query('SELECT COUNT(*) FROM announcements WHERE (school_id = $1 OR is_inter_school = TRUE) AND created_at >= NOW() - INTERVAL \'30 days\'', [schoolId]),
+            db.query('SELECT COUNT(*) FROM announcements WHERE school_id = $1 AND is_assignment = TRUE', [schoolId])
         ]);
 
         const totalLearners = parseInt(learnersRes.rows[0]?.count, 10) || 0;

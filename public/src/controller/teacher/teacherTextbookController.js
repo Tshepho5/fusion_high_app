@@ -142,17 +142,34 @@ exports.uploadResource = async (req, res) => {
         };
         const label = typeLabels[resourceType] || 'Learning Resource';
 
-        // Automatically dispatch targeted notifications to learners in this grade & subject!
+        const announcementTitle = `New ${label}: ${title} (${subject})`;
+        const announcementContent = `${teacherName} uploaded a new ${label.toLowerCase()} for Grade ${grade} ${subject} (${term} ${year}): "${title}". Learners can view and download this file directly in their Subjects & Resources portal tab.`;
+
+        // Automatically create in-app announcement entry
+        try {
+            await db.query(`
+                INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, subject_target, created_at)
+                VALUES ($1, $2, 'learner', $3, $4, $5, $6, NOW())
+            `, [announcementTitle, announcementContent, req.user.id, grade, stream, subject]);
+        } catch (annErr) {
+            console.warn('[ANNOUNCEMENT INSERT NOTICE]', annErr.message);
+        }
+
+        // Automatically dispatch targeted in-app notifications and direct email broadcast to learners & parents
         NotificationService.sendTargeted({
             targetRole: 'learner',
             grade: grade,
             stream: stream,
             subject: subject,
             includeParents: true,
-            title: `New ${label}: ${title}`,
-            message: `${teacherName} uploaded a new ${label.toLowerCase()} for ${subject} (Grade ${grade}). Click to view and download.`,
+            authorId: req.user.id,
+            title: announcementTitle,
+            message: announcementContent,
+            fullContent: announcementContent,
             type: resourceType === 'past_paper' ? 'past_paper' : 'resource',
             targetTab: 'subjects',
+            sendToMessages: true,
+            sendEmail: true,
             metadata: {
                 resource_id: uploadedResource.id,
                 subject: subject,
@@ -165,7 +182,7 @@ exports.uploadResource = async (req, res) => {
 
         res.json({
             success: true,
-            message: `${label} uploaded successfully and targeted notifications sent!`,
+            message: `${label} uploaded successfully, announcement published, and notifications dispatched!`,
             resource: uploadedResource
         });
     } catch (err) {

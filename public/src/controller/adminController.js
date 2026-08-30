@@ -4,8 +4,13 @@ const applicationService = require('../services/applicationService');
 
 /**
  * Resolves the target school tenant ID from query, header, or user token.
+ * Dedicated school admins can only view their own school.
+ * Master Admin (superadmin) can query and switch between all schools.
  */
 const getTargetSchoolId = (req) => {
+    if (req.user && !req.user.is_superadmin && req.user.school_id) {
+        return parseInt(req.user.school_id, 10);
+    }
     const raw = req.query.school_id || req.headers['x-school-id'] || req.user?.school_id || 1;
     const parsed = parseInt(raw, 10);
     return isNaN(parsed) ? 1 : parsed;
@@ -40,20 +45,20 @@ exports.getDashboardStats = async (req, res) => {
             db.query(`
                 SELECT r.name AS role, COUNT(u.id) AS count
                 FROM roles r
-                LEFT JOIN users u ON u.role_id = r.id AND (u.school_id = $1 OR (u.school_id IS NULL AND $1 = 1))
+                LEFT JOIN users u ON u.role_id = r.id AND u.school_id = $1
                 WHERE r.name IN ('admin', 'teacher', 'parent')
                 GROUP BY r.name;
             `, [schoolId]),
-            db.query("SELECT COUNT(*) FROM announcements WHERE is_assignment = TRUE AND (school_id = $1 OR (school_id IS NULL AND $1 = 1))", [schoolId]),
-            db.query("SELECT COUNT(*) FROM textbooks WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1))", [schoolId]),
-            db.query("SELECT COUNT(*) FROM progress p JOIN children c ON p.child_id = c.id WHERE (c.school_id = $1 OR (c.school_id IS NULL AND $1 = 1))", [schoolId]),
+            db.query("SELECT COUNT(*) FROM announcements WHERE is_assignment = TRUE AND school_id = $1", [schoolId]),
+            db.query("SELECT COUNT(*) FROM textbooks WHERE school_id = $1", [schoolId]),
+            db.query("SELECT COUNT(*) FROM progress p JOIN children c ON p.child_id = c.id WHERE c.school_id = $1", [schoolId]),
             db.query(`
                 SELECT GREATEST(
-                    (SELECT COUNT(*) FROM children WHERE school_id = $1 OR (school_id IS NULL AND $1 = 1)),
-                    (SELECT COUNT(*) FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name = 'learner' AND (u.school_id = $1 OR (u.school_id IS NULL AND $1 = 1)))
+                    (SELECT COUNT(*) FROM children WHERE school_id = $1),
+                    (SELECT COUNT(*) FROM users u JOIN roles r ON u.role_id = r.id WHERE r.name = 'learner' AND u.school_id = $1)
                 ) AS count
             `, [schoolId]),
-            db.query("SELECT COUNT(*) FROM classes WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1))", [schoolId]),
+            db.query("SELECT COUNT(*) FROM classes WHERE school_id = $1", [schoolId]),
             db.query(`
                 SELECT COALESCE(
                   ROUND(
@@ -62,7 +67,7 @@ exports.getDashboardStats = async (req, res) => {
                 ) as attendance_rate 
                 FROM attendance a
                 JOIN children c ON a.child_id = c.id
-                WHERE (c.school_id = $1 OR (c.school_id IS NULL AND $1 = 1));
+                WHERE c.school_id = $1;
             `, [schoolId]),
             db.query(`
                 SELECT c.grade, COALESCE(
@@ -72,14 +77,14 @@ exports.getDashboardStats = async (req, res) => {
                 ) as rate
                 FROM children c
                 LEFT JOIN attendance a ON c.id = a.child_id
-                WHERE (c.school_id = $1 OR (c.school_id IS NULL AND $1 = 1))
+                WHERE c.school_id = $1
                 GROUP BY c.grade
                 ORDER BY c.grade;
             `, [schoolId]),
             db.query(`
                 SELECT TO_CHAR(created_at, 'YYYY-MM') as month, COUNT(*) as count
                 FROM users
-                WHERE created_at >= NOW() - INTERVAL '6 months' AND (school_id = $1 OR (school_id IS NULL AND $1 = 1))
+                WHERE created_at >= NOW() - INTERVAL '6 months' AND school_id = $1
                 GROUP BY month
                 ORDER BY month;
             `, [schoolId]),
@@ -87,7 +92,7 @@ exports.getDashboardStats = async (req, res) => {
                 SELECT a.status, COUNT(*) as count
                 FROM attendance a
                 JOIN children c ON a.child_id = c.id
-                WHERE (c.school_id = $1 OR (c.school_id IS NULL AND $1 = 1))
+                WHERE c.school_id = $1
                 GROUP BY a.status;
             `, [schoolId]),
             db.query(`
@@ -95,7 +100,7 @@ exports.getDashboardStats = async (req, res) => {
                 FROM progress p
                 JOIN children c ON p.child_id = c.id
                 LEFT JOIN classes cl ON c.class_id = cl.id
-                WHERE (c.school_id = $1 OR (c.school_id IS NULL AND $1 = 1))
+                WHERE c.school_id = $1
                 GROUP BY COALESCE(cl.name, 'Grade ' || c.grade)
                 ORDER BY avg_grade DESC
                 LIMIT 5;
@@ -104,20 +109,20 @@ exports.getDashboardStats = async (req, res) => {
                 SELECT p.id, c.full_name as student_name, c.surname as student_surname, p.subject, p.grade, p.date
                 FROM progress p
                 JOIN children c ON p.child_id = c.id
-                WHERE (c.school_id = $1 OR (c.school_id IS NULL AND $1 = 1))
+                WHERE c.school_id = $1
                 ORDER BY p.date DESC
                 LIMIT 5;
             `, [schoolId]),
-            db.query("SELECT COUNT(*) FROM behavior_incidents WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1))", [schoolId]),
+            db.query("SELECT COUNT(*) FROM behavior_incidents WHERE school_id = $1", [schoolId]),
             db.query(`
                 SELECT a.id, a.title, a.content, a.created_at, COALESCE(CONCAT(u.full_name, ' ', u.surname), 'Principal Admin') AS author_name 
                 FROM announcements a 
                 LEFT JOIN users u ON a.author_id = u.id 
-                WHERE (a.school_id = $1 OR (a.school_id IS NULL AND $1 = 1))
+                WHERE a.school_id = $1
                 ORDER BY a.created_at DESC 
                 LIMIT 3;
             `, [schoolId]),
-            db.query("SELECT id, name, timetable_data FROM timetables WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1)) ORDER BY created_at DESC LIMIT 1;", [schoolId]),
+            db.query("SELECT id, name, timetable_data FROM timetables WHERE school_id = $1 ORDER BY created_at DESC LIMIT 1;", [schoolId]),
             db.query(`
                 SELECT 
                     COUNT(*) as total,
@@ -125,7 +130,7 @@ exports.getDashboardStats = async (req, res) => {
                     COUNT(CASE WHEN status = 'enrolled' THEN 1 END) as enrolled,
                     COUNT(CASE WHEN status IN ('submitted', 'action_required', 'waitlisted') THEN 1 END) as pending
                 FROM applications
-                WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1));
+                WHERE school_id = $1;
             `, [schoolId])
         ]);
 
@@ -141,7 +146,7 @@ exports.getDashboardStats = async (req, res) => {
         stats.progress_entries = parseInt(progressStats.rows[0]?.count || 0, 10);
         
         const rawClassCount = parseInt(classStats.rows[0]?.count || 0, 10);
-        stats.total_classes = rawClassCount > 0 ? rawClassCount : 13;
+        stats.total_classes = rawClassCount;
         stats.classes = stats.total_classes;
 
         // Admissions stats
@@ -151,32 +156,32 @@ exports.getDashboardStats = async (req, res) => {
         stats.enrolled_admissions = parseInt(adm.enrolled, 10);
         stats.pending_admissions = parseInt(adm.pending, 10);
 
-        // Enrolled learners count (normalized across all fields)
+        // Enrolled learners count (strictly real live count from database)
         const enrolledCount = parseInt(enrolledLearnersStats.rows[0]?.count || 0, 10);
-        stats.learner = enrolledCount > 0 ? enrolledCount : 21;
+        stats.learner = enrolledCount;
         stats.enrolled_learners = stats.learner;
         stats.total_learners = stats.learner;
         stats.totalLearners = stats.learner;
         stats.enrolledCount = stats.learner;
 
-        // Staff & Teachers count
+        // Staff & Teachers count (strictly real live count for this school)
         let staffCount = parseInt(stats.teacher || 0, 10);
         try {
-            const empRes = await db.query("SELECT COUNT(*) FROM employees");
+            const empRes = await db.query("SELECT COUNT(*) FROM employees WHERE school_id = $1", [schoolId]);
             const empCount = parseInt(empRes.rows[0]?.count || 0, 10);
             if (empCount > staffCount) staffCount = empCount;
         } catch (e) {}
 
-        stats.teacher = staffCount > 0 ? staffCount : 4;
+        stats.teacher = staffCount;
         stats.staff = stats.teacher;
         stats.total_teachers = stats.teacher;
         stats.totalTeachers = stats.teacher;
 
-        // Role counts
+        // Role counts (strictly real live values)
         stats.role_counts = {
-            admin: parseInt(stats.admin || 1, 10),
+            admin: parseInt(stats.admin || 0, 10),
             teacher: stats.teacher,
-            parent: parseInt(stats.parent || 1, 10),
+            parent: parseInt(stats.parent || 0, 10),
             learner: stats.learner
         };
 
@@ -355,9 +360,18 @@ exports.createEmployee = async (req, res) => {
 
         // Send Welcome & Credentials Email to the newly added employee
         try {
-            const host = req.get('host') || 'localhost:4000';
-            const protocol = req.protocol || 'http';
-            const baseUrl = `${protocol}://${host}`;
+            let baseUrl = typeof req.get === 'function' ? req.get('origin') : null;
+            if (!baseUrl && typeof req.get === 'function' && req.get('referer')) {
+                try {
+                    const u = new URL(req.get('referer'));
+                    baseUrl = `${u.protocol}//${u.host}`;
+                } catch (e) {}
+            }
+            if (!baseUrl) {
+                const host = (typeof req.get === 'function' && req.get('host')) || 'localhost:4000';
+                const protocol = req.protocol || 'http';
+                baseUrl = `${protocol}://${host}`;
+            }
 
             await emailService.sendEmployeeWelcome({
                 name: full_name.trim(),
@@ -526,15 +540,27 @@ exports.createParent = async (req, res) => {
 
         // 6. Send Welcome & Credentials Email with Temporary Password
         try {
-            const host = req.get('host') || 'localhost:4000';
-            const protocol = req.protocol || 'http';
-            const baseUrl = `${protocol}://${host}`;
+            let baseUrl = typeof req.get === 'function' ? req.get('origin') : null;
+            if (!baseUrl && typeof req.get === 'function' && req.get('referer')) {
+                try {
+                    const u = new URL(req.get('referer'));
+                    baseUrl = `${u.protocol}//${u.host}`;
+                } catch (e) {}
+            }
+            if (!baseUrl) {
+                const host = (typeof req.get === 'function' && req.get('host')) || 'localhost:4000';
+                const protocol = req.protocol || 'http';
+                baseUrl = `${protocol}://${host}`;
+            }
 
             await emailService.sendParentWelcome({
                 name: full_name.trim(),
                 surname: surname.trim(),
                 email: normalizedEmail,
                 temporaryPassword: initialPassword,
+                childName: linkedChild ? `${linkedChild.full_name || ''} ${linkedChild.surname || ''}`.trim() : null,
+                learnerNumber: linkedChild?.learner_number || null,
+                grade: linkedChild?.grade || null,
                 baseUrl
             });
             console.log(`[EMAIL] Parent welcome email sent to ${normalizedEmail}`);
@@ -572,6 +598,163 @@ exports.createParent = async (req, res) => {
 };
 
 /**
+ * Main Executive Administrator (SuperAdmin) creates a dedicated SubAdmin for a specific school.
+ * Dispatches an automated email to the new SubAdmin with their credentials and school details.
+ */
+exports.createSchoolAdmin = async (req, res) => {
+    if (!req.user.is_superadmin) {
+        return res.status(403).json({ error: 'Forbidden: Only the Main Executive Administrator can appoint SubAdmins for schools.' });
+    }
+
+    const bcrypt = require('bcryptjs');
+    const {
+        full_name,
+        surname,
+        email,
+        phone,
+        id_number,
+        password,
+        school_id,
+        gender,
+        physical_address
+    } = req.body;
+
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    if (!full_name || !surname || !normalizedEmail) {
+        return res.status(400).json({ error: 'Full name, surname, and email are required to create a school admin.' });
+    }
+
+    const targetSchoolId = parseInt(school_id, 10);
+    if (!targetSchoolId || isNaN(targetSchoolId)) {
+        return res.status(400).json({ error: 'A valid target school must be specified for the SubAdmin.' });
+    }
+
+    try {
+        // 1. Check duplicate email
+        const existing = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [normalizedEmail]);
+        if (existing.rows.length > 0) {
+            return res.status(400).json({ error: 'A user account with this email address already exists.' });
+        }
+
+        // 2. Fetch school details
+        const schoolRes = await db.query('SELECT id, name, slug, circuit, province, emis_number FROM schools WHERE id = $1', [targetSchoolId]);
+        if (schoolRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Target school not found.' });
+        }
+        const school = schoolRes.rows[0];
+
+        // 3. Hash password
+        const initialPassword = password || 'Admin@2026';
+        const hash = await bcrypt.hash(initialPassword, 10);
+
+        // 4. Role ID 1 = 'admin'
+        const roleRes = await db.query("SELECT id FROM roles WHERE name = 'admin'");
+        const roleId = roleRes.rows[0]?.id || 1;
+
+        // 5. Insert new SubAdmin
+        const insertQuery = `
+            INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, phone, gender, physical_address, school_id, is_superadmin)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, FALSE)
+            RETURNING id, email, full_name, surname, phone, school_id, is_superadmin, created_at;
+        `;
+        const result = await db.query(insertQuery, [
+            normalizedEmail,
+            hash,
+            roleId,
+            full_name.trim(),
+            surname.trim(),
+            id_number || null,
+            phone || null,
+            gender || null,
+            physical_address || null,
+            targetSchoolId
+        ]);
+
+        const newAdmin = result.rows[0];
+
+        // 6. Send Onboarding Email to the new School Admin
+        let baseUrl = typeof req.get === 'function' ? req.get('origin') : null;
+        if (!baseUrl && typeof req.get === 'function' && req.get('referer')) {
+            try {
+                const u = new URL(req.get('referer'));
+                baseUrl = `${u.protocol}//${u.host}`;
+            } catch (e) {}
+        }
+        if (!baseUrl) {
+            const host = (typeof req.get === 'function' && req.get('host')) || `localhost:${process.env.PORT || 4000}`;
+            const protocol = req.protocol || 'http';
+            baseUrl = `${protocol}://${host}`;
+        }
+
+        try {
+            await emailService.sendSchoolAdminWelcome({
+                name: full_name.trim(),
+                surname: surname.trim(),
+                email: normalizedEmail,
+                temporaryPassword: initialPassword,
+                schoolName: school.name,
+                circuit: school.circuit,
+                province: school.province,
+                emisNumber: school.emis_number,
+                baseUrl
+            });
+            console.log(`[SUBADMIN CREATED] Welcome email dispatched to ${normalizedEmail} for school ${school.name}`);
+        } catch (mailErr) {
+            console.error('[SUBADMIN EMAIL ERROR] Could not dispatch welcome email:', mailErr.message);
+        }
+
+        res.status(201).json({
+            success: true,
+            message: `SubAdmin appointed successfully for ${school.name}. Onboarding email with credentials dispatched to ${normalizedEmail}.`,
+            admin: {
+                ...newAdmin,
+                school_name: school.name,
+                school_slug: school.slug
+            }
+        });
+    } catch (err) {
+        console.error('Error creating school admin:', err);
+        res.status(500).json({ error: 'Failed to create school admin: ' + err.message });
+    }
+};
+
+/**
+ * Returns all school admins across all schools (SuperAdmin only).
+ */
+exports.getAllSchoolAdmins = async (req, res) => {
+    if (!req.user.is_superadmin) {
+        return res.status(403).json({ error: 'Forbidden: Only the Main Administrator can view the global SubAdmins list.' });
+    }
+    try {
+        const query = `
+            SELECT 
+                u.id,
+                u.email,
+                u.full_name,
+                u.surname,
+                u.phone,
+                u.school_id,
+                u.is_superadmin,
+                u.created_at,
+                s.name AS school_name,
+                s.slug AS school_slug,
+                s.circuit AS school_circuit,
+                s.province AS school_province
+            FROM users u
+            JOIN roles r ON u.role_id = r.id
+            LEFT JOIN schools s ON u.school_id = s.id
+            WHERE r.name = 'admin'
+            ORDER BY u.is_superadmin DESC, s.name ASC, u.surname ASC;
+        `;
+        const { rows } = await db.query(query);
+        res.json({ success: true, admins: rows });
+    } catch (err) {
+        console.error('Error fetching school admins:', err);
+        res.status(500).json({ error: 'Failed to retrieve school administrators: ' + err.message });
+    }
+};
+
+/**
  * Gets all registered parents with linked children summary.
  */
 exports.getAllParents = async (req, res) => {
@@ -604,7 +787,7 @@ exports.getAllParents = async (req, res) => {
             JOIN roles r ON u.role_id = r.id
             LEFT JOIN parent_children pc ON pc.parent_id = u.id
             LEFT JOIN children c ON pc.child_id = c.id
-            WHERE r.name = 'parent' AND (u.school_id = $1 OR c.school_id = $1 OR (u.school_id IS NULL AND $1 = 1))
+            WHERE r.name = 'parent' AND (u.school_id = $1 OR c.school_id = $1)
             GROUP BY u.id
             ORDER BY u.created_at DESC;
         `;
@@ -793,7 +976,7 @@ exports.getAllEmployees = async (req, res) => {
             JOIN users u ON e.user_id = u.id
             LEFT JOIN departments d ON e.department_id = d.id
             LEFT JOIN employee_roles er ON e.employee_role_id = er.id
-            WHERE (u.school_id = $1 OR (u.school_id IS NULL AND $1 = 1))
+            WHERE u.school_id = $1
             ORDER BY u.surname, u.full_name;
         `;
         const { rows } = await db.query(query, [schoolId]);
@@ -831,7 +1014,7 @@ exports.getAllLearners = async (req, res) => {
             LEFT JOIN users u ON c.learner_user_id = u.id
             LEFT JOIN classes cl ON c.class_id = cl.id
             LEFT JOIN users p ON c.parent_id = p.id
-            WHERE (c.school_id = $1 OR u.school_id = $1 OR (c.school_id IS NULL AND u.school_id IS NULL AND $1 = 1))
+            WHERE c.school_id = $1 OR u.school_id = $1
             ORDER BY c.grade, c.surname, c.full_name;
         `;
         const { rows } = await db.query(query, [schoolId]);
@@ -849,17 +1032,69 @@ exports.getSchoolMetadata = async (req, res) => {
     try {
         const schoolId = getTargetSchoolId(req);
         const [deptsRes, empRolesRes, classesRes, subjectsRes] = await Promise.all([
-            db.query('SELECT id, name, description FROM departments WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1)) ORDER BY id', [schoolId]),
+            db.query('SELECT id, name, description FROM departments WHERE school_id = $1 ORDER BY id', [schoolId]),
             db.query('SELECT id, name FROM employee_roles ORDER BY id'),
-            db.query('SELECT id, name, grade, stream FROM classes WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1)) ORDER BY grade, name', [schoolId]),
-            db.query('SELECT id, name, code, grade, stream FROM subjects WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1)) ORDER BY grade, name', [schoolId])
+            db.query('SELECT id, name, grade, stream FROM classes WHERE school_id = $1 ORDER BY grade, name', [schoolId]),
+            db.query('SELECT id, name, code, grade, stream FROM subjects WHERE school_id = $1 ORDER BY grade, name', [schoolId])
         ]);
 
+        let departments = deptsRes.rows;
+        if (departments.length === 0) {
+            departments = [
+                { id: 1, name: 'Administration & Management', description: 'School Leadership' },
+                { id: 2, name: 'Academic & Teaching Staff', description: 'Subject Educators' },
+                { id: 3, name: 'Sciences & Mathematics', description: 'STEM Curriculum' },
+                { id: 4, name: 'Humanities & Languages', description: 'Languages & Social Sciences' },
+                { id: 5, name: 'Commerce & Business', description: 'Commercial Subjects' }
+            ];
+        }
+
+        let classes = classesRes.rows;
+        if (classes.length === 0) {
+            classes = [
+                { id: 81, name: 'Grade 8A', grade: 8, stream: 'General' },
+                { id: 82, name: 'Grade 8B', grade: 8, stream: 'General' },
+                { id: 91, name: 'Grade 9A', grade: 9, stream: 'General' },
+                { id: 92, name: 'Grade 9B', grade: 9, stream: 'General' },
+                { id: 101, name: 'Grade 10A', grade: 10, stream: 'Science' },
+                { id: 102, name: 'Grade 10B', grade: 10, stream: 'Commerce' },
+                { id: 103, name: 'Grade 10C', grade: 10, stream: 'General' },
+                { id: 111, name: 'Grade 11A', grade: 11, stream: 'Science' },
+                { id: 112, name: 'Grade 11B', grade: 11, stream: 'Commerce' },
+                { id: 121, name: 'Grade 12A', grade: 12, stream: 'Science' },
+                { id: 122, name: 'Grade 12B', grade: 12, stream: 'Commerce' }
+            ];
+        }
+
+        let subjects = subjectsRes.rows;
+        if (subjects.length === 0) {
+            subjects = [
+                { id: 1, name: 'Mathematics', code: 'MATH', grade: 10, stream: 'General' },
+                { id: 2, name: 'Mathematical Literacy', code: 'MLIT', grade: 10, stream: 'General' },
+                { id: 3, name: 'Physical Sciences', code: 'PHSC', grade: 10, stream: 'Science' },
+                { id: 4, name: 'Life Sciences', code: 'LFSC', grade: 10, stream: 'Science' },
+                { id: 5, name: 'Accounting', code: 'ACCT', grade: 10, stream: 'Commerce' },
+                { id: 6, name: 'Business Studies', code: 'BSTD', grade: 10, stream: 'Commerce' },
+                { id: 7, name: 'Economics', code: 'ECON', grade: 10, stream: 'Commerce' },
+                { id: 8, name: 'English First Additional Language', code: 'EFAL', grade: 10, stream: 'General' },
+                { id: 9, name: 'English Home Language', code: 'ENGHL', grade: 10, stream: 'General' },
+                { id: 10, name: 'Geography', code: 'GEOG', grade: 10, stream: 'General' },
+                { id: 11, name: 'History', code: 'HIST', grade: 10, stream: 'General' },
+                { id: 12, name: 'Tourism', code: 'TOUR', grade: 10, stream: 'General' },
+                { id: 13, name: 'Life Orientation', code: 'LIFE', grade: 10, stream: 'General' },
+                { id: 14, name: 'Natural Sciences', code: 'NSCI', grade: 8, stream: 'General' },
+                { id: 15, name: 'Social Sciences', code: 'SSCI', grade: 8, stream: 'General' },
+                { id: 16, name: 'Economic & Management Sciences', code: 'EMS', grade: 8, stream: 'General' },
+                { id: 17, name: 'Technology', code: 'TECH', grade: 8, stream: 'General' },
+                { id: 18, name: 'Creative Arts', code: 'ARTS', grade: 8, stream: 'General' }
+            ];
+        }
+
         res.json({
-            departments: deptsRes.rows,
+            departments,
             employee_roles: empRolesRes.rows,
-            classes: classesRes.rows,
-            subjects: subjectsRes.rows
+            classes,
+            subjects
         });
     } catch (err) {
         console.error('Error fetching school metadata:', err);
@@ -1986,4 +2221,123 @@ exports.sendSundayParentDigest = async (req, res) => {
         res.status(500).json({ error: 'Failed to dispatch weekly parent digest: ' + err.message });
     }
 };
+
+/**
+ * Multi-School Command Center: Aggregates real-time side-by-side metrics across all registered schools
+ * Exclusively designed for the Main Executive Administrator.
+ */
+exports.getMultiSchoolCommandCenterStats = async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                s.id,
+                s.name,
+                s.slug,
+                s.circuit,
+                s.district,
+                s.province,
+                s.emis_number,
+                s.principal_name,
+                s.contact_email,
+                s.contact_phone,
+                s.logo_url,
+                s.primary_color,
+                s.secondary_color,
+                s.motto,
+                -- Enrolled Learners
+                COALESCE((
+                    SELECT COUNT(c.id)::int 
+                    FROM children c 
+                    WHERE c.school_id = s.id
+                ), 0) AS learners_count,
+                -- Academic & General Staff
+                COALESCE((
+                    SELECT COUNT(DISTINCT e.id)::int 
+                    FROM employees e 
+                    WHERE e.school_id = s.id
+                ), 0) AS staff_count,
+                -- Classrooms
+                COALESCE((
+                    SELECT COUNT(cls.id)::int 
+                    FROM classes cls 
+                    WHERE cls.school_id = s.id
+                ), 0) AS classes_count,
+                -- Registered Parents
+                COALESCE((
+                    SELECT COUNT(DISTINCT pc.parent_id)::int 
+                    FROM children c 
+                    JOIN parent_children pc ON c.id = pc.child_id 
+                    WHERE c.school_id = s.id
+                ), 0) AS parents_count,
+                -- Total Fees Invoiced
+                COALESCE((
+                    SELECT SUM(fi.amount)::numeric(12,2)
+                    FROM fee_invoices fi
+                    WHERE fi.school_id = s.id
+                ), 0.00) AS total_invoiced,
+                -- Total Fees Collected
+                COALESCE((
+                    SELECT SUM(fi.paid_amount)::numeric(12,2)
+                    FROM fee_invoices fi
+                    WHERE fi.school_id = s.id
+                ), 0.00) AS total_collected,
+                -- Average Attendance Percentage
+                COALESCE((
+                    SELECT ROUND((COUNT(CASE WHEN att.status = 'present' THEN 1 END)::numeric / NULLIF(COUNT(att.id), 0)) * 100, 1)
+                    FROM attendance att
+                    JOIN children c ON att.child_id = c.id
+                    WHERE c.school_id = s.id
+                ), 95.0) AS avg_attendance_pct,
+                -- Appointed SubAdmins
+                COALESCE((
+                    SELECT json_agg(json_build_object(
+                        'id', u.id,
+                        'name', u.full_name || ' ' || COALESCE(u.surname, ''),
+                        'email', u.email,
+                        'phone', u.phone
+                    ))
+                    FROM users u
+                    WHERE u.school_id = s.id AND u.role_id = 1 AND (u.is_superadmin IS FALSE OR u.is_superadmin IS NULL)
+                ), '[]'::json) AS subadmins
+            FROM schools s
+            WHERE s.is_active = TRUE
+            ORDER BY s.id ASC;
+        `;
+
+        const { rows: schoolStats } = await db.query(query);
+
+        // Compute Global Macro Totals
+        const macroTotals = schoolStats.reduce((acc, sch) => {
+            acc.total_schools += 1;
+            acc.total_learners += Number(sch.learners_count) || 0;
+            acc.total_staff += Number(sch.staff_count) || 0;
+            acc.total_classes += Number(sch.classes_count) || 0;
+            acc.total_invoiced += Number(sch.total_invoiced) || 0;
+            acc.total_collected += Number(sch.total_collected) || 0;
+            return acc;
+        }, {
+            total_schools: 0,
+            total_learners: 0,
+            total_staff: 0,
+            total_classes: 0,
+            total_invoiced: 0,
+            total_collected: 0
+        });
+
+        // Collection efficiency
+        macroTotals.collection_rate_pct = macroTotals.total_invoiced > 0 
+            ? Math.round((macroTotals.total_collected / macroTotals.total_invoiced) * 100) 
+            : 100;
+
+        res.json({
+            success: true,
+            macro_totals: macroTotals,
+            schools: schoolStats
+        });
+    } catch (err) {
+        console.error('Error fetching multi-school command center stats:', err);
+        res.status(500).json({ error: 'Failed to retrieve command center analytics: ' + err.message });
+    }
+};
+
 

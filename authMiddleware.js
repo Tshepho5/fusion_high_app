@@ -34,9 +34,9 @@ const requireRole = (roles) => async (req, res, next) => {
     }
 
     try {
-        // Query PostgreSQL database live as sole source of truth for RBAC
+        // Query PostgreSQL database live as sole source of truth for RBAC and Multi-Tenant Isolation
         const roleRes = await db.query(
-            `SELECT r.name as role_name 
+            `SELECT u.id, u.email, u.school_id, u.is_superadmin, r.name as role_name 
              FROM users u 
              LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
              WHERE u.id::text = $1::text`,
@@ -47,11 +47,13 @@ const requireRole = (roles) => async (req, res, next) => {
             return res.status(401).json({ error: 'Unauthorized: User account not found in database.' });
         }
 
-        const dbRole = roleRes.rows[0].role_name;
-        req.user.role = dbRole; // Enforce live role from PostgreSQL database
+        const row = roleRes.rows[0];
+        req.user.role = row.role_name; // Enforce live role from PostgreSQL database
+        req.user.school_id = row.school_id;
+        req.user.is_superadmin = Boolean(row.is_superadmin || (row.email && row.email.toLowerCase() === '202247878@myturf.ul.ac.za'));
 
-        if (!allowedRoles.includes(dbRole)) {
-            return res.status(403).json({ error: `Forbidden: Insufficient permissions for role '${dbRole}'.` });
+        if (!allowedRoles.includes(row.role_name)) {
+            return res.status(403).json({ error: `Forbidden: Insufficient permissions for role '${row.role_name}'.` });
         }
 
         next();

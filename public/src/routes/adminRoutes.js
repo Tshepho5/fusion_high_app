@@ -4,14 +4,20 @@ const adminController = require('../controller/adminController');
 const timetableController = require('../controller/timetableController');
 const { auth, isAdmin } = require('../../../authMiddleware.js');
 
-// Admin Dashboard Stats
+// Admin Dashboard Stats & Multi-School Command Center
 router.get('/stats', auth, isAdmin, adminController.getDashboardStats);
+router.get('/command-center-stats', auth, isAdmin, adminController.getMultiSchoolCommandCenterStats);
 
 // User & Account Management
 router.get('/users', auth, isAdmin, adminController.getAllUsers);
 router.get('/users/:role', auth, isAdmin, adminController.getUsersByRole);
 router.delete('/users/:id', auth, isAdmin, adminController.deleteUser);
 router.get('/teachers', auth, isAdmin, adminController.getAllTeachers);
+
+// SubAdmin / School Administrator Management (Main Admin only)
+router.get('/school-admins', auth, isAdmin, adminController.getAllSchoolAdmins);
+router.post('/school-admins', auth, isAdmin, adminController.createSchoolAdmin);
+router.post('/create-school-admin', auth, isAdmin, adminController.createSchoolAdmin);
 
 // Employee Management (matching employees table in schema.sql)
 router.get('/employees', auth, isAdmin, adminController.getAllEmployees);

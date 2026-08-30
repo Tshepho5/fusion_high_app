@@ -13,7 +13,8 @@ import { SchoolCalendar } from '../../components/common/SchoolCalendar';
 import { LearnerMessages } from '../learner/LearnerMessages';
 import { LearnerProfile } from '../learner/LearnerProfile';
 import { LearnerSettings } from '../learner/LearnerSettings';
-import { TeacherPTC } from '../../components/teacher/TeacherPTC';
+import { ParentTeacherConsultations } from '../../components/parent/ParentTeacherConsultations';
+import { InterSchoolCompetitions } from '../../components/common/InterSchoolCompetitions';
 import { TeacherConduct } from '../../components/teacher/TeacherConduct';
 import { ExamSeatingManager } from '../../components/common/ExamSeatingManager';
 import { SportsExtracurriculars } from '../../components/common/SportsExtracurriculars';
@@ -117,7 +118,8 @@ export const TeacherDashboard: React.FC = () => {
         <TeacherResources onNavigateTab={handleSelectTab} />
       )}
       {activeTab === 'ai-tools' && <TeacherAITools />}
-      {activeTab === 'ptc' && <TeacherPTC />}
+      {(activeTab === 'ptc' || activeTab === 'consultations') && <ParentTeacherConsultations />}
+      {activeTab === 'inter-school' && <InterSchoolCompetitions />}
       {activeTab === 'conduct' && <TeacherConduct />}
       {activeTab === 'my-leave' && <EducatorLeaveReliefManager />}
       {activeTab === 'exam-seating' && <ExamSeatingManager />}

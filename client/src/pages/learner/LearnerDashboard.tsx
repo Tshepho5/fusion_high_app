@@ -15,6 +15,7 @@ import { SchoolCalendar } from '../../components/common/SchoolCalendar';
 import { LearnerCareerAdvisor } from '../../components/learner/LearnerCareerAdvisor';
 import { ExamSeatingManager } from '../../components/common/ExamSeatingManager';
 import { SportsExtracurriculars } from '../../components/common/SportsExtracurriculars';
+import { InterSchoolCompetitions } from '../../components/common/InterSchoolCompetitions';
 import { TextbookAssetTracker } from '../../components/common/TextbookAssetTracker';
 import { LearnerAssignments } from '../../components/learner/LearnerAssignments';
 import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
@@ -135,6 +136,7 @@ export const LearnerDashboard: React.FC = () => {
       {activeTab === 'finance' && <SchoolFeesManager userRole="learner" />}
       {activeTab === 'exam-seating' && <ExamSeatingManager />}
       {activeTab === 'sports' && <SportsExtracurriculars />}
+      {activeTab === 'inter-school' && <InterSchoolCompetitions />}
       {activeTab === 'textbooks' && <TextbookAssetTracker />}
       {activeTab === 'reports' && <CapsReportCard />}
       {activeTab === 'timetable' && <LearnerTimetable />}

@@ -1,7 +1,7 @@
 const db = require('../../../db/db');
 const emailService = require('../services/emailService');
 
-// Ensure timetables table is initialized with grade, stream, and status columns
+// Ensure timetables table is initialized with grade, stream, status, and school_id columns
 async function ensureTimetablesTable() {
     try {
         await db.query(`
@@ -13,6 +13,7 @@ async function ensureTimetablesTable() {
                 timetable_data JSONB NOT NULL,
                 status VARCHAR(50) DEFAULT 'draft_teachers',
                 is_active BOOLEAN DEFAULT TRUE,
+                school_id INT DEFAULT 1,
                 created_by INT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -20,6 +21,7 @@ async function ensureTimetablesTable() {
             ALTER TABLE timetables ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'draft_teachers';
             ALTER TABLE timetables ADD COLUMN IF NOT EXISTS grade INT DEFAULT 10;
             ALTER TABLE timetables ADD COLUMN IF NOT EXISTS stream VARCHAR(100) DEFAULT 'General';
+            ALTER TABLE timetables ADD COLUMN IF NOT EXISTS school_id INT DEFAULT 1;
             ALTER TABLE timetables ADD COLUMN IF NOT EXISTS created_by INT;
             ALTER TABLE timetables ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
             ALTER TABLE timetables ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
@@ -30,6 +32,18 @@ async function ensureTimetablesTable() {
     }
 }
 ensureTimetablesTable();
+
+/**
+ * Resolves the active school ID from token, query, header, or body.
+ */
+const getSchoolIdFromReq = (req) => {
+    if (req.user && !req.user.is_superadmin && req.user.school_id) {
+        return parseInt(req.user.school_id, 10);
+    }
+    const raw = req.body?.school_id || req.query?.school_id || req.headers?.['x-school-id'] || req.user?.school_id || 1;
+    const parsed = parseInt(raw, 10);
+    return isNaN(parsed) ? 1 : parsed;
+};
 
 // Standard 1-hour CAPS Class Periods (60 minutes each) with 45-minute nutrition break:
 // Period 1: 08:00 - 09:00 (60 min)
@@ -55,9 +69,10 @@ const PERIODS_1_HOUR = [
 exports.generateAITimetable = async (req, res) => {
     const { grade = 10, stream = 'General', target_subject, max_teacher_daily_slots = 3 } = req.body;
     const targetGrade = parseInt(grade, 10) || 10;
+    const schoolId = getSchoolIdFromReq(req);
 
     try {
-        // 1. Fetch active TEACHERS (excluding admin/management), classes, and subjects
+        // 1. Fetch active TEACHERS of THIS school (excluding admin/management), classes, and subjects
         const [teachersRes, classesRes, subjectsRes, activeTimetablesRes] = await Promise.all([
             db.query(
                 `SELECT u.id as user_id, u.full_name, u.surname, u.email, e.subjects, e.grades_taught, e.classes_taught 
@@ -66,20 +81,22 @@ exports.generateAITimetable = async (req, res) => {
                  LEFT JOIN roles r ON u.role_id = r.id
                  WHERE (r.name = 'teacher' OR r.name IS NULL)
                    AND LOWER(COALESCE(r.name, '')) != 'admin'
-                 ORDER BY u.surname, u.full_name`
+                   AND u.school_id = $1
+                 ORDER BY u.surname, u.full_name`,
+                [schoolId]
             ),
             db.query(
-                `SELECT id, name, grade, stream FROM classes WHERE grade = $1 AND (stream = $2 OR stream IS NULL OR stream = 'General') ORDER BY name;`,
-                [targetGrade, stream]
+                `SELECT id, name, grade, stream FROM classes WHERE grade = $1 AND (stream = $2 OR stream IS NULL OR stream = 'General') AND school_id = $3 ORDER BY name;`,
+                [targetGrade, stream, schoolId]
             ),
             db.query(
-                `SELECT name FROM subjects WHERE (grade = $1 OR grade IS NULL) AND (stream = $2 OR stream = 'General' OR stream ILIKE 'General%') ORDER BY name;`,
-                [targetGrade, stream]
+                `SELECT name FROM subjects WHERE (grade = $1 OR grade IS NULL) AND (stream = $2 OR stream = 'General' OR stream ILIKE 'General%') AND school_id = $3 ORDER BY name;`,
+                [targetGrade, stream, schoolId]
             ),
-            // Fetch all other active published timetables to avoid global educator double-booking
+            // Fetch all other active published timetables for THIS school to avoid educator double-booking
             db.query(
-                `SELECT id, grade, stream, timetable_data FROM timetables WHERE is_active = TRUE AND grade != $1`,
-                [targetGrade]
+                `SELECT id, grade, stream, timetable_data FROM timetables WHERE is_active = TRUE AND grade != $1 AND school_id = $2`,
+                [targetGrade, schoolId]
             )
         ]);
 
@@ -100,7 +117,9 @@ exports.generateAITimetable = async (req, res) => {
                  LEFT JOIN roles r ON u.role_id = r.id
                  WHERE (r.name = 'teacher' OR r.name IS NULL)
                    AND LOWER(COALESCE(r.name, '')) != 'admin'
-                 ORDER BY u.surname, u.full_name`
+                   AND u.school_id = $1
+                 ORDER BY u.surname, u.full_name`,
+                [schoolId]
             );
             teachers = allTeachersRes.rows;
         }
@@ -167,7 +186,7 @@ exports.generateAITimetable = async (req, res) => {
                 time: "11:00 - 11:45",
                 label: "Nutrition & Midday Break"
             },
-            generation_details: { grade: targetGrade, stream, target_subject }
+            generation_details: { grade: targetGrade, stream, target_subject, school_id: schoolId }
         });
 
     } catch (err) {
@@ -178,19 +197,20 @@ exports.generateAITimetable = async (req, res) => {
 
 /**
  * 1-CLICK SCHOOL-WIDE AUTO-SCHEDULER & DRAFT DISTRIBUTOR:
- * Generates conflict-free 1-hour timetables for all Grades (8, 9, 10, 11, 12) simultaneously.
+ * Generates conflict-free 1-hour timetables for all Grades (8, 9, 10, 11, 12) simultaneously for the active school.
  * Tracks teacher busy slots across all grades to guarantee zero double bookings.
- * Automatically saves them with status 'draft_teachers' and sends email alerts to all teachers.
+ * Automatically saves them with status 'draft_teachers' and sends email alerts to the school's teachers.
  */
 exports.generateSchoolWideTimetable = async (req, res) => {
     const adminId = req.user ? req.user.id : null;
+    const schoolId = getSchoolIdFromReq(req);
     const grades = [8, 9, 10, 11, 12];
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
     try {
         await ensureTimetablesTable();
 
-        // 1. Fetch all teachers
+        // 1. Fetch all teachers for THIS specific school
         const allTeachersRes = await db.query(
             `SELECT u.id, u.id as user_id, u.full_name, u.surname, u.email, e.subjects, e.grades_taught
              FROM users u
@@ -198,19 +218,30 @@ exports.generateSchoolWideTimetable = async (req, res) => {
              LEFT JOIN roles r ON u.role_id = r.id
              WHERE (r.name = 'teacher' OR r.name IS NULL)
                AND LOWER(COALESCE(r.name, '')) != 'admin'
-             ORDER BY u.surname, u.full_name`
+               AND u.school_id = $1
+             ORDER BY u.surname, u.full_name`,
+            [schoolId]
         );
         const allTeachers = allTeachersRes.rows;
 
-        // 2. Fetch all classes
-        const classesRes = await db.query(`SELECT id, name, grade, stream FROM classes ORDER BY grade, name`);
+        if (allTeachers.length === 0) {
+            return res.json({
+                message: `No educators are registered for this school yet. Please add teachers to this school before generating its master timetable.`,
+                timetables: [],
+                total_grades: 0,
+                notified_teachers_count: 0
+            });
+        }
+
+        // 2. Fetch all classes for THIS school
+        const classesRes = await db.query(`SELECT id, name, grade, stream FROM classes WHERE school_id = $1 ORDER BY grade, name`, [schoolId]);
         const allDbClasses = classesRes.rows;
 
         const generatedSchedules = [];
         const runningActiveTimetables = [];
 
-        // Deactivate previous active timetables
-        await db.query(`UPDATE timetables SET is_active = FALSE`);
+        // Deactivate previous active timetables of THIS school
+        await db.query(`UPDATE timetables SET is_active = FALSE WHERE school_id = $1`, [schoolId]);
 
         for (const gr of grades) {
             let gradeClasses = allDbClasses.filter(c => c.grade === gr);
@@ -256,9 +287,9 @@ exports.generateSchoolWideTimetable = async (req, res) => {
             const timetableName = `Grade ${gr} Master Timetable (1-Hour Conflict-Free)`;
             
             const insertRes = await db.query(
-                `INSERT INTO timetables (name, grade, stream, timetable_data, status, is_active, created_by, updated_at)
-                 VALUES ($1, $2, $3, $4, 'draft_teachers', TRUE, $5, NOW()) RETURNING *`,
-                [timetableName, gr, stream, JSON.stringify(result.timetable_data), adminId]
+                `INSERT INTO timetables (name, grade, stream, timetable_data, status, is_active, school_id, created_by, updated_at)
+                 VALUES ($1, $2, $3, $4, 'draft_teachers', TRUE, $5, $6, NOW()) RETURNING *`,
+                [timetableName, gr, stream, JSON.stringify(result.timetable_data), schoolId, adminId]
             );
 
             runningActiveTimetables.push({
@@ -270,7 +301,7 @@ exports.generateSchoolWideTimetable = async (req, res) => {
             generatedSchedules.push(insertRes.rows[0]);
         }
 
-        // Notify all teachers via in-app message and email
+        // Notify all teachers of this school via in-app message and email
         for (const teacher of allTeachers) {
             try {
                 await db.query(
@@ -280,7 +311,7 @@ exports.generateSchoolWideTimetable = async (req, res) => {
                         adminId,
                         teacher.id,
                         `School-Wide Timetable Generated (Grades 8 - 12)`,
-                        `Principal Mr Kunene has generated the 1-hour conflict-free master timetable for Grades 8 to 12. Please review your subject allocations in your Educator Portal.`
+                        `Principal / Administration has generated the 1-hour conflict-free master timetable for Grades 8 to 12. Please review your subject allocations in your Educator Portal.`
                     ]
                 );
             } catch (e) {}
@@ -297,7 +328,7 @@ exports.generateSchoolWideTimetable = async (req, res) => {
         }
 
         res.json({
-            message: `Successfully generated clash-free 1-hour timetables for Grades 8, 9, 10, 11, and 12 in 1 click! Drafts distributed to all educators for review.`,
+            message: `Successfully generated clash-free 1-hour timetables for Grades 8, 9, 10, 11, and 12 in 1 click! Drafts distributed to all educators of this school for review.`,
             timetables: generatedSchedules,
             total_grades: grades.length,
             notified_teachers_count: allTeachers.length
@@ -617,6 +648,7 @@ exports.publishToTeachers = async (req, res) => {
     const grade = generation_details?.grade || 10;
     const stream = generation_details?.stream || 'General';
     const adminId = req.user ? req.user.id : null;
+    const schoolId = getSchoolIdFromReq(req);
 
     if (!timetable_data) {
         return res.status(400).json({ error: 'Missing timetable data to publish.' });
@@ -625,26 +657,26 @@ exports.publishToTeachers = async (req, res) => {
     try {
         const timetableName = name || `Grade ${grade} (${stream}) Master Timetable`;
         
-        // Deactivate previous active timetables for this grade
+        // Deactivate previous active timetables for this grade in THIS school
         await db.query(
-            `UPDATE timetables SET is_active = FALSE WHERE grade = $1`,
-            [grade]
+            `UPDATE timetables SET is_active = FALSE WHERE grade = $1 AND school_id = $2`,
+            [grade, schoolId]
         );
 
         // Insert new draft master timetable for educator review
         const result = await db.query(
-            `INSERT INTO timetables (name, grade, stream, timetable_data, status, is_active, created_by, updated_at) 
-             VALUES ($1, $2, $3, $4, 'draft_teachers', TRUE, $5, NOW()) RETURNING *`,
-            [timetableName, grade, stream, JSON.stringify(timetable_data), adminId]
+            `INSERT INTO timetables (name, grade, stream, timetable_data, status, is_active, school_id, created_by, updated_at) 
+             VALUES ($1, $2, $3, $4, 'draft_teachers', TRUE, $5, $6, NOW()) RETURNING *`,
+            [timetableName, grade, stream, JSON.stringify(timetable_data), schoolId, adminId]
         );
 
-        // Fetch educators who teach this grade
+        // Fetch educators of THIS school who teach this grade
         const teachersRes = await db.query(
             `SELECT u.id, u.full_name, u.email 
              FROM users u 
              JOIN employees e ON u.id = e.user_id 
-             WHERE ($1 = ANY(e.grades_taught) OR e.grades_taught IS NULL OR ARRAY_LENGTH(e.grades_taught, 1) = 0)`,
-            [grade]
+             WHERE u.school_id = $2 AND ($1 = ANY(e.grades_taught) OR e.grades_taught IS NULL OR ARRAY_LENGTH(e.grades_taught, 1) = 0)`,
+            [grade, schoolId]
         );
 
         const notifySubject = `Educator Review Required: Grade ${grade} (${stream}) Timetable Draft`;
@@ -677,16 +709,18 @@ exports.publishToTeachers = async (req, res) => {
             await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_id INTEGER`);
             await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS grade_target INTEGER`);
             await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS stream_target VARCHAR(50)`);
+            await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1`);
 
             await db.query(
-                `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target)
-                 VALUES ($1, $2, 'teacher', $3, $4, $5)`,
+                `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, school_id)
+                 VALUES ($1, $2, 'teacher', $3, $4, $5, $6)`,
                 [
                     `Timetable Draft Live for Review: Grade ${grade} (${stream})`,
                     `The 1-hour class schedule draft for Grade ${grade} (${stream}) has been sent by Administration. Please check your assigned subject periods and release to learners once confirmed.`,
                     adminId,
                     grade,
-                    stream
+                    stream,
+                    schoolId
                 ]
             );
         } catch (annErr) {
@@ -709,6 +743,7 @@ exports.publishToTeachers = async (req, res) => {
  */
 exports.getTeacherTimetables = async (req, res) => {
     const teacherId = req.user.id;
+    const schoolId = req.user.school_id || 1;
     try {
         const [empRes, userRes] = await Promise.all([
             db.query('SELECT grades_taught, subjects FROM employees WHERE user_id = $1', [teacherId]),
@@ -719,9 +754,9 @@ exports.getTeacherTimetables = async (req, res) => {
 
         const { rows } = await db.query(
             `SELECT * FROM timetables 
-             WHERE grade = ANY($1::int[]) OR status = 'published_to_learners' OR status = 'draft_teachers' OR is_active = TRUE
+             WHERE school_id = $1 AND (grade = ANY($2::int[]) OR status = 'published_to_learners' OR status = 'draft_teachers' OR is_active = TRUE)
              ORDER BY updated_at DESC`,
-            [grades.length ? grades : [10, 11, 12]]
+            [schoolId, grades.length ? grades : [10, 11, 12]]
         );
 
         // Build personalized timetable slots for this teacher across all active grades & classes
@@ -794,19 +829,20 @@ exports.getTeacherTimetables = async (req, res) => {
 exports.teacherPublishToLearners = async (req, res) => {
     const { timetable_id, timetable_data } = req.body;
     const teacherId = req.user.id;
+    const schoolId = req.user.school_id || 1;
 
     try {
         let tt;
         if (timetable_id) {
-            const ttRes = await db.query('SELECT * FROM timetables WHERE id = $1', [timetable_id]);
+            const ttRes = await db.query('SELECT * FROM timetables WHERE id = $1 AND school_id = $2', [timetable_id, schoolId]);
             tt = ttRes.rows[0];
         } else {
-            const ttRes = await db.query('SELECT * FROM timetables WHERE is_active = TRUE ORDER BY updated_at DESC LIMIT 1');
+            const ttRes = await db.query('SELECT * FROM timetables WHERE school_id = $1 AND is_active = TRUE ORDER BY updated_at DESC LIMIT 1', [schoolId]);
             tt = ttRes.rows[0];
         }
 
         if (!tt) {
-            return res.status(404).json({ error: 'Timetable not found to publish.' });
+            return res.status(404).json({ error: 'Timetable not found for this school to publish.' });
         }
 
         const grade = tt.grade || 10;
@@ -818,19 +854,19 @@ exports.teacherPublishToLearners = async (req, res) => {
              SET status = 'published_to_learners', 
                  timetable_data = COALESCE($1, timetable_data), 
                  updated_at = NOW() 
-             WHERE id = $2 RETURNING *`,
-            [timetable_data ? JSON.stringify(timetable_data) : null, tt.id]
+             WHERE id = $2 AND school_id = $3 RETURNING *`,
+            [timetable_data ? JSON.stringify(timetable_data) : null, tt.id, schoolId]
         );
 
-        // Fetch learners and linked parents for this grade with email addresses
+        // Fetch learners and linked parents for this grade in THIS school with email addresses
         const learnersRes = await db.query(
             `SELECT c.id as child_id, c.learner_user_id, c.parent_id, c.full_name, c.surname,
                     u_l.email as learner_email, u_p.email as parent_email
              FROM children c
              LEFT JOIN users u_l ON c.learner_user_id = u_l.id
              LEFT JOIN users u_p ON c.parent_id = u_p.id
-             WHERE c.grade = $1`,
-            [grade]
+             WHERE c.grade = $1 AND c.school_id = $2`,
+            [grade, schoolId]
         );
 
         const notifySubject = `Official Timetable Released: Grade ${grade} (${stream})`;
@@ -884,16 +920,18 @@ exports.teacherPublishToLearners = async (req, res) => {
             await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_id INTEGER`);
             await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS grade_target INTEGER`);
             await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS stream_target VARCHAR(50)`);
+            await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1`);
 
             await db.query(
-                `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target)
-                 VALUES ($1, $2, 'all', $3, $4, $5)`,
+                `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, school_id)
+                 VALUES ($1, $2, 'all', $3, $4, $5, $6)`,
                 [
                     `Official Class Timetable Released: Grade ${grade} (${stream})`,
                     `Subject educators have finalized and published the official 1-hour class timetable for Grade ${grade} (${stream}). Real-time schedules are now active for learners and parents.`,
                     teacherId,
                     grade,
-                    stream
+                    stream,
+                    schoolId
                 ]
             );
         } catch (annErr) {
@@ -912,19 +950,20 @@ exports.teacherPublishToLearners = async (req, res) => {
 };
 
 /**
- * LEARNER: Gets active published timetable for the learner's grade and stream.
+ * LEARNER: Gets active published timetable for the learner's grade, stream, and school.
  */
 exports.getLearnerTimetable = async (req, res) => {
     try {
         const learnerUser = req.user.id;
-        const childRes = await db.query('SELECT grade, stream FROM children WHERE learner_user_id = $1', [learnerUser]);
+        const childRes = await db.query('SELECT grade, stream, school_id FROM children WHERE learner_user_id = $1', [learnerUser]);
+        const schoolId = childRes.rows[0]?.school_id || req.user.school_id || 1;
         const grade = childRes.rows[0]?.grade || 10;
 
         const { rows } = await db.query(
             `SELECT * FROM timetables 
-             WHERE (grade = $1 OR grade IS NULL) AND is_active = TRUE
+             WHERE school_id = $1 AND (grade = $2 OR grade IS NULL) AND is_active = TRUE
              ORDER BY CASE WHEN status = 'published_to_learners' THEN 0 ELSE 1 END, updated_at DESC LIMIT 1`,
-            [grade]
+            [schoolId, grade]
         );
 
         res.json(rows);
@@ -941,16 +980,20 @@ exports.getChildTimetable = async (req, res) => {
     const childId = req.query.child_id || req.query.childId;
     try {
         let grade = 10;
+        let schoolId = req.user.school_id || 1;
         if (childId) {
-            const childRes = await db.query('SELECT grade FROM children WHERE id = $1', [childId]);
-            if (childRes.rows[0]) grade = childRes.rows[0].grade;
+            const childRes = await db.query('SELECT grade, school_id FROM children WHERE id = $1', [childId]);
+            if (childRes.rows[0]) {
+                grade = childRes.rows[0].grade;
+                schoolId = childRes.rows[0].school_id || schoolId;
+            }
         }
 
         const { rows } = await db.query(
             `SELECT * FROM timetables 
-             WHERE (grade = $1 OR grade IS NULL) AND is_active = TRUE
+             WHERE school_id = $1 AND (grade = $2 OR grade IS NULL) AND is_active = TRUE
              ORDER BY CASE WHEN status = 'published_to_learners' THEN 0 ELSE 1 END, updated_at DESC LIMIT 1`,
-            [grade]
+            [schoolId, grade]
         );
         res.json(rows[0] || null);
     } catch (err) {
@@ -960,11 +1003,12 @@ exports.getChildTimetable = async (req, res) => {
 };
 
 /**
- * Retrieves all timetables for Admin master view.
+ * Retrieves all timetables for Admin master view filtered by school.
  */
 exports.getTimetables = async (req, res) => {
     try {
-        const { rows } = await db.query('SELECT * FROM timetables ORDER BY created_at DESC');
+        const schoolId = getSchoolIdFromReq(req);
+        const { rows } = await db.query('SELECT * FROM timetables WHERE school_id = $1 ORDER BY grade, created_at DESC', [schoolId]);
         res.json(rows);
     } catch (err) {
         console.error('Error fetching timetables:', err);
@@ -974,9 +1018,10 @@ exports.getTimetables = async (req, res) => {
 
 exports.getTimetableById = async (req, res) => {
     const { id } = req.params;
+    const schoolId = getSchoolIdFromReq(req);
     try {
-        const { rows } = await db.query('SELECT * FROM timetables WHERE id = $1', [id]);
-        if (rows.length === 0) return res.status(404).json({ error: 'Timetable not found.' });
+        const { rows } = await db.query('SELECT * FROM timetables WHERE id = $1 AND school_id = $2', [id, schoolId]);
+        if (rows.length === 0) return res.status(404).json({ error: 'Timetable not found for this school.' });
         res.json(rows[0]);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -986,6 +1031,7 @@ exports.getTimetableById = async (req, res) => {
 exports.deleteTimetable = async (req, res) => {
     const { id } = req.params;
     const adminId = req.user ? req.user.id : null;
+    const schoolId = getSchoolIdFromReq(req);
 
     try {
         let grade = 10;
@@ -994,7 +1040,7 @@ exports.deleteTimetable = async (req, res) => {
 
         // 1. Fetch timetable details before deletion if present
         if (id && !isNaN(parseInt(id, 10))) {
-            const ttRes = await db.query('SELECT * FROM timetables WHERE id = $1', [parseInt(id, 10)]);
+            const ttRes = await db.query('SELECT * FROM timetables WHERE id = $1 AND school_id = $2', [parseInt(id, 10), schoolId]);
             if (ttRes.rows.length > 0) {
                 const tt = ttRes.rows[0];
                 grade = tt.grade || 10;
@@ -1007,37 +1053,38 @@ exports.deleteTimetable = async (req, res) => {
                     }
                 } catch (e) {}
             }
-            // 2. Delete timetable from database (frees slots immediately)
-            await db.query('DELETE FROM timetables WHERE id = $1', [parseInt(id, 10)]);
+            // 2. Delete timetable from database
+            await db.query('DELETE FROM timetables WHERE id = $1 AND school_id = $2', [parseInt(id, 10), schoolId]);
         } else {
-            await db.query('DELETE FROM timetables WHERE name ILIKE $1 OR id::text = $1', [`%${id}%`]);
+            await db.query('DELETE FROM timetables WHERE (name ILIKE $1 OR id::text = $1) AND school_id = $2', [`%${id}%`, schoolId]);
         }
 
         // 3. Post notification to announcements specifically for educators of this deleted class/grade
         try {
             await db.query(
-                `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, created_at)
-                 VALUES ($1, $2, 'teacher', $3, $4, $5, NOW())`,
+                `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, school_id, created_at)
+                 VALUES ($1, $2, 'teacher', $3, $4, $5, $6, NOW())`,
                 [
                     `Timetable Deleted: Grade ${grade} (${stream})`,
                     `Notice to Educators: The class timetable for ${classSummary} (${stream}) has been removed and reset by Administration. Previous teaching allocations for these classes are now open for new schedule generation.`,
                     adminId,
                     grade,
-                    stream
+                    stream,
+                    schoolId
                 ]
             );
         } catch (annErr) {
             console.warn('Could not dispatch timetable deletion announcement:', annErr.message);
         }
 
-        // 4. Send direct message notification to educators teaching this grade/class
+        // 4. Send direct message notification to educators teaching this grade/class in THIS school
         try {
             const teachersRes = await db.query(
                 `SELECT u.id, u.full_name 
                  FROM users u 
                  JOIN employees e ON u.id = e.user_id 
-                 WHERE ($1 = ANY(e.grades_taught) OR e.grades_taught IS NULL OR ARRAY_LENGTH(e.grades_taught, 1) = 0)`,
-                [grade]
+                 WHERE u.school_id = $2 AND ($1 = ANY(e.grades_taught) OR e.grades_taught IS NULL OR ARRAY_LENGTH(e.grades_taught, 1) = 0)`,
+                [grade, schoolId]
             );
 
             const notifySubject = `Timetable Reset Notice: ${classSummary}`;

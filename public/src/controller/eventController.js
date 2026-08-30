@@ -156,19 +156,23 @@ function generateDBETermCalendar(year) {
  */
 async function syncSouthAfricanSchoolCalendarForYear(year) {
     try {
+        await db.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS is_global BOOLEAN DEFAULT FALSE`);
+        await db.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS is_inter_school BOOLEAN DEFAULT FALSE`);
+        await db.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS school_id INT`);
+
         const publicHolidays = generateSAPublicHolidays(year);
         const dbeTerms = generateDBETermCalendar(year);
         const combined = [...publicHolidays, ...dbeTerms];
 
         for (const item of combined) {
             const check = await db.query(
-                'SELECT id FROM events WHERE event_date = $1 AND title = $2 LIMIT 1',
+                'SELECT id FROM events WHERE event_date = $1 AND title = $2 AND (is_global = TRUE OR school_id IS NULL) LIMIT 1',
                 [item.event_date, item.title]
             );
             if (check.rows.length === 0) {
                 await db.query(
-                    `INSERT INTO events (title, description, event_date, event_type, audience, location, start_time, end_time)
-                     VALUES ($1, $2, $3, $4, $5, 'Republic of South Africa', '08:00', '16:00')
+                    `INSERT INTO events (title, description, event_date, event_type, audience, location, start_time, end_time, is_global, school_id)
+                     VALUES ($1, $2, $3, $4, $5, 'Republic of South Africa', '08:00', '16:00', TRUE, NULL)
                      ON CONFLICT DO NOTHING`,
                     [item.title, item.description, item.event_date, item.event_type, item.audience]
                 );
@@ -194,7 +198,7 @@ async function syncAllActiveYears() {
 syncAllActiveYears();
 
 /**
- * Retrieves school and class events for the user's role and enrolled grades.
+ * Retrieves school and class events for the user's role, enrolled grades, and active school.
  */
 exports.getEvents = async (req, res) => {
     const userRole = req.user.role;
@@ -211,9 +215,10 @@ exports.getEvents = async (req, res) => {
         let params = [];
 
         if (userRole === 'learner') {
-            const childRes = await db.query('SELECT grade, stream FROM children WHERE learner_user_id::text = $1::text', [userId]);
+            const childRes = await db.query('SELECT grade, stream, school_id FROM children WHERE learner_user_id::text = $1::text', [userId]);
             const grade = childRes.rows[0]?.grade || 10;
             const stream = childRes.rows[0]?.stream || 'General';
+            const schoolId = childRes.rows[0]?.school_id || req.user.school_id || 1;
 
             query = `
                 SELECT e.*, u.full_name as creator_name, u.surname as creator_surname, 
@@ -221,15 +226,17 @@ exports.getEvents = async (req, res) => {
                 FROM events e
                 LEFT JOIN users u ON e.created_by::text = u.id::text
                 LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
-                WHERE (e.audience = 'all' OR e.audience = 'learners' OR e.audience IS NULL)
+                WHERE (e.school_id = $3 OR e.is_global = TRUE OR (e.school_id IS NULL AND e.is_inter_school = FALSE))
+                  AND (e.audience = 'all' OR e.audience = 'learners' OR e.audience IS NULL)
                   AND (e.grade_target IS NULL OR e.grade_target::text = $1::text)
                   AND (e.stream_target IS NULL OR e.stream_target = $2 OR e.stream_target = 'General')
                 ORDER BY e.event_date ASC, e.start_time ASC;
             `;
-            params = [grade.toString(), stream];
+            params = [grade.toString(), stream, schoolId];
         } else if (userRole === 'parent') {
-            const childrenRes = await db.query('SELECT grade, stream FROM children WHERE parent_id::text = $1::text', [userId]);
+            const childrenRes = await db.query('SELECT grade, stream, school_id FROM children WHERE parent_id::text = $1::text', [userId]);
             const grades = childrenRes.rows.map(c => c.grade);
+            const schoolId = childrenRes.rows[0]?.school_id || req.user.school_id || 1;
 
             query = `
                 SELECT e.*, u.full_name as creator_name, u.surname as creator_surname, 
@@ -237,21 +244,25 @@ exports.getEvents = async (req, res) => {
                 FROM events e
                 LEFT JOIN users u ON e.created_by::text = u.id::text
                 LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
-                WHERE (e.audience = 'all' OR e.audience = 'parents' OR e.audience IS NULL)
+                WHERE (e.school_id = $2 OR e.is_global = TRUE OR (e.school_id IS NULL AND e.is_inter_school = FALSE))
+                  AND (e.audience = 'all' OR e.audience = 'parents' OR e.audience IS NULL)
                   AND (e.grade_target IS NULL OR e.grade_target::text = ANY($1::text[]))
                 ORDER BY e.event_date ASC, e.start_time ASC;
             `;
-            params = [grades.length > 0 ? grades.map(String) : ['8', '9', '10', '11', '12']];
+            params = [grades.length > 0 ? grades.map(String) : ['8', '9', '10', '11', '12'], schoolId];
         } else {
-            // Teacher / Admin: view all school and academic events
+            // Teacher / Admin: view general calendar + school-specific events
+            const schoolId = req.user.school_id || req.headers['x-school-id'] || req.query.school_id || 1;
             query = `
                 SELECT e.*, u.full_name as creator_name, u.surname as creator_surname, 
                        COALESCE(r.name, u.role_id::text, 'admin') as creator_role
                 FROM events e
                 LEFT JOIN users u ON e.created_by::text = u.id::text
                 LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
+                WHERE (e.school_id = $1 OR e.is_global = TRUE OR (e.school_id IS NULL AND e.is_inter_school = FALSE))
                 ORDER BY e.event_date ASC, e.start_time ASC;
             `;
+            params = [schoolId];
         }
 
         const { rows } = await db.query(query, params);
@@ -263,10 +274,11 @@ exports.getEvents = async (req, res) => {
 };
 
 /**
- * Creates a new calendar event (Admin / Teacher).
+ * Creates a new calendar event strictly for the creator's school (Admin / Teacher).
  */
 exports.createEvent = async (req, res) => {
     const creatorId = req.user.id;
+    const userSchoolId = req.user.school_id || req.headers['x-school-id'] || req.query.school_id || 1;
     const {
         title,
         description,
@@ -277,7 +289,8 @@ exports.createEvent = async (req, res) => {
         event_type = 'General',
         audience = 'all',
         grade_target,
-        stream_target
+        stream_target,
+        is_inter_school = false
     } = req.body;
 
     if (!title || !event_date) {
@@ -287,8 +300,8 @@ exports.createEvent = async (req, res) => {
     try {
         const result = await db.query(
             `INSERT INTO events 
-             (title, description, event_date, start_time, end_time, location, event_type, audience, grade_target, stream_target, created_by)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+             (title, description, event_date, start_time, end_time, location, event_type, audience, grade_target, stream_target, created_by, school_id, is_global, is_inter_school)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, FALSE, $13)
              RETURNING *`,
             [
                 title,
@@ -296,17 +309,19 @@ exports.createEvent = async (req, res) => {
                 event_date,
                 start_time || null,
                 end_time || null,
-                location || 'Fusion High School Campus',
+                location || 'School Campus',
                 event_type,
                 audience,
                 grade_target ? parseInt(grade_target, 10) : null,
                 stream_target || null,
-                creatorId
+                creatorId,
+                userSchoolId,
+                Boolean(is_inter_school)
             ]
         );
 
         res.json({
-            message: 'Event published to school calendar successfully.',
+            message: 'Event published to your school calendar successfully.',
             event: result.rows[0]
         });
     } catch (err) {
@@ -316,12 +331,15 @@ exports.createEvent = async (req, res) => {
 };
 
 /**
- * Updates / Edits an existing calendar event (Admin / Teacher).
+ * Updates / Edits a calendar event.
+ * If the event is school-specific, updates it for this school.
+ * If the event is a general/national event, creates a school-specific override so other schools are untouched.
  */
 exports.updateEvent = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
     const userRole = (req.user.role || '').toLowerCase();
+    const userSchoolId = req.user.school_id || req.headers['x-school-id'] || 1;
     const {
         title,
         description,
@@ -332,7 +350,8 @@ exports.updateEvent = async (req, res) => {
         event_type = 'General',
         audience = 'all',
         grade_target,
-        stream_target
+        stream_target,
+        is_inter_school = false
     } = req.body;
 
     if (!title || !event_date) {
@@ -340,6 +359,49 @@ exports.updateEvent = async (req, res) => {
     }
 
     try {
+        // 1. Fetch existing event
+        const existingRes = await db.query('SELECT * FROM events WHERE id = $1', [id]);
+        if (existingRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Event not found.' });
+        }
+        const existing = existingRes.rows[0];
+
+        // 2. Check tenant permissions: If it belongs to another school, block modification
+        if (existing.school_id && existing.school_id !== userSchoolId && !req.user.is_superadmin) {
+            return res.status(403).json({ error: 'You do not have permission to edit events from another school.' });
+        }
+
+        // 3. If it's a general national calendar event (is_global), create a school-specific customized entry
+        if (existing.is_global || existing.school_id === null) {
+            const overrideRes = await db.query(
+                `INSERT INTO events 
+                 (title, description, event_date, start_time, end_time, location, event_type, audience, grade_target, stream_target, created_by, school_id, is_global, is_inter_school)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, FALSE, $13)
+                 RETURNING *`,
+                [
+                    title,
+                    description || existing.description || '',
+                    event_date,
+                    start_time || existing.start_time || null,
+                    end_time || existing.end_time || null,
+                    location || existing.location || 'School Campus',
+                    event_type,
+                    audience,
+                    grade_target ? parseInt(grade_target, 10) : existing.grade_target,
+                    stream_target || existing.stream_target,
+                    userId,
+                    userSchoolId,
+                    Boolean(is_inter_school)
+                ]
+            );
+
+            return res.json({
+                message: 'Customized event saved specifically for your school calendar (general calendar remains untouched for other schools).',
+                event: overrideRes.rows[0]
+            });
+        }
+
+        // 4. If it's already this school's custom event, update it directly
         let updateQuery = `
             UPDATE events 
             SET title = $1,
@@ -352,8 +414,9 @@ exports.updateEvent = async (req, res) => {
                 audience = $8,
                 grade_target = $9,
                 stream_target = $10,
+                is_inter_school = $11,
                 updated_at = NOW()
-            WHERE id = $11
+            WHERE id = $12 AND (school_id = $13 OR school_id IS NULL)
         `;
         const params = [
             title,
@@ -361,17 +424,19 @@ exports.updateEvent = async (req, res) => {
             event_date,
             start_time || null,
             end_time || null,
-            location || 'Fusion High School Campus',
+            location || 'School Campus',
             event_type,
             audience,
             grade_target ? parseInt(grade_target, 10) : null,
             stream_target || null,
-            id
+            Boolean(is_inter_school),
+            id,
+            userSchoolId
         ];
 
-        // If not admin, verify ownership or allow educators to update details
+        // If not admin, verify user is creator or educator in this school
         if (userRole !== 'admin' && userRole !== 'teacher') {
-            updateQuery += ' AND created_by = $12';
+            updateQuery += ' AND created_by = $14';
             params.push(userId);
         }
 
@@ -379,11 +444,11 @@ exports.updateEvent = async (req, res) => {
 
         const result = await db.query(updateQuery, params);
         if (result.rowCount === 0) {
-            return res.status(404).json({ error: 'Event not found or unauthorized to update.' });
+            return res.status(404).json({ error: 'Event not found or unauthorized to update for your school.' });
         }
 
         res.json({
-            message: 'Event updated successfully in the school calendar.',
+            message: 'Event updated successfully for your school calendar.',
             event: result.rows[0]
         });
     } catch (err) {
@@ -410,18 +475,39 @@ exports.syncOfficialCalendar = async (req, res) => {
 
 /**
  * Deletes an event by ID.
+ * Custom school events are deleted; general national calendar dates are protected.
  */
 exports.deleteEvent = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
-    const userRole = req.user.role;
+    const userRole = (req.user.role || '').toLowerCase();
+    const userSchoolId = req.user.school_id || req.headers['x-school-id'] || 1;
 
     try {
-        let deleteQuery = 'DELETE FROM events WHERE id = $1';
-        const params = [id];
+        // 1. Fetch event
+        const existingRes = await db.query('SELECT * FROM events WHERE id = $1', [id]);
+        if (existingRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Event not found.' });
+        }
+        const existing = existingRes.rows[0];
+
+        // 2. Check if it's a general national public holiday or term
+        if (existing.is_global) {
+            return res.status(400).json({ 
+                error: 'National South African public holidays and official DBE term dates cannot be deleted globally, as they apply across all schools.' 
+            });
+        }
+
+        // 3. Verify it belongs to this school
+        if (existing.school_id && existing.school_id !== userSchoolId && !req.user.is_superadmin) {
+            return res.status(403).json({ error: 'You do not have permission to delete events from another school.' });
+        }
+
+        let deleteQuery = 'DELETE FROM events WHERE id = $1 AND (school_id = $2 OR school_id IS NULL)';
+        const params = [id, userSchoolId];
 
         if (userRole !== 'admin') {
-            deleteQuery += ' AND created_by = $2';
+            deleteQuery += ' AND created_by = $3';
             params.push(userId);
         }
 
@@ -430,7 +516,7 @@ exports.deleteEvent = async (req, res) => {
             return res.status(404).json({ error: 'Event not found or unauthorized to delete.' });
         }
 
-        res.json({ message: 'Event removed from calendar successfully.' });
+        res.json({ message: 'Event removed from your school calendar successfully.' });
     } catch (err) {
         console.error('Error deleting event:', err);
         res.status(500).json({ error: 'Failed to delete event.' });
