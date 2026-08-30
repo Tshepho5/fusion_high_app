@@ -857,6 +857,61 @@ async function initializeAllDatabaseTables(customClient) {
         recorded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- 16. Parent-Educator Consultations (PTC 20-min slots)
+      CREATE TABLE IF NOT EXISTS teacher_consultations (
+        id SERIAL PRIMARY KEY,
+        school_id INTEGER DEFAULT 1,
+        teacher_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        parent_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        child_id INTEGER REFERENCES children(id) ON DELETE SET NULL,
+        subject VARCHAR(150) DEFAULT 'General Academic Consultation',
+        consultation_date DATE NOT NULL,
+        start_time VARCHAR(20) NOT NULL,
+        end_time VARCHAR(20) NOT NULL,
+        venue_or_link VARCHAR(255) DEFAULT 'Educator Office / Virtual Room',
+        parent_notes TEXT,
+        teacher_notes TEXT,
+        status VARCHAR(30) DEFAULT 'scheduled',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- 17. Inter-School Competitions & Derby League
+      CREATE TABLE IF NOT EXISTS inter_school_competitions (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        activity_type VARCHAR(100) NOT NULL,
+        category VARCHAR(50) DEFAULT 'sports',
+        home_school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE,
+        away_school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE,
+        event_date DATE NOT NULL,
+        venue VARCHAR(255),
+        home_score INTEGER DEFAULT 0,
+        away_score INTEGER DEFAULT 0,
+        status VARCHAR(30) DEFAULT 'scheduled',
+        trophy_title VARCHAR(255),
+        highlights TEXT,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        school_id INTEGER DEFAULT 1,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- 18. Official CAPS Term Academic Report Cards
+      CREATE TABLE IF NOT EXISTS report_cards (
+        id SERIAL PRIMARY KEY,
+        school_id INTEGER DEFAULT 1,
+        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        grade INTEGER NOT NULL,
+        term INTEGER NOT NULL,
+        academic_year INTEGER DEFAULT 2026,
+        marks_breakdown JSONB DEFAULT '[]'::jsonb,
+        overall_average NUMERIC(5,2),
+        overall_level INTEGER,
+        teacher_comment TEXT,
+        principal_comment TEXT,
+        is_published BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     // Ensure default bursary entries exist in database
