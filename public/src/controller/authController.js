@@ -964,9 +964,9 @@ exports.forgotPassword = async (req, res) => {
         }
 
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
-        // Set OTP expiry strictly to 2 minutes from generation on the user record
+        // Set OTP expiry to 5 minutes (300 seconds) so users have sufficient time across all email clients
         await db.query(
-            "UPDATE users SET reset_code = $1, reset_expiry = NOW() + INTERVAL '2 minutes' WHERE id = $2",
+            "UPDATE users SET reset_code = $1, reset_expiry = NOW() + INTERVAL '5 minutes' WHERE id = $2",
             [otp, user.id]
         );
 
@@ -975,7 +975,7 @@ exports.forgotPassword = async (req, res) => {
             await db.query(
                 `INSERT INTO notifications (user_id, title, message, type)
                  VALUES ($1, $2, $3, 'security')`,
-                [user.id, 'Password Reset OTP Code', `Your Fusion High School password recovery verification code is: ${otp} (valid for 2 minutes).`]
+                [user.id, 'Password Reset OTP Code', `Your Fusion High School password recovery verification code is: ${otp} (valid for 5 minutes).`]
             );
         } catch (nErr) {}
 
@@ -1013,10 +1013,10 @@ exports.forgotPassword = async (req, res) => {
         }
 
         res.json({ 
-            message: `A 4-digit reset code has been sent immediately to your registered email (${masked}). Valid for 2 minutes.`,
+            message: `A 4-digit reset code has been sent immediately to your registered email (${masked}). Please check your Inbox and Spam/Junk folder (valid for 5 minutes).`,
             email: user.email,
             delivery_email: masked,
-            expires_in: 120
+            expires_in: 300
         });
     } catch (err) { 
         console.error('[AUTH FORGOT PW ERROR]:', err);

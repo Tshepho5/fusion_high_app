@@ -2283,45 +2283,45 @@ exports.getMultiSchoolCommandCenterStats = async (req, res) => {
                 COALESCE((
                     SELECT COUNT(c.id)::int 
                     FROM children c 
-                    WHERE c.school_id = s.id
+                    WHERE c.school_id::text = s.id::text
                 ), 0) AS learners_count,
                 -- Academic & General Staff
                 COALESCE((
                     SELECT COUNT(DISTINCT e.id)::int 
                     FROM employees e 
-                    WHERE e.school_id = s.id
+                    WHERE e.school_id::text = s.id::text
                 ), 0) AS staff_count,
                 -- Classrooms
                 COALESCE((
                     SELECT COUNT(cls.id)::int 
                     FROM classes cls 
-                    WHERE cls.school_id = s.id
+                    WHERE cls.school_id::text = s.id::text
                 ), 0) AS classes_count,
                 -- Registered Parents
                 COALESCE((
                     SELECT COUNT(DISTINCT pc.parent_id)::int 
                     FROM children c 
-                    JOIN parent_children pc ON c.id = pc.child_id 
-                    WHERE c.school_id = s.id
+                    JOIN parent_children pc ON c.id::text = pc.child_id::text 
+                    WHERE c.school_id::text = s.id::text
                 ), 0) AS parents_count,
                 -- Total Fees Invoiced
                 COALESCE((
                     SELECT SUM(fi.amount)::numeric(12,2)
                     FROM fee_invoices fi
-                    WHERE fi.school_id = s.id
+                    WHERE fi.school_id::text = s.id::text
                 ), 0.00) AS total_invoiced,
                 -- Total Fees Collected
                 COALESCE((
                     SELECT SUM(fi.paid_amount)::numeric(12,2)
                     FROM fee_invoices fi
-                    WHERE fi.school_id = s.id
+                    WHERE fi.school_id::text = s.id::text
                 ), 0.00) AS total_collected,
                 -- Average Attendance Percentage
                 COALESCE((
                     SELECT ROUND((COUNT(CASE WHEN att.status = 'present' THEN 1 END)::numeric / NULLIF(COUNT(att.id), 0)) * 100, 1)
                     FROM attendance att
-                    JOIN children c ON att.child_id = c.id
-                    WHERE c.school_id = s.id
+                    JOIN children c ON att.child_id::text = c.id::text
+                    WHERE c.school_id::text = s.id::text
                 ), 0.0) AS avg_attendance_pct,
                 -- Appointed SubAdmins
                 COALESCE((
@@ -2332,7 +2332,8 @@ exports.getMultiSchoolCommandCenterStats = async (req, res) => {
                         'phone', u.phone
                     ))
                     FROM users u
-                    WHERE u.school_id = s.id AND u.role_id = 1 AND (u.is_superadmin IS FALSE OR u.is_superadmin IS NULL)
+                    JOIN roles r ON (u.role_id::text = r.id::text OR r.name = 'admin')
+                    WHERE u.school_id::text = s.id::text AND r.name = 'admin' AND (u.is_superadmin IS FALSE OR u.is_superadmin IS NULL)
                 ), '[]'::json) AS subadmins
             FROM schools s
             WHERE s.is_active = TRUE

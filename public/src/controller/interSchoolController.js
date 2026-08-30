@@ -240,7 +240,7 @@ exports.getLeaderboard = async (req, res) => {
         COALESCE(SUM(m.points), 0)::int AS points,
         COALESCE(SUM(m.trophies), 0)::int AS trophies_count
       FROM schools s
-      LEFT JOIN matches m ON s.id = m.school_id
+      LEFT JOIN matches m ON (s.id::text = m.school_id::text)
       WHERE s.is_active = TRUE
       GROUP BY s.id
       ORDER BY points DESC, score_diff DESC, won DESC, s.name ASC;

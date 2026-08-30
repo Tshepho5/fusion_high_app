@@ -283,24 +283,47 @@ const emailService = {
       console.log(`[EMAIL DISPATCH SUCCESS] Nodemailer delivered to ${targetRecipient}: ${info.messageId}`);
       return { success: true, messageId: info.messageId, recipient: targetRecipient };
     } catch (nodemailerErr) {
-      console.warn(`[EMAIL NOTICE] Nodemailer transport notice for ${targetRecipient} (${nodemailerErr.message}). Retrying via Direct TLS...`);
+      console.warn(`[EMAIL NOTICE] Nodemailer 465 transport notice for ${targetRecipient} (${nodemailerErr.message}). Retrying via Port 587 STARTTLS...`);
       
-      // Secondary Fallback: Direct TLS Socket
+      // Secondary Fallback: Port 587 STARTTLS
       try {
-        const result = await sendViaDirectTls({
-          user: senderUser,
-          pass: senderPass,
-          to: targetRecipient,
-          subject,
-          html: body,
-          replyTo: replyTo || senderUser,
-          fromName: 'Fusion High School'
+        const starttlsTransporter = nodemailer.createTransport({
+          host: 'smtp.gmail.com',
+          port: 587,
+          secure: false,
+          requireTLS: true,
+          auth: { user: senderUser, pass: senderPass },
+          tls: { rejectUnauthorized: false }
         });
-        console.log(`[EMAIL DISPATCH SUCCESS] Direct TLS delivered to ${targetRecipient}: ${result.messageId}`);
-        return { success: true, messageId: result.messageId, recipient: targetRecipient };
-      } catch (tlsErr) {
-        console.error(`[EMAIL ERROR] All SMTP delivery transports failed for ${targetRecipient}:`, tlsErr.message);
-        return { success: false, error: tlsErr.message, recipient: targetRecipient };
+        const starttlsInfo = await starttlsTransporter.sendMail({
+          from: `"Fusion High School" <${senderUser}>`,
+          to: targetRecipient,
+          subject: subject,
+          html: body,
+          replyTo: replyTo || senderUser
+        });
+        console.log(`[EMAIL DISPATCH SUCCESS] Port 587 STARTTLS delivered to ${targetRecipient}: ${starttlsInfo.messageId}`);
+        return { success: true, messageId: starttlsInfo.messageId, recipient: targetRecipient };
+      } catch (starttlsErr) {
+        console.warn(`[EMAIL NOTICE] Port 587 transport notice for ${targetRecipient} (${starttlsErr.message}). Retrying via Direct TLS 465...`);
+
+        // Tertiary Fallback: Direct TLS Socket
+        try {
+          const result = await sendViaDirectTls({
+            user: senderUser,
+            pass: senderPass,
+            to: targetRecipient,
+            subject,
+            html: body,
+            replyTo: replyTo || senderUser,
+            fromName: 'Fusion High School'
+          });
+          console.log(`[EMAIL DISPATCH SUCCESS] Direct TLS delivered to ${targetRecipient}: ${result.messageId}`);
+          return { success: true, messageId: result.messageId, recipient: targetRecipient };
+        } catch (tlsErr) {
+          console.error(`[EMAIL ERROR] All SMTP delivery transports failed for ${targetRecipient}:`, tlsErr.message);
+          return { success: false, error: tlsErr.message, recipient: targetRecipient };
+        }
       }
     }
   },

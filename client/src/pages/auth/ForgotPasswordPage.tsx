@@ -33,8 +33,8 @@ export const ForgotPasswordPage: React.FC = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Timer state: 120 seconds (2 minutes) countdown
-  const [timeLeft, setTimeLeft] = useState<number>(120);
+  // Timer state: 300 seconds (5 minutes) countdown
+  const [timeLeft, setTimeLeft] = useState<number>(300);
   const [timerActive, setTimerActive] = useState<boolean>(false);
 
   const [loading, setLoading] = useState(false);
@@ -52,14 +52,14 @@ export const ForgotPasswordPage: React.FC = () => {
       if (urlStep === 'verify') {
         setStep('verify');
         setOtp(''); // Strict zero-trust: User must manually enter the 4 digits from their email
-        setTimeLeft(120);
+        setTimeLeft(300);
         setTimerActive(true);
         setMessage('Opened from your recovery email. Please enter the 4-digit code sent to your inbox:');
       }
     }
   }, [searchParams]);
 
-  // 2-Minute (120-Second) Countdown Timer (Active ONLY on 'verify' step)
+  // 5-Minute (300-Second) Countdown Timer (Active ONLY on 'verify' step)
   useEffect(() => {
     let interval: any = null;
     if (step === 'verify' && timerActive && timeLeft > 0) {
@@ -72,7 +72,7 @@ export const ForgotPasswordPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [step, timerActive, timeLeft]);
 
-  // Format seconds as MM:SS (e.g., 02:00, 01:45)
+  // Format seconds as MM:SS (e.g., 05:00, 04:30)
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60).toString().padStart(2, '0');
     const s = (secs % 60).toString().padStart(2, '0');
@@ -89,9 +89,9 @@ export const ForgotPasswordPage: React.FC = () => {
       if (res.email) setEmail(res.email);
       // Keep OTP input empty so user enters it manually from their email
       setOtp('');
-      setMessage(res.message || 'A 4-digit security code has been sent to your email. Please check your inbox or spam folder (valid for 2 minutes).');
+      setMessage(res.message || 'A 4-digit security code has been sent to your email. Please check your inbox or spam folder (valid for 5 minutes).');
       setStep('verify');
-      setTimeLeft(120);
+      setTimeLeft(300);
       setTimerActive(true);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to send recovery code. Please check your email or learner details.');
@@ -100,7 +100,7 @@ export const ForgotPasswordPage: React.FC = () => {
     }
   };
 
-  // Resend OTP Code (Restarts 2-minute countdown, leaves input for manual entry)
+  // Resend OTP Code (Restarts 5-minute countdown, leaves input for manual entry)
   const handleResendOtp = async () => {
     if (!email) {
       setError('Please enter your email, learner number, or ID number.');
@@ -112,8 +112,8 @@ export const ForgotPasswordPage: React.FC = () => {
       const res = await authService.forgotPassword({ email: email.trim() });
       if (res.email) setEmail(res.email);
       setOtp(''); // User must enter the fresh code manually
-      setMessage(res.message || 'A fresh 4-digit code has been dispatched to your email (valid for 2 minutes).');
-      setTimeLeft(120);
+      setMessage(res.message || 'A fresh 4-digit code has been dispatched to your email (valid for 5 minutes).');
+      setTimeLeft(300);
       setTimerActive(true);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to resend code.');
@@ -199,8 +199,8 @@ export const ForgotPasswordPage: React.FC = () => {
             {step === 'reset' ? 'Create New Password' : 'Account Recovery'}
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            {step === 'request' && 'Enter your registered email to receive a 2-minute recovery code'}
-            {step === 'verify' && 'Enter the 4-digit code sent to your email (2-minute limit)'}
+            {step === 'request' && 'Enter your registered email to receive a 5-minute recovery code'}
+            {step === 'verify' && 'Enter the 4-digit code sent to your email (5-minute limit)'}
             {step === 'reset' && 'Create your new password. Take your time to set a secure password.'}
           </p>
         </div>
@@ -286,7 +286,7 @@ export const ForgotPasswordPage: React.FC = () => {
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>Send 2-Minute Recovery Code</span>
+                  <span>Send 5-Minute Recovery Code</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -295,7 +295,7 @@ export const ForgotPasswordPage: React.FC = () => {
         )}
 
         {/* ========================================================================= */}
-        {/* STEP 2: Verify OTP (with 2-minute countdown, user types manually) */}
+        {/* STEP 2: Verify OTP (with 5-minute countdown, user types manually) */}
         {/* ========================================================================= */}
         {step === 'verify' && (
           <form onSubmit={handleVerifyOtp} className="space-y-4 animate-fade-in">
@@ -317,7 +317,12 @@ export const ForgotPasswordPage: React.FC = () => {
               </div>
             </div>
 
-            {/* OTP Code with 2-Minute Countdown Timer */}
+            {/* Spam Folder Guidance Tip */}
+            <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-[11px] flex items-center gap-2">
+              <span>💡 <strong>Tip:</strong> If you don't see the email immediately, please check your <strong>Spam / Junk</strong> folder.</span>
+            </div>
+
+            {/* OTP Code with 5-Minute Countdown Timer */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
@@ -325,7 +330,7 @@ export const ForgotPasswordPage: React.FC = () => {
                 </label>
                 
                 <div className={`inline-flex items-center gap-1.5 text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${
-                  timeLeft > 30
+                  timeLeft > 60
                     ? 'bg-brand-500/10 text-brand-300 border-brand-500/30'
                     : timeLeft > 0
                     ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 animate-pulse'
@@ -352,13 +357,13 @@ export const ForgotPasswordPage: React.FC = () => {
                 />
               </div>
 
-              {/* Progress bar visualizer (120 seconds total) */}
+              {/* Progress bar visualizer (300 seconds total) */}
               <div className="w-full bg-surface-darker h-1.5 rounded-full overflow-hidden mt-1.5 border border-white/5">
                 <div
                   className={`h-full transition-all duration-1000 ${
-                    timeLeft > 30 ? 'bg-gradient-to-r from-brand-500 to-cyan-400' : 'bg-rose-500'
+                    timeLeft > 60 ? 'bg-gradient-to-r from-brand-500 to-cyan-400' : 'bg-rose-500'
                   }`}
-                  style={{ width: `${(timeLeft / 120) * 100}%` }}
+                  style={{ width: `${(timeLeft / 300) * 100}%` }}
                 />
               </div>
             </div>
@@ -391,11 +396,11 @@ export const ForgotPasswordPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleResendOtp}
-                disabled={resending || (timeLeft > 0 && timeLeft > 90)}
+                disabled={resending || (timeLeft > 0 && timeLeft > 270)}
                 className="flex items-center gap-1 text-[11px] text-brand-400 hover:text-brand-300 font-bold transition-colors disabled:opacity-40"
               >
                 <RefreshCw className={`w-3 h-3 ${resending ? 'animate-spin' : ''}`} />
-                <span>{resending ? 'Sending...' : 'Resend Code (2 mins)'}</span>
+                <span>{resending ? 'Sending...' : 'Resend Code (5 mins)'}</span>
               </button>
             </div>
           </form>

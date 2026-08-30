@@ -189,22 +189,22 @@ exports.getMyConsultations = async (req, res) => {
         c.grade AS child_grade,
         c.learner_number
       FROM teacher_consultations tc
-      JOIN users t ON tc.teacher_id = t.id
-      JOIN users p ON tc.parent_id = p.id
-      LEFT JOIN children c ON tc.child_id = c.id
+      JOIN users t ON (tc.teacher_id::text = t.id::text)
+      JOIN users p ON (tc.parent_id::text = p.id::text)
+      LEFT JOIN children c ON (tc.child_id::text = c.id::text)
       WHERE 1=1
     `;
     const params = [];
 
     if (userRole === 'teacher') {
-      params.push(userId);
-      query += ` AND tc.teacher_id = $${params.length}`;
+      params.push(String(userId));
+      query += ` AND tc.teacher_id::text = $${params.length}`;
     } else if (userRole === 'parent') {
-      params.push(userId);
-      query += ` AND tc.parent_id = $${params.length}`;
+      params.push(String(userId));
+      query += ` AND tc.parent_id::text = $${params.length}`;
     } else if (userRole === 'admin' && !req.user.is_superadmin) {
-      params.push(schoolId);
-      query += ` AND tc.school_id = $${params.length}`;
+      params.push(String(schoolId));
+      query += ` AND tc.school_id::text = $${params.length}`;
     }
 
     query += ` ORDER BY tc.consultation_date DESC, tc.start_time ASC;`;
