@@ -40,19 +40,22 @@ exports.getCompetitions = async (req, res) => {
     `;
     const params = [];
 
-    if (category && category !== 'all') {
-      params.push(category);
-      query += ` AND LOWER(c.category) = LOWER($${params.length})`;
+    if (category && category !== 'all' && category !== 'undefined') {
+      params.push(String(category).trim().toLowerCase());
+      query += ` AND LOWER(c.category) = $${params.length}`;
     }
 
-    if (status && status !== 'all') {
-      params.push(status);
-      query += ` AND LOWER(c.status) = LOWER($${params.length})`;
+    if (status && status !== 'all' && status !== 'undefined') {
+      params.push(String(status).trim().toLowerCase());
+      query += ` AND LOWER(c.status) = $${params.length}`;
     }
 
-    if (school_id) {
-      params.push(parseInt(school_id, 10));
-      query += ` AND (c.home_school_id = $${params.length} OR c.away_school_id = $${params.length})`;
+    if (school_id && school_id !== 'all' && school_id !== 'undefined') {
+      const parsedSchoolId = parseInt(school_id, 10);
+      if (!isNaN(parsedSchoolId) && parsedSchoolId > 0) {
+        params.push(parsedSchoolId);
+        query += ` AND (c.home_school_id = $${params.length}::integer OR c.away_school_id = $${params.length}::integer)`;
+      }
     }
 
     query += ` ORDER BY c.event_date DESC;`;
@@ -177,9 +180,9 @@ exports.getLeaderboard = async (req, res) => {
 
     let catFilter = '';
     const params = [];
-    if (category && category !== 'all') {
-      params.push(category);
-      catFilter = ` AND LOWER(c.category) = LOWER($1)`;
+    if (category && category !== 'all' && category !== 'undefined') {
+      params.push(String(category).trim().toLowerCase());
+      catFilter = ` AND LOWER(c.category) = $1`;
     }
 
     const query = `
