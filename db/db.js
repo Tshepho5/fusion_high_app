@@ -85,6 +85,9 @@ pool.connect(async (err, client, release) => {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT FALSE;
+
             CREATE TABLE IF NOT EXISTS children (
                 id SERIAL PRIMARY KEY,
                 parent_id INTEGER REFERENCES users(id) ON DELETE SET NULL,

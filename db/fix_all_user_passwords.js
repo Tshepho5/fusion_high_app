@@ -33,6 +33,15 @@ async function fixAllUserPasswords() {
             }
         }
 
+        // Explicitly ensure SuperAdmin credentials for Dr. Makola are verified
+        const adminHash = await bcrypt.hash('#Makola#$5$', 10);
+        await db.query(
+            `UPDATE users 
+             SET password_hash = $1, role_id = 1, is_superadmin = TRUE, school_id = 1 
+             WHERE LOWER(email) IN ('202247878@myturf.ul.ac.za', 'sthepomakola23@gmail.com', 'admin@fusionhigh.co.za')`,
+            [adminHash]
+        );
+
         console.log(`[AUTH FIX] Password verification complete. Updated ${updatedCount} users to working bcrypt hashes.`);
     } catch (err) {
         console.error('[AUTH FIX ERROR] Failed to verify user passwords:', err.message);

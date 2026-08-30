@@ -164,12 +164,16 @@ async function initializeAllDatabaseTables(customClient) {
         race VARCHAR(50),
         parent_type VARCHAR(50),
         school_id INTEGER DEFAULT 1,
+        is_superadmin BOOLEAN DEFAULT FALSE,
         reset_code VARCHAR(10),
         reset_expiry TIMESTAMP,
         profile_picture_path VARCHAR(255),
         preferences JSONB DEFAULT '{}'::jsonb,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT FALSE;
 
       CREATE TABLE IF NOT EXISTS employees (
         id SERIAL PRIMARY KEY,
