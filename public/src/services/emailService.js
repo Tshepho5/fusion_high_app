@@ -211,22 +211,13 @@ let pooledTransporter = null;
 function getTransporter() {
   const user = getSmtpUser();
   const pass = getSmtpPass();
-  if (!pooledTransporter) {
-    pooledTransporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
-      auth: { user, pass },
-      pool: true,
-      maxConnections: 5,
-      maxMessages: 100,
-      rateLimit: 10,
-      connectionTimeout: 5000,
-      greetingTimeout: 5000,
-      socketTimeout: 8000
-    });
-  }
-  return pooledTransporter;
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user, pass },
+    connectionTimeout: 4000,
+    greetingTimeout: 4000,
+    socketTimeout: 6000
+  });
 }
 
 const emailService = {
@@ -237,16 +228,16 @@ const emailService = {
     try {
       const transporter = getTransporter();
       await transporter.verify();
-      console.log(`[SMTP READY] High-speed email delivery transport initialized and verified (${getSmtpUser()}).`);
+      console.log(`[SMTP READY] High-speed email delivery transport verified (${getSmtpUser()}).`);
       return { ready: true };
     } catch (err) {
-      console.warn(`[SMTP NOTICE] Primary port 465 warming notice (${err.message}). Port 587 STARTTLS and Direct TLS fallbacks are active.`);
+      console.warn(`[SMTP NOTICE] Primary transport warming notice (${err.message}). Direct TLS fallbacks active.`);
       return { ready: false, error: err.message };
     }
   },
 
   /**
-   * High-speed email sender using Nodemailer connection pooling with automatic fallback.
+   * High-speed email sender with automatic fast failover.
    * Strictly delivers to the specified recipient email address without changing destination.
    */
   send: async (to, subject, body, replyTo = null) => {
