@@ -148,6 +148,115 @@ html[data-theme="light"] .hover\:bg-white\/10:hover:not([data-theme-preserve="tr
   background-color: rgba(15, 23, 42, 0.08) !important;
 }
 
+/* =========================================================================
+   MOUNTAINVIEW SENIOR SECONDARY SCHOOL THEME ADAPTATION (MAROON & GOLD)
+   ========================================================================= */
+
+/* 1. Base Variables for Mountainview High */
+html[data-school-slug="mountainview-high"] {
+  --school-primary: #7A1426;
+  --school-secondary: #D4AF37;
+  --school-accent: #F59E0B;
+  --color-primary: #7A1426;
+  --color-accent: #D4AF37;
+}
+
+/* 2. Mountainview Dark & Midnight Navy Themes */
+html[data-school-slug="mountainview-high"].theme-dark,
+html[data-school-slug="mountainview-high"][data-theme="dark"],
+html[data-school-slug="mountainview-high"].theme-navy,
+html[data-school-slug="mountainview-high"][data-theme="navy"] {
+  --color-canvas: #12070A;
+  --color-surface: #1B0C10;
+  --color-surface-darker: #14080B;
+  --color-surface-elevated: #261017;
+  --color-primary: #9E1B32;
+  --color-accent: #E5A93C;
+}
+
+html[data-school-slug="mountainview-high"].theme-dark body,
+html[data-school-slug="mountainview-high"][data-theme="dark"] body {
+  background-color: #12070A;
+  color: #FFFDF5;
+}
+
+/* Mountainview Dark High-Contrast Word & Element Adaptations */
+html[data-school-slug="mountainview-high"].theme-dark .text-indigo-400,
+html[data-school-slug="mountainview-high"][data-theme="dark"] .text-indigo-400,
+html[data-school-slug="mountainview-high"].theme-dark .text-brand-400,
+html[data-school-slug="mountainview-high"][data-theme="dark"] .text-brand-400 {
+  color: #F6C15C !important;
+}
+
+html[data-school-slug="mountainview-high"].theme-dark .bg-indigo-600,
+html[data-school-slug="mountainview-high"][data-theme="dark"] .bg-indigo-600,
+html[data-school-slug="mountainview-high"].theme-dark .bg-brand-600,
+html[data-school-slug="mountainview-high"][data-theme="dark"] .bg-brand-600 {
+  background-color: #7A1426 !important;
+}
+
+html[data-school-slug="mountainview-high"].theme-dark .border-indigo-500\/50,
+html[data-school-slug="mountainview-high"][data-theme="dark"] .border-indigo-500\/50,
+html[data-school-slug="mountainview-high"].theme-dark .hover\:border-indigo-500\/50:hover,
+html[data-school-slug="mountainview-high"][data-theme="dark"] .hover\:border-indigo-500\/50:hover {
+  border-color: rgba(212, 175, 55, 0.45) !important;
+}
+
+/* 3. Mountainview Light Theme (Crisp Academic Parchment with Deep Maroon & Gold) */
+html[data-school-slug="mountainview-high"].theme-light,
+html[data-school-slug="mountainview-high"][data-theme="light"],
+html[data-school-slug="mountainview-high"].light {
+  --color-canvas: #FAF6F3;
+  --color-surface: #FFFFFF;
+  --color-surface-darker: #F5EEEA;
+  --color-surface-elevated: #FFFFFF;
+  --color-primary: #7A1426;
+  --color-accent: #B45309;
+}
+
+html[data-school-slug="mountainview-high"].theme-light body,
+html[data-school-slug="mountainview-high"][data-theme="light"] body,
+html[data-school-slug="mountainview-high"].light body {
+  background-color: #FAF6F3;
+  color: #2E050C;
+}
+
+/* Mountainview Light High-Contrast Word & Typography Adaptations */
+html[data-school-slug="mountainview-high"].theme-light .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not(input):not(select):not(textarea),
+html[data-school-slug="mountainview-high"][data-theme="light"] .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not(input):not(select):not(textarea),
+html[data-school-slug="mountainview-high"].light .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not(input):not(select):not(textarea) {
+  color: #2E050C !important;
+}
+
+html[data-school-slug="mountainview-high"].theme-light .text-slate-400:not([data-theme-preserve="true"]),
+html[data-school-slug="mountainview-high"][data-theme="light"] .text-slate-400:not([data-theme-preserve="true"]),
+html[data-school-slug="mountainview-high"].light .text-slate-400:not([data-theme-preserve="true"]) {
+  color: #6E3B46 !important;
+}
+
+html[data-school-slug="mountainview-high"].theme-light .text-slate-300:not([data-theme-preserve="true"]),
+html[data-school-slug="mountainview-high"][data-theme="light"] .text-slate-300:not([data-theme-preserve="true"]),
+html[data-school-slug="mountainview-high"].light .text-slate-300:not([data-theme-preserve="true"]) {
+  color: #4A1A24 !important;
+}
+
+html[data-school-slug="mountainview-high"].theme-light .text-indigo-400,
+html[data-school-slug="mountainview-high"][data-theme="light"] .text-indigo-400,
+html[data-school-slug="mountainview-high"].theme-light .text-brand-400,
+html[data-school-slug="mountainview-high"][data-theme="light"] .text-brand-400 {
+  color: #7A1426 !important;
+}
+
+html[data-school-slug="mountainview-high"].theme-light .bg-surface-darker:not([data-theme-preserve="true"]),
+html[data-school-slug="mountainview-high"][data-theme="light"] .bg-surface-darker:not([data-theme-preserve="true"]) {
+  background-color: #F5EEEA !important;
+}
+
+html[data-school-slug="mountainview-high"].theme-light .border-white\/10:not([data-theme-preserve="true"]),
+html[data-school-slug="mountainview-high"][data-theme="light"] .border-white\/10:not([data-theme-preserve="true"]) {
+  border-color: rgba(122, 20, 38, 0.15) !important;
+}
+
 /* Ensure inputs on dark surfaces always stay high-contrast white with vibrant caret */
 .text-always-white,
 input.text-always-white,
