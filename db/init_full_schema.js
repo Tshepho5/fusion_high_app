@@ -995,6 +995,49 @@ async function initializeAllDatabaseTables(customClient) {
           END;
         END IF;
       END $$;
+
+      -- 19. Positive Merits & Badges Table
+      CREATE TABLE IF NOT EXISTS merits (
+        id SERIAL PRIMARY KEY,
+        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        teacher_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        category VARCHAR(100) NOT NULL,
+        points INTEGER DEFAULT 10,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        badge_icon VARCHAR(50) DEFAULT 'award',
+        school_id INTEGER DEFAULT 1,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- 20. Disciplinary Infractions & Records Table
+      CREATE TABLE IF NOT EXISTS disciplinary_records (
+        id SERIAL PRIMARY KEY,
+        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        teacher_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        category VARCHAR(100) NOT NULL,
+        severity VARCHAR(50) DEFAULT 'Minor',
+        description TEXT NOT NULL,
+        action_taken TEXT,
+        detention_date DATE,
+        detention_status VARCHAR(50) DEFAULT 'none',
+        parent_notified BOOLEAN DEFAULT TRUE,
+        school_id INTEGER DEFAULT 1,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- 21. General Conduct Logs View / Table Compatibility
+      CREATE TABLE IF NOT EXISTS conduct_logs (
+        id SERIAL PRIMARY KEY,
+        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        recorded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        log_type VARCHAR(50) DEFAULT 'merit',
+        title VARCHAR(255),
+        description TEXT,
+        points INTEGER DEFAULT 0,
+        school_id INTEGER DEFAULT 1,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     // Ensure default bursary entries exist in database
@@ -1011,71 +1054,86 @@ async function initializeAllDatabaseTables(customClient) {
       `);
     }
 
-    // Auto-migrate schema columns for existing and multi-tenant tables
+    // Auto-migrate schema columns for existing and multi-tenant tables safely
     try {
       await runner.query(`
-        -- Multi-School & Governance Tenant Columns
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT FALSE;
-        ALTER TABLE children ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE children ADD COLUMN IF NOT EXISTS home_language VARCHAR(50) DEFAULT 'English';
-        ALTER TABLE employees ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE departments ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE subjects ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE timetables ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE tests ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE exams ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE assignments ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE assessment_results ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE marks ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE attendance ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE conduct_logs ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE merits ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE fee_invoices ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE fee_payments ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE ptc_sessions ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE ptc_slots ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE ptc_bookings ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE teacher_consultations ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE report_cards ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE generated_reports ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE inter_school_competitions ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE extracurricular_activities ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE exam_seatings ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE bursaries ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+        -- Multi-School & Governance Tenant Columns dynamically applied to all existing tables
+        DO $$
+        DECLARE
+          tbl TEXT;
+          tbls TEXT[] := ARRAY[
+            'users', 'children', 'employees', 'departments', 'classes', 'subjects',
+            'timetables', 'tests', 'exams', 'assignments', 'quizzes', 'assessment_results',
+            'marks', 'attendance', 'conduct_logs', 'merits', 'disciplinary_records',
+            'fee_invoices', 'fee_payments', 'educator_leave_requests', 'educator_relief_allocations',
+            'textbook_inventory', 'textbook_allocations', 'textbooks', 'ptc_sessions',
+            'ptc_slots', 'ptc_bookings', 'teacher_consultations', 'report_cards',
+            'generated_reports', 'inter_school_competitions', 'extracurricular_activities',
+            'exam_seatings', 'bursaries', 'notifications', 'announcements', 'events'
+          ];
+        BEGIN
+          FOREACH tbl IN ARRAY tbls LOOP
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = tbl) THEN
+              BEGIN
+                EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1', tbl);
+              EXCEPTION WHEN OTHERS THEN NULL;
+              END;
+            END IF;
+          END LOOP;
+        END $$;
 
-        -- Inter-School and Announcements columns
-        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_inter_school BOOLEAN DEFAULT FALSE;
-        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS role_target VARCHAR(50) DEFAULT 'all';
-        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
-        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS grade_target INTEGER;
-        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS stream_target VARCHAR(50);
-        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS subject_target VARCHAR(100);
-        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_assignment BOOLEAN DEFAULT FALSE;
-        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS due_date TIMESTAMP;
-        ALTER TABLE announcements ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+        -- Safe column additions for specific tables
+        DO $$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT FALSE;
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_edit_unlocked BOOLEAN DEFAULT FALSE;
+          END IF;
 
-        -- Event and Calendar Columns
-        ALTER TABLE events ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-        ALTER TABLE events ADD COLUMN IF NOT EXISTS is_inter_school BOOLEAN DEFAULT FALSE;
-        ALTER TABLE events ADD COLUMN IF NOT EXISTS is_global BOOLEAN DEFAULT FALSE;
+          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'children') THEN
+            ALTER TABLE children ADD COLUMN IF NOT EXISTS home_language VARCHAR(50) DEFAULT 'English';
+          END IF;
 
-        -- Ensure initial department and class records have school_id = 1
-        UPDATE departments SET school_id = 1 WHERE school_id IS NULL;
-        UPDATE classes SET school_id = 1 WHERE school_id IS NULL;
-        UPDATE subjects SET school_id = 1 WHERE school_id IS NULL;
-        UPDATE users SET school_id = 1 WHERE school_id IS NULL;
-        UPDATE children SET school_id = 1 WHERE school_id IS NULL;
-        UPDATE employees SET school_id = 1 WHERE school_id IS NULL;
+          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'announcements') THEN
+            ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_inter_school BOOLEAN DEFAULT FALSE;
+            ALTER TABLE announcements ADD COLUMN IF NOT EXISTS role_target VARCHAR(50) DEFAULT 'all';
+            ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+            ALTER TABLE announcements ADD COLUMN IF NOT EXISTS grade_target INTEGER;
+            ALTER TABLE announcements ADD COLUMN IF NOT EXISTS stream_target VARCHAR(50);
+            ALTER TABLE announcements ADD COLUMN IF NOT EXISTS subject_target VARCHAR(100);
+            ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_assignment BOOLEAN DEFAULT FALSE;
+            ALTER TABLE announcements ADD COLUMN IF NOT EXISTS due_date TIMESTAMP;
+            ALTER TABLE announcements ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+          END IF;
+
+          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'events') THEN
+            ALTER TABLE events ADD COLUMN IF NOT EXISTS is_inter_school BOOLEAN DEFAULT FALSE;
+            ALTER TABLE events ADD COLUMN IF NOT EXISTS is_global BOOLEAN DEFAULT FALSE;
+          END IF;
+        END $$;
+
+        -- Ensure initial records have school_id = 1
+        DO $$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'departments') THEN
+            UPDATE departments SET school_id = 1 WHERE school_id IS NULL;
+          END IF;
+          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'classes') THEN
+            UPDATE classes SET school_id = 1 WHERE school_id IS NULL;
+          END IF;
+          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'subjects') THEN
+            UPDATE subjects SET school_id = 1 WHERE school_id IS NULL;
+          END IF;
+          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
+            UPDATE users SET school_id = 1 WHERE school_id IS NULL;
+          END IF;
+          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'children') THEN
+            UPDATE children SET school_id = 1 WHERE school_id IS NULL;
+          END IF;
+          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'employees') THEN
+            UPDATE employees SET school_id = 1 WHERE school_id IS NULL;
+          END IF;
+        END $$;
       `);
     } catch (migErr) {
       console.warn('[SCHEMA MIGRATION WARNING]:', migErr.message);
