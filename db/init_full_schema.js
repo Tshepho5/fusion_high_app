@@ -246,6 +246,83 @@ async function initializeAllDatabaseTables(customClient) {
         stream VARCHAR(50) DEFAULT 'General'
       );
 
+      INSERT INTO subjects (name, code, grade, stream)
+      VALUES
+        -- Science Stream (Grade 10-12) - Strictly Excludes CAT/IT, Includes Geography
+        ('Mathematics', 'MATH10S', 10, 'Science'),
+        ('Physical Sciences', 'PHSC10', 10, 'Science'),
+        ('Life Sciences', 'LFSC10', 10, 'Science'),
+        ('Geography', 'GEOG10S', 10, 'Science'),
+        ('Mathematics', 'MATH11S', 11, 'Science'),
+        ('Physical Sciences', 'PHSC11', 11, 'Science'),
+        ('Life Sciences', 'LFSC11', 11, 'Science'),
+        ('Geography', 'GEOG11S', 11, 'Science'),
+        ('Mathematics', 'MATH12S', 12, 'Science'),
+        ('Physical Sciences', 'PHSC12', 12, 'Science'),
+        ('Life Sciences', 'LFSC12', 12, 'Science'),
+        ('Geography', 'GEOG12S', 12, 'Science'),
+
+        -- Commerce Stream (Grade 10-12)
+        ('Accounting', 'ACC10', 10, 'Commerce'),
+        ('Business Studies', 'BUSS10', 10, 'Commerce'),
+        ('Economics', 'ECON10', 10, 'Commerce'),
+        ('Mathematics', 'MATH10C', 10, 'Commerce'),
+        ('Mathematical Literacy', 'MLIT10C', 10, 'Commerce'),
+        ('Accounting', 'ACC11', 11, 'Commerce'),
+        ('Business Studies', 'BUSS11', 11, 'Commerce'),
+        ('Economics', 'ECON11', 11, 'Commerce'),
+        ('Mathematics', 'MATH11C', 11, 'Commerce'),
+        ('Mathematical Literacy', 'MLIT11C', 11, 'Commerce'),
+        ('Accounting', 'ACC12', 12, 'Commerce'),
+        ('Business Studies', 'BUSS12', 12, 'Commerce'),
+        ('Economics', 'ECON12', 12, 'Commerce'),
+        ('Mathematics', 'MATH12C', 12, 'Commerce'),
+        ('Mathematical Literacy', 'MLIT12C', 12, 'Commerce'),
+
+        -- Tourism Stream (Grade 10-12) - Includes Geography, Tourism, Math Lit
+        ('Tourism', 'TOUR10', 10, 'Tourism'),
+        ('Geography', 'GEOG10T', 10, 'Tourism'),
+        ('Mathematical Literacy', 'MLIT10', 10, 'Tourism'),
+        ('Tourism', 'TOUR11', 11, 'Tourism'),
+        ('Geography', 'GEOG11T', 11, 'Tourism'),
+        ('Mathematical Literacy', 'MLIT11', 11, 'Tourism'),
+        ('Tourism', 'TOUR12', 12, 'Tourism'),
+        ('Geography', 'GEOG12T', 12, 'Tourism'),
+        ('Mathematical Literacy', 'MLIT12', 12, 'Tourism'),
+
+        -- Compulsory Core Subjects (All Streams)
+        ('English FAL', 'ENGF10', 10, 'General'),
+        ('Home Language', 'HMLG10', 10, 'General'),
+        ('Life Orientation', 'LFOR10', 10, 'General'),
+        ('English FAL', 'ENGF11', 11, 'General'),
+        ('Home Language', 'HMLG11', 11, 'General'),
+        ('Life Orientation', 'LFOR11', 11, 'General'),
+        ('English FAL', 'ENGF12', 12, 'General'),
+        ('Home Language', 'HMLG12', 12, 'General'),
+        ('Life Orientation', 'LFOR12', 12, 'General'),
+
+        -- Grade 8-9 General CAPS Curriculum
+        ('English FAL', 'ENGF08', 8, 'General'),
+        ('Home Language', 'HMLG08', 8, 'General'),
+        ('Mathematics', 'MATH08', 8, 'General'),
+        ('Natural Sciences', 'NSCI08', 8, 'General'),
+        ('Social Sciences', 'SSCI08', 8, 'General'),
+        ('EMS', 'EMSC08', 8, 'General'),
+        ('Technology', 'TECH08', 8, 'General'),
+        ('Life Orientation', 'LFOR08', 8, 'General'),
+        ('Creative Arts', 'CRTA08', 8, 'General'),
+
+        ('English FAL', 'ENGF09', 9, 'General'),
+        ('Home Language', 'HMLG09', 9, 'General'),
+        ('Mathematics', 'MATH09', 9, 'General'),
+        ('Natural Sciences', 'NSCI09', 9, 'General'),
+        ('Social Sciences', 'SSCI09', 9, 'General'),
+        ('EMS', 'EMSC09', 9, 'General'),
+        ('Technology', 'TECH09', 9, 'General'),
+        ('Life Orientation', 'LFOR09', 9, 'General'),
+        ('Creative Arts', 'CRTA09', 9, 'General')
+      ON CONFLICT (code) DO NOTHING;
+
       -- 2. Learners & Multi-Parent Tables
       CREATE TABLE IF NOT EXISTS children (
         id SERIAL PRIMARY KEY,
