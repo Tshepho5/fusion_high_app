@@ -30,10 +30,10 @@ exports.getAllSchools = async (req, res) => {
         s.physical_address, s.contact_email, s.contact_phone, s.principal_name,
         s.logo_url, s.badge_url, s.primary_color, s.secondary_color, s.accent_color,
         s.motto, s.curriculum_type, s.grade_range, s.is_active, s.settings,
-        COALESCE((SELECT COUNT(*)::int FROM children c WHERE c.school_id = s.id), 0) AS enrolled_learners_count,
-        COALESCE((SELECT COUNT(*)::int FROM employees e WHERE e.school_id = s.id), 0) AS staff_count,
-        COALESCE((SELECT COUNT(*)::int FROM classes cl WHERE cl.school_id = s.id), 0) AS classes_count,
-        COALESCE((SELECT COUNT(*)::int FROM users u WHERE u.school_id = s.id AND u.role_id = 2), 0) AS parents_count
+        COALESCE((SELECT COUNT(*)::int FROM children c WHERE c.school_id::text = s.id::text), 0) AS enrolled_learners_count,
+        COALESCE((SELECT COUNT(*)::int FROM employees e WHERE e.school_id::text = s.id::text), 0) AS staff_count,
+        COALESCE((SELECT COUNT(*)::int FROM classes cl WHERE cl.school_id::text = s.id::text), 0) AS classes_count,
+        COALESCE((SELECT COUNT(*)::int FROM users u WHERE u.school_id::text = s.id::text AND u.role_id::text = '2'), 0) AS parents_count
       FROM schools s
       WHERE s.is_active = TRUE
       ORDER BY s.id ASC;
@@ -64,10 +64,10 @@ exports.getCurrentSchool = async (req, res) => {
         s.physical_address, s.contact_email, s.contact_phone, s.principal_name,
         s.logo_url, s.badge_url, s.primary_color, s.secondary_color, s.accent_color,
         s.motto, s.curriculum_type, s.grade_range, s.is_active, s.settings,
-        COALESCE((SELECT COUNT(*)::int FROM children c WHERE c.school_id = s.id), 0) AS enrolled_learners_count,
-        COALESCE((SELECT COUNT(*)::int FROM employees e WHERE e.school_id = s.id), 0) AS staff_count,
-        COALESCE((SELECT COUNT(*)::int FROM classes cl WHERE cl.school_id = s.id), 0) AS classes_count,
-        COALESCE((SELECT COUNT(*)::int FROM users u WHERE u.school_id = s.id AND u.role_id = 2), 0) AS parents_count
+        COALESCE((SELECT COUNT(*)::int FROM children c WHERE c.school_id::text = s.id::text), 0) AS enrolled_learners_count,
+        COALESCE((SELECT COUNT(*)::int FROM employees e WHERE e.school_id::text = s.id::text), 0) AS staff_count,
+        COALESCE((SELECT COUNT(*)::int FROM classes cl WHERE cl.school_id::text = s.id::text), 0) AS classes_count,
+        COALESCE((SELECT COUNT(*)::int FROM users u WHERE u.school_id::text = s.id::text AND u.role_id::text = '2'), 0) AS parents_count
       FROM schools s 
       WHERE s.is_active = TRUE 
     `;
@@ -77,8 +77,14 @@ exports.getCurrentSchool = async (req, res) => {
       query += `AND s.slug = $1 LIMIT 1;`;
       params = [requestedSlug];
     } else {
-      query += `AND (s.id = $1 OR s.id = 1) ORDER BY (s.id = $1) DESC LIMIT 1;`;
-      params = [parseInt(requestedId, 10) || 1];
+      const parsedId = parseInt(requestedId, 10);
+      if (!isNaN(parsedId) && parsedId > 0) {
+        query += `AND (s.id = $1::integer OR s.id = 1) ORDER BY (s.id = $1::integer) DESC LIMIT 1;`;
+        params = [parsedId];
+      } else {
+        query += `AND (s.slug = $1::text OR s.id = 1) ORDER BY (s.slug = $1::text) DESC LIMIT 1;`;
+        params = [String(requestedId)];
+      }
     }
 
     const result = await db.query(query, params);
@@ -106,10 +112,10 @@ exports.getSchoolBySlug = async (req, res) => {
         s.physical_address, s.contact_email, s.contact_phone, s.principal_name,
         s.logo_url, s.badge_url, s.primary_color, s.secondary_color, s.accent_color,
         s.motto, s.curriculum_type, s.grade_range, s.is_active, s.settings,
-        COALESCE((SELECT COUNT(*)::int FROM children c WHERE c.school_id = s.id), 0) AS enrolled_learners_count,
-        COALESCE((SELECT COUNT(*)::int FROM employees e WHERE e.school_id = s.id), 0) AS staff_count,
-        COALESCE((SELECT COUNT(*)::int FROM classes cl WHERE cl.school_id = s.id), 0) AS classes_count,
-        COALESCE((SELECT COUNT(*)::int FROM users u WHERE u.school_id = s.id AND u.role_id = 2), 0) AS parents_count
+        COALESCE((SELECT COUNT(*)::int FROM children c WHERE c.school_id::text = s.id::text), 0) AS enrolled_learners_count,
+        COALESCE((SELECT COUNT(*)::int FROM employees e WHERE e.school_id::text = s.id::text), 0) AS staff_count,
+        COALESCE((SELECT COUNT(*)::int FROM classes cl WHERE cl.school_id::text = s.id::text), 0) AS classes_count,
+        COALESCE((SELECT COUNT(*)::int FROM users u WHERE u.school_id::text = s.id::text AND u.role_id::text = '2'), 0) AS parents_count
       FROM schools s 
       WHERE s.slug = $1 AND s.is_active = TRUE;
     `;

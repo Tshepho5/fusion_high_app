@@ -113,7 +113,12 @@ exports.getDashboardStats = async (req, res) => {
                 ORDER BY p.date DESC
                 LIMIT 5;
             `, [schoolId]),
-            db.query("SELECT COUNT(*) FROM behavior_incidents WHERE school_id = $1", [schoolId]),
+            db.query(`
+                SELECT COUNT(*) 
+                FROM behavior_incidents b 
+                JOIN children c ON b.child_id = c.id 
+                WHERE c.school_id::text = $1::text
+            `, [schoolId]),
             db.query(`
                 SELECT a.id, a.title, a.content, a.created_at, COALESCE(CONCAT(u.full_name, ' ', u.surname), 'Principal Admin') AS author_name 
                 FROM announcements a 
@@ -741,8 +746,8 @@ exports.getAllSchoolAdmins = async (req, res) => {
                 s.circuit AS school_circuit,
                 s.province AS school_province
             FROM users u
-            JOIN roles r ON u.role_id = r.id
-            LEFT JOIN schools s ON u.school_id = s.id
+            JOIN roles r ON (u.role_id::text = r.id::text)
+            LEFT JOIN schools s ON (u.school_id::text = s.id::text)
             WHERE r.name = 'admin'
             ORDER BY u.is_superadmin DESC, s.name ASC, u.surname ASC;
         `;

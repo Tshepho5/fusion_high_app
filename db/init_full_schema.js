@@ -1159,12 +1159,12 @@ async function initializeAllDatabaseTables(customClient) {
           tbls TEXT[] := ARRAY[
             'users', 'children', 'employees', 'departments', 'classes', 'subjects',
             'timetables', 'tests', 'exams', 'assignments', 'quizzes', 'assessment_results',
-            'marks', 'attendance', 'conduct_logs', 'merits', 'disciplinary_records',
+            'marks', 'attendance', 'conduct_logs', 'conduct_records', 'behavior_incidents', 'merits', 'disciplinary_records',
             'fee_invoices', 'fee_payments', 'educator_leave_requests', 'educator_relief_allocations',
             'textbook_inventory', 'textbook_allocations', 'textbooks', 'ptc_sessions',
             'ptc_slots', 'ptc_bookings', 'teacher_consultations', 'report_cards',
             'generated_reports', 'inter_school_competitions', 'extracurricular_activities',
-            'exam_seatings', 'bursaries', 'notifications', 'announcements', 'events'
+            'exam_seatings', 'bursaries', 'notifications', 'announcements', 'events', 'applications'
           ];
         BEGIN
           FOREACH tbl IN ARRAY tbls LOOP
@@ -1175,6 +1175,17 @@ async function initializeAllDatabaseTables(customClient) {
               END;
             END IF;
           END LOOP;
+
+          -- Normalize users.school_id type if it was created as varchar/text
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'school_id' AND data_type IN ('character varying', 'text')
+          ) THEN
+            BEGIN
+              EXECUTE 'ALTER TABLE users ALTER COLUMN school_id TYPE INTEGER USING (NULLIF(regexp_replace(school_id::text, ''\D'', '''', ''g''), '''')::integer)';
+            EXCEPTION WHEN OTHERS THEN NULL;
+            END;
+          END IF;
         END $$;
 
         -- Safe column additions for specific tables
