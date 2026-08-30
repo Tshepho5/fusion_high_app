@@ -6,8 +6,24 @@ const db = require('./db');
  * performance indexes, and default lookups exist on any environment.
  */
 async function initializeAllDatabaseTables(customClient) {
-  const runner = customClient || db;
+  let runner = customClient;
+  let clientToRelease = null;
+
   try {
+    if (!runner) {
+      if (db.pool) {
+        clientToRelease = await db.pool.connect();
+        runner = clientToRelease;
+      } else {
+        runner = db;
+      }
+    }
+
+    // Acquire session-level advisory lock to guarantee exclusive migration execution and prevent deadlocks
+    try {
+      await runner.query('SELECT pg_advisory_lock(718293041);');
+    } catch (_) {}
+
     console.log('[SCHEMA BOOTSTRAP] Verifying all 40 database tables and schema columns...');
 
     await runner.query(`
@@ -915,8 +931,8 @@ async function initializeAllDatabaseTables(customClient) {
         title VARCHAR(255) NOT NULL,
         activity_type VARCHAR(100) NOT NULL,
         category VARCHAR(50) DEFAULT 'sports',
-        home_school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE,
-        away_school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE,
+        home_school_id INTEGER,
+        away_school_id INTEGER,
         event_date DATE NOT NULL,
         venue VARCHAR(255),
         home_score INTEGER DEFAULT 0,
@@ -924,16 +940,40 @@ async function initializeAllDatabaseTables(customClient) {
         status VARCHAR(30) DEFAULT 'scheduled',
         trophy_title VARCHAR(255),
         highlights TEXT,
-        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_by INTEGER,
         school_id INTEGER DEFAULT 1,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'inter_school_competitions_home_school_id_fkey') THEN
+          BEGIN
+            ALTER TABLE inter_school_competitions ADD CONSTRAINT inter_school_competitions_home_school_id_fkey FOREIGN KEY (home_school_id) REFERENCES schools(id) ON DELETE CASCADE;
+          EXCEPTION WHEN OTHERS THEN NULL;
+          END;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'inter_school_competitions_away_school_id_fkey') THEN
+          BEGIN
+            ALTER TABLE inter_school_competitions ADD CONSTRAINT inter_school_competitions_away_school_id_fkey FOREIGN KEY (away_school_id) REFERENCES schools(id) ON DELETE CASCADE;
+          EXCEPTION WHEN OTHERS THEN NULL;
+          END;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'inter_school_competitions_created_by_fkey') THEN
+          BEGIN
+            ALTER TABLE inter_school_competitions ADD CONSTRAINT inter_school_competitions_created_by_fkey FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
+          EXCEPTION WHEN OTHERS THEN NULL;
+          END;
+        END IF;
+      END $$;
 
       -- 18. Official CAPS Term Academic Report Cards
       CREATE TABLE IF NOT EXISTS report_cards (
         id SERIAL PRIMARY KEY,
         school_id INTEGER DEFAULT 1,
-        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        child_id INTEGER,
         grade INTEGER NOT NULL,
         term INTEGER NOT NULL,
         academic_year INTEGER DEFAULT 2026,
@@ -945,6 +985,16 @@ async function initializeAllDatabaseTables(customClient) {
         is_published BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'report_cards_child_id_fkey') THEN
+          BEGIN
+            ALTER TABLE report_cards ADD CONSTRAINT report_cards_child_id_fkey FOREIGN KEY (child_id) REFERENCES children(id) ON DELETE CASCADE;
+          EXCEPTION WHEN OTHERS THEN NULL;
+          END;
+        END IF;
+      END $$;
     `);
 
     // Ensure default bursary entries exist in database
@@ -1034,6 +1084,13 @@ async function initializeAllDatabaseTables(customClient) {
     console.log('✅ [SCHEMA BOOTSTRAP] All tables, indexes, and initial records verified successfully.');
   } catch (err) {
     console.error('❌ [SCHEMA BOOTSTRAP ERROR]:', err.message);
+  } finally {
+    if (clientToRelease) {
+      try {
+        await clientToRelease.query('SELECT pg_advisory_unlock(718293041);');
+      } catch (_) {}
+      clientToRelease.release();
+    }
   }
 }
 

@@ -46,12 +46,10 @@ if (!fs.existsSync(appUploadDir)) fs.mkdirSync(appUploadDir, { recursive: true }
 
 // Initialize all 40 database tables, multi-parent, and notification schemas on server startup
 const initializeAllDatabaseTables = require('./db/init_full_schema');
-const runAllTables = require('./db/verify_and_run_all_tables');
 const { fixAllUserPasswords } = require('./db/fix_all_user_passwords');
 (async () => {
   try {
     await initializeAllDatabaseTables();
-    await runAllTables();
     await initApplicationTables();
     await NotificationService.initSchema();
     await fixAllUserPasswords();
