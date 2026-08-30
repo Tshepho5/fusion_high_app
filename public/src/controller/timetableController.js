@@ -64,10 +64,10 @@ const CAPS_STREAM_SUBJECTS = {
         'Mathematics',
         'Physical Sciences',
         'Life Sciences',
+        'Geography',
         'English FAL',
         'Home Language',
-        'Life Orientation',
-        'Computer Applications Technology (CAT)'
+        'Life Orientation'
     ],
     // FET Phase (Grades 10, 11, 12 - Commercial / Business)
     COMMERCE: [

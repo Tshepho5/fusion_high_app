@@ -385,7 +385,7 @@ export const AdminTimetable: React.FC = () => {
                   <option value="Mathematics">Mathematics (Pure)</option>
                   <option value="Physical Sciences">Physical Sciences</option>
                   <option value="Life Sciences">Life Sciences</option>
-                  <option value="Computer Applications Technology (CAT)">Computer Applications Tech (CAT)</option>
+                  <option value="Geography">Geography</option>
                   <option value="English FAL">English FAL</option>
                   <option value="Home Language">Home Language</option>
                   <option value="Life Orientation">Life Orientation</option>
