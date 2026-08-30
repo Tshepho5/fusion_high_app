@@ -144,6 +144,7 @@ export const AdminUsers: React.FC = () => {
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
   // SubAdmin Form State
+  const [subAdminModalError, setSubAdminModalError] = useState<string | null>(null);
   const [adminForm, setAdminForm] = useState({
     full_name: '',
     surname: '',
@@ -283,21 +284,22 @@ export const AdminUsers: React.FC = () => {
   const handleCreateSchoolAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSubAdminModalError(null);
 
     if (/\d/.test(adminForm.full_name)) {
-      setError('First name cannot contain numbers.');
+      setSubAdminModalError('First name cannot contain numbers.');
       return;
     }
     if (/\d/.test(adminForm.surname)) {
-      setError('Surname cannot contain numbers.');
+      setSubAdminModalError('Surname cannot contain numbers.');
       return;
     }
     if (!adminForm.email) {
-      setError('Official email address is required.');
+      setSubAdminModalError('Official email address is required.');
       return;
     }
     if (!adminForm.school_id) {
-      setError('Please assign a specific school to this SubAdmin.');
+      setSubAdminModalError('Please assign a specific school to this SubAdmin.');
       return;
     }
 
@@ -311,6 +313,7 @@ export const AdminUsers: React.FC = () => {
 
       setActionSuccess(res.message || `SubAdmin ${adminForm.full_name} ${adminForm.surname} appointed successfully. Official credentials emailed.`);
       setIsAddAdminModalOpen(false);
+      setSubAdminModalError(null);
       setAdminForm({
         full_name: '',
         surname: '',
@@ -326,7 +329,9 @@ export const AdminUsers: React.FC = () => {
       setTimeout(() => setActionSuccess(null), 5000);
     } catch (err: any) {
       console.error('Create school admin error:', err);
-      setError(err.response?.data?.error || err.message || 'Failed to appoint school administrator.');
+      const errMsg = err.response?.data?.error || err.message || 'Failed to appoint school administrator.';
+      setSubAdminModalError(errMsg);
+      setError(errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -1860,6 +1865,13 @@ export const AdminUsers: React.FC = () => {
                 The SubAdmin will receive an automated welcome email with their login credentials and administrative access strictly for their individual school.
               </span>
             </div>
+
+            {subAdminModalError && (
+              <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2.5 animate-fade-in">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{subAdminModalError}</span>
+              </div>
+            )}
 
             {/* School Selector */}
             <div className="space-y-1">

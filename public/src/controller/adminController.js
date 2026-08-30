@@ -677,7 +677,7 @@ exports.createSchoolAdmin = async (req, res) => {
 
         const newAdmin = result.rows[0];
 
-        // 6. Send Onboarding Email to the new School Admin
+        // 6. Send Onboarding Email to the new School Admin (Asynchronously with zero UI blocking)
         let baseUrl = typeof req.get === 'function' ? req.get('origin') : null;
         if (!baseUrl && typeof req.get === 'function' && req.get('referer')) {
             try {
@@ -691,24 +691,24 @@ exports.createSchoolAdmin = async (req, res) => {
             baseUrl = `${protocol}://${host}`;
         }
 
-        try {
-            await emailService.sendSchoolAdminWelcome({
-                name: full_name.trim(),
-                surname: surname.trim(),
-                email: normalizedEmail,
-                temporaryPassword: initialPassword,
-                schoolName: school.name,
-                circuit: school.circuit,
-                province: school.province,
-                emisNumber: school.emis_number,
-                baseUrl
-            });
-            console.log(`[SUBADMIN CREATED] Welcome email dispatched to ${normalizedEmail} for school ${school.name}`);
-        } catch (mailErr) {
+        // Fire-and-forget immediate background email dispatch
+        emailService.sendSchoolAdminWelcome({
+            name: full_name.trim(),
+            surname: surname.trim(),
+            email: normalizedEmail,
+            temporaryPassword: initialPassword,
+            schoolName: school.name,
+            circuit: school.circuit,
+            province: school.province,
+            emisNumber: school.emis_number,
+            baseUrl
+        }).then(() => {
+            console.log(`[SUBADMIN CREATED] Welcome email dispatched successfully to ${normalizedEmail} for school ${school.name}`);
+        }).catch(mailErr => {
             console.error('[SUBADMIN EMAIL ERROR] Could not dispatch welcome email:', mailErr.message);
-        }
+        });
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: `SubAdmin appointed successfully for ${school.name}. Onboarding email with credentials dispatched to ${normalizedEmail}.`,
             admin: {
@@ -719,7 +719,7 @@ exports.createSchoolAdmin = async (req, res) => {
         });
     } catch (err) {
         console.error('Error creating school admin:', err);
-        res.status(500).json({ error: 'Failed to create school admin: ' + err.message });
+        return res.status(500).json({ error: 'Failed to create school admin: ' + err.message });
     }
 };
 
