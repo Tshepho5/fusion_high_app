@@ -129,8 +129,14 @@ export const learnerService = {
     api.get(`/api/learner/subject-announcements?subject=${encodeURIComponent(subject)}${grade ? `&grade=${grade}` : ''}`).then(res => res.data),
   getAssignments: (params?: { subject?: string; grade?: number }) =>
     api.get(`/api/learner/assignments${params?.subject ? `?subject=${encodeURIComponent(params.subject)}` : ''}`).then(res => res.data),
-  askTutor: (payload: { prompt?: string; question?: string; action?: string; topic?: string; assessmentId?: string; subject?: string; grade?: number; language?: string }) => 
-    api.post('/api/learner/ask-tutor', payload).then(res => res.data),
+  askTutor: (payload: { prompt?: string; question?: string; action?: string; topic?: string; assessmentId?: string; subject?: string; grade?: number; stream?: string; message?: string; conversationId?: number | null; language?: string }) => 
+    api.post('/api/learner/ai-tutor/chat', { ...payload, message: payload.message || payload.prompt || payload.question }).then(res => res.data),
+  getEnrolledSubjectsWithSyllabus: () => api.get('/api/learner/ai-tutor/subjects').then(res => res.data),
+  getAIConversations: (subject?: string) => api.get('/api/learner/ai-tutor/conversations', { params: { subject } }).then(res => res.data),
+  getAIConversationDetails: (id: number | string) => api.get(`/api/learner/ai-tutor/conversations/${id}`).then(res => res.data),
+  startNewAIConversation: (payload: { subject: string; grade?: number; stream?: string; topic?: string; title?: string; language?: string }) =>
+    api.post('/api/learner/ai-tutor/new-session', payload).then(res => res.data),
+  deleteAIConversation: (id: number | string) => api.delete(`/api/learner/ai-tutor/conversations/${id}`).then(res => res.data),
   gradeTask: (payload: any) => api.post('/api/learner/grade-task', payload).then(res => res.data),
   gradeSubmission: (payload: { subject: string; grade: number; topic: string; question_text: string; learner_answer: string; total_marks?: number }) =>
     api.post('/api/learner/ai/grade-submission', payload).then(res => res.data),
@@ -142,6 +148,22 @@ export const learnerService = {
   updateHomeLanguage: (home_language: string) => api.put('/api/learner/home-language', { home_language }).then(res => res.data),
   getCareerPathway: () => api.get('/api/learner/career-pathway').then(res => res.data),
   simulateAps: (payload: { subject_marks: Array<{ subject: string; mark: number }> }) => api.post('/api/learner/simulate-aps', payload).then(res => res.data),
+};
+
+// Interactive CAPS Subject AI Tutor APIs
+export const aiTutorService = {
+  getSubjectsWithSyllabus: () =>
+    api.get('/api/learner/ai-tutor/subjects').then(res => res.data),
+  getConversations: (subject?: string) =>
+    api.get('/api/learner/ai-tutor/conversations', { params: { subject } }).then(res => res.data),
+  getConversationDetails: (id: number | string) =>
+    api.get(`/api/learner/ai-tutor/conversations/${id}`).then(res => res.data),
+  startNewSession: (payload: { subject: string; grade?: number; stream?: string; topic?: string; title?: string; language?: string }) =>
+    api.post('/api/learner/ai-tutor/new-session', payload).then(res => res.data),
+  sendChat: (payload: { subject?: string; grade?: number; stream?: string; topic?: string; message: string; conversationId?: number | null; language?: string }) =>
+    api.post('/api/learner/ai-tutor/chat', payload).then(res => res.data),
+  deleteSession: (id: number | string) =>
+    api.delete(`/api/learner/ai-tutor/conversations/${id}`).then(res => res.data),
 };
 
 // Official Academic Report Card Service
@@ -245,8 +267,10 @@ export const parentService = {
   getChildTimetable: (childId?: string | number) => api.get(`/api/parent/child-timetable${childId ? `?child_id=${childId}` : ''}`).then(res => res.data),
   getChildProgress: (childId: string | number) => api.get(`/api/progress/${childId}`).then(res => res.data),
   linkChild: (payload: {
-    learner_number: string;
-    id_number: string;
+    learner_number?: string;
+    id_number?: string;
+    first_name?: string;
+    surname?: string;
     relationship?: string;
   }) => api.post('/api/parent/link-child', payload).then(res => res.data),
   linkSibling: (payload: {
@@ -483,6 +507,21 @@ export const commandCenterService = {
   getCommandCenterStats: () =>
     api.get('/api/admin/command-center-stats').then(res => res.data),
 };
+
+// Parent Portal Applications & Child Linkage API
+export const parentApplicationService = {
+  submit: (data: any) => api.post('/api/parent-applications', data).then(res => res.data),
+  getAll: () => api.get('/api/parent-applications').then(res => res.data),
+  decide: (id: number | string, decision: 'approve' | 'reject', admin_notes?: string) =>
+    api.post(`/api/parent-applications/${id}/decide`, { decision, admin_notes }).then(res => res.data),
+  linkEnrolledChild: (data: { targetID?: string; targetFirstName?: string; targetSurname?: string; id_number?: string; first_name?: string; surname?: string; learner_number?: string }) =>
+    api.post('/api/parent/activate-child', {
+      targetID: data.targetID || data.id_number || data.learner_number,
+      targetFirstName: data.targetFirstName || data.first_name,
+      targetSurname: data.targetSurname || data.surname
+    }).then(res => res.data),
+};
+
 
 
 

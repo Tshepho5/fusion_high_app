@@ -47,12 +47,14 @@ if (!fs.existsSync(appUploadDir)) fs.mkdirSync(appUploadDir, { recursive: true }
 // Initialize all 40 database tables, multi-parent, and notification schemas on server startup
 const initializeAllDatabaseTables = require('./db/init_full_schema');
 const { fixAllUserPasswords } = require('./db/fix_all_user_passwords');
+const createAiConversationsTables = require('./db/create_ai_conversations_tables');
 const emailService = require('./public/src/services/emailService');
 (async () => {
   try {
     await initializeAllDatabaseTables();
     await initApplicationTables();
     await NotificationService.initSchema();
+    await createAiConversationsTables();
     await fixAllUserPasswords();
     console.log('[DB BOOTSTRAP] All database tables, schemas, and security verified successfully.');
     // Pre-warm and verify email delivery transport in background

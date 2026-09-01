@@ -15,7 +15,7 @@ const poolConfig = process.env.DATABASE_URL
       connectionTimeoutMillis: 10000,
     }
   : {
-      host: process.env.DB_HOST || 'localhost',
+      host: (process.env.DB_HOST === 'localhost' ? '127.0.0.1' : process.env.DB_HOST) || '127.0.0.1',
       port: parseInt(process.env.DB_PORT || '5432', 10),
       user: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD,

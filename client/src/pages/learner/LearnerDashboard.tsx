@@ -62,12 +62,13 @@ export const LearnerDashboard: React.FC = () => {
     switch (activeTab) {
       case 'subjects': return 'My Subjects';
       case 'performance': return 'Subject Academic Performance';
-      case 'ai-tutor': return 'AI Study Tutor';
+      case 'ai-tutor': return 'CAPS AI Study Tutor';
       case 'career-advisor': return 'Matric APS & University Career Advisor';
       case 'bursaries': return 'NSFAS & Tertiary Bursary Matching Engine';
       case 'finance': return 'School Fee Statements & Receipts';
       case 'exam-seating': return 'Examination Seating & Candidate Slips';
       case 'sports': return 'Sports & Extracurricular Clubs';
+      case 'inter-school': return 'Inter-School Derbies, Sports & Academic Olympiads';
       case 'textbooks': return 'My Issued Textbooks';
       case 'assignments': return 'Homework & Digital Assignments Hub';
       case 'arcade': return 'Fusion Arcade & CAPS Study Games';

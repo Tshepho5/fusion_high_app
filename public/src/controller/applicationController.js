@@ -7,6 +7,7 @@ const emailService = require('../services/emailService');
 const { validateSAID } = require('./saIDvalidations');
 const applicationService = require('../services/applicationService');
 const curriculumService = require('../services/curriculumService');
+const { generateLearnerPasswordFromID } = require('./authController');
 
 // Ensure upload directory exists
 const appUploadDir = path.join(process.cwd(), 'uploads', 'applications');
@@ -626,7 +627,7 @@ exports.resubmitApplication = async (req, res) => {
     } else {
       newStatus = 'approved';
       if (!provNumber) {
-        provNumber = applicationService.generateProvisionalLearnerNumber(gradeApplied);
+        provNumber = await applicationService.generateProvisionalLearnerNumber(gradeApplied);
       }
     }
 
@@ -853,7 +854,7 @@ exports.reviewApplication = async (req, res) => {
     let provNumber = app.provisional_learner_number;
 
     if ((status === 'approved' || status === 'enrolled') && !provNumber) {
-      provNumber = applicationService.generateProvisionalLearnerNumber(app.grade_applied);
+      provNumber = await applicationService.generateProvisionalLearnerNumber(app.grade_applied);
     }
 
     // 1. If approved or enrolled, execute full 1-Click Autonomous Enrollment
@@ -864,8 +865,10 @@ exports.reviewApplication = async (req, res) => {
       const homeLanguage = (app.home_language || 'Sepedi').trim();
       const subjects = curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
       
-      const defaultPassword = 'FusionPassword2026!';
+      const learnerInitialPw = (app.id_number && app.id_number.trim().length >= 6) ? generateLearnerPasswordFromID(app.id_number.trim()) : '123456';
+      const defaultPassword = learnerInitialPw;
       const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+      const schoolId = app.school_id || 1;
 
       // (a) Create or link Parent User Account
       let parentUserId = null;
@@ -877,18 +880,20 @@ exports.reviewApplication = async (req, res) => {
         } else {
           // Resolve parent role_id
           const parentRoleRes = await db.query("SELECT id FROM roles WHERE name = 'parent' LIMIT 1");
-          const parentRoleId = parentRoleRes.rows[0]?.id || null;
+          const parentRoleId = parentRoleRes.rows[0]?.id || 4;
 
           const newParentRes = await db.query(
-            `INSERT INTO users (full_name, surname, email, password, phone, role_id, role, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, 'parent', NOW()) RETURNING id`,
+            `INSERT INTO users (full_name, surname, email, password_hash, phone, id_number, role_id, school_id, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING id`,
             [
               app.primary_parent_name,
               app.primary_parent_surname,
               parentEmailClean,
               hashedPassword,
               app.primary_parent_phone || null,
-              parentRoleId
+              app.primary_parent_id_number || null,
+              parentRoleId,
+              schoolId
             ]
           );
           parentUserId = newParentRes.rows[0].id;
@@ -903,18 +908,20 @@ exports.reviewApplication = async (req, res) => {
         learnerUserId = learnerUserRes.rows[0].id;
       } else {
         const learnerRoleRes = await db.query("SELECT id FROM roles WHERE name = 'learner' LIMIT 1");
-        const learnerRoleId = learnerRoleRes.rows[0]?.id || null;
+        const learnerRoleId = learnerRoleRes.rows[0]?.id || 3;
 
         const newLearnerRes = await db.query(
-          `INSERT INTO users (full_name, surname, email, password, phone, role_id, role, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, 'learner', NOW()) RETURNING id`,
+          `INSERT INTO users (full_name, surname, email, password_hash, phone, id_number, role_id, school_id, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING id`,
           [
             app.first_name,
             app.surname,
             learnerEmail,
             hashedPassword,
             app.phone || null,
-            learnerRoleId
+            app.id_number || null,
+            learnerRoleId,
+            schoolId
           ]
         );
         learnerUserId = newLearnerRes.rows[0].id;

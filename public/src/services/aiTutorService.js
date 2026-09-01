@@ -2,6 +2,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs');
 const pdf = require('pdf-parse');
 const path = require('path');
+const db = require('../../../db/db');
 require('dotenv').config();
 
 const scienceCurriculum = require('../curriculum/science');
@@ -27,7 +28,7 @@ async function callAI(prompt, isJson = false, modelOverride = null) {
     throw new Error("AI service is currently disabled by configuration.");
   }
 
-  const modelCandidates = modelOverride ? [modelOverride] : ['gemini-3.6-flash', 'gemini-3.5-flash'];
+  const modelCandidates = modelOverride ? [modelOverride] : ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
   let lastError = null;
 
   for (const targetModel of modelCandidates) {
@@ -554,7 +555,7 @@ function generateCAPSLocalFallback(prompt) {
 }
 
 async function safeAICall(prompt, isJson = false, retries = 1) {
-  const models = ['gemini-3.6-flash', 'gemini-3.5-flash'];
+  const models = ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
 
   for (const m of models) {
     try {
@@ -794,6 +795,352 @@ Response:
   return `I am your Fusion AI Subject Specialist for ${normSubject} (Grade ${normGrade}). I am ready to help you with ${normSubject} concepts, revision, or quiz you with official examination-style questions. What topic in ${normSubject} would you like to explore or practice today?`;
 }
 
+/**
+ * Retrieves all curriculum topics for a specific subject, grade, and stream.
+ */
+function getCurriculumTopics(grade, stream, subject) {
+  const normSubject = normalizeSubject(subject);
+  const targetGrade = parseInt(grade, 10) || 10;
+  const targetStream = (stream || 'General').toLowerCase();
+
+  // Search all loaded curricula
+  const allCurricula = [scienceCurriculum, generalCurriculum, commerceCurriculum, tourismCurriculum];
+  const matchedTopics = [];
+
+  for (const curric of allCurricula) {
+    for (const subName in curric) {
+      if (normalizeSubject(subName).toLowerCase() === normSubject.toLowerCase()) {
+        const topics = curric[subName] || [];
+        for (const t of topics) {
+          if (t.grade === targetGrade && (!t.stream || t.stream.toLowerCase() === targetStream || targetStream === 'general')) {
+            if (!matchedTopics.find(m => m.id === t.id)) {
+              matchedTopics.push(t);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Fallback if specific grade-stream combo has no exact matches
+  if (matchedTopics.length === 0) {
+    for (const curric of allCurricula) {
+      for (const subName in curric) {
+        if (normalizeSubject(subName).toLowerCase() === normSubject.toLowerCase()) {
+          const topics = curric[subName] || [];
+          for (const t of topics) {
+            if (t.grade === targetGrade) {
+              if (!matchedTopics.find(m => m.id === t.id)) matchedTopics.push(t);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return matchedTopics;
+}
+
+/**
+ * Retrieves past conversation sessions for a learner and specific subject.
+ */
+async function getLearnerConversations(learnerUserId, subjectName) {
+  const normSubject = normalizeSubject(subjectName);
+  const res = await db.query(`
+    SELECT 
+      c.id, 
+      c.subject_name, 
+      c.grade, 
+      c.stream, 
+      c.topic, 
+      c.title, 
+      c.language,
+      c.created_at, 
+      c.updated_at,
+      COUNT(m.id) as message_count,
+      (
+        SELECT message_text 
+        FROM learner_ai_messages 
+        WHERE conversation_id = c.id 
+        ORDER BY created_at DESC 
+        LIMIT 1
+      ) as last_message_preview
+    FROM learner_ai_conversations c
+    LEFT JOIN learner_ai_messages m ON c.id = m.conversation_id
+    WHERE c.learner_user_id = $1 
+      AND (c.subject_name ILIKE $2 OR c.subject_name ILIKE '%' || $2 || '%')
+    GROUP BY c.id
+    ORDER BY c.updated_at DESC
+  `, [learnerUserId, normSubject]);
+
+  return res.rows;
+}
+
+/**
+ * Retrieves the full message thread for a specific conversation session.
+ */
+async function getConversationDetails(conversationId, learnerUserId) {
+  const convRes = await db.query(`
+    SELECT id, subject_name, grade, stream, topic, title, language, created_at, updated_at
+    FROM learner_ai_conversations
+    WHERE id = $1 AND learner_user_id = $2
+  `, [conversationId, learnerUserId]);
+
+  if (convRes.rows.length === 0) {
+    return null;
+  }
+
+  const conversation = convRes.rows[0];
+
+  const msgRes = await db.query(`
+    SELECT id, sender, message_text, metadata, created_at
+    FROM learner_ai_messages
+    WHERE conversation_id = $1
+    ORDER BY created_at ASC
+  `, [conversationId]);
+
+  return {
+    ...conversation,
+    messages: msgRes.rows
+  };
+}
+
+/**
+ * Starts a new subject consultation conversation session.
+ */
+async function startNewConversation(learnerUserId, { subject_name, grade, stream, topic, title, language }) {
+  const normSubject = normalizeSubject(subject_name || 'General');
+  const targetGrade = parseInt(grade, 10) || 10;
+  const targetStream = stream || 'General';
+  const targetTopic = topic || 'General Subject Help';
+  const targetTitle = title || `Consultation: ${targetTopic}`;
+  const targetLang = language || 'english';
+
+  const res = await db.query(`
+    INSERT INTO learner_ai_conversations (
+      learner_user_id, subject_name, grade, stream, topic, title, language, created_at, updated_at
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    RETURNING id, subject_name, grade, stream, topic, title, language, created_at, updated_at
+  `, [learnerUserId, normSubject, targetGrade, targetStream, targetTopic, targetTitle, targetLang]);
+
+  return res.rows[0];
+}
+
+/**
+ * Deletes a conversation session and all its messages.
+ */
+async function deleteConversation(conversationId, learnerUserId) {
+  const res = await db.query(`
+    DELETE FROM learner_ai_conversations
+    WHERE id = $1 AND learner_user_id = $2
+    RETURNING id
+  `, [conversationId, learnerUserId]);
+
+  return res.rows.length > 0;
+}
+
+/**
+ * Main Interactive Subject AI Tutor Chat Engine:
+ * - Uses Gemini API with official South African CAPS curriculum syllabus.
+ * - Enforces strict academic guardrails against off-topic discussions.
+ * - Senses subject, grade, stream, topic, and context.
+ * - Persists conversation thread in PostgreSQL.
+ */
+async function chatWithSubjectTutor({
+  learnerUserId,
+  subject,
+  grade,
+  stream = 'General',
+  topic = null,
+  message,
+  conversationId = null,
+  language = 'english',
+  schoolName = 'Fusion High School'
+}) {
+  const normSubject = normalizeSubject(subject || 'General');
+  const normGrade = parseInt(grade, 10) || 10;
+  const normStream = stream || 'General';
+  const userText = (message || '').trim();
+
+  if (!userText) {
+    throw new Error('Message text is required.');
+  }
+
+  // 1. Resolve or create active conversation session in DB
+  let activeConv = null;
+  if (conversationId) {
+    const convRes = await db.query(`
+      SELECT id, subject_name, grade, stream, topic, title, language
+      FROM learner_ai_conversations
+      WHERE id = $1 AND learner_user_id = $2
+    `, [conversationId, learnerUserId]);
+
+    if (convRes.rows.length > 0) {
+      activeConv = convRes.rows[0];
+    }
+  }
+
+  if (!activeConv) {
+    // Generate a concise title from the first query
+    const snippet = userText.slice(0, 50).replace(/[^\w\s]/g, '').trim() || 'Study Session';
+    const initialTitle = snippet.length > 0 ? snippet.charAt(0).toUpperCase() + snippet.slice(1) : `${normSubject} Help`;
+    const initialTopic = topic || 'General Subject Help';
+
+    activeConv = await startNewConversation(learnerUserId, {
+      subject_name: normSubject,
+      grade: normGrade,
+      stream: normStream,
+      topic: initialTopic,
+      title: initialTitle,
+      language: language || 'english'
+    });
+  }
+
+  // 2. Load recent message history for multi-turn conversational context (last 10 messages)
+  const historyRes = await db.query(`
+    SELECT sender, message_text, created_at
+    FROM learner_ai_messages
+    WHERE conversation_id = $1
+    ORDER BY created_at ASC
+    LIMIT 12
+  `, [activeConv.id]);
+
+  let historyPrompt = '';
+  if (historyRes.rows.length > 0) {
+    historyPrompt = '\n--- PREVIOUS CONVERSATION CONTEXT ---\n' + 
+      historyRes.rows.map(m => `${m.sender === 'user' ? 'Learner' : 'AI Tutor'}: ${m.message_text}`).join('\n') + 
+      '\n--- END CONVERSATION CONTEXT ---\n';
+  }
+
+  // 3. Retrieve CAPS curriculum topics for this grade and subject
+  const availableTopics = getCurriculumTopics(normGrade, normStream, normSubject);
+  const topicsSummary = availableTopics.map(t => t.topic).join(', ');
+
+function stripSelfIntroduction(rawText) {
+  if (!rawText) return '';
+  let cleaned = rawText;
+
+  // Remove any references to Gemini, Google AI, or generic AI model identity
+  cleaned = cleaned.replace(/gemini[\s-]*(3\.[\d]+|2\.[\d]+|1\.[\d]+)?[\s-]*(flash|pro|preview)?/gi, '');
+  cleaned = cleaned.replace(/google\s+generative\s+ai/gi, '');
+  cleaned = cleaned.replace(/google\s+ai/gi, '');
+
+  // Strip self-introductions from start of response
+  cleaned = cleaned.replace(/^(hello|greetings|welcome|hi|good day|sawubona|dumela|molo)[^\.\n]*?(as your|i am your|i'm your|as an?)[^\.\n]*?[\.\!\?]\s*/i, '');
+  cleaned = cleaned.replace(/^i am your (dedicated )?[^\.\n]*?[\.\!\?]\s*/i, '');
+  cleaned = cleaned.replace(/^as your (dedicated )?[^\.\n]*?[\.\!\?]\s*/i, '');
+
+  return cleaned.trim();
+}
+
+  // 4. Construct Strict Academic CAPS System Prompt (No Self-Intro, No Gemini Mentions)
+  const systemPrompt = `
+You are an expert South African CAPS Curriculum Subject Specialist for "${normSubject}" (Grade ${normGrade}, Stream: ${normStream}).
+
+### CRITICAL RULES (MANDATORY):
+1. NO SELF-INTRODUCTIONS OR ROBOTIC GREETINGS:
+   - DO NOT introduce yourself or state who or what you are.
+   - NEVER say "I am your AI tutor", "Hello, I am...", "Greetings! As your...", or similar introductory phrases.
+   - NEVER mention "Gemini", "Google", "LLM", or "AI".
+   - Start your response DIRECTLY with the detailed academic explanation, formula calculation, or step-by-step problem breakdown.
+
+2. STRICT ACADEMIC FOCUS (OFF-TOPIC GUARDRAIL):
+   - Discuss exclusively the South African Department of Basic Education CAPS Curriculum for "${normSubject}" (Grade ${normGrade}).
+   - If the learner asks about video games, celebrity gossip, entertainment, social media, politics, or non-academic matters, decline concisely:
+     "Please ask a question related to your Grade ${normGrade} ${normSubject} syllabus (e.g. ${topic || normSubject})."
+
+3. CURRICULUM & SYLLABUS CONTEXT:
+   - Subject: ${normSubject}
+   - Grade: Grade ${normGrade}
+   - Topic: ${topic || activeConv.topic || 'General Topic'}
+   - Grade ${normGrade} ${normSubject} CAPS Syllabus Topics: ${topicsSummary || 'Standard CAPS curriculum'}
+
+4. SOCRATIC & STEP-BY-STEP TEACHING METHODOLOGY:
+   - Break down formulas and calculations into numbered steps (**Step 1**, **Step 2**, **Step 3**...).
+   - Use bold markdown for key terminology and equations (**Fnet = ma**, **Quadratic Formula**, etc.).
+   - Use relatable South African analogies where appropriate to clarify difficult ideas.
+   - Include a "💡 **CAPS Exam Tip**" highlighting frequent mistakes in formal DBE examinations.
+
+5. INTERACTIVE STUDY FOLLOW-UPS:
+   - At the VERY END of your response, always provide 3 brief, clickable follow-up study prompts on a single line:
+     [SUGGESTIONS: <Option 1> | <Option 2> | <Option 3>]
+     Example: [SUGGESTIONS: Give me an exam practice problem | Explain with an analogy | Show me common exam pitfalls]
+
+${historyPrompt}
+Learner: ${userText}
+
+Detailed Response:
+`;
+
+  let aiReplyText = '';
+  let suggestions = [];
+
+  try {
+    const result = await safeAICall(systemPrompt, false);
+    if (result && result.text) {
+      aiReplyText = stripSelfIntroduction(result.text);
+      aiReplyText = cleanHumanMath(aiReplyText);
+
+      // Extract suggestions tag if present
+      const suggMatch = aiReplyText.match(/\[SUGGESTIONS:\s*([^\]]+)\]/i);
+      if (suggMatch) {
+        suggestions = suggMatch[1].split('|').map(s => s.trim()).filter(s => s.length > 0);
+        aiReplyText = aiReplyText.replace(/\[SUGGESTIONS:\s*[^\]]+\]/i, '').trim();
+      }
+    }
+  } catch (err) {
+    console.error('[AI TUTOR ERROR]', err);
+    aiReplyText = `Here is assistance for ${normSubject} (Grade ${normGrade}). Ask any specific question on ${topic || normSubject} or request a worked exam problem.`;
+    suggestions = ['Explain the core concept step-by-step', 'Give me a Grade-level exam question', 'Show a worked example with formulas'];
+  }
+
+  if (suggestions.length === 0) {
+    suggestions = [
+      `Give me a Grade ${normGrade} practice question`,
+      `Explain ${topic || normSubject} step-by-step`,
+      `What are the most common exam mistakes in this topic?`
+    ];
+  }
+
+  // 5. Persist user message and AI response into PostgreSQL database
+  try {
+    // Save user message
+    await db.query(`
+      INSERT INTO learner_ai_messages (conversation_id, sender, message_text, metadata, created_at)
+      VALUES ($1, 'user', $2, $3, CURRENT_TIMESTAMP)
+    `, [activeConv.id, userText, JSON.stringify({ topic: topic || activeConv.topic })]);
+
+    // Save AI response
+    await db.query(`
+      INSERT INTO learner_ai_messages (conversation_id, sender, message_text, metadata, created_at)
+      VALUES ($1, 'ai', $2, $3, CURRENT_TIMESTAMP)
+    `, [activeConv.id, aiReplyText, JSON.stringify({ suggestions, topic: topic || activeConv.topic })]);
+
+    // Update conversation timestamp and topic
+    await db.query(`
+      UPDATE learner_ai_conversations
+      SET updated_at = CURRENT_TIMESTAMP,
+          topic = COALESCE($2, topic)
+      WHERE id = $1
+    `, [activeConv.id, topic || activeConv.topic]);
+  } catch (dbErr) {
+    console.error('[AI TUTOR DB ERROR] Failed to persist messages:', dbErr);
+  }
+
+  return {
+    conversationId: activeConv.id,
+    reply: aiReplyText,
+    subject: normSubject,
+    grade: normGrade,
+    stream: normStream,
+    topic: topic || activeConv.topic,
+    title: activeConv.title,
+    suggestions,
+    timestamp: new Date().toISOString()
+  };
+}
+
 module.exports = {
   aiCurriculum,
   activeAssessments,
@@ -804,5 +1151,11 @@ module.exports = {
   getTextbookContent,
   parseAIJSON,
   answerSubjectQuestion,
-  cleanHumanMath
+  cleanHumanMath,
+  getCurriculumTopics,
+  getLearnerConversations,
+  getConversationDetails,
+  startNewConversation,
+  deleteConversation,
+  chatWithSubjectTutor
 };

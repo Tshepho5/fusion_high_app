@@ -417,12 +417,12 @@ const emailService = {
               <td style="color: #38bdf8; font-family: monospace; font-weight: 700;">${l.learner_email || `${(l.learner_number || 'learner').toLowerCase().replace(/\s/g, '')}@fusionhigh.ac.za`}</td>
             </tr>
             <tr>
-              <td style="padding: 3px 0; color: #94a3b8;">Initial Password:</td>
+              <td style="padding: 3px 0; color: #94a3b8;">Generated Password:</td>
               <td>
-                <span style="display: inline-block; background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(99, 102, 241, 0.4); color: #c7d2fe; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-weight: 800;">
-                  ${l.id_number || l.generated_password || 'Learner ID Number'}
+                <span style="display: inline-block; background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(99, 102, 241, 0.4); color: #c7d2fe; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-weight: 800; letter-spacing: 1px;">
+                  ${l.generated_password || l.id_number || '123456'}
                 </span>
-                <span style="font-size: 10px; color: #64748b; margin-left: 6px;">(Learner South African ID Number)</span>
+                <span style="font-size: 10px; color: #64748b; margin-left: 6px;">(System-generated password from Learner ID)</span>
               </td>
             </tr>
           </table>
@@ -459,6 +459,175 @@ const emailService = {
           subtitle: 'Comprehensive parent-student academic link established.',
           contentHtml,
           ctaText: 'Access Parent Portal',
+          ctaLink: `${cleanBaseUrl}/dashboard/parent`
+        })
+      };
+    },
+
+    // 2b. Parent Application Received (Pending Admin Approval)
+    parentApplicationReceived: (parentName, appNumber, schoolName, childName, baseUrl = 'http://localhost:4000') => {
+      const title = 'Parent Portal Access Application Received';
+      const cleanBaseUrl = (baseUrl || 'http://localhost:4000').replace(/\/+$/, '');
+      const contentHtml = `
+        <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Thank you for applying for official access to the <strong>${schoolName || 'School'}</strong> Parent Portal.
+        </p>
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #f59e0b; border-radius: 10px; padding: 16px 20px; margin: 16px 0;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
+            <tr>
+              <td style="padding: 4px 0; width: 160px; color: #94a3b8;">Application Ref:</td>
+              <td style="color: #fbbf24; font-family: monospace; font-weight: 800;">${appNumber}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; color: #94a3b8;">Enrolled Learner:</td>
+              <td style="color: #ffffff; font-weight: 700;">${childName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; color: #94a3b8;">Current Status:</td>
+              <td style="color: #fbbf24; font-weight: 800;">Pending School Administrator Review</td>
+            </tr>
+          </table>
+        </div>
+        <p style="color: #94a3b8; font-size: 13px; line-height: 1.6;">
+          The school administration will verify your details against official student enrollment records. Once approved, you will receive an acceptance confirmation email to immediately sign into your Parent Dashboard.
+        </p>
+      `;
+      return {
+        subject: `${schoolName || 'Fusion High School'} - Parent Portal Application Received (${appNumber})`,
+        body: createBaseEmailTemplate({
+          preheader: `Your Parent Portal application (${appNumber}) is under admin review.`,
+          title,
+          subtitle: `Application for ${schoolName || 'School'} Parent Portal`,
+          contentHtml,
+          ctaText: 'Visit School Portal',
+          ctaLink: `${cleanBaseUrl}/login`
+        })
+      };
+    },
+
+    // 2c. Parent Application Approved / Accepted by Admin
+    parentApplicationApproved: (parentName, email, schoolName, linkedChildren, baseUrl = 'http://localhost:4000') => {
+      const title = 'Parent Portal Application Approved!';
+      const cleanBaseUrl = (baseUrl || 'http://localhost:4000').replace(/\/+$/, '');
+      const childrenHtml = (linkedChildren || []).map(c => `
+        <li style="margin-bottom: 6px; color: #ffffff;">
+          <strong>${c.full_name || c.firstName} ${c.surname}</strong> (Learner No: <span style="color: #38bdf8; font-family: monospace;">${c.learner_number || c.learnerNumber || 'Enrolled'}</span>)
+        </li>
+      `).join('');
+
+      const contentHtml = `
+        <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Great news! Your Parent Portal access application for <strong>${schoolName || 'School'}</strong> has been <strong style="color: #10b981;">Accepted and Approved</strong> by the school administration.
+        </p>
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #10b981; border-radius: 10px; padding: 16px 20px; margin: 16px 0;">
+          <h4 style="margin: 0 0 10px 0; color: #ffffff; font-size: 14px;">Your Parent Login Credentials:</h4>
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
+            <tr>
+              <td style="padding: 4px 0; width: 140px; color: #94a3b8;">Login Email:</td>
+              <td style="color: #38bdf8; font-family: monospace; font-weight: 800;">${email}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; color: #94a3b8;">Password:</td>
+              <td style="color: #ffffff; font-weight: 700;">The password you created during application</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; color: #94a3b8;">Linked Learner(s):</td>
+              <td style="color: #ffffff;">
+                <ul style="margin: 4px 0 0 0; padding-left: 18px;">
+                  ${childrenHtml || '<li>Enrolled Learner profile active</li>'}
+                </ul>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <p style="color: #94a3b8; font-size: 13px; line-height: 1.6;">
+          You can now sign in to view your child's real-time attendance, term report cards, daily timetable, and communicate directly with educators.
+        </p>
+      `;
+      return {
+        subject: `${schoolName || 'Fusion High School'} - Parent Portal Access Approved`,
+        body: createBaseEmailTemplate({
+          preheader: 'Your Parent Portal application is approved. Sign in now.',
+          title,
+          subtitle: 'Welcome to your official Parent Portal',
+          contentHtml,
+          ctaText: 'Sign In to Parent Portal',
+          ctaLink: `${cleanBaseUrl}/login`
+        })
+      };
+    },
+
+    // 2d. Parent Application Rejected by Admin
+    parentApplicationRejected: (parentName, appNumber, schoolName, reason, baseUrl = 'http://localhost:4000') => {
+      const title = 'Parent Portal Application Update';
+      const cleanBaseUrl = (baseUrl || 'http://localhost:4000').replace(/\/+$/, '');
+      const contentHtml = `
+        <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Your Parent Portal access application (Ref: <strong>${appNumber}</strong>) for <strong>${schoolName || 'School'}</strong> has been reviewed by the administration.
+        </p>
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #ef4444; border-radius: 10px; padding: 16px 20px; margin: 16px 0;">
+          <h4 style="margin: 0 0 8px 0; color: #f87171; font-size: 14px;">Administrator Feedback:</h4>
+          <p style="margin: 0; font-size: 13px; color: #e2e8f0; line-height: 1.5;">
+            ${reason || 'The provided learner details could not be verified against the school enrollment database. Please contact school administration with proof of enrollment.'}
+          </p>
+        </div>
+        <p style="color: #94a3b8; font-size: 13px; line-height: 1.6;">
+          If you believe this is in error, please contact the school administration or visit the administrative office with your South African ID document.
+        </p>
+      `;
+      return {
+        subject: `${schoolName || 'Fusion High School'} - Parent Portal Application Notice (${appNumber})`,
+        body: createBaseEmailTemplate({
+          preheader: `Update regarding your Parent Portal application ${appNumber}.`,
+          title,
+          subtitle: `Application Decision for ${schoolName || 'School'}`,
+          contentHtml,
+          ctaText: 'Contact Support',
+          ctaLink: `${cleanBaseUrl}/about`
+        })
+      };
+    },
+
+    // 2e. Child Academic Profile Linked Successfully from Dashboard
+    childLinkageSuccess: (parentName, learner, baseUrl = 'http://localhost:4000') => {
+      const title = 'Child Academic Profile Linked Successfully';
+      const cleanBaseUrl = (baseUrl || 'http://localhost:4000').replace(/\/+$/, '');
+      const contentHtml = `
+        <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          You have successfully linked <strong>${learner.full_name} ${learner.surname}</strong> to your Parent Portal account.
+        </p>
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #38bdf8; border-radius: 10px; padding: 16px 20px; margin: 16px 0;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
+            <tr>
+              <td style="padding: 4px 0; width: 140px; color: #94a3b8;">Learner Full Name:</td>
+              <td style="color: #ffffff; font-weight: 700;">${learner.full_name} ${learner.surname}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; color: #94a3b8;">Learner Number:</td>
+              <td style="color: #38bdf8; font-family: monospace; font-weight: 800;">${learner.learner_number || `ID-${learner.id}`}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; color: #94a3b8;">Grade & Stream:</td>
+              <td style="color: #ffffff; font-weight: 700;">Grade ${learner.grade} &bull; ${learner.stream || 'General'}</td>
+            </tr>
+          </table>
+        </div>
+        <p style="color: #94a3b8; font-size: 13px; line-height: 1.6;">
+          You can now track ${learner.full_name}'s daily classroom attendance, view term report cards, follow homework submissions, and chat with teachers directly from your Parent Dashboard.
+        </p>
+      `;
+      return {
+        subject: `Fusion High School - Child Linked Successfully: ${learner.full_name} ${learner.surname}`,
+        body: createBaseEmailTemplate({
+          preheader: `${learner.full_name} is now linked to your Parent Portal.`,
+          title,
+          subtitle: 'Academic Tracking Activated',
+          contentHtml,
+          ctaText: 'Open Parent Dashboard',
           ctaLink: `${cleanBaseUrl}/dashboard/parent`
         })
       };

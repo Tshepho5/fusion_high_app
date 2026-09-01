@@ -47,13 +47,35 @@ function generateCorrectionToken() {
 }
 
 /**
- * Generate Provisional Learner Number
- * e.g. 20268041
+ * Generate Provisional Learner Number (e.g. 20250123, 20260001)
+ * Format: <YEAR><4-DIGIT-SEQUENCE> (e.g. Applicant #123 in 2025 -> 20250123)
  */
-function generateProvisionalLearnerNumber(grade) {
-  const year = new Date().getFullYear();
-  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-  return `${year}${randomSuffix}`;
+async function generateProvisionalLearnerNumber(grade, year = new Date().getFullYear()) {
+  const currentYear = year || new Date().getFullYear();
+  const prefix = `${currentYear}`;
+  try {
+    const [appRes, childRes] = await Promise.all([
+      db.query("SELECT provisional_learner_number FROM applications WHERE provisional_learner_number LIKE $1", [`${prefix}%`]),
+      db.query("SELECT learner_number FROM children WHERE learner_number LIKE $1", [`${prefix}%`])
+    ]);
+
+    let maxSeq = 0;
+    const allRows = [...(appRes.rows || []), ...(childRes.rows || [])];
+    for (const row of allRows) {
+      const val = row.provisional_learner_number || row.learner_number || '';
+      const numStr = val.replace(/\D/g, '');
+      if (numStr.startsWith(prefix) && numStr.length === prefix.length + 4) {
+        const seq = parseInt(numStr.slice(prefix.length), 10);
+        if (!isNaN(seq) && seq > maxSeq) {
+          maxSeq = seq;
+        }
+      }
+    }
+    const nextSeq = maxSeq + 1;
+    return `${prefix}${nextSeq.toString().padStart(4, '0')}`;
+  } catch (e) {
+    return `${currentYear}0001`;
+  }
 }
 
 /**

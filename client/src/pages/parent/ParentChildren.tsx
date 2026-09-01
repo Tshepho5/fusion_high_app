@@ -67,10 +67,12 @@ export const ParentChildren: React.FC = () => {
     previous_school: ''
   });
 
-  // Existing Learner Link Form (Learner Number + National ID Number)
+  // Existing Learner Link Form (Name, Surname, SA ID Number / Learner Number)
   const [linkExistingForm, setLinkExistingForm] = useState({
-    learner_number: '',
+    first_name: '',
+    surname: '',
     id_number: '',
+    learner_number: '',
     relationship: 'Mother'
   });
 
@@ -151,13 +153,13 @@ export const ParentChildren: React.FC = () => {
     e.preventDefault();
     setError(null);
 
-    if (!linkExistingForm.learner_number.trim() || !linkExistingForm.id_number.trim()) {
-      setError('Both Learner Number and Learner National ID Number are required.');
+    if (!linkExistingForm.first_name.trim() || !linkExistingForm.surname.trim()) {
+      setError('Learner First Name and Surname are required.');
       return;
     }
 
-    if (/\D/.test(linkExistingForm.id_number.trim())) {
-      setError('Learner National ID Number must contain digits only.');
+    if (!linkExistingForm.id_number.trim() && !linkExistingForm.learner_number.trim()) {
+      setError('Please provide the learner\'s South African ID Number or Learner Number.');
       return;
     }
 
@@ -166,12 +168,14 @@ export const ParentChildren: React.FC = () => {
 
     try {
       const res = await parentService.linkChild({
-        learner_number: linkExistingForm.learner_number.trim(),
+        first_name: linkExistingForm.first_name.trim(),
+        surname: linkExistingForm.surname.trim(),
         id_number: linkExistingForm.id_number.trim(),
+        learner_number: linkExistingForm.learner_number.trim(),
         relationship: linkExistingForm.relationship
       });
 
-      setSuccessMsg(res.message || 'Learner successfully linked to your parent portal!');
+      setSuccessMsg(res.message || 'Learner successfully linked to your parent portal! A confirmation email has been dispatched.');
       setIsLinkModalOpen(false);
 
       // Refresh children list
@@ -184,11 +188,13 @@ export const ParentChildren: React.FC = () => {
       }
 
       setLinkExistingForm({
-        learner_number: '',
+        first_name: '',
+        surname: '',
         id_number: '',
+        learner_number: '',
         relationship: 'Mother'
       });
-      setTimeout(() => setSuccessMsg(null), 5000);
+      setTimeout(() => setSuccessMsg(null), 6000);
     } catch (err: any) {
       console.error('Error linking learner:', err);
       setError(err.response?.data?.error || 'Failed to link learner. Please verify details with school administration.');
@@ -949,35 +955,63 @@ export const ParentChildren: React.FC = () => {
                   <form onSubmit={handleLinkExisting} className="space-y-4 text-xs">
                     <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
                       <GraduationCap className="w-5 h-5 shrink-0" />
-                      <span>Enter your child's Learner Number and National ID Number. You can link multiple children to this parent portal.</span>
+                      <span>Enter your enrolled child's First Name, Surname, and South African ID Number. Once linked, you will receive a confirmation email and immediate tracking access.</span>
                     </div>
 
-                    <div>
-                      <label className="block text-slate-300 font-bold mb-1">Learner Number / Student ID *</label>
-                      <input
-                        type="text"
-                        required
-                        value={linkExistingForm.learner_number}
-                        onChange={(e) => setLinkExistingForm(prev => ({ ...prev, learner_number: e.target.value }))}
-                        placeholder="e.g. 2026-FHS-001 or 2026001"
-                        className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white font-mono placeholder-slate-500 focus:ring-2 focus:ring-amber-500"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">Learner First Name *</label>
+                        <input
+                          type="text"
+                          required
+                          value={linkExistingForm.first_name}
+                          onChange={(e) => setLinkExistingForm(prev => ({ ...prev, first_name: e.target.value.replace(/\d/g, '') }))}
+                          placeholder="e.g. Kabelo"
+                          className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white placeholder-slate-500 focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">Learner Surname *</label>
+                        <input
+                          type="text"
+                          required
+                          value={linkExistingForm.surname}
+                          onChange={(e) => setLinkExistingForm(prev => ({ ...prev, surname: e.target.value.replace(/\d/g, '') }))}
+                          placeholder="e.g. Makgoka"
+                          className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white placeholder-slate-500 focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="block text-slate-300 font-bold mb-1">Learner's National ID Number (Digits Only) *</label>
-                      <input
-                        type="text"
-                        required
-                        value={linkExistingForm.id_number}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, '');
-                          setLinkExistingForm(prev => ({ ...prev, id_number: val }));
-                        }}
-                        placeholder="e.g. 0804155029087 (13-digit SA ID)"
-                        className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white font-mono placeholder-slate-500 focus:ring-2 focus:ring-amber-500"
-                      />
-                      <p className="text-[11px] text-slate-400 mt-1">Digits only. Matched against the learner's enrolled ID on file.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">Learner's SA ID Number *</label>
+                        <input
+                          type="text"
+                          maxLength={13}
+                          value={linkExistingForm.id_number}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            setLinkExistingForm(prev => ({ ...prev, id_number: val }));
+                          }}
+                          placeholder="e.g. 0905097812085 (13 digits)"
+                          className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white font-mono placeholder-slate-500 focus:ring-2 focus:ring-amber-500"
+                        />
+                        <p className="text-[10.5px] text-slate-400 mt-1">13-digit South African ID.</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">Learner Number (Optional)</label>
+                        <input
+                          type="text"
+                          value={linkExistingForm.learner_number}
+                          onChange={(e) => setLinkExistingForm(prev => ({ ...prev, learner_number: e.target.value }))}
+                          placeholder="e.g. 202541106"
+                          className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white font-mono placeholder-slate-500 focus:ring-2 focus:ring-amber-500"
+                        />
+                        <p className="text-[10.5px] text-slate-400 mt-1">Official Student Number if known.</p>
+                      </div>
                     </div>
 
                     <div>

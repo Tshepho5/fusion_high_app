@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controller/authController');
+const parentAppController = require('../controller/parentApplicationController');
 
 const { auth: authMiddleware } = require('../../../authMiddleware');
 
@@ -14,6 +15,9 @@ router.get('/verify-learner', authController.verifyLearner);
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/verify-otp', authController.verifyOTP);
 router.post('/reset-password', authController.resetPassword);
+
+// Parent Portal Access Application (Public)
+router.post('/parent-applications', parentAppController.submitParentApplication);
 
 // Protected routes
 router.post('/change-password', authMiddleware, authController.changePassword);

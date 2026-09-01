@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminService } from '../../services/api';
+import { adminService, parentApplicationService } from '../../services/api';
 import { useSchool } from '../../context/SchoolContext';
 import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/common/Badge';
@@ -31,7 +31,10 @@ import {
   ShieldAlert,
   UserPlus,
   Lock,
-  Unlock
+  Unlock,
+  UserCheck2,
+  XCircle,
+  Clock
 } from 'lucide-react';
 
 interface UserRecord {
@@ -64,19 +67,25 @@ interface EmployeeRecord {
 }
 
 interface LearnerRecord {
-  learner_id: number;
+  child_id?: number;
+  learner_id?: number;
   user_id: number;
   full_name: string;
   surname: string;
-  learner_number: string;
+  email: string;
+  phone?: string;
+  profile_edit_unlocked?: boolean;
+  learner_number?: string;
+  id_number?: string;
   grade: number;
   stream: string;
-  profile_edit_unlocked?: boolean;
-  subjects?: string[];
   class_name?: string;
-  email?: string;
-  phone?: string;
+  subjects?: string[];
+  dob?: string;
   parent_name?: string;
+  parent_email?: string;
+  parent_phone?: string;
+  home_language?: string;
 }
 
 interface ParentRecord {
@@ -87,6 +96,7 @@ interface ParentRecord {
   phone?: string;
   id_number?: string;
   gender?: string;
+  parent_type?: string;
   physical_address?: string;
   profile_edit_unlocked?: boolean;
   created_at?: string;
@@ -110,12 +120,14 @@ export const AdminUsers: React.FC = () => {
     (currentUser?.email && currentUser?.email.toLowerCase() === 'sthepomakola23@gmail.com')
   );
 
-  const [activeTab, setActiveTab] = useState<'employees' | 'learners' | 'parents' | 'admissions' | 'admins' | 'all'>('employees');
+  const [activeTab, setActiveTab] = useState<'employees' | 'learners' | 'parents' | 'parent-applications' | 'admissions' | 'admins' | 'all'>('employees');
   
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [learners, setLearners] = useState<LearnerRecord[]>([]);
   const [parents, setParents] = useState<ParentRecord[]>([]);
+  const [parentApplications, setParentApplications] = useState<any[]>([]);
+  const [decidingAppId, setDecidingAppId] = useState<number | null>(null);
   const [admissions, setAdmissions] = useState<any[]>([]);
   const [schoolAdmins, setSchoolAdmins] = useState<any[]>([]);
   
@@ -138,10 +150,11 @@ export const AdminUsers: React.FC = () => {
   const [isAddParentModalOpen, setIsAddParentModalOpen] = useState(false);
   const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
   const [isOcrModalOpen, setIsOcrModalOpen] = useState(false);
-  const [selectedAdmission, setSelectedAdmission] = useState<any | null>(null);
+  const [selectedAdmission, setSelectedAdmission] = useState<any>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
-  const [ocrResult, setOcrResult] = useState<any | null>(null);
+  const [ocrResult, setOcrResult] = useState<any>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [enrollingAdmissionId, setEnrollingAdmissionId] = useState<number | null>(null);
 
   // SubAdmin Form State
   const [subAdminModalError, setSubAdminModalError] = useState<string | null>(null);
@@ -218,9 +231,11 @@ export const AdminUsers: React.FC = () => {
     gender: 'Male',
     learner_number: '',
     grade: '10',
-    class_id: '',
     stream: 'Science',
+    home_language: 'Sepedi',
+    class_id: '',
     subjects: [] as string[],
+    parent_id: '',
     password: '',
   });
 
@@ -233,8 +248,9 @@ export const AdminUsers: React.FC = () => {
     id_number: '',
     dob: '',
     gender: 'Female',
-    physical_address: '',
+    parent_type: 'Mother',
     relationship: 'Mother',
+    physical_address: '',
     password: '',
     child_learner_number: '',
     child_id_number: ''
@@ -244,14 +260,15 @@ export const AdminUsers: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [usersData, empData, lrnData, metaData, admData, parentsData, adminsData] = await Promise.allSettled([
+      const [usersData, empData, lrnData, metaData, admData, parentsData, adminsData, parentAppsData] = await Promise.allSettled([
         adminService.getUsers(),
         adminService.getEmployees(),
         adminService.getLearners(),
         adminService.getSchoolMetadata(),
         adminService.getAdmissions(),
         adminService.getParents(),
-        isSuperAdmin ? adminService.getSchoolAdmins() : Promise.resolve({ admins: [] })
+        isSuperAdmin ? adminService.getSchoolAdmins() : Promise.resolve({ admins: [] }),
+        parentApplicationService.getAll()
       ]);
 
       if (usersData.status === 'fulfilled') setUsers(Array.isArray(usersData.value) ? usersData.value : []);
@@ -266,6 +283,10 @@ export const AdminUsers: React.FC = () => {
       if (adminsData.status === 'fulfilled') {
         const aList = adminsData.value?.admins || (Array.isArray(adminsData.value) ? adminsData.value : []);
         setSchoolAdmins(aList);
+      }
+      if (parentAppsData.status === 'fulfilled') {
+        const paList = parentAppsData.value?.applications || (Array.isArray(parentAppsData.value) ? parentAppsData.value : []);
+        setParentApplications(paList);
       }
 
     } catch (err: any) {
@@ -439,8 +460,9 @@ export const AdminUsers: React.FC = () => {
         id_number: '',
         dob: '',
         gender: 'Female',
-        physical_address: '',
+        parent_type: 'Mother',
         relationship: 'Mother',
+        physical_address: '',
         password: '',
         child_learner_number: '',
         child_id_number: ''
@@ -497,6 +519,8 @@ export const AdminUsers: React.FC = () => {
         grade: '10',
         class_id: '',
         stream: 'Science',
+        home_language: 'Sepedi',
+        parent_id: '',
         subjects: [],
         password: '',
       });
@@ -589,8 +613,6 @@ export const AdminUsers: React.FC = () => {
     (a.school_circuit || '').toLowerCase().includes(q)
   );
 
-  const [enrollingAdmissionId, setEnrollingAdmissionId] = useState<number | null>(null);
-
   const handleQuickApproveAndEnroll = async (admId: number, admName: string) => {
     setEnrollingAdmissionId(admId);
     setError(null);
@@ -606,6 +628,32 @@ export const AdminUsers: React.FC = () => {
       setEnrollingAdmissionId(null);
     }
   };
+
+  const handleDecideParentApplication = async (appId: number, decision: 'approve' | 'reject', notes?: string) => {
+    setDecidingAppId(appId);
+    setError(null);
+    try {
+      const res = await parentApplicationService.decide(appId, decision, notes);
+      setActionSuccess(res.message || `Parent application ${decision === 'approve' ? 'ACCEPTED & APPROVED' : 'REJECTED'}.`);
+      fetchData();
+      setTimeout(() => setActionSuccess(null), 5000);
+    } catch (err: any) {
+      console.error('Error deciding parent application:', err);
+      setError(err.response?.data?.error || `Failed to ${decision} application.`);
+    } finally {
+      setDecidingAppId(null);
+    }
+  };
+
+  const filteredParentApplications = parentApplications.filter(pa =>
+    `${pa.parent_name} ${pa.parent_surname}`.toLowerCase().includes(q) ||
+    (pa.parent_email || '').toLowerCase().includes(q) ||
+    (pa.application_number || '').toLowerCase().includes(q) ||
+    (pa.parent_id_number || '').toLowerCase().includes(q) ||
+    `${pa.child_first_name} ${pa.child_surname}`.toLowerCase().includes(q) ||
+    (pa.child_id_number || '').toLowerCase().includes(q) ||
+    (pa.status || '').toLowerCase().includes(q)
+  );
 
   const toggleSubjectForEmployee = (subName: string) => {
     setEmployeeForm(prev => {
@@ -761,6 +809,23 @@ export const AdminUsers: React.FC = () => {
           >
             <UserCheck className="w-3.5 h-3.5" />
             <span>Admissions ({admissions.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('parent-applications')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'parent-applications'
+                ? 'bg-amber-600 text-white shadow-glow-amber'
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 text-amber-300" />
+            <span>Parent Applications ({parentApplications.length})</span>
+            {parentApplications.filter(pa => pa.status === 'pending').length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-extrabold text-[10px]">
+                {parentApplications.filter(pa => pa.status === 'pending').length}
+              </span>
+            )}
           </button>
 
           <button
@@ -972,7 +1037,7 @@ export const AdminUsers: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {filteredLearners.map((l) => (
-                  <tr key={l.learner_id} className="hover:bg-white/5 transition-colors">
+                  <tr key={l.child_id || l.learner_id || l.user_id} className="hover:bg-white/5 transition-colors">
                     <td className="py-3.5 px-3">
                       <p className="font-bold text-white text-sm">{l.full_name} {l.surname}</p>
                       <p className="text-[11px] text-slate-400 font-mono">{l.email || '-'}</p>
@@ -1017,7 +1082,7 @@ export const AdminUsers: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-3 text-right">
                       <button
-                        onClick={() => handleDeleteUser(l.user_id, l.email || l.learner_number)}
+                        onClick={() => handleDeleteUser(l.user_id, l.email || l.learner_number || '')}
                         className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
                         title="Remove Learner"
                       >
@@ -1129,6 +1194,137 @@ export const AdminUsers: React.FC = () => {
             </table>
             {filteredAdmissions.length === 0 && (
               <div className="p-8 text-center text-slate-400 text-xs">No admission applications found.</div>
+            )}
+          </div>
+        ) : activeTab === 'parent-applications' ? (
+          /* Parent Portal Access Applications Table */
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
+                  <th className="pb-3 px-3">Parent Applicant</th>
+                  <th className="pb-3 px-3">South African ID</th>
+                  <th className="pb-3 px-3">Contact & Address</th>
+                  <th className="pb-3 px-3">Claimed Enrolled Learner</th>
+                  <th className="pb-3 px-3">Database Match</th>
+                  <th className="pb-3 px-3">Status</th>
+                  <th className="pb-3 px-3">Applied</th>
+                  <th className="pb-3 px-3 text-right">Admin Decision</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filteredParentApplications.map((pa) => (
+                  <tr key={pa.id} className="hover:bg-white/5 transition-colors">
+                    <td className="py-3.5 px-3">
+                      <p className="font-bold text-white text-sm">{pa.parent_name} {pa.parent_surname}</p>
+                      <span className="text-[10px] font-mono text-amber-400 font-bold block">{pa.application_number}</span>
+                      <span className="text-[10px] text-slate-400">{pa.parent_type || 'Parent'}</span>
+                    </td>
+                    <td className="py-3.5 px-3 font-mono text-cyan-300 font-bold">
+                      {pa.parent_id_number}
+                    </td>
+                    <td className="py-3.5 px-3 text-slate-300">
+                      <p className="font-mono text-slate-200">{pa.parent_email}</p>
+                      <p className="font-mono text-slate-400 text-[11px]">{pa.parent_phone}</p>
+                      <p className="text-slate-500 text-[10px] truncate max-w-[160px]" title={pa.physical_address}>{pa.physical_address}</p>
+                    </td>
+                    <td className="py-3.5 px-3 text-white">
+                      {pa.children_details && pa.children_details.length > 0 ? (
+                        <div className="space-y-1.5 max-w-[200px]">
+                          {pa.is_twins_or_multiple && (
+                            <span className="inline-flex items-center gap-1 text-[9.5px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">
+                              👯 {pa.num_children || pa.children_details.length} Learners (Twins / Siblings)
+                            </span>
+                          )}
+                          {pa.children_details.map((c: any, cIdx: number) => (
+                            <div key={cIdx} className="text-xs bg-white/5 p-1.5 rounded-lg border border-white/5">
+                              <p className="font-bold text-slate-100 flex items-center justify-between">
+                                <span>{c.firstName || c.first_name} {c.surname || c.last_name}</span>
+                                {c.isTwin && <span className="text-[9px] text-indigo-300 font-semibold">Twin</span>}
+                              </p>
+                              <span className="text-[10px] font-mono text-slate-400 block">ID: {c.idNumber || c.id_number || 'N/A'}</span>
+                              <span className="text-[9.5px] text-cyan-300">Grade {c.grade || 10} &bull; {c.stream || 'General'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : pa.child_first_name ? (
+                        <div>
+                          <p className="font-bold text-slate-100">{pa.child_first_name} {pa.child_surname}</p>
+                          <span className="text-[10px] font-mono text-slate-400 block">ID: {pa.child_id_number}</span>
+                          <span className="text-[10px] text-brand-300">Grade {pa.child_grade || 10} &bull; {pa.child_stream || 'General'}</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">Account Only (Link later from dashboard)</span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-3">
+                      {pa.matched_learner ? (
+                        <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] space-y-0.5">
+                          <p className="font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Enrolled Match
+                          </p>
+                          <p className="font-mono text-[10px] text-emerald-400">Lrn No: {pa.matched_learner.learner_number}</p>
+                        </div>
+                      ) : (
+                        <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[10px] space-y-0.5">
+                          <p className="font-bold flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 text-amber-400" /> Manual Verify
+                          </p>
+                          <p className="text-[9.5px] text-amber-400/80">Check name/ID in roster</p>
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-3">
+                      <Badge
+                        variant={pa.status === 'approved' ? 'emerald' : pa.status === 'rejected' ? 'rose' : 'amber'}
+                        size="sm"
+                      >
+                        {pa.status.toUpperCase()}
+                      </Badge>
+                    </td>
+                    <td className="py-3.5 px-3 text-slate-400 font-mono text-[11px]">
+                      {pa.created_at ? new Date(pa.created_at).toLocaleDateString() : 'Recent'}
+                    </td>
+                    <td className="py-3.5 px-3 text-right">
+                      {pa.status === 'pending' ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleDecideParentApplication(pa.id, 'approve')}
+                            disabled={decidingAppId === pa.id}
+                            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1.5 transition-all hover:scale-105 disabled:opacity-50"
+                            title="Accept application, create parent account, link child & dispatch welcome email"
+                          >
+                            <UserCheck2 className="w-3.5 h-3.5 text-emerald-200" />
+                            <span>{decidingAppId === pa.id ? 'Processing...' : 'Accept & Link'}</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              const reason = window.prompt('Enter reason for rejection (will be sent to parent email):', 'Could not verify student enrollment records.');
+                              if (reason) handleDecideParentApplication(pa.id, 'reject', reason);
+                            }}
+                            disabled={decidingAppId === pa.id}
+                            className="px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold text-[11px] flex items-center gap-1 transition-all"
+                            title="Reject application and send notice"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>Reject</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-slate-500 font-mono italic">
+                          {pa.status === 'approved' ? 'Active Account' : 'Rejected'}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredParentApplications.length === 0 && (
+              <div className="p-8 text-center text-slate-400 text-xs">
+                No Parent Portal applications found.
+              </div>
             )}
           </div>
         ) : activeTab === 'admins' ? (

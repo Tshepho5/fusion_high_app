@@ -1,0 +1,17 @@
+{
+  "name": "Fusion High - Smart LMS & AI Tutor",
+  "short_name": "Fusion High",
+  "description": "School Management System & Intelligent AI Tutor",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090D16",
+  "theme_color": "#4F46E5",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

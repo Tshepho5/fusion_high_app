@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { learnerService } from '../../services/api';
+import { aiTutorService, learnerService } from '../../services/api';
 import { Badge } from '../../components/common/Badge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { FusionAIIcon } from '../../components/common/FusionAIIcon';
@@ -26,10 +26,10 @@ import {
   MicOff,
   Volume2,
   VolumeX,
-  Play,
-  Pause,
-  Sliders,
-  Square
+  PlusCircle,
+  Trash2,
+  History,
+  GraduationCap
 } from 'lucide-react';
 
 interface LearnerAITutorProps {
@@ -39,330 +39,339 @@ interface LearnerAITutorProps {
 }
 
 interface Message {
-  id: string;
+  id: string | number;
   sender: 'user' | 'ai';
   text: string;
   timestamp: string;
+  suggestions?: string[];
   isQuiz?: boolean;
   quizData?: any;
 }
 
+interface ConversationItem {
+  id: number;
+  subject_name: string;
+  grade: number;
+  stream: string;
+  topic: string;
+  title: string;
+  message_count: number;
+  last_message_preview?: string;
+  updated_at: string;
+}
+
+interface SubjectSyllabusItem {
+  name: string;
+  normalized: string;
+  topicsCount: number;
+  topics: Array<{ id: string; topic: string; grade: number; stream: string }>;
+}
+
 export const SA_OFFICIAL_LANGUAGES = [
-  { id: 'isizulu', name: 'isiZulu', label: 'isiZulu (Zulu)', greeting: 'Sawubona! Ngingu-Fusion AI Subject Specialist wesiZulu.' },
-  { id: 'isixhosa', name: 'isiXhosa', label: 'isiXhosa (Xhosa)', greeting: 'Molo! Ndingu-Fusion AI Subject Specialist wesiXhosa.' },
-  { id: 'afrikaans', name: 'Afrikaans', label: 'Afrikaans', greeting: 'Hallo! Ek is jou Fusion AI Vakspesialis vir Afrikaans.' },
-  { id: 'english', name: 'English', label: 'English', greeting: 'Hello! I am your Fusion AI Subject Specialist for English.' },
-  { id: 'sepedi', name: 'Sepedi', label: 'Sepedi (Sesotho sa Leboa)', greeting: 'Dumela! Ke nna Fusion AI Subject Specialist ya Sepedi.' },
-  { id: 'setswana', name: 'Setswana', label: 'Setswana (Tswana)', greeting: 'Dumela! Ke nna Fusion AI Subject Specialist ya Setswana.' },
-  { id: 'sesotho', name: 'Sesotho', label: 'Sesotho (Southern Sotho)', greeting: 'Dumela! Ke nna Fusion AI Subject Specialist ya Sesotho.' },
-  { id: 'xitsonga', name: 'Xitsonga', label: 'Xitsonga (Tsonga)', greeting: 'Avuxeni! Hi mina Fusion AI Subject Specialist ya Xitsonga.' },
-  { id: 'siswati', name: 'siSwati', label: 'siSwati (Swati)', greeting: 'Sawubona! Ngingu-Fusion AI Subject Specialist wesiSwati.' },
-  { id: 'tshivenda', name: 'Tshivenda', label: 'Tshivenda (Venda)', greeting: 'Ndaa / Aa! Ndi nne Fusion AI Subject Specialist ya Tshivenda.' },
-  { id: 'isindebele', name: 'isiNdebele', label: 'isiNdebele (Ndebele)', greeting: 'Lotjhani! Ngingu-Fusion AI Subject Specialist wesiNdebele.' },
+  { id: 'english', name: 'English', label: 'English (HL / FAL)', greeting: 'Hello! Select a topic or ask any question on English curriculum.' },
+  { id: 'afrikaans', name: 'Afrikaans', label: 'Afrikaans (Huistaal / EAT)', greeting: 'Goeiedag! Kies \'n onderwerp of vra enige vraag oor Afrikaans.' },
+  { id: 'isizulu', name: 'isiZulu', label: 'isiZulu (UL / FAL)', greeting: 'Sawubona! Khetha isihloko noma buza umbuzo ngesiZulu.' },
+  { id: 'isixhosa', name: 'isiXhosa', label: 'isiXhosa (UL / FAL)', greeting: 'Molo! Khetha isihloko okanye ubuze umbuzo ngesiXhosa.' },
+  { id: 'sepedi', name: 'Sepedi', label: 'Sepedi (Northern Sotho)', greeting: 'Dumela! Kgetha hlogo goba o botse potso ka Sepedi.' },
+  { id: 'sesotho', name: 'Sesotho', label: 'Sesotho (Southern Sotho)', greeting: 'Dumela! Kgetha sehlooho kapa o botse potso ka Sesotho.' },
+  { id: 'setswana', name: 'Setswana', label: 'Setswana (Tswana)', greeting: 'Dumela! Tlhopha setlhogo kgotsa o botse potso ka Setswana.' },
+  { id: 'siswati', name: 'siSwati', label: 'siSwati (Swati)', greeting: 'Sawubona! Khetsa sihloko nome ubute umbuto ngesiSwati.' },
+  { id: 'xitsonga', name: 'Xitsonga', label: 'Xitsonga (Tsonga)', greeting: 'Avuxeni! Hlawula nhlokomhaka kumbe u vutisa xivutiso hi Xitsonga.' },
+  { id: 'tshivenda', name: 'Tshivenda', label: 'Tshivenda (Venda)', greeting: 'Ndaa / Aa! Nangani tshiṱoho kana vhudzisani mbudziso nga Tshivenḓa.' },
+  { id: 'isindebele', name: 'isiNdebele', label: 'isiNdebele (Ndebele)', greeting: 'Lotjhani! Khetha isihloko nofana ubuze umbuzo ngesiNdebele.' },
 ];
 
-const SUBJECT_LIST = [
-  'Mathematics',
-  'Mathematical Literacy',
-  'Physical Sciences',
-  'Life Sciences',
-  'Accounting',
-  'Business Studies',
-  'Economics',
-  'Tourism',
-  'Geography',
-  'History',
-  'Home Language (HL)',
-  'First Additional Language (FAL)',
-  'Life Orientation'
-];
-
-const SUBJECT_PROMPTS: Record<string, string[]> = {
-  'Life Sciences': [
-    'Explain DNA replication and the role of helicase step-by-step.',
-    'How does negative feedback regulate blood glucose with insulin and glucagon?',
-    'What is the difference between Transcription and Translation in protein synthesis?',
-    'Explain chromosome non-disjunction during meiosis with an example.'
-  ],
-  'Mathematics': [
-    'Explain how to solve quadratic inequalities using a critical values number line.',
-    'Show me how to prove the Sine Rule in trigonometry step-by-step.',
-    'How do I calculate derivatives from first principles f\'(x)?',
-    'Explain how to calculate future value annuities with compound interest.'
-  ],
-  'Physical Sciences': [
-    'Explain Newton’s Second Law with a 2-block pulley tension example.',
-    'How do I apply Le Chatelier’s Principle when temperature and pressure change?',
-    'What is the Doppler Effect equation when an ambulance moves towards an observer?',
-    'Explain how a Galvanic electrochemical cell generates current.'
-  ],
-  'Accounting': [
-    'How do I record asset disposal when equipment is sold at a loss?',
-    'Explain the difference between Solvency Ratio and Acid Test Ratio.',
-    'How do I prepare a Cash Flow Statement from Operating Activities?',
-    'Explain King IV corporate governance audit requirements for public companies.'
-  ],
-  'Tourism': [
-    'How do I calculate arrival local time across Greenwich Mean Time (GMT) zones?',
-    'Explain the 3Ps pillars of Sustainable Tourism (People, Planet, Profit).',
-    'How do I convert South African Rand (ZAR) to US Dollars using BSR vs BBR?',
-    'What are the key world heritage sites in South Africa?'
-  ],
-  'Business Studies': [
-    'Explain the difference between Micro, Market, and Macro business environments.',
-    'What are the eight business functions and their key management responsibilities?',
-    'Explain the recruitment and selection process in Human Resources.'
-  ],
-  'Economics': [
-    'Explain the Circular Flow Model in an open economy with foreign markets.',
-    'What is the difference between Demand-Pull and Cost-Push inflation?',
-    'Explain the four phases of a Business Cycle and economic forecasting.'
-  ],
-  'Geography': [
-    'Explain how Mid-latitude Cyclones form and their weather impact on South Africa.',
-    'What is the difference between dendritic and trellis river drainage patterns?',
-    'Explain how to calculate map gradient and real-world distance.'
-  ],
-  'History': [
-    'Explain the causes and consequences of the Cuban Missile Crisis during the Cold War.',
-    'What were the key ideas of the Black Consciousness Movement in South Africa?',
-    'Explain the Truth and Reconciliation Commission (TRC) process.'
-  ],
-  'Mathematical Literacy': [
-    'How do I calculate income tax using the SARS annual tax brackets?',
-    'Explain how to read municipal water and electricity tariff tables.',
-    'How do I calculate loan repayments with compound interest?'
-  ],
-  // SA 11 Official Languages Specific Prompts
-  'isiZulu': [
-    'Chaza izinhlobo zezabizwana (zoqobo, zokukhomba, zokubala) nohlelo lolwimi lwesiZulu.',
-    'Ngicela ungichazele ngezaga nezisho zesiZulu kanye nezincazelo zazo zehlolo.',
-    'Amasu okubhala indaba yokulandisa / yokuphikisa ephepheni lesi-3 (Paper 3).',
-    'Ukuhlaziya izinkondlo zesiZulu (isigqi, ifanamsindo, ifanangwaqa, izifengqo).'
-  ],
-  'isiXhosa': [
-    'Chaza izivumelanisi zentloko nezinto kuhlelo lolwimi lwesiXhosa.',
-    'Izafobe nezaci zesiXhosa kunye neentsingiselo zazo zeemviwo.',
-    'Ukubhalwa kwesincoko (indaba) kwiPhepha lesi-3 lesiXhosa.',
-    'Uhlalutyo lwemibongo yocwecwe (izafobe, isingqisho, umxholo).'
-  ],
-  'Afrikaans': [
-    'Verduidelik STOMPI reëls en die korrekte woordorde in Afrikaans.',
-    'Hoe werk Lydende en Bedrywende Vorm (Passief en Aktief)?',
-    'Verduidelik Direkte en Indirekte Rede met duidelike voorbeelde.',
-    'Wenke vir die skryf van \'n Opstel en Transaksionele teks (Vraestel 3).'
-  ],
-  'English': [
-    'Explain figurative devices: Metaphor, Simile, Personification, Irony, and Oxymoron.',
-    'How do I structure an argumentative essay for Paper 3?',
-    'Explain Active vs Passive Voice and Direct vs Indirect speech conversion.',
-    'How do I approach unseen poetry analysis and identify tone and mood?'
-  ],
-  'Sepedi': [
-    'Hlalosa mahlaodi le mašala go ya ka popopolelo ya Sepedi.',
-    'Maele le diema tša Sepedi le ditlhaloso tša tšona tša ditlhahlobo.',
-    'Mekgwa ya go ngwala taodišo (essay) pampiring ya boraro (Paper 3).',
-    'Tshekatsheko ya direto tša Sepedi (morumokwano, poeletšo, dithekniki).'
-  ],
-  'Setswana': [
-    'Tlhalosa popopolelo ya Setswana le ditlhopha tsa maina (Noun classes).',
-    'Diane le maele a Setswana le bokao jwa tsone mo ditlhatlhobong.',
-    'Ditaelo tsa go kwala tlhamo (indaba/essay) le ditemana tsa go tlhaloganya.',
-    'Tshekatsheko ya maboko le dipapadi tsa Setswana.'
-  ],
-  'Sesotho': [
-    'Hlalosa popopolelo ya Sesotho le mabitso a dikarolo tsa puo.',
-    'Maele le maelana a Sesotho le mehlala ya tshebediso ya ona.',
-    'Tataiso ya ho ngola moqoqo le ditemana tsa puisano (Pampiri ya 3).',
-    'Tshekatsheko ya dithothokiso tsa Sesotho bakeng sa dihlahlobo.'
-  ],
-  'Xitsonga': [
-    'Hlamusela swiaki swa maviti na mavulavulelo eka ririmi ra Xitsonga.',
-    'Swivuriso na swihitana swa Xitsonga na tinhlamuselo ta swona.',
-    'Madyondziselo yo tsala xitsalwana (essay) na matsalwa ya le henhla.',
-    'Nxopaxopo wa swithlokovetselo swa Xitsonga eka swikambelo.'
-  ],
-  'siSwati': [
-    'Chaza luhlelo lwelulwimi lwesiSwati netigaba temabito.',
-    'Taga netisho tesiSwati netinchazelo tato tekuhlola.',
-    'Kubhala tindzaba tekuticambela netindlela tekuphendvula umbhalo wesivivinyo.',
-    'Kuhlatiya tinkondlo tesiSwati (imvumelwano, sisingciso, umoya wenkondlo).'
-  ],
-  'Tshivenda': [
-    'Talutshedzani maitele a girama ya Tshivenda na zwipida zwa tshirendi.',
-    'Mirero na maambele a Tshivenda na thalutshedzo dzazwo dza mulingo.',
-    'Ndivho ya u ṅwala tshirendi na maanea (essay) kha Bammbiri 3.',
-    'U saukanya vhudetembi ha Tshivenda na zwiga zwa luambo.'
-  ],
-  'isiNdebele': [
-    'Hlathulula izakhi zelimi lekhethu lesiNdebele neenhlobo zamabizo.',
-    'Izaga nezitjho zesiNdebele kanye neencazelo zazo zehlolweni.',
-    'Indlela yokutlola i-eseyi (indaba) kanyana nemitlamo yePhepha 3.',
-    'Ukuhluza izinkondlo zesiNdebele zomnyanya welimi.'
-  ]
-};
-
-const cleanHumanMath = (text: string): string => {
-  if (!text || typeof text !== 'string') return text;
-  let s = text;
-
-  // 1. Remove LaTeX font tags
-  s = s.replace(/\\mathbf\{([^}]+)\}/g, '$1');
-  s = s.replace(/\\textbf\{([^}]+)\}/g, '$1');
-  s = s.replace(/\\text\{([^}]+)\}/g, '$1');
-  s = s.replace(/\\mathrm\{([^}]+)\}/g, '$1');
-  s = s.replace(/\\mathit\{([^}]+)\}/g, '$1');
-
-  // 2. Fractions: \frac{a}{b} -> a / b
-  s = s.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1 / $2');
-
-  // 3. Geometry & Angles
-  s = s.replace(/\\triangle\s*([A-Za-z0-9]+)/g, 'Triangle $1');
-  s = s.replace(/\\hat\{([A-Za-z0-9]+)\}/g, 'Angle $1');
-  s = s.replace(/\\angle\s*([A-Za-z0-9]+)/g, 'Angle $1');
-
-  // 4. Mathematical Operators and Symbols
-  s = s.replace(/\^\\circ/g, '°');
+export const cleanHumanMath = (rawText: string): string => {
+  if (!rawText) return '';
+  let s = rawText;
+  s = s.replace(/\\times/g, '×');
+  s = s.replace(/\\cdot/g, '·');
+  s = s.replace(/\\div/g, '÷');
+  s = s.replace(/\\pm/g, '±');
+  s = s.replace(/\\approx/g, '≈');
+  s = s.replace(/\\leq/g, '≤');
+  s = s.replace(/\\geq/g, '≥');
+  s = s.replace(/\\neq/g, '≠');
+  s = s.replace(/\\degree/g, '°');
   s = s.replace(/\\circ/g, '°');
-  s = s.replace(/\\times/g, ' × ');
-  s = s.replace(/\\cdot/g, ' • ');
-  s = s.replace(/\\approx/g, ' ≈ ');
-  s = s.replace(/\\Rightarrow/g, ' => ');
-  s = s.replace(/\\rightarrow/g, ' -> ');
-  s = s.replace(/\\Leftrightarrow/g, ' <=> ');
-  s = s.replace(/\\leq?/g, ' ≤ ');
-  s = s.replace(/\\geq?/g, ' ≥ ');
-  s = s.replace(/\\neq/g, ' ≠ ');
-  s = s.replace(/\\pm/g, ' ± ');
-  s = s.replace(/\\sqrt\{([^}]+)\}/g, '√($1)');
-  s = s.replace(/\\sqrt/g, '√');
-  s = s.replace(/\\quad/g, ' ');
-  s = s.replace(/\\qquad/g, '  ');
+  s = s.replace(/\\pi/g, 'π');
   s = s.replace(/\\theta/g, 'θ');
   s = s.replace(/\\alpha/g, 'α');
   s = s.replace(/\\beta/g, 'β');
-  s = s.replace(/\\pi/g, 'π');
   s = s.replace(/\\Delta/g, 'Δ');
-  s = s.replace(/\\delta/g, 'δ');
-  s = s.replace(/\\Sigma/g, 'Σ');
-  s = s.replace(/\\sigma/g, 'σ');
-  s = s.replace(/\\infty/g, '∞');
-
-  // 5. Strip LaTeX math delimiters
+  s = s.replace(/\\sqrt\{([^}]+)\}/g, '√($1)');
+  s = s.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1 / $2)');
   s = s.replace(/\$\$([\s\S]*?)\$\$/g, '$1');
   s = s.replace(/\$([^\$\n]+)\$/g, '$1');
-
-  // 6. Clean up residual backslashes
   s = s.replace(/\\([a-zA-Z]+)/g, '$1');
-
   return s;
 };
 
 export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
   initialSubject = 'Mathematics',
-  initialTopicId,
   initialTopicName = 'General Curriculum',
 }) => {
-  const [subject, setSubject] = useState(initialSubject);
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('isiZulu');
-  const [currentTopic, setCurrentTopic] = useState(initialTopicName);
+  // Learner Enrolled Context
+  const [subjectsList, setSubjectsList] = useState<SubjectSyllabusItem[]>([]);
+  const [learnerGrade, setLearnerGrade] = useState<number>(10);
+  const [learnerStream, setLearnerStream] = useState<string>('Science');
+  const [schoolName, setSchoolName] = useState<string>('Fusion High School');
+
+  const [subject, setSubject] = useState<string>(initialSubject);
+  const [currentTopic, setCurrentTopic] = useState<string>(initialTopicName);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('English');
+
+  // Conversation Session State
+  const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
+  const [loadingConversations, setLoadingConversations] = useState<boolean>(false);
+
+  // Chat Messages State
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: 'welcome-msg',
+      id: 'welcome-init',
       sender: 'ai',
-      text: `Hello! I am your dedicated **Fusion AI ${initialSubject} Specialist**.\n\nI can help you master tough ${initialSubject} concepts, solve homework problems step-by-step, explain formulas, or generate practice quizzes. What would you like to explore today?`,
+      text: `Welcome to **${initialSubject}** (Grade 10). Select any topic from your CAPS syllabus or ask a question to get step-by-step solutions, formulas, and exam guidance.`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      suggestions: [
+        `Explain the core concepts of ${initialSubject} step-by-step`,
+        `Give me a Grade 10 practice question with marking memo`,
+        `What are the most common exam mistakes in this topic?`
+      ]
     }
   ]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
-  const [activeQuiz, setActiveQuiz] = useState<any | null>(null);
-  const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
-  const [quizSubmitted, setQuizSubmitted] = useState(false);
-  const [quizScore, setQuizScore] = useState<number | null>(null);
 
-  // Speech-to-Text (STT) Voice Dictation State
+  // Voice State
   const [isListening, setIsListening] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
-
-  // Text-to-Speech (TTS) Read-Aloud State
-  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
+  const [speakingMsgId, setSpeakingMsgId] = useState<string | number | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [speechRate, setSpeechRate] = useState<number>(1.0);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Speech-to-Text Voice Dictation Starter
-  const toggleSpeechRecognition = () => {
-    if (isListening) {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
+  // 1. Initial Load: Fetch Subjects, Syllabus Topics, and Saved Conversations
+  useEffect(() => {
+    loadSyllabus();
+  }, []);
+
+  useEffect(() => {
+    if (subject) {
+      loadSavedConversations(subject);
+    }
+  }, [subject]);
+
+  const loadSyllabus = async () => {
+    try {
+      const data = await aiTutorService.getSubjectsWithSyllabus();
+      if (data) {
+        setLearnerGrade(data.grade || 10);
+        setLearnerStream(data.stream || 'Science');
+        setSchoolName(data.schoolName || 'Fusion High School');
+        if (data.subjects && data.subjects.length > 0) {
+          setSubjectsList(data.subjects);
+          const hasCurrent = data.subjects.find((s: SubjectSyllabusItem) => s.name.toLowerCase() === subject.toLowerCase());
+          if (!hasCurrent && data.subjects[0]) {
+            setSubject(data.subjects[0].name);
+          }
+        }
       }
-      setIsListening(false);
-      return;
+    } catch (err) {
+      console.warn('Could not load subjects syllabus from backend:', err);
+    }
+  };
+
+  const loadSavedConversations = async (targetSubject: string) => {
+    setLoadingConversations(true);
+    try {
+      const res = await aiTutorService.getConversations(targetSubject);
+      if (res && Array.isArray(res.conversations)) {
+        setConversations(res.conversations);
+      }
+    } catch (err) {
+      console.warn('Could not fetch conversations:', err);
+    } finally {
+      setLoadingConversations(false);
+    }
+  };
+
+  const handleSelectConversation = async (conv: ConversationItem) => {
+    setActiveConversationId(conv.id);
+    setCurrentTopic(conv.topic || 'General Curriculum');
+    setLoading(true);
+    try {
+      const details = await aiTutorService.getConversationDetails(conv.id);
+      if (details && Array.isArray(details.messages)) {
+        const mapped: Message[] = details.messages.map((m: any) => ({
+          id: m.id,
+          sender: m.sender,
+          text: cleanHumanMath(m.message_text),
+          timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          suggestions: m.metadata?.suggestions || []
+        }));
+        setMessages(mapped);
+      }
+    } catch (err) {
+      console.error('Error fetching conversation details:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartNewSession = async (customTopic?: string) => {
+    const topicToUse = customTopic || currentTopic || 'General Subject Help';
+    setActiveConversationId(null);
+    setCurrentTopic(topicToUse);
+
+    const welcomeMsg: Message = {
+      id: `welcome-${Date.now()}`,
+      sender: 'ai',
+      text: `Started a new consultation for **${subject}** (Grade ${learnerGrade}, Topic: *${topicToUse}*).\n\nEnter any question or problem you are working on to get step-by-step guidance.`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      suggestions: [
+        `Explain ${topicToUse} step-by-step with formulas`,
+        `Generate a Grade ${learnerGrade} CAPS exam problem on this topic`,
+        `What are the key definitions and formulas I must memorize?`
+      ]
+    };
+
+    setMessages([welcomeMsg]);
+  };
+
+  const handleDeleteSession = async (e: React.MouseEvent, convId: number) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this saved study conversation?')) return;
+    try {
+      await aiTutorService.deleteSession(convId);
+      setConversations(prev => prev.filter(c => c.id !== convId));
+      if (activeConversationId === convId) {
+        handleStartNewSession();
+      }
+    } catch (err) {
+      console.error('Error deleting session:', err);
+    }
+  };
+
+  const isLanguageSubject = subject.toLowerCase().includes('language') || 
+                            subject.toLowerCase().includes('hl') || 
+                            subject.toLowerCase().includes('fal') ||
+                            SA_OFFICIAL_LANGUAGES.some(l => l.name.toLowerCase() === subject.toLowerCase());
+
+  // Active Subject Topics List
+  const activeSubjectItem = subjectsList.find(s => s.name.toLowerCase() === subject.toLowerCase());
+  const activeTopics = activeSubjectItem ? activeSubjectItem.topics : [];
+
+  const handleSwitchSubject = (newSub: string) => {
+    if (newSub === subject) return;
+    setSubject(newSub);
+    setCurrentTopic('General Curriculum');
+    setActiveConversationId(null);
+
+    let greeting = `Switched to **${newSub}** (Grade ${learnerGrade}). Select a CAPS topic or ask a question to explore formulas, concepts, or practice problems.`;
+    if (newSub.toLowerCase().includes('language') || newSub.toLowerCase().includes('hl') || newSub.toLowerCase().includes('fal')) {
+      const currentLangObj = SA_OFFICIAL_LANGUAGES.find(l => l.name === selectedLanguage) || SA_OFFICIAL_LANGUAGES[0];
+      greeting = `${currentLangObj.greeting}\n\nSelect a topic or ask a question on **${currentLangObj.name}** (Grammar, Literature, Poetry, or Writing).`;
     }
 
-    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRec) {
-      setSpeechError('Speech recognition is not supported in this browser. Please try Chrome, Edge, or Safari.');
-      setTimeout(() => setSpeechError(null), 5000);
-      return;
-    }
+    setMessages([
+      {
+        id: `welcome-${Date.now()}`,
+        sender: 'ai',
+        text: greeting,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        suggestions: [
+          `Explain the foundational concepts of ${newSub}`,
+          `Give me a Grade ${learnerGrade} exam practice question`,
+          `What are the most common exam mistakes students make?`
+        ]
+      }
+    ]);
+  };
+
+  const handleSwitchLanguage = (langName: string) => {
+    setSelectedLanguage(langName);
+    const langObj = SA_OFFICIAL_LANGUAGES.find(l => l.name === langName) || SA_OFFICIAL_LANGUAGES[0];
+    setMessages([
+      {
+        id: `welcome-${Date.now()}`,
+        sender: 'ai',
+        text: `${langObj.greeting}\n\nI am ready to help you with **${langObj.name}** Grade-specific curriculum, including Paper 1 (Language & Grammar), Paper 2 (Literature & Poetry), Paper 3 (Creative Writing), and cultural idioms/proverbs. What would you like to study?`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        suggestions: [
+          `Explain Paper 1 Grammar rules in ${langObj.name}`,
+          `Help me analyze a prescribed poetry piece`,
+          `Give me essay writing structure tips for Paper 3`
+        ]
+      }
+    ]);
+  };
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
+
+  // Handle Send Message to Gemini AI Tutor
+  const handleSendMessage = async (textToSend?: string) => {
+    const query = textToSend || inputText;
+    if (!query.trim() || loading) return;
+
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      sender: 'user',
+      text: query,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    if (!textToSend) setInputText('');
+    setLoading(true);
 
     try {
-      setSpeechError(null);
-      const recognition = new SpeechRec();
-      recognitionRef.current = recognition;
-      recognition.continuous = false;
-      recognition.interimResults = true;
+      const response = await aiTutorService.sendChat({
+        subject: isLanguageSubject ? `${selectedLanguage} (${subject})` : subject,
+        grade: learnerGrade,
+        stream: learnerStream,
+        topic: currentTopic,
+        message: query,
+        conversationId: activeConversationId,
+        language: isLanguageSubject ? selectedLanguage : 'english'
+      });
 
-      // Match language if it is a South African language subject
-      if (isLanguageSubject && selectedLanguage.toLowerCase() === 'afrikaans') {
-        recognition.lang = 'af-ZA';
-      } else if (isLanguageSubject && selectedLanguage.toLowerCase() === 'isizulu') {
-        recognition.lang = 'zu-ZA';
-      } else {
-        recognition.lang = 'en-ZA';
+      let aiText = response.reply || response.answer || response.message || '';
+      aiText = cleanHumanMath(aiText);
+
+      if (response.conversationId && response.conversationId !== activeConversationId) {
+        setActiveConversationId(response.conversationId);
+        loadSavedConversations(subject);
       }
 
-      recognition.onstart = () => {
-        setIsListening(true);
+      const aiMessage: Message = {
+        id: `ai-${Date.now()}`,
+        sender: 'ai',
+        text: aiText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        suggestions: response.suggestions || []
       };
 
-      recognition.onresult = (event: any) => {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
-        if (transcript.trim()) {
-          setInputText(transcript);
-        }
-      };
-
-      recognition.onerror = (event: any) => {
-        console.warn('[SPEECH RECOGNITION ERROR]:', event.error);
-        if (event.error !== 'no-speech') {
-          setSpeechError(`Voice input: ${event.error}`);
-          setTimeout(() => setSpeechError(null), 4000);
-        }
-        setIsListening(false);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognition.start();
+      setMessages(prev => [...prev, aiMessage]);
     } catch (err: any) {
-      console.error('Error starting speech recognition:', err);
-      setSpeechError('Microphone access unavailable.');
-      setIsListening(false);
+      console.error('[AI TUTOR ERROR]', err);
+      const errMsg: Message = {
+        id: `ai-err-${Date.now()}`,
+        sender: 'ai',
+        text: `I had trouble connecting to the curriculum tutor engine. Please check your network and try again!`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages(prev => [...prev, errMsg]);
+    } finally {
+      setLoading(false);
     }
   };
 
   // Text-to-Speech (TTS) Synthesizer
-  const toggleReadAloud = (messageId: string, fullText: string) => {
+  const toggleReadAloud = (messageId: string | number, fullText: string) => {
     if (!('speechSynthesis' in window)) {
       setSpeechError('Text-to-speech voice synthesis is not supported in your browser.');
       setTimeout(() => setSpeechError(null), 4000);
@@ -378,7 +387,6 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
 
     window.speechSynthesis.cancel();
 
-    // Strip markdown formatting for natural speech flow
     const cleanText = fullText
       .replace(/\*\*(.*?)\*\*/g, '$1')
       .replace(/\*(.*?)\*/g, '$1')
@@ -389,18 +397,12 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
       .trim();
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = speechRate;
+    utterance.rate = 1.0;
     utterance.pitch = 1.0;
 
-    // Pick best available voice
     const voices = window.speechSynthesis.getVoices();
-    if (isLanguageSubject && selectedLanguage.toLowerCase() === 'afrikaans') {
-      const afVoice = voices.find(v => v.lang.includes('af') || v.name.includes('Afrikaans'));
-      if (afVoice) utterance.voice = afVoice;
-    } else {
-      const zaVoice = voices.find(v => v.lang === 'en-ZA' || v.name.includes('South Africa') || v.lang.includes('en'));
-      if (zaVoice) utterance.voice = zaVoice;
-    }
+    const zaVoice = voices.find(v => v.lang === 'en-ZA' || v.name.includes('South Africa') || v.lang.includes('en'));
+    if (zaVoice) utterance.voice = zaVoice;
 
     utterance.onstart = () => {
       setSpeakingMsgId(messageId);
@@ -420,187 +422,55 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
     window.speechSynthesis.speak(utterance);
   };
 
-  // Stop speech when unmounting or switching topics
-  useEffect(() => {
-    return () => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
-  }, []);
-
-  const isLanguageSubject = subject.toLowerCase().includes('language') || 
-                            subject.toLowerCase().includes('hl') || 
-                            subject.toLowerCase().includes('fal') ||
-                            SA_OFFICIAL_LANGUAGES.some(l => l.name.toLowerCase() === subject.toLowerCase());
-
-  // When subject changes, reset conversation with a fresh tailored welcome message
-  const handleSwitchSubject = (newSub: string) => {
-    if (newSub === subject) return;
-    setSubject(newSub);
-    setCurrentTopic('General Curriculum');
-    setActiveQuiz(null);
-    setQuizSubmitted(false);
-
-    let greeting = `Switched to **${newSub}**.\n\nI am your dedicated **Fusion AI ${newSub} Specialist**. I will guide you through ${newSub} topics, definitions, equations, and practice tests. How can I help you today?`;
-    if (newSub.toLowerCase().includes('language') || newSub.toLowerCase().includes('hl') || newSub.toLowerCase().includes('fal')) {
-      const currentLangObj = SA_OFFICIAL_LANGUAGES.find(l => l.name === selectedLanguage) || SA_OFFICIAL_LANGUAGES[0];
-      greeting = `${currentLangObj.greeting}\n\nI specialize in **${currentLangObj.name}** (Paper 1 Grammar, Paper 2 Literature & Poetry, Paper 3 Creative Writing, and Idioms/Proverbs). Please choose your language or ask any question!`;
+  // Speech-to-Text (STT) Dictation
+  const toggleSpeechRecognition = () => {
+    if (isListening) {
+      if (recognitionRef.current) recognitionRef.current.stop();
+      setIsListening(false);
+      return;
     }
 
-    setMessages([
-      {
-        id: `welcome-${Date.now()}`,
-        sender: 'ai',
-        text: greeting,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      }
-    ]);
-  };
-
-  const handleSwitchLanguage = (langName: string) => {
-    setSelectedLanguage(langName);
-    const langObj = SA_OFFICIAL_LANGUAGES.find(l => l.name === langName) || SA_OFFICIAL_LANGUAGES[0];
-    setActiveQuiz(null);
-    setQuizSubmitted(false);
-    setMessages([
-      {
-        id: `welcome-${Date.now()}`,
-        sender: 'ai',
-        text: `${langObj.greeting}\n\nI am ready to help you with **${langObj.name}** Grade-specific curriculum, including Paper 1 (Language & Grammar), Paper 2 (Literature & Poetry), Paper 3 (Creative Writing), and cultural idioms/proverbs. What would you like to study?`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      }
-    ]);
-  };
-
-  // Determine prompt suggestions
-  const suggestedPrompts = isLanguageSubject
-    ? (SUBJECT_PROMPTS[selectedLanguage] || SUBJECT_PROMPTS['isiZulu'])
-    : (SUBJECT_PROMPTS[subject] || [
-        `Explain the fundamental concepts of ${subject} step-by-step.`,
-        `Generate a 3-question multiple choice revision quiz on ${subject}.`,
-        `What are the most common exam mistakes students make in ${subject}?`
-      ]);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, activeQuiz]);
-
-  const handleSendMessage = async (textToSend?: string) => {
-    const query = textToSend || inputText;
-    if (!query.trim() || loading) return;
-
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      sender: 'user',
-      text: query,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    if (!textToSend) setInputText('');
-    setLoading(true);
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRec) {
+      setSpeechError('Speech recognition is not supported in this browser.');
+      setTimeout(() => setSpeechError(null), 4000);
+      return;
+    }
 
     try {
-      const response = await learnerService.askTutor({
-        prompt: query,
-        question: query,
-        subject: isLanguageSubject ? `${selectedLanguage} (${subject})` : subject,
-        topic: currentTopic,
-        language: isLanguageSubject ? selectedLanguage : undefined
-      });
+      setSpeechError(null);
+      const recognition = new SpeechRec();
+      recognitionRef.current = recognition;
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-ZA';
 
-      let aiText = response.answer || response.response || response.message || '';
-      aiText = cleanHumanMath(aiText);
-      
-      // If AI returned JSON or quiz format
-      let parsedQuiz = null;
-      if (response.quiz || response.questions) {
-        parsedQuiz = response.quiz || response.questions;
-      } else if (aiText.includes('```json')) {
-        try {
-          const jsonStr = aiText.split('```json')[1].split('```')[0].trim();
-          parsedQuiz = JSON.parse(jsonStr);
-        } catch (e) {}
-      }
-
-      const aiMessage: Message = {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        text: aiText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isQuiz: !!parsedQuiz,
-        quizData: parsedQuiz,
+      recognition.onstart = () => setIsListening(true);
+      recognition.onresult = (event: any) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        if (transcript.trim()) setInputText(transcript);
       };
-
-      setMessages(prev => [...prev, aiMessage]);
-
-      if (parsedQuiz && Array.isArray(parsedQuiz.questions || parsedQuiz)) {
-        setActiveQuiz(parsedQuiz);
-        setQuizAnswers({});
-        setQuizSubmitted(false);
-        setQuizScore(null);
-      }
+      recognition.onerror = (event: any) => {
+        if (event.error !== 'no-speech') {
+          setSpeechError(`Voice input: ${event.error}`);
+          setTimeout(() => setSpeechError(null), 4000);
+        }
+        setIsListening(false);
+      };
+      recognition.onend = () => setIsListening(false);
+      recognition.start();
     } catch (err: any) {
-      const errMsg: Message = {
-        id: `ai-err-${Date.now()}`,
-        sender: 'ai',
-        text: `I had trouble connecting to the tutor engine. Please try asking your question again!`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages(prev => [...prev, errMsg]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleStartPracticeQuiz = async () => {
-    const targetLabel = isLanguageSubject ? selectedLanguage : subject;
-    await handleSendMessage(`Please create a 3-question multiple choice practice quiz for ${targetLabel} on "${currentTopic}". Provide 4 options (A, B, C, D) for each with clear explanations and correct answers.`);
-  };
-
-  const handleExplainConcept = async () => {
-    const targetLabel = isLanguageSubject ? selectedLanguage : subject;
-    await handleSendMessage(`Please provide a comprehensive study guide and concept explanation for ${targetLabel} on "${currentTopic}". Include key definitions, rules, examples, and exam tips.`);
-  };
-
-  const handleSelectQuizAnswer = (qIndex: number, optionKey: string) => {
-    if (quizSubmitted) return;
-    setQuizAnswers(prev => ({ ...prev, [String(qIndex)]: optionKey }));
-  };
-
-  const handleSubmitQuiz = () => {
-    if (!activeQuiz) return;
-    const questions = activeQuiz.questions || activeQuiz;
-    let score = 0;
-
-    questions.forEach((q: any, idx: number) => {
-      const selected = quizAnswers[String(idx)];
-      const correct = q.correct_answer || q.answer || q.correctOption;
-      if (selected && correct && selected.toLowerCase().trim() === correct.toLowerCase().trim()) {
-        score += 1;
-      }
-    });
-
-    const percentage = Math.round((score / questions.length) * 100);
-    setQuizScore(percentage);
-    setQuizSubmitted(true);
-
-    if (percentage >= 70) {
-      confetti({
-        particleCount: 80,
-        spread: 60,
-        origin: { y: 0.7 }
-      });
+      setSpeechError('Microphone access unavailable.');
+      setIsListening(false);
     }
   };
 
   return (
     <div className="space-y-4">
-      {/* Top Header & Subject / Language Configuration */}
+      {/* Top Header & Subject / Language Selector */}
       <div className="rounded-3xl bg-surface-dark border border-white/10 p-5 shadow-xl space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -610,12 +480,12 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold font-display text-white">
-                  Fusion AI Subject Specialist
+                  CAPS Subject Tutor
                 </h2>
-                <Badge variant="cyan" size="sm">High School</Badge>
+                <Badge variant="cyan" size="sm">Grade {learnerGrade} {learnerStream}</Badge>
               </div>
               <p className="text-xs text-slate-400">
-                Personalized explanations, step-by-step problem solutions, and 11 SA Official Languages
+                Interactive Department of Basic Education CAPS curriculum explanations, step-by-step calculations & exam memos
               </p>
             </div>
           </div>
@@ -627,14 +497,18 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
               onChange={(e) => handleSwitchSubject(e.target.value)}
               className="rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2 text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
-              {SUBJECT_LIST.map((sub) => (
-                <option key={sub} value={sub}>
-                  {sub}
-                </option>
-              ))}
+              {subjectsList.length > 0 ? (
+                subjectsList.map((sub) => (
+                  <option key={sub.name} value={sub.name}>
+                    {sub.name} ({sub.topicsCount} Topics)
+                  </option>
+                ))
+              ) : (
+                <option value={subject}>{subject}</option>
+              )}
             </select>
 
-            {/* 11 Official SA Language Selector Dropdown (When Language Subject Selected) */}
+            {/* 11 Official SA Language Selector (When Language Subject Selected) */}
             {isLanguageSubject && (
               <div className="flex items-center gap-1.5 bg-brand-600/20 border border-brand-500/40 rounded-xl px-3 py-1.5">
                 <Languages className="w-4 h-4 text-cyan-300" />
@@ -651,32 +525,45 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                 </select>
               </div>
             )}
+
+            {/* New Study Session Button */}
+            <button
+              onClick={() => handleStartNewSession()}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white text-xs font-bold shadow-md transition-all"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>New Chat</span>
+            </button>
           </div>
         </div>
 
-        {/* 11 Official SA Language Quick Selection Bar */}
-        {isLanguageSubject && (
-          <div className="pt-2 border-t border-white/5">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                Select from South Africa's 11 Official Languages:
-              </span>
+        {/* CAPS Syllabus Topics Bar for Selected Subject */}
+        {activeTopics.length > 0 && (
+          <div className="pt-3 border-t border-white/5 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs text-slate-400 font-bold">
+                <GraduationCap className="w-4 h-4 text-brand-400" />
+                <span>Grade {learnerGrade} CAPS Syllabus Topics ({subject}):</span>
+              </div>
+              <span className="text-[11px] text-cyan-300 font-mono">Active: {currentTopic}</span>
             </div>
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-              {SA_OFFICIAL_LANGUAGES.map((lang) => {
-                const isSelected = selectedLanguage === lang.name;
+              {activeTopics.map((t) => {
+                const isActive = currentTopic.toLowerCase() === t.topic.toLowerCase();
                 return (
                   <button
-                    key={lang.id}
-                    onClick={() => handleSwitchLanguage(lang.name)}
-                    className={`px-3 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                      isSelected
-                        ? 'bg-gradient-to-r from-brand-600 to-cyan-600 text-white shadow-glow-indigo'
-                        : 'bg-surface-darker hover:bg-white/10 text-slate-300 border border-white/5'
+                    key={t.id}
+                    onClick={() => {
+                      setCurrentTopic(t.topic);
+                      handleSendMessage(`Let's study the topic: "${t.topic}". Please give me a clear breakdown of the core concepts, formulas, and what is tested in formal exams.`);
+                    }}
+                    className={`px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+                      isActive
+                        ? 'bg-brand-600 text-white border-brand-400 shadow-glow-indigo'
+                        : 'bg-surface-darker hover:bg-white/10 text-slate-300 border-white/5'
                     }`}
                   >
-                    {lang.name}
+                    {t.topic}
                   </button>
                 );
               })}
@@ -688,7 +575,7 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
       {/* Main Chat Interface Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left / Center Chat Pane (8 Cols) */}
-        <div className="lg:col-span-8 rounded-3xl bg-surface-dark border border-white/10 shadow-xl flex flex-col h-[600px] overflow-hidden">
+        <div className="lg:col-span-8 rounded-3xl bg-surface-dark border border-white/10 shadow-xl flex flex-col h-[650px] overflow-hidden">
           {/* Active Context Bar */}
           <div className="px-5 py-3 border-b border-white/10 bg-surface-darker/80 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -696,23 +583,23 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
               <span className="text-xs font-bold text-white font-display">
                 {isLanguageSubject ? `${selectedLanguage} Specialist` : `${subject} Specialist`}
               </span>
-              <span className="text-[11px] text-slate-400">• {currentTopic}</span>
+              <span className="text-[11px] text-slate-400 truncate max-w-[280px]">• {currentTopic}</span>
             </div>
 
             <div className="flex items-center gap-1.5">
               <button
-                onClick={handleExplainConcept}
+                onClick={() => handleSendMessage(`Please provide a comprehensive study guide for ${subject} on "${currentTopic}". Include key definitions, formulas, rules, and exam tips.`)}
                 className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 font-bold text-[11px] border border-brand-500/30 transition-colors"
               >
                 <BookOpen className="w-3 h-3" />
                 <span>Explain Topic</span>
               </button>
               <button
-                onClick={handleStartPracticeQuiz}
+                onClick={() => handleSendMessage(`Generate a South African CAPS examination practice question for Grade ${learnerGrade} ${subject} on "${currentTopic}". Include mark allocation [e.g. 5 Marks] and test my problem solving.`)}
                 className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 font-bold text-[11px] border border-cyan-500/30 transition-colors"
               >
                 <HelpCircle className="w-3 h-3" />
-                <span>Quick Quiz</span>
+                <span>Practice Exam Question</span>
               </button>
             </div>
           </div>
@@ -733,7 +620,7 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                   )}
 
                   <div
-                    className={`max-w-[85%] rounded-2xl p-4 text-xs leading-relaxed ${
+                    className={`max-w-[88%] rounded-2xl p-4 text-xs leading-relaxed ${
                       isAi
                         ? 'bg-surface-darker border border-white/10 text-slate-200'
                         : 'bg-brand-600 text-white shadow-glow-indigo'
@@ -741,7 +628,7 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                   >
                     <div className="flex items-center justify-between gap-4 mb-1.5 opacity-60 text-[10px]">
                       <span className="font-bold">
-                        {isAi ? `Fusion AI ${isLanguageSubject ? selectedLanguage : subject} Specialist` : 'You'}
+                        {isAi ? `${isLanguageSubject ? selectedLanguage : subject} Tutor` : 'You'}
                       </span>
                       <span>{msg.timestamp}</span>
                     </div>
@@ -750,9 +637,29 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                       {msg.text}
                     </div>
 
+                    {/* Interactive AI Suggestion Action Pills */}
+                    {isAi && msg.suggestions && msg.suggestions.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
+                        <p className="text-[10.5px] font-bold text-slate-400 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-amber-400" />
+                          <span>Suggested Next Steps:</span>
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {msg.suggestions.map((sugg, sIdx) => (
+                            <button
+                              key={sIdx}
+                              onClick={() => handleSendMessage(sugg)}
+                              className="px-2.5 py-1 rounded-lg bg-brand-500/10 hover:bg-brand-500/25 text-brand-300 text-[11px] font-medium border border-brand-500/20 text-left transition-all hover:scale-[1.02]"
+                            >
+                              {sugg}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {isAi && (
-                      <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-white/10">
-                        {/* Audio Read-Aloud Speaker Button */}
+                      <div className="flex flex-wrap items-center gap-2 mt-3 pt-2 border-t border-white/5">
                         <button
                           type="button"
                           onClick={() => toggleReadAloud(msg.id, msg.text)}
@@ -761,17 +668,11 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                               ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-glow-emerald animate-pulse'
                               : 'bg-white/5 hover:bg-white/10 text-emerald-300'
                           }`}
-                          title={speakingMsgId === msg.id && isSpeaking ? "Stop Voice Read-Aloud" : "Listen / Read Aloud"}
                         >
                           {speakingMsgId === msg.id && isSpeaking ? (
                             <>
                               <VolumeX className="w-3 h-3 text-white" />
                               <span>Speaking...</span>
-                              <span className="flex items-center gap-0.5 ml-1">
-                                <span className="w-0.5 h-2.5 bg-white animate-bounce" />
-                                <span className="w-0.5 h-3.5 bg-white animate-bounce delay-75" />
-                                <span className="w-0.5 h-2 bg-white animate-bounce delay-150" />
-                              </span>
                             </>
                           ) : (
                             <>
@@ -782,18 +683,11 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                         </button>
 
                         <button
-                          onClick={() => handleSendMessage(`Explain this simpler with a clear example: "${msg.text.slice(0, 80)}..."`)}
+                          onClick={() => handleSendMessage(`Can you explain this simpler with a simple South African real-world analogy: "${msg.text.slice(0, 70)}..."`)}
                           className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[10px] text-brand-300 font-medium transition-colors"
                         >
                           <Lightbulb className="w-3 h-3" />
-                          <span>Explain Simpler</span>
-                        </button>
-                        <button
-                          onClick={() => handleSendMessage(`Give me 2 practice questions on this: "${msg.text.slice(0, 80)}..."`)}
-                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[10px] text-cyan-300 font-medium transition-colors"
-                        >
-                          <HelpCircle className="w-3 h-3" />
-                          <span>Practice Questions</span>
+                          <span>Explain with Analogy</span>
                         </button>
                       </div>
                     )}
@@ -809,50 +703,35 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                 </div>
                 <div className="rounded-2xl bg-surface-darker border border-white/10 p-3 text-xs text-slate-400 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                  <span>Fusion AI is formatting response in {isLanguageSubject ? selectedLanguage : subject}...</span>
+                  <span>Reviewing Grade {learnerGrade} {subject} syllabus and solving...</span>
                 </div>
               </div>
             )}
             <div ref={chatEndRef} />
           </div>
 
-          {/* Quick Prompts Bar */}
-          <div className="px-4 py-2 bg-surface-darker/60 border-t border-white/5 flex items-center gap-2 overflow-x-auto">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 shrink-0">
-              Quick Prompts:
-            </span>
-            {suggestedPrompts.slice(0, 3).map((prompt, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSendMessage(prompt)}
-                className="whitespace-nowrap rounded-lg bg-white/5 hover:bg-white/10 px-2.5 py-1 text-[11px] text-slate-300 transition-colors"
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
-
-          {/* Live Voice Dictation Banner */}
-          {isListening && (
-            <div className="px-4 py-2 bg-rose-500/20 border-t border-rose-500/30 flex items-center justify-between animate-fade-in text-rose-300 text-xs">
-              <div className="flex items-center gap-2 font-bold">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-                <span>Listening to your voice... Speak your question now</span>
-              </div>
-              <button
-                type="button"
-                onClick={toggleSpeechRecognition}
-                className="text-[11px] font-bold px-2 py-0.5 rounded bg-rose-500/30 hover:bg-rose-500/50 text-white"
-              >
-                Done
-              </button>
-            </div>
-          )}
-
+          {/* Speech Error Banner */}
           {speechError && (
             <div className="px-4 py-1.5 bg-amber-500/10 border-t border-amber-500/20 text-amber-300 text-[11px] flex items-center gap-1.5">
               <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
               <span>{speechError}</span>
+            </div>
+          )}
+
+          {/* Voice Listening Banner */}
+          {isListening && (
+            <div className="px-4 py-2 bg-rose-500/20 border-t border-rose-500/30 flex items-center justify-between text-rose-300 text-xs">
+              <div className="flex items-center gap-2 font-bold">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+                <span>Listening to your voice... Speak clearly</span>
+              </div>
+              <button
+                type="button"
+                onClick={toggleSpeechRecognition}
+                className="text-[11px] font-bold px-2 py-0.5 rounded bg-rose-500/30 text-white"
+              >
+                Done
+              </button>
             </div>
           )}
 
@@ -865,7 +744,6 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
               }}
               className="flex items-center gap-2"
             >
-              {/* Speech-to-Text Microphone Button */}
               <button
                 type="button"
                 onClick={toggleSpeechRecognition}
@@ -874,7 +752,7 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                     ? 'bg-rose-600 text-white animate-pulse shadow-glow-rose ring-2 ring-rose-400'
                     : 'bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10'
                 }`}
-                title={isListening ? "Listening... Click to stop" : "Click to speak your question (Voice Dictation)"}
+                title="Voice Dictation (Speech-to-Text)"
               >
                 {isListening ? <MicOff className="w-4 h-4 text-white" /> : <Mic className="w-4 h-4 text-rose-400" />}
               </button>
@@ -883,9 +761,10 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder={isListening ? "Listening... (Speaking will populate text)" : `Ask anything about ${isLanguageSubject ? selectedLanguage : subject} (e.g., Grammar, Literature, Essays)...`}
+                placeholder={`Ask anything about ${subject} (e.g. explain formula, test me, step-by-step calculation)...`}
                 className="flex-1 rounded-xl bg-surface-dark border border-white/10 px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
+
               <button
                 type="submit"
                 disabled={loading || !inputText.trim()}
@@ -897,120 +776,106 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
           </div>
         </div>
 
-        {/* Right Sidebar: Active Quiz & Study Prompts (4 Cols) */}
+        {/* Right Sidebar: Saved Conversations & Syllabus Guide (4 Cols) */}
         <div className="lg:col-span-4 space-y-4">
-          {/* Interactive Practice Quiz Card */}
-          {activeQuiz ? (
-            <div className="rounded-3xl bg-surface-dark border border-brand-500/30 p-5 shadow-xl space-y-4">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <div className="flex items-center gap-2">
-                  <Award className="w-5 h-5 text-amber-400" />
-                  <h3 className="text-sm font-bold text-white">Active Quiz</h3>
-                </div>
-                {quizScore !== null && (
-                  <Badge variant={quizScore >= 70 ? 'emerald' : 'amber'} size="sm">
-                    Score: {quizScore}%
-                  </Badge>
-                )}
+          {/* Saved Conversations Drawer */}
+          <div className="rounded-3xl bg-surface-dark border border-white/10 p-5 shadow-xl space-y-3">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <History className="w-4 h-4 text-brand-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-white">
+                  Saved Sessions ({subject})
+                </h3>
               </div>
+              <button
+                onClick={() => handleStartNewSession()}
+                className="text-[11px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>New</span>
+              </button>
+            </div>
 
-              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
-                {(activeQuiz.questions || activeQuiz).map((q: any, idx: number) => {
-                  const selected = quizAnswers[String(idx)];
-                  const options = q.options || ['A', 'B', 'C', 'D'];
+            {loadingConversations ? (
+              <div className="py-6 flex items-center justify-center">
+                <LoadingSpinner size="sm" />
+              </div>
+            ) : conversations.length > 0 ? (
+              <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                {conversations.map((c) => {
+                  const isSelected = activeConversationId === c.id;
                   return (
-                    <div key={idx} className="p-3.5 rounded-2xl bg-surface-darker border border-white/5 space-y-2.5">
-                      <p className="text-xs font-bold text-white leading-snug">
-                        {idx + 1}. {q.question || q.question_text || q.text}
-                      </p>
-
-                      <div className="space-y-1.5">
-                        {options.map((opt: any, oIdx: number) => {
-                          const optText = typeof opt === 'string' ? opt : opt.text || opt.option || String(opt);
-                          const optKey = optText.charAt(0).toUpperCase();
-                          const isOptionSelected = selected === optKey || selected === optText;
-                          const isCorrect = q.correct_answer === optKey || q.answer === optKey;
-
-                          let btnStyle = 'bg-surface-dark hover:bg-white/10 text-slate-300 border-white/5';
-                          if (isOptionSelected) {
-                            btnStyle = 'bg-brand-600 text-white border-brand-500';
-                          }
-                          if (quizSubmitted) {
-                            if (isCorrect) {
-                              btnStyle = 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 font-bold';
-                            } else if (isOptionSelected && !isCorrect) {
-                              btnStyle = 'bg-rose-500/20 border-rose-500/50 text-rose-300';
-                            }
-                          }
-
-                          return (
-                            <button
-                              key={oIdx}
-                              onClick={() => handleSelectQuizAnswer(idx, optKey)}
-                              disabled={quizSubmitted}
-                              className={`w-full text-left p-2 rounded-xl text-xs border transition-all ${btnStyle}`}
-                            >
-                              {optText}
-                            </button>
-                          );
-                        })}
+                    <div
+                      key={c.id}
+                      onClick={() => handleSelectConversation(c)}
+                      className={`p-3 rounded-2xl border text-xs cursor-pointer transition-all flex items-start justify-between gap-2 ${
+                        isSelected
+                          ? 'bg-brand-600/20 border-brand-500/50 shadow-glow-indigo'
+                          : 'bg-surface-darker hover:bg-white/5 border-white/5 text-slate-300'
+                      }`}
+                    >
+                      <div className="space-y-1 min-w-0">
+                        <p className="font-bold text-white line-clamp-1">{c.title || c.topic}</p>
+                        <p className="text-[10px] text-slate-400 line-clamp-1">{c.last_message_preview || 'No messages yet'}</p>
+                        <div className="flex items-center gap-2 text-[9.5px] text-cyan-400">
+                          <span>{c.message_count || 0} messages</span>
+                          <span>•</span>
+                          <span>{new Date(c.updated_at).toLocaleDateString()}</span>
+                        </div>
                       </div>
 
-                      {quizSubmitted && q.explanation && (
-                        <p className="text-[11px] text-cyan-300 bg-cyan-950/30 p-2 rounded-lg border border-cyan-500/20">
-                          {q.explanation}
-                        </p>
-                      )}
+                      <button
+                        onClick={(e) => handleDeleteSession(e, c.id)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0"
+                        title="Delete Session"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   );
                 })}
               </div>
+            ) : (
+              <div className="py-5 text-center text-slate-400 text-xs space-y-1">
+                <MessageSquare className="w-6 h-6 mx-auto text-slate-600" />
+                <p>No saved conversations for {subject} yet.</p>
+                <p className="text-[10px] text-slate-500">Every question you ask will be saved automatically here.</p>
+              </div>
+            )}
+          </div>
 
-              {!quizSubmitted ? (
-                <button
-                  onClick={handleSubmitQuiz}
-                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-bold text-xs shadow-glow-indigo transition-all"
-                >
-                  Submit Quiz & Check Score
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    setActiveQuiz(null);
-                    setQuizAnswers({});
-                    setQuizSubmitted(false);
-                    setQuizScore(null);
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-300 font-bold text-xs border border-white/10 transition-all flex items-center justify-center gap-1.5"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Start New Practice Quiz</span>
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="rounded-3xl bg-surface-dark border border-white/10 p-5 shadow-xl space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-brand-400" />
-                <span>Syllabus Quick Focus</span>
-              </h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Click any topic below to have the Fusion AI Tutor explain it or create a customized practice quiz:
-              </p>
-              <div className="space-y-1.5">
-                {suggestedPrompts.map((p, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSendMessage(p)}
-                    className="w-full text-left p-2.5 rounded-xl bg-surface-darker hover:bg-brand-600/20 hover:border-brand-500/30 text-xs text-slate-300 border border-white/5 transition-all flex items-start gap-2"
-                  >
-                    <ChevronRight className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
-                    <span className="line-clamp-2">{p}</span>
-                  </button>
-                ))}
+          {/* Academic CAPS Guidelines Card */}
+          <div className="rounded-3xl bg-surface-dark border border-white/10 p-5 shadow-xl space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-amber-400" />
+              <span>CAPS Tutor Capabilities</span>
+            </h3>
+            <div className="space-y-2 text-xs text-slate-300">
+              <div className="p-2.5 rounded-xl bg-surface-darker border border-white/5 flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-white">Syllabus-Aligned Answers</p>
+                  <p className="text-[10.5px] text-slate-400">Explanations strictly adhere to the South African Department of Basic Education standards.</p>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-surface-darker border border-white/5 flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-white">Strict Academic Focus</p>
+                  <p className="text-[10.5px] text-slate-400">Guards against off-topic distractions to maximize your study productivity.</p>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-surface-darker border border-white/5 flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-white">Persistent Multi-Session Memory</p>
+                  <p className="text-[10.5px] text-slate-400">Continue previous study sessions or start fresh whenever you tackle new topics.</p>
+                </div>
               </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

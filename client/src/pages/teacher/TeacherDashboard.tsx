@@ -55,7 +55,9 @@ export const TeacherDashboard: React.FC = () => {
         return 'My Subjects & CAPS Workload';
       case 'resources': return 'Learning Resources & Past Papers Studio';
       case 'ai-tools': return 'AI Lesson & Test Builder';
-      case 'ptc': return 'Parent-Teacher Conferences (PTC)';
+      case 'ptc':
+      case 'consultations': return 'Parent-Teacher Consultations & Conferences';
+      case 'inter-school': return 'Inter-School Derbies, Sports & Academic Olympiads';
       case 'conduct': return 'Merit & Disciplinary Management';
       case 'my-leave': return 'Educator Leave & Relief Duty';
       case 'exam-seating': return 'Examination Seating Planner';

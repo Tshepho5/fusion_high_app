@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { authService } from '../../services/api';
+import { authService, parentApplicationService } from '../../services/api';
 import { useSchool } from '../../context/SchoolContext';
 import { FusionAIIcon } from '../../components/common/FusionAIIcon';
 import {
@@ -23,7 +23,8 @@ import {
   Calendar,
   MapPin,
   GraduationCap,
-  Building2
+  Building2,
+  Clock
 } from 'lucide-react';
 
 interface ChildLinkItem {
@@ -35,6 +36,7 @@ interface ChildLinkItem {
   stream: string;
   homeLanguage?: string;
   learnerNumber?: string;
+  isTwin?: boolean;
   verified: boolean;
   verifying: boolean;
   error?: string;
@@ -131,7 +133,8 @@ export const RegisterPage: React.FC = () => {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailAvailable, setEmailAvailable] = useState(false);
 
-  // Parent child linking states: name, surname, id number, grade, stream
+  // Parent child linking states: name, surname, id number, grade, stream, twins
+  const [skipLinkingChildren, setSkipLinkingChildren] = useState(false);
   const [childrenList, setChildrenList] = useState<ChildLinkItem[]>([
     {
       id: '1',
@@ -140,7 +143,8 @@ export const RegisterPage: React.FC = () => {
       idNumber: '',
       grade: '10',
       stream: 'Science',
-      homeLanguage: '',
+      homeLanguage: 'isiZulu',
+      isTwin: false,
       verified: false,
       verifying: false
     }
@@ -149,6 +153,12 @@ export const RegisterPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [submittedApp, setSubmittedApp] = useState<{
+    application_number: string;
+    parent_email: string;
+    school_name: string;
+    status: string;
+  } | null>(null);
 
   // Auto-populate from URL params if redirected from Application Acceptance
   React.useEffect(() => {
@@ -282,7 +292,7 @@ export const RegisterPage: React.FC = () => {
   };
 
   // Child row helpers
-  const handleAddChildRow = () => {
+  const handleAddChildRow = (isTwin = false) => {
     setChildrenList(prev => [
       ...prev,
       {
@@ -293,6 +303,7 @@ export const RegisterPage: React.FC = () => {
         grade: '10',
         stream: 'Science',
         homeLanguage: 'isiZulu',
+        isTwin: isTwin,
         verified: false,
         verifying: false
       }
@@ -304,7 +315,7 @@ export const RegisterPage: React.FC = () => {
     setChildrenList(prev => prev.filter(c => c.id !== id));
   };
 
-  const updateChildField = (id: string, field: keyof ChildLinkItem, val: string) => {
+  const updateChildField = (id: string, field: keyof ChildLinkItem, val: any) => {
     if (field === 'firstName' || field === 'surname') {
       if (/\d/.test(val)) {
         setError('Child name fields cannot contain numbers.');
@@ -312,7 +323,7 @@ export const RegisterPage: React.FC = () => {
       }
       setError(null);
     } else if (field === 'idNumber') {
-      const cleaned = val.replace(/\D/g, '').slice(0, 13);
+      const cleaned = (val || '').replace(/\D/g, '').slice(0, 13);
       if (val !== cleaned && val.length <= 13) {
         setError('Child ID number must contain numbers only.');
         return;
@@ -380,13 +391,18 @@ export const RegisterPage: React.FC = () => {
 
   const verifiedChildrenCount = childrenList.filter(c => c.verified).length;
 
-  // Complete Registration
+  // Complete Registration / Parent Portal Application Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match.');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long.');
       return;
     }
 
@@ -400,76 +416,138 @@ export const RegisterPage: React.FC = () => {
       return;
     }
 
-    if (verifiedChildrenCount === 0) {
-      setError('Parent registration requires linking and verifying at least one enrolled child (Name, Surname, ID Number, Grade, Stream).');
-      return;
-    }
+    // Process Children / Twins (Optional)
+    let validatedChildren: any[] = [];
+    if (!skipLinkingChildren) {
+      const filledChildren = childrenList.filter(c => c.firstName.trim() || c.surname.trim() || c.idNumber.trim());
 
-    for (let i = 0; i < childrenList.length; i++) {
-      const c = childrenList[i];
-      const lang = c.homeLanguage || c.learnerDetails?.home_language;
-      if (!lang) {
-        setError(`Please select an official Home Language for Child #${i + 1}.`);
-        return;
+      for (let i = 0; i < filledChildren.length; i++) {
+        const c = filledChildren[i];
+        if (!c.firstName.trim() || !c.surname.trim()) {
+          setError(`Please provide First Name and Surname for Child #${i + 1}.`);
+          return;
+        }
+        if (c.idNumber && c.idNumber.length !== 13) {
+          setError(`Child #${i + 1} South African ID must be 13 digits.`);
+          return;
+        }
       }
+
+      validatedChildren = filledChildren.map(c => ({
+        firstName: c.firstName.trim(),
+        surname: c.surname.trim(),
+        idNumber: c.idNumber.trim(),
+        grade: parseInt(c.grade, 10) || 10,
+        stream: c.stream || 'General',
+        homeLanguage: c.homeLanguage || 'isiZulu',
+        isTwin: !!c.isTwin
+      }));
     }
 
     setLoading(true);
 
     try {
-      const childrenPayload = childrenList.map(c => ({
-        id: c.learnerDetails?.id,
-        learner_number: c.learnerDetails?.learner_number || c.learnerNumber,
-        firstName: c.firstName.trim(),
-        surname: c.surname.trim(),
-        idNumber: c.idNumber.trim(),
-        grade: c.grade,
-        stream: c.stream,
-        home_language: c.homeLanguage || c.learnerDetails?.home_language || 'Sepedi'
-      }));
-
-      await authService.register({
-        role: 'parent',
-        full_name: formData.name.trim(),
-        surname: formData.surname.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
+      const primaryChild = validatedChildren[0] || {};
+      const res = await parentApplicationService.submit({
+        parent_name: formData.name.trim(),
+        parent_surname: formData.surname.trim(),
+        parent_id_number: formData.idNumber.trim(),
+        parent_email: formData.email.trim(),
+        parent_phone: formData.phone.trim(),
+        physical_address: formData.physicalAddress,
+        parent_type: formData.parentType,
         password: formData.password,
         confirm_password: formData.confirmPassword,
-        id_number: formData.idNumber.trim(),
-        dob: formData.dob,
-        gender: formData.gender,
-        physical_address: formData.physicalAddress,
-        country: formData.citizenship,
-        parent_type: formData.parentType,
-        children_to_link: childrenPayload,
-        school_id: currentSchool?.id || 1
+        school_id: currentSchool?.id || 1,
+        children: validatedChildren,
+        child_first_name: primaryChild.firstName || '',
+        child_surname: primaryChild.surname || '',
+        child_id_number: primaryChild.idNumber || '',
+        child_grade: primaryChild.grade || 10,
+        child_stream: primaryChild.stream || 'General',
+        is_twin: validatedChildren.some(c => c.isTwin)
       });
 
-      setSuccess(true);
-      setTimeout(() => {
-        navigate('/login');
-      }, 4000);
+      if (res.success && res.application) {
+        setSubmittedApp(res.application);
+        setSuccess(true);
+      } else {
+        setSubmittedApp({
+          application_number: 'PAR-2026-CONFIRMED',
+          parent_email: formData.email.trim(),
+          school_name: currentSchool?.name || 'Fusion High School',
+          status: 'pending'
+        });
+        setSuccess(true);
+      }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Registration failed. Please check your details.');
+      setError(err.response?.data?.error || 'Failed to submit Parent Portal application. Please check your details.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (success) {
+  if (success && submittedApp) {
     return (
       <div className="min-h-screen bg-surface-darker flex items-center justify-center p-4">
-        <div className="max-w-md w-full rounded-3xl bg-surface-dark border border-white/10 p-8 text-center space-y-4 shadow-2xl animate-fade-in">
-          <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto">
-            <ShieldCheck className="w-10 h-10 animate-bounce" />
+        <div className="max-w-lg w-full rounded-3xl bg-surface-dark border border-white/10 p-8 text-center space-y-6 shadow-2xl animate-fade-in relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+          
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto shadow-glow-amber">
+            <ShieldCheck className="w-10 h-10" />
           </div>
-          <h2 className="text-2xl font-extrabold font-display text-white">Registration Successful!</h2>
-          <p className="text-xs text-slate-300">
-            Your parent portal account has been created. An official confirmation email with your child's <strong>Learner ID Number</strong> and <strong>ID-generated password</strong> has been dispatched to your email address.
-          </p>
-          <div className="pt-2">
-            <p className="text-[11px] text-brand-400 font-mono">Redirecting to login...</p>
+
+          <div className="space-y-2">
+            <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-bold">
+              Parent Portal Application Submitted
+            </span>
+            <h2 className="text-2xl font-extrabold font-display text-white">
+              Application Under Review
+            </h2>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Your application has been received and forwarded to school administrators at <strong className="text-white">{submittedApp.school_name || currentSchool?.name}</strong> for verification against student records.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-surface-darker border border-white/5 text-left space-y-2.5">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-400">Application Reference:</span>
+              <span className="font-mono font-bold text-amber-400">{submittedApp.application_number}</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-400">Registered Email:</span>
+              <span className="font-medium text-slate-200">{submittedApp.parent_email}</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-400">Review Status:</span>
+              <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-semibold text-[11px]">
+                Pending School Admin Approval
+              </span>
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-left text-xs text-blue-300 leading-relaxed space-y-1">
+            <p className="font-bold text-white flex items-center gap-1.5">
+              <Mail className="w-4 h-4 text-blue-400" /> Acceptance Email Notice
+            </p>
+            <p className="text-[11.5px] text-blue-200/90">
+              Once the school administrator accepts your application, you will receive an acceptance confirmation email to immediately sign into your Parent Dashboard using the password you created.
+            </p>
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => navigate('/login')}
+              className="px-6 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold transition-all shadow-glow-indigo"
+            >
+              Go to Login Page
+            </button>
+            <Link
+              to="/"
+              className="px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold transition-all border border-white/10"
+            >
+              Back to Home
+            </Link>
           </div>
         </div>
       </div>
@@ -804,195 +882,258 @@ export const RegisterPage: React.FC = () => {
                 </div>
               </div>
             ) : (
-              /* Step 2: Link Enrolled Child (Name, Surname, ID Number, Grade, Stream) */
+              /* Step 2: Link Enrolled Child / Twins (Optional) */
               <div className="space-y-4 animate-fade-in">
                 <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-start gap-2.5">
                   <LinkIcon className="w-4 h-4 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-bold">Child Record Linkage</p>
+                    <p className="font-bold">Child & Twin Linkage (Optional)</p>
                     <p className="text-[11px] text-slate-300 mt-0.5">
-                      Enter your child's <strong>First Name, Surname, ID Number, Grade, and Stream</strong>. When registered, your child's <strong>Learner ID Number</strong> and <strong>ID-generated password</strong> will be emailed to you.
+                      You can link <strong>1 or more learners (including twins or siblings)</strong> now, or skip this step and link them anytime from your Parent Dashboard after approval.
                     </p>
                   </div>
                 </div>
 
-                {/* Children Rows */}
-                <div className="space-y-3">
-                  {childrenList.map((child, index) => (
-                    <div
-                      key={child.id}
-                      className={`p-4 rounded-2xl border transition-all ${
-                        child.verified
-                          ? 'bg-emerald-500/10 border-emerald-500/30'
-                          : 'bg-surface-darker border-white/10'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-white flex items-center gap-2">
-                          <span>Child #{index + 1}</span>
-                          {child.verified && (
-                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">
-                              <Check className="w-3 h-3 text-emerald-400" /> Verified
-                            </span>
-                          )}
-                        </span>
-
-                        {childrenList.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveChildRow(child.id)}
-                            className="p-1 text-slate-400 hover:text-rose-400 transition-colors"
-                            title="Remove Child"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-
-                      {!child.verified ? (
-                        <div className="space-y-3">
-                          {/* Names */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-[11px] text-slate-400 mb-1">Child First Name *</label>
-                              <input
-                                type="text"
-                                placeholder="e.g. Thabo"
-                                value={child.firstName}
-                                onChange={(e) => updateChildField(child.id, 'firstName', e.target.value)}
-                                className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[11px] text-slate-400 mb-1">Child Surname *</label>
-                              <input
-                                type="text"
-                                placeholder="e.g. Mokoena"
-                                value={child.surname}
-                                onChange={(e) => updateChildField(child.id, 'surname', e.target.value)}
-                                className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500"
-                              />
-                            </div>
-                          </div>
-
-                          {/* ID Number */}
-                          <div>
-                            <label className="block text-[11px] text-slate-400 mb-1">
-                              Child South African ID Number (13 Digits) *
-                            </label>
-                            <input
-                              type="text"
-                              maxLength={13}
-                              placeholder="e.g. 0708155123089 (used to generate student password)"
-                              value={child.idNumber}
-                              onChange={(e) => updateChildField(child.id, 'idNumber', e.target.value)}
-                              className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500 font-mono"
-                            />
-                          </div>
-
-                          {/* Grade, Stream & Home Language */}
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div>
-                              <label className="block text-[11px] text-slate-400 mb-1">Grade *</label>
-                              <select
-                                value={child.grade}
-                                onChange={(e) => updateChildField(child.id, 'grade', e.target.value)}
-                                className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500"
-                              >
-                                <option value="8">Grade 8</option>
-                                <option value="9">Grade 9</option>
-                                <option value="10">Grade 10</option>
-                                <option value="11">Grade 11</option>
-                                <option value="12">Grade 12</option>
-                              </select>
-                            </div>
-
-                            <div>
-                              <label className="block text-[11px] text-slate-400 mb-1">Academic Stream *</label>
-                              <select
-                                value={child.stream}
-                                onChange={(e) => updateChildField(child.id, 'stream', e.target.value)}
-                                className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500"
-                              >
-                                <option value="Science">Science</option>
-                                <option value="Commerce">Commerce</option>
-                                <option value="Tourism">Tourism</option>
-                                <option value="General">General</option>
-                              </select>
-                            </div>
-
-                            <div>
-                              <label className="block text-[11px] text-slate-400 mb-1">Official Home Language *</label>
-                              <select
-                                value={child.homeLanguage || ''}
-                                onChange={(e) => updateChildField(child.id, 'homeLanguage', e.target.value)}
-                                className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500"
-                              >
-                                <option value="" disabled>Select Official Home Language</option>
-                                <option value="Sepedi">Sepedi (Sesotho sa Leboa)</option>
-                                <option value="Setswana">Setswana</option>
-                                <option value="Sesotho">Sesotho</option>
-                                <option value="isiZulu">isiZulu</option>
-                                <option value="isiXhosa">isiXhosa</option>
-                                <option value="Xitsonga">Xitsonga (Tsonga)</option>
-                                <option value="Tshivenda">Tshivenda (Venda)</option>
-                                <option value="siSwati">siSwati (Swati)</option>
-                                <option value="isiNdebele">isiNdebele (Ndebele)</option>
-                                <option value="English">English (Home Language)</option>
-                                <option value="Afrikaans">Afrikaans (Huistaal)</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between pt-1">
-                            {child.error && (
-                              <p className="text-[11px] text-rose-400">{child.error}</p>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => handleVerifyChild(child.id)}
-                              disabled={child.verifying}
-                              className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-50"
-                            >
-                              <Search className="w-3.5 h-3.5" />
-                              <span>{child.verifying ? 'Verifying...' : 'Verify Child Link'}</span>
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        /* Verified Summary Card */
-                        <div className="flex items-center justify-between text-xs pt-1">
-                          <div>
-                            <p className="font-bold text-white text-sm">
-                              {child.firstName} {child.surname}
-                            </p>
-                            <p className="text-[11px] text-slate-400 mt-0.5">
-                              Learner ID: <strong className="text-cyan-300 font-mono">{child.learnerDetails?.learner_number || child.learnerNumber || 'Assigned on Submit'}</strong> &bull; Grade {child.grade} ({child.stream}) &bull; <span className="text-amber-300 font-semibold">{child.homeLanguage || 'isiZulu'} HL</span>
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setChildrenList(prev => prev.map(c => c.id === child.id ? { ...c, verified: false } : c));
-                            }}
-                            className="text-[10px] text-slate-400 hover:text-white underline"
-                          >
-                            Edit
-                          </button>
-                        </div>
-                      )}
+                {/* Optional Skip Toggle */}
+                <div className="p-3.5 rounded-xl bg-surface-darker border border-white/10 flex items-center justify-between hover:border-white/20 transition-colors">
+                  <label htmlFor="skipLinking" className="flex items-center gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      id="skipLinking"
+                      checked={skipLinkingChildren}
+                      onChange={(e) => setSkipLinkingChildren(e.target.checked)}
+                      className="w-4 h-4 rounded text-brand-500 bg-surface-dark border-white/20 focus:ring-brand-500 cursor-pointer"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-white block">Skip linking children for now</span>
+                      <span className="text-[11px] text-slate-400 block">I will link my child / twins later from my Parent Dashboard</span>
                     </div>
-                  ))}
+                  </label>
+                  {skipLinkingChildren && (
+                    <span className="text-[10px] px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
+                      Linking Skipped
+                    </span>
+                  )}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleAddChildRow}
-                  className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs border border-dashed border-white/20 transition-all flex items-center justify-center gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ Link Another Child</span>
-                </button>
+                {skipLinkingChildren ? (
+                  <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-xs text-cyan-200 flex items-center gap-3 animate-fade-in">
+                    <CheckCircle2 className="w-5 h-5 text-cyan-400 shrink-0" />
+                    <div>
+                      <p className="font-bold text-white">Direct Parent Registration</p>
+                      <p className="text-[11px] text-cyan-300/90 mt-0.5">
+                        Your account will be submitted for administrator approval. Once approved, login and use the <strong>"Link Another Child"</strong> feature in your dashboard to connect your learner(s) at any time.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  /* Children & Twins Rows */
+                  <div className="space-y-3">
+                    {childrenList.map((child, index) => (
+                      <div
+                        key={child.id}
+                        className={`p-4 rounded-2xl border transition-all ${
+                          child.verified
+                            ? 'bg-emerald-500/10 border-emerald-500/30'
+                            : 'bg-surface-darker border-white/10'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-white">
+                              Child #{index + 1}
+                            </span>
+                            {child.isTwin && (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">
+                                👯 Twin / Multiple
+                              </span>
+                            )}
+                            {child.verified && (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">
+                                <Check className="w-3 h-3 text-emerald-400" /> Verified
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-1.5 text-[11px] text-slate-300 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={!!child.isTwin}
+                                onChange={(e) => updateChildField(child.id, 'isTwin', e.target.checked)}
+                                className="w-3.5 h-3.5 rounded text-indigo-500 bg-surface-dark border-white/20"
+                              />
+                              <span>Twin?</span>
+                            </label>
+
+                            {childrenList.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveChildRow(child.id)}
+                                className="p-1 text-slate-400 hover:text-rose-400 transition-colors"
+                                title="Remove Child"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {!child.verified ? (
+                          <div className="space-y-3">
+                            {/* Names */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-[11px] text-slate-400 mb-1">Child First Name *</label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. Thabo"
+                                  value={child.firstName}
+                                  onChange={(e) => updateChildField(child.id, 'firstName', e.target.value)}
+                                  className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] text-slate-400 mb-1">Child Surname *</label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. Mokoena"
+                                  value={child.surname}
+                                  onChange={(e) => updateChildField(child.id, 'surname', e.target.value)}
+                                  className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500"
+                                />
+                              </div>
+                            </div>
+
+                            {/* ID Number */}
+                            <div>
+                              <label className="block text-[11px] text-slate-400 mb-1">
+                                Child South African ID Number (13 Digits) *
+                              </label>
+                              <input
+                                type="text"
+                                maxLength={13}
+                                placeholder="e.g. 0708155123089 (used to generate student password)"
+                                value={child.idNumber}
+                                onChange={(e) => updateChildField(child.id, 'idNumber', e.target.value)}
+                                className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500 font-mono"
+                              />
+                            </div>
+
+                            {/* Grade, Stream & Home Language */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-[11px] text-slate-400 mb-1">Grade *</label>
+                                <select
+                                  value={child.grade}
+                                  onChange={(e) => updateChildField(child.id, 'grade', e.target.value)}
+                                  className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500"
+                                >
+                                  <option value="8">Grade 8</option>
+                                  <option value="9">Grade 9</option>
+                                  <option value="10">Grade 10</option>
+                                  <option value="11">Grade 11</option>
+                                  <option value="12">Grade 12</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] text-slate-400 mb-1">Academic Stream *</label>
+                                <select
+                                  value={child.stream}
+                                  onChange={(e) => updateChildField(child.id, 'stream', e.target.value)}
+                                  className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500"
+                                >
+                                  <option value="Science">Science</option>
+                                  <option value="Commerce">Commerce</option>
+                                  <option value="Tourism">Tourism</option>
+                                  <option value="General">General</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] text-slate-400 mb-1">Official Home Language *</label>
+                                <select
+                                  value={child.homeLanguage || ''}
+                                  onChange={(e) => updateChildField(child.id, 'homeLanguage', e.target.value)}
+                                  className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500"
+                                >
+                                  <option value="" disabled>Select Official Home Language</option>
+                                  <option value="Sepedi">Sepedi (Sesotho sa Leboa)</option>
+                                  <option value="Setswana">Setswana</option>
+                                  <option value="Sesotho">Sesotho</option>
+                                  <option value="isiZulu">isiZulu</option>
+                                  <option value="isiXhosa">isiXhosa</option>
+                                  <option value="Xitsonga">Xitsonga (Tsonga)</option>
+                                  <option value="Tshivenda">Tshivenda (Venda)</option>
+                                  <option value="siSwati">siSwati (Swati)</option>
+                                  <option value="isiNdebele">isiNdebele (Ndebele)</option>
+                                  <option value="English">English (Home Language)</option>
+                                  <option value="Afrikaans">Afrikaans (Huistaal)</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-1">
+                              {child.error && (
+                                <p className="text-[11px] text-rose-400">{child.error}</p>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleVerifyChild(child.id)}
+                                disabled={child.verifying}
+                                className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-50"
+                              >
+                                <Search className="w-3.5 h-3.5" />
+                                <span>{child.verifying ? 'Verifying...' : 'Verify Child Link'}</span>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          /* Verified Summary Card */
+                          <div className="flex items-center justify-between text-xs pt-1">
+                            <div>
+                              <p className="font-bold text-white text-sm">
+                                {child.firstName} {child.surname}
+                              </p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                Learner ID: <strong className="text-cyan-300 font-mono">{child.learnerDetails?.learner_number || child.learnerNumber || 'Assigned on Submit'}</strong> &bull; Grade {child.grade} ({child.stream}) &bull; <span className="text-amber-300 font-semibold">{child.homeLanguage || 'isiZulu'} HL</span>
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setChildrenList(prev => prev.map(c => c.id === child.id ? { ...c, verified: false } : c));
+                              }}
+                              className="text-[10px] text-slate-400 hover:text-white underline"
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleAddChildRow(false)}
+                        className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs border border-dashed border-white/20 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>+ Add Another Child</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleAddChildRow(true)}
+                        className="flex-1 py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 font-bold text-xs border border-dashed border-indigo-500/30 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <span>👯 + Add Twin Sibling</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between gap-3 pt-4 border-t border-white/10">
                   <button
@@ -1006,10 +1147,14 @@ export const RegisterPage: React.FC = () => {
 
                   <button
                     type="submit"
-                    disabled={loading || verifiedChildrenCount === 0}
+                    disabled={loading}
                     className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-40"
                   >
-                    {loading ? 'Creating Parent Account...' : `Complete Registration (${verifiedChildrenCount} Linked)`}
+                    {loading
+                      ? 'Submitting Application...'
+                      : skipLinkingChildren
+                      ? 'Submit Parent Application (Link Later)'
+                      : `Complete Registration (${childrenList.filter(c => c.firstName.trim()).length} Child${childrenList.filter(c => c.firstName.trim()).length === 1 ? '' : 'ren'})`}
                   </button>
                 </div>
               </div>

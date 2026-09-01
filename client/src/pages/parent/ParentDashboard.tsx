@@ -42,7 +42,9 @@ export const ParentDashboard: React.FC = () => {
       case 'finance': return 'School Fees, Statements & Online Payments';
       case 'bursaries': return 'NSFAS & Tertiary Bursaries Matching Hub';
       case 'reports': return 'Official CAPS Term Report Card';
-      case 'ptc': return 'Parent-Teacher Conferences (PTC)';
+      case 'ptc':
+      case 'consultations': return 'Parent-Teacher Consultations & Conferences';
+      case 'inter-school': return 'Inter-School Derbies, Sports & Academic Olympiads';
       case 'sports': return 'Sports, Clubs & Match Fixtures';
       case 'timetable': return 'Child Weekly Class Timetable';
       case 'calendar': return 'School & Class Calendar';

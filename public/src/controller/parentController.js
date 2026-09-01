@@ -105,53 +105,65 @@ exports.activateChild = async (req, res) => {
                     [targetID]
                 );
                 if (checkById.rows.length > 0) {
-                    const err = new Error(`Learner ID found, but Name or Surname does not match school records for '${checkById.rows[0].full_name} ${checkById.rows[0].surname}'. Please check spelling.`);
+                    const err = new Error(`Learner record found, but First Name or Surname does not match school records for '${checkById.rows[0].full_name} ${checkById.rows[0].surname}'. Please check spelling.`);
                     err.statusCode = 400;
                     throw err;
                 }
-                const err = new Error(`No learner record found matching ID Number '${targetID}', Name '${targetFirstName}', and Surname '${targetSurname}'. Please verify details with administration.`);
+                const err = new Error(`No learner record found matching ID Number '${targetID}', Name '${targetFirstName}', and Surname '${targetSurname}'. Please verify details.`);
                 err.statusCode = 404;
                 throw err;
             }
 
             const learnerData = rows[0];
+            const { child_id, user_id, full_name: dbName, surname: dbSurname, grade, stream, subjects, id_number: rawIdNumber, parent_id: existingParentId, secondary_parent_id: existingSecId } = learnerData;
 
-            if (learnerData.parent_id) {
-                const err = new Error('This learner profile has already been activated and linked to a parent account.');
-                err.statusCode = 409;
+            if (existingParentId === parentId || existingSecId === parentId) {
+                const err = new Error('You are already linked to this learner profile.');
+                err.statusCode = 400;
                 throw err;
             }
 
-            const { child_id, user_id, full_name: dbName, surname: dbSurname, grade, stream, subjects, id_number: rawIdNumber } = learnerData;
-            
-            // Generate password drawn from the learner ID Number (1st digit, skip 2, take next: indices 0,3,6,9,12)
-            const learnerPassword = generateLearnerPasswordFromID(rawIdNumber || targetID);
-            const passwordHash = await bcrypt.hash(learnerPassword, 10);
+            let isPrimary = true;
+            if (!existingParentId) {
+                await client.query('UPDATE children SET parent_id = $1 WHERE id = $2', [parentId, child_id]);
+            } else {
+                await client.query('UPDATE children SET secondary_parent_id = $1 WHERE id = $2', [parentId, child_id]);
+                isPrimary = false;
+            }
 
-            // Step 1: Update children and users tables
-            await client.query('UPDATE children SET parent_id = $1 WHERE id = $2', [parentId, child_id]);
-            await client.query('UPDATE users SET parent_id = $1, password_hash = $2 WHERE id = $3', [parentId, passwordHash, user_id]);
+            // Insert into parent_children junction table
+            await client.query(`
+                INSERT INTO parent_children (parent_id, child_id, relationship, is_primary)
+                VALUES ($1, $2, 'Parent', $3)
+                ON CONFLICT (parent_id, child_id) DO NOTHING
+            `, [parentId, child_id, isPrimary]);
 
-            // Step 2: Retrieve parent email & dispatch email notification
-            const parentRes = await client.query('SELECT email FROM users WHERE id = $1', [parentId]);
-            const parentEmail = parentRes.rows[0]?.email;
+            // Retrieve parent email & dispatch email notification
+            const parentRes = await client.query('SELECT email, full_name, surname FROM users WHERE id = $1', [parentId]);
+            const parent = parentRes.rows[0];
             
-            if (parentEmail) {
-                const learnerDetails = { 
-                    name: dbName, 
-                    surname: dbSurname, 
-                    learnerNumber: learnerData.learner_number || targetID, 
-                    grade: grade, 
-                    stream: stream || 'General', 
-                    subjects: subjects || [], 
-                    password: learnerPassword 
-                };
-                const tpl = emailService.templates.learnerActivationSuccess(learnerDetails);
-                await emailService.send(parentEmail, tpl.subject, tpl.body);
+            if (parent && parent.email) {
+                try {
+                    const learnerObj = { 
+                        id: child_id,
+                        full_name: dbName, 
+                        surname: dbSurname, 
+                        learner_number: learnerData.learner_number || targetID, 
+                        grade: grade, 
+                        stream: stream || 'General'
+                    };
+                    const tpl = emailService.templates.childLinkageSuccess(
+                        `${parent.full_name || ''} ${parent.surname || ''}`.trim() || 'Parent / Guardian',
+                        learnerObj
+                    );
+                    emailService.send(parent.email, tpl.subject, tpl.body).catch(e => console.warn('Child linkage email warning:', e.message));
+                } catch (mailErr) {
+                    console.warn('Child linkage email preparation error:', mailErr.message);
+                }
             }
         });
 
-        res.json({ message: 'Child account successfully activated and linked! An email with your child\'s login credentials and password has been sent to your email.' });
+        res.json({ message: 'Child profile linked successfully! A confirmation email has been sent to you. You can now monitor their academic progress from your dashboard.' });
     } catch (err) {
         console.error('Error activating child:', err.message);
         res.status(err.statusCode || 500).json({ error: err.message || 'An internal error occurred while activating child account.' });
@@ -164,25 +176,21 @@ exports.activateChild = async (req, res) => {
  */
 exports.linkChild = async (req, res) => {
     const parentId = req.user.id;
-    const { learner_number, learner_id, id_number, relationship } = req.body;
+    const { learner_number, learner_id, id_number, first_name, full_name, surname, relationship } = req.body;
 
     const targetLearnerNum = (learner_number || learner_id || '').toString().trim();
-    const targetIdNumber = (id_number || '').toString().trim();
+    const targetIdNumber = (id_number || '').toString().replace(/\D/g, '').trim();
+    const targetFirstName = (first_name || full_name || '').toString().trim();
+    const targetSurname = (surname || '').toString().trim();
 
-    if (!targetLearnerNum || !targetIdNumber) {
+    if (!targetIdNumber && !targetLearnerNum) {
         return res.status(400).json({
-            error: 'Both Learner Number and Learner National ID Number are required to link your child.'
-        });
-    }
-
-    if (/\D/.test(targetIdNumber)) {
-        return res.status(400).json({
-            error: 'Learner National ID Number must contain digits only.'
+            error: 'Please provide either the Learner SA ID Number or Official Learner Number.'
         });
     }
 
     try {
-        const query = `
+        let query = `
             SELECT 
                 c.id as child_id, 
                 c.full_name, 
@@ -199,35 +207,35 @@ exports.linkChild = async (req, res) => {
                 TO_CHAR(u.dob, 'YYYY-MM-DD') as dob_string
             FROM children c
             LEFT JOIN users u ON c.learner_user_id = u.id
-            WHERE (
-                LOWER(TRIM(c.learner_number)) = LOWER(TRIM($1))
-                OR c.learner_number ILIKE '%' || TRIM($1) || '%'
-                OR c.id::text = TRIM($1)
-            )
-            AND (
-                (u.id_number IS NOT NULL AND (u.id_number = $2 OR u.id_number ILIKE '%' || $2 || '%'))
-                OR (u.dob IS NOT NULL AND TO_CHAR(u.dob, 'YYYY-MM-DD') = $2)
-            )
-            LIMIT 1;
+            WHERE 1=1
         `;
+        const params = [];
 
-        const { rows } = await db.query(query, [targetLearnerNum, targetIdNumber]);
+        if (targetIdNumber) {
+            params.push(targetIdNumber);
+            query += ` AND (u.id_number = $${params.length} OR u.id_number ILIKE '%' || $${params.length} || '%')`;
+        } else if (targetLearnerNum) {
+            params.push(targetLearnerNum);
+            query += ` AND (LOWER(TRIM(c.learner_number)) = LOWER(TRIM($${params.length})) OR c.learner_number ILIKE '%' || TRIM($${params.length}) || '%' OR c.id::text = TRIM($${params.length}))`;
+        }
+
+        if (targetFirstName) {
+            params.push(`%${targetFirstName}%`);
+            query += ` AND (c.full_name ILIKE $${params.length} OR u.full_name ILIKE $${params.length})`;
+        }
+
+        if (targetSurname) {
+            params.push(`%${targetSurname}%`);
+            query += ` AND (c.surname ILIKE $${params.length} OR u.surname ILIKE $${params.length})`;
+        }
+
+        query += ` LIMIT 1;`;
+
+        const { rows } = await db.query(query, params);
 
         if (rows.length === 0) {
-            // Check if learner exists by number alone to give helpful feedback
-            const checkNum = await db.query(
-                `SELECT c.full_name, c.surname FROM children c WHERE c.learner_number = $1 OR c.id::text = $1 LIMIT 1`,
-                [targetLearnerNum]
-            );
-
-            if (checkNum.rows.length > 0) {
-                return res.status(400).json({
-                    error: `Learner Number "${targetLearnerNum}" found, but the provided ID Number does not match school records. Please verify the ID number.`
-                });
-            }
-
             return res.status(404).json({
-                error: `No learner record found matching Learner Number "${targetLearnerNum}" and National ID Number "${targetIdNumber}". Please verify details with the administration office.`
+                error: `No enrolled learner found matching the provided details. Please verify the child's Name, Surname, and ID Number.`
             });
         }
 
@@ -241,7 +249,7 @@ exports.linkChild = async (req, res) => {
         );
 
         if (existingLink.rows.length > 0) {
-            return res.status(409).json({
+            return res.status(400).json({
                 error: `${childFullName} is already linked to your parent portal account.`
             });
         }
@@ -261,6 +269,21 @@ exports.linkChild = async (req, res) => {
             await db.query('UPDATE children SET secondary_parent_id = $1 WHERE id = $2', [parentId, child.child_id]);
         }
 
+        // Send Linkage Confirmation Email to Parent
+        try {
+            const parentUserRes = await db.query('SELECT email, full_name, surname FROM users WHERE id = $1', [parentId]);
+            const parentUser = parentUserRes.rows[0];
+            if (parentUser && parentUser.email) {
+                const tpl = emailService.templates.childLinkageSuccess(
+                    `${parentUser.full_name || ''} ${parentUser.surname || ''}`.trim() || 'Parent / Guardian',
+                    child
+                );
+                emailService.send(parentUser.email, tpl.subject, tpl.body).catch(e => console.warn('Linkage email warning:', e.message));
+            }
+        } catch (mailErr) {
+            console.warn('Linkage email notification error:', mailErr.message);
+        }
+
         // Create welcome notification
         try {
             await NotificationService.sendToUsers({
@@ -274,22 +297,19 @@ exports.linkChild = async (req, res) => {
         } catch (_) {}
 
         res.json({
-            success: true,
-            message: `Successfully linked ${childFullName} (Grade ${child.grade}) to your parent portal!`,
+            message: `Successfully linked ${childFullName} to your parent portal! A confirmation email has been dispatched.`,
             child: {
                 id: child.child_id,
                 full_name: child.full_name,
                 surname: child.surname,
-                grade: child.grade,
-                stream: child.stream,
                 learner_number: child.learner_number,
-                subjects: child.subjects
+                grade: child.grade,
+                stream: child.stream
             }
         });
-
     } catch (err) {
         console.error('Error linking child to parent:', err);
-        res.status(500).json({ error: 'Failed to link child: ' + err.message });
+        res.status(500).json({ error: 'Failed to link learner to your account. Please try again.' });
     }
 };
 

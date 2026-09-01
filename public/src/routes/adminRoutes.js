@@ -69,6 +69,11 @@ router.get('/admissions/:id', auth, isAdmin, adminController.getAdmissionById);
 router.post('/admissions/:id/ocr-inspect', auth, isAdmin, adminController.inspectAdmissionDocOCR);
 router.patch('/admissions/:id', auth, isAdmin, adminController.updateAdmissionStatus);
 
+// Parent Portal Applications (Admin Review & Decision)
+const parentAppController = require('../controller/parentApplicationController');
+router.get('/parent-applications', auth, isAdmin, parentAppController.getSchoolParentApplications);
+router.post('/parent-applications/:id/decide', auth, isAdmin, parentAppController.decideParentApplication);
+
 module.exports = router;
 
 
