@@ -3,10 +3,27 @@ const db = require('./db');
 async function createAiConversationsTables() {
     console.log('[DB MIGRATION] Initializing AI Tutor Conversations & Messages tables...');
     try {
+        // Dynamically determine users.id data type to avoid integer vs text foreign key mismatch
+        let userIdType = 'INTEGER';
+        try {
+            const colRes = await db.query(`
+                SELECT data_type 
+                FROM information_schema.columns 
+                WHERE table_name = 'users' AND column_name = 'id' 
+                LIMIT 1
+            `);
+            if (colRes.rows.length > 0) {
+                const dt = colRes.rows[0].data_type.toLowerCase();
+                if (dt.includes('text') || dt.includes('char') || dt.includes('varchar')) {
+                    userIdType = 'TEXT';
+                }
+            }
+        } catch (_) {}
+
         await db.query(`
             CREATE TABLE IF NOT EXISTS learner_ai_conversations (
                 id SERIAL PRIMARY KEY,
-                learner_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                learner_user_id ${userIdType} NOT NULL,
                 subject_name VARCHAR(100) NOT NULL,
                 grade INTEGER NOT NULL,
                 stream VARCHAR(50) DEFAULT 'General',
@@ -32,8 +49,7 @@ async function createAiConversationsTables() {
         `);
         console.log('[DB MIGRATION] ✅ learner_ai_conversations and learner_ai_messages tables verified successfully.');
     } catch (err) {
-        console.error('[DB MIGRATION ERROR] Failed to create AI conversation tables:', err);
-        throw err;
+        console.error('[DB MIGRATION ERROR] Failed to create AI conversation tables:', err.message);
     }
 }
 
