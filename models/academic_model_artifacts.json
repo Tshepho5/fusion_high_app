@@ -1,0 +1,209 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2026-09-02T14:39:37.054573",
+  "dataset_size": 500,
+  "metrics": {
+    "classifier": {
+      "model_type": "LogisticRegression",
+      "roc_auc": 0.9407,
+      "accuracy": 0.84,
+      "recall": 0.8769,
+      "precision": 0.8769
+    },
+    "regressor": {
+      "model_type": "Ridge",
+      "r2_score": 0.7748,
+      "mae": 7.13,
+      "rmse": 8.06
+    }
+  },
+  "feature_names": [
+    "age",
+    "study_hours_per_week",
+    "attendance_rate",
+    "previous_score",
+    "gender_Male",
+    "parent_education_High School",
+    "parent_education_Master",
+    "parent_education_None",
+    "parent_education_PhD",
+    "internet_access_Yes",
+    "extracurricular_Yes"
+  ],
+  "feature_importance": [
+    {
+      "feature": "study_hours_per_week",
+      "importance": 0.286
+    },
+    {
+      "feature": "parent_education_High School",
+      "importance": 0.007
+    },
+    {
+      "feature": "age",
+      "importance": 0.0
+    },
+    {
+      "feature": "attendance_rate",
+      "importance": 0.0
+    },
+    {
+      "feature": "previous_score",
+      "importance": 0.0
+    },
+    {
+      "feature": "gender_Male",
+      "importance": 0.0
+    },
+    {
+      "feature": "parent_education_Master",
+      "importance": 0.0
+    },
+    {
+      "feature": "parent_education_None",
+      "importance": 0.0
+    },
+    {
+      "feature": "parent_education_PhD",
+      "importance": 0.0
+    },
+    {
+      "feature": "internet_access_Yes",
+      "importance": 0.0
+    },
+    {
+      "feature": "extracurricular_Yes",
+      "importance": 0.0
+    }
+  ],
+  "scaler": {
+    "num_cols": [
+      "age",
+      "study_hours_per_week",
+      "attendance_rate",
+      "previous_score"
+    ],
+    "mean": [
+      16.9925,
+      15.2,
+      76.83274999999999,
+      63.0775
+    ],
+    "scale": [
+      1.446528171174001,
+      8.473193022704015,
+      13.636649237899316,
+      19.269704038983058
+    ],
+    "var": [
+      2.0924437499999997,
+      71.795,
+      185.9582024375,
+      371.32149375
+    ]
+  },
+  "categorical_mappings": {
+    "gender": [
+      "Female",
+      "Male"
+    ],
+    "parent_education": [
+      "Bachelor",
+      "High School",
+      "Master",
+      "None",
+      "PhD"
+    ],
+    "internet_access": [
+      "No",
+      "Yes"
+    ],
+    "extracurricular": [
+      "No",
+      "Yes"
+    ]
+  },
+  "logistic_regression": {
+    "intercept": 1.39041694775368,
+    "coefficients": {
+      "age": 0.20062839074758154,
+      "study_hours_per_week": 2.902122078969561,
+      "attendance_rate": 0.7639226073228785,
+      "previous_score": 1.1757215497899036,
+      "gender_Male": 0.12187142754508719,
+      "parent_education_High School": 1.0728569479870154,
+      "parent_education_Master": 0.19752695354332966,
+      "parent_education_None": 0.34147495880397044,
+      "parent_education_PhD": -0.24533894524589722,
+      "internet_access_Yes": -0.46976690982503405,
+      "extracurricular_Yes": -0.07952553990614943
+    }
+  },
+  "linear_regressor": {
+    "intercept": 55.54339195551954,
+    "coefficients": {
+      "age": 0.5890249975846592,
+      "study_hours_per_week": 12.565243767689532,
+      "attendance_rate": 3.6219275438698277,
+      "previous_score": 3.9685078946470997,
+      "gender_Male": 0.7115437133047134,
+      "parent_education_High School": 1.9600250784722284,
+      "parent_education_Master": 0.5239922387295742,
+      "parent_education_None": -0.3486783597189731,
+      "parent_education_PhD": 0.1499358864995259,
+      "internet_access_Yes": -0.6153476553012363,
+      "extracurricular_Yes": 0.4442736402909233
+    }
+  },
+  "caps_levels": [
+    {
+      "level": 7,
+      "min": 80,
+      "max": 100,
+      "label": "Outstanding Achievement",
+      "color": "#10B981"
+    },
+    {
+      "level": 6,
+      "min": 70,
+      "max": 79,
+      "label": "Meritorious Achievement",
+      "color": "#059669"
+    },
+    {
+      "level": 5,
+      "min": 60,
+      "max": 69,
+      "label": "Substantial Achievement",
+      "color": "#3B82F6"
+    },
+    {
+      "level": 4,
+      "min": 50,
+      "max": 59,
+      "label": "Adequate Achievement",
+      "color": "#6366F1"
+    },
+    {
+      "level": 3,
+      "min": 40,
+      "max": 49,
+      "label": "Moderate Achievement",
+      "color": "#F59E0B"
+    },
+    {
+      "level": 2,
+      "min": 30,
+      "max": 39,
+      "label": "Elementary Achievement",
+      "color": "#EF4444"
+    },
+    {
+      "level": 1,
+      "min": 0,
+      "max": 29,
+      "label": "Not Achieved (Critical)",
+      "color": "#DC2626"
+    }
+  ]
+}
