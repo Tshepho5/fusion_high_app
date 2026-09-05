@@ -67,7 +67,7 @@ class AcademicPredictorNet(nn.Module):
 
 def main():
     print("=" * 80)
-    print("🔥 REAL PYTORCH NEURAL NETWORK LIVE TRAINING ON SOUTH AFRICAN MATRIC DATA")
+    print(" REAL PYTORCH NEURAL NETWORK LIVE TRAINING ON SOUTH AFRICAN MATRIC DATA")
     print("=" * 80)
 
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -196,9 +196,9 @@ def main():
         if epoch == 1:
             status = "Initial Weights"
         elif epoch % 10 == 0:
-            status = "🎯 Checkpoint"
+            status = " Checkpoint"
         elif epoch == epochs:
-            status = "✨ Converged"
+            status = " Converged"
 
         print(f"Epoch {epoch:02d}/{epochs:02d} | {epoch_train_loss:<12.4f} | {epoch_val_loss:<10.4f} | {epoch_val_acc:<12.1f} | ±{epoch_val_mae:<13.2f} | {status}")
         time.sleep(0.04)
@@ -240,7 +240,7 @@ def main():
     print(f"[+] Saved Neural Training Convergence plot to: {plot_path}")
 
     print("\n" + "=" * 80)
-    print("✅ DEEP NEURAL NETWORK TRAINING COMPLETED WITH VERIFIED BACKPROPAGATION!")
+    print(" DEEP NEURAL NETWORK TRAINING COMPLETED WITH VERIFIED BACKPROPAGATION!")
     print("=" * 80)
 
 if __name__ == '__main__':

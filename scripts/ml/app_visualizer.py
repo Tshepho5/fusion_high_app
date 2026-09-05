@@ -27,7 +27,7 @@ st.title("🎓 Fusion High School • Live Machine Learning Training Studio")
 st.markdown("Watch the **Deep Neural Network** train in real-time on authentic **South African High School Matric Data** with gradient backpropagation, live epoch loss curves, and validation metrics.")
 
 # 1. Dataset Preview
-st.subheader("1. 📂 Raw Matric Dataset (500 Student Records)")
+st.subheader("1. Raw Matric Dataset (500 Student Records)")
 df = pd.read_csv(data_path, keep_default_na=False)
 
 col1, col2, col3, col4 = st.columns(4)
@@ -39,14 +39,14 @@ col4.metric("Average Final Score", f"{df['final_score'].astype(float).mean():.1f
 st.dataframe(df.head(10))
 
 # 2. Live Training Controls
-st.subheader("2. 🧠 Real-Time PyTorch Neural Network Training")
+st.subheader("2. Real-Time PyTorch Neural Network Training")
 
 colA, colB, colC = st.columns(3)
 epochs = colA.slider("Number of Epochs", min_value=10, max_value=60, value=30, step=5)
 lr = colB.select_slider("Learning Rate", options=[0.001, 0.005, 0.008, 0.01, 0.02], value=0.008)
 batch_size = colC.select_slider("Batch Size", options=[16, 32, 64], value=32)
 
-start_training = st.button("🚀 Start Live Neural Network Training", type="primary")
+start_training = st.button(" Start Live Neural Network Training", type="primary")
 
 if start_training:
     # Prepare features
@@ -217,4 +217,4 @@ if start_training:
 
         time.sleep(0.05)
 
-    st.success(f"🎉 Neural Network Training Successfully Completed! Final Validation Accuracy: {val_accuracies[-1]:.1f}%, Final Error: ±{val_maes[-1]:.2f}%")
+    st.success(f" Neural Network Training Successfully Completed! Final Validation Accuracy: {val_accuracies[-1]:.1f}%, Final Error: ±{val_maes[-1]:.2f}%")

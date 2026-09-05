@@ -39,11 +39,11 @@ def main():
     os.makedirs(models_dir, exist_ok=True)
 
     # 1. Dataset Loading
-    print("\n[Step 1/5] 📂 Loading South African High School Matric Dataset...")
+    print("\n[Step 1/5]  Loading South African High School Matric Dataset...")
     df = pd.read_csv(data_path, keep_default_na=False)
     for i in range(1, 11):
         print_progress(i, 10, f"Parsing CSV ({len(df)} student profiles)...")
-    print("\n  ✔ Dataset loaded successfully.")
+    print("\n   Dataset loaded successfully.")
     print(f"    - Cohort Size: {len(df)} learners")
     print(f"    - Pass Rate: {(df['passed'] == 'Yes').mean():.1%} ({df['passed'].value_counts().to_dict()})")
     print(f"    - Average Final Exam Score: {df['final_score'].astype(float).mean():.1f}%")
@@ -71,7 +71,7 @@ def main():
     )
 
     # 4. Preprocessing Pipeline
-    print("\n[Step 2/5] ⚙️ Building Feature Transformer & Normalizer...")
+    print("\n[Step 2/5] Building Feature Transformer & Normalizer...")
     preprocessor = ColumnTransformer(
         transformers=[
             ('num', StandardScaler(), num_cols),
@@ -90,7 +90,7 @@ def main():
     print("\n  ✔ Feature preprocessing completed.")
 
     # 5. Training Classification Models (with live fold metrics)
-    print("\n[Step 3/5] 🧠 Training At-Risk Classification Models (5-Fold Cross Validation)...")
+    print("\n[Step 3/5] Training At-Risk Classification Models (5-Fold Cross Validation)...")
     clf_models = {
         'Logistic Regression': LogisticRegression(max_iter=1000, random_state=42),
         'Random Forest': RandomForestClassifier(n_estimators=120, max_depth=6, random_state=42),
@@ -102,7 +102,7 @@ def main():
     best_clf_model = None
 
     for name, model in clf_models.items():
-        print(f"\n  ▶ Training {name}...")
+        print(f"\n  Training {name}...")
         skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
         fold_scores = []
         for fold, (train_idx, val_idx) in enumerate(skf.split(X_train_trans, y_train_cls), 1):
@@ -121,7 +121,7 @@ def main():
         auc = roc_auc_score(y_test_cls, test_proba)
         rec = recall_score(y_test_cls, test_preds)
         
-        print(f"\n    ★ {name} Results: Test Acc={acc:.1%}, Recall={rec:.1%}, ROC-AUC={auc:.3f}, CV-Mean-AUC={np.mean(fold_scores):.3f}")
+        print(f"\n     {name} Results: Test Acc={acc:.1%}, Recall={rec:.1%}, ROC-AUC={auc:.3f}, CV-Mean-AUC={np.mean(fold_scores):.3f}")
         
         if auc > best_clf_score:
             best_clf_score = auc
@@ -129,7 +129,7 @@ def main():
             best_clf_model = model
 
     # 6. Training Score Regressors
-    print(f"\n[Step 4/5] 📈 Training Continuous Mark Regressor (Predicting Final Exam %)...")
+    print(f"\n[Step 4/5]  Training Continuous Mark Regressor (Predicting Final Exam %)...")
     reg_models = {
         'Ridge Regression': Ridge(alpha=1.0, random_state=42),
         'Random Forest Regressor': RandomForestRegressor(n_estimators=120, max_depth=6, random_state=42),
@@ -141,7 +141,7 @@ def main():
     best_reg_model = None
 
     for name, model in reg_models.items():
-        print(f"\n  ▶ Training {name}...")
+        print(f"\n   Training {name}...")
         model.fit(X_train_trans, y_train_reg)
         preds = model.predict(X_test_trans)
         r2 = r2_score(y_test_reg, preds)
@@ -155,7 +155,7 @@ def main():
             best_reg_model = model
 
     # 7. Generate Visual Plots
-    print("\n[Step 5/5] 📊 Generating Visual Performance Plots (ROC Curve, Confusion Matrix, Actual vs Predicted)...")
+    print("\n[Step 5/5]  Generating Visual Performance Plots (ROC Curve, Confusion Matrix, Actual vs Predicted)...")
     
     y_test_proba = best_clf_model.predict_proba(X_test_trans)[:, 1]
     y_test_pred = best_clf_model.predict(X_test_trans)
@@ -208,7 +208,7 @@ def main():
 
     print(f"\n  ✔ Saved visualization chart to: {chart_path}")
     print("\n" + "=" * 75)
-    print("✅ TRAINING COMPLETED WITH FULL VISUAL DIAGNOSTICS!")
+    print(" TRAINING COMPLETED WITH FULL VISUAL DIAGNOSTICS!")
     print("=" * 75)
 
 if __name__ == '__main__':
