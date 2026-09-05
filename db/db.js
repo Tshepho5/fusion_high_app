@@ -4,13 +4,22 @@ require('dotenv').config();
 // Ensure PostgreSQL DATE columns (OID 1082) return exact 'YYYY-MM-DD' strings to prevent timezone shifting
 types.setTypeParser(1082, (val) => val);
 
-const isProduction = process.env.NODE_ENV === 'production' || !!process.env.DATABASE_URL;
+let connectionString = process.env.DATABASE_URL;
+let ssl = false;
 
-const poolConfig = process.env.DATABASE_URL
+if (connectionString) {
+  // Remove sslmode query parameter so pg driver respects rejectUnauthorized: false on cloud hosts (Supabase, Neon, AWS RDS)
+  connectionString = connectionString.replace(/[?&]sslmode=[^&]+/, '').replace(/\?$/, '');
+  ssl = (connectionString.includes('localhost') || connectionString.includes('127.0.0.1'))
+    ? false
+    : { rejectUnauthorized: false };
+}
+
+const poolConfig = connectionString
   ? {
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false },
-      max: 30,
+      connectionString,
+      ssl,
+      max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
     }
