@@ -389,6 +389,9 @@ export const leaveReliefService = {
 export const matricAnalyticsService = {
   getProjectorStats: () => api.get('/api/matric/projector').then(res => res.data),
   autoRouteRemedial: () => api.post('/api/matric/remedial-route').then(res => res.data),
+  getMlCohortPredictions: () => api.get('/api/matric/ml/cohort-predictions').then(res => res.data),
+  predictStudent: (studentData: any) => api.post('/api/matric/ml/predict-student', studentData).then(res => res.data),
+  simulateIntervention: (student: any, adjustments: any) => api.post('/api/matric/ml/simulate-intervention', { student, adjustments }).then(res => res.data),
 };
 export const matricService = matricAnalyticsService;
 

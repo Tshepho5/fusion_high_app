@@ -36,33 +36,45 @@ app.set('trust proxy', 1); // Enable proxy trust for Render / reverse proxies
 const PORT = process.env.PORT || 4000;
 const IP = process.env.IP || 'localhost';  // Network IP or fallback to localhost
 
+// Safe helper for directory creation in serverless (e.g. Vercel read-only FS)
+const ensureDir = (dirPath) => {
+  try {
+    if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
+  } catch (err) {
+    // In serverless environments, file system outside /tmp is read-only
+  }
+};
+
 // Ensure upload directories exist
 const uploadDir = 'uploads/textbooks/';
 const pfpDir = 'uploads/pfp/';
 const appUploadDir = 'uploads/applications/';
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-if (!fs.existsSync(pfpDir)) fs.mkdirSync(pfpDir, { recursive: true });
-if (!fs.existsSync(appUploadDir)) fs.mkdirSync(appUploadDir, { recursive: true });
+ensureDir(uploadDir);
+ensureDir(pfpDir);
+ensureDir(appUploadDir);
 
-// Initialize all 40 database tables, multi-parent, and notification schemas on server startup
+// Initialize all database tables, multi-parent, and notification schemas on server startup (local/dedicated server only)
 const initializeAllDatabaseTables = require('./db/init_full_schema');
 const { fixAllUserPasswords } = require('./db/fix_all_user_passwords');
 const createAiConversationsTables = require('./db/create_ai_conversations_tables');
 const emailService = require('./public/src/services/emailService');
-(async () => {
-  try {
-    await initializeAllDatabaseTables();
-    await initApplicationTables();
-    await NotificationService.initSchema();
-    await createAiConversationsTables();
-    await fixAllUserPasswords();
-    console.log('[DB BOOTSTRAP] All database tables, schemas, and security verified successfully.');
-    // Pre-warm and verify email delivery transport in background
-    emailService.verifyConnection().catch(() => {});
-  } catch (err) {
-    console.error('[DB BOOTSTRAP] Initialization error:', err.message);
-  }
-})();
+
+if (!process.env.VERCEL) {
+  (async () => {
+    try {
+      await initializeAllDatabaseTables();
+      await initApplicationTables();
+      await NotificationService.initSchema();
+      await createAiConversationsTables();
+      await fixAllUserPasswords();
+      console.log('[DB BOOTSTRAP] All database tables, schemas, and security verified successfully.');
+      // Pre-warm and verify email delivery transport in background
+      emailService.verifyConnection().catch(() => {});
+    } catch (err) {
+      console.error('[DB BOOTSTRAP] Initialization error:', err.message);
+    }
+  })();
+}
 
 const normalizePayload = require('./public/src/middleware/normalizePayload');
 
@@ -85,7 +97,7 @@ const uploadPfp = multer({
 
 // Configure Multer for chat message attachments (images, voice notes, documents)
 const msgUploadDir = 'uploads/messages/';
-if (!fs.existsSync(msgUploadDir)) fs.mkdirSync(msgUploadDir, { recursive: true });
+ensureDir(msgUploadDir);
 
 const messageStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -94,7 +106,7 @@ const messageStorage = multer.diskStorage({
     if (m.startsWith('image/')) subfolder = 'images';
     else if (m.startsWith('audio/') || m.includes('ogg') || m.includes('webm') || m.includes('mp4') || m.includes('wav')) subfolder = 'voice';
     const targetDir = path.join('uploads', 'messages', subfolder);
-    if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+    ensureDir(targetDir);
     cb(null, targetDir);
   },
   filename: (req, file, cb) => {
@@ -206,6 +218,7 @@ app.use('/api/extracurricular', require('./public/src/routes/extracurricularRout
 app.use('/api/textbooks', require('./public/src/routes/textbookRoutes'));
 app.use('/api/leave-relief', require('./public/src/routes/leaveReliefRoutes'));
 app.use('/api/matric-analytics', require('./public/src/routes/matricAnalyticsRoutes'));
+app.use('/api/matric', require('./public/src/routes/matricAnalyticsRoutes'));
 app.use('/api/applications', applicationRoutes);
 app.use('/api/finance', require('./public/src/routes/financeRoutes'));
 app.use('/api/bursaries', require('./public/src/routes/bursaryRoutes'));
@@ -279,13 +292,13 @@ const http = require('http');
 const https = require('https');
 const selfsigned = require('selfsigned');
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERCEL;
 
 let sslOptions = null;
-if (!isProduction) {
+if (!isProduction && !process.env.VERCEL) {
   try {
     const sslDir = path.join(__dirname, '.ssl');
-    if (!fs.existsSync(sslDir)) fs.mkdirSync(sslDir, { recursive: true });
+    ensureDir(sslDir);
 
     const certPath = path.join(sslDir, 'cert.pem');
     const keyPath = path.join(sslDir, 'key.pem');
@@ -319,72 +332,75 @@ if (!isProduction) {
   }
 }
 
-const httpServer = http.createServer(app);
-let retryCount = 0;
-const MAX_RETRIES = 2;
+// Only start standalone HTTP/HTTPS listeners when not running inside Vercel serverless functions
+if (!process.env.VERCEL && require.main === module) {
+  const httpServer = http.createServer(app);
+  let retryCount = 0;
+  const MAX_RETRIES = 2;
 
-httpServer.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    if (retryCount < MAX_RETRIES) {
-      retryCount++;
-      console.warn(`[SERVER] Port ${PORT} is currently busy. Retrying in 1s (${retryCount}/${MAX_RETRIES})...`);
-      setTimeout(() => {
-        try {
-          httpServer.close();
-        } catch {}
-        httpServer.listen(PORT, '0.0.0.0');
-      }, 1000);
+  httpServer.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      if (retryCount < MAX_RETRIES) {
+        retryCount++;
+        console.warn(`[SERVER] Port ${PORT} is currently busy. Retrying in 1s (${retryCount}/${MAX_RETRIES})...`);
+        setTimeout(() => {
+          try {
+            httpServer.close();
+          } catch {}
+          httpServer.listen(PORT, '0.0.0.0');
+        }, 1000);
+      } else {
+        console.warn(`[SERVER] Port ${PORT} is already running. Exiting retry loop.`);
+        process.exit(0);
+      }
     } else {
-      console.warn(`[SERVER] Port ${PORT} is already running. Exiting retry loop.`);
+      console.error('[SERVER ERROR]', err);
+    }
+  });
+
+  httpServer.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running successfully!`);
+    console.log(`- Listening on 0.0.0.0:${PORT}`);
+    console.log(`- HTTP Local:     http://localhost:${PORT}`);
+  });
+
+  let httpsServer = null;
+  if (sslOptions && !isProduction) {
+    const HTTPS_PORT = process.env.HTTPS_PORT || (parseInt(PORT, 10) + 1);
+    httpsServer = https.createServer(sslOptions, app);
+    httpsServer.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.warn(`[SSL WARNING] HTTPS Port ${HTTPS_PORT} is in use.`);
+      }
+    });
+    httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
+      console.log(`- Local HTTPS (Camera Enabled): https://localhost:${HTTPS_PORT}`);
+    });
+  }
+
+  const gracefulShutdown = () => {
+    try {
+      httpServer.close(() => {
+        if (httpsServer) httpsServer.close(() => process.exit(0));
+        else process.exit(0);
+      });
+    } catch {
       process.exit(0);
     }
-  } else {
-    console.error('[SERVER ERROR]', err);
-  }
-});
+  };
 
-httpServer.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running successfully!`);
-  console.log(`- Listening on 0.0.0.0:${PORT}`);
-  console.log(`- HTTP Local:     http://localhost:${PORT}`);
-});
-
-let httpsServer = null;
-if (sslOptions && !isProduction) {
-  const HTTPS_PORT = process.env.HTTPS_PORT || (parseInt(PORT, 10) + 1);
-  httpsServer = https.createServer(sslOptions, app);
-  httpsServer.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.warn(`[SSL WARNING] HTTPS Port ${HTTPS_PORT} is in use.`);
+  process.on('SIGTERM', gracefulShutdown);
+  process.on('SIGINT', gracefulShutdown);
+  process.once('SIGUSR2', () => {
+    try {
+      httpServer.close(() => {
+        if (httpsServer) httpsServer.close(() => process.kill(process.pid, 'SIGUSR2'));
+        else process.kill(process.pid, 'SIGUSR2');
+      });
+    } catch {
+      process.kill(process.pid, 'SIGUSR2');
     }
   });
-  httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
-    console.log(`- Local HTTPS (Camera Enabled): https://localhost:${HTTPS_PORT}`);
-  });
 }
-
-const gracefulShutdown = () => {
-  try {
-    httpServer.close(() => {
-      if (httpsServer) httpsServer.close(() => process.exit(0));
-      else process.exit(0);
-    });
-  } catch {
-    process.exit(0);
-  }
-};
-
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
-process.once('SIGUSR2', () => {
-  try {
-    httpServer.close(() => {
-      if (httpsServer) httpsServer.close(() => process.kill(process.pid, 'SIGUSR2'));
-      else process.kill(process.pid, 'SIGUSR2');
-    });
-  } catch {
-    process.kill(process.pid, 'SIGUSR2');
-  }
-});
 
 module.exports = app;

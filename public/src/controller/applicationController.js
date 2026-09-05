@@ -11,8 +11,12 @@ const { generateLearnerPasswordFromID } = require('./authController');
 
 // Ensure upload directory exists
 const appUploadDir = path.join(process.cwd(), 'uploads', 'applications');
-if (!fs.existsSync(appUploadDir)) {
-  fs.mkdirSync(appUploadDir, { recursive: true });
+try {
+  if (!fs.existsSync(appUploadDir)) {
+    fs.mkdirSync(appUploadDir, { recursive: true });
+  }
+} catch (err) {
+  // Read-only filesystem in serverless
 }
 
 // Multer Storage Configuration

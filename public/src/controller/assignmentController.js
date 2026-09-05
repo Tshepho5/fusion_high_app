@@ -8,8 +8,12 @@ const NotificationService = require('../services/notificationService');
 // Ensure upload directories exist
 const assignmentUploadsDir = path.join(__dirname, '../../uploads/assignments');
 const submissionUploadsDir = path.join(__dirname, '../../uploads/submissions');
-if (!fs.existsSync(assignmentUploadsDir)) fs.mkdirSync(assignmentUploadsDir, { recursive: true });
-if (!fs.existsSync(submissionUploadsDir)) fs.mkdirSync(submissionUploadsDir, { recursive: true });
+try {
+  if (!fs.existsSync(assignmentUploadsDir)) fs.mkdirSync(assignmentUploadsDir, { recursive: true });
+  if (!fs.existsSync(submissionUploadsDir)) fs.mkdirSync(submissionUploadsDir, { recursive: true });
+} catch (err) {
+  // Read-only filesystem in serverless
+}
 
 // Multer storage for teacher assignment attachments
 const assignmentStorage = multer.diskStorage({

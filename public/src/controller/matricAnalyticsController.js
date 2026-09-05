@@ -1,5 +1,6 @@
 const db = require('../../../db/db');
 const emailService = require('../services/emailService');
+const academicMlService = require('../services/academicMlService');
 
 /**
  * Helper: Calculate NSC Pass Category for a candidate's marks
@@ -291,5 +292,100 @@ exports.autoRouteRemedial = async (req, res) => {
   } catch (err) {
     console.error('Error auto-routing remedial clinics:', err);
     res.status(500).json({ error: 'Failed to auto-route remedial clinics: ' + err.message });
+  }
+};
+
+/**
+ * Machine Learning: Predict Single Student Academic Health & At-Risk Status
+ */
+exports.getMlStudentPrediction = async (req, res) => {
+  try {
+    const studentData = req.body;
+    const prediction = academicMlService.predictStudent(studentData);
+    res.json(prediction);
+  } catch (err) {
+    console.error('Error calculating ML student prediction:', err);
+    res.status(500).json({ error: 'Failed to generate ML prediction: ' + err.message });
+  }
+};
+
+/**
+ * Machine Learning: Simulate What-If Academic Adjustments (e.g. increase study hours / attendance)
+ */
+exports.simulateIntervention = async (req, res) => {
+  try {
+    const { student, adjustments } = req.body;
+    if (!student) return res.status(400).json({ error: 'Missing student data payload.' });
+    const simulation = academicMlService.simulateWhatIf(student, adjustments || {});
+    res.json(simulation);
+  } catch (err) {
+    console.error('Error simulating ML intervention:', err);
+    res.status(500).json({ error: 'Failed to simulate intervention: ' + err.message });
+  }
+};
+
+/**
+ * Machine Learning: Cohort-wide ML Academic Projection
+ */
+exports.getMlCohortPredictions = async (req, res) => {
+  try {
+    // 1. Fetch real Grade 12 learners from the database
+    const learnersRes = await db.query(`
+      SELECT c.id, c.full_name, c.surname, c.gender, c.grade, c.stream,
+             COALESCE(c.home_language, 'isiZulu') as home_language,
+             ROUND(COALESCE(att.rate, 75.0), 1) as attendance_rate,
+             ROUND(COALESCE(mk.avg_score, 50.0), 1) as previous_score,
+             COALESCE(hw.sub_count, 15) as study_hours_estimate
+      FROM children c
+      LEFT JOIN (
+        SELECT child_id, 
+               (COUNT(CASE WHEN status = 'Present' THEN 1 END)::float / NULLIF(COUNT(*), 0)) * 100 as rate
+        FROM attendance
+        GROUP BY child_id
+      ) att ON c.id = att.child_id
+      LEFT JOIN (
+        SELECT child_id, AVG(COALESCE(score, 0)) as avg_score
+        FROM marks
+        GROUP BY child_id
+      ) mk ON c.id = mk.child_id
+      LEFT JOIN (
+        SELECT child_id, COUNT(*) as sub_count
+        FROM homework_submissions
+        GROUP BY child_id
+      ) hw ON c.id = hw.child_id
+      WHERE c.grade = 12
+    `);
+
+    let studentList = [];
+    if (learnersRes.rows.length > 0) {
+      studentList = learnersRes.rows.map(row => ({
+        student_id: `STU-${row.id}`,
+        name: `${row.full_name} ${row.surname}`,
+        gender: row.gender || 'Female',
+        age: 18,
+        study_hours_per_week: Math.max(2, Math.min(30, row.study_hours_estimate || 15)),
+        attendance_rate: parseFloat(row.attendance_rate) || 75.0,
+        parent_education: 'High School',
+        internet_access: 'Yes',
+        extracurricular: 'Yes',
+        previous_score: parseFloat(row.previous_score) || 50.0,
+        stream: row.stream
+      }));
+    } else {
+      // Fallback to demo cohort if no active Grade 12 learners in DB
+      studentList = [
+        { student_id: 'STU-001', name: 'Sipho Dlamini', gender: 'Male', age: 18, study_hours_per_week: 25, attendance_rate: 92.5, parent_education: 'Bachelor', internet_access: 'Yes', extracurricular: 'Yes', previous_score: 68, stream: 'Science' },
+        { student_id: 'STU-002', name: 'Ayanda Khumalo', gender: 'Female', age: 17, study_hours_per_week: 6, attendance_rate: 64.0, parent_education: 'None', internet_access: 'No', extracurricular: 'No', previous_score: 42, stream: 'Commerce' },
+        { student_id: 'STU-003', name: 'Thabo Mokoena', gender: 'Male', age: 18, study_hours_per_week: 18, attendance_rate: 88.0, parent_education: 'High School', internet_access: 'Yes', extracurricular: 'Yes', previous_score: 55, stream: 'General' },
+        { student_id: 'STU-004', name: 'Nomvula Sithole', gender: 'Female', age: 18, study_hours_per_week: 28, attendance_rate: 96.0, parent_education: 'Master', internet_access: 'Yes', extracurricular: 'Yes', previous_score: 74, stream: 'Science' },
+        { student_id: 'STU-005', name: 'Bongani Ndlovu', gender: 'Male', age: 19, study_hours_per_week: 4, attendance_rate: 58.5, parent_education: 'High School', internet_access: 'No', extracurricular: 'No', previous_score: 38, stream: 'Science' }
+      ];
+    }
+
+    const cohortPredictions = academicMlService.predictCohort(studentList);
+    res.json(cohortPredictions);
+  } catch (err) {
+    console.error('Error generating ML cohort predictions:', err);
+    res.status(500).json({ error: 'Failed to generate ML cohort predictions: ' + err.message });
   }
 };
