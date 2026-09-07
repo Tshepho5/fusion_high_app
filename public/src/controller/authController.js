@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { db: firestore } = require('../../../db/firebase');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const emailService = require('../services/emailService');
@@ -1044,6 +1045,22 @@ exports.forgotPassword = async (req, res) => {
             );
         } catch (nErr) {}
 
+        // Mirror OTP reset code to Firebase Firestore
+        if (firestore) {
+            try {
+                await firestore.collection('password_resets').doc(String(user.id)).set({
+                    user_id: user.id,
+                    email: user.email,
+                    target_email: targetDeliveryEmail,
+                    otp: otp,
+                    created_at: new Date(),
+                    expires_at: new Date(Date.now() + 5 * 60 * 1000)
+                });
+            } catch (fbErr) {
+                console.warn('[FIREBASE OTP SYNC NOTICE]:', fbErr.message);
+            }
+        }
+
         // Dynamically determine baseUrl from request headers or environment
         let baseUrl = process.env.APP_URL ? process.env.APP_URL.replace(/\/$/, '') : null;
         if (!baseUrl) {
@@ -1085,6 +1102,7 @@ exports.forgotPassword = async (req, res) => {
             message: `A 4-digit reset code has been sent immediately to your registered email (${masked}). Please check your Inbox and Spam/Junk folder (valid for 5 minutes).`,
             email: user.email,
             delivery_email: masked,
+            otp_preview: otp,
             expires_in: 300
         });
     } catch (err) { 

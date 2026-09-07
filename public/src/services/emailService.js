@@ -212,11 +212,15 @@ function getTransporter() {
   const user = getSmtpUser();
   const pass = getSmtpPass();
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // port 587 uses STARTTLS, compatible with cloud hosts like Render
+    requireTLS: true,
     auth: { user, pass },
-    connectionTimeout: 4000,
-    greetingTimeout: 4000,
-    socketTimeout: 6000
+    tls: { rejectUnauthorized: false },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000
   });
 }
 
