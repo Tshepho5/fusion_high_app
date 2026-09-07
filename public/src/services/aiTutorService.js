@@ -28,7 +28,7 @@ async function callAI(prompt, isJson = false, modelOverride = null) {
     throw new Error("AI service is currently disabled by configuration.");
   }
 
-  const modelCandidates = modelOverride ? [modelOverride] : ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+  const modelCandidates = modelOverride ? [modelOverride] : ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
   let lastError = null;
 
   for (const targetModel of modelCandidates) {
@@ -555,7 +555,7 @@ function generateCAPSLocalFallback(prompt) {
 }
 
 async function safeAICall(prompt, isJson = false, retries = 1) {
-  const models = ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+  const models = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
 
   for (const m of models) {
     try {
@@ -1066,6 +1066,11 @@ You are an expert South African CAPS Curriculum Subject Specialist for "${normSu
    - At the VERY END of your response, always provide 3 brief, clickable follow-up study prompts on a single line:
      [SUGGESTIONS: <Option 1> | <Option 2> | <Option 3>]
      Example: [SUGGESTIONS: Give me an exam practice problem | Explain with an analogy | Show me common exam pitfalls]
+
+6. SOUTH AFRICAN MULTILINGUAL TEACHING:
+   - Preferred Language Setting: "${language || 'english'}".
+   - If the learner writes in or requests any South African official language (such as Sepedi / Sesotho sa Leboa, isiZulu, Afrikaans, Setswana, Xitsonga, Sesotho, isiXhosa, etc.), explain the concepts clearly, naturally, and encourage them in that requested language.
+   - Keep standard CAPS formula symbols and formal DBE exam terminology in English alongside where necessary for clarity.
 
 ${historyPrompt}
 Learner: ${userText}

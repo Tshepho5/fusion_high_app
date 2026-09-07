@@ -332,6 +332,30 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
   };
 
   const getLearnerMlRisk = (learner: any) => {
+    // 1. Prioritize real ML model artifacts output computed by backend
+    if (learner.ml_prediction) {
+      const ml = learner.ml_prediction;
+      const rawTier = String(learner.risk_tier || ml.risk_tier || 'Low');
+      const tier: 'High' | 'Moderate' | 'Low' = (rawTier === 'High') ? 'High' : (rawTier === 'Moderate' || rawTier === 'Medium') ? 'Moderate' : 'Low';
+      const caps = ml.caps_achievement_level || getCapsLevel(ml.projected_final_score || 50);
+      return {
+        predictedScore: ml.projected_final_score || learner.predicted_score || 50,
+        capsLevel: {
+          level: caps.level || 4,
+          label: caps.label || 'Adequate',
+          color: tier === 'High' ? 'text-red-500 border-red-500/30 bg-red-500/10' :
+                 tier === 'Moderate' ? 'text-amber-400 border-amber-500/30 bg-amber-500/10' :
+                 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
+        },
+        passProbability: ml.pass_probability || learner.pass_probability || 75,
+        riskTier: tier,
+        riskLabel: ml.risk_label || (tier === 'High' ? 'Critical (High Risk)' : tier === 'Moderate' ? 'Moderate Risk' : 'On Track'),
+        interventions: ml.interventions && ml.interventions.length > 0 ? ml.interventions : [
+          'Maintain consistent revision and exam past paper preparation.'
+        ]
+      };
+    }
+
     const mark = typeof learner.current_mark === 'number' ? learner.current_mark : (learner.term_average || 54);
     const attendance = typeof learner.attendance_rate === 'number' ? learner.attendance_rate : 86;
     const studyHours = typeof learner.study_hours_per_week === 'number' ? learner.study_hours_per_week : 12;
