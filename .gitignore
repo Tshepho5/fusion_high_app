@@ -29,3 +29,9 @@ client/dist/
 .DS_Store
 Thumbs.db
 ~$*
+
+# Firebase Credentials & Keys
+*firebase-adminsdk*.json
+serviceAccountKey*.json
+.firebase/
+

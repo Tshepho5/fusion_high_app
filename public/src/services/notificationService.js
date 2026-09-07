@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { db: firestore } = require('../../../db/firebase');
 const emailService = require('./emailService');
 
 /**
@@ -83,6 +84,35 @@ class NotificationService {
         RETURNING id;
       `;
       const result = await db.query(query, values);
+
+      // Real-time synchronization with Firebase Cloud Firestore
+      if (firestore) {
+        setImmediate(async () => {
+          try {
+            const batch = firestore.batch();
+            uniqueIds.forEach((uid, index) => {
+              const notifId = result.rows[index]?.id;
+              const docRef = notifId 
+                ? firestore.collection('notifications').doc(String(notifId))
+                : firestore.collection('notifications').doc();
+              batch.set(docRef, {
+                id: notifId || null,
+                user_id: Number(uid),
+                title,
+                message,
+                type: type || 'announcement',
+                target_tab: targetTab || 'announcements',
+                metadata: metadata || {},
+                is_read: false,
+                created_at: new Date()
+              });
+            });
+            await batch.commit();
+          } catch (fbErr) {
+            console.warn('[FIREBASE NOTIFICATION SYNC WARNING]:', fbErr.message);
+          }
+        });
+      }
 
       // Optionally insert into in-app messages table so it appears in recipient's message center
       if (sendToMessages) {

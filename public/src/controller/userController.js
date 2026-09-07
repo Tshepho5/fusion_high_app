@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { db: firestore } = require('../../../db/firebase');
 const emailService = require('../services/emailService');
 const NotificationService = require('../services/notificationService');
 const bcrypt = require('bcryptjs');
@@ -371,6 +372,44 @@ exports.sendMessage = async (req, res) => {
                 attachmentUrl, attachmentName, attachmentType, fileSize, voiceDuration
             ]
         );
+
+        // Mirror message and conversation state to Firebase Firestore for real-time live chat
+        if (firestore) {
+            setImmediate(async () => {
+                try {
+                    const msgData = result.rows[0];
+                    const docRef = firestore.collection('messages').doc(String(msgData.id));
+                    await docRef.set({
+                        id: msgData.id,
+                        sender_id: Number(senderId),
+                        recipient_id: Number(recipientId),
+                        child_id: childId ? Number(childId) : null,
+                        subject: subject || 'General',
+                        body: textContent,
+                        content: textContent,
+                        attachment_url: attachmentUrl || null,
+                        attachment_name: attachmentName || null,
+                        attachment_type: attachmentType || null,
+                        file_size: fileSize || null,
+                        voice_duration: voiceDuration || null,
+                        is_read: false,
+                        created_at: new Date()
+                    });
+
+                    // Update live conversation thread document
+                    const convId = [Number(senderId), Number(recipientId)].sort((a, b) => a - b).join('_');
+                    await firestore.collection('conversations').doc(convId).set({
+                        participants: [Number(senderId), Number(recipientId)],
+                        last_message: textContent,
+                        last_sender_id: Number(senderId),
+                        last_activity: new Date(),
+                        updated_at: new Date()
+                    }, { merge: true });
+                } catch (fbMsgErr) {
+                    console.warn('[FIREBASE MESSAGE SYNC WARNING]:', fbMsgErr.message);
+                }
+            });
+        }
 
         // Fetch sender's name for instant push notification
         try {

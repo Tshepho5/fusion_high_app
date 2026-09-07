@@ -1,4 +1,6 @@
 const db = require('../../../db/db');
+const { db: firestore } = require('../../../db/firebase');
+const FirebaseStorageService = require('../services/firebaseStorageService');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
@@ -411,6 +413,50 @@ exports.submitApplication = async (req, res) => {
         JSON.stringify(doc.ai_extracted_data || {}),
         doc.issues || []
       ]);
+    }
+
+    // Mirror Application to Firebase Firestore for real-time live admissions tracking
+    if (firestore) {
+      setImmediate(async () => {
+        try {
+          await firestore.collection('applications').doc(String(applicationId)).set({
+            id: applicationId,
+            application_number: applicationNumber,
+            first_name: body.first_name ? body.first_name.trim() : '',
+            surname: body.surname ? body.surname.trim() : '',
+            grade_applied: gradeApplied,
+            stream,
+            status: applicationStatus,
+            school_id: schoolId || null,
+            school_name: schoolName || 'Fusion High School',
+            primary_parent_name: body.primary_parent_name || '',
+            primary_parent_email: body.primary_parent_email || '',
+            primary_parent_phone: body.primary_parent_phone || '',
+            created_at: new Date()
+          });
+
+          // Upload documents to Firebase Storage and update records
+          for (const doc of uploadedDocs) {
+            if (doc.file_path && fs.existsSync(doc.file_path)) {
+              try {
+                const destPath = `applications/${applicationNumber}/${doc.document_type}-${path.basename(doc.file_path)}`;
+                const storageRes = await FirebaseStorageService.uploadLocalFile({
+                  localPath: doc.file_path,
+                  destination: destPath,
+                  contentType: doc.mime_type
+                });
+                if (storageRes.storageType === 'cloud') {
+                  await db.query('UPDATE application_documents SET file_path = $1 WHERE application_id = $2 AND document_type = $3', [storageRes.url, applicationId, doc.document_type]);
+                }
+              } catch (docErr) {
+                console.warn('[FIREBASE DOC UPLOAD WARNING]:', docErr.message);
+              }
+            }
+          }
+        } catch (fbAppErr) {
+          console.warn('[FIREBASE APPLICATION SYNC WARNING]:', fbAppErr.message);
+        }
+      });
     }
 
     // 7. Trigger Appropriate Email Workflow
@@ -1020,6 +1066,22 @@ exports.reviewApplication = async (req, res) => {
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $5
     `, [finalStatus, admin_notes || app.admin_notes, assigned_class_id || app.assigned_class_id, provNumber, id]);
+
+    // Update status in Firebase Cloud Firestore
+    if (firestore) {
+      setImmediate(async () => {
+        try {
+          await firestore.collection('applications').doc(String(id)).set({
+            status: finalStatus,
+            admin_notes: admin_notes || app.admin_notes || null,
+            provisional_learner_number: provNumber || null,
+            updated_at: new Date()
+          }, { merge: true });
+        } catch (fbStatusErr) {
+          console.warn('[FIREBASE APPLICATION STATUS UPDATE WARNING]:', fbStatusErr.message);
+        }
+      });
+    }
 
     res.json({
       success: true,

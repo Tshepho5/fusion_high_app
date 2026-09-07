@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const db = require('./db/db'); // Point to the db/db.js connection pool
+const { db: firestore } = require('./db/firebase'); // Firebase Firestore connection
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
@@ -68,6 +69,9 @@ if (!process.env.VERCEL) {
       await createAiConversationsTables();
       await fixAllUserPasswords();
       console.log('[DB BOOTSTRAP] All database tables, schemas, and security verified successfully.');
+      if (firestore) {
+        console.log('[FIREBASE BOOTSTRAP] Firebase Cloud Firestore & Admin SDK initialized and active.');
+      }
       // Pre-warm and verify email delivery transport in background
       emailService.verifyConnection().catch(() => {});
     } catch (err) {

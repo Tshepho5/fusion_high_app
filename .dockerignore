@@ -1,0 +1,14 @@
+node_modules
+client/node_modules
+client/src
+.git
+.gitignore
+.env
+.env.*
+.ssl
+*.log
+tests
+*.pptx
+*.pdf
+fusion-high-app-firebase-adminsdk*.json
+serviceAccountKey*.json

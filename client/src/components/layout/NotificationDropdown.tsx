@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { notificationService } from '../../services/api';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db as firestoreDb } from '../../firebase';
 import {
   Bell,
   CheckCheck,
@@ -30,7 +32,7 @@ interface NotificationItem {
 }
 
 export const NotificationDropdown: React.FC = () => {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -99,7 +101,33 @@ export const NotificationDropdown: React.FC = () => {
     }
   };
 
-  // Poll unread count every 15 seconds
+  // Real-time notification updates via Firebase Cloud Firestore
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      const q = query(
+        collection(firestoreDb, 'notifications'),
+        where('user_id', '==', Number(user.id))
+      );
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const unreadDocs = snapshot.docs.filter(doc => !doc.data().is_read);
+        const currentUnread = unreadDocs.length;
+        if (prevCountRef.current !== null && currentUnread > prevCountRef.current) {
+          playNotificationChime();
+        }
+        prevCountRef.current = currentUnread;
+        setUnreadCount(currentUnread);
+      }, (err) => {
+        // Silently fallback to REST polling if Firestore rules or offline
+        console.debug('[FIREBASE NOTIFICATION LISTENER NOTICE]:', err.message);
+      });
+      return () => unsubscribe();
+    } catch (_) {
+      // Fallback to REST polling
+    }
+  }, [user?.id]);
+
+  // Poll unread count every 15 seconds (secondary fallback)
   useEffect(() => {
     fetchUnreadCount();
     const interval = setInterval(fetchUnreadCount, 15000);

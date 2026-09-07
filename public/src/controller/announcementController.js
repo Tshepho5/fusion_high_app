@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { db: firestore } = require('../../../db/firebase');
 const NotificationService = require('../services/notificationService');
 
 exports.createAnnouncement = async (req, res) => {
@@ -14,6 +15,29 @@ exports.createAnnouncement = async (req, res) => {
         const authorName = authorRes.rows[0] ? `${authorRes.rows[0].full_name} ${authorRes.rows[0].surname || ''}`.trim() : 'School Administration';
 
         const displayTitle = priority === 'Urgent' ? `[URGENT] ${title}` : title;
+
+        // Mirror announcement to Firebase Cloud Firestore for real-time live feed
+        if (firestore) {
+            setImmediate(async () => {
+                try {
+                    await firestore.collection('announcements').doc(String(result.rows[0].id)).set({
+                        id: result.rows[0].id,
+                        title,
+                        content,
+                        role_target: role_target || 'all',
+                        grade_target: grade_target || null,
+                        stream_target: stream_target || null,
+                        subject_target: subject_target || null,
+                        priority: priority || 'Normal',
+                        author_name: authorName,
+                        author_id: req.user.id,
+                        created_at: new Date()
+                    });
+                } catch (fbAnnErr) {
+                    console.warn('[FIREBASE ANNOUNCEMENT SYNC WARNING]:', fbAnnErr.message);
+                }
+            });
+        }
 
         // Dispatch targeted notification to in-app notifications, messages inbox, and direct email broadcast
         NotificationService.sendTargeted({
