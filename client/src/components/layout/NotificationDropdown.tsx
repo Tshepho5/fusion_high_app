@@ -103,7 +103,7 @@ export const NotificationDropdown: React.FC = () => {
 
   // Real-time notification updates via Firebase Cloud Firestore
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !firestoreDb) return;
     try {
       const q = query(
         collection(firestoreDb, 'notifications'),
