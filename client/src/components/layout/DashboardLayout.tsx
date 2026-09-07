@@ -4,6 +4,7 @@ import { Navbar } from './Navbar';
 import { CommandPalette } from '../common/CommandPalette';
 import { BottomNavigationDock } from './BottomNavigationDock';
 import { MainMenuLauncherModal } from './MainMenuLauncherModal';
+import { FloatingAIChatModule } from '../common/FloatingAIChatModule';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -93,6 +94,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           onOpenMainMenu={() => setMainMenuOpen((prev) => !prev)}
           isMainMenuOpen={mainMenuOpen}
         />
+
+        {/* 🤖 Movable Circular 24/7 AI Chat Module on all Dashboards */}
+        <FloatingAIChatModule />
       </div>
     </div>
   );

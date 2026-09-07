@@ -19,7 +19,9 @@ import {
   LogIn,
   UserPlus,
   ShieldCheck,
+  HelpCircle,
 } from 'lucide-react';
+import { HelpSupportModal } from '../../components/common/HelpSupportModal';
 
 export const LandingPage: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
@@ -28,6 +30,7 @@ export const LandingPage: React.FC = () => {
   const [showIntro, setShowIntro] = useState<boolean>(false);
   const [isAboutOpen, setIsAboutOpen] = useState<boolean>(false);
   const [isTermsOpen, setIsTermsOpen] = useState<boolean>(false);
+  const [isFaqOpen, setIsFaqOpen] = useState<boolean>(false);
 
   const handleIntroComplete = () => {
     setShowIntro(false);
@@ -51,6 +54,7 @@ export const LandingPage: React.FC = () => {
       {/* Modals */}
       <AboutUsModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
       <TermsAgreementModal isOpen={isTermsOpen} onClose={() => setIsTermsOpen(false)} isMandatoryGate={false} />
+      <HelpSupportModal isOpen={isFaqOpen} onClose={() => setIsFaqOpen(false)} defaultTab="faq" />
 
       {/* Prestigious Global Header */}
       <header className="relative z-30 px-4 md:px-8 py-3.5 bg-[#090D18]/90 border-b border-white/10 backdrop-blur-xl">
@@ -196,6 +200,14 @@ export const LandingPage: React.FC = () => {
             <span className="text-slate-700">•</span>
             <button onClick={() => setIsTermsOpen(true)} className="hover:text-blue-300 transition-colors text-slate-400">
               Terms & Conditions
+            </button>
+            <span className="text-slate-700">•</span>
+            <button
+              onClick={() => setIsFaqOpen(true)}
+              className="hover:text-blue-300 transition-colors text-slate-400 flex items-center gap-1"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-blue-400" />
+              <span>View FAQs</span>
             </button>
             <span className="text-slate-700">•</span>
             <Link to="/login" className="text-blue-400 hover:text-blue-300 font-bold">
