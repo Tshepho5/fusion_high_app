@@ -93,15 +93,6 @@ export const LandingPage: React.FC = () => {
             </button>
 
             <button
-              onClick={handleReplayIntro}
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-medium transition-all"
-              title="Watch Intro Animation"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-blue-400" />
-              <span>Intro</span>
-            </button>
-
-            <button
               onClick={toggleTheme}
               className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-all border border-white/10"
               title={`Switch Theme`}
@@ -113,14 +104,6 @@ export const LandingPage: React.FC = () => {
                 <Sun className="w-4 h-4 text-amber-400" />
               )}
             </button>
-
-            <Link
-              to="/login"
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all active:scale-95 ml-1"
-            >
-              <span>Enter Portal</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
           </div>
         </div>
       </header>
@@ -152,9 +135,6 @@ export const LandingPage: React.FC = () => {
                 High Schools Portal
               </span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto font-normal leading-relaxed">
-              A secure, centralized digital academic portal connecting learners, educators, parents, and school administrators nationwide.
-            </p>
           </div>
 
           {/* Clear Institutional Action Buttons */}
