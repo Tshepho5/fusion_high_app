@@ -4,7 +4,6 @@ import { useTheme } from '../../context/ThemeContext';
 import { useSchool } from '../../context/SchoolContext';
 import { CosmicCanvasBackground } from '../../components/landing/CosmicCanvasBackground';
 import { ParticleLogoIntro } from '../../components/landing/ParticleLogoIntro';
-import { CircularActionMenu } from '../../components/landing/CircularActionMenu';
 import { AboutUsModal } from '../../components/landing/AboutUsModal';
 import { TermsAgreementModal } from '../../components/common/TermsAgreementModal';
 import {
@@ -16,6 +15,9 @@ import {
   Scale,
   GraduationCap,
   ArrowRight,
+  LogIn,
+  UserPlus,
+  ShieldCheck,
 } from 'lucide-react';
 
 export const LandingPage: React.FC = () => {
@@ -35,9 +37,12 @@ export const LandingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#070B14] text-slate-100 flex flex-col justify-between selection:bg-cyan-500 selection:text-slate-950 relative overflow-hidden transition-colors duration-300">
-      {/* Dynamic Cosmic Starfield */}
-      <CosmicCanvasBackground particleCount={50} interactive={true} />
+    <div
+      data-theme-preserve="true"
+      className="min-h-screen bg-[#070B14] text-slate-100 flex flex-col justify-between selection:bg-blue-600 selection:text-white relative overflow-hidden transition-colors duration-300"
+    >
+      {/* Dynamic Ambient Starlight Background */}
+      <CosmicCanvasBackground particleCount={40} interactive={true} />
 
       {/* 4-Second Particle Logo Assembly Intro Animation (on replay) */}
       {showIntro && <ParticleLogoIntro onComplete={handleIntroComplete} />}
@@ -46,22 +51,20 @@ export const LandingPage: React.FC = () => {
       <AboutUsModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
       <TermsAgreementModal isOpen={isTermsOpen} onClose={() => setIsTermsOpen(false)} isMandatoryGate={false} />
 
-      {/* Clean Global Header */}
+      {/* Prestigious Global Header */}
       <header className="relative z-30 px-4 md:px-8 py-3.5 bg-[#090D18]/90 border-b border-white/10 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           {/* Logo & Platform Name */}
           <Link to="/" className="flex items-center gap-3.5 group">
-            <div
-              className="w-11 h-11 md:w-12 md:h-12 rounded-2xl p-1.5 border flex items-center justify-center group-hover:scale-105 transition-transform shadow-md shadow-cyan-500/10 bg-brand-600/20 border-cyan-500/40"
-            >
-              <GraduationCap className="w-7 h-7 text-cyan-400" />
+            <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl p-1.5 border border-blue-500/30 bg-blue-950/40 flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
+              <GraduationCap className="w-6 h-6 text-blue-400" />
             </div>
             <div>
-              <span className="font-display text-lg md:text-xl font-extrabold tracking-tight text-white block leading-tight uppercase group-hover:text-cyan-300 transition-colors">
+              <span className="font-display text-base md:text-lg font-black tracking-tight text-white block leading-tight uppercase group-hover:text-blue-300 transition-colors">
                 FUSION HIGH SCHOOLS
               </span>
-              <span className="text-[10px] md:text-[11px] font-mono tracking-wider text-cyan-400 uppercase font-bold block">
-                NATIONAL ACADEMIC PORTAL • CAPS ALIGNED
+              <span className="text-[9px] md:text-[10px] font-mono tracking-wider text-blue-400 uppercase font-semibold block">
+                NATIONAL ACADEMIC NETWORK • CAPS ALIGNED
               </span>
             </div>
           </Link>
@@ -70,15 +73,15 @@ export const LandingPage: React.FC = () => {
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => setIsAboutOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 text-xs font-medium transition-all"
             >
-              <Info className="w-3.5 h-3.5 text-cyan-400" />
+              <Info className="w-3.5 h-3.5 text-blue-400" />
               <span className="hidden sm:inline">About</span>
             </button>
 
             <button
               onClick={() => setIsTermsOpen(true)}
-              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition-all"
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-medium transition-all"
             >
               <Scale className="w-3.5 h-3.5 text-slate-400" />
               <span>Policies</span>
@@ -86,21 +89,21 @@ export const LandingPage: React.FC = () => {
 
             <button
               onClick={handleReplayIntro}
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition-all"
+              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-medium transition-all"
               title="Watch Intro Animation"
             >
-              <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+              <RotateCcw className="w-3.5 h-3.5 text-blue-400" />
               <span>Intro</span>
             </button>
 
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-all border border-white/10"
+              className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-all border border-white/10"
               title={`Switch Theme`}
               aria-label="Toggle Theme"
             >
               {theme === 'light' ? (
-                <Moon className="w-4 h-4 text-indigo-400" />
+                <Moon className="w-4 h-4 text-blue-400" />
               ) : (
                 <Sun className="w-4 h-4 text-amber-400" />
               )}
@@ -108,7 +111,7 @@ export const LandingPage: React.FC = () => {
 
             <Link
               to="/login"
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-400 via-cyan-300 to-teal-300 hover:from-cyan-300 hover:to-teal-200 text-slate-950 font-black text-xs shadow-md shadow-cyan-500/20 transition-all active:scale-95 ml-1"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all active:scale-95 ml-1"
             >
               <span>Enter Portal</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -117,64 +120,94 @@ export const LandingPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Clean Centered Hero */}
-      <main className="flex-1 relative z-10 flex flex-col justify-center items-center px-4 sm:px-6 py-10 max-w-4xl mx-auto w-full text-center">
-        <div className="space-y-6 animate-fade-in w-full">
-          {/* 3D Shooting Star App Icon & Badge */}
-          <div className="space-y-5 flex flex-col items-center justify-center [perspective:1200px]">
-            <div className="w-32 h-32 sm:w-44 sm:h-44 relative flex items-center justify-center animate-shooting-star-3d select-none">
-              {/* Glowing Ambient Halo */}
-              <div className="absolute -inset-3 rounded-full bg-gradient-to-tr from-cyan-500/50 via-indigo-500/40 to-blue-600/30 blur-2xl animate-pulse" />
-              
-              {/* 3D App Icon */}
-              <div className="relative w-full h-full flex items-center justify-center hover:scale-105 transition-transform duration-300">
+      {/* Main Centered Hero */}
+      <main className="flex-1 relative z-10 flex flex-col justify-center items-center px-4 sm:px-6 py-8 md:py-12 max-w-4xl mx-auto w-full text-center">
+        <div className="space-y-6 animate-fade-in w-full flex flex-col items-center">
+          
+          {/* Framed Institutional Emblem Card */}
+          <div className="space-y-4 flex flex-col items-center justify-center">
+            <div className="w-28 h-28 sm:w-36 sm:h-36 relative flex items-center justify-center select-none group">
+              {/* Soft Ambient Depth Glow */}
+              <div className="absolute -inset-2 rounded-3xl bg-blue-600/15 blur-xl group-hover:bg-blue-500/25 transition-all duration-500" />
+
+              {/* Polished Glass Emblem Card */}
+              <div className="relative w-full h-full rounded-3xl bg-slate-900/90 border border-white/15 shadow-2xl p-3 flex items-center justify-center backdrop-blur-md transition-transform duration-300 group-hover:scale-105">
                 <img
                   src="/assets/fusion-app-icon.png"
                   alt="Fusion High Official App Icon"
-                  className="w-full h-full object-contain drop-shadow-[0_0_35px_rgba(6,182,212,0.9)]"
+                  className="w-full h-full object-contain rounded-2xl drop-shadow-md"
                 />
               </div>
             </div>
 
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-surface-dark/90 border border-cyan-500/30 text-xs font-semibold text-slate-200 shadow-sm">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-spin" style={{ animationDuration: '6s' }} />
+            {/* Accreditation Badge */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/80 text-xs font-semibold text-slate-300 shadow-sm backdrop-blur-md">
+              <Sparkles className="w-3.5 h-3.5 text-blue-400" />
               <span>Multi-School Academic Network</span>
-              <span className="text-slate-500">•</span>
-              <span className="text-emerald-400 font-bold">CAPS Aligned</span>
+              <span className="text-slate-600">•</span>
+              <span className="text-emerald-400 font-bold">DBE CAPS Aligned</span>
             </div>
           </div>
 
           {/* Heading */}
           <div className="space-y-3 max-w-2xl mx-auto">
-            <h1 className="text-3xl sm:text-5xl font-black font-display tracking-tight text-white leading-tight">
+            <h1 className="text-3xl sm:text-5xl md:text-5xl font-black font-display tracking-tight text-white leading-tight">
               South Africa's Unified{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-300 to-emerald-400">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-200 to-sky-300">
                 High Schools Portal
               </span>
             </h1>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto font-normal leading-relaxed">
+              A secure, centralized digital academic portal connecting learners, educators, parents, and school administrators nationwide.
+            </p>
           </div>
+
+          {/* Clear Institutional Action Buttons */}
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              to="/login"
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs tracking-wide shadow-lg shadow-blue-600/25 transition-all active:scale-95"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Sign In to Portal</span>
+            </Link>
+
+            <a
+              href="/application.html"
+              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 text-slate-200 hover:text-white border border-slate-700 text-xs font-semibold transition-all active:scale-95"
+            >
+              <GraduationCap className="w-4 h-4 text-emerald-400" />
+              <span>2026 Admissions</span>
+            </a>
+
+            <Link
+              to="/register"
+              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition-all active:scale-95"
+            >
+              <UserPlus className="w-4 h-4 text-blue-400" />
+              <span>Parent Registration</span>
+            </Link>
+          </div>
+
         </div>
       </main>
-
-      {/* Floating Circular Action Menu */}
-      <CircularActionMenu onReplayIntro={handleReplayIntro} />
 
       {/* Clean Minimal 1-Line Footer */}
       <footer className="py-4 px-4 border-t border-white/10 bg-[#060912] text-xs text-slate-400 w-full relative z-20">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="text-center sm:text-left">
+          <div className="text-center sm:text-left text-slate-400">
             &copy; {new Date().getFullYear()} Fusion High Schools Academic Network. DBE CAPS Aligned & POPIA Compliant.
           </div>
           <div className="flex items-center gap-4 text-xs font-semibold">
-            <button onClick={() => setIsAboutOpen(true)} className="hover:text-cyan-300 transition-colors">
+            <button onClick={() => setIsAboutOpen(true)} className="hover:text-blue-300 transition-colors text-slate-400">
               About Us
             </button>
             <span className="text-slate-700">•</span>
-            <button onClick={() => setIsTermsOpen(true)} className="hover:text-cyan-300 transition-colors">
+            <button onClick={() => setIsTermsOpen(true)} className="hover:text-blue-300 transition-colors text-slate-400">
               Terms & Conditions
             </button>
             <span className="text-slate-700">•</span>
-            <Link to="/login" className="text-cyan-400 hover:text-cyan-300 font-bold">
+            <Link to="/login" className="text-blue-400 hover:text-blue-300 font-bold">
               Sign In
             </Link>
           </div>

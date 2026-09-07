@@ -68,26 +68,25 @@ export const CosmicCanvasBackground: React.FC<CosmicCanvasBackgroundProps> = ({
     }
 
     const colors = [
-      'rgba(6, 182, 212, ',   // Cyan
-      'rgba(99, 102, 241, ',  // Indigo
-      'rgba(16, 185, 129, ',  // Emerald
-      'rgba(245, 158, 11, ',  // Amber
-      'rgba(168, 85, 247, ',  // Violet
+      'rgba(241, 245, 249, ',  // Soft Starlight White
+      'rgba(147, 197, 253, ',  // Refined Ice Blue
+      'rgba(165, 180, 252, ',  // Subtle Periwinkle
+      'rgba(148, 163, 184, ',  // Dignified Slate
     ];
 
     const particles: Particle[] = [];
-    const count = Math.min(particleCount, Math.floor((width * height) / 18000));
+    const count = Math.min(particleCount, Math.floor((width * height) / 22000));
 
     for (let i = 0; i < count; i++) {
       particles.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.45,
-        vy: (Math.random() - 0.5) * 0.45,
-        radius: Math.random() * 2.2 + 0.8,
+        vx: (Math.random() - 0.5) * 0.22,
+        vy: (Math.random() - 0.5) * 0.22,
+        radius: Math.random() * 1.6 + 0.6,
         color: colors[Math.floor(Math.random() * colors.length)],
-        alpha: Math.random() * 0.6 + 0.2,
-        pulseSpeed: Math.random() * 0.02 + 0.008,
+        alpha: Math.random() * 0.4 + 0.15,
+        pulseSpeed: Math.random() * 0.015 + 0.005,
         phase: Math.random() * Math.PI * 2,
       });
     }
@@ -128,14 +127,14 @@ export const CosmicCanvasBackground: React.FC<CosmicCanvasBackgroundProps> = ({
       ctx.clearRect(0, 0, width, height);
 
       // 1. Draw Subtle Deep Cosmic Radial Nebulas
-      const g1 = ctx.createRadialGradient(width * 0.2, height * 0.3, 20, width * 0.2, height * 0.3, width * 0.5);
-      g1.addColorStop(0, 'rgba(79, 70, 229, 0.07)');
+      const g1 = ctx.createRadialGradient(width * 0.3, height * 0.3, 30, width * 0.3, height * 0.3, width * 0.6);
+      g1.addColorStop(0, 'rgba(30, 58, 138, 0.08)');
       g1.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = g1;
       ctx.fillRect(0, 0, width, height);
 
-      const g2 = ctx.createRadialGradient(width * 0.8, height * 0.7, 20, width * 0.8, height * 0.7, width * 0.5);
-      g2.addColorStop(0, 'rgba(6, 182, 212, 0.06)');
+      const g2 = ctx.createRadialGradient(width * 0.7, height * 0.7, 30, width * 0.7, height * 0.7, width * 0.6);
+      g2.addColorStop(0, 'rgba(15, 23, 42, 0.12)');
       g2.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = g2;
       ctx.fillRect(0, 0, width, height);
@@ -157,20 +156,20 @@ export const CosmicCanvasBackground: React.FC<CosmicCanvasBackgroundProps> = ({
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < mouse.radius && dist > 0) {
             const force = (mouse.radius - dist) / mouse.radius;
-            p.x -= (dx / dist) * force * 1.5;
-            p.y -= (dy / dist) * force * 1.5;
+            p.x -= (dx / dist) * force * 1.0;
+            p.y -= (dy / dist) * force * 1.0;
           }
         }
 
         // Pulse opacity
         p.phase += p.pulseSpeed;
-        const currentAlpha = p.alpha + Math.sin(p.phase) * 0.2;
+        const currentAlpha = p.alpha + Math.sin(p.phase) * 0.15;
 
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `${p.color}${Math.max(0.1, Math.min(1, currentAlpha))})`;
-        ctx.shadowColor = `${p.color}0.8)`;
-        ctx.shadowBlur = 8;
+        ctx.fillStyle = `${p.color}${Math.max(0.1, Math.min(0.7, currentAlpha))})`;
+        ctx.shadowColor = `${p.color}0.3)`;
+        ctx.shadowBlur = 3;
         ctx.fill();
         ctx.shadowBlur = 0;
 
@@ -181,19 +180,19 @@ export const CosmicCanvasBackground: React.FC<CosmicCanvasBackgroundProps> = ({
           const dy = p.y - p2.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          if (dist < 110) {
-            const lineAlpha = (1 - dist / 110) * 0.22;
+          if (dist < 100) {
+            const lineAlpha = (1 - dist / 100) * 0.15;
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
             ctx.strokeStyle = `rgba(148, 163, 184, ${lineAlpha})`;
-            ctx.lineWidth = 0.75;
+            ctx.lineWidth = 0.5;
             ctx.stroke();
           }
         }
       }
 
-      // 3. Update and Draw Shooting Stars
+      // 3. Update and Draw Shooting Stars (Subtle, rare)
       createShootingStar();
       for (let s = shootingStars.length - 1; s >= 0; s--) {
         const star = shootingStars[s];

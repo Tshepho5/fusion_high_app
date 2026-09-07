@@ -7,9 +7,10 @@ import {
   Mail,
   Eye,
   EyeOff,
-  Zap,
   ArrowLeft,
+  ArrowRight,
   Check,
+  GraduationCap,
 } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
@@ -57,34 +58,36 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#070B14] text-slate-100 flex flex-col justify-center items-center p-4 sm:p-6 selection:bg-cyan-400 selection:text-slate-950 relative overflow-hidden">
-      {/* Dynamic Cosmic Background Canvas */}
-      <CosmicCanvasBackground particleCount={50} interactive={true} />
+    <div
+      data-theme-preserve="true"
+      className="min-h-screen bg-[#070B14] text-slate-100 flex flex-col justify-center items-center p-4 sm:p-6 selection:bg-blue-600 selection:text-white relative overflow-hidden"
+    >
+      {/* Dynamic Ambient Background */}
+      <CosmicCanvasBackground particleCount={40} interactive={true} />
 
       {/* Ambient Radial Glows */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none animate-pulse" />
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Back to Home Link */}
       <div className="absolute top-5 left-5 z-20">
         <Link
           to="/"
-          className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#111923]/80 hover:bg-white/10 text-slate-300 hover:text-white border border-slate-700/50 text-xs font-semibold transition-all active:scale-95 shadow-sm backdrop-blur-md"
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/60 text-xs font-semibold transition-all active:scale-95 shadow-sm backdrop-blur-md"
         >
-          <ArrowLeft className="w-3.5 h-3.5 text-cyan-400" />
+          <ArrowLeft className="w-3.5 h-3.5 text-blue-400" />
           <span>Back to Home</span>
         </Link>
       </div>
 
       {/* Main Login Screen Container */}
       <div className="w-full max-w-md my-auto relative z-10 animate-fade-in space-y-5">
-        {/* Glowing Circular Energy Crest */}
+        {/* Institutional Crest */}
         <div className="text-center space-y-2">
-          <div className="relative mx-auto w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-b from-cyan-500/20 to-indigo-500/10 border-2 border-cyan-400/80 flex items-center justify-center shadow-[0_0_35px_rgba(6,182,212,0.45)] transition-all group hover:scale-105">
-            <Zap className="w-8 h-8 sm:w-10 sm:h-10 text-cyan-300 fill-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.85)] animate-pulse" />
+          <div className="relative mx-auto w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-blue-950/70 border border-blue-500/30 flex items-center justify-center shadow-lg shadow-blue-600/15 transition-all">
+            <GraduationCap className="w-7 h-7 sm:w-8 sm:h-8 text-blue-400" />
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-black font-display text-white tracking-tight drop-shadow-md">
+          <h1 className="text-2xl sm:text-3xl font-black font-display text-white tracking-tight">
             Portal Gateway
           </h1>
           <p className="text-xs text-slate-400">
@@ -95,23 +98,23 @@ export const LoginPage: React.FC = () => {
         {/* Login Form Container */}
         <div className="rounded-3xl bg-[#0F172A]/90 border border-slate-700/60 p-6 sm:p-8 backdrop-blur-xl shadow-2xl space-y-4">
           {error && (
-            <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2.5 animate-fade-in shadow-sm">
+            <div className="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2.5 animate-fade-in shadow-sm">
               <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse shrink-0" />
               <span className="leading-snug">{error}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4" data-theme-preserve="true">
-            {/* Email / Identifier Neo-Glass Input */}
+            {/* Email / Identifier Input */}
             <div
-              className="p-3.5 rounded-2xl bg-[#111923]/90 border border-slate-700/60 focus-within:border-cyan-400 focus-within:shadow-[0_0_20px_rgba(6,182,212,0.25)] transition-all space-y-1"
+              className="p-3.5 rounded-2xl bg-[#111923]/90 border border-slate-700/60 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500/30 transition-all space-y-1"
               data-theme-preserve="true"
             >
               <label className="block text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
                 Email or Learner ID
               </label>
               <div className="flex items-center gap-2.5">
-                <Mail className="w-4 h-4 text-cyan-400 shrink-0" />
+                <Mail className="w-4 h-4 text-blue-400 shrink-0" />
                 <input
                   type="text"
                   value={identifier}
@@ -124,16 +127,16 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Password Neo-Glass Input */}
+            {/* Password Input */}
             <div
-              className="p-3.5 rounded-2xl bg-[#111923]/90 border border-slate-700/60 focus-within:border-cyan-400 focus-within:shadow-[0_0_20px_rgba(6,182,212,0.25)] transition-all space-y-1"
+              className="p-3.5 rounded-2xl bg-[#111923]/90 border border-slate-700/60 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500/30 transition-all space-y-1"
               data-theme-preserve="true"
             >
               <label className="block text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
                 Password
               </label>
               <div className="flex items-center gap-2.5">
-                <Lock className="w-4 h-4 text-cyan-400 shrink-0" />
+                <Lock className="w-4 h-4 text-blue-400 shrink-0" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -146,7 +149,7 @@ export const LoginPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="text-slate-400 hover:text-cyan-300 transition-colors p-1"
+                  className="text-slate-400 hover:text-blue-300 transition-colors p-1"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -161,7 +164,7 @@ export const LoginPage: React.FC = () => {
                   type="button"
                   onClick={() => setRememberMe(!rememberMe)}
                   className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${
-                    rememberMe ? 'bg-cyan-500 border-cyan-400 text-slate-950' : 'bg-transparent border-slate-600'
+                    rememberMe ? 'bg-blue-600 border-blue-500 text-white' : 'bg-transparent border-slate-600'
                   }`}
                 >
                   {rememberMe && <Check className="w-3 h-3 stroke-[3]" />}
@@ -171,24 +174,24 @@ export const LoginPage: React.FC = () => {
 
               <Link
                 to="/forgot-password"
-                className="font-semibold text-slate-400 hover:text-cyan-300 transition-colors text-[11px]"
+                className="font-semibold text-slate-400 hover:text-blue-300 transition-colors text-[11px]"
               >
                 Forgot Password?
               </Link>
             </div>
 
-            {/* Vibrant Cyan Glowing Pill CTA Button */}
+            {/* Refined Institutional Primary Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 rounded-full bg-gradient-to-r from-cyan-400 via-cyan-300 to-teal-300 hover:from-cyan-300 hover:to-teal-200 text-slate-950 font-black text-xs sm:text-sm shadow-[0_0_25px_rgba(34,211,238,0.45)] transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 mt-2"
+              className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-600/20 transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 mt-2"
             >
               {loading ? (
-                <div className="w-4 h-4 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
                   <span>Sign In to Portal</span>
-                  <Zap className="w-4 h-4 fill-slate-950" />
+                  <ArrowRight className="w-4 h-4 text-white" />
                 </>
               )}
             </button>
@@ -199,7 +202,7 @@ export const LoginPage: React.FC = () => {
         <div className="text-center space-y-2 text-xs text-slate-400">
           <p>
             Need a new account?{' '}
-            <Link to="/register" className="font-bold text-cyan-400 hover:text-cyan-300 underline underline-offset-4">
+            <Link to="/register" className="font-bold text-blue-400 hover:text-blue-300 underline underline-offset-4">
               Apply / Register Here
             </Link>
           </p>

@@ -92,59 +92,132 @@ body, html {
   color: #0F172A;
 }
 
-/* High-contrast light mode styling with exemption for preserved dark elements/auth */
-.theme-light .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not(input):not(select):not(textarea),
-html[data-theme="light"] .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not(input):not(select):not(textarea),
-.light .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not(input):not(select):not(textarea) {
+/* =========================================================================
+   LIGHT MODE CONTRAST & ACCESSIBILITY GUARANTEES
+   ========================================================================= */
+
+/* 1. Prevent ANY color inversion inside preserved containers or dark sections */
+[data-theme-preserve="true"],
+[data-theme-preserve="true"] *,
+[class*="bg-[#070B14]"],
+[class*="bg-[#070B14]"] *,
+[class*="bg-[#090D18]"],
+[class*="bg-[#090D18]"] *,
+[class*="bg-[#0F172A]"],
+[class*="bg-[#0F172A]"] *,
+[class*="bg-[#111923]"],
+[class*="bg-[#111923]"] *,
+[class*="bg-[#060912]"],
+[class*="bg-[#060912]"] * {
+  /* Retain native explicit dark palette */
+}
+
+/* 2. Form Inputs in Light Mode: Must have dark, sharp, readable text (never white-on-white) */
+.theme-light input:not([data-theme-preserve="true"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]),
+html[data-theme="light"] input:not([data-theme-preserve="true"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]),
+.light input:not([data-theme-preserve="true"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]),
+.theme-light select:not([data-theme-preserve="true"]),
+html[data-theme="light"] select:not([data-theme-preserve="true"]),
+.light select:not([data-theme-preserve="true"]),
+.theme-light textarea:not([data-theme-preserve="true"]),
+html[data-theme="light"] textarea:not([data-theme-preserve="true"]),
+.light textarea:not([data-theme-preserve="true"]) {
+  color: #0F172A !important;
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+}
+
+.theme-light input::placeholder,
+html[data-theme="light"] input::placeholder,
+.light input::placeholder,
+.theme-light textarea::placeholder,
+html[data-theme="light"] textarea::placeholder,
+.light textarea::placeholder {
+  color: #64748B !important;
+  opacity: 1 !important;
+}
+
+/* 3. Buttons & Badges with Colored Backgrounds: Must KEEP crisp white text */
+.theme-light [class*="bg-brand-"],
+html[data-theme="light"] [class*="bg-brand-"],
+.light [class*="bg-brand-"],
+.theme-light [class*="bg-indigo-"],
+html[data-theme="light"] [class*="bg-indigo-"],
+.light [class*="bg-indigo-"],
+.theme-light [class*="bg-blue-"],
+html[data-theme="light"] [class*="bg-blue-"],
+.light [class*="bg-blue-"],
+.theme-light [class*="bg-rose-"],
+html[data-theme="light"] [class*="bg-rose-"],
+.light [class*="bg-rose-"],
+.theme-light [class*="bg-emerald-"],
+html[data-theme="light"] [class*="bg-emerald-"],
+.light [class*="bg-emerald-"],
+.theme-light button.text-white,
+html[data-theme="light"] button.text-white,
+.light button.text-white,
+.theme-light a.text-white[class*="bg-"],
+html[data-theme="light"] a.text-white[class*="bg-"],
+.light a.text-white[class*="bg-"],
+.theme-light [class*="bg-gradient-to-"] .text-white,
+html[data-theme="light"] [class*="bg-gradient-to-"] .text-white,
+.light [class*="bg-gradient-to-"] .text-white {
+  color: #FFFFFF !important;
+}
+
+/* 4. High-contrast text on light surfaces only (never on dark/preserved elements or buttons) */
+.theme-light .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not(button):not(button *):not(a[class*="bg-"]):not(a[class*="bg-"] *):not([class*="bg-"]):not([class*="bg-"] *),
+html[data-theme="light"] .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not(button):not(button *):not(a[class*="bg-"]):not(a[class*="bg-"] *):not([class*="bg-"]):not([class*="bg-"] *),
+.light .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not(button):not(button *):not(a[class*="bg-"]):not(a[class*="bg-"] *):not([class*="bg-"]):not([class*="bg-"] *) {
   color: #0F172A !important;
 }
 
-.theme-light .text-slate-400:not([data-theme-preserve="true"]), 
-html[data-theme="light"] .text-slate-400:not([data-theme-preserve="true"]), 
-.light .text-slate-400:not([data-theme-preserve="true"]),
-.theme-light .text-slate-300:not([data-theme-preserve="true"]), 
-html[data-theme="light"] .text-slate-300:not([data-theme-preserve="true"]), 
-.light .text-slate-300:not([data-theme-preserve="true"]) {
+.theme-light .text-slate-400:not([data-theme-preserve="true"]):not([class*="bg-slate-9"]):not([class*="bg-[#0"]):not(button *), 
+html[data-theme="light"] .text-slate-400:not([data-theme-preserve="true"]):not([class*="bg-slate-9"]):not([class*="bg-[#0"]):not(button *), 
+.light .text-slate-400:not([data-theme-preserve="true"]):not([class*="bg-slate-9"]):not([class*="bg-[#0"]):not(button *),
+.theme-light .text-slate-300:not([data-theme-preserve="true"]):not([class*="bg-slate-9"]):not([class*="bg-[#0"]):not(button *), 
+html[data-theme="light"] .text-slate-300:not([data-theme-preserve="true"]):not([class*="bg-slate-9"]):not([class*="bg-[#0"]):not(button *), 
+.light .text-slate-300:not([data-theme-preserve="true"]):not([class*="bg-slate-9"]):not([class*="bg-[#0"]):not(button *) {
   color: #475569 !important;
 }
 
-.theme-light .text-slate-200:not([data-theme-preserve="true"]), 
-html[data-theme="light"] .text-slate-200:not([data-theme-preserve="true"]), 
-.light .text-slate-200:not([data-theme-preserve="true"]) {
+.theme-light .text-slate-200:not([data-theme-preserve="true"]):not([class*="bg-slate-9"]):not([class*="bg-[#0"]):not(button *), 
+html[data-theme="light"] .text-slate-200:not([data-theme-preserve="true"]):not([class*="bg-slate-9"]):not([class*="bg-[#0"]):not(button *), 
+.light .text-slate-200:not([data-theme-preserve="true"]):not([class*="bg-slate-9"]):not([class*="bg-[#0"]):not(button *) {
   color: #1E293B !important;
 }
 
-.theme-light .border-white\/10:not([data-theme-preserve="true"]), 
-html[data-theme="light"] .border-white\/10:not([data-theme-preserve="true"]), 
-.light .border-white\/10:not([data-theme-preserve="true"]),
-.theme-light .border-white\/5:not([data-theme-preserve="true"]), 
-html[data-theme="light"] .border-white\/5:not([data-theme-preserve="true"]), 
-.light .border-white\/5:not([data-theme-preserve="true"]) {
-  border-color: rgba(15, 23, 42, 0.1) !important;
+.theme-light .border-white\/10:not([data-theme-preserve="true"]):not([class*="bg-[#0"]), 
+html[data-theme="light"] .border-white\/10:not([data-theme-preserve="true"]):not([class*="bg-[#0"]), 
+.light .border-white\/10:not([data-theme-preserve="true"]):not([class*="bg-[#0"]),
+.theme-light .border-white\/5:not([data-theme-preserve="true"]):not([class*="bg-[#0"]), 
+html[data-theme="light"] .border-white\/5:not([data-theme-preserve="true"]):not([class*="bg-[#0"]), 
+.light .border-white\/5:not([data-theme-preserve="true"]):not([class*="bg-[#0"]) {
+  border-color: rgba(15, 23, 42, 0.12) !important;
 }
 
-.theme-light .bg-surface-darker:not([data-theme-preserve="true"]), 
-html[data-theme="light"] .bg-surface-darker:not([data-theme-preserve="true"]), 
-.light .bg-surface-darker:not([data-theme-preserve="true"]) {
+.theme-light .bg-surface-darker:not([data-theme-preserve="true"]):not([class*="bg-[#0"]), 
+html[data-theme="light"] .bg-surface-darker:not([data-theme-preserve="true"]):not([class*="bg-[#0"]), 
+.light .bg-surface-darker:not([data-theme-preserve="true"]):not([class*="bg-[#0"]) {
   background-color: #F1F5F9 !important;
 }
 
-.theme-light .bg-surface-dark:not([data-theme-preserve="true"]), 
-html[data-theme="light"] .bg-surface-dark:not([data-theme-preserve="true"]), 
-.light .bg-surface-dark:not([data-theme-preserve="true"]) {
+.theme-light .bg-surface-dark:not([data-theme-preserve="true"]):not([class*="bg-[#0"]), 
+html[data-theme="light"] .bg-surface-dark:not([data-theme-preserve="true"]):not([class*="bg-[#0"]), 
+.light .bg-surface-dark:not([data-theme-preserve="true"]):not([class*="bg-[#0"]) {
   background-color: #FFFFFF !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.theme-light .hover\:bg-white\/5:hover:not([data-theme-preserve="true"]), 
-html[data-theme="light"] .hover\:bg-white\/5:hover:not([data-theme-preserve="true"]), 
-.light .hover\:bg-white\/5:hover:not([data-theme-preserve="true"]) {
+.theme-light .hover\:bg-white\/5:hover:not([data-theme-preserve="true"]):not([class*="bg-[#0"]), 
+html[data-theme="light"] .hover\:bg-white\/5:hover:not([data-theme-preserve="true"]):not([class*="bg-[#0"]), 
+.light .hover\:bg-white\/5:hover:not([data-theme-preserve="true"]):not([class*="bg-[#0"]) {
   background-color: rgba(15, 23, 42, 0.04) !important;
 }
 
-.theme-light .hover\:bg-white\/10:hover:not([data-theme-preserve="true"]), 
-html[data-theme="light"] .hover\:bg-white\/10:hover:not([data-theme-preserve="true"]), 
-.light .hover\:bg-white\/10:hover:not([data-theme-preserve="true"]) {
+.theme-light .hover\:bg-white\/10:hover:not([data-theme-preserve="true"]):not([class*="bg-[#0"]), 
+html[data-theme="light"] .hover\:bg-white\/10:hover:not([data-theme-preserve="true"]):not([class*="bg-[#0"]), 
+.light .hover\:bg-white\/10:hover:not([data-theme-preserve="true"]):not([class*="bg-[#0"]) {
   background-color: rgba(15, 23, 42, 0.08) !important;
 }
 
