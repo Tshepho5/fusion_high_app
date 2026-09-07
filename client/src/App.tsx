@@ -37,6 +37,13 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRole?: string
     return <Navigate to="/login" replace />;
   }
 
+  // Strict Role-Based Access Control (RBAC):
+  // Ensure users only access their authorized role dashboard
+  const userRole = (role || 'learner').toLowerCase();
+  if (allowedRole && userRole !== allowedRole.toLowerCase() && userRole !== 'admin') {
+    return <Navigate to={`/dashboard/${userRole}`} replace />;
+  }
+
   return <>{children}</>;
 };
 
