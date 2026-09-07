@@ -228,6 +228,27 @@ function sendViaHttpsRest({ to, subject, html, replyTo, fromName = 'Fusion High 
   return new Promise((resolve, reject) => {
     const resendKey = process.env.RESEND_API_KEY;
     const brevoKey = process.env.BREVO_API_KEY;
+    const googleScriptUrl = process.env.GOOGLE_SCRIPT_EMAIL_URL;
+
+    // 1. Google Apps Script HTTPS Web App (Free personal Gmail relay, zero funding, zero domain required)
+    if (googleScriptUrl) {
+      const axios = require('axios');
+      return axios.post(googleScriptUrl, {
+        to,
+        subject,
+        html,
+        replyTo: replyTo || getSmtpUser(),
+        fromName
+      }, {
+        timeout: 8000,
+        headers: { 'Content-Type': 'application/json' },
+        maxRedirects: 5
+      }).then((resp) => {
+        resolve({ success: true, provider: 'google-apps-script', response: resp.data });
+      }).catch((err) => {
+        reject(new Error(`Google Apps Script Relay Error: ${err.message}`));
+      });
+    }
 
     if (resendKey) {
       const https = require('https');
@@ -372,7 +393,7 @@ const emailService = {
     const senderPass = getSmtpPass();
 
     // 1. High-Priority HTTPS REST API Delivery (Port 443, immune to cloud host SMTP port blocks)
-    if (process.env.RESEND_API_KEY || process.env.BREVO_API_KEY) {
+    if (process.env.GOOGLE_SCRIPT_EMAIL_URL || process.env.RESEND_API_KEY || process.env.BREVO_API_KEY) {
       try {
         const httpResult = await sendViaHttpsRest({
           to: targetRecipient,
