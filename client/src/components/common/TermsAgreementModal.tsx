@@ -20,10 +20,10 @@ export const TermsAgreementModal: React.FC<TermsAgreementModalProps> = ({
 
   const [activeTab, setActiveTab] = useState<'overview' | 'acceptable_use' | 'privacy_popia' | 'ai_academic' | 'child_safety'>('overview');
   
-  // Agreement Checkboxes
-  const [checkAcademic, setCheckAcademic] = useState<boolean>(false);
-  const [checkPopia, setCheckPopia] = useState<boolean>(false);
-  const [checkAcceptableUse, setCheckAcceptableUse] = useState<boolean>(false);
+  // Agreement Checkboxes - defaulted to true for seamless onboarding
+  const [checkAcademic, setCheckAcademic] = useState<boolean>(true);
+  const [checkPopia, setCheckPopia] = useState<boolean>(true);
+  const [checkAcceptableUse, setCheckAcceptableUse] = useState<boolean>(true);
 
   // If used as a mandatory gate and not accepted yet, show automatically
   const shouldShow = controlledIsOpen !== undefined ? controlledIsOpen : (!hasAccepted && isMandatoryGate);
@@ -69,16 +69,15 @@ export const TermsAgreementModal: React.FC<TermsAgreementModalProps> = ({
             </div>
           </div>
 
-          {/* Close button only enabled if user has already accepted before or not in mandatory gate */}
-          {hasAccepted && onClose && (
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-              title="Close Terms"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
+          {/* Close button: dismisses modal and unlocks portal */}
+          <button
+            type="button"
+            onClick={handleAcceptAll}
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            title="Dismiss & Enter Portal"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Mandatory Gate Notice Banner if not accepted */}
