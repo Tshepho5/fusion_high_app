@@ -40,8 +40,9 @@ export const LearnerProfile: React.FC = () => {
       .then((res) => {
         const data = res.user || res;
         setProfile(data);
-        if (data.profile_picture_path && (!user?.profile_picture_path || user.profile_picture_path !== data.profile_picture_path)) {
-          updateUser({ ...user, profile_picture_path: data.profile_picture_path });
+        const pic = data.profile_picture || data.profile_picture_path;
+        if (pic && (!user?.profile_picture || user.profile_picture !== pic)) {
+          updateUser({ ...user, profile_picture: pic, profile_picture_path: pic });
         }
       })
       .catch(() => {});
@@ -65,10 +66,10 @@ export const LearnerProfile: React.FC = () => {
 
     try {
       const res = await userService.uploadProfilePicture(formData);
-      const newPath = res.profile_picture_path || res.user?.profile_picture_path;
-      setProfile((prev: any) => ({ ...prev, profile_picture_path: newPath }));
-      updateUser({ ...user, profile_picture_path: newPath });
-      setStatusMsg({ type: 'success', text: 'Profile picture updated across all portals!' });
+      const newPath = res.profile_picture || res.profile_picture_path || res.user?.profile_picture || res.user?.profile_picture_path;
+      setProfile((prev: any) => ({ ...prev, profile_picture: newPath, profile_picture_path: newPath }));
+      updateUser({ ...user, profile_picture: newPath, profile_picture_path: newPath });
+      setStatusMsg({ type: 'success', text: 'Profile picture updated permanently across all portals!' });
     } catch (err: any) {
       console.error('Error uploading photo:', err);
       setStatusMsg({ type: 'error', text: err.response?.data?.error || 'Failed to upload photo.' });

@@ -46,7 +46,10 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
 
   return (
     <div className="fixed bottom-4 inset-x-0 md:left-72 z-40 flex justify-center items-center pointer-events-none select-none animate-bounce-in px-4">
-      <div className="pointer-events-auto relative flex items-center gap-1 sm:gap-3 px-4 py-2 rounded-full bg-surface-darker/95 backdrop-blur-2xl border border-white/15 shadow-2xl shadow-black/80 ring-1 ring-white/10 max-w-full">
+      <div 
+        data-theme-preserve="true" 
+        className="pointer-events-auto relative flex items-center gap-1 sm:gap-3 px-4 py-2 rounded-full bg-[#0B1120]/95 backdrop-blur-2xl border border-white/15 shadow-2xl shadow-black/80 ring-1 ring-white/10 max-w-full"
+      >
         {/* Subtle glowing underlay */}
         <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-indigo-500/20 via-cyan-500/20 to-indigo-500/20 blur-md -z-10 pointer-events-none" />
 
@@ -88,8 +91,8 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
             title="My Profile & Account"
           >
             <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0 overflow-hidden">
-              {user?.profile_picture_path ? (
-                <img src={getProfilePictureUrl(user.profile_picture_path)} alt="Avatar" className="w-full h-full object-cover" />
+              {(user?.profile_picture || user?.profile_picture_path) ? (
+                <img src={getProfilePictureUrl(user.profile_picture || user.profile_picture_path)} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
                 <User className="w-3.5 h-3.5 text-white" />
               )}

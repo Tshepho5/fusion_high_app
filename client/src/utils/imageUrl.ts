@@ -8,12 +8,13 @@ export const getProfilePictureUrl = (path?: string | null): string => {
   }
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   
-  // If running on Vite dev server (port 5173), prepend the Express backend host
+  // If running on Vite dev server (port 5173 or 3000), prepend the local Express backend host
   if (typeof window !== 'undefined' && (window.location.port === '5173' || window.location.port === '3000')) {
     const backendPort = '4000';
     const hostname = window.location.hostname || 'localhost';
     return `http://${hostname}:${backendPort}${cleanPath}`;
   }
   
-  return cleanPath;
+  // When running on Firebase Hosting or external domain, route relative upload paths to Render backend
+  return `https://fusion-high-backend.onrender.com${cleanPath}`;
 };

@@ -87,8 +87,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
         )}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-white font-bold text-sm shadow-sm overflow-hidden shrink-0 border border-white/10">
-            {user?.profile_picture_path ? (
-              <img src={getProfilePictureUrl(user.profile_picture_path)} alt="Avatar" className="w-full h-full object-cover" />
+            {(user?.profile_picture || user?.profile_picture_path) ? (
+              <img src={getProfilePictureUrl(user.profile_picture || user.profile_picture_path)} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
               user?.full_name ? user.full_name.charAt(0).toUpperCase() : (user?.email?.charAt(0).toUpperCase() || 'L')
             )}

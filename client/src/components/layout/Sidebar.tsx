@@ -107,8 +107,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* User Profile Card */}
         <div className="mx-4 my-3 p-3 rounded-2xl bg-surface-dark/90 border border-white/10 hover:border-brand-500/40 transition-all duration-300 hover:shadow-glow-indigo flex items-center gap-3 group shrink-0">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600/40 to-cyan-500/40 border border-brand-500/30 flex items-center justify-center text-white font-bold text-sm overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
-            {user?.profile_picture_path ? (
-              <img src={getProfilePictureUrl(user.profile_picture_path)} alt="Profile" className="w-full h-full object-cover" />
+            {(user?.profile_picture || user?.profile_picture_path) ? (
+              <img src={getProfilePictureUrl(user.profile_picture || user.profile_picture_path)} alt="Profile" className="w-full h-full object-cover" />
             ) : (
               user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'
             )}

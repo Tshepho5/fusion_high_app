@@ -3,12 +3,14 @@ const { db: firestore } = require('../../../db/firebase');
 const emailService = require('../services/emailService');
 const NotificationService = require('../services/notificationService');
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
 const { validatePassword } = require('./authController');
 
 exports.getProfile = async (req, res) => {
     try {
         const userRes = await db.query(
-            `SELECT u.id, u.email, u.full_name, u.surname, u.phone, u.id_number, u.dob, u.gender, u.physical_address, u.country, u.race, u.parent_type, u.preferences, u.profile_picture_path, u.school_id, u.is_superadmin, u.profile_edit_unlocked,
+            `SELECT u.id, u.email, u.full_name, u.surname, u.phone, u.id_number, u.dob, u.gender, u.physical_address, u.country, u.race, u.parent_type, u.preferences, u.profile_picture_path, u.profile_picture, u.school_id, u.is_superadmin, u.profile_edit_unlocked,
                     COALESCE(r.name, u.role_id::text, 'learner') as role 
              FROM users u 
              LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text)) 
@@ -21,6 +23,9 @@ exports.getProfile = async (req, res) => {
         }
 
         const user = userRes.rows[0];
+        const pfp = user.profile_picture || user.profile_picture_path || null;
+        user.profile_picture = pfp;
+        user.profile_picture_path = pfp;
         if (user.role === 'learner') {
             const lrnNum = (user.email || '').split('@')[0];
             const childRes = await db.query(
@@ -64,27 +69,48 @@ exports.uploadProfilePicture = async (req, res) => {
     const userId = req.user.id;
     try {
         let filePath = '';
+        let base64Data = '';
         if (req.file) {
             filePath = `/uploads/pfp/${req.file.filename}`;
-        } else if (req.body.profile_picture_url) {
-            filePath = req.body.profile_picture_url;
+            try {
+                const fileBuffer = fs.readFileSync(req.file.path);
+                const mime = req.file.mimetype || 'image/jpeg';
+                base64Data = `data:${mime};base64,${fileBuffer.toString('base64')}`;
+            } catch (readErr) {
+                console.warn('Could not convert uploaded image to base64:', readErr.message);
+            }
+        } else if (req.body.profile_picture_url || req.body.profile_picture) {
+            filePath = req.body.profile_picture_url || req.body.profile_picture;
+            base64Data = filePath;
         } else {
             return res.status(400).json({ success: false, error: 'No image file or URL provided.' });
         }
 
+        // Store permanent Data URI in cloud PostgreSQL so it persists indefinitely across server restarts and deployments
+        const permanentPicture = base64Data || filePath;
+
         const result = await db.query(
             `UPDATE users 
-             SET profile_picture_path = $1::varchar, 
-                 profile_picture = $2::text 
+             SET profile_picture_path = $1, 
+                 profile_picture = $2 
              WHERE id = $3 
              RETURNING id, full_name, surname, email, profile_picture_path, profile_picture`,
-            [filePath, filePath, userId]
+            [permanentPicture, permanentPicture, userId]
         );
+
+        // Also sync learner's child record if applicable
+        await db.query(
+            `UPDATE children 
+             SET profile_picture = $1, profile_picture_path = $1 
+             WHERE learner_user_id::text = $2::text OR parent_id::text = $2::text`,
+            [permanentPicture, userId]
+        ).catch(() => {});
 
         res.json({
             success: true,
-            message: 'Profile picture updated successfully.',
-            profile_picture_path: filePath,
+            message: 'Profile picture updated successfully and permanently stored.',
+            profile_picture_path: permanentPicture,
+            profile_picture: permanentPicture,
             user: result.rows[0]
         });
     } catch (err) {
