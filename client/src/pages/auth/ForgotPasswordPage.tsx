@@ -41,7 +41,6 @@ export const ForgotPasswordPage: React.FC = () => {
   const [resending, setResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [otpPreview, setOtpPreview] = useState<string | null>(null);
 
   // Enforce Zero-Trust: Load email and transition to verify screen, but NEVER autofill OTP
   useEffect(() => {
@@ -88,7 +87,6 @@ export const ForgotPasswordPage: React.FC = () => {
     try {
       const res = await authService.forgotPassword({ email: email.trim() });
       if (res.email) setEmail(res.email);
-      if (res.otp_preview) setOtpPreview(res.otp_preview);
       // Keep OTP input empty so user enters it manually from their email
       setOtp('');
       setMessage(res.message || 'A 4-digit security code has been sent to your email. Please check your inbox or spam folder (valid for 5 minutes).');
@@ -113,7 +111,6 @@ export const ForgotPasswordPage: React.FC = () => {
     try {
       const res = await authService.forgotPassword({ email: email.trim() });
       if (res.email) setEmail(res.email);
-      if (res.otp_preview) setOtpPreview(res.otp_preview);
       setOtp(''); // User must enter the fresh code manually
       setMessage(res.message || 'A fresh 4-digit code has been dispatched to your email (valid for 5 minutes).');
       setTimeLeft(300);
@@ -324,22 +321,6 @@ export const ForgotPasswordPage: React.FC = () => {
             <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-[11px] flex items-center gap-2">
               <span>💡 <strong>Tip:</strong> If you don't see the email immediately, please check your <strong>Spam / Junk</strong> folder.</span>
             </div>
-
-            {otpPreview && (
-              <div className="p-3 rounded-xl bg-brand-500/15 border border-brand-500/30 text-xs flex items-center justify-between animate-fade-in shadow-inner">
-                <div>
-                  <span className="text-slate-300 block text-[10px] uppercase font-bold tracking-wider">Fast-Track Verification Code</span>
-                  <span className="font-mono text-base font-black text-brand-300 tracking-widest">{otpPreview}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setOtp(otpPreview)}
-                  className="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 active:scale-95 text-white text-[11px] font-bold transition-all shadow-glow-indigo"
-                >
-                  Auto-Fill
-                </button>
-              </div>
-            )}
 
             {/* OTP Code with 5-Minute Countdown Timer */}
             <div>

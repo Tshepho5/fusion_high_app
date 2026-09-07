@@ -1087,12 +1087,12 @@ exports.forgotPassword = async (req, res) => {
             : `${parts[0].slice(0, 1)}***@${parts[1]}`;
 
         // Dispatch email immediately in background with zero UI latency
-        console.log(`[AUTH] Dispatching OTP [${otp}] to destination email: ${targetDeliveryEmail} for user ID ${user.id} (${user.email})`);
+        console.log(`[AUTH] Dispatching secure recovery code to destination email: ${masked} for user ID ${user.id}`);
         emailService.send(targetDeliveryEmail, tpl.subject, tpl.body).then((sendResult) => {
             if (sendResult?.success) {
-                console.log(`[AUTH FORGOT PW SUCCESS] OTP [${otp}] delivered to ${targetDeliveryEmail}`);
+                console.log(`[AUTH FORGOT PW SUCCESS] Recovery code delivered to destination email.`);
             } else {
-                console.warn(`[AUTH FORGOT PW NOTICE] SMTP delivery notice (${sendResult?.error}). Code [${otp}] active for ${targetDeliveryEmail}`);
+                console.warn(`[AUTH FORGOT PW NOTICE] SMTP delivery status: ${sendResult?.error || 'dispatched'}`);
             }
         }).catch(err => {
             console.error('[AUTH FORGOT PW EMAIL ERROR]:', err.message);
@@ -1102,7 +1102,6 @@ exports.forgotPassword = async (req, res) => {
             message: `A 4-digit reset code has been sent immediately to your registered email (${masked}). Please check your Inbox and Spam/Junk folder (valid for 5 minutes).`,
             email: user.email,
             delivery_email: masked,
-            otp_preview: otp,
             expires_in: 300
         });
     } catch (err) { 
