@@ -214,13 +214,88 @@ function getTransporter() {
   return nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 587,
-    secure: false, // port 587 uses STARTTLS, compatible with cloud hosts like Render
+    secure: false, // port 587 uses STARTTLS
     requireTLS: true,
     auth: { user, pass },
     tls: { rejectUnauthorized: false },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000
+    connectionTimeout: 3000,
+    greetingTimeout: 3000,
+    socketTimeout: 5000
+  });
+}
+
+function sendViaHttpsRest({ to, subject, html, replyTo, fromName = 'Fusion High School' }) {
+  return new Promise((resolve, reject) => {
+    const resendKey = process.env.RESEND_API_KEY;
+    const brevoKey = process.env.BREVO_API_KEY;
+
+    if (resendKey) {
+      const https = require('https');
+      const payload = JSON.stringify({
+        from: `${fromName} <onboarding@resend.dev>`,
+        to: [to],
+        subject: subject,
+        html: html,
+        reply_to: replyTo
+      });
+      const req = https.request('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendKey}`,
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload)
+        }
+      }, (res) => {
+        let d = '';
+        res.on('data', c => d += c);
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve({ success: true, provider: 'resend', response: d });
+          } else {
+            reject(new Error(`Resend HTTP ${res.statusCode}: ${d}`));
+          }
+        });
+      });
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+      return;
+    }
+
+    if (brevoKey) {
+      const https = require('https');
+      const payload = JSON.stringify({
+        sender: { name: fromName, email: getSmtpUser() },
+        to: [{ email: to }],
+        subject: subject,
+        htmlContent: html,
+        replyTo: { email: replyTo || getSmtpUser() }
+      });
+      const req = https.request('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': brevoKey,
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload)
+        }
+      }, (res) => {
+        let d = '';
+        res.on('data', c => d += c);
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve({ success: true, provider: 'brevo', response: d });
+          } else {
+            reject(new Error(`Brevo HTTP ${res.statusCode}: ${d}`));
+          }
+        });
+      });
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+      return;
+    }
+
+    reject(new Error('No HTTPS Email Provider Key configured (RESEND_API_KEY or BREVO_API_KEY)'));
   });
 }
 
@@ -235,14 +310,13 @@ const emailService = {
       console.log(`[SMTP READY] High-speed email delivery transport verified (${getSmtpUser()}).`);
       return { ready: true };
     } catch (err) {
-      console.warn(`[SMTP NOTICE] Primary transport warming notice (${err.message}). Direct TLS fallbacks active.`);
+      console.warn(`[SMTP NOTICE] Primary transport notice (${err.message}). Fallback transports active.`);
       return { ready: false, error: err.message };
     }
   },
 
   /**
-   * High-speed email sender with automatic fast failover.
-   * Strictly delivers to the specified recipient email address without changing destination.
+   * High-speed email sender with automatic fast failover and HTTPS cloud bypass.
    */
   send: async (to, subject, body, replyTo = null) => {
     if (!to || typeof to !== 'string' || !to.includes('@')) {
@@ -279,10 +353,42 @@ const emailService = {
       }
     }
 
+    // Mirror email into Firestore 'mail' collection for Firebase Trigger Email extension
+    try {
+      const { db: firestore } = require('../../../db/firebase');
+      if (firestore) {
+        await firestore.collection('mail').add({
+          to: [targetRecipient],
+          message: {
+            subject: subject,
+            html: body
+          },
+          created_at: new Date()
+        });
+      }
+    } catch (fbMailErr) {}
+
     const senderUser = getSmtpUser();
     const senderPass = getSmtpPass();
 
-    // Primary Delivery: Pooled Nodemailer SMTP Transport
+    // 1. High-Priority HTTPS REST API Delivery (Port 443, immune to cloud host SMTP port blocks)
+    if (process.env.RESEND_API_KEY || process.env.BREVO_API_KEY) {
+      try {
+        const httpResult = await sendViaHttpsRest({
+          to: targetRecipient,
+          subject,
+          html: body,
+          replyTo: replyTo || senderUser,
+          fromName: 'Fusion High School'
+        });
+        console.log(`[EMAIL DISPATCH SUCCESS] Delivered via ${httpResult.provider} HTTPS API to ${targetRecipient}`);
+        return { success: true, provider: httpResult.provider, recipient: targetRecipient };
+      } catch (httpErr) {
+        console.warn(`[EMAIL NOTICE] HTTPS API dispatch attempt notice (${httpErr.message}). Retrying via SMTP...`);
+      }
+    }
+
+    // 2. Primary SMTP Transport (Port 587 STARTTLS)
     try {
       const transporter = getTransporter();
       const info = await transporter.sendMail({
@@ -293,50 +399,31 @@ const emailService = {
         replyTo: replyTo || senderUser
       });
 
-      console.log(`[EMAIL DISPATCH SUCCESS] Nodemailer delivered to ${targetRecipient}: ${info.messageId}`);
+      console.log(`[EMAIL DISPATCH SUCCESS] SMTP delivered to ${targetRecipient}: ${info.messageId}`);
       return { success: true, messageId: info.messageId, recipient: targetRecipient };
     } catch (nodemailerErr) {
-      console.warn(`[EMAIL NOTICE] Nodemailer 465 transport notice for ${targetRecipient} (${nodemailerErr.message}). Retrying via Port 587 STARTTLS...`);
-      
-      // Secondary Fallback: Port 587 STARTTLS
-      try {
-        const starttlsTransporter = nodemailer.createTransport({
-          host: 'smtp.gmail.com',
-          port: 587,
-          secure: false,
-          requireTLS: true,
-          auth: { user: senderUser, pass: senderPass },
-          tls: { rejectUnauthorized: false }
-        });
-        const starttlsInfo = await starttlsTransporter.sendMail({
-          from: `"Fusion High School" <${senderUser}>`,
-          to: targetRecipient,
-          subject: subject,
-          html: body,
-          replyTo: replyTo || senderUser
-        });
-        console.log(`[EMAIL DISPATCH SUCCESS] Port 587 STARTTLS delivered to ${targetRecipient}: ${starttlsInfo.messageId}`);
-        return { success: true, messageId: starttlsInfo.messageId, recipient: targetRecipient };
-      } catch (starttlsErr) {
-        console.warn(`[EMAIL NOTICE] Port 587 transport notice for ${targetRecipient} (${starttlsErr.message}). Retrying via Direct TLS 465...`);
+      console.warn(`[EMAIL NOTICE] SMTP port 587 notice for ${targetRecipient} (${nodemailerErr.message}).`);
 
-        // Tertiary Fallback: Direct TLS Socket
-        try {
-          const result = await sendViaDirectTls({
-            user: senderUser,
-            pass: senderPass,
-            to: targetRecipient,
-            subject,
-            html: body,
-            replyTo: replyTo || senderUser,
-            fromName: 'Fusion High School'
-          });
-          console.log(`[EMAIL DISPATCH SUCCESS] Direct TLS delivered to ${targetRecipient}: ${result.messageId}`);
-          return { success: true, messageId: result.messageId, recipient: targetRecipient };
-        } catch (tlsErr) {
-          console.error(`[EMAIL ERROR] All SMTP delivery transports failed for ${targetRecipient}:`, tlsErr.message);
-          return { success: false, error: tlsErr.message, recipient: targetRecipient };
-        }
+      // 3. Fallback: Direct TLS Socket (Port 465)
+      try {
+        const result = await sendViaDirectTls({
+          user: senderUser,
+          pass: senderPass,
+          to: targetRecipient,
+          subject,
+          html: body,
+          replyTo: replyTo || senderUser,
+          fromName: 'Fusion High School'
+        });
+        console.log(`[EMAIL DISPATCH SUCCESS] Direct TLS 465 delivered to ${targetRecipient}: ${result.messageId}`);
+        return { success: true, messageId: result.messageId, recipient: targetRecipient };
+      } catch (tlsErr) {
+        console.warn(`[EMAIL NOTICE] All outbound SMTP ports (587, 465) blocked by hosting provider: ${tlsErr.message}`);
+        return { 
+          success: false, 
+          error: `SMTP ports blocked by host (${tlsErr.message}). Set RESEND_API_KEY or BREVO_API_KEY for instant HTTPS delivery.`,
+          recipient: targetRecipient 
+        };
       }
     }
   },
