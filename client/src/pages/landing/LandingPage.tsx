@@ -6,6 +6,7 @@ import { CosmicCanvasBackground } from '../../components/landing/CosmicCanvasBac
 import { ParticleLogoIntro } from '../../components/landing/ParticleLogoIntro';
 import { AboutUsModal } from '../../components/landing/AboutUsModal';
 import { TermsAgreementModal } from '../../components/common/TermsAgreementModal';
+import { FusionAppIcon } from '../../components/common/FusionAppIcon';
 import {
   Sparkles,
   Sun,
@@ -124,20 +125,10 @@ export const LandingPage: React.FC = () => {
       <main className="flex-1 relative z-10 flex flex-col justify-center items-center px-4 sm:px-6 py-8 md:py-12 max-w-4xl mx-auto w-full text-center">
         <div className="space-y-6 animate-fade-in w-full flex flex-col items-center">
           
-          {/* Framed Institutional Emblem Card */}
+          {/* Official Fusion High Vector App Icon */}
           <div className="space-y-4 flex flex-col items-center justify-center">
-            <div className="w-28 h-28 sm:w-36 sm:h-36 relative flex items-center justify-center select-none group">
-              {/* Soft Ambient Depth Glow */}
-              <div className="absolute -inset-2 rounded-3xl bg-blue-600/15 blur-xl group-hover:bg-blue-500/25 transition-all duration-500" />
-
-              {/* Polished Glass Emblem Card */}
-              <div className="relative w-full h-full rounded-3xl bg-slate-900/90 border border-white/15 shadow-2xl p-3 flex items-center justify-center backdrop-blur-md transition-transform duration-300 group-hover:scale-105">
-                <img
-                  src="/assets/fusion-app-icon.png"
-                  alt="Fusion High Official App Icon"
-                  className="w-full h-full object-contain rounded-2xl drop-shadow-md"
-                />
-              </div>
+            <div className="relative flex items-center justify-center select-none">
+              <FusionAppIcon className="w-28 h-28 sm:w-36 sm:h-36" />
             </div>
 
             {/* Accreditation Badge */}
