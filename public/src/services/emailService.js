@@ -233,15 +233,16 @@ function sendViaHttpsRest({ to, subject, html, replyTo, fromName = 'Fusion High 
     // 1. Google Apps Script HTTPS Web App (Free personal Gmail relay, zero funding, zero domain required)
     if (googleScriptUrl) {
       const axios = require('axios');
-      return axios.post(googleScriptUrl, {
+      const postPayload = JSON.stringify({
         to,
         subject,
         html,
         replyTo: replyTo || getSmtpUser(),
         fromName
-      }, {
-        timeout: 8000,
-        headers: { 'Content-Type': 'application/json' },
+      });
+      return axios.post(googleScriptUrl, postPayload, {
+        timeout: 10000,
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         maxRedirects: 5
       }).then((resp) => {
         resolve({ success: true, provider: 'google-apps-script', response: resp.data });
