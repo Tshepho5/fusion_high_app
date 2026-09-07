@@ -139,7 +139,8 @@ CREATE TABLE users
   parent_type VARCHAR(50),
   reset_code VARCHAR(10),
   reset_expiry TIMESTAMP, 
-  profile_picture_path VARCHAR(255),
+  profile_picture_path TEXT,
+  profile_picture TEXT,
   preferences JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

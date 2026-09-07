@@ -86,17 +86,41 @@ exports.uploadProfilePicture = async (req, res) => {
             return res.status(400).json({ success: false, error: 'No image file or URL provided.' });
         }
 
-        // Store permanent Data URI in cloud PostgreSQL so it persists indefinitely across server restarts and deployments
+        // Store permanent Data URI in PostgreSQL so it persists indefinitely across server restarts and deployments
         const permanentPicture = base64Data || filePath;
 
-        const result = await db.query(
-            `UPDATE users 
-             SET profile_picture_path = $1, 
-                 profile_picture = $2 
-             WHERE id = $3 
-             RETURNING id, full_name, surname, email, profile_picture_path, profile_picture`,
-            [permanentPicture, permanentPicture, userId]
-        );
+        let result;
+        try {
+            result = await db.query(
+                `UPDATE users 
+                 SET profile_picture_path = $1, 
+                     profile_picture = $2 
+                 WHERE id = $3 
+                 RETURNING id, full_name, surname, email, profile_picture_path, profile_picture`,
+                [permanentPicture, permanentPicture, userId]
+            );
+        } catch (dbErr) {
+            // Self-healing schema migration: If column was previously VARCHAR(255), widen to TEXT
+            if (dbErr.code === '22001' || (dbErr.message && dbErr.message.includes('varying(255)'))) {
+                console.log('[AUTO-MIGRATE] Altering profile_picture columns to TEXT to support permanent Data URI storage...');
+                await db.query(`ALTER TABLE users ALTER COLUMN profile_picture_path TYPE TEXT;`).catch(() => {});
+                await db.query(`ALTER TABLE users ALTER COLUMN profile_picture TYPE TEXT;`).catch(() => {});
+                await db.query(`ALTER TABLE children ALTER COLUMN profile_picture_path TYPE TEXT;`).catch(() => {});
+                await db.query(`ALTER TABLE children ALTER COLUMN profile_picture TYPE TEXT;`).catch(() => {});
+
+                // Retry update
+                result = await db.query(
+                    `UPDATE users 
+                     SET profile_picture_path = $1, 
+                         profile_picture = $2 
+                     WHERE id = $3 
+                     RETURNING id, full_name, surname, email, profile_picture_path, profile_picture`,
+                    [permanentPicture, permanentPicture, userId]
+                );
+            } else {
+                throw dbErr;
+            }
+        }
 
         // Also sync learner's child record if applicable
         await db.query(
@@ -104,7 +128,18 @@ exports.uploadProfilePicture = async (req, res) => {
              SET profile_picture = $1, profile_picture_path = $1 
              WHERE learner_user_id::text = $2::text OR parent_id::text = $2::text`,
             [permanentPicture, userId]
-        ).catch(() => {});
+        ).catch(async (childErr) => {
+            if (childErr.code === '22001' || (childErr.message && childErr.message.includes('varying(255)'))) {
+                await db.query(`ALTER TABLE children ALTER COLUMN profile_picture_path TYPE TEXT;`).catch(() => {});
+                await db.query(`ALTER TABLE children ALTER COLUMN profile_picture TYPE TEXT;`).catch(() => {});
+                await db.query(
+                    `UPDATE children 
+                     SET profile_picture = $1, profile_picture_path = $1 
+                     WHERE learner_user_id::text = $2::text OR parent_id::text = $2::text`,
+                    [permanentPicture, userId]
+                ).catch(() => {});
+            }
+        });
 
         res.json({
             success: true,

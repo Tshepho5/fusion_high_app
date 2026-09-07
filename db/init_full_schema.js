@@ -183,7 +183,8 @@ async function initializeAllDatabaseTables(customClient) {
         is_superadmin BOOLEAN DEFAULT FALSE,
         reset_code VARCHAR(10),
         reset_expiry TIMESTAMP,
-        profile_picture_path VARCHAR(255),
+        profile_picture_path TEXT,
+        profile_picture TEXT,
         preferences JSONB DEFAULT '{}'::jsonb,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -342,8 +343,10 @@ async function initializeAllDatabaseTables(customClient) {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_picture_path VARCHAR(255);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_picture VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_picture_path TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_picture TEXT;
+      ALTER TABLE users ALTER COLUMN profile_picture_path TYPE TEXT;
+      ALTER TABLE users ALTER COLUMN profile_picture TYPE TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_edit_unlocked BOOLEAN DEFAULT FALSE;
       UPDATE users SET profile_picture_path = profile_picture WHERE profile_picture_path IS NULL AND profile_picture IS NOT NULL;
       UPDATE users SET profile_picture = profile_picture_path WHERE profile_picture IS NULL AND profile_picture_path IS NOT NULL;
@@ -352,8 +355,10 @@ async function initializeAllDatabaseTables(customClient) {
       ALTER TABLE children ADD COLUMN IF NOT EXISTS secondary_parent_id INTEGER;
       ALTER TABLE children ADD COLUMN IF NOT EXISTS application_number VARCHAR(50);
       ALTER TABLE children ADD COLUMN IF NOT EXISTS home_language VARCHAR(50) DEFAULT 'isiZulu';
-      ALTER TABLE children ADD COLUMN IF NOT EXISTS profile_picture_path VARCHAR(255);
-      ALTER TABLE children ADD COLUMN IF NOT EXISTS profile_picture VARCHAR(255);
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS profile_picture_path TEXT;
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS profile_picture TEXT;
+      ALTER TABLE children ALTER COLUMN profile_picture_path TYPE TEXT;
+      ALTER TABLE children ALTER COLUMN profile_picture TYPE TEXT;
       ALTER TABLE children DROP CONSTRAINT IF EXISTS children_check;
       ALTER TABLE children ADD CONSTRAINT children_check CHECK (grade < 10 OR stream IN ('Science', 'Commerce', 'Tourism', 'Humanities', 'General', 'Technical'));
 
