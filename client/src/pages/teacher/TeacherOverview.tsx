@@ -965,9 +965,9 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
           maxWidth="4xl"
           alignTop={true}
         >
-          <div className="p-5 sm:p-6 space-y-6 text-slate-200">
+          <div className="space-y-3.5 text-slate-200">
             {/* Subject Overview Card */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-brand-950/60 via-surface-darker to-surface-dark border border-brand-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-brand-950/60 via-surface-darker to-surface-dark border border-brand-500/20 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2 mb-1.5">
                   <Badge variant="indigo" size="sm">
@@ -1009,7 +1009,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
             </div>
 
             {/* Dedicated Homework & Submissions Space for This Subject */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-pink-950/40 via-surface-darker to-surface-dark border border-pink-500/25 space-y-3">
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-pink-950/40 via-surface-darker to-surface-dark border border-pink-500/25 space-y-2.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-pink-500/15 text-pink-400 border border-pink-500/30 flex items-center justify-center shrink-0">
@@ -1301,13 +1301,13 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-end pt-3 border-t border-white/10">
+            <div className="flex items-center justify-end pt-2 border-t border-white/5">
               <button
                 type="button"
                 onClick={() => setViewAllSubject(null)}
-                className="px-5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors"
+                className="px-4 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors"
               >
-                Close Hub
+                Close
               </button>
             </div>
           </div>

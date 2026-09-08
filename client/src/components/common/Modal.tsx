@@ -8,6 +8,7 @@ interface ModalProps {
   children: React.ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl';
   alignTop?: boolean;
+  bodyClassName?: string;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -17,6 +18,7 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   maxWidth = 'lg',
   alignTop = false,
+  bodyClassName = '',
 }) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -47,9 +49,9 @@ export const Modal: React.FC<ModalProps> = ({
     <div
       className={`fixed inset-0 z-[100] flex ${
         alignTop
-          ? 'items-start pt-1.5 sm:pt-6'
-          : 'items-start sm:items-center pt-2 sm:pt-0'
-      } justify-center px-2 py-1.5 sm:p-6 overflow-y-auto`}
+          ? 'items-start pt-1 sm:pt-4'
+          : 'items-start sm:items-center pt-1.5 sm:pt-0'
+      } justify-center p-1 sm:p-3 overflow-y-auto`}
     >
       {/* Backdrop */}
       <div
@@ -60,25 +62,25 @@ export const Modal: React.FC<ModalProps> = ({
       {/* Modal Dialog Container */}
       <div
         className={`relative w-full ${maxWidthStyles[maxWidth]} ${
-          alignTop ? 'mt-1 mb-4 sm:my-4' : 'my-1 sm:my-auto'
+          alignTop ? 'my-0.5 sm:my-2' : 'my-1 sm:my-auto'
         } rounded-2xl sm:rounded-3xl bg-surface-dark border border-white/10 shadow-2xl z-10 max-h-[96vh] sm:max-h-[92vh] flex flex-col overflow-hidden animate-fade-in`}
       >
         {/* Modal Header (Fixed at top) */}
-        <div className="flex items-center justify-between border-b border-white/10 px-4 sm:px-6 py-3.5 sm:py-4 bg-surface-darker/70 shrink-0">
-          <h3 className="text-base sm:text-lg font-extrabold font-display text-white tracking-tight">
+        <div className="flex items-center justify-between border-b border-white/10 px-4 sm:px-5 py-2.5 sm:py-3 bg-surface-darker/70 shrink-0">
+          <h3 className="text-sm sm:text-base font-extrabold font-display text-white tracking-tight">
             {title}
           </h3>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
             title="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
         {/* Modal Body (Scrollable) */}
-        <div className="p-3.5 sm:p-6 overflow-y-auto flex-1 custom-scrollbar text-slate-200">
+        <div className={`p-3 sm:p-4 overflow-y-auto ${bodyClassName} custom-scrollbar text-slate-200`}>
           {children}
         </div>
       </div>
