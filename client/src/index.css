@@ -113,28 +113,64 @@ body, html {
 }
 
 /* 2. Form Inputs in Light Mode: Must have dark, sharp, readable text (never white-on-white) */
-.theme-light input:not([data-theme-preserve="true"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]),
-html[data-theme="light"] input:not([data-theme-preserve="true"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]),
-.light input:not([data-theme-preserve="true"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]),
-.theme-light select:not([data-theme-preserve="true"]),
-html[data-theme="light"] select:not([data-theme-preserve="true"]),
-.light select:not([data-theme-preserve="true"]),
-.theme-light textarea:not([data-theme-preserve="true"]),
-html[data-theme="light"] textarea:not([data-theme-preserve="true"]),
-.light textarea:not([data-theme-preserve="true"]) {
+.theme-light input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not([class*="bg-transparent"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]),
+html[data-theme="light"] input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not([class*="bg-transparent"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]),
+.light input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not([class*="bg-transparent"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]),
+.theme-light select:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *),
+html[data-theme="light"] select:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *),
+.light select:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *),
+.theme-light textarea:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not([class*="bg-transparent"]),
+html[data-theme="light"] textarea:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not([class*="bg-transparent"]),
+.light textarea:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not([class*="bg-transparent"]) {
   color: #0F172A !important;
   background-color: #FFFFFF !important;
   border-color: #CBD5E1 !important;
 }
 
-.theme-light input::placeholder,
-html[data-theme="light"] input::placeholder,
-.light input::placeholder,
-.theme-light textarea::placeholder,
-html[data-theme="light"] textarea::placeholder,
-.light textarea::placeholder {
-  color: #64748B !important;
+/* Transparent inputs in Light Mode (e.g. inside compound search bars or input wrappers) */
+.theme-light input[class*="bg-transparent"]:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *),
+html[data-theme="light"] input[class*="bg-transparent"]:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *),
+.light input[class*="bg-transparent"]:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *),
+.theme-light textarea[class*="bg-transparent"]:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *),
+html[data-theme="light"] textarea[class*="bg-transparent"]:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *),
+.light textarea[class*="bg-transparent"]:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *) {
+  background-color: transparent !important;
+  color: #0F172A !important;
+  -webkit-text-fill-color: #0F172A !important;
+}
+
+/* Preserve transparent background on dark / preserved inputs */
+[data-theme-preserve="true"] input[class*="bg-transparent"],
+[data-theme-preserve="true"] * input[class*="bg-transparent"] {
+  background-color: transparent !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+/* Dynamic Placeholder Adaptation Across Themes */
+input::placeholder,
+textarea::placeholder {
+  transition: color 0.15s ease;
+}
+
+.theme-light input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *)::placeholder,
+html[data-theme="light"] input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *)::placeholder,
+.light input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *)::placeholder,
+.theme-light textarea:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *)::placeholder,
+html[data-theme="light"] textarea:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *)::placeholder,
+.light textarea:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *)::placeholder {
+  color: #94A3B8 !important;
   opacity: 1 !important;
+}
+
+.theme-dark input::placeholder,
+html[data-theme="dark"] input::placeholder,
+.theme-navy input::placeholder,
+html[data-theme="navy"] input::placeholder,
+[data-theme-preserve="true"] input::placeholder,
+[data-theme-preserve="true"] * input::placeholder {
+  color: #94A3B8 !important;
+  opacity: 0.8 !important;
 }
 
 /* 3. Solid Colored Buttons, Badges, & Gradients: MUST PRESERVE CRISP WHITE TEXT ON DEEP FILLS */
@@ -669,20 +705,40 @@ html[data-school-slug="mountainview-high"][data-theme="light"] .border-white\/10
 /* Ensure inputs on dark surfaces always stay high-contrast white with vibrant caret */
 .text-always-white,
 input.text-always-white,
-[data-theme-preserve="true"] input {
+[data-theme-preserve="true"] input:not([data-theme-preserve="false"]),
+[data-theme-preserve="true"] * input:not([data-theme-preserve="false"]) {
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
 }
 
-/* Browser autofill styling protection */
-input:-webkit-autofill,
-input:-webkit-autofill:hover, 
-input:-webkit-autofill:focus, 
-input:-webkit-autofill:active {
+/* Browser autofill styling protection - adapts to active theme */
+/* Dark / Navy / Preserved dark surfaces autofill */
+html[data-theme="dark"] input:-webkit-autofill,
+html[data-theme="dark"] input:-webkit-autofill:hover, 
+html[data-theme="dark"] input:-webkit-autofill:focus, 
+html[data-theme="dark"] input:-webkit-autofill:active,
+html[data-theme="navy"] input:-webkit-autofill,
+html[data-theme="navy"] input:-webkit-autofill:hover, 
+html[data-theme="navy"] input:-webkit-autofill:focus, 
+html[data-theme="navy"] input:-webkit-autofill:active,
+[data-theme-preserve="true"] input:-webkit-autofill,
+[data-theme-preserve="true"] * input:-webkit-autofill {
   -webkit-box-shadow: 0 0 0 1000px #111923 inset !important;
   -webkit-text-fill-color: #FFFFFF !important;
   color: #FFFFFF !important;
   caret-color: #38bdf8 !important;
+}
+
+/* Light theme autofill */
+html[data-theme="light"] input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):-webkit-autofill,
+html[data-theme="light"] input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):-webkit-autofill:hover,
+html[data-theme="light"] input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):-webkit-autofill:focus,
+html[data-theme="light"] input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):-webkit-autofill:active,
+.theme-light input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #F1F5F9 inset !important;
+  -webkit-text-fill-color: #0F172A !important;
+  color: #0F172A !important;
+  caret-color: #2563EB !important;
 }
 
 /* Clean, standard scrollbar */

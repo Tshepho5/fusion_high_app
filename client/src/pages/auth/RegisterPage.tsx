@@ -575,8 +575,8 @@ export const RegisterPage: React.FC = () => {
             <span className="font-display text-lg font-extrabold tracking-tight text-white block uppercase">
               {currentSchool?.name || 'FUSION HIGH'}
             </span>
-            <span className="text-[9.5px] font-mono tracking-wider text-cyan-400 uppercase font-bold block">
-              {currentSchool?.circuit || 'MANKWENG CIRCUIT'} • {currentSchool?.motto || 'ONE SCHOOL • ONE CONNECTION'}
+            <span className="text-[9.5px] font-mono tracking-wider text-amber-400 uppercase font-bold block italic">
+              "{currentSchool?.motto || 'ONE SCHOOL • ONE CONNECTION'}"
             </span>
           </div>
         </Link>
@@ -653,9 +653,6 @@ export const RegisterPage: React.FC = () => {
                       <Building2 className="w-4 h-4 text-cyan-400" />
                       <span>Select Target High School *</span>
                     </label>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-mono font-bold">
-                      EMIS {currentSchool?.emis_number || '911220001'}
-                    </span>
                   </div>
                   <select
                     value={currentSchool?.id || 1}
@@ -664,7 +661,7 @@ export const RegisterPage: React.FC = () => {
                   >
                     {schoolsList.map(s => (
                       <option key={s.id} value={s.id} className="bg-surface-dark text-white">
-                        {s.name} ({s.circuit})
+                        {s.name}
                       </option>
                     ))}
                   </select>

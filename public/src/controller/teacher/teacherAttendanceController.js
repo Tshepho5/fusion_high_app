@@ -8,30 +8,83 @@ const NotificationService = require('../../services/notificationService');
 exports.getAttendanceRoster = async (req, res) => {
     const classId = req.query.class_id || req.query.classId || req.query.class || req.query.grade;
     const date = req.query.date || new Date().toISOString().split('T')[0];
+    const subject = (req.query.subject || req.query.subject_name || '').trim();
+    const schoolId = req.user?.school_id || 1;
 
-    if (!classId) {
+    if (!classId && !req.query.grade) {
         return res.status(400).json({ error: 'Class or grade parameter is required.' });
     }
 
-    const cleanedGrade = classId.toString().replace(/[^0-9]/g, '');
+    const cleanedGrade = (classId || req.query.grade || '').toString().replace(/[^0-9]/g, '');
 
     try {
+        let subjectFilter = '';
+        const params = [classId || `${cleanedGrade}A`, date, cleanedGrade || '0', schoolId, subject || null];
+
+        if (subject) {
+            params.push(subject);
+            const pIdx = params.length;
+            subjectFilter = `
+              AND (
+                c.subjects && ARRAY[$${pIdx}]::text[]
+                OR $${pIdx} = ANY(c.subjects)
+                OR (c.subjects IS NULL AND (
+                  (c.stream = 'Science' AND ARRAY[$${pIdx}]::text[] && ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Life Orientation']) OR
+                  (c.stream = 'Commerce' AND ARRAY[$${pIdx}]::text[] && ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Life Orientation']) OR
+                  (c.stream = 'Tourism' AND ARRAY[$${pIdx}]::text[] && ARRAY['Tourism', 'Geography', 'Mathematical Literacy', 'English FAL', 'Life Orientation']) OR
+                  (c.stream = 'General')
+                ))
+              )
+            `;
+        }
+
         const query = `
-            SELECT 
+            SELECT DISTINCT ON (c.id)
                 c.id, 
                 c.full_name, 
                 c.surname, 
                 c.learner_number, 
                 c.grade,
+                c.stream,
                 c.parent_id,
-                COALESCE(a.status, 'present') as status
+                COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name,
+                COALESCE(a.status, 'present') as status,
+                a.created_at as marked_at
             FROM children c
             LEFT JOIN classes cl ON c.class_id = cl.id
-            LEFT JOIN attendance a ON c.id = a.child_id AND a.attendance_date = $2::DATE
-            WHERE (cl.name ILIKE $1 OR c.class_id::text = $1 OR c.grade::text = $3)
-            ORDER BY c.surname, c.full_name
+            LEFT JOIN attendance a ON c.id = a.child_id AND a.attendance_date = $2::DATE AND ($5::text IS NULL OR a.subject_name ILIKE $5 OR a.subject_name IS NULL)
+            WHERE (c.school_id = $4 OR $4 IS NULL)
+              AND (cl.name ILIKE $1 OR c.class_id::text = $1 OR c.grade::text = $3)
+              ${subjectFilter}
+            ORDER BY c.id, c.surname, c.full_name
         `;
-        const { rows } = await db.query(query, [classId, date, cleanedGrade || '0']);
+        let { rows } = await db.query(query, params);
+
+        // Fallback: If no learners matched with strict subject filter, load class learners
+        if (rows.length === 0) {
+            const fallbackQuery = `
+                SELECT DISTINCT ON (c.id)
+                    c.id, 
+                    c.full_name, 
+                    c.surname, 
+                    c.learner_number, 
+                    c.grade,
+                    c.stream,
+                    c.parent_id,
+                    COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name,
+                    COALESCE(a.status, 'present') as status,
+                    a.created_at as marked_at
+                FROM children c
+                LEFT JOIN classes cl ON c.class_id = cl.id
+                LEFT JOIN attendance a ON c.id = a.child_id AND a.attendance_date = $2::DATE
+                WHERE (c.school_id = $4 OR $4 IS NULL)
+                  AND (cl.name ILIKE $1 OR c.class_id::text = $1 OR c.grade::text = $3)
+                ORDER BY c.id, c.surname, c.full_name
+            `;
+            const fbRes = await db.query(fallbackQuery, [classId || `${cleanedGrade}A`, date, cleanedGrade || '0', schoolId]);
+            rows = fbRes.rows;
+        }
+
         res.json(rows);
     } catch (err) {
         console.error('Error fetching attendance roster:', err);

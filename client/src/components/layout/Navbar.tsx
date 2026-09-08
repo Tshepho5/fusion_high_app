@@ -183,11 +183,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
                     </span>
                   ) : null}
                 </div>
-                <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
-                  <span>{currentSchool?.circuit || 'Mankweng Circuit'}</span>
-                  <span className="text-slate-500">•</span>
-                  <span className="text-cyan-400 font-bold">EMIS {currentSchool?.emis_number || '911220001'}</span>
-                </span>
+                {currentSchool?.motto && (
+                  <span className="text-[10px] text-amber-400/90 italic truncate max-w-[200px] block">
+                    "{currentSchool.motto}"
+                  </span>
+                )}
               </div>
               {canSwitch && (
                 <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showSchoolMenu ? 'rotate-180 text-brand-400' : ''}`} />
@@ -242,11 +242,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold truncate text-white">{school.name}</p>
-                      <p className="text-[10px] text-slate-400 truncate flex items-center gap-1">
-                        <span>{school.circuit}</span>
-                        <span className="text-slate-500">•</span>
-                        <span className="text-amber-400 italic">"{school.motto}"</span>
-                      </p>
+                      {school.motto && (
+                        <p className="text-[10px] text-amber-400/90 italic truncate">
+                          "{school.motto}"
+                        </p>
+                      )}
                     </div>
                     {isSelected && (
                       <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-glow-emerald shrink-0" />
