@@ -356,7 +356,13 @@ export const extracurricularService = {
   joinActivity: (payload: { activity_id: number; child_id?: number; role?: string; jersey_number?: string }) => 
     api.post('/api/extracurricular/join', payload).then(res => res.data),
   createActivity: (payload: any) => api.post('/api/extracurricular/activities', payload).then(res => res.data),
+  assignCoach: (activityId: number | string, payload?: { coach_user_id?: number | null }) => 
+    api.post(`/api/extracurricular/activities/${activityId}/assign-coach`, payload || {}).then(res => res.data),
+  getAvailableCoaches: () => api.get('/api/extracurricular/available-coaches').then(res => res.data),
   createEvent: (payload: any) => api.post('/api/extracurricular/events', payload).then(res => res.data),
+  confirmEvent: (id: number | string) => api.patch(`/api/extracurricular/events/${id}/confirm`).then(res => res.data),
+  publishEventNotifications: (id: number | string) => api.post(`/api/extracurricular/events/${id}/publish-notifications`).then(res => res.data),
+  addEventToCalendar: (id: number | string) => api.post(`/api/extracurricular/events/${id}/add-to-calendar`).then(res => res.data),
   updateEventScore: (id: number | string, payload: { result_score: string; notes?: string }) => 
     api.patch(`/api/extracurricular/events/${id}/score`, payload).then(res => res.data),
 };

@@ -68,6 +68,8 @@ if (!process.env.VERCEL) {
       await NotificationService.initSchema();
       await createAiConversationsTables();
       await fixAllUserPasswords();
+      const migrateSportsCoachEvents = require('./db/migrate_sports_coach_events');
+      await migrateSportsCoachEvents();
       console.log('[DB BOOTSTRAP] All database tables, schemas, and security verified successfully.');
       if (firestore) {
         console.log('[FIREBASE BOOTSTRAP] Firebase Cloud Firestore & Admin SDK initialized and active.');
