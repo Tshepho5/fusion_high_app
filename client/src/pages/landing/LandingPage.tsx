@@ -6,19 +6,15 @@ import { CosmicCanvasBackground } from '../../components/landing/CosmicCanvasBac
 import { ParticleLogoIntro } from '../../components/landing/ParticleLogoIntro';
 import { AboutUsModal } from '../../components/landing/AboutUsModal';
 import { TermsAgreementModal } from '../../components/common/TermsAgreementModal';
-import { FusionAppIcon } from '../../components/common/FusionAppIcon';
+import { StarArrivalAppIcon } from '../../components/landing/StarArrivalAppIcon';
+import { GetStartedCircularMenu } from '../../components/landing/GetStartedCircularMenu';
 import {
   Sparkles,
   Sun,
   Moon,
-  RotateCcw,
   Info,
   Scale,
   GraduationCap,
-  ArrowRight,
-  LogIn,
-  UserPlus,
-  ShieldCheck,
   HelpCircle,
 } from 'lucide-react';
 import { HelpSupportModal } from '../../components/common/HelpSupportModal';
@@ -109,11 +105,9 @@ export const LandingPage: React.FC = () => {
       <main className="flex-1 relative z-10 flex flex-col justify-center items-center px-4 sm:px-6 py-8 md:py-12 max-w-4xl mx-auto w-full text-center">
         <div className="space-y-6 animate-fade-in w-full flex flex-col items-center">
           
-          {/* Official Fusion High Vector App Icon */}
+          {/* Official Fusion High Vector App Icon with 5-Second Star Arrival Animation */}
           <div className="space-y-4 flex flex-col items-center justify-center">
-            <div className="relative flex items-center justify-center select-none">
-              <FusionAppIcon className="w-28 h-28 sm:w-36 sm:h-36" />
-            </div>
+            <StarArrivalAppIcon className="w-28 h-28 sm:w-36 sm:h-36" />
 
             {/* Accreditation Badge */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/80 text-xs font-semibold text-slate-300 shadow-sm backdrop-blur-md">
@@ -132,31 +126,9 @@ export const LandingPage: React.FC = () => {
             </h1>
           </div>
 
-          {/* Clear Institutional Action Buttons */}
-          <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              to="/login"
-              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs tracking-wide shadow-lg shadow-blue-600/25 transition-all active:scale-95"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>Sign In to Portal</span>
-            </Link>
-
-            <a
-              href="/application.html"
-              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 text-slate-200 hover:text-white border border-slate-700 text-xs font-semibold transition-all active:scale-95"
-            >
-              <GraduationCap className="w-4 h-4 text-emerald-400" />
-              <span>2026 Admissions</span>
-            </a>
-
-            <Link
-              to="/register"
-              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition-all active:scale-95"
-            >
-              <UserPlus className="w-4 h-4 text-blue-400" />
-              <span>Parent Registration</span>
-            </Link>
+          {/* Glowing Circular "Get Started" Action Menu */}
+          <div className="w-full flex justify-center pt-2">
+            <GetStartedCircularMenu className="pt-2" />
           </div>
 
         </div>

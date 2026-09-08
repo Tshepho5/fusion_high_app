@@ -857,55 +857,88 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) !important;
 }
 
-/* 5-Second 3D Shooting Star & Deep Perspective Orbit Animation */
-@keyframes shootingStar3D {
+/* 5-Second Cosmic Star Arrival Animation (Increases in size from far away until fitting position) */
+@keyframes starArrivalFromFar {
   0% {
-    opacity: 0;
-    transform: perspective(1200px) translate3d(260px, -520px, -2400px) rotateX(720deg) rotateY(1080deg) rotateZ(360deg) scale(0.04);
-    filter: brightness(4) drop-shadow(0 0 100px rgba(6, 182, 212, 1)) drop-shadow(0 0 140px rgba(99, 102, 241, 0.9));
+    transform: scale(0.015);
+    opacity: 0.2;
+    filter: brightness(4) drop-shadow(0 0 60px #38bdf8) drop-shadow(0 0 100px #6366f1);
   }
-  20% {
+  15% {
+    transform: scale(0.06);
     opacity: 0.85;
-    transform: perspective(1200px) translate3d(150px, -300px, -1400px) rotateX(540deg) rotateY(780deg) rotateZ(260deg) scale(0.2);
-    filter: brightness(3) drop-shadow(0 0 80px rgba(6, 182, 212, 0.95)) drop-shadow(0 0 100px rgba(99, 102, 241, 0.8));
+    filter: brightness(3.2) drop-shadow(0 0 50px #38bdf8) drop-shadow(0 0 80px #6366f1);
   }
-  50% {
+  35% {
+    transform: scale(0.2);
+    opacity: 0.95;
+    filter: brightness(2.4) drop-shadow(0 0 40px #06b6d4) drop-shadow(0 0 60px #4f46e5);
+  }
+  55% {
+    transform: scale(0.45);
     opacity: 1;
-    transform: perspective(1200px) translate3d(-60px, 80px, -600px) rotateX(300deg) rotateY(420deg) rotateZ(140deg) scale(0.55);
-    filter: brightness(2) drop-shadow(0 0 60px rgba(6, 182, 212, 0.85)) drop-shadow(0 0 80px rgba(99, 102, 241, 0.7));
+    filter: brightness(1.8) drop-shadow(0 0 30px #06b6d4) drop-shadow(0 0 45px #3b82f6);
   }
   75% {
+    transform: scale(0.75);
     opacity: 1;
-    transform: perspective(1200px) translate3d(25px, -30px, -120px) rotateX(100deg) rotateY(120deg) rotateZ(35deg) scale(0.88);
-    filter: brightness(1.4) drop-shadow(0 0 45px rgba(6, 182, 212, 0.75));
+    filter: brightness(1.35) drop-shadow(0 0 25px #38bdf8);
   }
-  90% {
+  92% {
+    transform: scale(1.04);
     opacity: 1;
-    transform: perspective(1200px) translate3d(-5px, 8px, 60px) rotateX(-12deg) rotateY(15deg) rotateZ(-4deg) scale(1.1);
-    filter: brightness(1.15) drop-shadow(0 0 35px rgba(6, 182, 212, 0.6));
+    filter: brightness(1.1) drop-shadow(0 0 20px #06b6d4);
   }
   100% {
+    transform: scale(1);
     opacity: 1;
-    transform: perspective(1200px) translate3d(0px, 0px, 0px) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1);
-    filter: brightness(1) drop-shadow(0 0 25px rgba(6, 182, 212, 0.45));
+    filter: brightness(1) drop-shadow(0 0 16px rgba(6, 182, 212, 0.45));
   }
 }
 
-@keyframes hero3DFloat {
-  0%, 100% {
-    transform: perspective(1200px) translateY(0px) rotateX(0deg) rotateY(0deg);
+@keyframes starSpikesSpin {
+  0% {
+    transform: scale(0.1) rotate(0deg);
+    opacity: 1;
   }
-  33% {
-    transform: perspective(1200px) translateY(-8px) rotateX(4deg) rotateY(-5deg);
+  60% {
+    transform: scale(1.4) rotate(90deg);
+    opacity: 0.9;
   }
-  66% {
-    transform: perspective(1200px) translateY(6px) rotateX(-3deg) rotateY(4deg);
+  85% {
+    transform: scale(2.0) rotate(140deg);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(2.6) rotate(180deg);
+    opacity: 0;
   }
 }
 
-.animate-shooting-star-3d {
-  animation: shootingStar3D 5s cubic-bezier(0.16, 1, 0.3, 1) forwards, hero3DFloat 6s ease-in-out 5s infinite;
-  transform-style: preserve-3d;
+@keyframes arrivalShockwave {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+.animate-star-arrival-5s {
+  animation: starArrivalFromFar 5s cubic-bezier(0.16, 0.88, 0.32, 1) forwards;
   will-change: transform, filter, opacity;
 }
+
+.animate-star-spikes-5s {
+  animation: starSpikesSpin 5s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.animate-arrival-shockwave {
+  animation: arrivalShockwave 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
 
