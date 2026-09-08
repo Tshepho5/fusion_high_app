@@ -255,8 +255,8 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
     onNavigateTab('attendance', { subject, grade, class: className });
   };
 
-  const handleOpenAIWorkspace = (subject: string, grade: number, tool: string = 'quiz') => {
-    onNavigateTab('ai-tools', { subject, grade, tool });
+  const handleOpenAIWorkspace = (subject: string, grade: number, className?: string, tool: string = 'quiz') => {
+    onNavigateTab('ai-tools', { subject, grade, class: className, tool });
   };
 
   const handleViewReport = (learner: any) => {
@@ -578,7 +578,7 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                   </button>
 
                   <button
-                    onClick={() => handleOpenAIWorkspace(card.subject_name, card.grade, 'quiz')}
+                    onClick={() => handleOpenAIWorkspace(card.subject_name, card.grade, card.class_name, 'quiz')}
                     className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-cyan-600/20 hover:bg-cyan-600 text-cyan-300 hover:text-white border border-cyan-500/40 font-bold text-xs transition-all shadow-glow-cyan"
                     title="Generate AI Quizzes & Lessons for this Subject"
                   >

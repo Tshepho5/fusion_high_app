@@ -131,77 +131,77 @@ function generateCAPSLocalFallback(prompt, explicitSubject, explicitGrade, expli
 
   const topicQuestionTemplates = [
     {
-      stem: (g, s, t, i) => `[Grade ${g} ${s}] Question ${i}: Which fundamental CAPS principle defines the core behavior of ${t}?`,
+      stem: (g, s, t, i) => `Which fundamental CAPS principle defines the core behavior of ${t}?`,
       correct: (t, i) => `A) Standard CAPS Law of ${t} (Rule ${i})`,
       wrong: (t, i) => [`B) Inverse Exponential Decay of ${t}`, `C) Non-linear Static Equilibrium`, `D) Arbitrary Constant Model`]
     },
     {
-      stem: (g, s, t, i) => `[Grade ${g} ${s}] Question ${i}: In a Grade ${g} practical experiment on ${t}, what happens when key parameters double?`,
+      stem: (g, s, t, i) => `In a practical experiment on ${t}, what happens when key parameters double?`,
       correct: (t, i) => `A) The measured output doubles proportionally`,
       wrong: (t, i) => [`B) Output decreases to zero`, `C) Output quadruples exponentially`, `D) No observable change occurs`]
     },
     {
-      stem: (g, s, t, i) => `[Grade ${g} ${s}] Question ${i}: Which unit of measurement or standard analytical indicator evaluates ${t}?`,
+      stem: (g, s, t, i) => `Which unit of measurement or standard analytical indicator evaluates ${t}?`,
       correct: (t, i) => `A) Official CAPS SI Unit for ${t}`,
       wrong: (t, i) => [`B) Uncalibrated Percentage Ratio`, `C) Empirical Index B`, `D) Dimensionless Coefficient D`]
     },
     {
-      stem: (g, s, t, i) => `[Grade ${g} ${s}] Question ${i}: When solving Grade ${g} exam scenarios on ${t}, which initial step is essential?`,
+      stem: (g, s, t, i) => `When solving Grade ${g} exam scenarios on ${t}, which initial step is essential?`,
       correct: (t, i) => `A) State standard formula for ${t} and convert to SI units`,
       wrong: (t, i) => [`B) Multiply all raw values without conversion`, `C) Omit SI unit labels`, `D) Estimate without mathematical derivation`]
     },
     {
-      stem: (g, s, t, i) => `[Grade ${g} ${s}] Question ${i}: What is the primary cause of system changes in ${t} according to CAPS theory?`,
+      stem: (g, s, t, i) => `What is the primary cause of system changes in ${t} according to CAPS theory?`,
       correct: (t, i) => `A) Fluctuations in system energy or core variables`,
       wrong: (t, i) => [`B) Constant room temperature`, `C) Zero net force acting on system`, `D) Equal pressure equilibrium`]
     },
     {
-      stem: (g, s, t, i) => `[Grade ${g} ${s}] Question ${i}: Which statement correctly distinguishes primary vs secondary factors in ${t}?`,
+      stem: (g, s, t, i) => `Which statement correctly distinguishes primary vs secondary factors in ${t}?`,
       correct: (t, i) => `A) Primary factors directly control the rate of change in ${t}`,
       wrong: (t, i) => [`B) Secondary factors have zero influence`, `C) Both factors are identical`, `D) Neither factor affects ${t}`]
     },
     {
-      stem: (g, s, t, i) => `[Grade ${g} ${s}] Question ${i}: In an official DBE assessment on ${t}, how is the net rate of change calculated?`,
+      stem: (g, s, t, i) => `In an official DBE assessment on ${t}, how is the net rate of change calculated?`,
       correct: (t, i) => `A) Net Rate = Total Change / Time Elapsed`,
       wrong: (t, i) => [`B) Net Rate = Time * Constant`, `C) Net Rate = Initial Value + Final Value`, `D) Net Rate = Zero`]
     },
     {
-      stem: (g, s, t, i) => `[Grade ${g} ${s}] Question ${i}: How does increasing temperature or energy affect the rate of process in ${t}?`,
+      stem: (g, s, t, i) => `How does increasing temperature or energy affect the rate of process in ${t}?`,
       correct: (t, i) => `A) Increases particle kinetic energy, leading to more effective interactions`,
       wrong: (t, i) => [`B) Decreases molecular movement`, `C) Causes complete cessation of process`, `D) Has no thermal impact`]
     },
     {
-      stem: (g, s, t, i) => `[Grade ${g} ${s}] Question ${i}: Which graphical trend best illustrates the relationship between key variables in ${t}?`,
+      stem: (g, s, t, i) => `Which graphical trend best illustrates the relationship between key variables in ${t}?`,
       correct: (t, i) => `A) Direct linear proportionality graph passing through the origin`,
       wrong: (t, i) => [`B) Horizontal flat line with zero slope`, `C) Random scattered dots`, `D) Negative hyperbola curve`]
     },
     {
-      stem: (g, s, t, i) => `[Grade ${g} ${s}] Question ${i}: Which safety or methodology rule must be observed during tasks on ${t}?`,
+      stem: (g, s, t, i) => `Which safety or methodology rule must be observed during tasks on ${t}?`,
       correct: (t, i) => `A) Calibrate instruments and wear required protective equipment`,
       wrong: (t, i) => [`B) Mix reagents without measuring`, `C) Ignore control group data`, `D) Discard raw measurements`]
     },
     {
-      stem: (g, s, t, i) => `[Grade ${g} ${s}] Question ${i}: What is the structural impact of introducing a catalyst or external agent to ${t}?`,
+      stem: (g, s, t, i) => `What is the structural impact of introducing a catalyst or external agent to ${t}?`,
       correct: (t, i) => `A) Lowers activation energy required for ${t} without being consumed`,
       wrong: (t, i) => [`B) Stops reaction completely`, `C) Permanently alters chemical composition of products`, `D) Reduces yield to zero`]
     },
     {
-      stem: (g, s, t, i) => `[Grade ${g} ${s}] Question ${i}: In financial or quantitative modeling of ${t}, how is net yield determined?`,
+      stem: (g, s, t, i) => `In financial or quantitative modeling of ${t}, how is net yield determined?`,
       correct: (t, i) => `A) Net Yield = Total Inflow - Total Outflow`,
       wrong: (t, i) => [`B) Net Yield = Inflow * 0`, `C) Net Yield = Outflow / 2`, `D) Net Yield = Gross Cost`]
     },
     {
-      stem: (g, s, t, i) => `[Grade ${g} ${s}] Question ${i}: Which conservation law applies directly to physical/chemical processes in ${t}?`,
+      stem: (g, s, t, i) => `Which conservation law applies directly to physical/chemical processes in ${t}?`,
       correct: (t, i) => `A) Law of Conservation of Mass and Energy`,
       wrong: (t, i) => [`B) Law of Variable Friction`, `C) Rule of Static Loss`, `D) Constant Entropy Reduction`]
     },
     {
-      stem: (g, s, t, i) => `[Grade ${g} ${s}] Question ${i}: What happens to ${t} when an isolated system reaches dynamic equilibrium?`,
+      stem: (g, s, t, i) => `What happens to ${t} when an isolated system reaches dynamic equilibrium?`,
       correct: (t, i) => `A) Forward and reverse process rates become equal`,
       wrong: (t, i) => [`B) All movement stops permanently`, `C) Reactants disappear completely`, `D) Pressure drops to absolute zero`]
     },
     {
-      stem: (g, s, t, i) => `[Grade ${g} ${s}] Question ${i}: Which recommendation guarantees maximum marks when solving structured questions on ${t}?`,
+      stem: (g, s, t, i) => `Which recommendation guarantees maximum marks when solving structured questions on ${t}?`,
       correct: (t, i) => `A) Show formula, substitution, final answer with correct units`,
       wrong: (t, i) => [`B) Write final answer without working`, `C) Omit unit labels`, `D) Guess without calculation`]
     }
@@ -496,82 +496,82 @@ function generateCAPSLocalFallback(prompt, explicitSubject, explicitGrade, expli
     if (isLifeScience) {
       if (grade === '12') {
         return expandQuestionPool([
-          { id: 1, question: `[Grade 12 Life Sciences] Which enzyme unwinds the DNA double helix and breaks hydrogen bonds during replication in ${topic}?`, type: 'multiple_choice', options: ['DNA Helicase', 'DNA Polymerase', 'RNA Polymerase', 'DNA Ligase'], answer: 'DNA Helicase' },
-          { id: 2, question: `[Grade 12 Life Sciences] In genetic crosses for ${topic}, if a heterozygous black guinea pig (Bb) is crossed with a white guinea pig (bb), what percentage of offspring will be white?`, type: 'multiple_choice', options: ['50%', '25%', '75%', '100%'], answer: '50%' },
-          { id: 3, question: `[Grade 12 Life Sciences] Describe non-disjunction during Meiosis I and its genetic impact on chromosome numbers.`, type: 'multiple_choice', options: ['A) Chromosomes fail to separate producing n+1/n-1 gametes', 'B) DNA multiplies exponentially', 'C) Mitotic spindle fails completely', 'D) Gametes lose all chromosomes'], answer: 'A) Chromosomes fail to separate producing n+1/n-1 gametes' }
+          { id: 1, question: `Which enzyme unwinds the DNA double helix and breaks hydrogen bonds during replication in ${topic}?`, type: 'multiple_choice', options: ['DNA Helicase', 'DNA Polymerase', 'RNA Polymerase', 'DNA Ligase'], answer: 'DNA Helicase' },
+          { id: 2, question: `In genetic crosses for ${topic}, if a heterozygous black guinea pig (Bb) is crossed with a white guinea pig (bb), what percentage of offspring will be white?`, type: 'multiple_choice', options: ['50%', '25%', '75%', '100%'], answer: '50%' },
+          { id: 3, question: `Describe non-disjunction during Meiosis I and its genetic impact on chromosome numbers.`, type: 'multiple_choice', options: ['A) Chromosomes fail to separate producing n+1/n-1 gametes', 'B) DNA multiplies exponentially', 'C) Mitotic spindle fails completely', 'D) Gametes lose all chromosomes'], answer: 'A) Chromosomes fail to separate producing n+1/n-1 gametes' }
         ]);
       } else if (grade === '11') {
         return expandQuestionPool([
-          { id: 1, question: `[Grade 11 Life Sciences] Which micro-organisms are acellular particles composed of a protein capsid enclosing viral nucleic acid?`, type: 'multiple_choice', options: ['Viruses', 'Bacteria', 'Fungi', 'Protists'], answer: 'Viruses' },
-          { id: 2, question: `[Grade 11 Life Sciences] Where do the light-dependent reactions of photosynthesis occur inside plant chloroplasts?`, type: 'multiple_choice', options: ['Thylakoid Membrane', 'Stroma', 'Mitochondrial Matrix', 'Cytoplasm'], answer: 'Thylakoid Membrane' },
-          { id: 3, question: `[Grade 11 Life Sciences] How are villi in the human small intestine adapted for absorbing digested nutrients?`, type: 'multiple_choice', options: ['A) Large surface area with microvilli & dense capillaries', 'B) Thick muscle layer with no blood vessels', 'C) Impermeable cell membrane', 'D) Single vacuole without blood supply'], answer: 'A) Large surface area with microvilli & dense capillaries' }
+          { id: 1, question: `Which micro-organisms are acellular particles composed of a protein capsid enclosing viral nucleic acid?`, type: 'multiple_choice', options: ['Viruses', 'Bacteria', 'Fungi', 'Protists'], answer: 'Viruses' },
+          { id: 2, question: `Where do the light-dependent reactions of photosynthesis occur inside plant chloroplasts?`, type: 'multiple_choice', options: ['Thylakoid Membrane', 'Stroma', 'Mitochondrial Matrix', 'Cytoplasm'], answer: 'Thylakoid Membrane' },
+          { id: 3, question: `How are villi in the human small intestine adapted for absorbing digested nutrients?`, type: 'multiple_choice', options: ['A) Large surface area with microvilli & dense capillaries', 'B) Thick muscle layer with no blood vessels', 'C) Impermeable cell membrane', 'D) Single vacuole without blood supply'], answer: 'A) Large surface area with microvilli & dense capillaries' }
         ]);
       } else {
         return expandQuestionPool([
-          { id: 1, question: `[Grade 10 Life Sciences] Which cell organelle is responsible for cellular respiration and synthesizing ATP energy?`, type: 'multiple_choice', options: ['Mitochondrion', 'Chloroplast', 'Ribosome', 'Golgi Body'], answer: 'Mitochondrion' },
-          { id: 2, question: `[Grade 10 Life Sciences] What organic monomers join via peptide bonds to form protein macromolecules?`, type: 'multiple_choice', options: ['Amino Acids', 'Monosaccharides', 'Fatty Acids & Glycerol', 'Nucleotides'], answer: 'Amino Acids' },
-          { id: 3, question: `[Grade 10 Life Sciences] Which structures are present in plant cells but absent in animal cells?`, type: 'multiple_choice', options: ['A) Rigid cell wall & chloroplasts', 'B) Mitochondrion & ribosomes', 'C) Nucleus & cytoplasm', 'D) Cell membrane & centrioles'], answer: 'A) Rigid cell wall & chloroplasts' }
+          { id: 1, question: `Which cell organelle is responsible for cellular respiration and synthesizing ATP energy?`, type: 'multiple_choice', options: ['Mitochondrion', 'Chloroplast', 'Ribosome', 'Golgi Body'], answer: 'Mitochondrion' },
+          { id: 2, question: `What organic monomers join via peptide bonds to form protein macromolecules?`, type: 'multiple_choice', options: ['Amino Acids', 'Monosaccharides', 'Fatty Acids & Glycerol', 'Nucleotides'], answer: 'Amino Acids' },
+          { id: 3, question: `Which structures are present in plant cells but absent in animal cells?`, type: 'multiple_choice', options: ['A) Rigid cell wall & chloroplasts', 'B) Mitochondrion & ribosomes', 'C) Nucleus & cytoplasm', 'D) Cell membrane & centrioles'], answer: 'A) Rigid cell wall & chloroplasts' }
         ]);
       }
     } else if (isPhysics) {
       if (grade === '12') {
         return expandQuestionPool([
-          { id: 1, question: `[Grade 12 Physical Sciences] As an ambulance emitting frequency f moves TOWARDS a stationary observer, the observed Doppler frequency will be:`, type: 'multiple_choice', options: ['Higher than f', 'Lower than f', 'Equal to f', 'Zero'], answer: 'Higher than f' },
-          { id: 2, question: `[Grade 12 Physical Sciences] According to the Work-Energy Theorem (Wnet = ΔK), net work done on an object equals the change in its:`, type: 'multiple_choice', options: ['Kinetic Energy', 'Potential Energy', 'Linear Momentum', 'Acceleration'], answer: 'Kinetic Energy' },
-          { id: 3, question: `[Grade 12 Physical Sciences] According to Le Chateliers Principle, increasing pressure on a gaseous equilibrium system shifts the equilibrium to the side with:`, type: 'multiple_choice', options: ['A) Fewer gas moles', 'B) More gas moles', 'C) Zero moles', 'D) Higher temperature'], answer: 'A) Fewer gas moles' }
+          { id: 1, question: `As an ambulance emitting frequency f moves TOWARDS a stationary observer, the observed Doppler frequency will be:`, type: 'multiple_choice', options: ['Higher than f', 'Lower than f', 'Equal to f', 'Zero'], answer: 'Higher than f' },
+          { id: 2, question: `According to the Work-Energy Theorem (Wnet = ΔK), net work done on an object equals the change in its:`, type: 'multiple_choice', options: ['Kinetic Energy', 'Potential Energy', 'Linear Momentum', 'Acceleration'], answer: 'Kinetic Energy' },
+          { id: 3, question: `According to Le Chateliers Principle, increasing pressure on a gaseous equilibrium system shifts the equilibrium to the side with:`, type: 'multiple_choice', options: ['A) Fewer gas moles', 'B) More gas moles', 'C) Zero moles', 'D) Higher temperature'], answer: 'A) Fewer gas moles' }
         ]);
       } else if (grade === '11') {
         return expandQuestionPool([
-          { id: 1, question: `[Grade 11 Physical Sciences] According to Newton's Second Law of Motion (Fnet = ma), when the net force acting on an object is doubled, its acceleration:`, type: 'multiple_choice', options: ['Doubles', 'Halves', 'Remains unchanged', 'Decreases to zero'], answer: 'Doubles' },
-          { id: 2, question: `[Grade 11 Physical Sciences] Which intermolecular force is the strongest among non-ionic molecular compounds?`, type: 'multiple_choice', options: ['Hydrogen Bonding', 'Dipole-Dipole Forces', 'London Dispersion Forces', 'Induced Dipole Forces'], answer: 'Hydrogen Bonding' },
-          { id: 3, question: `[Grade 11 Physical Sciences] According to Boyle's Law, for a fixed mass of gas at constant temperature, pressure is:`, type: 'multiple_choice', options: ['A) Inversely proportional to volume', 'B) Directly proportional to volume', 'C) Independent of volume', 'D) Equal to temperature'], answer: 'A) Inversely proportional to volume' }
+          { id: 1, question: `According to Newton's Second Law of Motion (Fnet = ma), when the net force acting on an object is doubled, its acceleration:`, type: 'multiple_choice', options: ['Doubles', 'Halves', 'Remains unchanged', 'Decreases to zero'], answer: 'Doubles' },
+          { id: 2, question: `Which intermolecular force is the strongest among non-ionic molecular compounds?`, type: 'multiple_choice', options: ['Hydrogen Bonding', 'Dipole-Dipole Forces', 'London Dispersion Forces', 'Induced Dipole Forces'], answer: 'Hydrogen Bonding' },
+          { id: 3, question: `According to Boyle's Law, for a fixed mass of gas at constant temperature, pressure is:`, type: 'multiple_choice', options: ['A) Inversely proportional to volume', 'B) Directly proportional to volume', 'C) Independent of volume', 'D) Equal to temperature'], answer: 'A) Inversely proportional to volume' }
         ]);
       } else {
         return expandQuestionPool([
-          { id: 1, question: `[Grade 10 Physical Sciences] What is the speed of a transverse wave with a frequency of 5 Hz and a wavelength of 2 meters?`, type: 'multiple_choice', options: ['10 m/s', '2.5 m/s', '7 m/s', '0.4 m/s'], answer: '10 m/s' },
-          { id: 2, question: `[Grade 10 Physical Sciences] Which law states that the total electric charge in an isolated system remains constant?`, type: 'multiple_choice', options: ['Law of Conservation of Charge', 'Coulombs Law', 'Ohms Law', 'Newtons First Law'], answer: 'Law of Conservation of Charge' },
-          { id: 3, question: `[Grade 10 Physical Sciences] In a transverse pulse, particles vibrate:`, type: 'multiple_choice', options: ['A) Perpendicular to wave direction', 'B) Parallel to wave direction', 'C) In circular orbits', 'D) In random directions'], answer: 'A) Perpendicular to wave direction' }
+          { id: 1, question: `What is the speed of a transverse wave with a frequency of 5 Hz and a wavelength of 2 meters?`, type: 'multiple_choice', options: ['10 m/s', '2.5 m/s', '7 m/s', '0.4 m/s'], answer: '10 m/s' },
+          { id: 2, question: `Which law states that the total electric charge in an isolated system remains constant?`, type: 'multiple_choice', options: ['Law of Conservation of Charge', 'Coulombs Law', 'Ohms Law', 'Newtons First Law'], answer: 'Law of Conservation of Charge' },
+          { id: 3, question: `In a transverse pulse, particles vibrate:`, type: 'multiple_choice', options: ['A) Perpendicular to wave direction', 'B) Parallel to wave direction', 'C) In circular orbits', 'D) In random directions'], answer: 'A) Perpendicular to wave direction' }
         ]);
       }
     } else if (isMath) {
       if (grade === '12') {
         return expandQuestionPool([
-          { id: 1, question: `[Grade 12 Mathematics] Evaluate the derivative: d/dx (4x^3 - 5x^2 + 7x - 2).`, type: 'multiple_choice', options: ['12x^2 - 10x + 7', '12x^3 - 10x^2 + 7', '4x^2 - 5x + 7', '12x^2 - 10x'], answer: '12x^2 - 10x + 7' },
-          { id: 2, question: `[Grade 12 Mathematics] What is the sum to infinity (S_∞) of the convergent geometric series: 16 + 8 + 4 + 2 + ...?`, type: 'multiple_choice', options: ['32', '64', '24', '16'], answer: '32' },
-          { id: 3, question: `[Grade 12 Mathematics] Which expression represents the compound angle expansion identity for cos(A + B)?`, type: 'multiple_choice', options: ['A) cos(A)cos(B) - sin(A)sin(B)', 'B) cos(A)cos(B) + sin(A)sin(B)', 'C) sin(A)cos(B) + cos(A)sin(B)', 'D) tan(A) + tan(B)'], answer: 'A) cos(A)cos(B) - sin(A)sin(B)' }
+          { id: 1, question: `Evaluate the derivative: d/dx (4x^3 - 5x^2 + 7x - 2).`, type: 'multiple_choice', options: ['12x^2 - 10x + 7', '12x^3 - 10x^2 + 7', '4x^2 - 5x + 7', '12x^2 - 10x'], answer: '12x^2 - 10x + 7' },
+          { id: 2, question: `What is the sum to infinity (S_∞) of the convergent geometric series: 16 + 8 + 4 + 2 + ...?`, type: 'multiple_choice', options: ['32', '64', '24', '16'], answer: '32' },
+          { id: 3, question: `Which expression represents the compound angle expansion identity for cos(A + B)?`, type: 'multiple_choice', options: ['A) cos(A)cos(B) - sin(A)sin(B)', 'B) cos(A)cos(B) + sin(A)sin(B)', 'C) sin(A)cos(B) + cos(A)sin(B)', 'D) tan(A) + tan(B)'], answer: 'A) cos(A)cos(B) - sin(A)sin(B)' }
         ]);
       } else {
         return expandQuestionPool([
-          { id: 1, question: `[Grade 10 Mathematics] Factorize the quadratic expression: x^2 - 7x + 12.`, type: 'multiple_choice', options: ['(x - 3)(x - 4)', '(x + 3)(x + 4)', '(x - 2)(x - 6)', '(x - 1)(x - 12)'], answer: '(x - 3)(x - 4)' },
-          { id: 2, question: `[Grade 10 Mathematics] In a right-angled triangle, if sin(θ) = 3/5, what is cos(θ)?`, type: 'multiple_choice', options: ['4/5', '3/4', '5/3', '4/3'], answer: '4/5' },
-          { id: 3, question: `[Grade 10 Mathematics] Solve for x in the linear equation: 3x - 5 = 16.`, type: 'multiple_choice', options: ['A) x = 7', 'B) x = 5', 'C) x = 9', 'D) x = 3'], answer: 'A) x = 7' }
+          { id: 1, question: `Factorize the quadratic expression: x^2 - 7x + 12.`, type: 'multiple_choice', options: ['(x - 3)(x - 4)', '(x + 3)(x + 4)', '(x - 2)(x - 6)', '(x - 1)(x - 12)'], answer: '(x - 3)(x - 4)' },
+          { id: 2, question: `In a right-angled triangle, if sin(θ) = 3/5, what is cos(θ)?`, type: 'multiple_choice', options: ['4/5', '3/4', '5/3', '4/3'], answer: '4/5' },
+          { id: 3, question: `Solve for x in the linear equation: 3x - 5 = 16.`, type: 'multiple_choice', options: ['A) x = 7', 'B) x = 5', 'C) x = 9', 'D) x = 3'], answer: 'A) x = 7' }
         ]);
       }
     } else if (isCommerce) {
       if (grade === '12') {
         return expandQuestionPool([
-          { id: 1, question: `[Grade 12 Accounting] In a Public Company's Cash Flow Statement, cash paid for dividends is classified under:`, type: 'multiple_choice', options: ['Operating Activities', 'Financing Activities', 'Investing Activities', 'Capital Reserve'], answer: 'Operating Activities' },
-          { id: 2, question: `[Grade 12 Accounting] Which financial indicator measures profitability relative to shareholders' equity investment?`, type: 'multiple_choice', options: ['Return on Shareholders Equity (ROSH)', 'Solvency Ratio', 'Acid Test Ratio', 'Debt-Equity Ratio'], answer: 'Return on Shareholders Equity (ROSH)' },
-          { id: 3, question: `[Grade 12 Accounting] According to King IV corporate governance, independent external auditors must:`, type: 'multiple_choice', options: ['A) Provide objective, conflict-free audit opinions', 'B) Manage daily company operations', 'C) Approve executive salary packages', 'D) Prepare monthly VAT returns'], answer: 'A) Provide objective, conflict-free audit opinions' }
+          { id: 1, question: `In a Public Company's Cash Flow Statement, cash paid for dividends is classified under:`, type: 'multiple_choice', options: ['Operating Activities', 'Financing Activities', 'Investing Activities', 'Capital Reserve'], answer: 'Operating Activities' },
+          { id: 2, question: `Which financial indicator measures profitability relative to shareholders' equity investment?`, type: 'multiple_choice', options: ['Return on Shareholders Equity (ROSH)', 'Solvency Ratio', 'Acid Test Ratio', 'Debt-Equity Ratio'], answer: 'Return on Shareholders Equity (ROSH)' },
+          { id: 3, question: `According to King IV corporate governance, independent external auditors must:`, type: 'multiple_choice', options: ['A) Provide objective, conflict-free audit opinions', 'B) Manage daily company operations', 'C) Approve executive salary packages', 'D) Prepare monthly VAT returns'], answer: 'A) Provide objective, conflict-free audit opinions' }
         ]);
       } else {
         return expandQuestionPool([
-          { id: 1, question: `[Grade 10 Accounting] According to the Accounting Equation (Assets = Owner's Equity + Liabilities), purchasing equipment for R5,000 cash causes total Assets to:`, type: 'multiple_choice', options: ['Remain unchanged (R0 net change)', 'Increase by R5,000', 'Decrease by R5,000', 'Double'], answer: 'Remain unchanged (R0 net change)' },
-          { id: 2, question: `[Grade 10 Accounting] Which subsidiary journal is used to record cash received from customers?`, type: 'multiple_choice', options: ['Cash Receipts Journal (CRJ)', 'Cash Payments Journal (CPJ)', 'Debtors Journal (DJ)', 'Creditors Journal (CJ)'], answer: 'Cash Receipts Journal (CRJ)' },
-          { id: 3, question: `[Grade 10 Accounting] The primary purpose of preparing a Trial Balance is to:`, type: 'multiple_choice', options: ['A) Verify debit and credit mathematical equality', 'B) Calculate net annual profit', 'C) Record daily transactions', 'D) Audit bank statements'], answer: 'A) Verify debit and credit mathematical equality' }
+          { id: 1, question: `According to the Accounting Equation (Assets = Owner's Equity + Liabilities), purchasing equipment for R5,000 cash causes total Assets to:`, type: 'multiple_choice', options: ['Remain unchanged (R0 net change)', 'Increase by R5,000', 'Decrease by R5,000', 'Double'], answer: 'Remain unchanged (R0 net change)' },
+          { id: 2, question: `Which subsidiary journal is used to record cash received from customers?`, type: 'multiple_choice', options: ['Cash Receipts Journal (CRJ)', 'Cash Payments Journal (CPJ)', 'Debtors Journal (DJ)', 'Creditors Journal (CJ)'], answer: 'Cash Receipts Journal (CRJ)' },
+          { id: 3, question: `The primary purpose of preparing a Trial Balance is to:`, type: 'multiple_choice', options: ['A) Verify debit and credit mathematical equality', 'B) Calculate net annual profit', 'C) Record daily transactions', 'D) Audit bank statements'], answer: 'A) Verify debit and credit mathematical equality' }
         ]);
       }
     } else if (isTourism) {
       return expandQuestionPool([
-        { id: 1, question: `[Grade ${grade} Tourism] In Greenwich Mean Time (GMT) calculations, travelling EAST across time zones requires you to:`, type: 'multiple_choice', options: ['Add 1 hour per 15 degrees longitude', 'Subtract 1 hour per 15 degrees longitude', 'Keep time unchanged', 'Add 24 hours'], answer: 'Add 1 hour per 15 degrees longitude' },
-        { id: 2, question: `[Grade ${grade} Tourism] Which 3Ps pillar of Sustainable Tourism focuses on minimizing environmental impact on local ecosystems?`, type: 'multiple_choice', options: ['Planet', 'People', 'Profit', 'Promotion'], answer: 'Planet' },
-        { id: 3, question: `[Grade ${grade} Tourism] Foreign currency exchange rate at which banks buy foreign currency from tourists is called:`, type: 'multiple_choice', options: ['A) Bank Buying Rate (BBR)', 'B) Bank Selling Rate (BSR)', 'C) Inflation Rate', 'D) Prime Lending Rate'], answer: 'A) Bank Buying Rate (BBR)' }
+        { id: 1, question: `In Greenwich Mean Time (GMT) calculations, travelling EAST across time zones requires you to:`, type: 'multiple_choice', options: ['Add 1 hour per 15 degrees longitude', 'Subtract 1 hour per 15 degrees longitude', 'Keep time unchanged', 'Add 24 hours'], answer: 'Add 1 hour per 15 degrees longitude' },
+        { id: 2, question: `Which 3Ps pillar of Sustainable Tourism focuses on minimizing environmental impact on local ecosystems?`, type: 'multiple_choice', options: ['Planet', 'People', 'Profit', 'Promotion'], answer: 'Planet' },
+        { id: 3, question: `Foreign currency exchange rate at which banks buy foreign currency from tourists is called:`, type: 'multiple_choice', options: ['A) Bank Buying Rate (BBR)', 'B) Bank Selling Rate (BSR)', 'C) Inflation Rate', 'D) Prime Lending Rate'], answer: 'A) Bank Buying Rate (BBR)' }
       ]);
     } else {
       return expandQuestionPool([
-        { id: 1, question: `[Grade ${grade} ${subject}] Which key CAPS principle governs theoretical concepts in ${topic}?`, type: 'multiple_choice', options: [`A) ${topic} Core Rule 1`, `B) ${topic} Alternative Principle`, `C) ${topic} Secondary Rule`, `D) ${topic} Empirical Standard`], answer: `A) ${topic} Core Rule 1` },
-        { id: 2, question: `[Grade ${grade} ${subject}] What is the primary analytical application associated with ${topic}?`, type: 'multiple_choice', options: [`A) Quantitative Analysis of ${topic}`, `B) Qualitative Overview`, `C) Comparative Evaluation`, `D) Systematic Review`], answer: `A) Quantitative Analysis of ${topic}` },
-        { id: 3, question: `[Grade ${grade} ${subject}] State the fundamental CAPS examination definition for ${topic}.`, type: 'multiple_choice', options: [`A) Formal Grade ${grade} CAPS definition for ${topic}`, `B) Informal Summary`, `C) Historical Context`, `D) Secondary Variable`], answer: `A) Formal Grade ${grade} CAPS definition for ${topic}` }
+        { id: 1, question: `Which key CAPS principle governs theoretical concepts in ${topic}?`, type: 'multiple_choice', options: [`A) ${topic} Core Rule 1`, `B) ${topic} Alternative Principle`, `C) ${topic} Secondary Rule`, `D) ${topic} Empirical Standard`], answer: `A) ${topic} Core Rule 1` },
+        { id: 2, question: `What is the primary analytical application associated with ${topic}?`, type: 'multiple_choice', options: [`A) Quantitative Analysis of ${topic}`, `B) Qualitative Overview`, `C) Comparative Evaluation`, `D) Systematic Review`], answer: `A) Quantitative Analysis of ${topic}` },
+        { id: 3, question: `State the fundamental CAPS examination definition for ${topic}.`, type: 'multiple_choice', options: [`A) Formal Grade ${grade} CAPS definition for ${topic}`, `B) Informal Summary`, `C) Historical Context`, `D) Secondary Variable`], answer: `A) Formal Grade ${grade} CAPS definition for ${topic}` }
       ]);
     }
   }

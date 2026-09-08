@@ -111,12 +111,15 @@ export const TeacherAITools: React.FC = () => {
   const [teacherSubjects, setTeacherSubjects] = useState<string[]>(['Mathematics', 'Physical Sciences', 'Life Sciences']);
   const [teacherGrades, setTeacherGrades] = useState<number[]>([10, 11, 12]);
 
-  // Subject and Grade selection from URL parameters or defaults
+  // Subject, Grade, and Class selection from URL parameters or defaults
   const paramSubject = searchParams.get('subject') || 'Mathematics';
   const paramGrade = parseInt(searchParams.get('grade') || '10', 10);
+  const paramClass = searchParams.get('class') || searchParams.get('className') || '';
 
   const [subject, setSubject] = useState<string>(paramSubject);
   const [grade, setGrade] = useState<number>(paramGrade);
+  const [selectedClass, setSelectedClass] = useState<string>(paramClass);
+  const [teacherCards, setTeacherCards] = useState<any[]>([]);
   const [topic, setTopic] = useState<string>('');
   const [duration, setDuration] = useState<string>('60 Minutes');
   
@@ -140,15 +143,30 @@ export const TeacherAITools: React.FC = () => {
       .then((res) => {
         const list = Array.isArray(res) ? res : [];
         if (list.length > 0) {
+          setTeacherCards(list);
           const subs = Array.from(new Set(list.map((c: any) => c.subject_name || c.title).filter(Boolean))) as string[];
           const grds = Array.from(new Set(list.map((c: any) => parseInt(c.grade, 10)).filter(Boolean))) as number[];
           if (subs.length > 0) {
             setTeacherSubjects(subs);
-            if (!subs.includes(subject)) setSubject(subs[0]);
+            if (paramSubject && subs.includes(paramSubject)) {
+              setSubject(paramSubject);
+            } else if (!subs.includes(subject)) {
+              setSubject(subs[0]);
+            }
           }
           if (grds.length > 0) {
             setTeacherGrades(grds.sort((a, b) => a - b));
-            if (!grds.includes(grade)) setGrade(grds[0]);
+            if (paramGrade && grds.includes(paramGrade)) {
+              setGrade(paramGrade);
+            } else if (!grds.includes(grade)) {
+              setGrade(grds[0]);
+            }
+          }
+          if (paramClass) {
+            setSelectedClass(paramClass);
+          } else {
+            const matchedCard = list.find((c: any) => c.subject_name === (paramSubject || subs[0]) && parseInt(c.grade, 10) === (paramGrade || grds[0]));
+            if (matchedCard?.class_name) setSelectedClass(matchedCard.class_name);
           }
           return;
         }
@@ -178,6 +196,7 @@ export const TeacherAITools: React.FC = () => {
   useEffect(() => {
     const urlSubject = searchParams.get('subject');
     const urlGrade = searchParams.get('grade');
+    const urlClass = searchParams.get('class') || searchParams.get('className');
     const urlTool = searchParams.get('tool') as any;
 
     if (urlSubject && urlSubject !== subject) {
@@ -185,6 +204,9 @@ export const TeacherAITools: React.FC = () => {
     }
     if (urlGrade && parseInt(urlGrade, 10) !== grade) {
       setGrade(parseInt(urlGrade, 10));
+    }
+    if (urlClass && urlClass !== selectedClass) {
+      setSelectedClass(urlClass);
     }
     if (urlTool && ['quiz', 'lesson', 'test', 'studyNotes'].includes(urlTool) && urlTool !== activeTool) {
       setActiveTool(urlTool);
@@ -290,6 +312,7 @@ export const TeacherAITools: React.FC = () => {
         const data = await teacherService.generateAIQuestions({
           subject,
           grade,
+          class_name: selectedClass,
           topic,
           count: questionCount,
           marks_per_question: marksPerQuestion
@@ -502,7 +525,7 @@ export const TeacherAITools: React.FC = () => {
           </h3>
 
           <form onSubmit={(e) => { e.preventDefault(); executeGeneration(); }} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Only Assigned Subjects */}
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
@@ -543,6 +566,34 @@ export const TeacherAITools: React.FC = () => {
                     <option key={grdNum} value={grdNum}>Grade {grdNum}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* Target Class */}
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Class (Assigned)
+                </label>
+                {(() => {
+                  const availableClasses = Array.from(new Set(
+                    teacherCards
+                      .filter((c: any) => (c.subject_name === subject || !subject) && (parseInt(c.grade, 10) === grade || !grade))
+                      .map((c: any) => c.class_name)
+                      .filter(Boolean)
+                  )) as string[];
+                  const displayClasses = availableClasses.length > 0 ? availableClasses : [`${grade}A`];
+
+                  return (
+                    <select
+                      value={selectedClass || displayClasses[0]}
+                      onChange={(e) => setSelectedClass(e.target.value)}
+                      className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    >
+                      {displayClasses.map((cls) => (
+                        <option key={cls} value={cls}>Class {cls}</option>
+                      ))}
+                    </select>
+                  );
+                })()}
               </div>
             </div>
 

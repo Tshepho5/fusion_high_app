@@ -229,6 +229,7 @@ exports.getTopicsFromTextbook = async (req, res) => {
 
 exports.generateAIQuestions = async (req, res) => {
     const { topic, grade, count = 5, marks_per_question = 2 } = req.body;
+    const class_name = req.body.class_name || req.body.className || req.body.class || '';
     const subject = aiTutor.normalizeSubject(req.body.subject) || req.body.subject || 'Mathematics';
 
     if (!topic || !grade) {
@@ -259,19 +260,24 @@ exports.generateAIQuestions = async (req, res) => {
     ];
     const chosenAngle = cognitiveAngles[Math.floor(Math.random() * cognitiveAngles.length)];
 
-    const prompt = `Act as an expert Grade ${grade} South African CAPS educator and curriculum assessment specialist for ${subject}.
+    const prompt = `Act as an expert Grade ${grade} South African CAPS educator and curriculum assessment specialist for ${subject}${class_name ? ` (Teaching Class ${class_name})` : ''}.
     Subject: ${subject}
     Grade: ${grade}
-    Topic: "${topic}"
+    ${class_name ? `Target Class: ${class_name}\n    ` : ''}Topic: "${topic}"
     Target Question Count: ${count}
     Marks per Question: ${marks_per_question}
     Focus Angle: ${chosenAngle}
     Entropy Seed: ${entropySeed}
 
     CRITICAL SUBJECT BOUNDARY CONFINEMENT:
-    - You are strictly creating assessment questions exclusively for Grade ${grade} ${subject} on the specific topic "${topic}".
+    - You are strictly creating assessment questions exclusively for Grade ${grade} ${subject}${class_name ? ` Class ${class_name}` : ''} on the specific topic "${topic}".
     - Every question stem, distracter option, scientific/mathematical term, and scenario MUST 100% belong to ${subject}.
     - Under NO circumstances include terminology or concepts from any other subject.
+
+    CRITICAL NO-METADATA-TAGS MANDATE:
+    - DO NOT prepend question stems with bracketed tags such as "[Grade 10 Physical Sciences]", "[Grade ${grade} ${subject}]", or any "[...]" prefix.
+    - DO NOT start questions with "Question 1:", "Question 2:", etc.
+    - The question stem must start immediately with the direct, natural question wording.
 
     CRITICAL ANTI-REPETITION MANDATE:
     - Every question MUST be unique and test a distinct sub-aspect of "${topic}".
@@ -282,7 +288,7 @@ exports.generateAIQuestions = async (req, res) => {
     - Return a JSON object with key "questions" containing exactly ${count} objects.
     - Each object must have:
       * "id": number (1 to ${count})
-      * "question": string text of question
+      * "question": string text of question (WITHOUT ANY BRACKET TAGS OR "Question N:" PREFIX)
       * "type": "multiple_choice"
       * "options": array of 4 distinct string choices e.g. ["A) ...", "B) ...", "C) ...", "D) ..."]
       * "answer": string matching EXACTLY one of the 4 options (e.g. "A) ...")
@@ -293,11 +299,24 @@ exports.generateAIQuestions = async (req, res) => {
     const targetCount = parseInt(count, 10) || 5;
     const targetMarks = parseInt(marks_per_question, 10) || 2;
 
+    const cleanQuestionText = (txt, idx) => {
+        if (!txt) return `Question ${idx + 1} on ${topic}`;
+        return txt
+            .replace(/^\[Grade[^\]]+\]\s*/i, '')
+            .replace(/^\[[^\]]+\]\s*/i, '')
+            .replace(/^Question\s*\d+\s*:\s*/i, '')
+            .trim();
+    };
+
     try {
         const aiResponse = await aiTutor.safeAICall(prompt, true);
         if (aiResponse.error) {
             const fallback = aiTutor.generateCAPSLocalFallback(prompt, subject, grade, topic, targetCount, targetMarks);
-            return res.json({ questions: fallback.questions || [] });
+            const sanitizedFallback = (fallback.questions || []).map((q, idx) => ({
+                ...q,
+                question: cleanQuestionText(q.question, idx)
+            }));
+            return res.json({ questions: sanitizedFallback });
         }
         const parsed = aiTutor.parseAIJSON(aiResponse);
         const questionsList = Array.isArray(parsed) ? parsed : (parsed?.questions || []);
@@ -305,7 +324,7 @@ exports.generateAIQuestions = async (req, res) => {
         if (questionsList.length >= targetCount) {
             const sanitized = questionsList.slice(0, targetCount).map((q, idx) => ({
                 id: idx + 1,
-                question: q.question || `Question ${idx + 1} on ${topic}`,
+                question: cleanQuestionText(q.question, idx),
                 type: 'multiple_choice',
                 options: Array.isArray(q.options) && q.options.length >= 4
                     ? q.options.slice(0, 4)
@@ -318,11 +337,19 @@ exports.generateAIQuestions = async (req, res) => {
 
         // Use subject-specific fallback expansion if count is below target
         const fallback = aiTutor.generateCAPSLocalFallback(prompt, subject, grade, topic, targetCount, targetMarks);
-        return res.json({ questions: fallback.questions || [] });
+        const sanitizedFallback = (fallback.questions || []).map((q, idx) => ({
+            ...q,
+            question: cleanQuestionText(q.question, idx)
+        }));
+        return res.json({ questions: sanitizedFallback });
     } catch (error) {
         console.error('generateAIQuestions error, using subject-pure local engine:', error);
         const fallback = aiTutor.generateCAPSLocalFallback(prompt, subject, grade, topic, targetCount, targetMarks);
-        res.json({ questions: fallback.questions || [] });
+        const sanitizedFallback = (fallback.questions || []).map((q, idx) => ({
+            ...q,
+            question: cleanQuestionText(q.question, idx)
+        }));
+        res.json({ questions: sanitizedFallback });
     }
 };
 

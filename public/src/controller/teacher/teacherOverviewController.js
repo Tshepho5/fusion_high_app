@@ -204,7 +204,17 @@ exports.getMySubjectsOverview = async (req, res) => {
 
             for (let g = 0; g < grades.length; g++) {
                 const gradeNum = grades[g];
-                const className = classes[g] || `${gradeNum}A`;
+
+                // Match classes strictly belonging to this grade (e.g. 10A for 10, 11A for 11, 12A for 12)
+                const gradeClasses = classes.filter(c => {
+                    if (!c) return false;
+                    const digits = c.toString().replace(/\D/g, '');
+                    return digits ? parseInt(digits, 10) === gradeNum : false;
+                });
+                const classesToProcess = gradeClasses.length > 0 ? gradeClasses : [`${gradeNum}A`];
+
+                for (let cIdx = 0; cIdx < classesToProcess.length; cIdx++) {
+                    const className = classesToProcess[cIdx];
 
                 // Calculate REAL enrolled count for this class & subject
                 let learnerCount = 0;
@@ -372,6 +382,7 @@ exports.getMySubjectsOverview = async (req, res) => {
                     recent_class_avg: avgMark,
                     attendance_rate: subjectAttendanceRate
                 });
+                }
             }
         }
 

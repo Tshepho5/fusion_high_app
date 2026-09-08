@@ -197,7 +197,7 @@ exports.generateAITimetable = async (req, res) => {
         let teachers = teachersRes.rows;
         if (teachers.length === 0) {
             const allTeachersRes = await db.query(
-                `SELECT u.id as user_id, u.full_name, u.surname, u.email, e.subjects, e.grades_taught 
+                `SELECT u.id as user_id, u.full_name, u.surname, u.email, e.subjects, e.grades_taught, e.classes_taught 
                  FROM users u 
                  JOIN employees e ON u.id = e.user_id 
                  LEFT JOIN roles r ON u.role_id = r.id
@@ -281,7 +281,7 @@ exports.generateSchoolWideTimetable = async (req, res) => {
 
         // 1. Fetch all teachers for THIS specific school
         const allTeachersRes = await db.query(
-            `SELECT u.id, u.id as user_id, u.full_name, u.surname, u.email, e.subjects, e.grades_taught
+            `SELECT u.id, u.id as user_id, u.full_name, u.surname, u.email, e.subjects, e.grades_taught, e.classes_taught
              FROM users u
              JOIN employees e ON u.id = e.user_id
              LEFT JOIN roles r ON u.role_id = r.id
@@ -655,7 +655,18 @@ function autoScheduleFullTimetableLogic(timetable_data, generation_details, allT
                     });
                 };
 
-                // Find a free subject-specialist teacher who strictly teaches this subject and grade phase
+                const normalizeClassName = (raw) => {
+                    if (!raw) return '';
+                    return raw.toString().replace(/^Grade\s*/i, '').trim().toUpperCase();
+                };
+
+                const doesTeacherTeachClass = (t, cName) => {
+                    if (!t || !Array.isArray(t.classes_taught) || t.classes_taught.length === 0) return true;
+                    const norm = normalizeClassName(cName);
+                    return t.classes_taught.some(tc => normalizeClassName(tc) === norm);
+                };
+
+                // Find a free subject-specialist teacher who strictly teaches this subject, grade phase, and class
                 let assignedTeacher = allTeachers.find(t => {
                     const tKey = `${t.full_name} ${t.surname || ''}`.trim().toLowerCase();
                     if (teacherBusyMap[tKey]?.[day]?.[period]) return false;
@@ -663,16 +674,29 @@ function autoScheduleFullTimetableLogic(timetable_data, generation_details, allT
                     const dailySlots = teacherDailySlotCount[tKey]?.[day] || 0;
                     if (dailySlots >= maxDailySlotsPerTeacher) return false;
 
-                    return isTeacherQualifiedForSubjectAndGrade(t, currentSubject, targetGrade);
+                    return isTeacherQualifiedForSubjectAndGrade(t, currentSubject, targetGrade) && doesTeacherTeachClass(t, className);
                 });
 
-                // Fallback 1: If qualified specialist is available but at max daily slots, allow +1 slot to preserve subject specialization
+                // Fallback 1: Any qualified teacher matching the class within (maxDailySlots + 1)
                 if (!assignedTeacher) {
                     assignedTeacher = allTeachers.find(t => {
                         const tKey = `${t.full_name} ${t.surname || ''}`.trim().toLowerCase();
                         if (teacherBusyMap[tKey]?.[day]?.[period]) return false;
                         const dailySlots = teacherDailySlotCount[tKey]?.[day] || 0;
-                        return dailySlots < (maxDailySlotsPerTeacher + 1) && isTeacherQualifiedForSubjectAndGrade(t, currentSubject, targetGrade);
+                        return dailySlots < (maxDailySlotsPerTeacher + 1) && 
+                               isTeacherQualifiedForSubjectAndGrade(t, currentSubject, targetGrade) && 
+                               doesTeacherTeachClass(t, className);
+                    });
+                }
+
+                // Fallback 2: If no class-specific teacher is free, find any qualified teacher
+                if (!assignedTeacher) {
+                    assignedTeacher = allTeachers.find(t => {
+                        const tKey = `${t.full_name} ${t.surname || ''}`.trim().toLowerCase();
+                        if (teacherBusyMap[tKey]?.[day]?.[period]) return false;
+                        const dailySlots = teacherDailySlotCount[tKey]?.[day] || 0;
+                        return dailySlots < (maxDailySlotsPerTeacher + 1) && 
+                               isTeacherQualifiedForSubjectAndGrade(t, currentSubject, targetGrade);
                     });
                 }
 
