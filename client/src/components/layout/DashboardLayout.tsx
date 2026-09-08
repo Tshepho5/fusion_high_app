@@ -41,7 +41,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   }, []);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-canvas-dark text-slate-100 selection:bg-brand-600 selection:text-white relative">
+    <div className="flex h-screen overflow-hidden bg-canvas-dark text-slate-100 selection:bg-brand-600 selection:text-white relative transition-colors duration-300">
       {/* Background Ambient Neon Glow Orbs */}
       <div className="fixed top-[-10%] left-[20%] w-[500px] h-[500px] rounded-full bg-brand-600/10 blur-[130px] pointer-events-none animate-orb-float" />
       <div className="fixed bottom-[-10%] right-[10%] w-[450px] h-[450px] rounded-full bg-cyan-500/10 blur-[120px] pointer-events-none animate-orb-float" style={{ animationDelay: '-5s' }} />

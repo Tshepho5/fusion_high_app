@@ -64,7 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Streamlined Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 h-full min-h-screen md:h-screen md:sticky md:top-0 flex-col border-r border-white/10 bg-surface-darker/95 backdrop-blur-2xl transition-transform duration-300 ease-in-out md:translate-x-0 select-none shadow-xl ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 h-full min-h-screen md:h-screen md:sticky md:top-0 flex-col border-r border-white/10 bg-surface-darker/95 backdrop-blur-2xl transition-[transform,background-color,border-color] duration-300 ease-in-out md:translate-x-0 select-none shadow-xl ${
           isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
         }`}
       >
@@ -219,13 +219,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 setAboutUsOpen(true);
                 onClose();
               }}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer"
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-all cursor-pointer border border-transparent"
             >
               <div className="flex items-center gap-2.5">
-                <Info className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+                <Info className="w-3.5 h-3.5 text-cyan-400" />
                 <span>About Fusion High</span>
               </div>
-              <span className="text-[9px] font-mono text-cyan-600 dark:text-cyan-400/80 uppercase font-bold">Info</span>
+              <span className="text-[9px] font-mono text-cyan-400/80 uppercase font-bold">Info</span>
             </button>
 
             <button
@@ -233,22 +233,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 setContactUsOpen(true);
                 onClose();
               }}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer"
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-all cursor-pointer border border-transparent"
             >
               <div className="flex items-center gap-2.5">
-                <Phone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <Phone className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Contact Us & Admin</span>
               </div>
-              <span className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400/80 uppercase font-bold">Help</span>
+              <span className="text-[9px] font-mono text-emerald-400/80 uppercase font-bold">Help</span>
             </button>
           </div>
 
         </nav>
 
-        {/* Clean Footer with Slogan & Logout */}
-        <div className="p-4 pt-3 pb-6 border-t border-slate-200 dark:border-white/10 space-y-2 shrink-0 bg-slate-100/90 dark:bg-surface-darker/95 mt-auto">
-          <div data-sidebar-slogan="true" className="p-2 rounded-xl bg-white dark:bg-surface-dark/80 border border-slate-200 dark:border-white/5 text-center shadow-xs">
-            <p className="text-[9.5px] font-mono text-cyan-800 dark:text-cyan-300 font-extrabold tracking-tight">
+        {/* Clean Footer with Slogan & Logout that transitions seamlessly with theme */}
+        <div className="p-4 pt-3 pb-6 border-t border-white/10 space-y-2 shrink-0 bg-surface-darker/95 mt-auto transition-colors duration-300">
+          <div data-sidebar-slogan="true" className="p-2 rounded-xl bg-surface-dark/80 border border-white/10 text-center shadow-xs transition-colors duration-300">
+            <p className="text-[9.5px] font-mono text-cyan-300 font-extrabold tracking-tight">
               "Connecting Today, Empowering Tomorrow."
             </p>
           </div>
@@ -256,10 +256,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             onClick={logout}
             data-logout-button="true"
-            className="flex w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-xs font-bold text-rose-700 dark:text-rose-400 bg-rose-100/80 dark:bg-transparent border border-rose-300/80 dark:border-transparent hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600/20 dark:hover:text-white dark:hover:border-rose-500/30 hover:shadow-md shadow-xs transition-all duration-200 group/logout cursor-pointer"
+            className="flex w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-xs font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white border border-rose-500/20 hover:border-rose-500/40 hover:shadow-glow-rose transition-all duration-200 group/logout cursor-pointer"
           >
-            <LogOut className="w-4 h-4 text-rose-700 dark:text-rose-400 group-hover/logout:text-white transition-colors shrink-0" />
-            <span className="text-rose-700 dark:text-rose-400 group-hover/logout:text-white font-bold transition-colors">Sign Out</span>
+            <LogOut className="w-4 h-4 text-rose-400 group-hover/logout:text-white transition-colors shrink-0" />
+            <span className="text-rose-400 group-hover/logout:text-white font-bold transition-colors">Sign Out</span>
           </button>
         </div>
       </aside>
