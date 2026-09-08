@@ -7,6 +7,7 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl';
+  alignTop?: boolean;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -15,6 +16,7 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   children,
   maxWidth = 'lg',
+  alignTop = false,
 }) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -42,7 +44,13 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-6 overflow-y-auto">
+    <div
+      className={`fixed inset-0 z-[100] flex ${
+        alignTop
+          ? 'items-start pt-1.5 sm:pt-6'
+          : 'items-start sm:items-center pt-2 sm:pt-0'
+      } justify-center px-2 py-1.5 sm:p-6 overflow-y-auto`}
+    >
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/85 backdrop-blur-sm transition-opacity"
@@ -51,7 +59,9 @@ export const Modal: React.FC<ModalProps> = ({
 
       {/* Modal Dialog Container */}
       <div
-        className={`relative w-full ${maxWidthStyles[maxWidth]} my-auto rounded-2xl sm:rounded-3xl bg-surface-dark border border-white/10 shadow-2xl z-10 max-h-[92vh] flex flex-col overflow-hidden animate-fade-in`}
+        className={`relative w-full ${maxWidthStyles[maxWidth]} ${
+          alignTop ? 'mt-1 mb-4 sm:my-4' : 'my-1 sm:my-auto'
+        } rounded-2xl sm:rounded-3xl bg-surface-dark border border-white/10 shadow-2xl z-10 max-h-[96vh] sm:max-h-[92vh] flex flex-col overflow-hidden animate-fade-in`}
       >
         {/* Modal Header (Fixed at top) */}
         <div className="flex items-center justify-between border-b border-white/10 px-4 sm:px-6 py-3.5 sm:py-4 bg-surface-darker/70 shrink-0">

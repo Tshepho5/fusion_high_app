@@ -690,6 +690,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
           onClose={() => setAttendanceModal(null)}
           title={`Subject Attendance Register: ${attendanceModal.subject_name}`}
           maxWidth="4xl"
+          alignTop={true}
         >
           <div className="p-5 sm:p-6 space-y-5 text-slate-200">
             {/* Subject Context Header */}
@@ -962,6 +963,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
           onClose={() => setViewAllSubject(null)}
           title={`Subject Command Center: ${viewAllSubject.subject_name}`}
           maxWidth="4xl"
+          alignTop={true}
         >
           <div className="p-5 sm:p-6 space-y-6 text-slate-200">
             {/* Subject Overview Card */}
