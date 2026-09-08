@@ -289,7 +289,7 @@ const FAQ_CATEGORIES = [
       },
       {
         q: 'How do I change between Dark, Navy, and Light themes?',
-        a: 'Click the Color Palette icon in the top header or navigate to Technical Settings in your bottom dock to select your theme (Dark, Navy, Light) and font family (Inter, Outfit, Playfair, Mono).'
+        a: 'Navigate to Technical Settings in your bottom dock or navigation menu to select your theme (Dark, Navy, Light), color palette accent, and font family (Inter, Outfit, Playfair, Mono).'
       },
       {
         q: 'How do I switch the module view (Standard Grid, Compact App Tiles, List View)?',

@@ -29,7 +29,8 @@ import {
   Filter,
   CheckCircle2,
   CreditCard,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Settings
 } from 'lucide-react';
 
 type ViewMode = 'launchpad' | 'cards' | 'list';
@@ -81,6 +82,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
           { id: 'calendar', label: 'School Calendar', desc: 'Term dates, exams & official school events', category: 'campus', icon: Calendar, gradient: 'from-violet-600 to-indigo-600' },
           { id: 'announcements', label: 'Broadcast Notices', desc: 'Publish announcements to learners and parents', category: 'campus', icon: Megaphone, gradient: 'from-fuchsia-600 to-purple-600' },
           { id: 'messages', label: 'Communication Hub', desc: 'Direct messages with parents, learners & colleagues', category: 'chat', icon: MessageSquare, gradient: 'from-brand-600 to-cyan-600', badge: 'CHAT' },
+          { id: 'settings', label: 'Technical Settings', desc: 'Theme colors, dark/light mode, typography fonts & preferences', category: 'operations', icon: Settings, gradient: 'from-slate-600 to-indigo-600' },
         ];
       case 'admin':
         return [
@@ -98,6 +100,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
           { id: 'calendar', label: 'School Calendar', desc: 'Official school calendar dates & academic terms', category: 'campus', icon: Calendar, gradient: 'from-violet-600 to-indigo-600' },
           { id: 'announcements', label: 'Broadcast Notices', desc: 'Broadcast notices to all grades, streams & parents', category: 'campus', icon: Megaphone, gradient: 'from-fuchsia-600 to-purple-600' },
           { id: 'messages', label: 'School Chat Hub', desc: 'Institution-wide communication management', category: 'chat', icon: MessageSquare, gradient: 'from-brand-600 to-cyan-600' },
+          { id: 'settings', label: 'Technical Settings', desc: 'Theme colors, dark/light mode, typography fonts & preferences', category: 'operations', icon: Settings, gradient: 'from-slate-600 to-indigo-600' },
         ];
       case 'parent':
         return [
@@ -113,6 +116,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
           { id: 'calendar', label: 'School Calendar', desc: 'School events, exam dates & term holidays', category: 'campus', icon: Calendar, gradient: 'from-violet-600 to-indigo-600' },
           { id: 'announcements', label: 'School Notices', desc: 'Urgent notices, newsletters & circulars', category: 'campus', icon: Megaphone, gradient: 'from-fuchsia-600 to-purple-600' },
           { id: 'messages', label: 'Teacher Chat', desc: 'Direct secure messaging with classroom educators', category: 'chat', icon: MessageSquare, gradient: 'from-brand-600 to-cyan-600', badge: 'CHAT' },
+          { id: 'settings', label: 'Technical Settings', desc: 'Theme colors, dark/light mode, typography fonts & preferences', category: 'operations', icon: Settings, gradient: 'from-slate-600 to-indigo-600' },
         ];
       case 'learner':
       default:
@@ -131,6 +135,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
           { id: 'calendar', label: 'School Calendar', desc: 'Academic terms, test weeks & school holidays', category: 'campus', icon: Calendar, gradient: 'from-violet-600 to-indigo-600' },
           { id: 'announcements', label: 'Announcements', desc: 'School alerts, sports updates & event notices', category: 'campus', icon: Megaphone, gradient: 'from-fuchsia-600 to-purple-600' },
           { id: 'messages', label: 'Teacher Messages', desc: 'Direct private chats with subject teachers', category: 'chat', icon: MessageSquare, gradient: 'from-brand-600 to-cyan-600', badge: 'CHAT' },
+          { id: 'settings', label: 'Technical Settings', desc: 'Theme colors, dark/light mode, typography fonts & preferences', category: 'operations', icon: Settings, gradient: 'from-slate-600 to-indigo-600' },
         ];
     }
   };

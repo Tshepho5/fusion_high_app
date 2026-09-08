@@ -35,7 +35,8 @@ import {
   List,
   Grid3X3,
   Gamepad2,
-  Swords
+  Swords,
+  Settings
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
@@ -211,7 +212,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
     { id: 'sports', label: 'Sports & Clubs', icon: Trophy, color: 'text-green-400 bg-green-500/15 border-green-500/30' },
     { id: 'announcements', label: 'Announcements', icon: Megaphone, color: 'text-fuchsia-400 bg-fuchsia-500/15 border-fuchsia-500/30' },
     { id: 'messages', label: 'Teacher Messages', icon: MessageSquare, color: 'text-brand-400 bg-brand-500/15 border-brand-500/30' },
-    { id: 'settings', label: 'Technical Settings', icon: UserCheck, color: 'text-slate-300 bg-slate-700/30 border-slate-600/30' }
+    { id: 'settings', label: 'Technical Settings', icon: Settings, color: 'text-slate-300 bg-slate-700/30 border-slate-600/30' }
   ];
 
   return (

@@ -21,7 +21,8 @@ import {
   HelpCircle,
   Bot,
   GraduationCap,
-  Gamepad2
+  Gamepad2,
+  Settings
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -164,6 +165,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="flex items-center gap-3">
                 <User className="w-4 h-4 text-brand-400" />
                 <span>My Profile</span>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 opacity-50" />
+            </button>
+
+            <button
+              onClick={() => {
+                onSelectTab('settings');
+                onClose();
+              }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+                activeTab === 'settings'
+                  ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-glow-indigo border border-brand-400/40'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5 border border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Settings className="w-4 h-4 text-cyan-400" />
+                <span>Technical Settings</span>
               </div>
               <ChevronRight className="w-3.5 h-3.5 opacity-50" />
             </button>

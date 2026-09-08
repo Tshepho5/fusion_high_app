@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 
 export const LearnerSettings: React.FC = () => {
-  const { theme, font, setTheme, setFont } = useTheme();
+  const { theme, font, setTheme, setFont, toggleTheme } = useTheme();
 
   // Color Accent State
   const [accent, setAccent] = useState<string>(() => {
@@ -213,11 +213,35 @@ export const LearnerSettings: React.FC = () => {
 
         {/* 1. VISUAL THEME & ACCENT */}
         <div className="rounded-3xl bg-surface-dark border border-white/10 p-5 md:p-6 shadow-sm space-y-5">
-          <div className="flex items-center gap-2.5 pb-2 border-b border-white/5">
-            <Palette className="w-5 h-5 text-indigo-400" />
-            <h3 className="text-sm font-bold font-display text-white">
-              Visual Theme & Mode
-            </h3>
+          <div className="flex items-center justify-between pb-2 border-b border-white/5">
+            <div className="flex items-center gap-2.5">
+              <Palette className="w-5 h-5 text-indigo-400" />
+              <h3 className="text-sm font-bold font-display text-white">
+                Visual Theme & Mode
+              </h3>
+            </div>
+            <button
+              onClick={toggleTheme}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/10 bg-surface-darker hover:bg-white/5 text-xs font-semibold text-slate-300 hover:text-white transition-all shadow-sm group"
+              title={`Quick Toggle (current: ${theme})`}
+            >
+              {theme === 'light' ? (
+                <>
+                  <Sun className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-45 transition-transform" />
+                  <span>Light Mode</span>
+                </>
+              ) : theme === 'navy' ? (
+                <>
+                  <Shield className="w-3.5 h-3.5 text-blue-400 group-hover:scale-110 transition-transform" />
+                  <span>Slate Navy</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-3.5 h-3.5 text-indigo-400 group-hover:-rotate-12 transition-transform" />
+                  <span>Dark Mode</span>
+                </>
+              )}
+            </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
