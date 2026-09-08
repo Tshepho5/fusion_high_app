@@ -857,37 +857,12 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) !important;
 }
 
-/* 5-Second Cosmic Star Arrival Animation (Increases in size from far away until fitting position) */
+/* 5-Second Continuous Non-Stop Cosmic Star Arrival Animation (No pausing in between) */
 @keyframes starArrivalFromFar {
   0% {
-    transform: scale(0.015);
-    opacity: 0.2;
-    filter: brightness(4) drop-shadow(0 0 60px #38bdf8) drop-shadow(0 0 100px #6366f1);
-  }
-  15% {
-    transform: scale(0.06);
-    opacity: 0.85;
-    filter: brightness(3.2) drop-shadow(0 0 50px #38bdf8) drop-shadow(0 0 80px #6366f1);
-  }
-  35% {
-    transform: scale(0.2);
-    opacity: 0.95;
-    filter: brightness(2.4) drop-shadow(0 0 40px #06b6d4) drop-shadow(0 0 60px #4f46e5);
-  }
-  55% {
-    transform: scale(0.45);
-    opacity: 1;
-    filter: brightness(1.8) drop-shadow(0 0 30px #06b6d4) drop-shadow(0 0 45px #3b82f6);
-  }
-  75% {
-    transform: scale(0.75);
-    opacity: 1;
-    filter: brightness(1.35) drop-shadow(0 0 25px #38bdf8);
-  }
-  92% {
-    transform: scale(1.04);
-    opacity: 1;
-    filter: brightness(1.1) drop-shadow(0 0 20px #06b6d4);
+    transform: scale(0.02);
+    opacity: 0.15;
+    filter: brightness(3.6) drop-shadow(0 0 60px #38bdf8) drop-shadow(0 0 100px #6366f1);
   }
   100% {
     transform: scale(1);
@@ -901,16 +876,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
     transform: scale(0.1) rotate(0deg);
     opacity: 1;
   }
-  60% {
-    transform: scale(1.4) rotate(90deg);
-    opacity: 0.9;
-  }
-  85% {
-    transform: scale(2.0) rotate(140deg);
-    opacity: 0.4;
-  }
   100% {
-    transform: scale(2.6) rotate(180deg);
+    transform: scale(2.8) rotate(180deg);
     opacity: 0;
   }
 }
@@ -927,12 +894,12 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 }
 
 .animate-star-arrival-5s {
-  animation: starArrivalFromFar 5s cubic-bezier(0.16, 0.88, 0.32, 1) forwards;
+  animation: starArrivalFromFar 5s cubic-bezier(0.15, 0.85, 0.35, 1) forwards;
   will-change: transform, filter, opacity;
 }
 
 .animate-star-spikes-5s {
-  animation: starSpikesSpin 5s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+  animation: starSpikesSpin 5s cubic-bezier(0.15, 0.85, 0.35, 1) forwards;
   will-change: transform, opacity;
 }
 

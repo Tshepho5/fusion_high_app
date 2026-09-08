@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { FusionAppIcon } from '../common/FusionAppIcon';
-import { Sparkles, RotateCcw } from 'lucide-react';
 
 interface StarArrivalAppIconProps {
   className?: string;
@@ -32,8 +31,20 @@ export const StarArrivalAppIcon: React.FC<StarArrivalAppIconProps> = ({
 
   return (
     <div className="relative flex flex-col items-center justify-center select-none">
-      {/* Outer Cosmic Staging Container */}
-      <div className="relative flex items-center justify-center w-36 h-36 sm:w-44 sm:h-44">
+      {/* Outer Cosmic Staging Container - Clickable to Replay Star Arrival */}
+      <div
+        onClick={handleReplay}
+        className="relative flex items-center justify-center w-36 h-36 sm:w-44 sm:h-44 cursor-pointer group"
+        title="Click App Icon to replay 5-second star arrival animation"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleReplay();
+          }
+        }}
+      >
         
         {/* 1. Starlight Shockwave Ripple (triggers at 5s upon arrival) */}
         {hasArrived && (
@@ -68,39 +79,21 @@ export const StarArrivalAppIcon: React.FC<StarArrivalAppIconProps> = ({
           </div>
         )}
 
-        {/* 3. The Official FusionAppIcon (Traveling from far like a star over 5 seconds) */}
+        {/* 3. The Official FusionAppIcon (Traveling from far like a star over 5 continuous seconds) */}
         <div
           key={`star-icon-${animKey}`}
-          className={`relative z-10 flex items-center justify-center ${
-            isTraveling ? 'animate-star-arrival-5s' : 'transition-transform duration-300 hover:scale-105'
+          className={`relative z-10 flex items-center justify-center transition-transform duration-300 ${
+            isTraveling
+              ? 'animate-star-arrival-5s pointer-events-none'
+              : 'group-hover:scale-105 active:scale-95 group-hover:brightness-110'
           }`}
         >
           <FusionAppIcon className={className} />
         </div>
 
-        {/* 4. Ambient Base Glow Dock (stays after arrival) */}
+        {/* 4. Ambient Base Glow Dock (stays after arrival and brightens on hover) */}
         {!isTraveling && (
-          <div className="absolute inset-0 -z-10 rounded-3xl bg-blue-500/10 blur-xl opacity-75 animate-pulse-subtle pointer-events-none" />
-        )}
-      </div>
-
-      {/* 5. Star Arrival Indicator & Replay Button */}
-      <div className="mt-1 flex items-center gap-2">
-        {isTraveling ? (
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/50 border border-cyan-500/40 text-[11px] font-mono font-bold text-cyan-300 animate-pulse shadow-sm">
-            <Sparkles className="w-3 h-3 text-cyan-400 animate-spin" />
-            <span>Approaching from deep space... (5s)</span>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={handleReplay}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900/60 hover:bg-slate-800/80 border border-white/10 hover:border-cyan-500/40 text-[11px] font-medium text-slate-400 hover:text-cyan-300 transition-all hover:scale-105 shadow-sm group"
-            title="Replay the 5-second star arrival animation"
-          >
-            <RotateCcw className="w-3 h-3 text-slate-400 group-hover:text-cyan-400 transition-transform group-hover:-rotate-90" />
-            <span>Replay Star Arrival (5s)</span>
-          </button>
+          <div className="absolute inset-0 -z-10 rounded-3xl bg-blue-500/10 group-hover:bg-cyan-500/20 blur-xl opacity-75 group-hover:opacity-100 transition-all duration-300 pointer-events-none" />
         )}
       </div>
     </div>
