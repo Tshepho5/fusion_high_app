@@ -68,9 +68,6 @@ export const LandingPage: React.FC = () => {
               <span className="font-display text-base md:text-lg font-black tracking-tight text-white block leading-tight uppercase group-hover:text-blue-300 transition-colors">
                 FUSION HIGH SCHOOLS
               </span>
-              <span className="text-[9px] md:text-[10px] font-mono tracking-wider text-blue-400 uppercase font-semibold block">
-                NATIONAL ACADEMIC NETWORK • CAPS ALIGNED
-              </span>
             </div>
           </Link>
 
@@ -122,8 +119,6 @@ export const LandingPage: React.FC = () => {
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/80 text-xs font-semibold text-slate-300 shadow-sm backdrop-blur-md">
               <Sparkles className="w-3.5 h-3.5 text-blue-400" />
               <span>Multi-School Academic Network</span>
-              <span className="text-slate-600">•</span>
-              <span className="text-emerald-400 font-bold">DBE CAPS Aligned</span>
             </div>
           </div>
 
@@ -171,7 +166,7 @@ export const LandingPage: React.FC = () => {
       <footer className="py-4 px-4 border-t border-white/10 bg-[#060912] text-xs text-slate-400 w-full relative z-20">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-center sm:text-left text-slate-400">
-            &copy; {new Date().getFullYear()} Fusion High Schools Academic Network. DBE CAPS Aligned & POPIA Compliant.
+            &copy; {new Date().getFullYear()} Fusion High Schools Academic Network.
           </div>
           <div className="flex items-center gap-4 text-xs font-semibold">
             <button onClick={() => setIsAboutOpen(true)} className="hover:text-blue-300 transition-colors text-slate-400">
@@ -189,10 +184,6 @@ export const LandingPage: React.FC = () => {
               <HelpCircle className="w-3.5 h-3.5 text-blue-400" />
               <span>View FAQs</span>
             </button>
-            <span className="text-slate-700">•</span>
-            <Link to="/login" className="text-blue-400 hover:text-blue-300 font-bold">
-              Sign In
-            </Link>
           </div>
         </div>
       </footer>

@@ -1585,4 +1585,5 @@ if (document.readyState === 'loading') {
     });
 } else {
     if (window.loadLearnerMySubjectsOverview) window.loadLearnerMySubjectsOverview();
-}
+}
+}
