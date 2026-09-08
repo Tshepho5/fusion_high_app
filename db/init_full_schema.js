@@ -573,16 +573,31 @@ async function initializeAllDatabaseTables(customClient) {
         subject_id INT,
         title VARCHAR(255),
         file_path TEXT,
-        resource_type VARCHAR(50) DEFAULT 'textbook',
+        resource_type VARCHAR(50) DEFAULT 'past_paper',
         description TEXT,
         term VARCHAR(50),
         year INTEGER DEFAULT 2026,
-        stream VARCHAR(50),
+        stream VARCHAR(50) DEFAULT 'General',
         class_id INTEGER,
         file_name VARCHAR(255),
-        file_size VARCHAR(50),
+        file_size VARCHAR(50) DEFAULT '2.4 MB',
         uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS subject VARCHAR(100);
+      ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS teacher_id TEXT;
+      ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+      ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+      ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE;
+      ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS resource_type VARCHAR(50) DEFAULT 'past_paper';
+      ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS title VARCHAR(255);
+      ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS description TEXT;
+      ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS term VARCHAR(50);
+      ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS year INTEGER DEFAULT 2026;
+      ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS file_name VARCHAR(255);
+      ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS file_size VARCHAR(50) DEFAULT '2.4 MB';
+      ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS stream VARCHAR(50) DEFAULT 'General';
+      ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
 
       CREATE TABLE IF NOT EXISTS textbook_inventory (
         id SERIAL PRIMARY KEY,

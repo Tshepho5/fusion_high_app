@@ -266,9 +266,17 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
             <span>{error}</span>
           </div>
-          <button onClick={() => setError(null)} className="text-rose-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors">
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fetchResources()}
+              className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold transition-colors"
+            >
+              Retry
+            </button>
+            <button onClick={() => setError(null)} className="text-rose-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 

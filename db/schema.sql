@@ -588,10 +588,10 @@ SELECT *
 FROM users;
 
 
--- SELECT DISTINCT name 
--- FROM subjects 
--- WHERE grade = 10 AND (stream ILIKE 'Science' OR stream = 'General') 
--- ORDER BY name; 
+SELECT DISTINCT name 
+ FROM subjects 
+ WHERE grade = 11 AND (stream ILIKE 'Science' OR stream = 'General') 
+ ORDER BY name; 
 
 
 -- Create the corresponding child record, with parent_id as NULL

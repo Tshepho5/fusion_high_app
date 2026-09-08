@@ -2136,7 +2136,7 @@ exports.getSubjectResources = async (req, res) => {
                 COALESCE(u.full_name, 'Department of Basic Education') AS teacher_name, 
                 COALESCE(u.surname, '(CAPS Archive)') AS teacher_surname
             FROM textbooks t
-            LEFT JOIN users u ON t.teacher_id = u.id
+            LEFT JOIN users u ON t.teacher_id::text = u.id::text
             WHERE ${whereClauses.join(' AND ')}
             ORDER BY t.year DESC NULLS LAST, t.upload_date DESC NULLS LAST, t.id DESC
             LIMIT 200
