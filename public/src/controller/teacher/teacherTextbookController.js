@@ -259,7 +259,7 @@ exports.generateAIQuestions = async (req, res) => {
     ];
     const chosenAngle = cognitiveAngles[Math.floor(Math.random() * cognitiveAngles.length)];
 
-    const prompt = `Act as an expert Grade ${grade} educator and curriculum assessment creator.
+    const prompt = `Act as an expert Grade ${grade} South African CAPS educator and curriculum assessment specialist for ${subject}.
     Subject: ${subject}
     Grade: ${grade}
     Topic: "${topic}"
@@ -269,13 +269,9 @@ exports.generateAIQuestions = async (req, res) => {
     Entropy Seed: ${entropySeed}
 
     CRITICAL SUBJECT BOUNDARY CONFINEMENT:
-    - You are strictly creating assessment questions for ${subject}.
-    - Every question, distracter option, scientific/mathematical term, and scenario MUST 100% belong exclusively to the subject of ${subject}.
-    - Example: If the subject is Life Sciences, all questions MUST be solely about biology, living organisms, genetics, cells, human anatomy, ecology, and biochemistry. NEVER include physics equations, commerce balance sheets, or unrelated themes.
-    - Example: If the subject is Physical Sciences, all questions MUST be solely about physics and chemistry.
-    - Example: If the subject is Mathematics, all questions MUST be solely about mathematics.
-    - Example: If the subject is Accounting, all questions MUST be solely about accounting and financial principles.
-    - Example: If the subject is Tourism, all questions MUST be solely about tourism sectors, time zones, foreign exchange, and destinations.
+    - You are strictly creating assessment questions exclusively for Grade ${grade} ${subject} on the specific topic "${topic}".
+    - Every question stem, distracter option, scientific/mathematical term, and scenario MUST 100% belong to ${subject}.
+    - Under NO circumstances include terminology or concepts from any other subject.
 
     CRITICAL ANTI-REPETITION MANDATE:
     - Every question MUST be unique and test a distinct sub-aspect of "${topic}".
@@ -294,16 +290,17 @@ exports.generateAIQuestions = async (req, res) => {
     
     ${contextText ? "Reference textbook content: " + contextText.substring(0, 1500) : "Ensure age-appropriate Grade " + grade + " difficulty."}`;
 
+    const targetCount = parseInt(count, 10) || 5;
+    const targetMarks = parseInt(marks_per_question, 10) || 2;
+
     try {
         const aiResponse = await aiTutor.safeAICall(prompt, true);
         if (aiResponse.error) {
-            const fallback = aiTutor.generateCAPSLocalFallback(prompt);
+            const fallback = aiTutor.generateCAPSLocalFallback(prompt, subject, grade, topic, targetCount, targetMarks);
             return res.json({ questions: fallback.questions || [] });
         }
         const parsed = aiTutor.parseAIJSON(aiResponse);
         const questionsList = Array.isArray(parsed) ? parsed : (parsed?.questions || []);
-        const targetCount = parseInt(count, 10) || 5;
-        const targetMarks = parseInt(marks_per_question, 10) || 2;
 
         if (questionsList.length >= targetCount) {
             const sanitized = questionsList.slice(0, targetCount).map((q, idx) => ({
@@ -320,11 +317,11 @@ exports.generateAIQuestions = async (req, res) => {
         }
 
         // Use subject-specific fallback expansion if count is below target
-        const fallback = aiTutor.generateCAPSLocalFallback(prompt);
+        const fallback = aiTutor.generateCAPSLocalFallback(prompt, subject, grade, topic, targetCount, targetMarks);
         return res.json({ questions: fallback.questions || [] });
     } catch (error) {
         console.error('generateAIQuestions error, using subject-pure local engine:', error);
-        const fallback = aiTutor.generateCAPSLocalFallback(prompt);
+        const fallback = aiTutor.generateCAPSLocalFallback(prompt, subject, grade, topic, targetCount, targetMarks);
         res.json({ questions: fallback.questions || [] });
     }
 };

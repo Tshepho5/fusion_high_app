@@ -58,59 +58,76 @@ async function callAI(prompt, isJson = false, modelOverride = null) {
 
 const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 
-function generateCAPSLocalFallback(prompt) {
+function generateCAPSLocalFallback(prompt, explicitSubject, explicitGrade, explicitTopic, explicitCount, explicitMarks) {
   console.info('[AI SERVICE] Using resilient Grade-Sensitive CAPS local fallback content generator...');
   const isLesson = prompt.includes('Lesson Plan') || prompt.includes('learning_outcomes');
   const isTest = prompt.includes('Test Paper') || prompt.includes('marking_memo');
 
-  let subject = 'Physical Sciences';
-  let grade = '10';
-  let topic = 'Curriculum Core';
+  let subject = explicitSubject;
+  let grade = explicitGrade ? String(explicitGrade) : null;
+  let topic = explicitTopic;
 
-  const gradeMatch = prompt.match(/Grade[:\s]+([0-9]{1,2})/i) || prompt.match(/Grade\s*([0-9]{1,2})/i);
-  if (gradeMatch) grade = String(gradeMatch[1]).trim();
-
-  const promptLower = prompt.toLowerCase();
-  if (promptLower.includes('life science') || promptLower.includes('biology')) {
-    subject = 'Life Sciences';
-  } else if (promptLower.includes('physical science') || promptLower.includes('physics')) {
-    subject = 'Physical Sciences';
-  } else if (promptLower.includes('math') || promptLower.includes('mathematics')) {
-    subject = 'Mathematics';
-  } else if (promptLower.includes('accounting') || promptLower.includes('account')) {
-    subject = 'Accounting';
-  } else if (promptLower.includes('business')) {
-    subject = 'Business Studies';
-  } else if (promptLower.includes('economic')) {
-    subject = 'Economics';
-  } else if (promptLower.includes('tourism')) {
-    subject = 'Tourism';
-  } else if (promptLower.includes('english')) {
-    subject = 'English FAL';
-  } else {
-    const subjMatch = prompt.match(/Subject:\s*([^\n\r\t,]+)/i);
+  // 1. Primary extraction: If not passed explicitly, parse strictly from "Subject: <SubjectName>" line!
+  if (!subject) {
+    const subjMatch = prompt.match(/Subject:\s*([^\n\r]+)/i);
     if (subjMatch) {
-      subject = subjMatch[1].replace(/Grade.*/i, '').replace(/Topic.*/i, '').trim() || subject;
+      subject = subjMatch[1].replace(/Grade.*/i, '').replace(/Topic.*/i, '').replace(/Target.*/i, '').trim();
     }
   }
 
-  const topicMatch = prompt.match(/Topic:\s*"([^"]+)"/i) || prompt.match(/topic:\s*"([^"]+)"/i) || prompt.match(/Topic:\s*([^\n\r]+)/i);
-  if (topicMatch) {
-    topic = topicMatch[1].replace(/Duration.*/i, '').replace(/Total.*/i, '').replace(/Lesson Plan.*/i, '').replace(/Test Paper.*/i, '').replace(/Generate.*/i, '').trim() || topic;
+  // 2. Secondary extraction only if still missing
+  if (!subject) {
+    const promptLower = prompt.toLowerCase();
+    if (promptLower.includes('physical science') || promptLower.includes('physics')) {
+      subject = 'Physical Sciences';
+    } else if (promptLower.includes('life science') || promptLower.includes('biology')) {
+      subject = 'Life Sciences';
+    } else if (promptLower.includes('math') || promptLower.includes('mathematics')) {
+      subject = 'Mathematics';
+    } else if (promptLower.includes('accounting') || promptLower.includes('account')) {
+      subject = 'Accounting';
+    } else if (promptLower.includes('business')) {
+      subject = 'Business Studies';
+    } else if (promptLower.includes('economic')) {
+      subject = 'Economics';
+    } else if (promptLower.includes('tourism')) {
+      subject = 'Tourism';
+    } else if (promptLower.includes('english')) {
+      subject = 'English FAL';
+    }
   }
 
+  subject = normalizeSubject(subject) || subject || 'Physical Sciences';
+
+  if (!grade) {
+    const gradeMatch = prompt.match(/Grade:\s*([0-9]{1,2})/i) || prompt.match(/Grade[:\s]+([0-9]{1,2})/i) || prompt.match(/Grade\s*([0-9]{1,2})/i);
+    if (gradeMatch) grade = String(gradeMatch[1]).trim();
+  }
+  grade = grade || '10';
+
+  if (!topic) {
+    const topicMatch = prompt.match(/Topic:\s*"([^"]+)"/i) || prompt.match(/topic:\s*"([^"]+)"/i) || prompt.match(/Topic:\s*([^\n\r]+)/i);
+    if (topicMatch) {
+      topic = topicMatch[1].replace(/Duration.*/i, '').replace(/Total.*/i, '').replace(/Target.*/i, '').replace(/Lesson Plan.*/i, '').replace(/Test Paper.*/i, '').replace(/Generate.*/i, '').trim() || topic;
+    }
+  }
+  topic = topic || 'Core Curriculum';
+
   const subLower = subject.toLowerCase();
-  const isLifeScience = subLower.includes('life') || subLower.includes('bio');
+  const isPhysics = subLower.includes('physic') || subLower.includes('physics');
+  const isLifeScience = !isPhysics && (subLower.includes('life') || subLower.includes('bio'));
   const isCommerce = subLower.includes('account') || subLower.includes('business') || subLower.includes('econ');
   const isMath = subLower.includes('math');
-  const isPhysics = subLower.includes('physic') || subLower.includes('tech');
   const isTourism = subLower.includes('tour');
+  const isGeography = subLower.includes('geograph');
+  const isHistory = subLower.includes('histor');
+  const isEnglish = subLower.includes('english');
 
-  const countMatch = prompt.match(/Generate EXACTLY ([0-9]+) multiple choice/i) || prompt.match(/Generate ([0-9]+)/i) || prompt.match(/count[:\s]+([0-9]+)/i);
-  const requestedCount = countMatch ? parseInt(countMatch[1], 10) : 5;
+  const countMatch = prompt.match(/Target Question Count:\s*([0-9]+)/i) || prompt.match(/count[:\s]+([0-9]+)/i) || prompt.match(/Generate EXACTLY ([0-9]+) multiple choice/i) || prompt.match(/Generate ([0-9]+)/i);
+  const requestedCount = explicitCount ? parseInt(explicitCount, 10) : (countMatch ? parseInt(countMatch[1], 10) : 5);
 
-  const marksMatch = prompt.match(/Set the 'marks' for each question to ([0-9]+)/i) || prompt.match(/marks.*:?\s*([0-9]+)/i);
-  const requestedMarks = marksMatch ? parseInt(marksMatch[1], 10) : 2;
+  const marksMatch = prompt.match(/Marks per Question:\s*([0-9]+)/i) || prompt.match(/marks.*:?\s*([0-9]+)/i) || prompt.match(/Set the 'marks' for each question to ([0-9]+)/i);
+  const requestedMarks = explicitMarks ? parseInt(explicitMarks, 10) : (marksMatch ? parseInt(marksMatch[1], 10) : 2);
 
   const topicQuestionTemplates = [
     {
@@ -502,6 +519,12 @@ function generateCAPSLocalFallback(prompt) {
           { id: 1, question: `[Grade 12 Physical Sciences] As an ambulance emitting frequency f moves TOWARDS a stationary observer, the observed Doppler frequency will be:`, type: 'multiple_choice', options: ['Higher than f', 'Lower than f', 'Equal to f', 'Zero'], answer: 'Higher than f' },
           { id: 2, question: `[Grade 12 Physical Sciences] According to the Work-Energy Theorem (Wnet = ΔK), net work done on an object equals the change in its:`, type: 'multiple_choice', options: ['Kinetic Energy', 'Potential Energy', 'Linear Momentum', 'Acceleration'], answer: 'Kinetic Energy' },
           { id: 3, question: `[Grade 12 Physical Sciences] According to Le Chateliers Principle, increasing pressure on a gaseous equilibrium system shifts the equilibrium to the side with:`, type: 'multiple_choice', options: ['A) Fewer gas moles', 'B) More gas moles', 'C) Zero moles', 'D) Higher temperature'], answer: 'A) Fewer gas moles' }
+        ]);
+      } else if (grade === '11') {
+        return expandQuestionPool([
+          { id: 1, question: `[Grade 11 Physical Sciences] According to Newton's Second Law of Motion (Fnet = ma), when the net force acting on an object is doubled, its acceleration:`, type: 'multiple_choice', options: ['Doubles', 'Halves', 'Remains unchanged', 'Decreases to zero'], answer: 'Doubles' },
+          { id: 2, question: `[Grade 11 Physical Sciences] Which intermolecular force is the strongest among non-ionic molecular compounds?`, type: 'multiple_choice', options: ['Hydrogen Bonding', 'Dipole-Dipole Forces', 'London Dispersion Forces', 'Induced Dipole Forces'], answer: 'Hydrogen Bonding' },
+          { id: 3, question: `[Grade 11 Physical Sciences] According to Boyle's Law, for a fixed mass of gas at constant temperature, pressure is:`, type: 'multiple_choice', options: ['A) Inversely proportional to volume', 'B) Directly proportional to volume', 'C) Independent of volume', 'D) Equal to temperature'], answer: 'A) Inversely proportional to volume' }
         ]);
       } else {
         return expandQuestionPool([

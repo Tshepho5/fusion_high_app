@@ -288,6 +288,11 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
     }
   };
 
+  // Update marks for an individual generated question
+  const handleUpdateGeneratedQuestionMarks = (idxToUpdate: number, newMarks: number) => {
+    setGeneratedQuestions(prev => prev.map((q, idx) => idx === idxToUpdate ? { ...q, marks: newMarks } : q));
+  };
+
   // Publish AI Generated Quiz directly to learners as an AI Assessment
   const handlePublishGeneratedQuiz = async () => {
     if (generatedQuestions.length === 0) return;
@@ -1028,6 +1033,26 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
                         </Badge>
                       </div>
 
+                      {/* AI Evaluation Box */}
+                      {activeSubmission.ai_score !== null && activeSubmission.ai_score !== undefined && (
+                        <div className="p-3 rounded-xl bg-cyan-950/30 border border-cyan-500/30 space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-cyan-300 flex items-center gap-1">
+                              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                              <span>AI Auto-Graded Result</span>
+                            </span>
+                            <span className="font-mono font-bold text-cyan-300">
+                              {activeSubmission.ai_score} / {selectedAssignment.total_marks} ({activeSubmission.ai_percentage}%)
+                            </span>
+                          </div>
+                          {activeSubmission.ai_feedback && (
+                            <p className="text-[11px] text-slate-300 leading-relaxed">
+                              {activeSubmission.ai_feedback}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
                       <div>
                         <span className="text-slate-400 block mb-1">Student Answer / Response:</span>
                         <div className="p-3 rounded-xl bg-surface-dark border border-white/5 text-slate-200 text-xs max-h-32 overflow-y-auto">
@@ -1216,15 +1241,30 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
                     {generatedQuestions.map((q, idx) => (
                       <div key={idx} className="p-3.5 rounded-2xl bg-surface-darker border border-white/5 space-y-2">
                         <div className="flex items-start justify-between gap-2">
-                          <p className="font-bold text-white text-xs">Q{idx + 1}: {q.question}</p>
-                          <button
-                            type="button"
-                            onClick={() => setGeneratedQuestions(prev => prev.filter((_, i) => i !== idx))}
-                            className="text-slate-400 hover:text-rose-400 p-1"
-                            title="Remove Question"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <p className="font-bold text-white text-xs flex-1">Q{idx + 1}: {q.question}</p>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface-dark border border-white/10 hover:border-cyan-500/40 transition-colors">
+                              <span className="text-[9px] text-slate-400 font-bold uppercase">Mark:</span>
+                              <input
+                                type="number"
+                                min={1}
+                                max={100}
+                                value={q.marks !== undefined ? q.marks : quizMarksPerQuestion}
+                                onChange={(e) => handleUpdateGeneratedQuestionMarks(idx, Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                className="w-9 bg-transparent text-cyan-300 font-mono font-bold text-xs focus:outline-none text-center"
+                                title="Edit marks for this question"
+                              />
+                              <span className="text-[9px] text-slate-400 font-bold">pts</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setGeneratedQuestions(prev => prev.filter((_, i) => i !== idx))}
+                              className="text-slate-400 hover:text-rose-400 p-1"
+                              title="Remove Question"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                         {q.options && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px]">

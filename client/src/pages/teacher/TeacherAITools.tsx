@@ -309,6 +309,11 @@ export const TeacherAITools: React.FC = () => {
     }
   };
 
+  // Update mark per question handler
+  const handleUpdateQuestionMarks = (indexToUpdate: number, newMarks: number) => {
+    setQuizQuestions(prev => prev.map((q, idx) => idx === indexToUpdate ? { ...q, marks: newMarks } : q));
+  };
+
   // Remove question handler
   const handleRemoveQuestion = (indexToDelete: number) => {
     setQuizQuestions(prev => prev.filter((_, idx) => idx !== indexToDelete));
@@ -339,7 +344,28 @@ export const TeacherAITools: React.FC = () => {
     if (quizQuestions.length === 0) return;
     setPublishing(true);
     try {
-      const calculatedTotal = quizQuestions.reduce((acc, q) => acc + (q.marks || marksPerQuestion), 0);
+      const calculatedTotal = quizQuestions.reduce((acc, q) => acc + (q.marks !== undefined ? q.marks : marksPerQuestion), 0);
+      
+      // 1. Post to live database API so learners in the grade receive and can answer the quiz!
+      const formData = new FormData();
+      formData.append('title', `${subject}: ${topic} Interactive Quiz`);
+      formData.append('subject', subject);
+      formData.append('grade', String(grade));
+      formData.append('stream', 'General');
+      formData.append('due_date', new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+      formData.append('due_time', '23:59');
+      formData.append('total_marks', String(calculatedTotal));
+      formData.append('assignment_type', 'quiz');
+      formData.append('description', `AI Generated ${quizQuestions.length}-question interactive practice quiz on ${topic}.`);
+      formData.append('questions', JSON.stringify(quizQuestions));
+
+      try {
+        await assignmentService.createAssignment(formData);
+      } catch (err: any) {
+        console.warn('[ASSIGNMENT API WARN]:', err?.message);
+      }
+
+      // 2. Also cache in local storage for teacher assessment dashboard
       const newAssessmentItem = {
         id: `ai-${Date.now()}`,
         title: `${subject}: ${topic} Interactive Quiz`,
@@ -349,6 +375,7 @@ export const TeacherAITools: React.FC = () => {
         total_marks: calculatedTotal,
         description: `AI Generated ${quizQuestions.length}-question practice module on ${topic}.`,
         item_type: 'ai_assessment',
+        assignment_type: 'quiz',
         total_submissions: 0,
         pending_marking: 0,
         signed_submissions: 0,
@@ -356,7 +383,6 @@ export const TeacherAITools: React.FC = () => {
         questions: quizQuestions
       };
 
-      // Store in teacher's published AI assessments list
       try {
         let existingList = [];
         const stored = localStorage.getItem('fusion_teacher_ai_assessments');
@@ -365,10 +391,10 @@ export const TeacherAITools: React.FC = () => {
         localStorage.setItem('fusion_teacher_ai_assessments', JSON.stringify(existingList));
       } catch (_) {}
 
-      setPublishSuccess(`Published ${subject} quiz (${quizQuestions.length} questions, ${calculatedTotal} Marks) to learner study hub & assignments!`);
-      setTimeout(() => setPublishSuccess(null), 5000);
+      setPublishSuccess(`Published ${subject} quiz (${quizQuestions.length} questions, ${calculatedTotal} Total Marks) to Grade ${grade} learners!`);
+      setTimeout(() => setPublishSuccess(null), 6000);
     } catch (_) {
-      setPublishSuccess(`Published ${subject} quiz to learner study hub!`);
+      setPublishSuccess(`Published ${subject} quiz to Grade ${grade} learners!`);
     } finally {
       setPublishing(false);
     }
@@ -740,7 +766,21 @@ export const TeacherAITools: React.FC = () => {
                       </p>
                       
                       <div className="flex items-center gap-2 shrink-0">
-                        <Badge variant="indigo" size="sm">{q.marks || marksPerQuestion} Marks</Badge>
+                        {/* Editable Mark per Question */}
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-surface-dark border border-white/10 hover:border-cyan-500/40 transition-colors">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Mark:</span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={100}
+                            value={q.marks !== undefined ? q.marks : marksPerQuestion}
+                            onChange={(e) => handleUpdateQuestionMarks(idx, Math.max(1, parseInt(e.target.value, 10) || 1))}
+                            className="w-10 bg-transparent text-cyan-300 font-mono font-bold text-xs focus:outline-none text-center"
+                            title="Edit marks for this question"
+                          />
+                          <span className="text-[10px] text-slate-400 font-bold">pts</span>
+                        </div>
+
                         {/* Remove Question Button */}
                         <button
                           type="button"

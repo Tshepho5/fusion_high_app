@@ -57,13 +57,106 @@ exports.uploadSubmissionMiddleware = multer({
   fileFilter
 }).single('submission_file');
 
+function isOptionMatch(selected, correct) {
+  if (!selected || !correct) return false;
+  const s = String(selected).trim().toLowerCase();
+  const c = String(correct).trim().toLowerCase();
+  if (s === c) return true;
+
+  // Strip prefixes like "a) ", "b. ", "(c) "
+  const cleanS = s.replace(/^[a-d][\).\s-]+/i, '').trim();
+  const cleanC = c.replace(/^[a-d][\).\s-]+/i, '').trim();
+  if (cleanS && cleanC && cleanS === cleanC) return true;
+
+  // Single letter check (e.g. "a" matching "a) Monosaccharides")
+  const letterS = s.match(/^([a-d])(?:\)|\.|\s|$)/i);
+  const letterC = c.match(/^([a-d])(?:\)|\.|\s|$)/i);
+  if (letterS && letterC && letterS[1] === letterC[1]) return true;
+
+  // Substring match
+  if (cleanS && cleanC && (cleanS.includes(cleanC) || cleanC.includes(cleanS))) return true;
+
+  return false;
+}
+
 /**
  * Fusion AI Subject Evaluator
  * Evaluates learner submission against assignment requirements and rubric
  */
 async function evaluateHomeworkSubmission({ assignment, submissionText, fileName }) {
   const totalMarks = parseFloat(assignment.total_marks || 50);
-  
+
+  // Check if this assignment has structured quiz questions
+  let quizQuestions = null;
+  if (assignment.questions) {
+    try {
+      quizQuestions = typeof assignment.questions === 'string' ? JSON.parse(assignment.questions) : assignment.questions;
+    } catch (e) {
+      console.warn('[QUIZ PARSE WARNING]:', e.message);
+    }
+  }
+
+  if (Array.isArray(quizQuestions) && quizQuestions.length > 0) {
+    let learnerAnswers = {};
+    try {
+      const parsed = JSON.parse(submissionText || '{}');
+      learnerAnswers = parsed.answers || parsed;
+    } catch (_) {
+      // Fallback text parsing: look for lines like "Q1: A) Option" or "1: Option"
+      const lines = (submissionText || '').split('\n');
+      lines.forEach((line) => {
+        const parts = line.split(':');
+        if (parts.length > 1) {
+          const key = parts[0].replace(/[^0-9]/g, '');
+          const qIdx = parseInt(key, 10) - 1;
+          if (!isNaN(qIdx)) {
+            learnerAnswers[qIdx] = parts.slice(1).join(':').trim();
+          }
+        }
+      });
+    }
+
+    let totalEarned = 0;
+    let totalPossible = 0;
+    let correctCount = 0;
+    const breakdown = [];
+
+    quizQuestions.forEach((q, idx) => {
+      const qMarks = parseFloat(q.marks) || (totalMarks / quizQuestions.length);
+      totalPossible += qMarks;
+
+      const chosen = (
+        learnerAnswers[idx] !== undefined ? learnerAnswers[idx] :
+        learnerAnswers[String(idx)] !== undefined ? learnerAnswers[String(idx)] :
+        learnerAnswers[q.id] !== undefined ? learnerAnswers[q.id] :
+        ''
+      );
+
+      const matched = isOptionMatch(String(chosen), String(q.answer));
+      if (matched) {
+        totalEarned += qMarks;
+        correctCount++;
+        breakdown.push(`Q${idx + 1}: Correct (+${qMarks}m)`);
+      } else {
+        breakdown.push(`Q${idx + 1}: Incorrect (0/${qMarks}m) [Chosen: "${chosen || 'None'}", Correct: "${q.answer}"]`);
+      }
+    });
+
+    const aiScore = Math.round(totalEarned * 10) / 10;
+    const aiPercentage = totalPossible > 0 ? Math.round((aiScore / totalPossible) * 100) : 0;
+    const feedback = `Interactive Quiz Auto-Graded: ${correctCount}/${quizQuestions.length} correct (${aiScore}/${totalPossible} Marks - ${aiPercentage}%). Breakdown: ${breakdown.join('; ')}`;
+    const strengths = correctCount > 0 ? `Demonstrated solid mastery on ${correctCount} syllabus questions.` : 'Attempted assessment.';
+    const areasForImprovement = (quizQuestions.length - correctCount) > 0 ? `Review incorrect questions: ${breakdown.filter(b => b.includes('Incorrect')).map(b => b.split(':')[0]).join(', ')}.` : 'Flawless performance! 100% accuracy on all questions.';
+
+    return {
+      ai_score: aiScore,
+      ai_percentage: aiPercentage,
+      ai_feedback: feedback,
+      ai_strengths: strengths,
+      ai_areas_for_improvement: areasForImprovement
+    };
+  }
+
   // Clean text sample
   const textContent = (submissionText || '').trim();
   const wordCount = textContent ? textContent.split(/\s+/).length : 0;
