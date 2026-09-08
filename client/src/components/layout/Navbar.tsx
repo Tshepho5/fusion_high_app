@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 import { NotificationDropdown } from './NotificationDropdown';
+import { FusionAppIcon } from '../common/FusionAppIcon';
 
 interface NavbarProps {
   onToggleSidebar?: () => void;
@@ -162,13 +163,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
               title={switcherTooltip}
             >
               <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center border shadow-sm transition-transform group-hover:scale-105"
+                className="w-7 h-7 rounded-lg flex items-center justify-center border shadow-sm transition-transform group-hover:scale-105 overflow-hidden"
                 style={{
                   backgroundColor: `${currentSchool?.primary_color || '#4f46e5'}20`,
                   borderColor: `${currentSchool?.primary_color || '#4f46e5'}50`
                 }}
               >
-                <GraduationCap className="w-4 h-4" style={{ color: currentSchool?.primary_color || '#818cf8' }} />
+                <FusionAppIcon className="w-5 h-5" />
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
@@ -238,13 +239,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
                     }`}
                   >
                     <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border overflow-hidden"
                       style={{
                         backgroundColor: `${school.primary_color}25`,
                         borderColor: `${school.primary_color}60`
                       }}
                     >
-                      <GraduationCap className="w-4 h-4" style={{ color: school.primary_color }} />
+                      <FusionAppIcon className="w-5 h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold truncate text-white">{school.name}</p>

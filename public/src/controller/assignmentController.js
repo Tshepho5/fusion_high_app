@@ -116,7 +116,9 @@ exports.createAssignment = async (req, res) => {
     stream = 'General',
     due_date,
     due_time = '23:59',
-    total_marks = 50
+    total_marks = 50,
+    assignment_type = 'homework',
+    questions
   } = req.body;
 
   if (!title || !subject || !grade || !due_date) {
@@ -127,10 +129,11 @@ exports.createAssignment = async (req, res) => {
   const fileName = req.file ? req.file.originalname : null;
 
   try {
+    const rawQuestions = typeof questions === 'string' ? questions : (questions ? JSON.stringify(questions) : null);
     const insertRes = await db.query(
       `INSERT INTO homework_assignments 
-        (teacher_id, title, description, subject, grade, stream, due_date, due_time, total_marks, file_url, file_name)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        (teacher_id, title, description, subject, grade, stream, due_date, due_time, total_marks, file_url, file_name, assignment_type, questions)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
       [
         teacherId,
@@ -143,7 +146,9 @@ exports.createAssignment = async (req, res) => {
         due_time,
         parseFloat(total_marks) || 50,
         fileUrl,
-        fileName
+        fileName,
+        assignment_type || 'homework',
+        rawQuestions
       ]
     );
 

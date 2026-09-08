@@ -7,6 +7,7 @@ import { ParticleLogoIntro } from '../../components/landing/ParticleLogoIntro';
 import { AboutUsModal } from '../../components/landing/AboutUsModal';
 import { TermsAgreementModal } from '../../components/common/TermsAgreementModal';
 import { StarArrivalAppIcon } from '../../components/landing/StarArrivalAppIcon';
+import { FusionAppIcon } from '../../components/common/FusionAppIcon';
 import { GetStartedCircularMenu } from '../../components/landing/GetStartedCircularMenu';
 import {
   Sun,
@@ -56,8 +57,8 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           {/* Logo & Platform Name */}
           <Link to="/" className="flex items-center gap-3.5 group">
-            <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl p-1.5 border border-blue-500/30 bg-blue-950/40 flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
-              <GraduationCap className="w-6 h-6 text-blue-400" />
+            <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl p-1 border border-blue-500/30 bg-blue-950/40 flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
+              <FusionAppIcon className="w-8 h-8 md:w-9 md:h-9" />
             </div>
             <div>
               <span className="font-display text-base md:text-lg font-black tracking-tight text-white block leading-tight uppercase group-hover:text-blue-300 transition-colors">

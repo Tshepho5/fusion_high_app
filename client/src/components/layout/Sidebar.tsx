@@ -6,6 +6,7 @@ import { getProfilePictureUrl } from '../../utils/imageUrl';
 import { AboutUsModal } from './AboutUsModal';
 import { ContactUsModal } from './ContactUsModal';
 import { HelpSupportModal } from '../common/HelpSupportModal';
+import { FusionAppIcon } from '../common/FusionAppIcon';
 import {
   User,
   Info,
@@ -70,13 +71,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex h-20 items-center justify-between px-5 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div
-              className="flex h-11 w-11 items-center justify-center rounded-2xl p-1 border shadow-sm shrink-0"
+              className="flex h-11 w-11 items-center justify-center rounded-2xl p-0.5 border border-brand-500/30 shadow-sm shrink-0 overflow-hidden"
               style={{
                 backgroundColor: `${currentSchool?.primary_color || '#4f46e5'}20`,
                 borderColor: `${currentSchool?.primary_color || '#4f46e5'}40`
               }}
             >
-              <GraduationCap className="w-6 h-6" style={{ color: currentSchool?.primary_color || '#818cf8' }} />
+              <FusionAppIcon className="w-9 h-9" />
             </div>
             <div className="min-w-0">
               <span className="font-display text-sm font-extrabold tracking-tight text-white block truncate leading-tight uppercase">
