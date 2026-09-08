@@ -19,7 +19,9 @@ import {
   Smartphone,
   ShieldCheck,
   Search,
-  ScanLine
+  ScanLine,
+  XCircle,
+  ShieldAlert
 } from 'lucide-react';
 
 interface LearnerRecord {
@@ -137,11 +139,67 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
     } catch (_) {}
   };
 
+  // Sound low buzzer for rejected scan (learner not enrolled in subject)
+  const playRejectBuzzer = () => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = audioCtxRef.current || new AudioContextClass();
+      audioCtxRef.current = ctx;
+      if (ctx.state === 'suspended') ctx.resume();
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, ctx.currentTime); // Low A3
+      osc.frequency.setValueAtTime(140, ctx.currentTime + 0.1); // Drop to 140Hz buzzer
+
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.28);
+    } catch (_) {}
+  };
+
+  const [rejectedScanPopup, setRejectedScanPopup] = useState<{
+    name: string;
+    learner_number?: string;
+    reason: string;
+  } | null>(null);
+  const rejectTimerRef = useRef<any>(null);
+
+  // Handle rejected scan when a student is NOT enrolled in this specific subject
+  const handleRejectLearner = useCallback((name: string, learnerNumber?: string, reason?: string) => {
+    playRejectBuzzer();
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate([180, 80, 180]); } catch (_) {}
+    }
+
+    const rejection = {
+      name,
+      learner_number: learnerNumber,
+      reason: reason || `Not enrolled in ${subjectName}`
+    };
+
+    setSuccessScanPopup(null);
+    setRejectedScanPopup(rejection);
+    if (rejectTimerRef.current) clearTimeout(rejectTimerRef.current);
+    rejectTimerRef.current = setTimeout(() => {
+      setRejectedScanPopup(null);
+    }, 4500);
+
+    setScanStatusMessage(`❌ REJECTED: ${name} is NOT enrolled in ${subjectName}!`);
+  }, [subjectName]);
+
   // Handle successful student QR Code scan
   const handleLearnerScanned = useCallback((learnerId: number, customName?: string) => {
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
+    setRejectedScanPopup(null);
     setLocalRoster((prev) =>
       prev.map((l) => {
         if (l.id === learnerId) {
@@ -212,7 +270,7 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
 
     const currentList = localRosterRef.current;
     
-    // 1. Match against active class roster
+    // 1. Strict Match against active subject-enrolled roster
     const matched = currentList.find((l) => {
       const lNum = normalize(l.learner_number);
       const tNum = normalize(targetLearnerNumber);
@@ -236,7 +294,8 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
       return;
     }
 
-    // 2. Global Match across all school enrolled learners
+    // 2. The learner was NOT found in this subject's enrolled roster!
+    // Check school-wide student database to provide exact rejection details
     const allList = allEnrolledLearnersRef.current;
     const globalMatch = allList.find((l) => {
       const lNum = normalize(l.learner_number);
@@ -257,51 +316,31 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
     if (globalMatch) {
       lastScannedCodeRef.current = trimmed;
       lastScannedTimeRef.current = now;
-      const newRecord: LearnerRecord = {
-        id: globalMatch.id,
-        full_name: globalMatch.full_name || globalMatch.learner_name || globalMatch.name,
-        surname: globalMatch.surname || globalMatch.learner_surname || '',
-        learner_number: globalMatch.learner_number || targetLearnerNumber || `ID-${globalMatch.id}`,
-        status: 'present',
-        scannedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        scanMethod: 'qr'
-      };
+      
+      const studentFullName = `${globalMatch.full_name || globalMatch.learner_name || globalMatch.name || 'Learner'} ${globalMatch.surname || globalMatch.learner_surname || ''}`.trim();
+      const studentGrade = globalMatch.grade || 'N/A';
+      const studentClass = globalMatch.class_name || `${studentGrade}A`;
+      const studentStream = globalMatch.stream || 'Other';
 
-      setLocalRoster(prev => [newRecord, ...prev.filter(x => x.id !== newRecord.id)]);
-      setLastScannedLearner(newRecord);
-      setSuccessScanPopup(newRecord);
-      if (successTimerRef.current) clearTimeout(successTimerRef.current);
-      successTimerRef.current = setTimeout(() => setSuccessScanPopup(null), 3200);
-
-      playScanBeep();
-      confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 } });
-      setScanStatusMessage(`✓ Marked Present: ${newRecord.full_name} ${newRecord.surname}`);
+      handleRejectLearner(
+        studentFullName,
+        globalMatch.learner_number || targetLearnerNumber,
+        `NOT ENROLLED in ${subjectName} (${selectedClass}). Learner is registered in Grade ${studentGrade} (${studentClass} • ${studentStream} Stream). Scan Denied.`
+      );
       return;
     }
 
-    // 3. Dynamic Match if QR code contains learner credentials
+    // 3. QR code contains student credentials, but student is NOT enrolled in this subject
     if (targetName || targetLearnerNumber || targetId) {
       lastScannedCodeRef.current = trimmed;
       lastScannedTimeRef.current = now;
-      const dynamicLearner: LearnerRecord = {
-        id: targetId || Date.now(),
-        full_name: targetName || `Learner ${targetLearnerNumber}`,
-        surname: targetSurname || '',
-        learner_number: targetLearnerNumber || `ID-${targetId || 'QR'}`,
-        status: 'present',
-        scannedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        scanMethod: 'qr'
-      };
-
-      setLocalRoster(prev => [dynamicLearner, ...prev.filter(x => x.id !== dynamicLearner.id)]);
-      setLastScannedLearner(dynamicLearner);
-      setSuccessScanPopup(dynamicLearner);
-      if (successTimerRef.current) clearTimeout(successTimerRef.current);
-      successTimerRef.current = setTimeout(() => setSuccessScanPopup(null), 3200);
-
-      playScanBeep();
-      confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 } });
-      setScanStatusMessage(`✓ Marked Present: ${dynamicLearner.full_name} (${dynamicLearner.learner_number})`);
+      
+      const unkName = targetName ? `${targetName} ${targetSurname}`.trim() : (targetLearnerNumber ? `Learner #${targetLearnerNumber}` : `Learner ID #${targetId}`);
+      handleRejectLearner(
+        unkName,
+        targetLearnerNumber || (targetId ? String(targetId) : undefined),
+        `NOT ENROLLED in ${subjectName} (${selectedClass}). Attendance cannot be recorded for unenrolled learners.`
+      );
       return;
     }
 
@@ -311,7 +350,7 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
       lastScannedTimeRef.current = now;
       setScanStatusMessage(`⚠️ Unrecognized QR Code: "${trimmed.substring(0, 20)}..."`);
     }
-  }, [handleLearnerScanned, playScanBeep]);
+  }, [handleLearnerScanned, handleRejectLearner, subjectName, selectedClass]);
 
   // Continuous frame analysis scan loop using jsQR
   const scanLoop = useCallback(() => {
@@ -703,6 +742,48 @@ export const TeacherQRScannerModal: React.FC<TeacherQRScannerModalProps> = ({
                         <Send className="w-3 h-3 text-cyan-400 animate-pulse" />
                         <span>Parent confirmation email dispatched</span>
                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Centered Holographic Scan-REJECTION Pop-up */}
+              {rejectedScanPopup && (
+                <div className="absolute inset-0 z-40 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in pointer-events-none">
+                  <div className="relative w-full max-w-sm rounded-3xl bg-slate-900/98 border-2 border-rose-500 p-5 text-center shadow-2xl shadow-rose-500/50 overflow-hidden transform animate-bounce-short">
+                    {/* Pulsing Danger Aura */}
+                    <div className="absolute -top-10 -right-10 w-28 h-28 bg-rose-600/30 rounded-full blur-xl animate-pulse" />
+                    <div className="absolute -bottom-10 -left-10 w-28 h-28 bg-red-600/20 rounded-full blur-xl animate-pulse" />
+
+                    <div className="relative z-10 flex flex-col items-center">
+                      <div className="relative mb-2.5">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-rose-600 to-red-500 text-white flex items-center justify-center shadow-lg shadow-rose-500/50">
+                          <XCircle className="w-8 h-8 text-white" />
+                        </div>
+                        <div className="absolute -inset-1 rounded-2xl border-2 border-rose-500/60 animate-ping pointer-events-none" />
+                      </div>
+
+                      <span className="px-3 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-300 text-[10px] font-black tracking-wider uppercase flex items-center gap-1">
+                        <ShieldAlert className="w-3 h-3 text-rose-400" />
+                        SCAN DENIED • NOT ENROLLED
+                      </span>
+
+                      <h4 className="text-base font-extrabold text-white mt-2 leading-tight">
+                        {rejectedScanPopup.name}
+                      </h4>
+                      {rejectedScanPopup.learner_number && (
+                        <p className="text-xs font-mono text-rose-300/90 font-bold mt-0.5">
+                          #{rejectedScanPopup.learner_number}
+                        </p>
+                      )}
+
+                      <div className="mt-3 w-full p-2.5 rounded-xl bg-rose-950/70 border border-rose-500/30 text-[11px] text-rose-200 font-semibold leading-relaxed text-center">
+                        {rejectedScanPopup.reason}
+                      </div>
+
+                      <p className="text-[10.5px] text-slate-400 mt-2 font-mono">
+                        Only learners enrolled in {subjectName} ({selectedClass}) can be marked present.
+                      </p>
                     </div>
                   </div>
                 </div>

@@ -3,6 +3,7 @@ import { teacherService } from '../../services/api';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Modal } from '../../components/common/Modal';
 import { Badge } from '../../components/common/Badge';
+import { TeacherQRScannerModal } from '../../components/teacher/TeacherQRScannerModal';
 import {
   Briefcase,
   Users,
@@ -66,6 +67,12 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
   const [showSelfCheckInCode, setShowSelfCheckInCode] = useState(false);
 
+  // Subject QR Scanner State
+  const [isQRModalOpen, setIsQRModalOpen] = useState<boolean>(false);
+  const [activeQRSubject, setActiveQRSubject] = useState<any | null>(null);
+  const [qrLearners, setQrLearners] = useState<any[]>([]);
+  const [qrLoading, setQrLoading] = useState<boolean>(false);
+
   // Subject Command Center ("View All" Modal) State
   const [viewAllSubject, setViewAllSubject] = useState<any | null>(null);
 
@@ -122,6 +129,70 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
     setAttendanceError(null);
     setShowSelfCheckInCode(false);
     loadAttendanceRoster(card, attendanceDate);
+  };
+
+  const handleOpenSubjectQR = async (card: any) => {
+    setActiveQRSubject(card);
+    setQrLoading(true);
+    setAttendanceError(null);
+    try {
+      const roster = await teacherService.getAttendanceRoster({
+        grade: card.grade,
+        class: card.class_name,
+        subject: card.subject_name,
+        date: attendanceDate
+      });
+      const list = Array.isArray(roster) ? roster : [];
+      const mapped = list.map((l: any) => ({
+        id: l.id || l.child_id,
+        full_name: l.full_name || l.name || 'Learner',
+        surname: l.surname || '',
+        learner_number: l.learner_number || (l.id ? `2026-FHS-${String(l.id).padStart(3, '0')}` : '2026-001'),
+        grade: l.grade || card.grade,
+        stream: l.stream || card.stream,
+        status: (l.status || 'present').toLowerCase() as 'present' | 'late' | 'absent'
+      }));
+      setQrLearners(mapped);
+      setIsQRModalOpen(true);
+    } catch (err: any) {
+      console.error('Error fetching enrolled roster for QR roll-call:', err);
+      setAttendanceError('Could not load enrolled roster for QR roll-call.');
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const handleApplyQRAttendance = async (updated: any[]) => {
+    if (!activeQRSubject) return;
+    try {
+      await teacherService.saveAttendance({
+        class: activeQRSubject.class_name,
+        class_id: activeQRSubject.class_name,
+        date: attendanceDate,
+        subject: activeQRSubject.subject_name,
+        subject_name: activeQRSubject.subject_name,
+        grade: activeQRSubject.grade,
+        records: updated.map((l: any) => ({
+          id: l.id,
+          child_id: l.id,
+          learner_id: l.id,
+          learner_number: l.learner_number,
+          status: l.status || 'present'
+        }))
+      });
+
+      const presentCount = updated.filter((x: any) => x.status === 'present').length;
+      setAttendanceSuccess(`✓ QR Attendance recorded for ${activeQRSubject.subject_name} (${presentCount} present).`);
+      setTimeout(() => setAttendanceSuccess(null), 5000);
+
+      // Synchronize with open attendance modal if open for this subject
+      if (attendanceModal && attendanceModal.subject_name === activeQRSubject.subject_name) {
+        setAttendanceLearners(updated);
+      }
+    } catch (err: any) {
+      console.error('Error saving QR attendance:', err);
+      setAttendanceError(err?.response?.data?.error || 'Failed to save QR roll-call attendance.');
+    }
   };
 
   const handleToggleAttendanceStatus = (learnerId: number, status: 'present' | 'late' | 'absent') => {
@@ -322,22 +393,31 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                 </div>
 
                 {/* Primary Action Buttons */}
-                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                <div className="grid grid-cols-3 gap-1.5 pt-1">
                   <button
                     onClick={() => handleOpenSubjectAttendance(card)}
-                    className="px-2 py-1.5 rounded-lg bg-surface-darker hover:bg-emerald-600/20 text-emerald-300 hover:text-emerald-200 text-[11px] font-semibold border border-emerald-500/20 transition-colors text-center flex items-center justify-center gap-1.5 shadow-sm"
+                    className="px-2 py-1.5 rounded-lg bg-surface-darker hover:bg-emerald-600/20 text-emerald-300 hover:text-emerald-200 text-[11px] font-semibold border border-emerald-500/20 transition-colors text-center flex items-center justify-center gap-1 shadow-sm"
                     title="Take Register for this Subject"
                   >
-                    <CalendarCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Take Register</span>
+                    <CalendarCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Register</span>
+                  </button>
+                  <button
+                    onClick={() => handleOpenSubjectQR(card)}
+                    disabled={qrLoading}
+                    className="px-2 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/30 text-cyan-300 hover:text-cyan-200 text-[11px] font-bold border border-cyan-500/30 transition-all text-center flex items-center justify-center gap-1 shadow-sm hover:scale-[1.02] active:scale-95"
+                    title={`Scan QR Code for ${card.subject_name} (Strict Subject Enrollment Enforced)`}
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span>Scan QR</span>
                   </button>
                   <button
                     onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                    className="px-2 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1 shadow-sm"
+                    className="px-2 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-[11px] transition-colors flex items-center justify-center gap-1 shadow-sm"
                     title="Enter SBA Marks for this Subject"
                   >
-                    <span>Enter Marks</span>
-                    <ArrowRight className="w-3 h-3" />
+                    <span>Marks</span>
+                    <ArrowRight className="w-3 h-3 shrink-0" />
                   </button>
                 </div>
 
@@ -364,6 +444,13 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       title="Past Papers & Learning Resources for this Subject"
                     >
                       <Layers className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleOpenSubjectQR(card)}
+                      className="p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/20 transition-all hover:scale-105"
+                      title="Camera QR Roll-Call Scanner for this Subject"
+                    >
+                      <QrCode className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => handleOpenSubjectAttendance(card)}
@@ -679,6 +766,23 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     <span>PIN: {attendanceModal.grade}{attendanceModal.class_name?.slice(-1) || 'A'}-{(attendanceModal.subject_name || 'SUB').substring(0, 3).toUpperCase()}</span>
                   </button>
                 </div>
+
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase mb-1">Camera Scanner</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveQRSubject(attendanceModal);
+                      setQrLearners(attendanceLearners);
+                      setIsQRModalOpen(true);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/30 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                    title={`Launch QR Camera Scanner for ${attendanceModal.subject_name}`}
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Scan Subject QR</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -961,6 +1065,34 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                   </div>
                 </div>
 
+                {/* 1B. QR Roll-Call Scanner (Subject Enforced) */}
+                <div
+                  onClick={() => {
+                    const target = viewAllSubject;
+                    setViewAllSubject(null);
+                    handleOpenSubjectQR(target);
+                  }}
+                  className="p-3.5 rounded-2xl bg-surface-darker border border-white/10 hover:border-cyan-500/50 hover:bg-white/5 transition-all cursor-pointer group shadow-sm flex flex-col justify-between space-y-2"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <QrCode className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h5 className="text-xs font-bold text-white group-hover:text-cyan-300 transition-colors">
+                        Subject QR Roll-Call
+                      </h5>
+                      <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
+                        Strict student card QR camera verification
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[11px] font-semibold text-cyan-400">
+                    <span>Scan Subject QR</span>
+                    <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+
                 {/* 2. Marks & SBA Marksheets */}
                 <div
                   onClick={() => {
@@ -1201,6 +1333,16 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
           </div>
         </Modal>
       )}
+
+      {/* Subject Camera QR Scanner Modal with Strict Subject Enrollment Enforcement */}
+      <TeacherQRScannerModal
+        isOpen={isQRModalOpen}
+        onClose={() => setIsQRModalOpen(false)}
+        learners={qrLearners}
+        selectedClass={activeQRSubject?.class_name || `${activeQRSubject?.grade || 10}A`}
+        subjectName={activeQRSubject?.subject_name || 'Subject'}
+        onApplyAttendance={handleApplyQRAttendance}
+      />
 
     </div>
   );
