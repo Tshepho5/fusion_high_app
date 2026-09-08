@@ -313,9 +313,6 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
               <h2 className="text-base md:text-lg font-bold font-display text-white tracking-tight">
                 My Assigned Teaching Classes
               </h2>
-              <p className="text-[11px] text-slate-400">
-                Live subject rosters, real-time registers, and subject-scoped educator functions
-              </p>
             </div>
           </div>
           
