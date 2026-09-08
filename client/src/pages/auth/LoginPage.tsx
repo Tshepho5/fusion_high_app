@@ -11,10 +11,10 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  GraduationCap,
   Sun,
   Moon,
 } from 'lucide-react';
+import { StarArrivalAppIcon } from '../../components/landing/StarArrivalAppIcon';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -119,19 +119,12 @@ export const LoginPage: React.FC = () => {
 
       {/* Main Login Screen Container */}
       <div className="w-full max-w-md my-auto relative z-10 animate-fade-in space-y-5">
-        {/* Institutional Crest */}
-        <div className="text-center space-y-2">
-          <div
-            className={`relative mx-auto w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center transition-all ${
-              isLight
-                ? 'bg-blue-50 border border-blue-200 shadow-lg shadow-blue-500/10'
-                : 'bg-blue-950/70 border border-blue-500/30 shadow-lg shadow-blue-600/15'
-            }`}
-          >
-            <GraduationCap
-              className={`w-7 h-7 sm:w-8 sm:h-8 ${isLight ? 'text-blue-600' : 'text-blue-400'}`}
-            />
-          </div>
+        {/* Institutional App Icon with 5-Second Star Arrival Animation */}
+        <div className="text-center space-y-2 flex flex-col items-center">
+          <StarArrivalAppIcon
+            className="w-16 h-16 sm:w-20 sm:h-20"
+            containerClassName="w-20 h-20 sm:w-24 sm:h-24"
+          />
 
           <h1
             className={`text-2xl sm:text-3xl font-black font-display tracking-tight ${

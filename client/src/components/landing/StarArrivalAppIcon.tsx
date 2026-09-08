@@ -3,10 +3,12 @@ import { FusionAppIcon } from '../common/FusionAppIcon';
 
 interface StarArrivalAppIconProps {
   className?: string;
+  containerClassName?: string;
 }
 
 export const StarArrivalAppIcon: React.FC<StarArrivalAppIconProps> = ({
-  className = 'w-28 h-28 sm:w-36 sm:h-36'
+  className = 'w-28 h-28 sm:w-36 sm:h-36',
+  containerClassName = 'w-36 h-36 sm:w-44 sm:h-44'
 }) => {
   const [animKey, setAnimKey] = useState<number>(0);
   const [isTraveling, setIsTraveling] = useState<boolean>(true);
@@ -34,7 +36,7 @@ export const StarArrivalAppIcon: React.FC<StarArrivalAppIconProps> = ({
       {/* Outer Cosmic Staging Container - Clickable to Replay Star Arrival */}
       <div
         onClick={handleReplay}
-        className="relative flex items-center justify-center w-36 h-36 sm:w-44 sm:h-44 cursor-pointer group"
+        className={`relative flex items-center justify-center ${containerClassName} cursor-pointer group`}
         title="Click App Icon to replay 5-second star arrival animation"
         role="button"
         tabIndex={0}

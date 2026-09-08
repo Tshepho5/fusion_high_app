@@ -9,7 +9,6 @@ import { TermsAgreementModal } from '../../components/common/TermsAgreementModal
 import { StarArrivalAppIcon } from '../../components/landing/StarArrivalAppIcon';
 import { GetStartedCircularMenu } from '../../components/landing/GetStartedCircularMenu';
 import {
-  Sparkles,
   Sun,
   Moon,
   Info,
@@ -109,10 +108,10 @@ export const LandingPage: React.FC = () => {
           <div className="space-y-4 flex flex-col items-center justify-center">
             <StarArrivalAppIcon className="w-28 h-28 sm:w-36 sm:h-36" />
 
-            {/* Accreditation Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/80 text-xs font-semibold text-slate-300 shadow-sm backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-              <span>Multi-School Academic Network</span>
+            {/* Official App Slogan Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/80 text-xs font-semibold text-slate-300 shadow-sm backdrop-blur-md">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              <span className="text-cyan-300 font-bold tracking-wide">"Connecting Today, Empowering Tomorrow."</span>
             </div>
           </div>
 
