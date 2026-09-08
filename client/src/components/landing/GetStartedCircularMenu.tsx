@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { LogIn, GraduationCap, UserPlus, X, Sparkles, Compass, ChevronUp } from 'lucide-react';
+import { LogIn, GraduationCap, UserPlus, X, ChevronUp } from 'lucide-react';
 
 interface GetStartedCircularMenuProps {
   className?: string;
@@ -172,18 +172,11 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
           aria-expanded={isOpen}
           aria-label="Get Started"
         >
-          {/* Animated Icon */}
-          <div
-            className={`w-6 h-6 rounded-full flex items-center justify-center transition-transform duration-300 ${
-              isOpen ? 'rotate-90' : 'rotate-0'
-            }`}
-          >
-            {isOpen ? (
+          {isOpen && (
+            <div className="w-5 h-5 rounded-full flex items-center justify-center">
               <X className="w-5 h-5 text-white" />
-            ) : (
-              <Sparkles className="w-5 h-5 text-cyan-200 animate-pulse" />
-            )}
-          </div>
+            </div>
+          )}
 
           <span>{isOpen ? 'Close Actions' : 'Get Started'}</span>
 
@@ -192,17 +185,6 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
           )}
         </button>
       </div>
-
-      {/* Helper Prompt Text */}
-      <p className="mt-3 text-xs font-semibold text-slate-400 transition-colors">
-        {isOpen ? (
-          <span className="text-cyan-300 font-bold animate-pulse">
-            Select an action: Sign In, Apply, or Registration
-          </span>
-        ) : (
-          <span>Click to access Sign In, Admissions, and Registration</span>
-        )}
-      </p>
     </div>
   );
 };
