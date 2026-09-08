@@ -120,22 +120,11 @@ export const LoginPage: React.FC = () => {
       {/* Main Login Screen Container */}
       <div className="w-full max-w-md my-auto relative z-10 animate-fade-in space-y-5">
         {/* Institutional App Icon with 5-Second Star Arrival Animation */}
-        <div className="text-center space-y-2 flex flex-col items-center">
+        <div className="text-center flex flex-col items-center">
           <StarArrivalAppIcon
             className="w-16 h-16 sm:w-20 sm:h-20"
             containerClassName="w-20 h-20 sm:w-24 sm:h-24"
           />
-
-          <h1
-            className={`text-2xl sm:text-3xl font-black font-display tracking-tight ${
-              isLight ? 'text-slate-900' : 'text-white'
-            }`}
-          >
-            Portal Gateway
-          </h1>
-          <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-            Sign in to access your Fusion High academic portal
-          </p>
         </div>
 
         {/* Login Form Container */}
