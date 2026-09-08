@@ -289,23 +289,13 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
         };
       });
 
-  // TEACHER MODULES (ICON + NAME ONLY)
+  // TEACHER MODULES (NON-DUPLICATE SCHOOL-WIDE & EDUCATOR TOOLS)
   const teacherModules = [
-    { id: 'subjects', label: 'My Classes & Workload', icon: BookOpen, color: 'text-cyan-400 bg-cyan-500/15 border-cyan-500/30' },
-    { id: 'assessments', label: 'Marks & Assessment SBA', icon: FileSpreadsheet, color: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' },
-    { id: 'assignments', label: 'Homework & Submissions', icon: FileText, color: 'text-pink-400 bg-pink-500/15 border-pink-500/30' },
-    { id: 'ai-tools', label: 'AI Lesson & Test Builder', icon: Bot, color: 'text-amber-400 bg-amber-500/15 border-amber-500/30' },
-    { id: 'resources', label: 'Learning Resources Studio', icon: Layers, color: 'text-purple-400 bg-purple-500/15 border-purple-500/30' },
-    { id: 'timetable', label: 'Educator Timetable', icon: Clock, color: 'text-sky-400 bg-sky-500/15 border-sky-500/30' },
     { id: 'calendar', label: 'Academic Calendar', icon: Calendar, color: 'text-violet-400 bg-violet-500/15 border-violet-500/30' },
-    { id: 'ptc', label: 'Parent-Teacher Conferences', icon: Users, color: 'text-teal-400 bg-teal-500/15 border-teal-500/30' },
-    { id: 'conduct', label: 'Merit & Conduct Book', icon: ClipboardList, color: 'text-rose-400 bg-rose-500/15 border-rose-500/30' },
-    { id: 'my-leave', label: 'Leave & Relief Duty', icon: Briefcase, color: 'text-green-400 bg-green-500/15 border-green-500/30' },
-    { id: 'exam-seating', label: 'Exam Seating Allocations', icon: Award, color: 'text-indigo-400 bg-indigo-500/15 border-indigo-500/30' },
-    { id: 'textbooks', label: 'Textbook Inventory', icon: HardDrive, color: 'text-teal-400 bg-teal-500/15 border-teal-500/30' },
     { id: 'sports', label: 'Sports & Extracurriculars', icon: Trophy, color: 'text-amber-400 bg-amber-500/15 border-amber-500/30' },
-    { id: 'announcements', label: 'School Notices', icon: Megaphone, color: 'text-fuchsia-400 bg-fuchsia-500/15 border-fuchsia-500/30' },
-    { id: 'messages', label: 'Communication Hub', icon: MessageSquare, color: 'text-cyan-400 bg-cyan-500/15 border-cyan-500/30' },
+    { id: 'my-leave', label: 'Leave & Relief Duty', icon: Briefcase, color: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' },
+    { id: 'exam-seating', label: 'Exam Seating Allocations', icon: Award, color: 'text-indigo-400 bg-indigo-500/15 border-indigo-500/30' },
+    { id: 'messages', label: 'Communication Hub', icon: MessageSquare, color: 'text-sky-400 bg-sky-500/15 border-sky-500/30' },
     { id: 'settings', label: 'Technical Settings', icon: Settings, color: 'text-slate-300 bg-slate-700/30 border-slate-600/30' }
   ];
 
