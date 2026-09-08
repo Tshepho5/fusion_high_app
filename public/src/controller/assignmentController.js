@@ -268,16 +268,16 @@ exports.getTeacherAssignments = async (req, res) => {
              COUNT(s.id) as total_submissions,
              COUNT(CASE WHEN s.status = 'teacher_signed' THEN 1 END) as signed_submissions,
              COUNT(CASE WHEN s.status != 'teacher_signed' THEN 1 END) as pending_marking,
-             ROUND(AVG(s.teacher_score), 1) as class_average_score
+             ROUND(AVG(s.teacher_score::numeric), 1) as class_average_score
       FROM homework_assignments a
-      LEFT JOIN users u ON a.teacher_id = u.id
-      LEFT JOIN homework_submissions s ON a.id = s.assignment_id
+      LEFT JOIN users u ON a.teacher_id::text = u.id::text
+      LEFT JOIN homework_submissions s ON a.id::text = s.assignment_id::text
     `;
     
     const params = [];
     if (!isAdmin) {
-      query += ` WHERE a.teacher_id = $1`;
-      params.push(teacherId);
+      query += ` WHERE a.teacher_id::text = $1::text`;
+      params.push(String(teacherId));
     }
     
     query += ` GROUP BY a.id, u.full_name, u.surname ORDER BY a.due_date DESC, a.created_at DESC`;
@@ -329,9 +329,9 @@ exports.getLearnerAssignments = async (req, res) => {
              s.teacher_feedback,
              s.signed_at
       FROM homework_assignments a
-      LEFT JOIN users u ON a.teacher_id = u.id
-      LEFT JOIN homework_submissions s ON a.id = s.assignment_id AND s.child_id = $1
-      WHERE (a.grade = $2 OR a.grade::text = $2::text)
+      LEFT JOIN users u ON a.teacher_id::text = u.id::text
+      LEFT JOIN homework_submissions s ON a.id::text = s.assignment_id::text AND s.child_id::text = $1::text
+      WHERE (a.grade::text = $2::text)
       ORDER BY a.due_date ASC, a.created_at DESC
     `;
 
@@ -463,12 +463,12 @@ exports.getAssignmentSubmissions = async (req, res) => {
               u.email as learner_email,
               pu.email as parent_email, pu.full_name as parent_name
        FROM homework_submissions s
-       JOIN children c ON s.child_id = c.id
-       LEFT JOIN users u ON s.learner_user_id = u.id
-       LEFT JOIN users pu ON c.parent_id = pu.id
-       WHERE s.assignment_id = $1
+       JOIN children c ON s.child_id::text = c.id::text
+       LEFT JOIN users u ON s.learner_user_id::text = u.id::text
+       LEFT JOIN users pu ON c.parent_id::text = pu.id::text
+       WHERE s.assignment_id::text = $1::text
        ORDER BY s.submitted_at DESC`,
-      [assignmentId]
+      [String(assignmentId)]
     );
 
     res.json({ submissions: rows });
@@ -501,15 +501,15 @@ exports.gradeSubmission = async (req, res) => {
               COALESCE(c.parent_id, pc.parent_id) as resolved_parent_id,
               tu.full_name as teacher_name, tu.surname as teacher_surname
        FROM homework_submissions s
-       JOIN homework_assignments a ON s.assignment_id = a.id
-       JOIN children c ON s.child_id = c.id
-       LEFT JOIN users u ON s.learner_user_id = u.id
-       LEFT JOIN users pu ON c.parent_id = pu.id
-       LEFT JOIN parent_children pc ON pc.child_id = c.id
-       LEFT JOIN users pcu ON pc.parent_id = pcu.id
-       LEFT JOIN users tu ON tu.id = $1
-       WHERE s.id = $2`,
-      [teacherId, submissionId]
+       JOIN homework_assignments a ON s.assignment_id::text = a.id::text
+       JOIN children c ON s.child_id::text = c.id::text
+       LEFT JOIN users u ON s.learner_user_id::text = u.id::text
+       LEFT JOIN users pu ON c.parent_id::text = pu.id::text
+       LEFT JOIN parent_children pc ON pc.child_id::text = c.id::text
+       LEFT JOIN users pcu ON pc.parent_id::text = pcu.id::text
+       LEFT JOIN users tu ON tu.id::text = $1::text
+       WHERE s.id::text = $2::text`,
+      [String(teacherId), String(submissionId)]
     );
 
     if (subRes.rows.length === 0) {
@@ -532,9 +532,9 @@ exports.gradeSubmission = async (req, res) => {
            signed_by_teacher_id = $4,
            signed_at = NOW(),
            status = 'teacher_signed'
-       WHERE id = $5
-       RETURNING *`,
-      [scoreVal, percentage, teacher_feedback.trim(), teacherId, submissionId]
+        WHERE id::text = $5::text
+        RETURNING *`,
+       [scoreVal, percentage, teacher_feedback.trim(), teacherId, String(submissionId)]
     );
 
     // 3. Automatically record mark in continuous assessment progress table

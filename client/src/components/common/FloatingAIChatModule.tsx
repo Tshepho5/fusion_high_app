@@ -118,7 +118,7 @@ export const FloatingAIChatModule: React.FC = () => {
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        className={`fixed top-0 left-0 z-50 select-none group cursor-grab active:cursor-grabbing transition-shadow duration-200 ${
+        className={`fixed top-0 left-0 z-30 select-none group cursor-grab active:cursor-grabbing transition-shadow duration-200 ${
           isDragging ? 'scale-105 shadow-2xl' : 'hover:scale-105'
         }`}
         title="24/7 AI Assistant • Drag to move anywhere"

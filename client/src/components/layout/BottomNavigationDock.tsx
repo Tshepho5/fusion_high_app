@@ -90,11 +90,15 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
             }`}
             title="My Profile & Account"
           >
-            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0 overflow-hidden">
-              {(user?.profile_picture || user?.profile_picture_path) ? (
-                <img src={getProfilePictureUrl(user.profile_picture || user.profile_picture_path)} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                <User className="w-3.5 h-3.5 text-white" />
+            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0 overflow-hidden relative">
+              <User className="w-3.5 h-3.5 text-white select-none" />
+              {(user?.profile_picture || user?.profile_picture_path) && (
+                <img
+                  src={getProfilePictureUrl(user.profile_picture || user.profile_picture_path)}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover"
+                  onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                />
               )}
             </div>
             <span className="tracking-wide uppercase font-display font-black text-[11px] sm:text-xs">

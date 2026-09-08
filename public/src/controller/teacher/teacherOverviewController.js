@@ -1,6 +1,46 @@
 const db = require('../../../../db/db');
 
 /**
+ * Safely parse a timetable slot name / time range into a clean period number (1 to 12).
+ * Prevents strings like "08:00 - 09:00" from turning into "8000900".
+ */
+function parsePeriodFromSlot(slotKey, fallback = 1) {
+    if (!slotKey) return fallback;
+    const str = String(slotKey).trim();
+    // 1. "Period 1", "P1", "Slot 1"
+    const pMatch = str.match(/(?:period|slot|p)\s*(\d+)/i);
+    if (pMatch) {
+        const num = parseInt(pMatch[1], 10);
+        if (num >= 1 && num <= 12) return num;
+    }
+    // 2. Exact small number string "1" to "12"
+    if (/^\d{1,2}$/.test(str)) {
+        const num = parseInt(str, 10);
+        if (num >= 1 && num <= 12) return num;
+    }
+    // 3. Time slot like "08:00 - 09:00" or "08:00"
+    const tMatch = str.match(/(\d{1,2}):(\d{2})/);
+    if (tMatch) {
+        const hour = parseInt(tMatch[1], 10);
+        if (hour <= 8) return 1;
+        if (hour === 9) return 2;
+        if (hour === 10) return 3;
+        if (hour === 11) return 4;
+        if (hour === 12) return 5;
+        if (hour === 13) return 6;
+        if (hour === 14) return 7;
+        if (hour >= 15) return 8;
+    }
+    // 4. Strip non-digits only if 1-2 digits remain
+    const digits = str.replace(/[^0-9]/g, '');
+    if (digits.length > 0 && digits.length <= 2) {
+        const num = parseInt(digits, 10);
+        if (num >= 1 && num <= 12) return num;
+    }
+    return fallback;
+}
+
+/**
  * Returns workload details for a teacher.
  */
 exports.getWorkload = async (req, res) => {
@@ -133,7 +173,7 @@ exports.getMySubjectsOverview = async (req, res) => {
                                 timetableSlots.push({
                                     grade: tt.grade,
                                     class_name: cls,
-                                    period: p.replace(/[^0-9]/g, '') || '1',
+                                    period: parsePeriodFromSlot(p, 1),
                                     room: slot.room,
                                     subject: slot.subject,
                                     teacher: (slot.teacher || '').toLowerCase()
@@ -309,7 +349,8 @@ exports.getMySubjectsOverview = async (req, res) => {
                     (s.subject.toLowerCase() === subLower || (teacherFullName && s.teacher.includes(teacherFullName)))
                 );
                 if (matchedSlot) {
-                    assignedPeriod = parseInt(matchedSlot.period, 10) || assignedPeriod;
+                    const parsed = parsePeriodFromSlot(matchedSlot.period, assignedPeriod);
+                    assignedPeriod = (parsed >= 1 && parsed <= 12) ? parsed : assignedPeriod;
                     if (matchedSlot.room) assignedRoom = matchedSlot.room;
                 }
 

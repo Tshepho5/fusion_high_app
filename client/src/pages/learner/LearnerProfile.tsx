@@ -172,11 +172,15 @@ export const LearnerProfile: React.FC = () => {
       {/* Profile Photo Header Card */}
       <div className="p-6 rounded-3xl bg-surface-dark border border-white/10 shadow-xl flex flex-col sm:flex-row items-center gap-6">
         <div className="relative group">
-          <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-brand-600 to-cyan-500 border-2 border-brand-400/50 shadow-glow-indigo flex items-center justify-center text-white font-extrabold text-3xl overflow-hidden">
-            {pfp ? (
-              <img src={pfp} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              <span>{initial}</span>
+          <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-brand-600 to-cyan-500 border-2 border-brand-400/50 shadow-glow-indigo flex items-center justify-center text-white font-extrabold text-3xl overflow-hidden relative">
+            <span className="select-none">{initial}</span>
+            {pfp && (
+              <img
+                src={pfp}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+                onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+              />
             )}
           </div>
 

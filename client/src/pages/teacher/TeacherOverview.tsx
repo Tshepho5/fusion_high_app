@@ -740,7 +740,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
               </div>
 
               {/* Date & Self Check-in Code */}
-              <div className="flex flex-wrap items-center gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div className="flex flex-col">
                   <span className="text-[10px] text-slate-400 font-bold uppercase mb-1">Session Date</span>
                   <input
@@ -750,7 +750,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       setAttendanceDate(e.target.value);
                       loadAttendanceRoster(attendanceModal, e.target.value);
                     }}
-                    className="px-3 py-1.5 rounded-xl bg-surface-dark border border-white/15 text-xs text-white focus:ring-2 focus:ring-brand-500 font-mono"
+                    className="w-full px-3 py-1.5 rounded-xl bg-surface-dark border border-white/15 text-xs text-white focus:ring-2 focus:ring-brand-500 font-mono"
                   />
                 </div>
 
@@ -759,11 +759,11 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                   <button
                     type="button"
                     onClick={() => setShowSelfCheckInCode(!showSelfCheckInCode)}
-                    className="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border border-emerald-500/30 text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                    className="w-full px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border border-emerald-500/30 text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm"
                     title="Click to view/hide learner self check-in verification PIN"
                   >
-                    <Key className="w-3.5 h-3.5" />
-                    <span>PIN: {attendanceModal.grade}{attendanceModal.class_name?.slice(-1) || 'A'}-{(attendanceModal.subject_name || 'SUB').substring(0, 3).toUpperCase()}</span>
+                    <Key className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">PIN: {attendanceModal.grade}{attendanceModal.class_name?.slice(-1) || 'A'}-{(attendanceModal.subject_name || 'SUB').substring(0, 3).toUpperCase()}</span>
                   </button>
                 </div>
 
@@ -776,10 +776,10 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       setQrLearners(attendanceLearners);
                       setIsQRModalOpen(true);
                     }}
-                    className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/30 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                    className="w-full px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm"
                     title={`Launch QR Camera Scanner for ${attendanceModal.subject_name}`}
                   >
-                    <QrCode className="w-3.5 h-3.5 text-cyan-400" />
+                    <QrCode className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                     <span>Scan Subject QR</span>
                   </button>
                 </div>
@@ -876,25 +876,25 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     return (
                       <div
                         key={learner.id || idx}
-                        className="p-2.5 rounded-xl bg-surface-darker border border-white/5 hover:border-white/15 flex items-center justify-between gap-3 transition-colors"
+                        className="p-2.5 sm:p-3 rounded-xl bg-surface-darker border border-white/5 hover:border-white/15 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-colors"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className="w-6 text-center text-[10px] font-mono text-slate-500 font-bold shrink-0">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="w-5 text-center text-[10px] font-mono text-slate-500 font-bold shrink-0">
                             {idx + 1}
                           </span>
-                          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-brand-500 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-brand-500 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-sm">
                             {learner.full_name[0] || 'L'}
                           </div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs font-bold text-white truncate">
                               {learner.full_name} {learner.surname}
                             </p>
-                            <div className="flex items-center gap-2 mt-0.5">
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                               <span className="text-[10px] text-slate-400 font-mono">
                                 {learner.learner_number}
                               </span>
                               {learner.stream && (
-                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-white/5 text-slate-300 font-medium border border-white/10">
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-slate-300 font-medium border border-white/10">
                                   {learner.stream}
                                 </span>
                               )}
@@ -903,11 +903,11 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                         </div>
 
                         {/* Present / Late / Absent Toggle Buttons */}
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="grid grid-cols-3 gap-1.5 w-full sm:w-auto sm:flex sm:items-center shrink-0 pt-1 sm:pt-0 border-t border-white/5 sm:border-0">
                           <button
                             type="button"
                             onClick={() => handleToggleAttendanceStatus(learner.id, 'present')}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                            className={`px-2.5 py-1.5 sm:py-1 rounded-lg text-xs font-bold text-center transition-all ${
                               learner.status === 'present'
                                 ? 'bg-emerald-600 text-white shadow-glow-emerald'
                                 : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
@@ -918,7 +918,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                           <button
                             type="button"
                             onClick={() => handleToggleAttendanceStatus(learner.id, 'late')}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                            className={`px-2.5 py-1.5 sm:py-1 rounded-lg text-xs font-bold text-center transition-all ${
                               learner.status === 'late'
                                 ? 'bg-amber-600 text-white shadow-md'
                                 : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
@@ -929,7 +929,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                           <button
                             type="button"
                             onClick={() => handleToggleAttendanceStatus(learner.id, 'absent')}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                            className={`px-2.5 py-1.5 sm:py-1 rounded-lg text-xs font-bold text-center transition-all ${
                               learner.status === 'absent'
                                 ? 'bg-rose-600 text-white shadow-glow-rose'
                                 : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
@@ -945,16 +945,16 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
             )}
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-between pt-3 border-t border-white/10">
-              <span className="text-xs text-slate-400 font-mono">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-white/10">
+              <span className="text-xs text-slate-400 font-mono text-center sm:text-left">
                 Total Enrolled: <strong className="text-white">{attendanceLearners.length} Learners</strong>
               </span>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 justify-end">
                 <button
                   type="button"
                   onClick={() => setAttendanceModal(null)}
-                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold text-xs transition-colors"
+                  className="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold text-xs transition-colors"
                 >
                   Close
                 </button>
@@ -962,7 +962,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                   type="button"
                   onClick={handleSaveAttendance}
                   disabled={savingAttendance || attendanceLearners.length === 0}
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-glow-emerald transition-all flex items-center gap-2 disabled:opacity-50"
+                  className="flex-1 sm:flex-initial px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-glow-emerald transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {savingAttendance ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
