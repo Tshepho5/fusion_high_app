@@ -28,6 +28,7 @@ const parentRoutes = require('./public/src/routes/parentRoutes');
 const otherRoutes = require('./public/src/routes/otherRoutes');
 const applicationRoutes = require('./public/src/routes/applicationRoutes');
 const notificationRoutes = require('./public/src/routes/notificationRoutes');
+const aiTutorController = require('./public/src/controller/aiTutorController');
 const initApplicationTables = require('./db/init_applications');
 const NotificationService = require('./public/src/services/notificationService');
 
@@ -212,6 +213,8 @@ app.post('/api/teacher/timetable/swap-request', authenticateToken, timetableSwap
 app.get('/api/teacher/timetable/swap-requests', authenticateToken, timetableSwapController.getSwapRequests);
 app.post('/api/teacher/timetable/swap-requests/:id/respond', authenticateToken, timetableSwapController.respondToSwapRequest);
 
+// Universal 24/7 AI Chat Assistant Endpoint (Available to all authenticated roles)
+app.post('/api/ai/chat', authenticateToken, aiTutorController.sendChatMessage);
 
 // Import and use route modules
 app.use('/api/teacher', teacherRoutes);

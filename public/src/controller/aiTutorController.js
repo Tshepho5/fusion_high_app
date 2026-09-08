@@ -151,34 +151,59 @@ exports.startNewConversation = async (req, res) => {
 };
 
 /**
- * Interactive Chat with Gemini AI Subject Tutor.
+ * Interactive Chat with Gemini AI Subject & Portal Assistant.
  */
 exports.sendChatMessage = async (req, res) => {
     try {
-        const learnerUserId = req.user.id;
-        const { subject, grade, stream, topic, message, conversationId, language } = req.body;
+        const userId = req.user.id;
+        const userRole = req.user.role || 'learner';
+        const {
+            subject,
+            grade,
+            stream,
+            topic,
+            message,
+            conversationId,
+            language,
+            role,
+            fullName,
+            conversationHistory,
+            previous_questions
+        } = req.body;
 
         if (!message || !message.trim()) {
             return res.status(400).json({ error: 'Please provide a message or question.' });
         }
 
-        // Fetch school name
+        // Fetch user & school name
         let schoolName = 'Fusion High School';
+        let userDisplayName = fullName || req.user.full_name || req.user.name || '';
         try {
-            const userRes = await db.query('SELECT s.name FROM users u JOIN schools s ON u.school_id = s.id WHERE u.id = $1', [learnerUserId]);
-            if (userRes.rows.length > 0 && userRes.rows[0].name) {
-                schoolName = userRes.rows[0].name;
+            const userRes = await db.query(
+                `SELECT u.full_name, s.name as school_name 
+                 FROM users u 
+                 LEFT JOIN schools s ON u.school_id = s.id 
+                 WHERE u.id = $1`,
+                [userId]
+            );
+            if (userRes.rows.length > 0) {
+                if (userRes.rows[0].school_name) schoolName = userRes.rows[0].school_name;
+                if (!userDisplayName && userRes.rows[0].full_name) userDisplayName = userRes.rows[0].full_name;
             }
         } catch (_) {}
 
         const tutorResponse = await aiTutorService.chatWithSubjectTutor({
-            learnerUserId,
-            subject: subject || 'General',
+            learnerUserId: userId,
+            role: role || userRole,
+            fullName: userDisplayName,
+            subject: subject || 'General School & Academics',
             grade: grade || 10,
             stream: stream || 'General',
             topic: topic || null,
             message: message.trim(),
             conversationId: conversationId ? parseInt(conversationId, 10) : null,
+            conversationHistory: conversationHistory || [],
+            previous_questions: previous_questions || [],
             language: language || 'english',
             schoolName
         });

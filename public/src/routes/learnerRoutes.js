@@ -4,17 +4,17 @@ const learnerController = require('../controller/learnerController');
 const aiTutorController = require('../controller/aiTutorController');
 const { auth, requireRole } = require('../../../authMiddleware');
 
-// All routes in this file are protected and require the 'learner' role.
-router.use(auth, requireRole(['learner', 'admin']));
+// Universal Role AI Tutor & 24/7 Chat Engine (Open to all authenticated roles: learner, teacher, admin, parent)
+router.post('/ai-tutor/chat', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.sendChatMessage);
+router.post('/ask-tutor', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.sendChatMessage);
+router.get('/ai-tutor/subjects', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.getEnrolledSubjectsWithSyllabus);
+router.get('/ai-tutor/conversations', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.getConversations);
+router.get('/ai-tutor/conversations/:id', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.getConversationDetails);
+router.post('/ai-tutor/new-session', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.startNewConversation);
+router.delete('/ai-tutor/conversations/:id', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.deleteConversation);
 
-// Interactive CAPS Curriculum AI Tutor Engine & Sessions
-router.get('/ai-tutor/subjects', aiTutorController.getEnrolledSubjectsWithSyllabus);
-router.get('/ai-tutor/conversations', aiTutorController.getConversations);
-router.get('/ai-tutor/conversations/:id', aiTutorController.getConversationDetails);
-router.post('/ai-tutor/new-session', aiTutorController.startNewConversation);
-router.post('/ai-tutor/chat', aiTutorController.sendChatMessage);
-router.delete('/ai-tutor/conversations/:id', aiTutorController.deleteConversation);
-router.post('/ask-tutor', aiTutorController.sendChatMessage);
+// Learner-specific academic routes (learner & admin only)
+router.use(auth, requireRole(['learner', 'admin']));
 
 // Study Material & Subject Management
 router.get('/subjects', learnerController.getSubjects);

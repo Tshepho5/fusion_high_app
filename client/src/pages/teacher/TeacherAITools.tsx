@@ -308,14 +308,15 @@ export const TeacherAITools: React.FC = () => {
         });
         setQuizQuestions([]);
       } else {
-        // Practice Quiz generation via live AI endpoint
+        // Practice Quiz generation via live AI endpoint with anti-repetition memory
         const data = await teacherService.generateAIQuestions({
           subject,
           grade,
           class_name: selectedClass,
           topic,
           count: questionCount,
-          marks_per_question: marksPerQuestion
+          marks_per_question: marksPerQuestion,
+          previous_questions: quizQuestions.map((q: any) => q.question).filter(Boolean)
         });
         const list = data?.questions || (Array.isArray(data) ? data : []);
         setQuizQuestions(list.map((q: any) => ({
@@ -718,6 +719,12 @@ export const TeacherAITools: React.FC = () => {
             <div className="flex items-center gap-2">
               <Badge variant="cyan" size="sm">AI Generated</Badge>
               <Badge variant="indigo" size="sm">Grade {grade} {subject}</Badge>
+              {activeTool === 'quiz' && (
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                  <Sparkles className="w-2.5 h-2.5 text-emerald-400" />
+                  Anti-Repetition Active
+                </span>
+              )}
               {quizQuestions.length > 0 && (
                 <span className="text-xs text-slate-400 font-mono">
                   {quizQuestions.length} Questions • {quizQuestions.reduce((acc, q) => acc + (q.marks || marksPerQuestion), 0)} Total Marks

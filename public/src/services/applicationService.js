@@ -9,7 +9,8 @@ const { validateSAID } = require('../controller/saIDvalidations');
 const SCHOOL_MAX_CAPACITY = 500;
 const CLASS_MAX_CAPACITY = 30;
 
-const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
+const rawKey = (process.env.GEMINI_API_KEY || '').replace(/^["']|["']$/g, '').trim();
+const genAI = rawKey ? new GoogleGenerativeAI(rawKey) : null;
 
 /**
  * Generate Unique Application Reference Number with School Prefix

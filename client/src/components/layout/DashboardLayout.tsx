@@ -96,7 +96,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         />
 
         {/* 🤖 Movable Circular 24/7 AI Chat Module on all Dashboards */}
-        <FloatingAIChatModule />
+        <FloatingAIChatModule onSelectTab={onSelectTab} />
       </div>
     </div>
   );

@@ -20,7 +20,8 @@ curricula.forEach(curric => {
   }
 });
 
-const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
+const rawGeminiKey = (process.env.GEMINI_API_KEY || '').replace(/^["']|["']$/g, '').trim();
+const genAI = rawGeminiKey ? new GoogleGenerativeAI(rawGeminiKey) : null;
 
 async function callAI(prompt, isJson = false, modelOverride = null) {
   if (!genAI) {
@@ -28,7 +29,9 @@ async function callAI(prompt, isJson = false, modelOverride = null) {
     throw new Error("AI service is currently disabled by configuration.");
   }
 
-  const modelCandidates = modelOverride ? [modelOverride] : ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+  const modelCandidates = modelOverride
+    ? [modelOverride]
+    : ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.5-flash'];
   let lastError = null;
 
   for (const targetModel of modelCandidates) {
@@ -578,7 +581,7 @@ function generateCAPSLocalFallback(prompt, explicitSubject, explicitGrade, expli
 }
 
 async function safeAICall(prompt, isJson = false, retries = 1) {
-  const models = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+  const models = ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.5-flash'];
 
   for (const m of models) {
     try {
@@ -964,145 +967,228 @@ async function deleteConversation(conversationId, learnerUserId) {
 }
 
 /**
- * Main Interactive Subject AI Tutor Chat Engine:
- * - Uses Gemini API with official South African CAPS curriculum syllabus.
- * - Enforces strict academic guardrails against off-topic discussions.
- * - Senses subject, grade, stream, topic, and context.
- * - Persists conversation thread in PostgreSQL.
+/**
+ * Main Interactive Role-Based Academic AI Assistant & Chat Engine:
+ * - Powered by Google Gemini API (gemini-3.6-flash).
+ * - Role-Based Access Control (RBAC) awareness: learner, teacher, admin, parent.
+ * - Deeply understanding of the human user, emotionally intelligent, warm, positive (zero negative energy).
+ * - Multi-subject education & CAPS syllabus support.
+ * - Provides interactive navigation links to portal modules: [Button Label](action:tab_id).
+ * - Anti-repetition engine for questions and quizzes.
+ * - Persists conversation threads in PostgreSQL & returns structured navigation links and suggestions.
  */
 async function chatWithSubjectTutor({
   learnerUserId,
+  role = 'learner',
+  fullName = '',
   subject,
   grade,
   stream = 'General',
   topic = null,
   message,
   conversationId = null,
+  conversationHistory = [],
+  previous_questions = [],
   language = 'english',
   schoolName = 'Fusion High School'
 }) {
-  const normSubject = normalizeSubject(subject || 'General');
+  const normSubject = normalizeSubject(subject || 'General School & Academics');
   const normGrade = parseInt(grade, 10) || 10;
   const normStream = stream || 'General';
+  const normRole = (role || 'learner').toLowerCase();
   const userText = (message || '').trim();
 
   if (!userText) {
     throw new Error('Message text is required.');
   }
 
-  // 1. Resolve or create active conversation session in DB
+  // 1. Resolve or create active conversation session in DB (with graceful resilience)
   let activeConv = null;
-  if (conversationId) {
-    const convRes = await db.query(`
-      SELECT id, subject_name, grade, stream, topic, title, language
-      FROM learner_ai_conversations
-      WHERE id = $1 AND learner_user_id = $2
-    `, [conversationId, learnerUserId]);
+  if (conversationId && learnerUserId) {
+    try {
+      const convRes = await db.query(`
+        SELECT id, subject_name, grade, stream, topic, title, language
+        FROM learner_ai_conversations
+        WHERE id = $1 AND learner_user_id = $2
+      `, [conversationId, learnerUserId]);
 
-    if (convRes.rows.length > 0) {
-      activeConv = convRes.rows[0];
+      if (convRes.rows.length > 0) {
+        activeConv = convRes.rows[0];
+      }
+    } catch (_) {}
+  }
+
+  if (!activeConv && learnerUserId) {
+    try {
+      const snippet = userText.slice(0, 50).replace(/[^\w\s]/g, '').trim() || 'Consultation';
+      const initialTitle = snippet.length > 0 ? snippet.charAt(0).toUpperCase() + snippet.slice(1) : `${normSubject} Assistant`;
+      const initialTopic = topic || 'General Help & Support';
+
+      activeConv = await startNewConversation(learnerUserId, {
+        subject_name: normSubject,
+        grade: normGrade,
+        stream: normStream,
+        topic: initialTopic,
+        title: initialTitle,
+        language: language || 'english'
+      });
+    } catch (dbErr) {
+      console.warn('[AI TUTOR DB WARN] Using in-memory session due to DB constraint:', dbErr.message);
+      activeConv = {
+        id: `sess-${Date.now()}`,
+        subject_name: normSubject,
+        grade: normGrade,
+        stream: normStream,
+        topic: topic || 'General Help',
+        title: 'Consultation',
+        language: language || 'english'
+      };
     }
   }
 
   if (!activeConv) {
-    // Generate a concise title from the first query
-    const snippet = userText.slice(0, 50).replace(/[^\w\s]/g, '').trim() || 'Study Session';
-    const initialTitle = snippet.length > 0 ? snippet.charAt(0).toUpperCase() + snippet.slice(1) : `${normSubject} Help`;
-    const initialTopic = topic || 'General Subject Help';
-
-    activeConv = await startNewConversation(learnerUserId, {
+    activeConv = {
+      id: `sess-${Date.now()}`,
       subject_name: normSubject,
       grade: normGrade,
       stream: normStream,
-      topic: initialTopic,
-      title: initialTitle,
+      topic: topic || 'General Help',
+      title: 'Consultation',
       language: language || 'english'
-    });
+    };
   }
 
-  // 2. Load recent message history for multi-turn conversational context (last 10 messages)
-  const historyRes = await db.query(`
-    SELECT sender, message_text, created_at
-    FROM learner_ai_messages
-    WHERE conversation_id = $1
-    ORDER BY created_at ASC
-    LIMIT 12
-  `, [activeConv.id]);
-
+  // 2. Load recent message history for multi-turn conversational context
   let historyPrompt = '';
-  if (historyRes.rows.length > 0) {
-    historyPrompt = '\n--- PREVIOUS CONVERSATION CONTEXT ---\n' + 
-      historyRes.rows.map(m => `${m.sender === 'user' ? 'Learner' : 'AI Tutor'}: ${m.message_text}`).join('\n') + 
-      '\n--- END CONVERSATION CONTEXT ---\n';
+  if (Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+    const recentTurns = conversationHistory.slice(-8);
+    historyPrompt = '\n--- RECENT CONVERSATION HISTORY ---\n' +
+      recentTurns.map(m => {
+        const senderName = m.sender === 'user' ? (fullName || normRole || 'User') : 'Fusion AI';
+        return `${senderName}: ${m.text || m.message_text || ''}`;
+      }).join('\n') +
+      '\n--- END RECENT CONVERSATION HISTORY ---\n';
+  } else if (activeConv && typeof activeConv.id === 'number') {
+    try {
+      const historyRes = await db.query(`
+        SELECT sender, message_text, created_at
+        FROM learner_ai_messages
+        WHERE conversation_id = $1
+        ORDER BY created_at ASC
+        LIMIT 10
+      `, [activeConv.id]);
+
+      if (historyRes.rows.length > 0) {
+        historyPrompt = '\n--- PREVIOUS CONVERSATION CONTEXT ---\n' + 
+          historyRes.rows.map(m => `${m.sender === 'user' ? (fullName || normRole || 'User') : 'Fusion AI'}: ${m.message_text}`).join('\n') + 
+          '\n--- END CONVERSATION CONTEXT ---\n';
+      }
+    } catch (_) {}
   }
 
-  // 3. Retrieve CAPS curriculum topics for this grade and subject
+  // 3. Retrieve CAPS curriculum topics for context
   const availableTopics = getCurriculumTopics(normGrade, normStream, normSubject);
-  const topicsSummary = availableTopics.map(t => t.topic).join(', ');
+  const topicsSummary = availableTopics.map(t => t.topic).slice(0, 15).join(', ');
 
-function stripSelfIntroduction(rawText) {
-  if (!rawText) return '';
-  let cleaned = rawText;
+  // 4. Anti-Repetition Exclusion Block
+  let antiRepetitionPrompt = '';
+  if (Array.isArray(previous_questions) && previous_questions.length > 0) {
+    const cleanPrevious = previous_questions.slice(-10).map(q => `"${String(q).replace(/\n/g, ' ')}"`);
+    antiRepetitionPrompt = `
+### STRICT ANTI-REPETITION MANDATE (MANDATORY):
+- The user has already encountered or generated these questions recently:
+${cleanPrevious.map((q, i) => `  ${i + 1}. ${q}`).join('\n')}
+- You MUST NOT repeat, duplicate, rephrase, or replicate ANY of the questions above.
+- Ensure any question or quiz generated explores a completely different sub-concept or problem scenario with fresh numerical values and distinct answer options.
+`;
+  }
 
-  // Remove any references to Gemini, Google AI, or generic AI model identity
-  cleaned = cleaned.replace(/gemini[\s-]*(3\.[\d]+|2\.[\d]+|1\.[\d]+)?[\s-]*(flash|pro|preview)?/gi, '');
-  cleaned = cleaned.replace(/google\s+generative\s+ai/gi, '');
-  cleaned = cleaned.replace(/google\s+ai/gi, '');
-
-  // Strip self-introductions from start of response
-  cleaned = cleaned.replace(/^(hello|greetings|welcome|hi|good day|sawubona|dumela|molo)[^\.\n]*?(as your|i am your|i'm your|as an?)[^\.\n]*?[\.\!\?]\s*/i, '');
-  cleaned = cleaned.replace(/^i am your (dedicated )?[^\.\n]*?[\.\!\?]\s*/i, '');
-  cleaned = cleaned.replace(/^as your (dedicated )?[^\.\n]*?[\.\!\?]\s*/i, '');
-
-  return cleaned.trim();
-}
-
-  // 4. Construct Strict Academic CAPS System Prompt (No Self-Intro, No Gemini Mentions)
+  // 5. Construct Comprehensive Role-Based, Empathetic, Highly Responsive System Prompt
   const systemPrompt = `
-You are an expert South African CAPS Curriculum Subject Specialist for "${normSubject}" (Grade ${normGrade}, Stream: ${normStream}).
+You are the 24/7 Intelligent AI Academic & Portal Assistant for ${schoolName}.
+You are interacting in real-time with:
+- Name: "${fullName || 'User'}"
+- Role: "${normRole.toUpperCase()}" (Role-Based Access Control Environment: ${normRole})
+- Academic Subject Context: "${normSubject}"
+- Target Grade: Grade ${normGrade} (Stream: ${normStream})
+- Preferred Language: "${language || 'english'}"
 
-### CRITICAL RULES (MANDATORY):
-1. NO SELF-INTRODUCTIONS OR ROBOTIC GREETINGS:
-   - DO NOT introduce yourself or state who or what you are.
-   - NEVER say "I am your AI tutor", "Hello, I am...", "Greetings! As your...", or similar introductory phrases.
-   - NEVER mention "Gemini", "Google", "LLM", or "AI".
-   - Start your response DIRECTLY with the detailed academic explanation, formula calculation, or step-by-step problem breakdown.
+### 1. CORE PERSONALITY, EMPATHY & POSITIVE ENERGY (MANDATORY):
+- Be highly responsive, emotionally intelligent, warm, encouraging, positive, and deeply understanding of the human user.
+- Responsive to energy: Match the user's energy constructively. If they are eager or excited, match their enthusiasm. If they feel anxious, stressed, confused, or struggling with exams/marks/homework, respond with calm reassurance, clarity, kindness, and motivating encouragement.
+- STRICT ZERO NEGATIVE ENERGY MANDATE: Under no circumstances express irritation, coldness, sarcasm, dismissiveness, or negativity. Foster a safe, inspiring environment where every learner, educator, parent, and admin feels supported.
+- NEVER start with robotic self-introductions like "Hello, I am an AI model..." or "As an AI...". Provide direct, warm, natural human-like assistance immediately.
 
-2. STRICT ACADEMIC FOCUS (OFF-TOPIC GUARDRAIL):
-   - Discuss exclusively the South African Department of Basic Education CAPS Curriculum for "${normSubject}" (Grade ${normGrade}).
-   - If the learner asks about video games, celebrity gossip, entertainment, social media, politics, or non-academic matters, decline concisely:
-     "Please ask a question related to your Grade ${normGrade} ${normSubject} syllabus (e.g. ${topic || normSubject})."
+### 2. ROLE-BASED ACCESS CONTROL (RBAC) PORTAL ASSISTANCE:
+Understand and assist them in everything within their role's environment:
+- IF ROLE IS "LEARNER":
+  * Explain any academic subject concept across the CAPS curriculum (Grade 8–12), solve sample exam problems step-by-step, give study tips, and assist with homework.
+  * Guide them through learner modules: Timetable, Report Cards, Subject Performance, Assignments, Fees, Bursaries, Calendar, Messages, Arcade, Technical Settings.
+- IF ROLE IS "TEACHER":
+  * Assist with lesson planning, question formulation, exam rubrics, pedagogy, CAPS Annual Teaching Plans (ATP), and classroom management.
+  * Guide them through teacher modules: My Classes & Subjects, Timetable, AI Assessment Tools & Quiz Generator, Gradebook & Marks, Attendance Register, Leave Relief, Conduct.
+- IF ROLE IS "PARENT":
+  * Explain child academic progress, CAPS Performance Levels (Levels 1 to 7), report cards, school fee statements and payment procedures, parent-teacher consultations (PTC), and school calendar.
+  * Guide them through parent modules: Linked Children & Marks, Report Cards, School Fees, Consultations, Timetable, Calendar, Messages.
+- IF ROLE IS "ADMIN":
+  * Assist with school governance, master timetabling, matric pass rate forecasting, academic auditing, educator relief, fee management, and user accounts.
+  * Guide them through admin modules: Command Center, School Users, Academic Audits, Master Timetable, School Fees, Matric Projector.
 
-3. CURRICULUM & SYLLABUS CONTEXT:
-   - Subject: ${normSubject}
-   - Grade: Grade ${normGrade}
-   - Topic: ${topic || activeConv.topic || 'General Topic'}
-   - Grade ${normGrade} ${normSubject} CAPS Syllabus Topics: ${topicsSummary || 'Standard CAPS curriculum'}
+### 3. INTERACTIVE NAVIGATION LINKS (CRITICAL):
+Whenever the user asks where to find something, how to access a feature, view documents, or navigate their dashboard, explain clearly AND ALWAYS provide interactive navigation links in this exact syntax:
+[Button Label](action:<tab_id>)
 
-4. SOCRATIC & STEP-BY-STEP TEACHING METHODOLOGY:
-   - Break down formulas and calculations into numbered steps (**Step 1**, **Step 2**, **Step 3**...).
-   - Use bold markdown for key terminology and equations (**Fnet = ma**, **Quadratic Formula**, etc.).
-   - Use relatable South African analogies where appropriate to clarify difficult ideas.
-   - Include a "💡 **CAPS Exam Tip**" highlighting frequent mistakes in formal DBE examinations.
+Supported <tab_id> values:
+- "timetable" -> Timetable & class schedule e.g. [Open Timetable](action:timetable)
+- "reports" -> CAPS Report Cards & term averages e.g. [View CAPS Report Cards](action:reports)
+- "performance" -> Subject Performance & marks e.g. [Check Subject Performance](action:performance)
+- "assignments" -> Assignments & homework e.g. [Go to Assignments](action:assignments)
+- "subjects" -> Enrolled Subjects & syllabus e.g. [Open Subjects & Syllabus](action:subjects)
+- "ai-tools" -> Teacher AI Assessment & Quiz Tools e.g. [Open AI Assessment Tools](action:ai-tools)
+- "ai-tutor" -> Learner AI Tutor Session e.g. [Open AI Tutor](action:ai-tutor)
+- "finance" -> School Fees & payment records e.g. [Open Fee Management](action:finance)
+- "bursaries" -> Bursaries & Scholarships e.g. [Explore Bursaries](action:bursaries)
+- "attendance" -> Attendance Register e.g. [View Attendance](action:attendance)
+- "calendar" -> School Calendar & term dates e.g. [Open School Calendar](action:calendar)
+- "messages" -> School Messages & announcements e.g. [Open Messages](action:messages)
+- "consultations" -> Parent-Teacher Consultations e.g. [Schedule Consultation](action:consultations)
+- "settings" -> Technical Settings & security e.g. [Open Technical Settings](action:settings)
+- "profile" -> User Profile e.g. [View Profile](action:profile)
+- "arcade" -> Educational Games (learners) e.g. [Open Fusion Arcade](action:arcade)
+- "users" -> School User Management (admin) e.g. [Manage Users](action:users)
 
-5. INTERACTIVE STUDY FOLLOW-UPS:
-   - At the VERY END of your response, always provide 3 brief, clickable follow-up study prompts on a single line:
-     [SUGGESTIONS: <Option 1> | <Option 2> | <Option 3>]
-     Example: [SUGGESTIONS: Give me an exam practice problem | Explain with an analogy | Show me common exam pitfalls]
+### 4. ACADEMIC EXCELLENCE & CAPS CURRICULUM:
+- Answer ALL subject questions accurately (Math, Physics, Chemistry, Life Sciences/Biology, Economics, Business Studies, Accounting, Geography, History, Tourism, Languages, etc.).
+- Use clear human-readable notation (fractions as a/b, powers as x^2, equations on clean lines, numbered steps **Step 1**, **Step 2**...).
+- When helpful, include a "💡 **CAPS Exam Tip**" highlighting common examination pitfalls.
+${antiRepetitionPrompt}
+${topicsSummary ? `Available Subject Topics (Grade ${normGrade}): ${topicsSummary}` : ''}
 
-6. SOUTH AFRICAN MULTILINGUAL TEACHING:
-   - Preferred Language Setting: "${language || 'english'}".
-   - If the learner writes in or requests any South African official language (such as Sepedi / Sesotho sa Leboa, isiZulu, Afrikaans, Setswana, Xitsonga, Sesotho, isiXhosa, etc.), explain the concepts clearly, naturally, and encourage them in that requested language.
-   - Keep standard CAPS formula symbols and formal DBE exam terminology in English alongside where necessary for clarity.
+### 5. INTERACTIVE FOLLOW-UP SUGGESTIONS:
+- At the very end of your response, provide 3 helpful follow-up prompts formatted exactly as:
+  [SUGGESTIONS: <Prompt 1> | <Prompt 2> | <Prompt 3>]
 
 ${historyPrompt}
-Learner: ${userText}
+${fullName || normRole}: ${userText}
 
-Detailed Response:
+Detailed, Warm, Helpful Response:
 `;
 
   let aiReplyText = '';
   let suggestions = [];
+  let actionLinks = [];
+
+  function stripSelfIntroduction(rawText) {
+    if (!rawText) return '';
+    let cleaned = rawText;
+    cleaned = cleaned.replace(/gemini[\s-]*(3\.[\d]+|2\.[\d]+|1\.[\d]+)?[\s-]*(flash|pro|preview)?/gi, '');
+    cleaned = cleaned.replace(/google\s+generative\s+ai/gi, '');
+    cleaned = cleaned.replace(/google\s+ai/gi, '');
+    cleaned = cleaned.replace(/^(hello|greetings|welcome|hi|good day|sawubona|dumela|molo)[^\.\n]*?(as your|i am your|i'm your|as an?)[^\.\n]*?[\.\!\?]\s*/i, '');
+    cleaned = cleaned.replace(/^i am your (dedicated )?[^\.\n]*?[\.\!\?]\s*/i, '');
+    cleaned = cleaned.replace(/^as your (dedicated )?[^\.\n]*?[\.\!\?]\s*/i, '');
+    return cleaned.trim();
+  }
 
   try {
     const result = await safeAICall(systemPrompt, false);
@@ -1110,55 +1196,82 @@ Detailed Response:
       aiReplyText = stripSelfIntroduction(result.text);
       aiReplyText = cleanHumanMath(aiReplyText);
 
-      // Extract suggestions tag if present
+      // Extract suggestions tag
       const suggMatch = aiReplyText.match(/\[SUGGESTIONS:\s*([^\]]+)\]/i);
       if (suggMatch) {
         suggestions = suggMatch[1].split('|').map(s => s.trim()).filter(s => s.length > 0);
         aiReplyText = aiReplyText.replace(/\[SUGGESTIONS:\s*[^\]]+\]/i, '').trim();
       }
+
+      // Extract action links: [Label](action:tab_id)
+      const linkRegex = /\[([^\]]+)\]\(action:([a-zA-Z0-9_-]+)\)/g;
+      let m;
+      while ((m = linkRegex.exec(aiReplyText)) !== null) {
+        actionLinks.push({ label: m[1].trim(), tab: m[2].trim() });
+      }
     }
   } catch (err) {
     console.error('[AI TUTOR ERROR]', err);
-    aiReplyText = `Here is assistance for ${normSubject} (Grade ${normGrade}). Ask any specific question on ${topic || normSubject} or request a worked exam problem.`;
-    suggestions = ['Explain the core concept step-by-step', 'Give me a Grade-level exam question', 'Show a worked example with formulas'];
+    aiReplyText = `I'm right here with you! Whether you need help with your ${normSubject} subjects, understanding formulas, or finding your way around the portal, I've got you covered. What would you like to explore?`;
+    suggestions = ['Where is my weekly timetable?', 'How do I view CAPS report cards?', 'Explain a key subject concept'];
+  }
+
+  // Fallback / Auto-detection of navigation intent if no action link was explicitly generated
+  const lowerText = userText.toLowerCase();
+  if (actionLinks.length === 0) {
+    if (lowerText.includes('timetable') || lowerText.includes('schedule') || lowerText.includes('period')) {
+      actionLinks.push({ label: 'Open Timetable', tab: 'timetable' });
+    } else if (lowerText.includes('report') || lowerText.includes('mark') || lowerText.includes('result')) {
+      actionLinks.push({ label: 'View CAPS Report Cards', tab: 'reports' });
+    } else if (lowerText.includes('fee') || lowerText.includes('payment') || lowerText.includes('statement') || lowerText.includes('finance')) {
+      actionLinks.push({ label: 'Open Fee Management', tab: 'finance' });
+    } else if (lowerText.includes('assignment') || lowerText.includes('homework')) {
+      actionLinks.push({ label: 'Go to Assignments', tab: 'assignments' });
+    } else if (lowerText.includes('subject') || lowerText.includes('curriculum')) {
+      actionLinks.push({ label: 'Open Subjects & Syllabus', tab: 'subjects' });
+    } else if (lowerText.includes('password') || lowerText.includes('setting') || lowerText.includes('theme')) {
+      actionLinks.push({ label: 'Open Technical Settings', tab: 'settings' });
+    } else if (lowerText.includes('quiz') || lowerText.includes('test') || lowerText.includes('exam generator')) {
+      actionLinks.push({ label: normRole === 'teacher' ? 'Open AI Assessment Tools' : 'Open AI Tutor', tab: normRole === 'teacher' ? 'ai-tools' : 'ai-tutor' });
+    }
   }
 
   if (suggestions.length === 0) {
     suggestions = [
-      `Give me a Grade ${normGrade} practice question`,
-      `Explain ${topic || normSubject} step-by-step`,
-      `What are the most common exam mistakes in this topic?`
+      `Where is my weekly timetable?`,
+      `How do I check CAPS report cards?`,
+      `Explain a key concept in ${normSubject}`
     ];
   }
 
-  // 5. Persist user message and AI response into PostgreSQL database
-  try {
-    // Save user message
-    await db.query(`
-      INSERT INTO learner_ai_messages (conversation_id, sender, message_text, metadata, created_at)
-      VALUES ($1, 'user', $2, $3, CURRENT_TIMESTAMP)
-    `, [activeConv.id, userText, JSON.stringify({ topic: topic || activeConv.topic })]);
+  // 6. Persist user message and AI response into PostgreSQL database if valid session
+  if (activeConv && typeof activeConv.id === 'number') {
+    try {
+      await db.query(`
+        INSERT INTO learner_ai_messages (conversation_id, sender, message_text, metadata, created_at)
+        VALUES ($1, 'user', $2, $3, CURRENT_TIMESTAMP)
+      `, [activeConv.id, userText, JSON.stringify({ role: normRole, topic: topic || activeConv.topic })]);
 
-    // Save AI response
-    await db.query(`
-      INSERT INTO learner_ai_messages (conversation_id, sender, message_text, metadata, created_at)
-      VALUES ($1, 'ai', $2, $3, CURRENT_TIMESTAMP)
-    `, [activeConv.id, aiReplyText, JSON.stringify({ suggestions, topic: topic || activeConv.topic })]);
+      await db.query(`
+        INSERT INTO learner_ai_messages (conversation_id, sender, message_text, metadata, created_at)
+        VALUES ($1, 'ai', $2, $3, CURRENT_TIMESTAMP)
+      `, [activeConv.id, aiReplyText, JSON.stringify({ suggestions, actionLinks, topic: topic || activeConv.topic })]);
 
-    // Update conversation timestamp and topic
-    await db.query(`
-      UPDATE learner_ai_conversations
-      SET updated_at = CURRENT_TIMESTAMP,
-          topic = COALESCE($2, topic)
-      WHERE id = $1
-    `, [activeConv.id, topic || activeConv.topic]);
-  } catch (dbErr) {
-    console.error('[AI TUTOR DB ERROR] Failed to persist messages:', dbErr);
+      await db.query(`
+        UPDATE learner_ai_conversations
+        SET updated_at = CURRENT_TIMESTAMP,
+            topic = COALESCE($2, topic)
+        WHERE id = $1
+      `, [activeConv.id, topic || activeConv.topic]);
+    } catch (dbErr) {
+      console.warn('[AI TUTOR DB WARN] Failed to persist message:', dbErr.message);
+    }
   }
 
   return {
     conversationId: activeConv.id,
     reply: aiReplyText,
+    actionLinks,
     subject: normSubject,
     grade: normGrade,
     stream: normStream,

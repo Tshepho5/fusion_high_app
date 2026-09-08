@@ -2,7 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bot, Sparkles, MessageSquare, X } from 'lucide-react';
 import { HelpSupportModal } from './HelpSupportModal';
 
-export const FloatingAIChatModule: React.FC = () => {
+interface FloatingAIChatModuleProps {
+  onSelectTab?: (tab: string) => void;
+}
+
+export const FloatingAIChatModule: React.FC<FloatingAIChatModuleProps> = ({ onSelectTab }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [modalTab, setModalTab] = useState<'ai-support' | 'faq'>('ai-support');
 
@@ -107,6 +111,7 @@ export const FloatingAIChatModule: React.FC = () => {
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
         defaultTab={modalTab}
+        onSelectTab={onSelectTab}
       />
 
       {/* Floating Draggable Movable Circle AI Module */}

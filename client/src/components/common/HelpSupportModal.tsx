@@ -24,7 +24,8 @@ import {
   Compass,
   CheckCircle2,
   Lightbulb,
-  Smile
+  Smile,
+  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -34,6 +35,7 @@ interface HelpSupportModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultTab?: 'faq' | 'ai-support';
+  onSelectTab?: (tab: string) => void;
 }
 
 interface ChatMessage {
@@ -41,6 +43,20 @@ interface ChatMessage {
   sender: 'ai' | 'user';
   text: string;
   timestamp: string;
+  suggestions?: string[];
+  actionLinks?: Array<{ label: string; tab: string }>;
+}
+
+function parseActionLinks(text: string): { cleanedText: string; actionLinks: Array<{ label: string; tab: string }> } {
+  if (!text) return { cleanedText: '', actionLinks: [] };
+  const links: Array<{ label: string; tab: string }> = [];
+  const linkRegex = /\[([^\]]+)\]\(action:([a-zA-Z0-9_-]+)\)/g;
+  let match;
+  while ((match = linkRegex.exec(text)) !== null) {
+    links.push({ label: match[1].trim(), tab: match[2].trim() });
+  }
+  const cleanedText = text.replace(linkRegex, '').replace(/\n\s*\n\s*\n/g, '\n\n').trim();
+  return { cleanedText, actionLinks: links };
 }
 
 /**
@@ -355,7 +371,8 @@ const FAQ_CATEGORIES = [
 export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
   isOpen,
   onClose,
-  defaultTab = 'faq'
+  defaultTab = 'faq',
+  onSelectTab
 }) => {
   const { user, role } = useAuth();
   const { theme } = useTheme();
@@ -365,18 +382,50 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFaq, setExpandedFaq] = useState<string | null>('general-0');
 
-  // AI Chat State
+  // Multi-Turn Persistent AI Chat State across sessions
+  const storageKey = `fusion_ai_chat_history_${user?.id || 'guest'}_${role || 'user'}`;
+
   const [inputMessage, setInputMessage] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome-1',
-      sender: 'ai',
-      text: `Hello ${user?.full_name || 'there'}! 👋 I am your 24/7 Fusion High AI Assistant. How can I assist you with your portal, subjects, or school services today?`,
-      timestamp: 'Just now'
-    }
-  ]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (_) {}
+    return [
+      {
+        id: 'welcome-1',
+        sender: 'ai',
+        text: `Hello ${user?.full_name || 'there'}! 👋 I am your 24/7 Fusion High AI Assistant. How can I assist you with your portal, subjects, or school services today?`,
+        timestamp: 'Just now',
+        suggestions: [
+          'Where is my weekly timetable?',
+          'How do I view CAPS report cards?',
+          'Help me with my subjects & curriculum',
+          'How do I update technical settings?'
+        ],
+        actionLinks: [
+          { label: 'Open Timetable', tab: 'timetable' },
+          { label: 'View Report Cards', tab: 'reports' }
+        ]
+      }
+    ];
+  });
   const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  // Sync chat message records to localStorage
+  useEffect(() => {
+    try {
+      if (chatMessages && chatMessages.length > 0) {
+        localStorage.setItem(storageKey, JSON.stringify(chatMessages));
+      }
+    } catch (_) {}
+  }, [chatMessages, storageKey]);
 
   useEffect(() => {
     if (defaultTab) setActiveTab(defaultTab);
@@ -387,6 +436,29 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
       chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [chatMessages, activeTab]);
+
+  const handleClearChat = () => {
+    const freshWelcome: ChatMessage = {
+      id: `welcome-${Date.now()}`,
+      sender: 'ai',
+      text: `Chat session refreshed! How can I assist you right now, ${user?.full_name || 'there'}?`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      suggestions: [
+        'Where is my weekly timetable?',
+        'How do I view CAPS report cards?',
+        'Explain a difficult subject concept',
+        'Open technical settings'
+      ],
+      actionLinks: [
+        { label: 'Open Timetable', tab: 'timetable' },
+        { label: 'View Report Cards', tab: 'reports' }
+      ]
+    };
+    setChatMessages([freshWelcome]);
+    try {
+      localStorage.removeItem(storageKey);
+    } catch (_) {}
+  };
 
   if (!isOpen) return null;
 
@@ -408,32 +480,61 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
     try {
       const res = await learnerService.askTutor({
         question: textToSend,
-        subject: 'General School System Help & Support',
-        grade: user?.grade || 10
+        subject: 'General School System & Academic Help',
+        grade: user?.grade || 10,
+        stream: (user as any)?.stream || 'General',
+        role: role || (user as any)?.role || 'learner',
+        fullName: user?.full_name || (user as any)?.name || '',
+        conversationHistory: chatMessages.slice(-8)
       });
 
-      const replyText =
-        res?.answer ||
-        res?.response ||
-        res?.text ||
-        `I understand you're asking about "${textToSend}". At Fusion High, you can manage this directly through your portal modules. Let me know if you need step-by-step guidance!`;
+      const rawReply = res?.reply || res?.answer || res?.response || res?.text || '';
+      const responseSuggestions = res?.suggestions || [];
+      const responseActionLinks = res?.actionLinks || [];
+
+      // Parse markdown action links from text
+      const parsed = parseActionLinks(rawReply);
+      const combinedActionLinks = [
+        ...(Array.isArray(responseActionLinks) ? responseActionLinks : []),
+        ...parsed.actionLinks
+      ];
+
+      // Remove duplicate tabs
+      const uniqueActionLinks = combinedActionLinks.filter(
+        (v, i, a) => a.findIndex(t => t.tab === v.tab) === i
+      );
 
       const aiMsg: ChatMessage = {
         id: `ai-${Date.now()}`,
         sender: 'ai',
-        text: replyText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        text: parsed.cleanedText || rawReply,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        suggestions: responseSuggestions.length > 0 ? responseSuggestions : undefined,
+        actionLinks: uniqueActionLinks.length > 0 ? uniqueActionLinks : undefined
       };
 
       setChatMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
-      let fallbackText = `I'm here to assist with any questions about Fusion High School! You can access all your academic marks, subjects carousel, class timetables, and fee statements from the main dashboard.`;
+      console.warn('[AI ASSISTANT WARN]', err);
+      let fallbackText = `I'm right here with you! You can access all your academic marks, subjects, weekly timetables, assignments, and fee statements from the main dashboard.`;
+      let fallbackLinks: Array<{ label: string; tab: string }> = [];
 
       const lower = textToSend.toLowerCase();
-      if (lower.includes('report') || lower.includes('marks') || lower.includes('grade')) {
-        fallbackText = `To view your CAPS report card, open the "CAPS Report Cards" or "Subject Performance" module on your dashboard. It displays official DBE Levels 1–7 and term marks.`;
-      } else if (lower.includes('password') || lower.includes('login') || lower.includes('sign in')) {
-        fallbackText = `You can update your security credentials in "Technical Settings" or click "Forgot Password" on the login screen to receive an OTP.`;
+      if (lower.includes('report') || lower.includes('mark') || lower.includes('grade')) {
+        fallbackText = `To view your CAPS report card, open the "CAPS Report Cards" module on your dashboard. It displays official DBE Levels 1–7 and term marks.`;
+        fallbackLinks = [{ label: 'View CAPS Report Cards', tab: 'reports' }];
+      } else if (lower.includes('timetable') || lower.includes('schedule') || lower.includes('period')) {
+        fallbackText = `You can check your full weekly period schedule, classroom allocations, and subject educator timetable right here:`;
+        fallbackLinks = [{ label: 'Open Timetable', tab: 'timetable' }];
+      } else if (lower.includes('password') || lower.includes('login') || lower.includes('setting') || lower.includes('theme')) {
+        fallbackText = `You can update your security credentials, password, notification preferences, and color themes in "Technical Settings".`;
+        fallbackLinks = [{ label: 'Open Technical Settings', tab: 'settings' }];
+      } else if (lower.includes('fee') || lower.includes('payment') || lower.includes('finance')) {
+        fallbackText = `School fee balances, statements, and online payment details are managed in the School Fees module.`;
+        fallbackLinks = [{ label: 'Open Fee Management', tab: 'finance' }];
+      } else if (lower.includes('assignment') || lower.includes('homework')) {
+        fallbackText = `You can view pending homework, download study guidelines, and submit completed tasks in Assignments.`;
+        fallbackLinks = [{ label: 'Go to Assignments', tab: 'assignments' }];
       } else if (lower.includes('parent') || lower.includes('link')) {
         fallbackText = `Parents can link learners in the Parent Portal using the learner's official number (e.g. 2026-FHS-001) and their 13-digit National ID number.`;
       }
@@ -442,7 +543,9 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
         id: `ai-${Date.now()}`,
         sender: 'ai',
         text: fallbackText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        actionLinks: fallbackLinks.length > 0 ? fallbackLinks : undefined,
+        suggestions: ['Where is my weekly timetable?', 'How do I view CAPS report cards?', 'Open technical settings']
       };
       setChatMessages((prev) => [...prev, aiMsg]);
     } finally {
@@ -670,14 +773,26 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
               >
                 <AnimatedSupportMascot isThinking={isAiThinking} isWaving={true} />
 
-                <div className="hidden sm:flex flex-col text-right">
-                  <span className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                    School Support Office
-                  </span>
-                  <span className="text-xs font-bold text-cyan-500">support@fusionhigh.co.za</span>
-                  <span className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-slate-400'}`}>
-                    Tel: +27 (0)11 555 0192
-                  </span>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleClearChat}
+                    title="Start a fresh conversation session"
+                    className={`px-3 py-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-xs ${
+                      isLight
+                        ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+                        : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    <RotateCcw className="w-3 h-3 text-cyan-400" />
+                    <span>New Session</span>
+                  </button>
+
+                  <div className="hidden sm:flex flex-col text-right">
+                    <span className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                      School Support Office
+                    </span>
+                    <span className="text-xs font-bold text-cyan-500">support@fusionhigh.co.za</span>
+                  </div>
                 </div>
               </div>
 
@@ -712,6 +827,44 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
                       }`}
                     >
                       <p className="whitespace-pre-wrap">{msg.text}</p>
+
+                      {/* Interactive Module Navigation Links */}
+                      {msg.actionLinks && msg.actionLinks.length > 0 && (
+                        <div className="mt-3 pt-2.5 border-t border-slate-200/50 dark:border-white/10 flex flex-wrap gap-2">
+                          {msg.actionLinks.map((action, aIdx) => (
+                            <button
+                              key={aIdx}
+                              onClick={() => {
+                                if (onSelectTab) {
+                                  onSelectTab(action.tab);
+                                  onClose();
+                                }
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-500 hover:from-brand-500 hover:to-cyan-400 text-white font-bold text-[11px] shadow-sm hover:shadow-glow-cyan transition-all transform hover:-translate-y-0.5 cursor-pointer"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span>{action.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Interactive Suggestion Chips */}
+                      {msg.suggestions && msg.suggestions.length > 0 && (
+                        <div className="mt-3 pt-2 border-t border-dashed border-slate-200/40 dark:border-white/5 flex flex-wrap gap-1.5">
+                          {msg.suggestions.map((sugg, sIdx) => (
+                            <button
+                              key={sIdx}
+                              onClick={() => handleSendAiMessage(sugg)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-cyan-300 hover:text-white text-[10.5px] font-medium transition-colors cursor-pointer"
+                            >
+                              <Sparkles className="w-2.5 h-2.5 text-cyan-400" />
+                              <span>{sugg}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
                       <span className="block text-[9px] text-slate-400 mt-1.5 text-right font-mono">
                         {msg.timestamp}
                       </span>

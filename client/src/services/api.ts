@@ -131,7 +131,23 @@ export const learnerService = {
     api.get(`/api/learner/subject-announcements?subject=${encodeURIComponent(subject)}${grade ? `&grade=${grade}` : ''}`).then(res => res.data),
   getAssignments: (params?: { subject?: string; grade?: number }) =>
     api.get(`/api/learner/assignments${params?.subject ? `?subject=${encodeURIComponent(params.subject)}` : ''}`).then(res => res.data),
-  askTutor: (payload: { prompt?: string; question?: string; action?: string; topic?: string; assessmentId?: string; subject?: string; grade?: number; stream?: string; message?: string; conversationId?: number | null; language?: string }) => 
+  askTutor: (payload: {
+    prompt?: string;
+    question?: string;
+    action?: string;
+    topic?: string;
+    assessmentId?: string;
+    subject?: string;
+    grade?: number;
+    stream?: string;
+    message?: string;
+    conversationId?: number | null;
+    language?: string;
+    role?: string;
+    fullName?: string;
+    conversationHistory?: any[];
+    previous_questions?: string[];
+  }) => 
     api.post('/api/learner/ai-tutor/chat', { ...payload, message: payload.message || payload.prompt || payload.question }).then(res => res.data),
   getEnrolledSubjectsWithSyllabus: () => api.get('/api/learner/ai-tutor/subjects').then(res => res.data),
   getAIConversations: (subject?: string) => api.get('/api/learner/ai-tutor/conversations', { params: { subject } }).then(res => res.data),
@@ -198,7 +214,7 @@ export const teacherService = {
     api.post('/api/teacher/ai/generate-lesson-plan', payload).then(res => res.data),
   generateTestPaper: (payload: { subject: string; grade: number; topic: string; term?: string; totalMarks?: number; difficulty?: string }) =>
     api.post('/api/teacher/ai/generate-test-paper', payload).then(res => res.data),
-  generateAIQuestions: (payload: { subject: string; grade: number; class_name?: string; topic: string; count?: number; questionCount?: number; difficulty?: string; questionType?: string; marks_per_question?: number }) =>
+  generateAIQuestions: (payload: { subject: string; grade: number; class_name?: string; topic: string; count?: number; questionCount?: number; difficulty?: string; questionType?: string; marks_per_question?: number; previous_questions?: string[] }) =>
     api.post('/api/teacher/ai/generate-assignment-questions', payload).then(res => res.data),
   generateQuiz: (payload: any) =>
     api.post('/api/teacher/ai/generate-assignment-questions', payload).then(res => res.data),

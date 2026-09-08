@@ -3,6 +3,9 @@ const aiTutor = require('../../services/aiTutorService');
 const emailService = require('../../services/emailService');
 const NotificationService = require('../../services/notificationService');
 
+// Sliding-window cache to guarantee zero repeated questions per educator, subject, and topic
+const recentQuestionsCache = new Map();
+
 exports.getMyTextbooks = async (req, res) => {
     try {
         const teacherId = req.user ? req.user.id : null;
@@ -228,12 +231,32 @@ exports.getTopicsFromTextbook = async (req, res) => {
 };
 
 exports.generateAIQuestions = async (req, res) => {
-    const { topic, grade, count = 5, marks_per_question = 2 } = req.body;
+    const { topic, grade, count = 5, marks_per_question = 2, previous_questions = [] } = req.body;
     const class_name = req.body.class_name || req.body.className || req.body.class || '';
     const subject = aiTutor.normalizeSubject(req.body.subject) || req.body.subject || 'Mathematics';
+    const userId = req.user ? req.user.id : 'default_teacher';
+    const cacheKey = `${userId}_${subject}_${grade}_${topic}`.toLowerCase().replace(/\s+/g, '_');
 
     if (!topic || !grade) {
         return res.status(400).json({ error: 'Subject, grade, and topic are required.' });
+    }
+
+    // Retrieve previous questions to guarantee ZERO repetition
+    const existingCached = recentQuestionsCache.get(cacheKey) || new Set();
+    const allPrevious = Array.from(new Set([
+        ...Array.from(existingCached),
+        ...(Array.isArray(previous_questions) ? previous_questions : [])
+    ])).filter(q => q && typeof q === 'string' && q.trim().length > 5);
+
+    let antiRepetitionSection = '';
+    if (allPrevious.length > 0) {
+        const samplePrevious = allPrevious.slice(-12);
+        antiRepetitionSection = `
+    CRITICAL MANDATORY ZERO-DUPLICATION & ANTI-REPETITION MANDATE:
+    - The educator/class has ALREADY seen or generated the following questions on "${topic}":
+${samplePrevious.map((q, i) => `      [Previous Q${i + 1}]: "${q.replace(/\n/g, ' ')}"`).join('\n')}
+    - You MUST NOT repeat, reword, duplicate, clone, or replicate ANY of the questions above.
+    - You MUST test completely DIFFERENT sub-concepts, use distinct practical scenarios, unique problem formulations, and fresh numbers/variables.`;
     }
 
     let contextText = null;
@@ -268,6 +291,7 @@ exports.generateAIQuestions = async (req, res) => {
     Marks per Question: ${marks_per_question}
     Focus Angle: ${chosenAngle}
     Entropy Seed: ${entropySeed}
+${antiRepetitionSection}
 
     CRITICAL SUBJECT BOUNDARY CONFINEMENT:
     - You are strictly creating assessment questions exclusively for Grade ${grade} ${subject}${class_name ? ` Class ${class_name}` : ''} on the specific topic "${topic}".
@@ -308,6 +332,20 @@ exports.generateAIQuestions = async (req, res) => {
             .trim();
     };
 
+    const recordGeneratedQuestions = (qList) => {
+        try {
+            qList.forEach(q => {
+                if (q && q.question) existingCached.add(q.question.trim());
+            });
+            if (existingCached.size > 80) {
+                const trimmed = Array.from(existingCached).slice(-60);
+                recentQuestionsCache.set(cacheKey, new Set(trimmed));
+            } else {
+                recentQuestionsCache.set(cacheKey, existingCached);
+            }
+        } catch (_) {}
+    };
+
     try {
         const aiResponse = await aiTutor.safeAICall(prompt, true);
         if (aiResponse.error) {
@@ -316,6 +354,7 @@ exports.generateAIQuestions = async (req, res) => {
                 ...q,
                 question: cleanQuestionText(q.question, idx)
             }));
+            recordGeneratedQuestions(sanitizedFallback);
             return res.json({ questions: sanitizedFallback });
         }
         const parsed = aiTutor.parseAIJSON(aiResponse);
@@ -332,6 +371,7 @@ exports.generateAIQuestions = async (req, res) => {
                 answer: q.answer || (Array.isArray(q.options) ? q.options[0] : 'A) Correct Choice'),
                 marks: parseInt(q.marks, 10) || targetMarks
             }));
+            recordGeneratedQuestions(sanitized);
             return res.json({ questions: sanitized });
         }
 
@@ -341,6 +381,7 @@ exports.generateAIQuestions = async (req, res) => {
             ...q,
             question: cleanQuestionText(q.question, idx)
         }));
+        recordGeneratedQuestions(sanitizedFallback);
         return res.json({ questions: sanitizedFallback });
     } catch (error) {
         console.error('generateAIQuestions error, using subject-pure local engine:', error);
@@ -349,6 +390,7 @@ exports.generateAIQuestions = async (req, res) => {
             ...q,
             question: cleanQuestionText(q.question, idx)
         }));
+        recordGeneratedQuestions(sanitizedFallback);
         res.json({ questions: sanitizedFallback });
     }
 };
