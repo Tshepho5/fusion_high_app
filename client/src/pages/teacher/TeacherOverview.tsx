@@ -38,7 +38,8 @@ import {
   QrCode,
   Key,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  Plus
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -291,7 +292,6 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
   // TEACHER MODULES (ICON + NAME ONLY)
   const teacherModules = [
     { id: 'subjects', label: 'My Classes & Workload', icon: BookOpen, color: 'text-cyan-400 bg-cyan-500/15 border-cyan-500/30' },
-    { id: 'attendance', label: 'Class Attendance Register', icon: CalendarCheck, color: 'text-indigo-400 bg-indigo-500/15 border-indigo-500/30' },
     { id: 'assessments', label: 'Marks & Assessment SBA', icon: FileSpreadsheet, color: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' },
     { id: 'assignments', label: 'Homework & Submissions', icon: FileText, color: 'text-pink-400 bg-pink-500/15 border-pink-500/30' },
     { id: 'ai-tools', label: 'AI Lesson & Test Builder', icon: Bot, color: 'text-amber-400 bg-amber-500/15 border-amber-500/30' },
@@ -393,31 +393,22 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                 </div>
 
                 {/* Primary Action Buttons */}
-                <div className="grid grid-cols-3 gap-1.5 pt-1">
+                <div className="grid grid-cols-2 gap-2 pt-1">
                   <button
                     onClick={() => handleOpenSubjectAttendance(card)}
-                    className="px-2 py-1.5 rounded-lg bg-surface-darker hover:bg-emerald-600/20 text-emerald-300 hover:text-emerald-200 text-[11px] font-semibold border border-emerald-500/20 transition-colors text-center flex items-center justify-center gap-1 shadow-sm"
-                    title="Take Register for this Subject"
+                    className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600/25 to-teal-600/25 hover:from-emerald-600/40 hover:to-teal-600/40 text-emerald-300 hover:text-white text-xs font-bold border border-emerald-500/30 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+                    title={`Class Attendance Register & QR Roll-Call for ${card.subject_name}`}
                   >
                     <CalendarCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                     <span>Register</span>
                   </button>
                   <button
-                    onClick={() => handleOpenSubjectQR(card)}
-                    disabled={qrLoading}
-                    className="px-2 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/30 text-cyan-300 hover:text-cyan-200 text-[11px] font-bold border border-cyan-500/30 transition-all text-center flex items-center justify-center gap-1 shadow-sm hover:scale-[1.02] active:scale-95"
-                    title={`Scan QR Code for ${card.subject_name} (Strict Subject Enrollment Enforced)`}
-                  >
-                    <QrCode className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                    <span>Scan QR</span>
-                  </button>
-                  <button
                     onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                    className="px-2 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-[11px] transition-colors flex items-center justify-center gap-1 shadow-sm"
-                    title="Enter SBA Marks for this Subject"
+                    className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+                    title={`Enter SBA Marks for ${card.subject_name}`}
                   >
+                    <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
                     <span>Marks</span>
-                    <ArrowRight className="w-3 h-3 shrink-0" />
                   </button>
                 </div>
 
@@ -426,10 +417,11 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                      className="p-1.5 rounded-lg bg-pink-500/10 hover:bg-pink-500/25 text-pink-300 border border-pink-500/20 transition-all hover:scale-105"
-                      title="Homework & Submissions for this Subject"
+                      className="px-2 py-1 rounded-lg bg-pink-500/15 hover:bg-pink-500/30 text-pink-300 border border-pink-500/25 transition-all hover:scale-105 flex items-center gap-1 text-[11px] font-bold shadow-sm"
+                      title={`Homework & Submissions for ${card.subject_name}`}
                     >
                       <FileText className="w-3.5 h-3.5" />
+                      <span>Homework</span>
                     </button>
                     <button
                       onClick={() => onNavigateTab('ai-tools', { subject: card.subject_name, grade: card.grade, tool: 'lesson-plan' })}
@@ -444,20 +436,6 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       title="Past Papers & Learning Resources for this Subject"
                     >
                       <Layers className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleOpenSubjectQR(card)}
-                      className="p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/20 transition-all hover:scale-105"
-                      title="Camera QR Roll-Call Scanner for this Subject"
-                    >
-                      <QrCode className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleOpenSubjectAttendance(card)}
-                      className="p-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/20 transition-all hover:scale-105"
-                      title="Enrolled Learners & Class Attendance"
-                    >
-                      <Users className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
@@ -1028,6 +1006,75 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
               </div>
             </div>
 
+            {/* Dedicated Homework & Submissions Space for This Subject */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-pink-950/40 via-surface-darker to-surface-dark border border-pink-500/25 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-pink-500/15 text-pink-400 border border-pink-500/30 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-sm font-bold text-white">
+                        Homework & Submissions Space
+                      </h4>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 font-mono font-medium">
+                        {viewAllSubject.subject_name} • Grade {viewAllSubject.grade}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Publish homework tasks, review AI evaluations, inspect student submissions, and sign off official marks.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => {
+                      const target = viewAllSubject;
+                      setViewAllSubject(null);
+                      onNavigateTab('assignments', { subject: target.subject_name, grade: target.grade, class: target.class_name, create: 'true' });
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-bold text-xs shadow-glow-pink flex items-center gap-1.5 transition-all active:scale-95"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Publish Homework</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const target = viewAllSubject;
+                      setViewAllSubject(null);
+                      onNavigateTab('assignments', { subject: target.subject_name, grade: target.grade, class: target.class_name });
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-pink-300 border border-pink-500/30 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95"
+                  >
+                    <span>Open Hub</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Status Bar for this subject */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-white/5">
+                <div className="p-2.5 rounded-xl bg-surface-dark/80 border border-white/5 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400 font-medium">Target Class</span>
+                  <span className="text-xs font-mono font-bold text-cyan-300">Grade {viewAllSubject.grade}{viewAllSubject.class_name ? ` (${viewAllSubject.class_name})` : ''}</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-surface-dark/80 border border-white/5 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400 font-medium">Curriculum</span>
+                  <span className="text-xs font-mono font-bold text-amber-300">CAPS Term 3</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-surface-dark/80 border border-white/5 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400 font-medium">AI Evaluator</span>
+                  <span className="text-xs font-mono font-bold text-emerald-400">Instant Marking</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-surface-dark/80 border border-white/5 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400 font-medium">SBA Sync</span>
+                  <span className="text-xs font-mono font-bold text-indigo-300">Auto-recorded</span>
+                </div>
+              </div>
+            </div>
+
             {/* Categorized Modules Scoped to This Subject */}
             <div className="space-y-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
@@ -1037,7 +1084,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 
-                {/* 1. Attendance Register */}
+                {/* 1. Register (Class Attendance Register & QR Scanner) */}
                 <div
                   onClick={() => {
                     const target = viewAllSubject;
@@ -1052,43 +1099,15 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     </div>
                     <div>
                       <h5 className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors">
-                        Class Attendance Register
+                        Register
                       </h5>
                       <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
-                        Mark live subject register & PIN check-in
+                        Mark live register, PIN self check-in & camera QR roll-call
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[11px] font-semibold text-emerald-400">
                     <span>Launch Register</span>
-                    <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-
-                {/* 1B. QR Roll-Call Scanner (Subject Enforced) */}
-                <div
-                  onClick={() => {
-                    const target = viewAllSubject;
-                    setViewAllSubject(null);
-                    handleOpenSubjectQR(target);
-                  }}
-                  className="p-3.5 rounded-2xl bg-surface-darker border border-white/10 hover:border-cyan-500/50 hover:bg-white/5 transition-all cursor-pointer group shadow-sm flex flex-col justify-between space-y-2"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <QrCode className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h5 className="text-xs font-bold text-white group-hover:text-cyan-300 transition-colors">
-                        Subject QR Roll-Call
-                      </h5>
-                      <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
-                        Strict student card QR camera verification
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[11px] font-semibold text-cyan-400">
-                    <span>Scan Subject QR</span>
                     <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>

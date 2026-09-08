@@ -115,7 +115,13 @@ export const TeacherDashboard: React.FC = () => {
       {(activeTab === 'subjects' || activeTab === 'classes' || activeTab === 'workload') && (
         <TeacherSubjects onNavigateTab={handleSelectTab} />
       )}
-      {activeTab === 'assignments' && <TeacherAssignments />}
+      {activeTab === 'assignments' && (
+        <TeacherAssignments
+          initialSubject={searchParams.get('subject') || undefined}
+          initialGrade={searchParams.get('grade') || undefined}
+          autoOpenCreate={searchParams.get('create') === 'true'}
+        />
+      )}
       {activeTab === 'resources' && (
         <TeacherResources onNavigateTab={handleSelectTab} />
       )}

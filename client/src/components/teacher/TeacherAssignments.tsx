@@ -28,7 +28,17 @@ import {
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Badge } from '../common/Badge';
 
-export const TeacherAssignments: React.FC = () => {
+interface TeacherAssignmentsProps {
+  initialSubject?: string;
+  initialGrade?: string | number;
+  autoOpenCreate?: boolean;
+}
+
+export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
+  initialSubject,
+  initialGrade,
+  autoOpenCreate
+}) => {
   const { user } = useAuth();
   const [assignments, setAssignments] = useState<any[]>([]);
   const [aiAssessments, setAiAssessments] = useState<any[]>([]);
@@ -39,9 +49,10 @@ export const TeacherAssignments: React.FC = () => {
   // Filter View: 'all' | 'homework' | 'ai'
   const [activeFilter, setActiveFilter] = useState<'all' | 'homework' | 'ai'>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [subjectFilter, setSubjectFilter] = useState<string>(initialSubject || 'all');
 
   // Modal states
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(Boolean(autoOpenCreate));
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [selectedAssignment, setSelectedAssignment] = useState<any | null>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
@@ -56,8 +67,8 @@ export const TeacherAssignments: React.FC = () => {
   // Form State
   const [formData, setFormData] = useState({
     title: '',
-    subject: 'Mathematics',
-    grade: '10',
+    subject: initialSubject || 'Mathematics',
+    grade: String(initialGrade || '10'),
     stream: 'Science',
     due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     due_time: '23:59',
@@ -65,6 +76,20 @@ export const TeacherAssignments: React.FC = () => {
     description: ''
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (initialSubject) {
+      setSubjectFilter(initialSubject);
+      setFormData(prev => ({
+        ...prev,
+        subject: initialSubject,
+        grade: String(initialGrade || prev.grade)
+      }));
+    }
+    if (autoOpenCreate) {
+      setIsCreateModalOpen(true);
+    }
+  }, [initialSubject, initialGrade, autoOpenCreate]);
 
   // Load published assignments and AI generated assessments
   const fetchAssignments = async () => {
@@ -264,6 +289,7 @@ export const TeacherAssignments: React.FC = () => {
     if (activeFilter === 'homework' && item.item_type !== 'homework') return false;
     if (activeFilter === 'ai' && item.item_type !== 'ai_assessment') return false;
     if (statusFilter !== 'all' && item.status !== statusFilter) return false;
+    if (subjectFilter !== 'all' && item.subject?.toLowerCase() !== subjectFilter.toLowerCase()) return false;
     return true;
   });
 
@@ -356,17 +382,33 @@ export const TeacherAssignments: React.FC = () => {
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-[10px]">Status:</span>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-xl bg-surface-darker border border-white/10 px-3 py-1.5 text-xs text-white font-medium focus:outline-none focus:ring-2 focus:ring-brand-500"
-          >
-            <option value="all">All Statuses</option>
-            <option value="graded">Graded Only</option>
-            <option value="ungraded">Ungraded Only</option>
-          </select>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {subjectFilter !== 'all' && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-pink-500/20 border border-pink-500/30 text-pink-300 text-xs font-bold animate-fade-in">
+              <span>Subject: {subjectFilter}</span>
+              <button
+                type="button"
+                onClick={() => setSubjectFilter('all')}
+                className="p-0.5 hover:text-white transition-colors"
+                title="Clear subject filter"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-[10px]">Status:</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="rounded-xl bg-surface-darker border border-white/10 px-3 py-1.5 text-xs text-white font-medium focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <option value="all">All Statuses</option>
+              <option value="graded">Graded Only</option>
+              <option value="ungraded">Ungraded Only</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -377,9 +419,13 @@ export const TeacherAssignments: React.FC = () => {
             <FileText className="w-8 h-8" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-base font-bold text-white">No Matching Assignments</h3>
+            <h3 className="text-base font-bold text-white">
+              {subjectFilter !== 'all' ? `No Assignments Found for ${subjectFilter}` : 'No Matching Assignments'}
+            </h3>
             <p className="text-xs text-slate-400 max-w-md mx-auto">
-              Create homework or generate content using the AI Lesson & Builder to publish interactive assessments.
+              {subjectFilter !== 'all'
+                ? `Publish homework for ${subjectFilter} to start collecting learner submissions and continuous assessment marks.`
+                : 'Create homework or generate content using the AI Lesson & Builder to publish interactive assessments.'}
             </p>
           </div>
           <button
