@@ -240,9 +240,18 @@ export const ForgotPasswordPage: React.FC = () => {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs flex items-center gap-3 animate-fade-in">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
+          <div className="mb-6 p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs flex flex-col gap-2 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+              <span className="font-semibold">{error}</span>
+            </div>
+            {error.toLowerCase().includes('does not exist') && (
+              <div className="pl-7 pt-1">
+                <Link to="/register" className="inline-flex items-center gap-1 font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                  Don't have an account? Register for a new account &rarr;
+                </Link>
+              </div>
+            )}
           </div>
         )}
 

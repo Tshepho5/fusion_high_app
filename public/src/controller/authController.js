@@ -993,61 +993,80 @@ exports.forgotPassword = async (req, res) => {
         const cleanInput = queryInput.toLowerCase();
         const numericOnly = queryInput.replace(/\D/g, '');
 
-        const userLookup = await db.query(`
-            SELECT u.id, u.email, u.full_name, u.surname, COALESCE(r.name, u.role_id::text, 'learner') as role_name, u.id_number::text as id_number, u.phone::text as phone, c.learner_number::text as learner_number,
-                   COALESCE(pu.email, pc_u.email) as parent_user_email
-            FROM users u
-            LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
-            LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
-            LEFT JOIN users pu ON (c.parent_id::text = pu.id::text)
-            LEFT JOIN parent_children pc ON (pc.child_id::text = c.id::text)
-            LEFT JOIN users pc_u ON (pc.parent_id::text = pc_u.id::text)
-            WHERE LOWER(TRIM(u.email::text)) = $1
-               OR (LOWER(TRIM($1)) IN ('admin@fusionhigh.co.za', 'admin@fusion.high') AND LOWER(COALESCE(r.name, u.role_id::text, '')) = 'admin')
-               OR LOWER(TRIM(u.email::text)) = $1 || '@fusion.high'
-               OR LOWER(TRIM(u.email::text)) = $1 || '@fusionhigh.co.za'
-               OR (u.id_number IS NOT NULL AND TRIM(u.id_number::text) = $2)
-               OR (u.id_number IS NOT NULL AND $3 <> '' AND REGEXP_REPLACE(u.id_number::text, '[^0-9]', '', 'g') = $3)
-               OR (u.phone IS NOT NULL AND (TRIM(u.phone::text) = $2 OR ($3 <> '' AND REGEXP_REPLACE(u.phone::text, '[^0-9]', '', 'g') = $3)))
-               OR (c.learner_number IS NOT NULL AND TRIM(c.learner_number::text) = $2)
-               OR EXISTS (
-                   SELECT 1 FROM parent_children pc2 
-                   JOIN children c2 ON pc2.child_id::text = c2.id::text 
-                   WHERE pc2.parent_id::text = u.id::text AND (TRIM(c2.learner_number::text) = $2 OR c2.id::text = $2)
-               )
-               OR EXISTS (
-                   SELECT 1 FROM children c3 
-                   WHERE (c3.parent_id::text = u.id::text OR c3.secondary_parent_id::text = u.id::text) AND (TRIM(c3.learner_number::text) = $2 OR c3.id::text = $2)
-               )
-            ORDER BY (CASE WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'parent' THEN 1 WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN 2 WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'admin' THEN 3 ELSE 4 END) ASC
-            LIMIT 1
-        `, [cleanInput, queryInput, numericOnly]);
+        let userLookup;
+        if (cleanInput.includes('@')) {
+            // Strict Email Lookup: Account MUST exist with this exact email in users table
+            userLookup = await db.query(`
+                SELECT u.id, u.email, u.full_name, u.surname, COALESCE(r.name, u.role_id::text, 'learner') as role_name, 
+                       u.id_number::text as id_number, u.phone::text as phone, c.learner_number::text as learner_number,
+                       COALESCE(pu.email, pc_u.email) as parent_user_email
+                FROM users u
+                LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
+                LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
+                LEFT JOIN users pu ON (c.parent_id::text = pu.id::text)
+                LEFT JOIN parent_children pc ON (pc.child_id::text = c.id::text)
+                LEFT JOIN users pc_u ON (pc.parent_id::text = pc_u.id::text)
+                WHERE LOWER(TRIM(u.email::text)) = $1
+                ORDER BY (CASE WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'parent' THEN 1 WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN 2 WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'admin' THEN 3 ELSE 4 END) ASC
+                LIMIT 1
+            `, [cleanInput]);
 
-        if (userLookup.rows.length === 0) {
-            return res.status(404).json({ error: 'No account found matching this Email, Learner Number, Phone, or ID Number.' });
+            if (userLookup.rows.length === 0) {
+                return res.status(404).json({ 
+                    error: 'This account does not exist in the database. Please verify your email address or register a new account.' 
+                });
+            }
+        } else {
+            // Non-email identifier lookup: Learner Number, ID Number, or Phone Number
+            userLookup = await db.query(`
+                SELECT u.id, u.email, u.full_name, u.surname, COALESCE(r.name, u.role_id::text, 'learner') as role_name, 
+                       u.id_number::text as id_number, u.phone::text as phone, c.learner_number::text as learner_number,
+                       COALESCE(pu.email, pc_u.email) as parent_user_email
+                FROM users u
+                LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
+                LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
+                LEFT JOIN users pu ON (c.parent_id::text = pu.id::text)
+                LEFT JOIN parent_children pc ON (pc.child_id::text = c.id::text)
+                LEFT JOIN users pc_u ON (pc.parent_id::text = pc_u.id::text)
+                WHERE (c.learner_number IS NOT NULL AND TRIM(c.learner_number::text) = $1)
+                   OR (u.id_number IS NOT NULL AND TRIM(u.id_number::text) = $1)
+                   OR ($2 <> '' AND LENGTH($2) >= 6 AND u.id_number IS NOT NULL AND REGEXP_REPLACE(u.id_number::text, '[^0-9]', '', 'g') = $2)
+                   OR ($2 <> '' AND LENGTH($2) >= 7 AND u.phone IS NOT NULL AND (TRIM(u.phone::text) = $1 OR REGEXP_REPLACE(u.phone::text, '[^0-9]', '', 'g') = $2))
+                   OR EXISTS (
+                       SELECT 1 FROM parent_children pc2 
+                       JOIN children c2 ON pc2.child_id::text = c2.id::text 
+                       WHERE pc2.parent_id::text = u.id::text AND TRIM(c2.learner_number::text) = $1
+                   )
+                   OR EXISTS (
+                       SELECT 1 FROM children c3 
+                       WHERE (c3.parent_id::text = u.id::text OR c3.secondary_parent_id::text = u.id::text) AND TRIM(c3.learner_number::text) = $1
+                   )
+                ORDER BY (CASE WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'parent' THEN 1 WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN 2 WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'admin' THEN 3 ELSE 4 END) ASC
+                LIMIT 1
+            `, [queryInput, numericOnly]);
+
+            if (userLookup.rows.length === 0) {
+                return res.status(404).json({ 
+                    error: `This account does not exist in the database. No user was found matching "${queryInput}". Please check your details or register a new account.` 
+                });
+            }
         }
 
         const user = userLookup.rows[0];
 
-        // Resolve real destination email strictly based on user input or registered user account
+        // Resolve real destination email strictly from verified account data in database
         let targetDeliveryEmail = '';
-
-        // Priority 1: If the user entered a valid email address in the input form in step 1, use that directly
-        if (cleanInput.includes('@') && !cleanInput.endsWith('@fusion.high') && !cleanInput.endsWith('@fusionhigh.co.za')) {
-            targetDeliveryEmail = cleanInput;
-        }
-        // Priority 2: Account's registered external email address
-        else if (user.email && user.email.includes('@') && !user.email.toLowerCase().endsWith('@fusion.high') && !user.email.toLowerCase().endsWith('@fusionhigh.co.za')) {
+        if (user.email && user.email.includes('@') && !user.email.toLowerCase().endsWith('@fusion.high') && !user.email.toLowerCase().endsWith('@fusionhigh.co.za')) {
             targetDeliveryEmail = user.email.trim();
-        }
-        // Priority 3: For learner accounts with internal logins, route to their registered parent's email
-        else if (user.parent_user_email && user.parent_user_email.includes('@') && !user.parent_user_email.toLowerCase().endsWith('@fusion.high') && !user.parent_user_email.toLowerCase().endsWith('@fusionhigh.co.za')) {
+        } else if (user.parent_user_email && user.parent_user_email.includes('@') && !user.parent_user_email.toLowerCase().endsWith('@fusion.high') && !user.parent_user_email.toLowerCase().endsWith('@fusionhigh.co.za')) {
             targetDeliveryEmail = user.parent_user_email.trim();
+        } else if (user.email && user.email.includes('@')) {
+            targetDeliveryEmail = user.email.trim();
         }
 
         if (!targetDeliveryEmail || !targetDeliveryEmail.includes('@')) {
             return res.status(400).json({ 
-                error: 'No valid external recovery email address is registered on this account. Please contact school administration for password reset assistance.' 
+                error: 'No valid recovery email address is registered on this account in the database. Please contact school administration for password reset assistance.' 
             });
         }
 
@@ -1083,9 +1102,9 @@ exports.forgotPassword = async (req, res) => {
             }
         }
 
-        // Dynamically determine baseUrl from request headers or environment
+        // Dynamically determine baseUrl safely
         let baseUrl = process.env.APP_URL ? process.env.APP_URL.replace(/\/$/, '') : null;
-        if (!baseUrl) {
+        if (!baseUrl && typeof req.get === 'function') {
             baseUrl = req.get('origin');
             if (!baseUrl && req.get('referer')) {
                 try {
@@ -1098,6 +1117,9 @@ exports.forgotPassword = async (req, res) => {
                 const host = req.get('x-forwarded-host') || req.get('host') || 'localhost:4000';
                 baseUrl = `${proto}://${host}`;
             }
+        }
+        if (!baseUrl) {
+            baseUrl = 'https://fusion-high-app.web.app';
         }
 
         const tpl = emailService.templates.forgotPassword(otp, targetDeliveryEmail, baseUrl);
@@ -1120,7 +1142,7 @@ exports.forgotPassword = async (req, res) => {
             console.error('[AUTH FORGOT PW EMAIL ERROR]:', err.message);
         });
 
-        res.json({ 
+        res.status(200).json({ 
             message: `A 4-digit reset code has been sent immediately to your registered email (${masked}). Please check your Inbox and Spam/Junk folder (valid for 5 minutes).`,
             email: user.email,
             delivery_email: masked,
@@ -1141,32 +1163,40 @@ exports.verifyOTP = async (req, res) => {
         const cleanInput = queryInput.toLowerCase();
         const numericOnly = queryInput.replace(/\D/g, '');
 
-        const result = await db.query(`
-            SELECT u.id, u.email, u.reset_code, u.reset_expiry, COALESCE(r.name, u.role_id::text, 'learner') as role_name
-            FROM users u
-            LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
-            LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
-            WHERE (LOWER(TRIM(u.email::text)) = $1
-               OR (LOWER(TRIM($1)) IN ('admin@fusionhigh.co.za', 'admin@fusion.high') AND LOWER(COALESCE(r.name, u.role_id::text, '')) = 'admin')
-               OR LOWER(TRIM(u.email::text)) = $1 || '@fusion.high'
-               OR LOWER(TRIM(u.email::text)) = $1 || '@fusionhigh.co.za'
-               OR (u.id_number IS NOT NULL AND TRIM(u.id_number::text) = $2)
-               OR (u.id_number IS NOT NULL AND $3 <> '' AND REGEXP_REPLACE(u.id_number::text, '[^0-9]', '', 'g') = $3)
-               OR (u.phone IS NOT NULL AND (TRIM(u.phone::text) = $2 OR ($3 <> '' AND REGEXP_REPLACE(u.phone::text, '[^0-9]', '', 'g') = $3)))
-               OR (c.learner_number IS NOT NULL AND TRIM(c.learner_number::text) = $2)
-               OR EXISTS (
-                   SELECT 1 FROM parent_children pc2 
-                   JOIN children c2 ON pc2.child_id::text = c2.id::text 
-                   WHERE pc2.parent_id::text = u.id::text AND (TRIM(c2.learner_number::text) = $2 OR c2.id::text = $2)
-               )
-               OR EXISTS (
-                   SELECT 1 FROM children c3 
-                   WHERE (c3.parent_id::text = u.id::text OR c3.secondary_parent_id::text = u.id::text) AND (TRIM(c3.learner_number::text) = $2 OR c3.id::text = $2)
-               ))
-              AND u.reset_code::text = $4::text
-            ORDER BY u.id DESC
-            LIMIT 1
-        `, [cleanInput, queryInput, numericOnly, rawCode]);
+        let result;
+        if (cleanInput.includes('@')) {
+            result = await db.query(`
+                SELECT u.id, u.email, u.reset_code, u.reset_expiry, COALESCE(r.name, u.role_id::text, 'learner') as role_name
+                FROM users u
+                LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
+                WHERE LOWER(TRIM(u.email::text)) = $1
+                  AND u.reset_code::text = $2::text
+                LIMIT 1
+            `, [cleanInput, rawCode]);
+        } else {
+            result = await db.query(`
+                SELECT u.id, u.email, u.reset_code, u.reset_expiry, COALESCE(r.name, u.role_id::text, 'learner') as role_name
+                FROM users u
+                LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
+                LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
+                WHERE ((c.learner_number IS NOT NULL AND TRIM(c.learner_number::text) = $1)
+                   OR (u.id_number IS NOT NULL AND TRIM(u.id_number::text) = $1)
+                   OR ($2 <> '' AND LENGTH($2) >= 6 AND u.id_number IS NOT NULL AND REGEXP_REPLACE(u.id_number::text, '[^0-9]', '', 'g') = $2)
+                   OR ($2 <> '' AND LENGTH($2) >= 7 AND u.phone IS NOT NULL AND (TRIM(u.phone::text) = $1 OR REGEXP_REPLACE(u.phone::text, '[^0-9]', '', 'g') = $2))
+                   OR EXISTS (
+                       SELECT 1 FROM parent_children pc2 
+                       JOIN children c2 ON pc2.child_id::text = c2.id::text 
+                       WHERE pc2.parent_id::text = u.id::text AND TRIM(c2.learner_number::text) = $1
+                   )
+                   OR EXISTS (
+                       SELECT 1 FROM children c3 
+                       WHERE (c3.parent_id::text = u.id::text OR c3.secondary_parent_id::text = u.id::text) AND TRIM(c3.learner_number::text) = $1
+                   ))
+                  AND u.reset_code::text = $3::text
+                ORDER BY u.id DESC
+                LIMIT 1
+            `, [queryInput, numericOnly, rawCode]);
+        }
 
         if (result.rows.length === 0) {
             return res.status(400).json({ error: 'Invalid 4-digit OTP code or identifier. Please check and try again.' });
@@ -1175,10 +1205,10 @@ exports.verifyOTP = async (req, res) => {
         const user = result.rows[0];
         const now = new Date();
         if (user.reset_expiry && new Date(user.reset_expiry) < now) {
-            return res.status(400).json({ error: 'OTP code has expired (2-minute limit). Please click Resend Code to receive a new OTP.' });
+            return res.status(400).json({ error: 'OTP code has expired (5-minute limit). Please click Resend Code to receive a new OTP.' });
         }
         
-        // Once verified within 2m, extend reset_expiry so user has sufficient time (15 mins) to enter new password
+        // Once verified, extend reset_expiry so user has sufficient time (15 mins) to enter new password
         await db.query("UPDATE users SET reset_expiry = NOW() + INTERVAL '15 minutes' WHERE id::text = $1::text", [user.id]);
         res.json({ message: 'Code verified successfully. You can now set your new password.', email: user.email });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1197,32 +1227,40 @@ exports.resetPassword = async (req, res) => {
         const cleanInput = queryInput.toLowerCase();
         const numericOnly = queryInput.replace(/\D/g, '');
 
-        const userRes = await db.query(`
-            SELECT u.id, u.email, u.password_hash, u.reset_expiry, COALESCE(r.name, u.role_id::text, 'learner') as role_name
-            FROM users u
-            LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
-            LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
-            WHERE (LOWER(TRIM(u.email::text)) = $1
-               OR (LOWER(TRIM($1)) IN ('admin@fusionhigh.co.za', 'admin@fusion.high') AND LOWER(COALESCE(r.name, u.role_id::text, '')) = 'admin')
-               OR LOWER(TRIM(u.email::text)) = $1 || '@fusion.high'
-               OR LOWER(TRIM(u.email::text)) = $1 || '@fusionhigh.co.za'
-               OR (u.id_number IS NOT NULL AND TRIM(u.id_number::text) = $2)
-               OR (u.id_number IS NOT NULL AND $3 <> '' AND REGEXP_REPLACE(u.id_number::text, '[^0-9]', '', 'g') = $3)
-               OR (u.phone IS NOT NULL AND (TRIM(u.phone::text) = $2 OR ($3 <> '' AND REGEXP_REPLACE(u.phone::text, '[^0-9]', '', 'g') = $3)))
-               OR (c.learner_number IS NOT NULL AND TRIM(c.learner_number::text) = $2)
-               OR EXISTS (
-                   SELECT 1 FROM parent_children pc2 
-                   JOIN children c2 ON pc2.child_id::text = c2.id::text 
-                   WHERE pc2.parent_id::text = u.id::text AND (TRIM(c2.learner_number::text) = $2 OR c2.id::text = $2)
-               )
-               OR EXISTS (
-                   SELECT 1 FROM children c3 
-                   WHERE (c3.parent_id::text = u.id::text OR c3.secondary_parent_id::text = u.id::text) AND (TRIM(c3.learner_number::text) = $2 OR c3.id::text = $2)
-               ))
-              AND u.reset_code::text = $4::text
-            ORDER BY u.id DESC
-            LIMIT 1
-        `, [cleanInput, queryInput, numericOnly, rawCode]);
+        let userRes;
+        if (cleanInput.includes('@')) {
+            userRes = await db.query(`
+                SELECT u.id, u.email, u.password_hash, u.reset_expiry, COALESCE(r.name, u.role_id::text, 'learner') as role_name
+                FROM users u
+                LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
+                WHERE LOWER(TRIM(u.email::text)) = $1
+                  AND u.reset_code::text = $2::text
+                LIMIT 1
+            `, [cleanInput, rawCode]);
+        } else {
+            userRes = await db.query(`
+                SELECT u.id, u.email, u.password_hash, u.reset_expiry, COALESCE(r.name, u.role_id::text, 'learner') as role_name
+                FROM users u
+                LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
+                LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
+                WHERE ((c.learner_number IS NOT NULL AND TRIM(c.learner_number::text) = $1)
+                   OR (u.id_number IS NOT NULL AND TRIM(u.id_number::text) = $1)
+                   OR ($2 <> '' AND LENGTH($2) >= 6 AND u.id_number IS NOT NULL AND REGEXP_REPLACE(u.id_number::text, '[^0-9]', '', 'g') = $2)
+                   OR ($2 <> '' AND LENGTH($2) >= 7 AND u.phone IS NOT NULL AND (TRIM(u.phone::text) = $1 OR REGEXP_REPLACE(u.phone::text, '[^0-9]', '', 'g') = $2))
+                   OR EXISTS (
+                       SELECT 1 FROM parent_children pc2 
+                       JOIN children c2 ON pc2.child_id::text = c2.id::text 
+                       WHERE pc2.parent_id::text = u.id::text AND TRIM(c2.learner_number::text) = $1
+                   )
+                   OR EXISTS (
+                       SELECT 1 FROM children c3 
+                       WHERE (c3.parent_id::text = u.id::text OR c3.secondary_parent_id::text = u.id::text) AND TRIM(c3.learner_number::text) = $1
+                   ))
+                  AND u.reset_code::text = $3::text
+                ORDER BY u.id DESC
+                LIMIT 1
+            `, [queryInput, numericOnly, rawCode]);
+        }
 
         if (userRes.rows.length === 0) {
             return res.status(400).json({ error: 'Invalid or expired OTP code. Please request a new code.' });

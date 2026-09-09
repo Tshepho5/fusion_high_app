@@ -355,6 +355,7 @@ async function initializeAllDatabaseTables(customClient) {
       ALTER TABLE children ADD COLUMN IF NOT EXISTS secondary_parent_id INTEGER;
       ALTER TABLE children ADD COLUMN IF NOT EXISTS application_number VARCHAR(50);
       ALTER TABLE children ADD COLUMN IF NOT EXISTS home_language VARCHAR(50) DEFAULT 'isiZulu';
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
       ALTER TABLE children ADD COLUMN IF NOT EXISTS profile_picture_path TEXT;
       ALTER TABLE children ADD COLUMN IF NOT EXISTS profile_picture TEXT;
       ALTER TABLE children ALTER COLUMN profile_picture_path TYPE TEXT;
