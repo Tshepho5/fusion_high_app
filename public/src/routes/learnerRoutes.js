@@ -13,15 +13,17 @@ router.get('/ai-tutor/conversations/:id', auth, requireRole(['learner', 'teacher
 router.post('/ai-tutor/new-session', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.startNewConversation);
 router.delete('/ai-tutor/conversations/:id', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.deleteConversation);
 
+// Shared learning assets & DBE resources (Open to learners, teachers, admins, and parents)
+router.get('/subject-resources', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), learnerController.getSubjectResources);
+router.get('/topics', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), learnerController.getTopics);
+router.get('/subject-announcements', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), learnerController.getSubjectAnnouncements);
+
 // Learner-specific academic routes (learner & admin only)
 router.use(auth, requireRole(['learner', 'admin']));
 
 // Study Material & Subject Management
 router.get('/subjects', learnerController.getSubjects);
 router.get('/my-subjects-overview', learnerController.getMySubjectsOverview);
-router.get('/topics', learnerController.getTopics);
-router.get('/subject-resources', learnerController.getSubjectResources);
-router.get('/subject-announcements', learnerController.getSubjectAnnouncements);
 
 router.get('/task', learnerController.getTask);
 router.post('/summarize-topic', learnerController.summarizeTopic);

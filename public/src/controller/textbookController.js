@@ -8,9 +8,43 @@ const emailService = require('../services/emailService');
 exports.getInventory = async (req, res) => {
   try {
     const { grade, subject } = req.query;
+
+    // Self-healing check: ensure textbook_inventory table exists
+    try {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS textbook_inventory (
+          id SERIAL PRIMARY KEY,
+          title VARCHAR(255) NOT NULL,
+          subject VARCHAR(150) NOT NULL,
+          grade INTEGER NOT NULL,
+          publisher VARCHAR(150) DEFAULT 'CAPS Approved Publisher',
+          isbn VARCHAR(50),
+          barcode VARCHAR(50),
+          total_copies INTEGER DEFAULT 50,
+          available_copies INTEGER DEFAULT 50,
+          unit_cost_zar NUMERIC(10, 2) DEFAULT 250.00,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+    } catch (tblErr) {
+      console.warn('[TEXTBOOK TABLE VERIFY]', tblErr.message);
+    }
+
     let query = `
-      SELECT t.*,
-        (SELECT COUNT(*) FROM textbook_allocations a WHERE a.inventory_id = t.id AND a.status = 'issued') AS currently_issued_count
+      SELECT 
+        t.id,
+        t.title,
+        t.subject,
+        t.grade,
+        COALESCE(t.publisher, 'CAPS Publisher') as publisher,
+        t.isbn,
+        t.barcode,
+        COALESCE(t.total_copies, 50) as total_copies,
+        COALESCE(t.available_copies, 50) as available_copies,
+        COALESCE(t.unit_cost_zar, 250.00) as unit_cost_zar,
+        t.created_at,
+        (SELECT COUNT(*) FROM textbook_allocations a WHERE a.inventory_id = t.id AND a.status = 'issued') AS currently_issued_count,
+        NULL as file_path
       FROM textbook_inventory t
       WHERE 1=1
     `;
@@ -21,15 +55,48 @@ exports.getInventory = async (req, res) => {
     }
     if (subject) {
       params.push(subject);
-      query += ` AND t.subject = $${params.length}`;
+      query += ` AND t.subject ILIKE $${params.length}`;
     }
-    query += ` ORDER BY t.grade ASC, t.subject ASC;`;
+
+    // Also include any textbooks uploaded directly by educators
+    query += `
+      UNION ALL
+      SELECT 
+        (100000 + tb.id) as id,
+        tb.title,
+        tb.subject,
+        tb.grade,
+        COALESCE(u.full_name || ' (Educator Upload)', 'Teacher Resource') as publisher,
+        NULL as isbn,
+        CONCAT('TB-DIG-', tb.id) as barcode,
+        50 as total_copies,
+        50 as available_copies,
+        250.00 as unit_cost_zar,
+        COALESCE(tb.upload_date, tb.uploaded_at, NOW()) as created_at,
+        0 as currently_issued_count,
+        tb.file_path
+      FROM textbooks tb
+      LEFT JOIN users u ON tb.teacher_id::text = u.id::text
+      WHERE tb.resource_type = 'textbook'
+        AND NOT EXISTS (
+          SELECT 1 FROM textbook_inventory ti 
+          WHERE LOWER(ti.title) = LOWER(tb.title) AND ti.grade = tb.grade
+        )
+    `;
+    if (grade) {
+      query += ` AND tb.grade = $1`;
+    }
+    if (subject) {
+      query += ` AND tb.subject ILIKE $${grade ? '2' : '1'}`;
+    }
+
+    query += ` ORDER BY grade ASC, subject ASC;`;
 
     const { rows } = await db.query(query, params);
     res.json(rows);
   } catch (err) {
     console.error('Error fetching textbook inventory:', err);
-    res.status(500).json({ error: 'Failed to retrieve textbook inventory.' });
+    res.status(500).json({ error: 'Failed to retrieve textbook inventory: ' + err.message });
   }
 };
 

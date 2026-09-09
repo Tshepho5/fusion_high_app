@@ -189,8 +189,8 @@ exports.getMyConsultations = async (req, res) => {
         c.grade AS child_grade,
         c.learner_number
       FROM teacher_consultations tc
-      JOIN users t ON (tc.teacher_id::text = t.id::text)
-      JOIN users p ON (tc.parent_id::text = p.id::text)
+      LEFT JOIN users t ON (tc.teacher_id::text = t.id::text OR tc.teacher_id IN (SELECT id FROM employees WHERE user_id = t.id))
+      LEFT JOIN users p ON (tc.parent_id::text = p.id::text)
       LEFT JOIN children c ON (tc.child_id::text = c.id::text)
       WHERE 1=1
     `;
@@ -198,7 +198,7 @@ exports.getMyConsultations = async (req, res) => {
 
     if (userRole === 'teacher') {
       params.push(String(userId));
-      query += ` AND tc.teacher_id::text = $${params.length}`;
+      query += ` AND (tc.teacher_id::text = $${params.length} OR tc.teacher_id IN (SELECT id FROM employees WHERE user_id::text = $${params.length}))`;
     } else if (userRole === 'parent') {
       params.push(String(userId));
       query += ` AND tc.parent_id::text = $${params.length}`;

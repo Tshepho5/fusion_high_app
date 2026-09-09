@@ -206,6 +206,8 @@ export const teacherService = {
   submitAttendance: (payload: any) => api.post('/api/teacher/attendance', payload).then(res => res.data),
   saveAttendance: (payload: any) => api.post('/api/teacher/attendance', payload).then(res => res.data),
   saveClassMarks: (payload: any) => api.post('/api/teacher/marks/save', payload).then(res => res.data),
+  getClassMarksHistory: (params?: { class?: string; subject?: string; term?: string }) =>
+    api.get('/api/teacher/marks/history', { params }).then(res => res.data),
   recordMark: (payload: any) => api.post('/api/teacher/record-mark', payload).then(res => res.data),
   getTimetables: () => api.get('/api/teacher/timetables').then(res => res.data),
   publishToLearners: (payload: { timetable_id: number; timetable_data?: any }) => 

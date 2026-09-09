@@ -96,13 +96,13 @@ export const ParentDashboard: React.FC = () => {
       {(activeTab === 'children' || activeTab === 'marks') && <ParentChildren />}
       {activeTab === 'finance' && <SchoolFeesManager userRole="parent" />}
       {activeTab === 'bursaries' && <BursaryScholarshipHub isParentView={true} />}
-      {activeTab === 'reports' && <CapsReportCard />}
+      {activeTab === 'reports' && <CapsReportCard onNavigateTab={handleSelectTab} />}
       {(activeTab === 'ptc' || activeTab === 'consultations') && <ParentTeacherConsultations />}
       {activeTab === 'inter-school' && <InterSchoolCompetitions />}
       {activeTab === 'sports' && <SportsExtracurriculars />}
-      {activeTab === 'timetable' && <ParentTimetable />}
+      {activeTab === 'timetable' && <ParentTimetable onNavigateTab={handleSelectTab} />}
       {activeTab === 'calendar' && <SchoolCalendar />}
-      {activeTab === 'attendance' && <ParentAttendance />}
+      {activeTab === 'attendance' && <ParentAttendance onNavigateTab={handleSelectTab} />}
       {activeTab === 'announcements' && <AnnouncementsFeed />}
       {activeTab === 'messages' && <LearnerMessages />}
       {activeTab === 'profile' && <LearnerProfile />}

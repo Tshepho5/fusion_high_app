@@ -132,7 +132,13 @@ export const TeacherDashboard: React.FC = () => {
       {activeTab === 'my-leave' && <EducatorLeaveReliefManager />}
       {activeTab === 'exam-seating' && <ExamSeatingManager />}
       {activeTab === 'sports' && <SportsExtracurriculars />}
-      {activeTab === 'textbooks' && <TextbookAssetTracker />}
+      {activeTab === 'textbooks' && (
+        <TextbookAssetTracker
+          forcedRole="teacher"
+          initialSubject={searchParams.get('subject') || undefined}
+          initialGrade={searchParams.get('grade') || undefined}
+        />
+      )}
       {activeTab === 'timetable' && <TeacherTimetable />}
       {activeTab === 'calendar' && <SchoolCalendar />}
       {activeTab === 'attendance' && <TeacherAttendance />}

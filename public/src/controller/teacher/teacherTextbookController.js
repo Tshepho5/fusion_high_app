@@ -109,6 +109,29 @@ exports.uploadResource = async (req, res) => {
 
         const uploadedResource = insertRes.rows[0];
 
+        // If this uploaded resource is a textbook, sync it into textbook_inventory catalog
+        if (resourceType === 'textbook') {
+            try {
+                await db.query(`
+                    INSERT INTO textbook_inventory (
+                        title, subject, grade, publisher, isbn, barcode, total_copies, available_copies, unit_cost_zar
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                `, [
+                    title,
+                    subject,
+                    grade,
+                    'Educator Upload (CAPS Archive)',
+                    req.body.isbn || null,
+                    req.body.barcode || `TB-${grade}-${Date.now().toString().slice(-6)}`,
+                    parseInt(req.body.total_copies || '50', 10),
+                    parseInt(req.body.total_copies || '50', 10),
+                    parseFloat(req.body.unit_cost_zar || '250.00')
+                ]);
+            } catch (invErr) {
+                console.warn('[TEXTBOOK INVENTORY SYNC NOTICE]', invErr.message);
+            }
+        }
+
         // Fetch teacher's name for notification
         const teacherRes = await db.query('SELECT full_name, surname FROM users WHERE id = $1', [req.user.id]);
         const teacherName = teacherRes.rows[0] ? `${teacherRes.rows[0].full_name} ${teacherRes.rows[0].surname || ''}`.trim() : 'Your Educator';

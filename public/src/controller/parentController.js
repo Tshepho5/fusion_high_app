@@ -35,28 +35,7 @@ exports.getChildren = async (req, res) => {
             GROUP BY c.id, u.id, u.email, u.profile_picture_path, u.profile_picture, u.gender, u.dob
             ORDER BY c.full_name;
         `;
-        let result = await db.query(query, [req.user.id]);
-        
-        // If parent has no children linked (e.g. demo account), link or fallback to sample child
-        if (result.rows.length === 0) {
-            const fallbackQuery = `
-                SELECT 
-                    c.id, c.full_name, c.surname, c.grade, c.stream, c.subjects,
-                    COALESCE(c.learner_number, CONCAT('2026-FHS-', LPAD(c.id::text, 3, '0'))) as learner_number,
-                    c.home_language,
-                    u.email AS learner_email,
-                    COALESCE(u.profile_picture_path, u.profile_picture) as profile_picture,
-                    COALESCE(u.gender, 'Male') as gender,
-                    u.dob,
-                    '[]'::json as recent_marks
-                FROM children c
-                LEFT JOIN users u ON c.learner_user_id = u.id
-                ORDER BY c.id ASC
-                LIMIT 2;
-            `;
-            result = await db.query(fallbackQuery);
-        }
-
+        const result = await db.query(query, [req.user.id]);
         const rawChildren = result.rows || [];
 
         // Enrich strictly with real Machine Learning pass prediction and risk flags

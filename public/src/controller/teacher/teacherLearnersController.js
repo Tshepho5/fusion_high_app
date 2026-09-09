@@ -568,3 +568,107 @@ exports.getLearnerProgress = async (req, res) => {
         res.status(500).json({ error: 'Failed to retrieve learner progress.' });
     }
 };
+
+/**
+ * Retrieves historical marks schedules for a class and subject, grouped by assessment.
+ */
+exports.getClassMarksHistory = async (req, res) => {
+    try {
+        const { class: classParam, subject, term } = req.query;
+        let whereClauses = [];
+        let params = [];
+        let pIdx = 1;
+
+        if (subject && subject !== 'All') {
+            whereClauses.push(`p.subject ILIKE $${pIdx}`);
+            params.push(`%${subject}%`);
+            pIdx++;
+        }
+
+        if (term && term !== 'All') {
+            whereClauses.push(`p.term ILIKE $${pIdx}`);
+            params.push(`%${term}%`);
+            pIdx++;
+        }
+
+        if (classParam && classParam !== 'All') {
+            const gradeNum = parseInt(classParam.replace(/[^0-9]/g, ''), 10);
+            if (gradeNum) {
+                whereClauses.push(`c.grade = $${pIdx}`);
+                params.push(gradeNum);
+                pIdx++;
+            }
+        }
+
+        const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+        const query = `
+            SELECT 
+                p.id,
+                p.child_id,
+                c.full_name,
+                c.surname,
+                c.learner_number,
+                c.grade,
+                p.subject,
+                p.term,
+                p.grade as mark_percentage,
+                COALESCE(p.notes, 'Class Assessment') as assessment_name,
+                COALESCE(p.date, NOW()) as recorded_at
+            FROM progress p
+            JOIN children c ON p.child_id = c.id
+            ${whereSql}
+            ORDER BY p.date DESC, p.id DESC
+            LIMIT 300;
+        `;
+
+        const { rows } = await db.query(query, params);
+
+        // Group rows by assessment_name + subject + term + recorded date (day)
+        const assessmentMap = new Map();
+        for (const row of rows) {
+            const dateKey = row.recorded_at ? new Date(row.recorded_at).toISOString().split('T')[0] : 'recent';
+            const groupKey = `${row.assessment_name}__${row.subject}__${row.term}__${dateKey}`;
+
+            if (!assessmentMap.has(groupKey)) {
+                assessmentMap.set(groupKey, {
+                    assessment_name: row.assessment_name,
+                    subject: row.subject,
+                    term: row.term,
+                    recorded_at: row.recorded_at,
+                    date_str: dateKey,
+                    marks: []
+                });
+            }
+
+            assessmentMap.get(groupKey).marks.push({
+                child_id: row.child_id,
+                full_name: row.full_name,
+                surname: row.surname,
+                learner_number: row.learner_number,
+                grade: row.grade,
+                mark_percentage: row.mark_percentage
+            });
+        }
+
+        const history = Array.from(assessmentMap.values()).map(group => {
+            const marksList = group.marks;
+            const valid = marksList.filter(m => m.mark_percentage !== null && !isNaN(m.mark_percentage));
+            const avg = valid.length > 0 
+                ? Math.round(valid.reduce((acc, m) => acc + Number(m.mark_percentage), 0) / valid.length)
+                : 0;
+
+            return {
+                ...group,
+                total_learners: marksList.length,
+                class_average: avg
+            };
+        });
+
+        res.json({ success: true, history });
+    } catch (err) {
+        console.error('Error fetching class marks history:', err);
+        res.status(500).json({ error: 'Failed to retrieve marks history: ' + err.message });
+    }
+};
+

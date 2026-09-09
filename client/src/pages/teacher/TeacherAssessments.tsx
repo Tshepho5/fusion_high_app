@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { teacherService } from '../../services/api';
 import { Badge } from '../../components/common/Badge';
@@ -18,7 +18,13 @@ import {
   Users,
   Check,
   Filter,
-  BarChart3
+  BarChart3,
+  History,
+  Calendar,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw
 } from 'lucide-react';
 
 interface LearnerMarkRecord {
@@ -50,8 +56,8 @@ export const TeacherAssessments: React.FC = () => {
   const [selectedSubject, setSelectedSubject] = useState<string>(initialSubject);
   const [selectedClass, setSelectedClass] = useState<string>(initialClass);
 
-  // Active Category View: 'formal' | 'term' | 'ai' | 'entry'
-  const [activeCategory, setActiveCategory] = useState<'formal' | 'term' | 'ai' | 'entry'>('formal');
+  // Active Category View: 'formal' | 'term' | 'ai' | 'entry' | 'history'
+  const [activeCategory, setActiveCategory] = useState<'formal' | 'term' | 'ai' | 'entry' | 'history'>('formal');
 
   // Mark Entry Form State
   const [assessmentName, setAssessmentName] = useState('Term 3 Control Test');
@@ -63,6 +69,11 @@ export const TeacherAssessments: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // History Marks State
+  const [historyMarks, setHistoryMarks] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
+  const [expandedHistoryIndex, setExpandedHistoryIndex] = useState<number | null>(0);
 
   // Helper for CAPS level calculation
   const getCapsLevel = (percentage: number) => {
@@ -158,6 +169,22 @@ export const TeacherAssessments: React.FC = () => {
       .finally(() => setLoading(false));
   }, [selectedClass, selectedSubject]);
 
+  const fetchHistory = () => {
+    setLoadingHistory(true);
+    teacherService.getClassMarksHistory({ class: selectedClass, subject: selectedSubject })
+      .then((res: any) => {
+        setHistoryMarks(res?.history || []);
+      })
+      .catch((err: any) => {
+        console.error('Failed to load marks history:', err);
+      })
+      .finally(() => setLoadingHistory(false));
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, [selectedClass, selectedSubject]);
+
   const handleInputChange = (id: number, val: string) => {
     const num = val === '' ? '' : Math.min(totalMarks, Math.max(0, parseInt(val) || 0));
     setLearners(prev =>
@@ -195,6 +222,7 @@ export const TeacherAssessments: React.FC = () => {
         };
       }));
 
+      fetchHistory();
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 4000);
       setActiveCategory('formal');
@@ -206,18 +234,26 @@ export const TeacherAssessments: React.FC = () => {
     }
   };
 
-  // Class Averages Calculations
-  const formalAvg = learners.length > 0 
-    ? Math.round(learners.reduce((acc, l) => acc + l.formal_mark, 0) / learners.length) 
-    : 0;
+  // Dynamic Real-time Class Averages Calculations
+  const formalAvg = useMemo(() => {
+    if (learners.length === 0) return 0;
+    const scores = learners.map(l => {
+      if (l.inputMark !== '') return Math.round(((l.inputMark as number) / totalMarks) * 100);
+      return l.formal_mark;
+    });
+    const valid = scores.filter(m => m > 0);
+    return valid.length > 0 ? Math.round(valid.reduce((acc, s) => acc + s, 0) / valid.length) : 0;
+  }, [learners, totalMarks]);
 
-  const termAvg = learners.length > 0 
-    ? Math.round(learners.reduce((acc, l) => acc + ((l.term1_mark + l.term2_mark + l.term3_mark) / 3), 0) / learners.length) 
-    : 0;
+  const termAvg = useMemo(() => {
+    if (learners.length === 0) return 0;
+    return Math.round(learners.reduce((acc, l) => acc + ((l.term1_mark + l.term2_mark + l.term3_mark) / 3), 0) / learners.length);
+  }, [learners]);
 
-  const aiAvg = learners.length > 0 
-    ? Math.round(learners.reduce((acc, l) => acc + l.ai_activities_mark, 0) / learners.length) 
-    : 0;
+  const aiAvg = useMemo(() => {
+    if (learners.length === 0) return 0;
+    return Math.round(learners.reduce((acc, l) => acc + l.ai_activities_mark, 0) / learners.length);
+  }, [learners]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -407,6 +443,19 @@ export const TeacherAssessments: React.FC = () => {
         >
           <Save className="w-4 h-4" />
           <span>Capture Marks Form</span>
+        </button>
+
+        <button
+          onClick={() => setActiveCategory('history')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 ${
+            activeCategory === 'history'
+              ? 'bg-amber-600 text-white shadow-glow-amber'
+              : 'bg-surface-dark text-slate-400 hover:text-white border border-white/5'
+          }`}
+        >
+          <History className="w-4 h-4" />
+          <span>History Marks</span>
+          <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] font-mono">{historyMarks.length} Records</span>
         </button>
       </div>
 
@@ -736,6 +785,138 @@ export const TeacherAssessments: React.FC = () => {
               <div className="p-8 text-center text-slate-400 text-xs">No learners found for class {selectedClass}.</div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* CATEGORY 5: HISTORY MARKS ARCHIVE                                         */}
+      {/* ========================================================================= */}
+      {activeCategory === 'history' && (
+        <div className="space-y-4 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-surface-dark border border-white/10">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <History className="w-5 h-5 text-amber-400" />
+                <span>Recorded Assessment History — {selectedSubject} ({selectedClass})</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Archived and published formal marks previously recorded for {selectedSubject}.
+              </p>
+            </div>
+            <button
+              onClick={fetchHistory}
+              disabled={loadingHistory}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-darker text-slate-300 hover:text-white border border-white/10 text-xs font-bold transition-all"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingHistory ? 'animate-spin' : ''}`} />
+              <span>Refresh History</span>
+            </button>
+          </div>
+
+          {loadingHistory ? (
+            <LoadingSpinner text="Retrieving assessment mark history from database..." />
+          ) : historyMarks.length === 0 ? (
+            <div className="p-12 rounded-3xl bg-surface-dark border border-white/10 text-center space-y-3 shadow-xl">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+                <History className="w-7 h-7" />
+              </div>
+              <div className="max-w-md mx-auto space-y-1">
+                <h4 className="text-base font-bold text-white">No Historical Marks Found</h4>
+                <p className="text-xs text-slate-400">
+                  No published marks recorded for {selectedSubject} in class {selectedClass} yet. Use "Capture Marks Form" to enter and publish your first test.
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveCategory('entry')}
+                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs transition-all shadow-md cursor-pointer"
+              >
+                Capture Marks Now
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {historyMarks.map((batch, bIdx) => {
+                const isExpanded = expandedHistoryIndex === bIdx;
+                const batchLevel = getCapsLevel(batch.class_average);
+
+                return (
+                  <div
+                    key={`${batch.assessment_name}-${bIdx}`}
+                    className="rounded-3xl bg-surface-dark border border-white/10 overflow-hidden shadow-xl transition-all"
+                  >
+                    <div
+                      onClick={() => setExpandedHistoryIndex(isExpanded ? null : bIdx)}
+                      className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:bg-white/5 transition-colors border-b border-white/5"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-extrabold text-white">{batch.assessment_name}</span>
+                          <Badge variant="indigo" size="sm">{batch.term || 'Term 3'}</Badge>
+                          <Badge variant={batchLevel.variant} size="sm">Avg {batch.class_average}%</Badge>
+                        </div>
+                        <div className="flex items-center gap-3 text-[11px] text-slate-400 font-mono">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                            {batch.date_str || new Date(batch.recorded_at).toLocaleDateString()}
+                          </span>
+                          <span>•</span>
+                          <span className="flex items-center gap-1">
+                            <Users className="w-3.5 h-3.5 text-cyan-400" />
+                            {batch.total_learners} Learners Recorded
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <span className="text-xl font-extrabold font-mono text-white">{batch.class_average}%</span>
+                          <span className="text-[10px] text-slate-400 block">Class Performance</span>
+                        </div>
+                        <div className="p-2 rounded-xl bg-surface-darker text-slate-400">
+                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </div>
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="p-5 space-y-3 bg-surface-darker/50 animate-fade-in">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs">
+                            <thead>
+                              <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
+                                <th className="pb-3 px-3">#</th>
+                                <th className="pb-3 px-3">Learner ID</th>
+                                <th className="pb-3 px-3">Full Name</th>
+                                <th className="pb-3 px-3 text-center">Score %</th>
+                                <th className="pb-3 px-3 text-right">CAPS Achievement Level</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                              {batch.marks.map((m: any, mIdx: number) => {
+                                const pVal = Number(m.mark_percentage || 0);
+                                const caps = getCapsLevel(pVal);
+                                return (
+                                  <tr key={m.child_id || mIdx} className="hover:bg-white/5 transition-colors">
+                                    <td className="py-2.5 px-3 text-slate-400 font-mono">{mIdx + 1}</td>
+                                    <td className="py-2.5 px-3 font-mono font-bold text-cyan-400">{m.learner_number || `2026-${m.child_id}`}</td>
+                                    <td className="py-2.5 px-3 font-bold text-white">{`${m.full_name || ''} ${m.surname || ''}`.trim()}</td>
+                                    <td className="py-2.5 px-3 text-center font-mono font-bold text-white">{pVal}%</td>
+                                    <td className="py-2.5 px-3 text-right">
+                                      <Badge variant={caps.variant} size="sm">Level {caps.level} ({caps.label.split(' ')[0]})</Badge>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>

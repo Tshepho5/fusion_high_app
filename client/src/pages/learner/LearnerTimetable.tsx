@@ -24,16 +24,47 @@ import {
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-const STANDARD_PERIODS = [
-  '07:15 - 08:00',
+// Standard 1-hour class periods (60 min each) with single midday nutrition break (11:00 - 11:45)
+export const STANDARD_PERIODS = [
   '08:00 - 09:00',
   '09:00 - 10:00',
-  '10:00 - 10:45',
-  '10:45 - 11:45',
+  '10:00 - 11:00',
+  '11:00 - 11:45',
   '11:45 - 12:45',
-  '12:45 - 13:15',
-  '13:15 - 14:15',
+  '12:45 - 13:45',
+  '13:45 - 14:45'
 ];
+
+export const isBreakPeriod = (periodTime: string) => {
+  const norm = (periodTime || '').toLowerCase();
+  return periodTime === '11:00 - 11:45' || 
+         norm.includes('nutrition') || 
+         (norm.includes('break') && !norm.includes('09:00') && !norm.includes('10:00') && !norm.includes('12:45'));
+};
+
+export function normalizePeriodTime(rawTime: string): string {
+  const trimmed = (rawTime || '').trim();
+  if (trimmed.startsWith('08:00')) return '08:00 - 09:00';
+  if (trimmed.startsWith('09:00')) return '09:00 - 10:00';
+  if (trimmed.startsWith('10:00')) {
+    if (trimmed.toLowerCase().includes('break')) return '11:00 - 11:45';
+    return '10:00 - 11:00';
+  }
+  if (trimmed.startsWith('11:00') && (trimmed.includes('11:45') || trimmed.toLowerCase().includes('break') || trimmed.toLowerCase().includes('nutrition'))) {
+    return '11:00 - 11:45';
+  }
+  if (trimmed.startsWith('11:00') || trimmed.startsWith('11:45') || trimmed.startsWith('10:45')) {
+    return '11:45 - 12:45';
+  }
+  if (trimmed.startsWith('12:45') || trimmed.startsWith('12:00')) {
+    if (trimmed.toLowerCase().includes('break') || trimmed.includes('13:15')) return '11:00 - 11:45';
+    return '12:45 - 13:45';
+  }
+  if (trimmed.startsWith('13:15') || trimmed.startsWith('13:45') || trimmed.startsWith('14:00')) {
+    return '13:45 - 14:45';
+  }
+  return trimmed;
+}
 
 type TimetableViewMode = 'matrix' | 'cards' | 'list';
 
@@ -105,14 +136,17 @@ export const LearnerTimetable: React.FC = () => {
             for (const time in periods) {
               const entry = periods[time];
               if (entry && (entry.subject || entry.teacher)) {
-                map[day][time] = {
-                  period: time,
-                  time,
-                  class: className,
-                  subject: entry.subject || 'Class Session',
-                  teacher: entry.teacher || 'Assigned Educator',
-                  room: entry.room || `Class ${className}`,
-                };
+                const normTime = normalizePeriodTime(time);
+                if (!map[day][normTime] || entry.subject) {
+                  map[day][normTime] = {
+                    period: normTime,
+                    time: normTime,
+                    class: className,
+                    subject: entry.subject || 'Class Session',
+                    teacher: entry.teacher || 'Assigned Educator',
+                    room: entry.room || `Class ${className}`,
+                  };
+                }
               }
             }
           }
@@ -138,15 +172,10 @@ export const LearnerTimetable: React.FC = () => {
     );
   }, [allWeekSlots, selectedDay, searchFilter]);
 
-  // Extract unique periods present across the week
+  // Standard 60-min periods + 1 midday break (strictly ordered, eliminating overlapping duplicates)
   const allPeriodsList = useMemo(() => {
-    const set = new Set<string>();
-    STANDARD_PERIODS.forEach(p => set.add(p));
-    DAYS.forEach(d => {
-      Object.keys(allWeekSlots[d] || {}).forEach(p => set.add(p));
-    });
-    return Array.from(set).sort();
-  }, [allWeekSlots]);
+    return STANDARD_PERIODS;
+  }, []);
 
   const handlePrint = () => {
     window.print();
@@ -308,7 +337,7 @@ export const LearnerTimetable: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-white/5 text-xs">
                 {allPeriodsList.map((periodTime) => {
-                  const isBreak = periodTime.includes('10:00') || periodTime.includes('12:45') || periodTime.toLowerCase().includes('break');
+                  const isBreak = isBreakPeriod(periodTime);
 
                   return (
                     <tr

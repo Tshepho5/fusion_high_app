@@ -9,12 +9,17 @@ import {
   Clock,
   AlertCircle,
   Users,
+  User,
   Calendar,
   Sparkles,
   Award
 } from 'lucide-react';
 
-export const ParentAttendance: React.FC = () => {
+interface ParentAttendanceProps {
+  onNavigateTab?: (tab: string) => void;
+}
+
+export const ParentAttendance: React.FC<ParentAttendanceProps> = ({ onNavigateTab }) => {
   const [children, setChildren] = useState<any[]>([]);
   const [selectedChild, setSelectedChild] = useState<any | null>(null);
   const [attendanceData, setAttendanceData] = useState<any | null>(null);
@@ -55,6 +60,33 @@ export const ParentAttendance: React.FC = () => {
   }, [selectedChild]);
 
   if (loading) return <LoadingSpinner text="Loading children attendance profiles..." />;
+
+  if (!children || children.length === 0) {
+    return (
+      <div className="rounded-3xl p-12 text-center border border-dashed border-white/20 bg-surface-dark/40 max-w-2xl mx-auto my-8 space-y-5 animate-fade-in shadow-xl">
+        <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
+          <CalendarCheck className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-xl font-extrabold text-white font-display tracking-tight">
+            No Linked Children Found
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+            You do not have any registered learners linked to your parent account yet. Link a child in settings to view their daily attendance, arrival times, and absentee logs.
+          </p>
+        </div>
+        <div className="pt-2">
+          <button
+            onClick={() => onNavigateTab ? onNavigateTab('settings') : (window.location.hash = '#settings')}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-brand-600 hover:from-emerald-400 hover:to-brand-500 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            <User className="w-4 h-4" />
+            <span>Link a Child in Settings</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const stats = {
     present_days: attendanceData?.stats?.present_days ?? attendanceData?.days_present ?? attendanceData?.present_count ?? 0,

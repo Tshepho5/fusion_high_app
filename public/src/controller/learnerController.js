@@ -2074,13 +2074,17 @@ exports.getSubjectResources = async (req, res) => {
         const userId = req.user.id;
         const { subject, grade: queryGrade, resource_type, search } = req.query;
 
-        // Fetch learner's actual enrolled grade, stream, and home language from children table
-        const childRes = await db.query(
-            `SELECT grade, stream, home_language, subjects FROM children WHERE learner_user_id = $1`,
-            [userId]
-        );
-        const dbGrade = childRes.rows[0]?.grade;
-        const homeLanguage = childRes.rows[0]?.home_language;
+        // Fetch learner's actual enrolled grade, stream, and home language if user is a learner
+        let dbGrade = null;
+        let homeLanguage = null;
+        if (req.user && req.user.role === 'learner') {
+            const childRes = await db.query(
+                `SELECT grade, stream, home_language, subjects FROM children WHERE learner_user_id = $1`,
+                [userId]
+            );
+            dbGrade = childRes.rows[0]?.grade;
+            homeLanguage = childRes.rows[0]?.home_language;
+        }
 
         // Prioritize explicit query grade, then database enrolled grade, fallback to 10
         let targetGrade = parseInt(queryGrade, 10) || dbGrade || 10;

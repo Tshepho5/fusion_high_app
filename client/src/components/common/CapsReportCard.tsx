@@ -15,15 +15,17 @@ import {
   Sparkles,
   ShieldCheck,
   QrCode,
-  Check
+  Check,
+  User
 } from 'lucide-react';
 
 interface CapsReportCardProps {
   childId?: string | number;
   initialTerm?: string;
+  onNavigateTab?: (tab: string) => void;
 }
 
-export const CapsReportCard: React.FC<CapsReportCardProps> = ({ childId, initialTerm = 'Term 3 2026' }) => {
+export const CapsReportCard: React.FC<CapsReportCardProps> = ({ childId, initialTerm = 'Term 3 2026', onNavigateTab }) => {
   const [term, setTerm] = useState<string>(initialTerm);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -53,6 +55,34 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({ childId, initial
 
   if (loading) {
     return <LoadingSpinner text="Generating official landscape CAPS Term Report Card..." />;
+  }
+
+  // Handle case where parent has no linked children
+  if (data?.no_linked_children) {
+    return (
+      <div className="rounded-3xl p-12 text-center border border-dashed border-white/20 bg-surface-dark/40 max-w-2xl mx-auto my-8 space-y-5 animate-fade-in shadow-xl">
+        <div className="w-16 h-16 rounded-2xl bg-brand-500/10 border border-brand-500/20 text-brand-400 flex items-center justify-center mx-auto shadow-inner">
+          <GraduationCap className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-xl font-extrabold text-white font-display tracking-tight">
+            No Linked Children Found
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+            You do not have any registered learners linked to your parent account yet. Link a child in settings to view their official CAPS Term Report Card, subject aggregates, and educator remarks.
+          </p>
+        </div>
+        <div className="pt-2">
+          <button
+            onClick={() => onNavigateTab ? onNavigateTab('settings') : (window.location.hash = '#settings')}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-bold text-xs shadow-lg shadow-brand-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            <User className="w-4 h-4" />
+            <span>Link a Child in Settings</span>
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const learner = data?.learner || {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { textbookService, adminService } from '../../services/api';
+import { textbookService, adminService, teacherService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { LoadingSpinner } from './LoadingSpinner';
 import { Badge } from './Badge';
@@ -20,9 +20,11 @@ import {
 
 interface TextbookAssetTrackerProps {
   forcedRole?: 'admin' | 'teacher' | 'learner';
+  initialSubject?: string;
+  initialGrade?: string;
 }
 
-export const TextbookAssetTracker: React.FC<TextbookAssetTrackerProps> = ({ forcedRole }) => {
+export const TextbookAssetTracker: React.FC<TextbookAssetTrackerProps> = ({ forcedRole, initialSubject, initialGrade }) => {
   const { role, user } = useAuth();
   const currentRole = (role || user?.role || '').toLowerCase();
   const isStaff =
@@ -38,8 +40,8 @@ export const TextbookAssetTracker: React.FC<TextbookAssetTrackerProps> = ({ forc
   const [inventory, setInventory] = useState<any[]>([]);
   const [myBooks, setMyBooks] = useState<any[]>([]);
   const [learners, setLearners] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedGrade, setSelectedGrade] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>(initialSubject || '');
+  const [selectedGrade, setSelectedGrade] = useState<string>(initialGrade ? String(initialGrade) : 'all');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -54,8 +56,8 @@ export const TextbookAssetTracker: React.FC<TextbookAssetTrackerProps> = ({ forc
   // Forms
   const [addForm, setAddForm] = useState({
     title: '',
-    subject: 'Mathematics',
-    grade: 12,
+    subject: initialSubject || 'Mathematics',
+    grade: initialGrade ? parseInt(initialGrade, 10) : 12,
     publisher: 'CAPS Publisher',
     isbn: '',
     barcode: '',
@@ -82,9 +84,13 @@ export const TextbookAssetTracker: React.FC<TextbookAssetTrackerProps> = ({ forc
           ? { grade: parseInt(selectedGrade, 10) }
           : undefined;
 
+        const fetchLearnersPromise = (forcedRole === 'teacher' || currentRole === 'teacher')
+          ? teacherService.getMyLearners()
+          : adminService.getLearners();
+
         const [invData, lData] = await Promise.allSettled([
           textbookService.getInventory(gradeParam),
-          adminService.getLearners()
+          fetchLearnersPromise
         ]);
 
         if (invData.status === 'fulfilled') {
@@ -407,7 +413,7 @@ export const TextbookAssetTracker: React.FC<TextbookAssetTrackerProps> = ({ forc
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">Replacement Cost:</span>
-                      <span className="font-semibold text-white">R{parseFloat(item.unit_cost_zar || 250).toFixed(2)}</span>
+                      <span className="font-semibold text-white">R{(!isNaN(parseFloat(item.unit_cost_zar)) ? parseFloat(item.unit_cost_zar) : 250).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>

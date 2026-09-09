@@ -51,12 +51,37 @@ exports.getCapsReportCardData = async (req, res) => {
             if (childRes.rows[0]) childId = childRes.rows[0].id;
         }
 
-        if (!childId) {
+        if (!childId && req.user && req.user.role === 'parent') {
+            const parentChildRes = await db.query(
+                `SELECT c.id FROM children c
+                 LEFT JOIN parent_children pc ON pc.child_id = c.id
+                 WHERE c.parent_id = $1 OR c.secondary_parent_id = $1 OR pc.parent_id = $1
+                 ORDER BY c.id ASC LIMIT 1`,
+                [req.user.id]
+            );
+            if (parentChildRes.rows[0]) {
+                childId = parentChildRes.rows[0].id;
+            } else {
+                return res.json({
+                    success: false,
+                    no_linked_children: true,
+                    error: 'No linked children found. Link a child in settings to view their CAPS report card.'
+                });
+            }
+        }
+
+        if (!childId && req.user && req.user.role === 'admin') {
             const fallbackRes = await db.query('SELECT id FROM children ORDER BY id ASC LIMIT 1');
             if (fallbackRes.rows[0]) childId = fallbackRes.rows[0].id;
         }
 
-        if (!childId) return res.status(404).json({ error: 'Learner profile not found.' });
+        if (!childId) {
+            return res.status(404).json({
+                success: false,
+                no_linked_children: true,
+                error: 'Learner profile not found.'
+            });
+        }
 
         const childRes = await db.query(
             `SELECT c.id, c.full_name, c.surname, c.learner_number, c.grade, c.stream, c.subjects, lu.profile_picture_path,

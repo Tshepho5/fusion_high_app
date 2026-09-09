@@ -37,6 +37,7 @@ interface Consultation {
   parent_first_name: string;
   parent_surname: string;
   parent_email: string;
+  parent_phone?: string;
   child_first_name: string;
   child_surname: string;
   child_grade: number;
@@ -335,23 +336,64 @@ export const ParentTeacherConsultations: React.FC = () => {
                     </Badge>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <span className="text-[10px] text-slate-400 font-bold block uppercase">Educator</span>
-                      <p className="font-bold text-white mt-0.5">
-                        {c.teacher_first_name} {c.teacher_surname}
-                      </p>
-                      <span className="text-[10px] text-slate-400 font-mono block">{c.teacher_email}</span>
-                    </div>
+                  {isTeacher ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="p-2.5 rounded-xl bg-surface-dark/60 border border-white/5 space-y-1">
+                        <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                          <User className="w-3 h-3" />
+                          Parent / Guardian
+                        </span>
+                        <p className="font-bold text-white text-sm">
+                          {c.parent_first_name} {c.parent_surname}
+                        </p>
+                        <div className="text-[11px] text-slate-300 font-mono space-y-0.5 pt-0.5">
+                          {c.parent_email && (
+                            <div className="flex items-center gap-1.5 text-slate-400">
+                              <Mail className="w-3 h-3 text-slate-500" />
+                              <span className="truncate">{c.parent_email}</span>
+                            </div>
+                          )}
+                          {c.parent_phone && (
+                            <div className="flex items-center gap-1.5 text-slate-400">
+                              <Phone className="w-3 h-3 text-slate-500" />
+                              <span>{c.parent_phone}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-                    <div>
-                      <span className="text-[10px] text-slate-400 font-bold block uppercase">Learner</span>
-                      <p className="font-bold text-cyan-300 mt-0.5">
-                        {c.child_first_name} {c.child_surname}
-                      </p>
-                      <span className="text-[10px] text-slate-400 block">Grade {c.child_grade || 10}</span>
+                      <div className="p-2.5 rounded-xl bg-surface-dark/60 border border-white/5 space-y-1">
+                        <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                          <GraduationCap className="w-3 h-3" />
+                          Registered Learner
+                        </span>
+                        <p className="font-bold text-cyan-300 text-sm">
+                          {c.child_first_name} {c.child_surname}
+                        </p>
+                        <span className="text-[11px] text-slate-400 block">
+                          Grade {c.child_grade || 10} • Academic Review
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold block uppercase">Educator</span>
+                        <p className="font-bold text-white mt-0.5">
+                          {c.teacher_first_name} {c.teacher_surname}
+                        </p>
+                        <span className="text-[10px] text-slate-400 font-mono block">{c.teacher_email}</span>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold block uppercase">Learner</span>
+                        <p className="font-bold text-cyan-300 mt-0.5">
+                          {c.child_first_name} {c.child_surname}
+                        </p>
+                        <span className="text-[10px] text-slate-400 block">Grade {c.child_grade || 10}</span>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 space-y-1 text-[11px]">
                     <div className="flex items-center gap-2 text-slate-300 font-mono">
@@ -367,9 +409,14 @@ export const ParentTeacherConsultations: React.FC = () => {
                   </div>
 
                   {c.parent_notes && (
-                    <p className="text-[11px] text-slate-300 italic bg-white/5 p-2 rounded-lg">
-                      "{c.parent_notes}"
-                    </p>
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-slate-200 space-y-0.5">
+                      <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wider block">
+                        Parent Consultation Note / Agenda
+                      </span>
+                      <p className="text-[11px] italic text-slate-300">
+                        "{c.parent_notes}"
+                      </p>
+                    </div>
                   )}
                 </div>
               );

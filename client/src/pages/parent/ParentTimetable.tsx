@@ -9,6 +9,7 @@ import {
   BookOpen,
   MapPin,
   Users,
+  User,
   GraduationCap,
   AlertCircle,
   LayoutGrid,
@@ -21,20 +22,55 @@ import {
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-const STANDARD_PERIODS = [
-  '07:15 - 08:00',
+// Standard 1-hour class periods (60 min each) with single midday nutrition break (11:00 - 11:45)
+export const STANDARD_PERIODS = [
   '08:00 - 09:00',
   '09:00 - 10:00',
-  '10:00 - 10:45',
-  '10:45 - 11:45',
+  '10:00 - 11:00',
+  '11:00 - 11:45',
   '11:45 - 12:45',
-  '12:45 - 13:15',
-  '13:15 - 14:15',
+  '12:45 - 13:45',
+  '13:45 - 14:45'
 ];
+
+export const isBreakPeriod = (periodTime: string) => {
+  const norm = (periodTime || '').toLowerCase();
+  return periodTime === '11:00 - 11:45' || 
+         norm.includes('nutrition') || 
+         (norm.includes('break') && !norm.includes('09:00') && !norm.includes('10:00') && !norm.includes('12:45'));
+};
+
+export function normalizePeriodTime(rawTime: string): string {
+  const trimmed = (rawTime || '').trim();
+  if (trimmed.startsWith('08:00')) return '08:00 - 09:00';
+  if (trimmed.startsWith('09:00')) return '09:00 - 10:00';
+  if (trimmed.startsWith('10:00')) {
+    if (trimmed.toLowerCase().includes('break')) return '11:00 - 11:45';
+    return '10:00 - 11:00';
+  }
+  if (trimmed.startsWith('11:00') && (trimmed.includes('11:45') || trimmed.toLowerCase().includes('break') || trimmed.toLowerCase().includes('nutrition'))) {
+    return '11:00 - 11:45';
+  }
+  if (trimmed.startsWith('11:00') || trimmed.startsWith('11:45') || trimmed.startsWith('10:45')) {
+    return '11:45 - 12:45';
+  }
+  if (trimmed.startsWith('12:45') || trimmed.startsWith('12:00')) {
+    if (trimmed.toLowerCase().includes('break') || trimmed.includes('13:15')) return '11:00 - 11:45';
+    return '12:45 - 13:45';
+  }
+  if (trimmed.startsWith('13:15') || trimmed.startsWith('13:45') || trimmed.startsWith('14:00')) {
+    return '13:45 - 14:45';
+  }
+  return trimmed;
+}
 
 type TimetableViewMode = 'matrix' | 'cards' | 'list';
 
-export const ParentTimetable: React.FC = () => {
+interface ParentTimetableProps {
+  onNavigateTab?: (tab: string) => void;
+}
+
+export const ParentTimetable: React.FC<ParentTimetableProps> = ({ onNavigateTab }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
@@ -115,14 +151,17 @@ export const ParentTimetable: React.FC = () => {
           for (const time in periods) {
             const entry = periods[time];
             if (entry && (entry.subject || entry.teacher)) {
-              map[day][time] = {
-                period: time,
-                time,
-                class: classKey,
-                subject: entry.subject || 'Class Session',
-                teacher: entry.teacher || 'Subject Educator',
-                room: entry.room || `Room ${selectedChild?.grade || 10}A`,
-              };
+              const normTime = normalizePeriodTime(time);
+              if (!map[day][normTime] || entry.subject) {
+                map[day][normTime] = {
+                  period: normTime,
+                  time: normTime,
+                  class: classKey,
+                  subject: entry.subject || 'Class Session',
+                  teacher: entry.teacher || 'Subject Educator',
+                  room: entry.room || `Room ${selectedChild?.grade || 10}A`,
+                };
+              }
             }
           }
         }
@@ -147,20 +186,44 @@ export const ParentTimetable: React.FC = () => {
     );
   }, [allWeekSlots, selectedDay, searchFilter]);
 
+  // Standard 60-min periods + 1 midday break (strictly ordered, eliminating overlapping duplicates)
   const allPeriodsList = useMemo(() => {
-    const set = new Set<string>();
-    STANDARD_PERIODS.forEach(p => set.add(p));
-    DAYS.forEach(d => {
-      Object.keys(allWeekSlots[d] || {}).forEach(p => set.add(p));
-    });
-    return Array.from(set).sort();
-  }, [allWeekSlots]);
+    return STANDARD_PERIODS;
+  }, []);
 
   const handlePrint = () => {
     window.print();
   };
 
   if (loading) return <LoadingSpinner text="Loading linked children..." />;
+
+  // Explicit empty state for parent with no linked learners
+  if (!children || children.length === 0) {
+    return (
+      <div className="rounded-3xl p-12 text-center border border-dashed border-white/20 bg-surface-dark/40 max-w-2xl mx-auto my-8 space-y-5 animate-fade-in shadow-xl">
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto shadow-inner">
+          <Calendar className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-xl font-extrabold text-white font-display tracking-tight">
+            No Linked Children Found
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+            You do not have any active registered learners linked to your parent account yet. Link a child in settings to view their timetable, period allocations, and educator schedules.
+          </p>
+        </div>
+        <div className="pt-2">
+          <button
+            onClick={() => onNavigateTab ? onNavigateTab('settings') : (window.location.hash = '#settings')}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-brand-600 hover:from-amber-400 hover:to-brand-500 text-white font-bold text-xs shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            <User className="w-4 h-4" />
+            <span>Link a Child in Settings</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const isPublished = timetableData && (timetableData.is_published !== false && Object.keys(parsedData).length > 0);
 
@@ -352,7 +415,7 @@ export const ParentTimetable: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-white/5 text-xs">
                     {allPeriodsList.map((periodTime) => {
-                      const isBreak = periodTime.includes('10:00') || periodTime.includes('12:45') || periodTime.toLowerCase().includes('break');
+                      const isBreak = isBreakPeriod(periodTime);
 
                       return (
                         <tr
