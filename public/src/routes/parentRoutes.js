@@ -21,5 +21,6 @@ router.get('/child-attendance', parentController.getChildAttendanceOverview);
 router.get('/child-assignments', parentController.getChildAssignments);
 router.get('/child-timetable', parentController.getChildTimetable);
 router.get('/child-alerts', parentController.getChildAlerts);
+router.get('/educators', parentController.getEducators);
 
 module.exports = router;

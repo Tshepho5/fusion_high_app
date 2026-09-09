@@ -94,21 +94,79 @@ export const ParentTeacherConsultations: React.FC = () => {
 
   const fetchDependencies = async () => {
     try {
-      if (isParent) {
-        const [kidsRes, teachRes] = await Promise.all([
-          parentService.getChildren(),
-          adminService.getAllTeachers()
-        ]);
-        const kids = Array.isArray(kidsRes) ? kidsRes : kidsRes?.children || [];
-        const teachers = Array.isArray(teachRes) ? teachRes : teachRes?.teachers || [];
+      const [kidsResult, teachResult] = await Promise.allSettled([
+        parentService.getChildren(),
+        consultationService.getEducators()
+      ]);
+
+      let kids: any[] = [];
+      if (kidsResult.status === 'fulfilled') {
+        const res = kidsResult.value;
+        kids = Array.isArray(res) ? res : res?.children || [];
         setChildrenList(kids);
+      }
+
+      let teachers: any[] = [];
+      if (teachResult.status === 'fulfilled') {
+        const res = teachResult.value;
+        teachers = Array.isArray(res) ? res : res?.educators || res?.teachers || [];
         setTeachersList(teachers);
-        if (kids.length > 0) {
-          setForm(prev => ({ ...prev, child_id: String(kids[0].id) }));
-        }
+      } else {
+        // Fallback for admin users
+        try {
+          const adminTeachRes = await adminService.getAllTeachers();
+          teachers = Array.isArray(adminTeachRes) ? adminTeachRes : adminTeachRes?.teachers || [];
+          setTeachersList(teachers);
+        } catch {}
+      }
+
+      if (kids.length > 0) {
+        setForm(prev => ({
+          ...prev,
+          child_id: prev.child_id || String(kids[0].id)
+        }));
       }
     } catch (e) {
       console.warn('Dependency fetch error:', e);
+    }
+  };
+
+  // Selected learner and active grade
+  const selectedChild = childrenList.find(k => String(k.id) === String(form.child_id)) || childrenList[0];
+  const selectedChildGrade = selectedChild ? Number(selectedChild.grade) : null;
+
+  // Filter educators corresponding to the selected learner's grade
+  const filteredTeachers = React.useMemo(() => {
+    if (!selectedChildGrade || isNaN(selectedChildGrade)) {
+      return teachersList;
+    }
+    return teachersList.filter((t: any) => {
+      const grades = t.grades_taught || t.grades || [];
+      if (!Array.isArray(grades) || grades.length === 0) {
+        return true;
+      }
+      return grades.map(Number).includes(selectedChildGrade);
+    });
+  }, [teachersList, selectedChildGrade]);
+
+  const handleChildChange = (newChildId: string) => {
+    const newChild = childrenList.find(k => String(k.id) === String(newChildId));
+    const newGrade = newChild ? Number(newChild.grade) : null;
+
+    const currentTeacher = teachersList.find(t => String(t.id || t.user_id) === String(form.teacher_id));
+    const teacherGrades = currentTeacher ? (currentTeacher.grades_taught || currentTeacher.grades || []) : [];
+    const isStillValid = currentTeacher && (!newGrade || teacherGrades.length === 0 || teacherGrades.map(Number).includes(newGrade));
+
+    setForm(prev => ({
+      ...prev,
+      child_id: newChildId,
+      teacher_id: isStillValid ? prev.teacher_id : '',
+      start_time: isStillValid ? prev.start_time : '',
+      end_time: isStillValid ? prev.end_time : ''
+    }));
+
+    if (!isStillValid) {
+      setAvailableSlots([]);
     }
   };
 
@@ -197,7 +255,15 @@ export const ParentTeacherConsultations: React.FC = () => {
         <div className="flex items-center gap-3">
           {isParent && (
             <button
-              onClick={() => setIsBookModalOpen(true)}
+              onClick={() => {
+                if (!form.child_id && childrenList.length > 0) {
+                  setForm(prev => ({ ...prev, child_id: String(childrenList[0].id) }));
+                }
+                if (teachersList.length === 0) {
+                  fetchDependencies();
+                }
+                setIsBookModalOpen(true);
+              }}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-bold text-xs shadow-glow-cyan transition-all transform hover:scale-[1.02]"
             >
               <Plus className="w-4 h-4" />
@@ -326,7 +392,7 @@ export const ParentTeacherConsultations: React.FC = () => {
               <select
                 required
                 value={form.child_id}
-                onChange={(e) => setForm(prev => ({ ...prev, child_id: e.target.value }))}
+                onChange={(e) => handleChildChange(e.target.value)}
                 className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-brand-500"
               >
                 {childrenList.map((k) => (
@@ -335,6 +401,11 @@ export const ParentTeacherConsultations: React.FC = () => {
                   </option>
                 ))}
               </select>
+              {selectedChildGrade && (
+                <span className="text-[10.5px] text-cyan-400 font-mono mt-1 block">
+                  Enrolled Grade: {selectedChildGrade} {selectedChild?.stream ? `• ${selectedChild.stream}` : ''}
+                </span>
+              )}
             </div>
 
             <div>
@@ -344,18 +415,36 @@ export const ParentTeacherConsultations: React.FC = () => {
                 value={form.teacher_id}
                 onChange={(e) => {
                   const tId = e.target.value;
-                  setForm(prev => ({ ...prev, teacher_id: tId }));
-                  handleCheckSlots(tId, form.consultation_date);
+                  setForm(prev => ({ ...prev, teacher_id: tId, start_time: '', end_time: '' }));
+                  if (tId) {
+                    handleCheckSlots(tId, form.consultation_date);
+                  } else {
+                    setAvailableSlots([]);
+                  }
                 }}
                 className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-brand-500"
               >
                 <option value="">-- Choose an Educator --</option>
-                {teachersList.map((t) => (
-                  <option key={t.id || t.user_id} value={t.id || t.user_id}>
-                    {t.name || `${t.full_name || ''} ${t.surname || ''}`} — {t.role || 'Teacher'}
-                  </option>
-                ))}
+                {filteredTeachers.map((t) => {
+                  const subList = Array.isArray(t.subjects) && t.subjects.length > 0
+                    ? t.subjects.join(', ')
+                    : (t.role || 'Subject Educator');
+                  const gradeList = Array.isArray(t.grades_taught) && t.grades_taught.length > 0
+                    ? ` (Gr ${t.grades_taught.join(', ')})`
+                    : '';
+                  return (
+                    <option key={t.id || t.user_id} value={t.id || t.user_id}>
+                      {t.name || `${t.full_name || ''} ${t.surname || ''}`.trim()} — {subList}{gradeList}
+                    </option>
+                  );
+                })}
+                {filteredTeachers.length === 0 && (
+                  <option disabled value="">No educators available for Grade {selectedChildGrade}</option>
+                )}
               </select>
+              <span className="text-[10px] text-slate-400 mt-1 block font-mono">
+                {filteredTeachers.length} educator{filteredTeachers.length === 1 ? '' : 's'} instructing Grade {selectedChildGrade || 'all'}
+              </span>
             </div>
           </div>
 

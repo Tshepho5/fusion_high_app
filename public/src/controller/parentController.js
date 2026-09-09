@@ -1702,3 +1702,11 @@ exports.getChildAlerts = async (req, res) => {
         res.status(500).json({ error: 'Failed to retrieve alerts.' });
     }
 };
+
+/**
+ * Retrieves educators for parents to consult with.
+ */
+exports.getEducators = async (req, res) => {
+    const consultationController = require('./consultationController');
+    return consultationController.getConsultationEducators(req, res);
+};

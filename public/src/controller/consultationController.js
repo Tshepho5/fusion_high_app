@@ -256,3 +256,90 @@ exports.updateConsultation = async (req, res) => {
     res.status(500).json({ error: 'Failed to update consultation: ' + err.message });
   }
 };
+
+/**
+ * Retrieves educators available for parent consultations, with optional grade filtering.
+ */
+exports.getConsultationEducators = async (req, res) => {
+  try {
+    const { grade } = req.query;
+
+    const query = `
+      SELECT 
+        u.id, 
+        u.full_name, 
+        u.surname, 
+        u.email, 
+        u.phone,
+        COALESCE(u.profile_picture_path, u.profile_picture) as profile_picture,
+        e.subjects, 
+        e.grades_taught, 
+        e.classes_taught
+      FROM users u
+      JOIN roles r ON u.role_id = r.id
+      LEFT JOIN employees e ON u.id = e.user_id
+      WHERE r.name = 'teacher'
+      ORDER BY u.surname, u.full_name;
+    `;
+
+    const { rows } = await db.query(query);
+
+    let educators = rows.map(row => {
+      let grades = [];
+      let subjects = [];
+
+      if (Array.isArray(row.grades_taught)) {
+        grades = row.grades_taught.map(g => Number(g)).filter(g => !isNaN(g));
+      } else if (typeof row.grades_taught === 'string') {
+        try {
+          const parsed = JSON.parse(row.grades_taught);
+          grades = Array.isArray(parsed) ? parsed.map(g => Number(g)).filter(g => !isNaN(g)) : [];
+        } catch {
+          // Check for comma-separated string e.g. "10,11,12"
+          grades = row.grades_taught.split(',').map(s => Number(s.trim())).filter(g => !isNaN(g));
+        }
+      }
+
+      if (Array.isArray(row.subjects)) {
+        subjects = row.subjects.map(s => String(s).trim()).filter(Boolean);
+      } else if (typeof row.subjects === 'string') {
+        try {
+          const parsed = JSON.parse(row.subjects);
+          subjects = Array.isArray(parsed) ? parsed.map(s => String(s).trim()).filter(Boolean) : [row.subjects.trim()];
+        } catch {
+          subjects = row.subjects.split(',').map(s => s.trim()).filter(Boolean);
+        }
+      }
+
+      return {
+        id: row.id,
+        user_id: row.id,
+        full_name: row.full_name,
+        surname: row.surname,
+        email: row.email,
+        phone: row.phone,
+        profile_picture: row.profile_picture,
+        subjects,
+        grades_taught: grades,
+        classes_taught: Array.isArray(row.classes_taught) ? row.classes_taught : []
+      };
+    });
+
+    if (grade) {
+      const gNum = Number(grade);
+      if (!isNaN(gNum)) {
+        educators = educators.filter(e => e.grades_taught.length === 0 || e.grades_taught.includes(gNum));
+      }
+    }
+
+    res.json({
+      success: true,
+      educators,
+      teachers: educators // alias for compatibility
+    });
+  } catch (err) {
+    console.error('Error retrieving consultation educators:', err);
+    res.status(500).json({ error: 'Failed to retrieve educators: ' + err.message });
+  }
+};
+

@@ -308,6 +308,8 @@ export const parentService = {
     first_name: string;
     surname: string;
   }) => api.post('/api/parent/children/activate', payload).then(res => res.data),
+  getEducators: (grade?: number | string) =>
+    api.get('/api/consultations/educators', { params: { grade } }).then(res => res.data),
 };
 
 // School & Class Event Calendar APIs
@@ -492,6 +494,8 @@ export const interSchoolService = {
 
 // Parent-Teacher Consultation Scheduler APIs
 export const consultationService = {
+  getEducators: (grade?: number | string) =>
+    api.get('/api/consultations/educators', { params: { grade } }).then(res => res.data),
   getAvailableSlots: (teacherId: number | string, date: string) =>
     api.get('/api/consultations/available-slots', { params: { teacher_id: teacherId, date } }).then(res => res.data),
   bookConsultation: (payload: {

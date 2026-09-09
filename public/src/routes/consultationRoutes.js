@@ -5,6 +5,9 @@ const { auth } = require('../../../authMiddleware');
 
 router.use(auth);
 
+// Get available educators for consultations (Parents, Teachers, Admins)
+router.get('/educators', consultationController.getConsultationEducators);
+
 // Get available slots for a teacher on a specific date
 router.get('/available-slots', consultationController.getAvailableSlots);
 
