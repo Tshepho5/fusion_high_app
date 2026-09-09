@@ -60,6 +60,19 @@ class NotificationService {
   }
 
   /**
+   * Dispatches a single notification to one user.
+   */
+  static async sendNotification(userId, title, message, type = 'chat', targetTab = 'messages') {
+    return await NotificationService.sendToUsers({
+      userIds: [userId],
+      title,
+      message,
+      type,
+      targetTab
+    });
+  }
+
+  /**
    * Dispatches a notification to specific user IDs.
    * Optionally records in messages table and sends direct emails.
    */

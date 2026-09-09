@@ -746,6 +746,69 @@ const emailService = {
       };
     },
 
+    // 2f. Child Linked & Enrolled with Credentials Email Template
+    childLinkageWithCredentials: ({ parentName, childName, surname, learnerNumber, loginEmail, password, grade, stream, subjects, baseUrl = 'http://localhost:4000' }) => {
+      const title = 'Child Enrolled & Linked Successfully';
+      const cleanBaseUrl = (baseUrl || 'http://localhost:4000').replace(/\/+$/, '');
+      const subjectsList = Array.isArray(subjects) ? subjects.join(', ') : (subjects || 'CAPS Core Curriculum');
+      const contentHtml = `
+        <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Your child <strong>${childName} ${surname}</strong> has been successfully linked and enrolled in the Fusion High School management system.
+        </p>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #38bdf8; border-radius: 12px; padding: 20px; margin: 20px 0;">
+          <h4 style="margin: 0 0 14px 0; color: #38bdf8; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+            <i class="fas fa-id-card" style="margin-right: 6px;"></i> Learner Official Credentials
+          </h4>
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
+            <tr>
+              <td style="padding: 6px 0; width: 150px; color: #94a3b8;">Learner Full Name:</td>
+              <td style="padding: 6px 0; color: #ffffff; font-weight: 700;">${childName} ${surname}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #94a3b8;">Generated Learner Number:</td>
+              <td style="padding: 6px 0; color: #38bdf8; font-family: monospace; font-weight: 800; font-size: 15px;">${learnerNumber}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #94a3b8;">Portal Login Email:</td>
+              <td style="padding: 6px 0; color: #38bdf8; font-family: monospace; font-weight: 700;">${loginEmail}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #94a3b8;">Initial Password:</td>
+              <td style="padding: 6px 0; color: #a78bfa; font-family: monospace; font-weight: 800; font-size: 15px;">${password}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #94a3b8;">Grade & Stream:</td>
+              <td style="padding: 6px 0; color: #ffffff; font-weight: 700;">Grade ${grade} &bull; ${stream || 'General'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #94a3b8;">Curriculum Subjects:</td>
+              <td style="padding: 6px 0; color: #e2e8f0; font-size: 12px; line-height: 1.4;">${subjectsList}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; padding: 12px 16px; margin: 16px 0;">
+          <p style="margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.5;">
+            <strong style="color: #38bdf8;">Next Steps:</strong> Your child can log in immediately to their Learner Dashboard using the generated learner number or email and temporary password above. As a parent, you can track daily attendance, report cards, and homework from your Parent Dashboard.
+          </p>
+        </div>
+      `;
+
+      return {
+        subject: `Fusion High School - Child Enrolled & Linked: ${childName} ${surname} (Learner No: ${learnerNumber})`,
+        body: createBaseEmailTemplate({
+          preheader: `Login credentials and academic details for ${childName} ${surname}.`,
+          title,
+          subtitle: `Grade ${grade} Academic Profile Activated`,
+          contentHtml,
+          ctaText: 'Access Fusion High Portal',
+          ctaLink: `${cleanBaseUrl}/`
+        })
+      };
+    },
+
     // 3. One-Time Password (OTP) for Password Reset
     forgotPassword: (otp, email, baseUrl = 'http://localhost:4000') => {
       const title = 'Password Reset Verification Code';

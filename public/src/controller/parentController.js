@@ -331,19 +331,45 @@ exports.linkChild = async (req, res) => {
             await db.query('UPDATE children SET secondary_parent_id = $1 WHERE id = $2', [parentId, child.child_id]);
         }
 
-        // Send Linkage Confirmation Email to Parent
-        try {
-            const parentUserRes = await db.query('SELECT email, full_name, surname FROM users WHERE id = $1', [parentId]);
-            const parentUser = parentUserRes.rows[0];
-            if (parentUser && parentUser.email) {
-                const tpl = emailService.templates.childLinkageSuccess(
-                    `${parentUser.full_name || ''} ${parentUser.surname || ''}`.trim() || 'Parent / Guardian',
-                    child
-                );
-                emailService.send(parentUser.email, tpl.subject, tpl.body).catch(e => console.warn('Linkage email warning:', e.message));
+        // Retrieve parent info and dispatch credentials email
+        const parentUserRes = await db.query('SELECT email, full_name, surname FROM users WHERE id = $1', [parentId]);
+        const parentUser = parentUserRes.rows[0];
+
+        const learnerIdNum = child.user_id_number || targetIdNumber || '';
+        const generatedPassword = generateLearnerPasswordFromID(learnerIdNum);
+        const learnerEmail = child.learner_email || `${(child.learner_number || '').toLowerCase().replace(/[\s-]/g, '')}@fusion.high`;
+
+        // Update learner user password hash so generated password is valid for immediate login
+        if (child.user_id && generatedPassword) {
+            try {
+                const childPwHash = await bcrypt.hash(generatedPassword, 10);
+                await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [childPwHash, child.user_id]);
+            } catch (pwErr) {
+                console.warn('[LINK CHILD PW HASH]:', pwErr.message);
             }
-        } catch (mailErr) {
-            console.warn('Linkage email notification error:', mailErr.message);
+        }
+
+        // Send Linkage Confirmation & Credentials Email to Parent
+        if (parentUser && parentUser.email) {
+            try {
+                const parentFullName = `${parentUser.full_name || ''} ${parentUser.surname || ''}`.trim() || 'Parent / Guardian';
+                const tpl = emailService.templates.childLinkageWithCredentials({
+                    parentName: parentFullName,
+                    childName: child.full_name,
+                    surname: child.surname,
+                    learnerNumber: child.learner_number || targetLearnerNum || `ID-${child.child_id}`,
+                    loginEmail: learnerEmail,
+                    password: generatedPassword,
+                    grade: child.grade,
+                    stream: child.stream || 'General',
+                    subjects: child.subjects,
+                    baseUrl: req.protocol + '://' + req.get('host')
+                });
+                await emailService.send(parentUser.email, tpl.subject, tpl.body);
+                console.log(`[LINK CHILD EMAIL] Sent confirmation & credentials to ${parentUser.email} for ${child.full_name}`);
+            } catch (mailErr) {
+                console.warn('Linkage email notification error:', mailErr.message);
+            }
         }
 
         // Create welcome notification
@@ -351,7 +377,7 @@ exports.linkChild = async (req, res) => {
             await NotificationService.sendToUsers({
                 userIds: [parentId],
                 title: `Learner Linked: ${childFullName}`,
-                message: `Successfully linked ${childFullName} (Grade ${child.grade}) to your parent portal. You can now monitor their marks, attendance, and timetables.`,
+                message: `Successfully linked ${childFullName} (Grade ${child.grade}) to your parent portal. Credentials have been dispatched to your email.`,
                 type: 'system',
                 targetTab: 'children',
                 metadata: { child_id: child.child_id }
@@ -359,12 +385,20 @@ exports.linkChild = async (req, res) => {
         } catch (_) {}
 
         res.json({
-            message: `Successfully linked ${childFullName} to your parent portal! A confirmation email has been dispatched.`,
+            message: `Successfully linked ${childFullName} to your parent portal! An email with their login credentials (Learner Number & password) has been dispatched.`,
             child: {
                 id: child.child_id,
                 full_name: child.full_name,
                 surname: child.surname,
                 learner_number: child.learner_number,
+                grade: child.grade,
+                stream: child.stream
+            },
+            credentials: {
+                learner_name: `${child.full_name} ${child.surname}`,
+                learner_number: child.learner_number,
+                learner_email: learnerEmail,
+                generated_password: generatedPassword,
                 grade: child.grade,
                 stream: child.stream
             }
@@ -453,14 +487,28 @@ exports.linkSibling = async (req, res) => {
                 await client.query('UPDATE users SET password_hash = $1 WHERE id = $2', [childPwHash, learnerUserId]);
             }
 
-            // Insert into children table
-            const childRes = await client.query(
-                `INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, stream, subjects, class_id, home_language)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-                 RETURNING *`,
-                [learnerUserId, cleanFirstName, cleanSurname, parentId, lrnNumber, gradeInt, streamVal, officialSubjects, assignedClassId, homeLangVal]
+            // Check if child record already exists for this learner user
+            let newChild;
+            const existingChildRec = await client.query(
+                `SELECT * FROM children WHERE learner_user_id = $1 OR (learner_number = $2 AND $2 != '')`,
+                [learnerUserId, lrnNumber]
             );
-            const newChild = childRes.rows[0];
+
+            if (existingChildRec.rows.length > 0) {
+                newChild = existingChildRec.rows[0];
+                await client.query(
+                    `UPDATE children SET parent_id = COALESCE(parent_id, $1), grade = $2, stream = $3, subjects = $4 WHERE id = $5`,
+                    [parentId, gradeInt, streamVal, officialSubjects, newChild.id]
+                );
+            } else {
+                const childRes = await client.query(
+                    `INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, stream, subjects, class_id, home_language)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                     RETURNING *`,
+                    [learnerUserId, cleanFirstName, cleanSurname, parentId, lrnNumber, gradeInt, streamVal, officialSubjects, assignedClassId, homeLangVal]
+                );
+                newChild = childRes.rows[0];
+            }
 
             // Insert into parent_children junction table
             await client.query(
@@ -479,8 +527,8 @@ exports.linkSibling = async (req, res) => {
                 parent,
                 credentials: {
                     learner_name: `${cleanFirstName} ${cleanSurname}`,
-                    learner_number: lrnNumber,
-                    learner_email: learnerEmail,
+                    learner_number: newChild.learner_number || lrnNumber,
+                    learner_email: `${(newChild.learner_number || lrnNumber).toLowerCase().replace(/[\s-]/g, '')}@fusion.high`,
                     generated_password: generatedPassword,
                     grade: gradeInt,
                     stream: streamVal,
@@ -492,15 +540,21 @@ exports.linkSibling = async (req, res) => {
         // 7. Send confirmation email with credentials to parent
         if (result.parent && result.parent.email) {
             try {
-                const emailTpl = emailService.templates.learnerAdmission(
-                    cleanFirstName,
-                    cleanSurname,
-                    lrnNumber,
-                    gradeInt,
-                    generatedPassword,
-                    'Parent Portal Internal Sibling Enrollment'
-                );
-                emailService.send(result.parent.email, emailTpl.subject, emailTpl.body).catch(e => console.warn('[SIBLING EMAIL]:', e.message));
+                const parentFullName = `${result.parent.full_name || ''} ${result.parent.surname || ''}`.trim() || 'Parent / Guardian';
+                const emailTpl = emailService.templates.childLinkageWithCredentials({
+                    parentName: parentFullName,
+                    childName: cleanFirstName,
+                    surname: cleanSurname,
+                    learnerNumber: lrnNumber,
+                    loginEmail: learnerEmail,
+                    password: generatedPassword,
+                    grade: gradeInt,
+                    stream: streamVal,
+                    subjects: officialSubjects,
+                    baseUrl: req.protocol + '://' + req.get('host')
+                });
+                await emailService.send(result.parent.email, emailTpl.subject, emailTpl.body);
+                console.log(`[LINK SIBLING EMAIL] Sent confirmation & credentials to ${result.parent.email} for ${cleanFirstName}`);
             } catch (e) {
                 console.warn('[SIBLING EMAIL ERROR]:', e.message);
             }

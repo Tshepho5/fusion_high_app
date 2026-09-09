@@ -195,25 +195,47 @@ async function generateOfficialLearnerNumber(year = new Date().getFullYear()) {
     const currentYear = year || new Date().getFullYear();
     const prefix = `${currentYear}`;
     try {
-        const [childRes, appRes] = await Promise.all([
+        const [childRes, appRes, userRes] = await Promise.all([
             db.query("SELECT learner_number FROM children WHERE learner_number LIKE $1 OR learner_number ~ '^[0-9]+$'", [`${prefix}%`]),
-            db.query("SELECT provisional_learner_number FROM applications WHERE provisional_learner_number LIKE $1", [`${prefix}%`])
+            db.query("SELECT provisional_learner_number FROM applications WHERE provisional_learner_number LIKE $1", [`${prefix}%`]),
+            db.query("SELECT email FROM users WHERE email LIKE $1", [`${prefix}%@%`])
         ]);
         
         let maxSeq = 0;
+        const existingSet = new Set();
+
         const allRows = [...(childRes.rows || []), ...(appRes.rows || [])];
         for (const row of allRows) {
             const val = row.learner_number || row.provisional_learner_number || '';
             const numStr = val.replace(/\D/g, '');
             if (numStr.startsWith(prefix) && numStr.length === prefix.length + 4) {
+                existingSet.add(numStr);
                 const seq = parseInt(numStr.slice(prefix.length), 10);
                 if (!isNaN(seq) && seq > maxSeq) {
                     maxSeq = seq;
                 }
             }
         }
-        const nextSeq = maxSeq + 1;
-        return `${prefix}${nextSeq.toString().padStart(4, '0')}`;
+
+        // Also check users table
+        for (const row of (userRes.rows || [])) {
+            const emailPrefix = (row.email || '').split('@')[0].replace(/\D/g, '');
+            if (emailPrefix.startsWith(prefix) && emailPrefix.length === prefix.length + 4) {
+                existingSet.add(emailPrefix);
+                const seq = parseInt(emailPrefix.slice(prefix.length), 10);
+                if (!isNaN(seq) && seq > maxSeq) {
+                    maxSeq = seq;
+                }
+            }
+        }
+
+        let nextSeq = maxSeq + 1;
+        let candidate = `${prefix}${nextSeq.toString().padStart(4, '0')}`;
+        while (existingSet.has(candidate)) {
+            nextSeq++;
+            candidate = `${prefix}${nextSeq.toString().padStart(4, '0')}`;
+        }
+        return candidate;
     } catch (e) {
         return `${currentYear}0001`;
     }

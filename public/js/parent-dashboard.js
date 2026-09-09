@@ -4,6 +4,7 @@
 import {
     getChildren,
     activateChild,
+    linkSibling,
     getProfile,
     uploadProfilePicture,
     getAnnouncements,
@@ -135,6 +136,14 @@ window.openAddChildModal = function() {
     const modal = document.getElementById('addChildModal');
     if (modal) {
         modal.classList.remove('hidden');
+        const err = document.getElementById('modal-link-child-error');
+        const succ = document.getElementById('modal-link-child-success');
+        if (err) err.classList.add('hidden');
+        if (succ) succ.classList.add('hidden');
+        if (window.onLinkChildGradeChanged) {
+            const gradeEl = document.getElementById('link-child-grade');
+            window.onLinkChildGradeChanged(gradeEl ? gradeEl.value : '8');
+        }
     } else {
         if (window.switchTab) window.switchTab('settings');
     }
@@ -147,11 +156,178 @@ window.closeAddChildModal = function() {
     }
 };
 
+window.onLinkChildGradeChanged = function(gradeVal) {
+    const streamSelect = document.getElementById('link-child-stream');
+    if (!streamSelect) return;
+    const grade = parseInt(gradeVal, 10);
+    if (grade < 10) {
+        streamSelect.value = 'General';
+        streamSelect.disabled = true;
+    } else {
+        streamSelect.disabled = false;
+        if (streamSelect.value === 'General') {
+            streamSelect.value = 'Science';
+        }
+    }
+};
+
+window.copyGeneratedPassword = function() {
+    const pw = document.getElementById('cred-password')?.textContent;
+    if (pw && pw !== '-') {
+        navigator.clipboard.writeText(pw).then(() => {
+            alert('Learner password copied to clipboard: ' + pw);
+        }).catch(() => {
+            prompt('Copy password:', pw);
+        });
+    }
+};
+
+window.copyAllCredentials = function() {
+    const name = document.getElementById('cred-child-name')?.textContent || '';
+    const num = document.getElementById('cred-learner-number')?.textContent || '';
+    const email = document.getElementById('cred-learner-email')?.textContent || '';
+    const pw = document.getElementById('cred-password')?.textContent || '';
+    const grade = document.getElementById('cred-grade-stream')?.textContent || '';
+
+    const text = `FUSION HIGH SCHOOL - LEARNER CREDENTIALS\n` +
+                 `Name: ${name}\n` +
+                 `Learner Number: ${num}\n` +
+                 `Portal Email: ${email}\n` +
+                 `Initial Password: ${pw}\n` +
+                 `Grade & Stream: ${grade}\n` +
+                 `Portal URL: ${window.location.origin}/login`;
+
+    navigator.clipboard.writeText(text).then(() => {
+        alert('All learner credentials copied to clipboard!');
+    }).catch(() => {
+        prompt('Copy credentials:', text);
+    });
+};
+
+window.closeCredentialsModal = function() {
+    const modal = document.getElementById('childCredentialsSuccessModal');
+    if (modal) modal.classList.add('hidden');
+    if (window.loadParentDashboard) window.loadParentDashboard();
+    if (window.loadParentChildrenDetailed) window.loadParentChildrenDetailed();
+    if (window.loadParentOverview) window.loadParentOverview();
+    if (window.switchTab) window.switchTab('children');
+};
+
 function setupActivationForm() {
+    const linkChildForm = document.getElementById('linkChildForm');
     const activationForm = document.getElementById('activationForm');
     const modalActivationForm = document.getElementById('modalActivationForm');
 
-    const handleFormSubmit = async (e, formEl, errDivId, succDivId, isModal = false) => {
+    // 1. Comprehensive Link / Enroll Child Form
+    if (linkChildForm && !linkChildForm.dataset.listenerAttached) {
+        linkChildForm.dataset.listenerAttached = 'true';
+        linkChildForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errDiv = document.getElementById('modal-link-child-error');
+            const succDiv = document.getElementById('modal-link-child-success');
+            const submitBtn = document.getElementById('btn-submit-link-child');
+
+            if (errDiv) errDiv.classList.add('hidden');
+            if (succDiv) succDiv.classList.add('hidden');
+
+            const firstName = (document.getElementById('link-child-first-name')?.value || '').trim();
+            const surname = (document.getElementById('link-child-surname')?.value || '').trim();
+            const idNumber = (document.getElementById('link-child-id-number')?.value || '').trim();
+            const dob = document.getElementById('link-child-dob')?.value;
+            const gender = document.getElementById('link-child-gender')?.value || 'Other';
+            const grade = parseInt(document.getElementById('link-child-grade')?.value || '8', 10);
+            const stream = grade >= 10 ? (document.getElementById('link-child-stream')?.value || 'Science') : 'General';
+            const homeLanguage = (document.getElementById('link-child-home-language')?.value || 'English').trim();
+            const previousSchool = (document.getElementById('link-child-prev-school')?.value || '').trim();
+
+            if (!firstName || !surname || !idNumber || !dob) {
+                if (errDiv) {
+                    errDiv.textContent = 'Please fill in all required fields (First Name, Surname, ID Number, Date of Birth).';
+                    errDiv.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Registering & Generating Credentials...';
+            }
+
+            try {
+                const payload = {
+                    first_name: firstName,
+                    surname: surname,
+                    id_number: idNumber,
+                    dob: dob,
+                    gender: gender,
+                    grade: grade,
+                    stream: stream,
+                    home_language: homeLanguage,
+                    previous_school: previousSchool
+                };
+
+                const response = await fetch('/api/parent/children/link-sibling', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to link and enroll child.');
+                }
+
+                // Success! Close form modal and open credentials success modal
+                window.closeAddChildModal();
+                linkChildForm.reset();
+
+                const cred = data.credentials || {};
+                const child = data.child || {};
+
+                const childNameEl = document.getElementById('cred-child-name');
+                const learnerNumEl = document.getElementById('cred-learner-number');
+                const learnerEmailEl = document.getElementById('cred-learner-email');
+                const passwordEl = document.getElementById('cred-password');
+                const gradeStreamEl = document.getElementById('cred-grade-stream');
+
+                if (childNameEl) childNameEl.textContent = cred.learner_name || `${firstName} ${surname}`;
+                if (learnerNumEl) learnerNumEl.textContent = cred.learner_number || child.learner_number || '-';
+                if (learnerEmailEl) learnerEmailEl.textContent = cred.learner_email || '-';
+                if (passwordEl) passwordEl.textContent = cred.generated_password || '-';
+                if (gradeStreamEl) gradeStreamEl.textContent = `Grade ${cred.grade || grade} (${cred.stream || stream})`;
+
+                const successModal = document.getElementById('childCredentialsSuccessModal');
+                if (successModal) {
+                    successModal.classList.remove('hidden');
+                } else {
+                    alert(`Child linked successfully!\nLearner Number: ${cred.learner_number}\nPassword: ${cred.generated_password}\nEmail sent to parent.`);
+                }
+
+                if (window.loadParentChildrenDetailed) window.loadParentChildrenDetailed();
+                if (window.loadParentOverview) window.loadParentOverview();
+
+            } catch (err) {
+                if (errDiv) {
+                    errDiv.textContent = err.message || 'An error occurred while linking child.';
+                    errDiv.classList.remove('hidden');
+                } else {
+                    alert('Error: ' + err.message);
+                }
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-id-card me-1"></i> Link Child & Generate Credentials';
+                }
+            }
+        });
+    }
+
+    // 2. Legacy / Fallback Activation Form Handlers
+    const handleLegacySubmit = async (e, formEl, errDivId, succDivId, isModal = false) => {
         e.preventDefault();
         const learnerID = isModal 
             ? (document.getElementById('modalLearnerIDNumber')?.value || '').trim()
@@ -207,12 +383,12 @@ function setupActivationForm() {
 
     if (activationForm && !activationForm.dataset.listenerAttached) {
         activationForm.dataset.listenerAttached = 'true';
-        activationForm.addEventListener('submit', (e) => handleFormSubmit(e, activationForm, 'activation-error', 'activation-success', false));
+        activationForm.addEventListener('submit', (e) => handleLegacySubmit(e, activationForm, 'activation-error', 'activation-success', false));
     }
 
     if (modalActivationForm && !modalActivationForm.dataset.listenerAttached) {
         modalActivationForm.dataset.listenerAttached = 'true';
-        modalActivationForm.addEventListener('submit', (e) => handleFormSubmit(e, modalActivationForm, 'modal-activation-error', 'modal-activation-success', true));
+        modalActivationForm.addEventListener('submit', (e) => handleLegacySubmit(e, modalActivationForm, 'modal-activation-error', 'modal-activation-success', true));
     }
 }
 

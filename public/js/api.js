@@ -108,6 +108,10 @@ export async function getChildren() {
   return apiCall('/parent/children');
 }
 
+export async function linkSibling(siblingData) {
+  return apiCall('/parent/children/link-sibling', { method: 'POST', body: JSON.stringify(siblingData) });
+}
+
 export async function activateChild(activationData) {
   return apiCall('/children/activate', { method: 'POST', body: JSON.stringify(activationData) });
 }

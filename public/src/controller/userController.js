@@ -677,3 +677,5 @@ exports.getConversationHistory = async (req, res) => {
         res.status(500).json({ error: 'Failed to load conversation history: ' + err.message });
     }
 };
+
+exports.getConversation = exports.getConversationHistory;

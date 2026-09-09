@@ -14,8 +14,8 @@ export async function loadParentChildrenDetailed() {
                     <div class="parent-card" style="text-align:center; padding:3rem 1.5rem;">
                         <i class="fas fa-user-graduate" style="font-size:3rem; color:#38BDF8; margin-bottom:1rem;"></i>
                         <h3 style="margin:0 0 0.5rem 0; color:#F8FAFC;">No Linked Children Found</h3>
-                        <p style="color:#94A3B8; margin-bottom:1.5rem;">Click 'Activate Child' from the sidebar or activate button below to link your child using their Learner Number.</p>
-                        <button class="btn btn-primary" onclick="window.openAddChildModal()"><i class="fas fa-user-plus"></i> Activate Child Account</button>
+                        <p style="color:#94A3B8; margin-bottom:1.5rem;">Click '+ Link / Enroll Child' below to register and link your child to your parent portal.</p>
+                        <button class="btn btn-primary" onclick="window.openAddChildModal()"><i class="fas fa-user-plus"></i> + Link / Enroll Child</button>
                     </div>
                 `;
             }

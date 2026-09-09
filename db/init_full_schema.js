@@ -502,9 +502,20 @@ async function initializeAllDatabaseTables(customClient) {
         subject VARCHAR(255),
         body TEXT,
         content TEXT,
+        attachment_url TEXT,
+        attachment_name VARCHAR(255),
+        attachment_type VARCHAR(50),
+        file_size VARCHAR(50),
+        voice_duration INTEGER,
         read_at TIMESTAMP,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_url TEXT;
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_name VARCHAR(255);
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_type VARCHAR(50);
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS file_size VARCHAR(50);
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS voice_duration INTEGER;
 
       CREATE TABLE IF NOT EXISTS notifications (
         id SERIAL PRIMARY KEY,
