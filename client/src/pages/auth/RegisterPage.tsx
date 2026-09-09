@@ -396,6 +396,29 @@ export const RegisterPage: React.FC = () => {
     e.preventDefault();
     setError(null);
 
+    // If on Step 1, advance to Step 2 (Link Child) instead of prematurely submitting
+    if (parentStep === 1) {
+      if (!formData.name || !formData.surname || !formData.email || !formData.password || !formData.phone) {
+        setError('Please complete all required parent details before proceeding to link a child.');
+        return;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setError('Passwords do not match.');
+        return;
+      }
+      if (formData.password.length < 6) {
+        setError('Password must be at least 6 characters long.');
+        return;
+      }
+      if (formData.idNumber && formData.idNumber.length !== 13) {
+        setError('South African ID must be exactly 13 digits.');
+        return;
+      }
+      setError(null);
+      setParentStep(2);
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match.');
       return;
@@ -618,9 +641,20 @@ export const RegisterPage: React.FC = () => {
 
             <div
               onClick={() => {
-                if (formData.name && formData.surname && formData.email && formData.password) {
-                  setParentStep(2);
+                if (!formData.name || !formData.surname || !formData.email || !formData.password || !formData.phone) {
+                  setError('Please complete all required parent personal details before proceeding to link a child.');
+                  return;
                 }
+                if (formData.password !== formData.confirmPassword) {
+                  setError('Passwords do not match.');
+                  return;
+                }
+                if (formData.idNumber && formData.idNumber.length !== 13) {
+                  setError('South African ID must be 13 digits.');
+                  return;
+                }
+                setError(null);
+                setParentStep(2);
               }}
               className={`flex items-center gap-2 cursor-pointer transition-colors ${
                 parentStep === 2 ? 'text-amber-400 font-bold' : 'text-slate-400'

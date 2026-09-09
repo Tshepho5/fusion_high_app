@@ -151,9 +151,55 @@ async function initApplicationTables() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(parent_id, child_id)
       );
+
+      -- 5. Parent Portal Access Applications Table
+      CREATE TABLE IF NOT EXISTS parent_portal_applications (
+        id SERIAL PRIMARY KEY,
+        application_number VARCHAR(50) UNIQUE NOT NULL,
+        school_id INTEGER REFERENCES schools(id) ON DELETE SET NULL DEFAULT 1,
+        parent_name VARCHAR(255) NOT NULL,
+        parent_surname VARCHAR(255) NOT NULL,
+        parent_id_number VARCHAR(20) NOT NULL,
+        parent_email VARCHAR(255) NOT NULL,
+        parent_phone VARCHAR(50) NOT NULL,
+        physical_address TEXT DEFAULT 'Not provided',
+        parent_type VARCHAR(50) DEFAULT 'Parent',
+        password_hash TEXT NOT NULL,
+        dob DATE,
+        gender VARCHAR(20),
+        country VARCHAR(100) DEFAULT 'South Africa',
+        race VARCHAR(50) DEFAULT 'Black',
+        child_first_name VARCHAR(255),
+        child_surname VARCHAR(255),
+        child_id_number VARCHAR(20),
+        child_grade INTEGER,
+        child_stream VARCHAR(50) DEFAULT 'General',
+        children_details JSONB DEFAULT '[]'::jsonb,
+        is_twins_or_multiple BOOLEAN DEFAULT FALSE,
+        num_children INTEGER DEFAULT 1,
+        status VARCHAR(50) DEFAULT 'pending',
+        admin_notes TEXT,
+        reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        reviewed_at TIMESTAMP
+      );
+
+      ALTER TABLE parent_portal_applications ALTER COLUMN physical_address DROP NOT NULL;
+      ALTER TABLE parent_portal_applications ALTER COLUMN physical_address SET DEFAULT 'Not provided';
+      ALTER TABLE parent_portal_applications ALTER COLUMN child_first_name DROP NOT NULL;
+      ALTER TABLE parent_portal_applications ALTER COLUMN child_surname DROP NOT NULL;
+      ALTER TABLE parent_portal_applications ALTER COLUMN child_id_number DROP NOT NULL;
+      ALTER TABLE parent_portal_applications ALTER COLUMN child_grade DROP NOT NULL;
+      ALTER TABLE parent_portal_applications ADD COLUMN IF NOT EXISTS children_details JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE parent_portal_applications ADD COLUMN IF NOT EXISTS is_twins_or_multiple BOOLEAN DEFAULT FALSE;
+      ALTER TABLE parent_portal_applications ADD COLUMN IF NOT EXISTS num_children INTEGER DEFAULT 1;
+
+      CREATE INDEX IF NOT EXISTS idx_parent_apps_school_status ON parent_portal_applications(school_id, status);
+      CREATE INDEX IF NOT EXISTS idx_parent_apps_email ON parent_portal_applications(parent_email);
+      CREATE INDEX IF NOT EXISTS idx_parent_apps_child_id ON parent_portal_applications(child_id_number);
     `);
 
-    console.log('[DB] Application schema initialized successfully.');
+    console.log('[DB] Application schema and parent_portal_applications initialized successfully.');
   } catch (err) {
     console.error('[DB] Error initializing application tables:', err.message);
   }

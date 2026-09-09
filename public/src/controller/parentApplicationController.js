@@ -109,6 +109,63 @@ exports.submitParentApplication = async (req, res) => {
     const targetSchoolId = parseInt(school_id || 1, 10);
 
     try {
+let isSchemaEnsured = false;
+async function ensureParentAppSchema() {
+    if (isSchemaEnsured) return;
+    try {
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS parent_portal_applications (
+                id SERIAL PRIMARY KEY,
+                application_number VARCHAR(50) UNIQUE NOT NULL,
+                school_id INTEGER REFERENCES schools(id) ON DELETE SET NULL DEFAULT 1,
+                parent_name VARCHAR(255) NOT NULL,
+                parent_surname VARCHAR(255) NOT NULL,
+                parent_id_number VARCHAR(20) NOT NULL,
+                parent_email VARCHAR(255) NOT NULL,
+                parent_phone VARCHAR(50) NOT NULL,
+                physical_address TEXT DEFAULT 'Not provided',
+                parent_type VARCHAR(50) DEFAULT 'Parent',
+                password_hash TEXT NOT NULL,
+                dob DATE,
+                gender VARCHAR(20),
+                country VARCHAR(100) DEFAULT 'South Africa',
+                race VARCHAR(50) DEFAULT 'Black',
+                child_first_name VARCHAR(255),
+                child_surname VARCHAR(255),
+                child_id_number VARCHAR(20),
+                child_grade INTEGER,
+                child_stream VARCHAR(50) DEFAULT 'General',
+                children_details JSONB DEFAULT '[]'::jsonb,
+                is_twins_or_multiple BOOLEAN DEFAULT FALSE,
+                num_children INTEGER DEFAULT 1,
+                status VARCHAR(50) DEFAULT 'pending',
+                admin_notes TEXT,
+                reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reviewed_at TIMESTAMP
+            );
+
+            ALTER TABLE parent_portal_applications ALTER COLUMN physical_address DROP NOT NULL;
+            ALTER TABLE parent_portal_applications ALTER COLUMN physical_address SET DEFAULT 'Not provided';
+            ALTER TABLE parent_portal_applications ALTER COLUMN child_first_name DROP NOT NULL;
+            ALTER TABLE parent_portal_applications ALTER COLUMN child_surname DROP NOT NULL;
+            ALTER TABLE parent_portal_applications ALTER COLUMN child_id_number DROP NOT NULL;
+            ALTER TABLE parent_portal_applications ALTER COLUMN child_grade DROP NOT NULL;
+            ALTER TABLE parent_portal_applications ADD COLUMN IF NOT EXISTS children_details JSONB DEFAULT '[]'::jsonb;
+            ALTER TABLE parent_portal_applications ADD COLUMN IF NOT EXISTS is_twins_or_multiple BOOLEAN DEFAULT FALSE;
+            ALTER TABLE parent_portal_applications ADD COLUMN IF NOT EXISTS num_children INTEGER DEFAULT 1;
+
+            CREATE INDEX IF NOT EXISTS idx_parent_apps_school_status ON parent_portal_applications(school_id, status);
+            CREATE INDEX IF NOT EXISTS idx_parent_apps_email ON parent_portal_applications(parent_email);
+        `);
+        isSchemaEnsured = true;
+    } catch (e) {
+        console.warn('Schema check warning in parentApplicationController:', e.message);
+    }
+}
+
+        await ensureParentAppSchema();
+
         // Check if parent is already registered in users table
         const existingUser = await db.query('SELECT id, email FROM users WHERE LOWER(email) = LOWER($1)', [normalizedEmail]);
         if (existingUser.rows.length > 0) {
@@ -117,18 +174,26 @@ exports.submitParentApplication = async (req, res) => {
             });
         }
 
+        // Validate target school ID
+        let validSchoolId = 1;
+        try {
+            const schCheck = await db.query('SELECT id FROM schools WHERE id = $1', [targetSchoolId]);
+            if (schCheck.rows.length > 0) {
+                validSchoolId = schCheck.rows[0].id;
+            } else {
+                const anySch = await db.query('SELECT id FROM schools LIMIT 1');
+                validSchoolId = anySch.rows.length > 0 ? anySch.rows[0].id : null;
+            }
+        } catch (_) {
+            validSchoolId = null;
+        }
+
         // Check if parent already has a pending application
         const existingApp = await db.query(
             'SELECT id, application_number, status FROM parent_portal_applications WHERE LOWER(parent_email) = LOWER($1) AND status = \'pending\'',
             [normalizedEmail]
         );
-        if (existingApp.rows.length > 0) {
-            return res.status(400).json({
-                error: `You already have a pending Parent Portal application (${existingApp.rows[0].application_number}) currently under administrator review.`
-            });
-        }
 
-        const appNumber = generateParentAppNumber();
         const passwordHash = await bcrypt.hash(password, 10);
 
         // Decode parent DOB & gender from ID if available
@@ -142,72 +207,140 @@ exports.submitParentApplication = async (req, res) => {
             }
         }
 
-        // Insert Parent Application with multiple children / twins JSONB payload
-        const insertQuery = `
-            INSERT INTO parent_portal_applications (
-                application_number, school_id, parent_name, parent_surname, parent_id_number,
-                parent_email, parent_phone, physical_address, parent_type, password_hash,
-                dob, gender, country, race,
-                child_first_name, child_surname, child_id_number, child_grade, child_stream,
-                children_details, is_twins_or_multiple, num_children,
-                status, created_at
-            ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'South Africa', 'Black',
-                $13, $14, $15, $16, $17,
-                $18, $19, $20,
-                'pending', NOW()
-            ) RETURNING id, application_number, created_at
-        `;
+        let savedApp;
+        let isUpdate = false;
 
-        const appResult = await db.query(insertQuery, [
-            appNumber,
-            targetSchoolId,
-            parent_name.trim(),
-            parent_surname.trim(),
-            cleanParentId || parent_id_number.trim(),
-            normalizedEmail,
-            parent_phone.trim(),
-            (physical_address || '').trim(),
-            parent_type || 'Parent',
-            passwordHash,
-            dob,
-            gender,
-            primaryChild.firstName || null,
-            primaryChild.surname || null,
-            primaryChild.idNumber || null,
-            primaryChild.grade || null,
-            primaryChild.stream || null,
-            JSON.stringify(validatedChildren),
-            isTwinsOrMultiple,
-            numChildren
-        ]);
+        if (existingApp.rows.length > 0) {
+            // Smooth UX: Update existing pending application with latest details
+            isUpdate = true;
+            const existingId = existingApp.rows[0].id;
+            const existingAppNum = existingApp.rows[0].application_number;
 
-        const savedApp = appResult.rows[0];
+            const updateQuery = `
+                UPDATE parent_portal_applications SET
+                    parent_name = $1,
+                    parent_surname = $2,
+                    parent_id_number = $3,
+                    parent_phone = $4,
+                    physical_address = $5,
+                    parent_type = $6,
+                    password_hash = $7,
+                    dob = $8,
+                    gender = $9,
+                    child_first_name = $10,
+                    child_surname = $11,
+                    child_id_number = $12,
+                    child_grade = $13,
+                    child_stream = $14,
+                    children_details = $15,
+                    is_twins_or_multiple = $16,
+                    num_children = $17,
+                    school_id = $18
+                WHERE id = $19
+                RETURNING id, application_number, created_at
+            `;
+
+            const updateResult = await db.query(updateQuery, [
+                parent_name.trim(),
+                parent_surname.trim(),
+                cleanParentId || parent_id_number.trim(),
+                parent_phone.trim(),
+                (physical_address || 'Not provided').trim(),
+                parent_type || 'Parent',
+                passwordHash,
+                dob,
+                gender,
+                primaryChild.firstName || null,
+                primaryChild.surname || null,
+                primaryChild.idNumber || null,
+                primaryChild.grade || null,
+                primaryChild.stream || null,
+                JSON.stringify(validatedChildren),
+                isTwinsOrMultiple,
+                numChildren,
+                validSchoolId,
+                existingId
+            ]);
+
+            savedApp = updateResult.rows[0] || { id: existingId, application_number: existingAppNum, created_at: new Date() };
+        } else {
+            const appNumber = generateParentAppNumber();
+
+            // Insert Parent Application with multiple children / twins JSONB payload
+            const insertQuery = `
+                INSERT INTO parent_portal_applications (
+                    application_number, school_id, parent_name, parent_surname, parent_id_number,
+                    parent_email, parent_phone, physical_address, parent_type, password_hash,
+                    dob, gender, country, race,
+                    child_first_name, child_surname, child_id_number, child_grade, child_stream,
+                    children_details, is_twins_or_multiple, num_children,
+                    status, created_at
+                ) VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'South Africa', 'Black',
+                    $13, $14, $15, $16, $17,
+                    $18, $19, $20,
+                    'pending', NOW()
+                ) RETURNING id, application_number, created_at
+            `;
+
+            const appResult = await db.query(insertQuery, [
+                appNumber,
+                validSchoolId,
+                parent_name.trim(),
+                parent_surname.trim(),
+                cleanParentId || parent_id_number.trim(),
+                normalizedEmail,
+                parent_phone.trim(),
+                (physical_address || 'Not provided').trim(),
+                parent_type || 'Parent',
+                passwordHash,
+                dob,
+                gender,
+                primaryChild.firstName || null,
+                primaryChild.surname || null,
+                primaryChild.idNumber || null,
+                primaryChild.grade || null,
+                primaryChild.stream || null,
+                JSON.stringify(validatedChildren),
+                isTwinsOrMultiple,
+                numChildren
+            ]);
+
+            savedApp = appResult.rows[0];
+        }
 
         // Fetch School name
         let schoolName = 'Fusion High School';
         try {
-            const sRes = await db.query('SELECT name FROM schools WHERE id = $1', [targetSchoolId]);
-            if (sRes.rows.length > 0) schoolName = sRes.rows[0].name;
+            if (validSchoolId) {
+                const sRes = await db.query('SELECT name FROM schools WHERE id = $1', [validSchoolId]);
+                if (sRes.rows.length > 0) schoolName = sRes.rows[0].name;
+            }
         } catch (_) {}
 
         // Send Email Confirmation to Parent (non-blocking)
         try {
-            const childFullName = `${child_first_name.trim()} ${child_surname.trim()}`;
-            const tpl = emailService.templates.parentApplicationReceived(
-                `${parent_name.trim()} ${parent_surname.trim()}`,
-                appNumber,
-                schoolName,
-                childFullName
-            );
-            emailService.send(normalizedEmail, tpl.subject, tpl.body).catch(e => console.warn('Parent app email dispatch warning:', e.message));
+            const childFullName = primaryChild?.firstName
+                ? `${primaryChild.firstName} ${primaryChild.surname || ''}`.trim()
+                : (child_first_name ? `${child_first_name.trim()} ${(child_surname || '').trim()}`.trim() : 'Enrolled Learner');
+            if (emailService?.templates?.parentApplicationReceived) {
+                const tpl = emailService.templates.parentApplicationReceived(
+                    `${parent_name.trim()} ${parent_surname.trim()}`,
+                    savedApp.application_number,
+                    schoolName,
+                    childFullName
+                );
+                emailService.send(normalizedEmail, tpl.subject, tpl.body).catch(e => console.warn('Parent app email dispatch warning:', e.message));
+            }
         } catch (mailErr) {
             console.warn('Parent app receipt email error:', mailErr.message);
         }
 
         res.json({
             success: true,
-            message: 'Parent Portal Access Application submitted successfully. It is now awaiting school administrator review.',
+            message: isUpdate
+                ? `Your existing Parent Portal application (${savedApp.application_number}) has been updated with your latest details and is under administrator review.`
+                : 'Parent Portal Access Application submitted successfully. It is now awaiting school administrator review.',
             application: {
                 id: savedApp.id,
                 application_number: savedApp.application_number,
@@ -219,7 +352,7 @@ exports.submitParentApplication = async (req, res) => {
         });
     } catch (err) {
         console.error('Error in submitParentApplication:', err);
-        res.status(500).json({ error: 'Failed to submit Parent Portal application. Please try again.' });
+        res.status(500).json({ error: 'Failed to submit Parent Portal application: ' + (err.message || 'Please try again.') });
     }
 };
 

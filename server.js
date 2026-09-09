@@ -66,6 +66,10 @@ if (!process.env.VERCEL) {
     try {
       await initializeAllDatabaseTables();
       await initApplicationTables();
+      const { createParentApplicationsTable } = require('./db/create_parent_applications_table');
+      await createParentApplicationsTable();
+      const { migrateParentApplicationsTwins } = require('./db/migrate_parent_applications_twins');
+      await migrateParentApplicationsTwins();
       await NotificationService.initSchema();
       await createAiConversationsTables();
       await fixAllUserPasswords();
