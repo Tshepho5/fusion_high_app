@@ -61,6 +61,7 @@ export async function loadUsersTable(roleFilter = '') {
                 <td><span class="badge badge-role">${u.role}</span></td>
                 <td><span class="badge ${u.status === 'Active' ? 'badge-present' : 'badge-absent'}">${u.status || 'Active'}</span></td>
                 <td>
+                    <button class="btn btn-sm btn-info" onclick="window.openEditUserModal(${u.id}, '${u.role}')"><i class="fas fa-edit"></i> Edit</button>
                     <button class="btn btn-sm btn-outline" onclick="window.toggleUserStatus(${u.id}, '${u.status}')">${u.status === 'Active' ? 'Deactivate' : 'Activate'}</button>
                     <button class="btn btn-sm btn-danger" onclick="window.deleteUser(${u.id})">Delete</button>
                 </td>

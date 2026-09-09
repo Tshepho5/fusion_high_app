@@ -983,6 +983,21 @@ async function initializeAllDatabaseTables(customClient) {
         recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS child_id INTEGER REFERENCES children(id);
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS subject VARCHAR(100);
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS subject_name VARCHAR(100);
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS grade INTEGER;
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS percentage NUMERIC;
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS assessment_name VARCHAR(255);
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE;
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+      ALTER TABLE progress ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE;
+      ALTER TABLE progress ADD COLUMN IF NOT EXISTS assessment_name VARCHAR(255);
+      ALTER TABLE progress ADD COLUMN IF NOT EXISTS score NUMERIC;
+      ALTER TABLE progress ADD COLUMN IF NOT EXISTS total_marks NUMERIC;
+      ALTER TABLE progress ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
       -- 16. Parent-Educator Consultations (PTC 20-min slots)
       CREATE TABLE IF NOT EXISTS teacher_consultations (
         id SERIAL PRIMARY KEY,

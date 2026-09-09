@@ -2234,7 +2234,79 @@ const emailService = {
           ctaLink: loginUrl
         })
       };
+    },
+
+    // 21. Educator Subject Assignment / Workload Update
+    teacherSubjectAssignment: ({ name, surname, teacherName, email, addedSubjects = [], newSubjects = [], allSubjects = [], grades = [], gradesTaught = [], classes = [], classesTaught = [], baseUrl = 'http://localhost:5173', schoolName = 'Fusion High School' }) => {
+      const loginUrl = `${(baseUrl || 'http://localhost:5173').replace(/\/+$/, '')}/login`;
+      const resolvedName = teacherName || `${name || ''} ${surname || ''}`.trim() || 'Educator';
+      
+      const subsToAdd = (addedSubjects && addedSubjects.length > 0) ? addedSubjects : newSubjects;
+      const gradesToUse = (grades && grades.length > 0) ? grades : gradesTaught;
+      const classesToUse = (classes && classes.length > 0) ? classes : classesTaught;
+
+      const formattedAdded = Array.isArray(subsToAdd) ? subsToAdd.join(', ') : (subsToAdd || 'New Subject');
+      const formattedAll = Array.isArray(allSubjects) ? allSubjects.join(', ') : (allSubjects || formattedAdded);
+      const formattedGrades = Array.isArray(gradesToUse) && gradesToUse.length > 0 ? gradesToUse.map(g => `Grade ${g}`).join(', ') : 'Assigned Grades (8-12)';
+      const formattedClasses = Array.isArray(classesToUse) && classesToUse.length > 0 ? classesToUse.join(', ') : 'All Enrolled Streams';
+
+      const contentHtml = `
+        <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${resolvedName}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          School Administration has officially allocated <strong>new academic subject teaching responsibility</strong> to your educator profile at <strong>${schoolName}</strong>.
+        </p>
+
+        <!-- New Subject Badge Card -->
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #10b981; border-radius: 12px; padding: 20px 24px; margin: 20px 0;">
+          <h4 style="margin: 0 0 8px 0; color: #34d399; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+            ✨ Newly Assigned Subject(s)
+          </h4>
+          <p style="margin: 0 0 14px 0; color: #ffffff; font-size: 18px; font-weight: 800;">
+            ${formattedAdded}
+          </p>
+
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1; border-top: 1px dashed #334155; padding-top: 12px;">
+            <tr><td style="padding: 5px 0; color: #94a3b8; width: 160px;">Total Subjects Taught:</td><td style="color: #38bdf8; font-weight: 700;">${formattedAll}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Allocated Grades:</td><td style="color: #f59e0b; font-weight: 700;">${formattedGrades}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Classes / Streams:</td><td style="color: #e2e8f0; font-weight: 600;">${formattedClasses}</td></tr>
+          </table>
+        </div>
+
+        <!-- Dashboard Feature Notice -->
+        <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 10px; padding: 14px 18px; margin: 20px 0;">
+          <p style="margin: 0 0 6px 0; color: #818cf8; font-size: 13px; font-weight: 700;">
+            📚 Live in Your Teacher Dashboard:
+          </p>
+          <ul style="margin: 0; padding-left: 18px; color: #cbd5e1; font-size: 12px; line-height: 1.6;">
+            <li><strong>Class Mark Register & DBE Gradebook</strong>: Record, calculate, and publish continuous assessment marks for ${formattedAdded}.</li>
+            <li><strong>Daily Attendance</strong>: Access period rosters and log daily presence/absence.</li>
+            <li><strong>AI Lesson Planner & Test Generator</strong>: Instant generation of CAPS-aligned curriculum worksheets and exam papers.</li>
+            <li><strong>Learner Rosters</strong>: Direct access to student performance and learning intervention metrics.</li>
+          </ul>
+        </div>
+      `;
+
+      const body = createBaseEmailTemplate({
+        preheader: `New subject allocation: ${formattedAdded} at ${schoolName}.`,
+        title: `Academic Subject Allocation`,
+        subtitle: `New Teaching Assignment: ${formattedAdded}`,
+        contentHtml,
+        ctaText: 'Open Teacher Dashboard',
+        ctaLink: loginUrl
+      });
+
+      return {
+        subject: `New Subject Assignment: ${formattedAdded} — ${schoolName}`,
+        body,
+        html: body
+      };
     }
+  },
+
+  sendTeacherSubjectAssignment: async (params) => {
+    const template = emailService.templates.teacherSubjectAssignment(params);
+    const recipient = params.email || params.to || params.teacherEmail;
+    return await emailService.send(recipient, template.subject, template.body);
   },
 
   sendSchoolAnnouncement: async (params) => {

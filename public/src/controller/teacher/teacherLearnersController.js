@@ -148,6 +148,8 @@ exports.getClassList = async (req, res) => {
     const gradeParam = req.query.grade || (classParam ? classParam.replace(/[^0-9]/g, '') : null);
     const subjectParam = (req.query.subject || '').toString().trim();
     const schoolId = req.user?.school_id || 1;
+    const termParam = (req.query.term || '').trim();
+    const assessmentParam = (req.query.assessment_name || req.query.assessmentTitle || '').trim();
 
     try {
         const params = [subjectParam, schoolId];
@@ -167,6 +169,23 @@ exports.getClassList = async (req, res) => {
 
         let whereClause = `WHERE ` + conditions.join(' AND ');
 
+        let markSubquery = `
+            (SELECT COALESCE(p.score, p.grade) 
+             FROM progress p 
+             WHERE p.child_id = c.id 
+               AND ($1 = '' OR LOWER(p.subject) = LOWER($1))
+               ${termParam ? `AND p.term = '${termParam.replace(/'/g, "''")}'` : ''}
+               ${assessmentParam ? `AND (p.assessment_name = '${assessmentParam.replace(/'/g, "''")}' OR p.notes ILIKE '%${assessmentParam.replace(/'/g, "''")}%')` : ''}
+             ORDER BY p.id DESC LIMIT 1) as current_mark,
+            (SELECT p.is_published 
+             FROM progress p 
+             WHERE p.child_id = c.id 
+               AND ($1 = '' OR LOWER(p.subject) = LOWER($1))
+               ${termParam ? `AND p.term = '${termParam.replace(/'/g, "''")}'` : ''}
+               ${assessmentParam ? `AND (p.assessment_name = '${assessmentParam.replace(/'/g, "''")}' OR p.notes ILIKE '%${assessmentParam.replace(/'/g, "''")}%')` : ''}
+             ORDER BY p.id DESC LIMIT 1) as is_published
+        `;
+
         const query = `
             SELECT c.id, 
                    c.full_name as learner_name, 
@@ -178,7 +197,7 @@ exports.getClassList = async (req, res) => {
                    c.stream,
                    c.subjects,
                    COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name,
-                   (SELECT p.grade FROM progress p WHERE p.child_id = c.id AND ($1 = '' OR LOWER(p.subject) = LOWER($1)) ORDER BY p.id DESC LIMIT 1) as current_mark
+                   ${markSubquery}
             FROM children c
             LEFT JOIN classes cl ON c.class_id = cl.id
             ${whereClause}
@@ -200,7 +219,8 @@ exports.getClassList = async (req, res) => {
                        c.stream,
                        c.subjects,
                        COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name,
-                       NULL as current_mark
+                       (SELECT COALESCE(p.score, p.grade) FROM progress p WHERE p.child_id = c.id ORDER BY p.id DESC LIMIT 1) as current_mark,
+                       (SELECT p.is_published FROM progress p WHERE p.child_id = c.id ORDER BY p.id DESC LIMIT 1) as is_published
                 FROM children c
                 LEFT JOIN classes cl ON c.class_id = cl.id
                 WHERE c.grade = $1
@@ -220,7 +240,8 @@ exports.getClassList = async (req, res) => {
                        c.stream,
                        c.subjects,
                        COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name,
-                       NULL as current_mark
+                       (SELECT COALESCE(p.score, p.grade) FROM progress p WHERE p.child_id = c.id ORDER BY p.id DESC LIMIT 1) as current_mark,
+                       (SELECT p.is_published FROM progress p WHERE p.child_id = c.id ORDER BY p.id DESC LIMIT 1) as is_published
                 FROM children c
                 LEFT JOIN classes cl ON c.class_id = cl.id
                 ORDER BY c.grade ASC, c.surname ASC, c.full_name ASC
@@ -265,7 +286,7 @@ exports.getClassList = async (req, res) => {
 };
 
 /**
- * Saves marks recorded via class mark sheet.
+ * Saves marks recorded via class mark sheet with UPSERT semantics and Draft vs Published lifecycle.
  */
 exports.saveClassMarks = async (req, res) => {
     let subject = (req.body.subject || 'General').trim();
@@ -274,6 +295,7 @@ exports.saveClassMarks = async (req, res) => {
     const term = req.body.term || 'Term 3 2026';
     const assessmentTitle = (req.body.assessment_name || req.body.assessmentName || '').trim() || 'Class Assessment';
     const total_mark = req.body.total_mark || req.body.totalMarks || 100;
+    const isPublished = req.body.is_published !== undefined ? Boolean(req.body.is_published) : (req.body.isDraft ? false : true);
     let marks = req.body.marks || [];
     const teacherId = req.user ? req.user.id : null;
 
@@ -297,6 +319,7 @@ exports.saveClassMarks = async (req, res) => {
     }
 
     const maxMark = parseFloat(total_mark) || 100;
+    const termNum = parseInt(String(term).replace(/[^0-9]/g, ''), 10) || 1;
 
     try {
         let employeeId = null;
@@ -353,78 +376,127 @@ exports.saveClassMarks = async (req, res) => {
 
                 const remarkNote = `${assessmentTitle} (${rawScore}/${maxMark})`;
 
-                // Insert into progress table
-                await db.query(
-                    `INSERT INTO progress (child_id, subject, term, grade, notes, employee_id, date)
-                     VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-                    [childId, subject, term || 'Term 3 2026', pctScore, remarkNote, employeeId]
+                // 1. UPSERT into progress table
+                const existingProgressRes = await db.query(
+                    `SELECT id FROM progress 
+                     WHERE child_id = $1 AND LOWER(subject) = LOWER($2) AND term = $3 
+                       AND (assessment_name = $4 OR notes ILIKE $5)
+                     ORDER BY id DESC LIMIT 1`,
+                    [childId, subject, term || 'Term 3 2026', assessmentTitle, `%${assessmentTitle}%`]
                 );
+
+                if (existingProgressRes.rows.length > 0) {
+                    await db.query(
+                        `UPDATE progress 
+                         SET grade = $1, score = $2, total_marks = $3, notes = $4, employee_id = COALESCE($5, employee_id),
+                             is_published = $6, assessment_name = $7, updated_at = NOW(), date = NOW()
+                         WHERE id = $8`,
+                        [pctScore, rawScore, maxMark, remarkNote, employeeId, isPublished, assessmentTitle, existingProgressRes.rows[0].id]
+                    );
+                } else {
+                    await db.query(
+                        `INSERT INTO progress (child_id, subject, term, grade, score, total_marks, notes, employee_id, is_published, assessment_name, date, updated_at)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
+                        [childId, subject, term || 'Term 3 2026', pctScore, rawScore, maxMark, remarkNote, employeeId, isPublished, assessmentTitle]
+                    );
+                }
+
+                // 2. UPSERT into marks table
+                const existingMarksRes = await db.query(
+                    `SELECT id FROM marks
+                     WHERE (child_id = $1 OR learner_id = $1) AND (LOWER(subject) = LOWER($2) OR LOWER(subject_name) = LOWER($2))
+                       AND (term = $3 OR term IS NULL) AND (assessment_name = $4 OR assessment_name IS NULL)
+                     LIMIT 1`,
+                    [childId, subject, termNum, assessmentTitle]
+                );
+
+                if (existingMarksRes.rows.length > 0) {
+                    await db.query(
+                        `UPDATE marks
+                         SET score = $1, max_score = $2, percentage = $3, grade = $4, is_published = $5, assessment_name = $6, updated_at = NOW()
+                         WHERE id = $7`,
+                        [rawScore, maxMark, pctScore, childGrade, isPublished, assessmentTitle, existingMarksRes.rows[0].id]
+                    );
+                } else {
+                    await db.query(
+                        `INSERT INTO marks (learner_id, child_id, subject, subject_name, term, mark_type, score, max_score, percentage, grade, is_published, assessment_name, recorded_by, recorded_at, updated_at)
+                         VALUES ($1, $1, $2, $2, $3, 'Assessment', $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
+                        [childId, subject, termNum, rawScore, maxMark, pctScore, childGrade, isPublished, assessmentTitle, teacherId]
+                    );
+                }
+
                 savedCount++;
 
-                // Notify learner and parent
-                const notifySubject = `New Assessment Mark: ${subject} (${pctScore}%)`;
-                const notifyBody = `Your educator recorded a score of ${pctScore}% (${rawScore}/${maxMark}) on ${assessmentTitle} in ${subject}.`;
+                // If published, notify learner and parent
+                if (isPublished) {
+                    const notifySubject = `New Assessment Mark: ${subject} (${pctScore}%)`;
+                    const notifyBody = `Your educator recorded a score of ${pctScore}% (${rawScore}/${maxMark}) on ${assessmentTitle} in ${subject}.`;
 
-                if (learnerUserId) {
-                    try {
-                        await db.query(
-                            `INSERT INTO messages (sender_id, recipient_id, subject, body, read_at, created_at)
-                             VALUES ($1, $2, $3, $4, NULL, NOW())`,
-                            [teacherId || 1, learnerUserId, notifySubject, notifyBody]
-                        );
-                    } catch (e) {}
-                }
+                    if (learnerUserId) {
+                        try {
+                            await db.query(
+                                `INSERT INTO messages (sender_id, recipient_id, subject, body, read_at, created_at)
+                                 VALUES ($1, $2, $3, $4, NULL, NOW())`,
+                                [teacherId || 1, learnerUserId, notifySubject, notifyBody]
+                            );
+                        } catch (e) {}
+                    }
 
-                if (parentId) {
-                    try {
-                        await db.query(
-                            `INSERT INTO messages (sender_id, recipient_id, child_id, subject, body, read_at, created_at)
-                             VALUES ($1, $2, $3, $4, $5, NULL, NOW())`,
-                            [teacherId || 1, parentId, childId, notifySubject, `Your child ${learnerFullName} scored ${pctScore}% (${rawScore}/${maxMark}) on ${assessmentTitle} in ${subject}.`]
-                        );
-                    } catch (e) {}
+                    if (parentId) {
+                        try {
+                            await db.query(
+                                `INSERT INTO messages (sender_id, recipient_id, child_id, subject, body, read_at, created_at)
+                                 VALUES ($1, $2, $3, $4, $5, NULL, NOW())`,
+                                [teacherId || 1, parentId, childId, notifySubject, `Your child ${learnerFullName} scored ${pctScore}% (${rawScore}/${maxMark}) on ${assessmentTitle} in ${subject}.`]
+                            );
+                        } catch (e) {}
+                    }
                 }
             }
         }
 
-        // Create official announcement so learners and parents can check the notice in the announcements feed
-        const markAnnouncementTitle = `Assessment Marks Published: ${subject} - ${assessmentTitle}`;
-        const markAnnouncementContent = `Marks for ${assessmentTitle} in ${subject} (Grade ${grade}) have been finalized and recorded by your educator. Learners and parents can check their subject marks, percentage mastery, and academic progress in their portal.`;
+        // When published, post official announcement & send notification
+        if (isPublished) {
+            const markAnnouncementTitle = `Assessment Marks Published: ${subject} - ${assessmentTitle}`;
+            const markAnnouncementContent = `Marks for ${assessmentTitle} in ${subject} (Grade ${grade}) have been finalized and recorded by your educator. Learners and parents can check their subject marks, percentage mastery, and academic progress in their portal.`;
 
-        try {
-            await db.query(`
-                INSERT INTO announcements (title, content, role_target, author_id, grade_target, subject_target, created_at)
-                VALUES ($1, $2, 'learner', $3, $4, $5, NOW())
-            `, [markAnnouncementTitle, markAnnouncementContent, teacherId || 1, grade, subject]);
-        } catch (annErr) {
-            console.warn('[MARKS ANNOUNCEMENT NOTICE]', annErr.message);
-        }
+            try {
+                await db.query(`
+                    INSERT INTO announcements (title, content, role_target, author_id, grade_target, subject_target, created_at)
+                    VALUES ($1, $2, 'learner', $3, $4, $5, NOW())
+                `, [markAnnouncementTitle, markAnnouncementContent, teacherId || 1, grade, subject]);
+            } catch (annErr) {
+                console.warn('[MARKS ANNOUNCEMENT NOTICE]', annErr.message);
+            }
 
-        // Dispatch targeted in-app notification and email update to learners and parents
-        NotificationService.sendTargeted({
-            targetRole: 'learner',
-            grade: grade,
-            subject: subject,
-            includeParents: true,
-            authorId: teacherId || 1,
-            title: markAnnouncementTitle,
-            message: markAnnouncementContent,
-            fullContent: markAnnouncementContent,
-            type: 'marks',
-            targetTab: 'academics',
-            sendToMessages: false, // Individual messages were already created per-learner above
-            sendEmail: true,
-            metadata: {
-                subject: subject,
+            NotificationService.sendTargeted({
+                targetRole: 'learner',
                 grade: grade,
-                assessment_name: assessmentTitle
-            }
-        }).catch(err => console.error('[MARKS NOTIFICATION DISPATCH ERROR]', err));
+                subject: subject,
+                includeParents: true,
+                authorId: teacherId || 1,
+                title: markAnnouncementTitle,
+                message: markAnnouncementContent,
+                fullContent: markAnnouncementContent,
+                type: 'marks',
+                targetTab: 'academics',
+                sendToMessages: false,
+                sendEmail: true,
+                metadata: {
+                    subject: subject,
+                    grade: grade,
+                    assessment_name: assessmentTitle
+                }
+            }).catch(err => console.error('[MARKS NOTIFICATION DISPATCH ERROR]', err));
+        }
 
         res.json({
             success: true,
-            message: `Successfully saved marks for ${savedCount} learners, published announcement, and notified recipients!`,
-            saved_count: savedCount
+            message: isPublished 
+                ? `Successfully published marks for ${savedCount} learners, posted announcement, and notified recipients!`
+                : `Marks for ${savedCount} learners successfully saved as draft in database.`,
+            saved_count: savedCount,
+            is_published: isPublished
         });
     } catch (err) {
         console.error('Error saving class marks:', err);

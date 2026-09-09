@@ -882,9 +882,10 @@
           <button type="button" class="btn btn-outline" onclick="document.getElementById('csv-import-file-input').click()"><i class="fas fa-file-upload me-1" style="color: #60a5fa;"></i> Bulk Import CSV</button>
           <input type="file" id="csv-import-file-input" accept=".csv" style="display:none;" onchange="window.importClassMarkSheetCSV(event)">
         </div>
-        <div style="display: flex; gap: 1rem;">
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
           <button type="button" class="btn btn-secondary" onclick="document.getElementById('classMarkSheetModal').style.display='none'">Cancel</button>
-          <button type="button" class="btn btn-primary-cta" onclick="window.saveClassMarkSheet()"><i class="fas fa-save me-1"></i> Save Mark Register</button>
+          <button type="button" class="btn btn-outline" style="border: 1px solid #64748b; color: #cbd5e1;" onclick="window.saveClassMarkSheet(false)"><i class="fas fa-file-alt me-1"></i> Save as Draft</button>
+          <button type="button" class="btn btn-primary-cta" onclick="window.saveClassMarkSheet(true)"><i class="fas fa-paper-plane me-1"></i> Publish Marks</button>
         </div>
       </div>
     </div>

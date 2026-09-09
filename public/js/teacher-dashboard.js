@@ -36,6 +36,7 @@ import {
     filterSubjectLearnerCards,
     openFullLearnersTab,
     openClassMarkSheet, 
+    loadClassMarkSheetRoster,
     updateMarkSheetRowStatus,
     updateMarkSheetStats,
     saveClassMarkSheet, 
@@ -96,6 +97,7 @@ window.viewSubjectLearners = viewSubjectLearners;
 window.filterSubjectLearnerCards = filterSubjectLearnerCards;
 window.openFullLearnersTab = openFullLearnersTab;
 window.openClassMarkSheet = openClassMarkSheet;
+window.loadClassMarkSheetRoster = loadClassMarkSheetRoster;
 window.updateMarkSheetRowStatus = updateMarkSheetRowStatus;
 window.updateMarkSheetStats = updateMarkSheetStats;
 window.saveClassMarkSheet = saveClassMarkSheet;

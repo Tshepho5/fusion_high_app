@@ -10,6 +10,8 @@ router.get('/command-center-stats', auth, isAdmin, adminController.getMultiSchoo
 
 // User & Account Management
 router.get('/users', auth, isAdmin, adminController.getAllUsers);
+router.get('/users/profile/:id', auth, isAdmin, adminController.getUserProfileDetails);
+router.put('/users/:id', auth, isAdmin, adminController.updateUserProfile);
 router.get('/users/:role', auth, isAdmin, adminController.getUsersByRole);
 router.put('/users/:userId/toggle-profile-lock', auth, isAdmin, adminController.toggleUserProfileLock);
 router.delete('/users/:id', auth, isAdmin, adminController.deleteUser);

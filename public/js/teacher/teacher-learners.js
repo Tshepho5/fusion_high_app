@@ -197,33 +197,85 @@ export async function openClassMarkSheet(subject, grade) {
     const subtitleEl = document.getElementById('marksheet-modal-subtitle');
     const nameInput = document.getElementById('marksheet-name-input');
     const totalInput = document.getElementById('marksheet-total-mark');
+    const termSelect = document.getElementById('marksheet-term-select');
 
     if (!modal || !tbody) return;
 
-    if (nameInput) nameInput.value = `Term 3 ${subject} Assessment`;
+    const defaultTerm = termSelect ? termSelect.value : 'Term 3 2026';
+    if (nameInput && (!nameInput.value || nameInput.value.startsWith('Term '))) {
+        nameInput.value = `${defaultTerm.split(' ')[0] || 'Term 3'} ${subject} Assessment`;
+    }
     if (totalInput) totalInput.value = '100';
 
     if (titleEl) titleEl.innerHTML = `<i class="fas fa-file-signature" style="color: #6366f1;"></i> ${subject} (Grade ${grade}) - Official Class Mark Register`;
     if (subtitleEl) subtitleEl.textContent = `Record, update, and export term assessment marks for all enrolled learners in Grade ${grade} ${subject}.`;
 
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;"><i class="fas fa-spinner fa-spin fa-2x" style="color: #6366f1;"></i><p style="margin-top:8px;">Loading class mark register...</p></td></tr>`;
     modal.style.display = 'flex';
-
     modal.setAttribute('data-subject', subject);
     modal.setAttribute('data-grade', grade);
 
+    // Dynamic reload on term or assessment title change
+    if (termSelect && !termSelect.hasAttribute('data-bound-reload')) {
+        termSelect.setAttribute('data-bound-reload', 'true');
+        termSelect.addEventListener('change', () => {
+            const currentSub = modal.getAttribute('data-subject');
+            const currentGrd = modal.getAttribute('data-grade');
+            if (currentSub && currentGrd && modal.style.display !== 'none') {
+                loadClassMarkSheetRoster(currentSub, currentGrd);
+            }
+        });
+    }
+
+    if (nameInput && !nameInput.hasAttribute('data-bound-reload')) {
+        nameInput.setAttribute('data-bound-reload', 'true');
+        nameInput.addEventListener('change', () => {
+            const currentSub = modal.getAttribute('data-subject');
+            const currentGrd = modal.getAttribute('data-grade');
+            if (currentSub && currentGrd && modal.style.display !== 'none') {
+                loadClassMarkSheetRoster(currentSub, currentGrd);
+            }
+        });
+    }
+
+    await loadClassMarkSheetRoster(subject, grade);
+}
+
+export async function loadClassMarkSheetRoster(subject, grade) {
+    const modal = document.getElementById('classMarkSheetModal');
+    const tbody = document.getElementById('marksheet-tbody');
+    const termSelect = document.getElementById('marksheet-term-select');
+    const nameInput = document.getElementById('marksheet-name-input');
+    const totalInput = document.getElementById('marksheet-total-mark');
+
+    if (!modal || !tbody) return;
+
+    const term = termSelect ? termSelect.value : 'Term 3 2026';
+    const assessment_name = nameInput?.value.trim() || `${subject} Assessment`;
+    const totalMark = parseFloat(totalInput?.value) || 100;
+
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94a3b8;"><i class="fas fa-spinner fa-spin fa-2x" style="color: #6366f1;"></i><p style="margin-top:8px;">Loading class mark register...</p></td></tr>`;
+
     try {
-        const roster = await apiCall(`/teacher/classlist?subject=${encodeURIComponent(subject)}&grade=${encodeURIComponent(grade)}`);
+        const queryUrl = `/teacher/classlist?subject=${encodeURIComponent(subject)}&grade=${encodeURIComponent(grade)}&term=${encodeURIComponent(term)}&assessment_name=${encodeURIComponent(assessment_name)}`;
+        const roster = await apiCall(queryUrl);
         if (!roster || !Array.isArray(roster) || roster.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;">No learners enrolled in Grade ${grade} ${subject}.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94a3b8;">No learners enrolled in Grade ${grade} ${subject}.</td></tr>`;
             return;
         }
 
         tbody.innerHTML = roster.map(r => {
             const currentScore = (r.current_mark !== undefined && r.current_mark !== null) ? r.current_mark : '';
-            const pctVal = currentScore !== '' ? Math.round(parseFloat(currentScore)) : null;
-            const statusBadge = pctVal === null ? '<span class="badge bg-slate" style="background:#334155; color:#94a3b8;">Pending</span>' :
-                (pctVal >= 50 ? '<span class="badge bg-emerald" style="background:#065f46; color:#34d399;">Pass</span>' : '<span class="badge bg-rose" style="background:#881337; color:#f87171;">At Risk</span>');
+            const rawScore = currentScore !== '' ? parseFloat(currentScore) : null;
+            const pctVal = rawScore !== null ? Math.round((rawScore / totalMark) * 100) : null;
+            
+            let statusBadge = '<span class="badge bg-slate" style="background:#334155; color:#94a3b8;">Pending</span>';
+            if (pctVal !== null) {
+                const passClass = pctVal >= 50 ? 'bg-emerald' : 'bg-rose';
+                const passStyle = pctVal >= 50 ? 'background:#065f46; color:#34d399;' : 'background:#881337; color:#f87171;';
+                const passLabel = pctVal >= 50 ? 'Pass' : 'At Risk';
+                const pubLabel = r.is_published === false ? ' (Draft)' : '';
+                statusBadge = `<span class="badge ${passClass}" style="${passStyle}">${passLabel}${pubLabel}</span>`;
+            }
 
             return `
             <tr data-child-id="${r.id}" style="border-bottom: 1px solid #1e293b;">
@@ -252,7 +304,7 @@ export async function openClassMarkSheet(subject, grade) {
 
     } catch (err) {
         console.error('Error loading mark sheet:', err);
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem; color:#ef4444;">Failed to load class mark register.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:#ef4444;">Failed to load class mark register.</td></tr>`;
     }
 }
 
@@ -325,7 +377,7 @@ export function updateMarkSheetStats() {
     }
 }
 
-export async function saveClassMarkSheet() {
+export async function saveClassMarkSheet(isPublished = true) {
     const modal = document.getElementById('classMarkSheetModal');
     const subject = modal?.getAttribute('data-subject');
     const grade = modal?.getAttribute('data-grade');
@@ -363,11 +415,16 @@ export async function saveClassMarkSheet() {
                 term, 
                 assessment_name, 
                 total_mark, 
+                is_published: isPublished,
                 marks 
             })
         });
 
-        alert(`Mark Register for "${assessment_name}" (${subject} Grade ${grade}) saved successfully!\nUpdated scores are now live across Learner, Parent, and Principal/Admin portals.`);
+        const statusMsg = isPublished
+            ? `Mark Register for "${assessment_name}" (${subject} Grade ${grade}) published successfully!\nUpdated scores are now live across Learner, Parent, and Principal/Admin portals.`
+            : `Draft marks for "${assessment_name}" (${subject} Grade ${grade}) saved as draft successfully. These marks can be edited and published whenever ready.`;
+
+        alert(statusMsg);
         modal.style.display = 'none';
 
         if (window.loadMySubjectsSection) {

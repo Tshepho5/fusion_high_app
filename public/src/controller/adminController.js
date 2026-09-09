@@ -2024,37 +2024,295 @@ exports.moderateAssessmentBatch = async (req, res) => {
 };
 
 /**
- * ADMIN: Manually and optionally assigns or updates subjects for a teacher (specifically Grade 10-12 FET educators).
+ * ADMIN: Retrieves comprehensive user details for viewing/editing.
+ */
+exports.getUserProfileDetails = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userRes = await db.query(`
+            SELECT u.id, u.full_name, u.surname, u.email, u.phone, u.profile_picture_path,
+                   u.school_id, r.name as role, u.created_at, u.is_superadmin
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            WHERE u.id = $1
+        `, [id]);
+
+        if (userRes.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+
+        const user = userRes.rows[0];
+        let roleDetails = {};
+
+        // If teacher / employee
+        if (user.role === 'teacher' || user.role === 'admin') {
+            const empRes = await db.query(`
+                SELECT id as employee_id, subjects, subject_codes, grades_taught, classes_taught, hired_date
+                FROM employees
+                WHERE user_id = $1 OR id = $1
+                LIMIT 1
+            `, [id]);
+            if (empRes.rows.length > 0) {
+                roleDetails = empRes.rows[0];
+            }
+        }
+
+        // If learner
+        if (user.role === 'learner') {
+            const childRes = await db.query(`
+                SELECT id as child_id, learner_number, grade, stream, subjects, home_language, parent_id
+                FROM children
+                WHERE learner_user_id = $1 OR id = $1
+                LIMIT 1
+            `, [id]);
+            if (childRes.rows.length > 0) {
+                roleDetails = childRes.rows[0];
+            }
+        }
+
+        res.json({
+            user: {
+                ...user,
+                ...roleDetails
+            }
+        });
+    } catch (err) {
+        console.error('Error fetching user profile details:', err);
+        res.status(500).json({ error: 'Failed to retrieve user profile details: ' + err.message });
+    }
+};
+
+/**
+ * ADMIN: Updates full user profile across users, employees, and children tables.
+ */
+exports.updateUserProfile = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { full_name, surname, email, phone, role, subjects, grades_taught, classes_taught, grade, stream, learner_number } = req.body;
+
+        // 1. Verify user exists
+        const userRes = await db.query(`
+            SELECT u.id, u.full_name, u.surname, u.email, u.phone, u.school_id, r.name as role
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            WHERE u.id = $1
+        `, [id]);
+
+        if (userRes.rows.length === 0) {
+            return res.status(404).json({ error: 'User record not found.' });
+        }
+
+        const existingUser = userRes.rows[0];
+        const updatedFullName = full_name !== undefined ? String(full_name).trim() : existingUser.full_name;
+        const updatedSurname = surname !== undefined ? String(surname).trim() : existingUser.surname;
+        const updatedEmail = email !== undefined ? String(email).trim().toLowerCase() : existingUser.email;
+        const updatedPhone = phone !== undefined ? String(phone).trim() : existingUser.phone;
+
+        // Check for email collision with other users
+        if (updatedEmail && updatedEmail !== existingUser.email) {
+            const dupRes = await db.query('SELECT id FROM users WHERE email = $1 AND id != $2', [updatedEmail, id]);
+            if (dupRes.rows.length > 0) {
+                return res.status(400).json({ error: 'Email is already in use by another account.' });
+            }
+        }
+
+        // Update core users record
+        await db.query(`
+            UPDATE users
+            SET full_name = $1, surname = $2, email = $3, phone = $4
+            WHERE id = $5
+        `, [updatedFullName, updatedSurname, updatedEmail, updatedPhone, id]);
+
+        const currentRole = (role || existingUser.role || '').toLowerCase();
+        let addedSubjects = [];
+
+        // 2. If Educator / Teacher: update employees table and handle subject assignments
+        if (currentRole === 'teacher' || subjects !== undefined || grades_taught !== undefined) {
+            const empRes = await db.query('SELECT * FROM employees WHERE user_id = $1 OR id = $1 LIMIT 1', [id]);
+            if (empRes.rows.length > 0) {
+                const emp = empRes.rows[0];
+                const oldSubjects = Array.isArray(emp.subjects) ? emp.subjects : [];
+
+                let cleanSubjects = emp.subjects;
+                let subjectCodes = emp.subject_codes;
+                if (subjects !== undefined) {
+                    cleanSubjects = (Array.isArray(subjects) ? subjects : [subjects]).map(s => String(s).trim()).filter(Boolean);
+                    subjectCodes = cleanSubjects.map(s => (s.substring(0, 4) + '10').toUpperCase());
+
+                    addedSubjects = cleanSubjects.filter(s => 
+                        !oldSubjects.some(os => os.toLowerCase().trim() === s.toLowerCase().trim())
+                    );
+                }
+
+                let cleanGrades = grades_taught !== undefined ? (Array.isArray(grades_taught) ? grades_taught.map(g => parseInt(g, 10)).filter(g => !isNaN(g)) : emp.grades_taught) : emp.grades_taught;
+                let cleanClasses = classes_taught !== undefined ? (Array.isArray(classes_taught) ? classes_taught : [classes_taught]).map(c => String(c).trim()).filter(Boolean) : emp.classes_taught;
+
+                await db.query(`
+                    UPDATE employees
+                    SET full_name = $1, surname = $2, email = $3, phone = $4,
+                        subjects = $5, subject_codes = $6,
+                        grades_taught = $7, classes_taught = $8
+                    WHERE id = $9
+                `, [updatedFullName, updatedSurname, updatedEmail, updatedPhone, cleanSubjects, subjectCodes, cleanGrades, cleanClasses, emp.id]);
+
+                // Dispatch email and in-app notifications if subjects were added
+                if (addedSubjects.length > 0) {
+                    try {
+                        const schoolRes = await db.query('SELECT name FROM schools WHERE id = $1', [existingUser.school_id || 1]);
+                        const schoolName = schoolRes.rows[0]?.name || 'Fusion High School';
+
+                        await emailService.sendTeacherSubjectAssignment({
+                            name: updatedFullName,
+                            surname: updatedSurname,
+                            email: updatedEmail,
+                            addedSubjects,
+                            allSubjects: cleanSubjects,
+                            grades: cleanGrades,
+                            classes: cleanClasses,
+                            schoolName,
+                            baseUrl: process.env.APP_URL || 'http://localhost:5173'
+                        });
+                    } catch (emailErr) {
+                        console.warn('[TEACHER SUBJECT EMAIL NOTICE]', emailErr.message);
+                    }
+
+                    try {
+                        const msgSubject = `New Subject Assigned: ${addedSubjects.join(', ')}`;
+                        const msgBody = `Dear ${updatedFullName}, you have been assigned to teach ${addedSubjects.join(', ')}. The curriculum and mark sheet functions are now available on your Educator Dashboard.`;
+                        await db.query(`
+                            INSERT INTO messages (sender_id, recipient_id, subject, body, read_at, created_at)
+                            VALUES ($1, $2, $3, $4, NULL, NOW())
+                        `, [req.user ? req.user.id : 1, existingUser.id, msgSubject, msgBody]);
+
+                        await db.query(`
+                            INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+                            VALUES ($1, $2, $3, 'academics', FALSE, NOW())
+                        `, [existingUser.id, msgSubject, msgBody]);
+                    } catch (msgErr) {
+                        console.warn('[TEACHER SUBJECT NOTIFICATION ERROR]', msgErr.message);
+                    }
+                }
+            }
+        }
+
+        // 3. If Learner: update children table
+        if (currentRole === 'learner' || grade !== undefined || stream !== undefined) {
+            await db.query(`
+                UPDATE children
+                SET full_name = $1, surname = $2,
+                    grade = COALESCE($3, grade),
+                    stream = COALESCE($4, stream),
+                    learner_number = COALESCE($5, learner_number)
+                WHERE learner_user_id = $6 OR id = $6
+            `, [updatedFullName, updatedSurname, grade ? parseInt(grade, 10) : null, stream || null, learner_number || null, id]);
+        }
+
+        res.json({
+            success: true,
+            message: `User profile for ${updatedFullName} ${updatedSurname} updated successfully.${addedSubjects.length > 0 ? ` Email notification dispatched for new subject(s): ${addedSubjects.join(', ')}.` : ''}`,
+            added_subjects: addedSubjects
+        });
+    } catch (err) {
+        console.error('Error updating user profile:', err);
+        res.status(500).json({ error: 'Failed to update user profile: ' + err.message });
+    }
+};
+
+/**
+ * ADMIN: Manually assigns or updates subjects for a teacher, dispatches email if new subjects added.
  */
 exports.updateTeacherSubjects = async (req, res) => {
     try {
         const { id } = req.params;
-        const { subjects, grades_taught } = req.body;
+        const { subjects, grades_taught, classes_taught } = req.body;
 
         if (!Array.isArray(subjects)) {
             return res.status(400).json({ error: 'Subjects must be provided as an array of subject names.' });
         }
 
         const cleanSubjects = subjects.map(s => String(s).trim()).filter(Boolean);
+        const subjectCodes = cleanSubjects.map(s => (s.substring(0, 4) + '10').toUpperCase());
 
-        let query = `
-            UPDATE employees 
-            SET subjects = $1
-            WHERE user_id = $2 OR id = $2
-            RETURNING *
+        // Fetch existing teacher details
+        const empQuery = `
+            SELECT e.id as employee_id, e.user_id, e.subjects, e.grades_taught, e.classes_taught,
+                   u.id as uid, u.full_name, u.surname, u.email, u.phone, u.school_id, s.name as school_name
+            FROM employees e
+            JOIN users u ON e.user_id = u.id
+            LEFT JOIN schools s ON u.school_id = s.id
+            WHERE e.user_id = $1 OR e.id = $1 OR u.id = $1
+            LIMIT 1
         `;
-        let result = await db.query(query, [cleanSubjects, id]);
+        const empRes = await db.query(empQuery, [id]);
 
-        if (result.rows.length === 0) {
+        if (empRes.rows.length === 0) {
             return res.status(404).json({ error: 'Educator profile not found in database.' });
         }
 
-        const emp = result.rows[0];
+        const emp = empRes.rows[0];
+        const oldSubjects = Array.isArray(emp.subjects) ? emp.subjects : [];
+
+        // Identify newly added subjects
+        const addedSubjects = cleanSubjects.filter(s => 
+            !oldSubjects.some(os => os.toLowerCase().trim() === s.toLowerCase().trim())
+        );
+
+        let cleanGrades = grades_taught !== undefined ? (Array.isArray(grades_taught) ? grades_taught.map(g => parseInt(g, 10)).filter(g => !isNaN(g)) : emp.grades_taught) : emp.grades_taught;
+        let cleanClasses = classes_taught !== undefined ? (Array.isArray(classes_taught) ? classes_taught : [classes_taught]).map(c => String(c).trim()).filter(Boolean) : emp.classes_taught;
+
+        const updateQuery = `
+            UPDATE employees 
+            SET subjects = $1,
+                subject_codes = $2,
+                grades_taught = COALESCE($3, grades_taught),
+                classes_taught = COALESCE($4, classes_taught)
+            WHERE id = $5
+            RETURNING *
+        `;
+        const result = await db.query(updateQuery, [cleanSubjects, subjectCodes, cleanGrades, cleanClasses, emp.employee_id]);
+        const updatedEmp = result.rows[0];
+
+        // If new subjects were added, send email and in-app message
+        if (addedSubjects.length > 0) {
+            try {
+                await emailService.sendTeacherSubjectAssignment({
+                    name: emp.full_name,
+                    surname: emp.surname,
+                    email: emp.email,
+                    addedSubjects,
+                    allSubjects: cleanSubjects,
+                    grades: cleanGrades,
+                    classes: cleanClasses,
+                    schoolName: emp.school_name || 'Fusion High School',
+                    baseUrl: process.env.APP_URL || 'http://localhost:5173'
+                });
+            } catch (emailErr) {
+                console.warn('[TEACHER SUBJECT EMAIL NOTICE]', emailErr.message);
+            }
+
+            try {
+                const msgSubject = `New Subject Assigned: ${addedSubjects.join(', ')}`;
+                const msgBody = `Dear ${emp.full_name}, school administration has allocated the following new subject(s) to your profile: ${addedSubjects.join(', ')}. You can now view mark registers, attendance, and generate AI test papers for these subjects.`;
+
+                await db.query(`
+                    INSERT INTO messages (sender_id, recipient_id, subject, body, read_at, created_at)
+                    VALUES ($1, $2, $3, $4, NULL, NOW())
+                `, [req.user ? req.user.id : 1, emp.uid, msgSubject, msgBody]);
+
+                await db.query(`
+                    INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+                    VALUES ($1, $2, $3, 'academics', FALSE, NOW())
+                `, [emp.uid, msgSubject, msgBody]);
+            } catch (msgErr) {
+                console.warn('[TEACHER SUBJECT NOTIFICATION ERROR]', msgErr.message);
+            }
+        }
 
         res.json({
             success: true,
-            message: `Subject specializations updated for ${emp.full_name} ${emp.surname}. The AI Timetable Generator will now allocate these subjects strictly to this educator.`,
-            employee: emp
+            message: `Subject specializations updated for ${emp.full_name} ${emp.surname}.${addedSubjects.length > 0 ? ` Email notification dispatched for newly added subject(s): ${addedSubjects.join(', ')}.` : ''}`,
+            employee: updatedEmp,
+            added_subjects: addedSubjects
         });
     } catch (err) {
         console.error('Error updating teacher subjects:', err);
@@ -2373,6 +2631,389 @@ exports.getMultiSchoolCommandCenterStats = async (req, res) => {
     } catch (err) {
         console.error('Error fetching multi-school command center stats:', err);
         res.status(500).json({ error: 'Failed to retrieve command center analytics: ' + err.message });
+    }
+};
+
+/**
+ * Retrieves full user profile details along with role-specific data (employees/children).
+ */
+exports.getUserProfileDetails = async (req, res) => {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'User ID is required.' });
+
+    try {
+        const userRes = await db.query(`
+            SELECT u.id, u.email, u.full_name, u.surname, u.phone, u.id_number, u.dob, u.gender, 
+                   u.physical_address, u.school_id, u.role_id, r.name as role, u.profile_picture_path, u.profile_edit_unlocked
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            WHERE u.id = $1
+        `, [id]);
+
+        let profile = null;
+
+        if (userRes.rows.length > 0) {
+            const user = userRes.rows[0];
+            profile = {
+                id: user.id,
+                email: user.email,
+                full_name: user.full_name,
+                name: user.full_name,
+                surname: user.surname,
+                phone: user.phone,
+                id_number: user.id_number,
+                dob: user.dob,
+                gender: user.gender,
+                physical_address: user.physical_address,
+                role: user.role,
+                school_id: user.school_id,
+                profile_picture_path: user.profile_picture_path,
+                profile_edit_unlocked: user.profile_edit_unlocked
+            };
+
+            if (user.role === 'teacher') {
+                const empRes = await db.query(`
+                    SELECT id as employee_id, department_id, subjects, subject_codes, grades_taught, classes_taught, hired_date
+                    FROM employees
+                    WHERE user_id = $1
+                `, [user.id]);
+                if (empRes.rows.length > 0) {
+                    const emp = empRes.rows[0];
+                    profile.employee_id = emp.employee_id;
+                    profile.department_id = emp.department_id;
+                    profile.subjects = Array.isArray(emp.subjects) ? emp.subjects : (emp.subjects ? emp.subjects.split(',').map(s=>s.trim()) : []);
+                    profile.grades_taught = Array.isArray(emp.grades_taught) ? emp.grades_taught.map(String) : (emp.grades_taught ? emp.grades_taught.split(',').map(g=>g.trim()) : []);
+                    profile.classes_taught = Array.isArray(emp.classes_taught) ? emp.classes_taught : (emp.classes_taught ? emp.classes_taught.split(',').map(c=>c.trim()) : []);
+                } else {
+                    profile.subjects = [];
+                    profile.grades_taught = [];
+                    profile.classes_taught = [];
+                }
+            } else if (user.role === 'learner') {
+                const childRes = await db.query(`
+                    SELECT id as child_id, learner_number, grade, stream, subjects, class_id
+                    FROM children
+                    WHERE learner_user_id = $1 OR id = $1
+                `, [user.id]);
+                if (childRes.rows.length > 0) {
+                    const ch = childRes.rows[0];
+                    profile.child_id = ch.child_id;
+                    profile.learner_number = ch.learner_number;
+                    profile.grade = ch.grade;
+                    profile.stream = ch.stream;
+                    profile.subjects = ch.subjects;
+                }
+            }
+        } else {
+            const childRes = await db.query(`
+                SELECT c.id as child_id, c.learner_user_id, c.full_name, c.surname, c.learner_number, c.grade, c.stream, c.subjects,
+                       u.email, u.phone, 'learner' as role
+                FROM children c
+                LEFT JOIN users u ON c.learner_user_id = u.id
+                WHERE c.id = $1
+            `, [id]);
+
+            if (childRes.rows.length === 0) {
+                return res.status(404).json({ error: 'User profile not found.' });
+            }
+
+            const ch = childRes.rows[0];
+            profile = {
+                id: ch.learner_user_id || ch.child_id,
+                child_id: ch.child_id,
+                email: ch.email || `${ch.learner_number || 'learner'}@fusionhigh.co.za`,
+                full_name: ch.full_name,
+                name: ch.full_name,
+                surname: ch.surname,
+                phone: ch.phone || '',
+                role: 'learner',
+                grade: ch.grade,
+                stream: ch.stream,
+                learner_number: ch.learner_number,
+                subjects: ch.subjects || []
+            };
+        }
+
+        res.json({ success: true, profile });
+    } catch (err) {
+        console.error('Error fetching user profile details:', err);
+        res.status(500).json({ error: 'Failed to retrieve user profile: ' + err.message });
+    }
+};
+
+/**
+ * Updates a user profile (users, employees, or children).
+ */
+exports.updateUserProfile = async (req, res) => {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'User ID is required.' });
+
+    const {
+        full_name,
+        name,
+        surname,
+        email,
+        phone,
+        role,
+        subjects,
+        grades_taught,
+        classes_taught,
+        grade,
+        stream,
+        learner_number
+    } = req.body;
+
+    const firstName = (full_name || name || '').trim();
+    const lastName = (surname || '').trim();
+    const normalizedEmail = email ? email.toLowerCase().trim() : null;
+
+    try {
+        await db.query('BEGIN');
+
+        const userRes = await db.query(`
+            SELECT u.id, u.email, u.full_name, u.surname, r.name as role
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            WHERE u.id = $1
+        `, [id]);
+
+        let targetUserId = null;
+        let detectedRole = role;
+
+        if (userRes.rows.length > 0) {
+            targetUserId = userRes.rows[0].id;
+            detectedRole = detectedRole || userRes.rows[0].role;
+
+            await db.query(`
+                UPDATE users
+                SET full_name = COALESCE(NULLIF($1, ''), full_name),
+                    surname = COALESCE(NULLIF($2, ''), surname),
+                    email = COALESCE(NULLIF($3, ''), email),
+                    phone = COALESCE(NULLIF($4, ''), phone)
+                WHERE id = $5
+            `, [firstName, lastName, normalizedEmail, phone ? phone.trim() : null, targetUserId]);
+        }
+
+        let newlyAddedSubjects = [];
+
+        if (detectedRole === 'teacher' && targetUserId) {
+            const subsArray = Array.isArray(subjects) ? subjects : (subjects ? subjects.split(',').map(s=>s.trim()).filter(Boolean) : []);
+            const gradesArray = Array.isArray(grades_taught) ? grades_taught.map(Number) : (grades_taught ? grades_taught.split(',').map(g=>parseInt(g.trim(),10)).filter(Boolean) : []);
+            const classesArray = Array.isArray(classes_taught) ? classes_taught : (classes_taught ? classes_taught.split(',').map(c=>c.trim()).filter(Boolean) : []);
+
+            const empRes = await db.query('SELECT id, subjects FROM employees WHERE user_id = $1', [targetUserId]);
+            let oldSubjects = [];
+            if (empRes.rows.length > 0) {
+                oldSubjects = Array.isArray(empRes.rows[0].subjects) ? empRes.rows[0].subjects : [];
+            }
+
+            newlyAddedSubjects = subsArray.filter(s => !oldSubjects.includes(s));
+            const subjectCodes = subsArray.map(s => (s.replace(/[^A-Za-z0-9]/g, '').slice(0, 4) + '10').toUpperCase());
+
+            if (empRes.rows.length > 0) {
+                await db.query(`
+                    UPDATE employees
+                    SET full_name = COALESCE(NULLIF($1, ''), full_name),
+                        surname = COALESCE(NULLIF($2, ''), surname),
+                        email = COALESCE(NULLIF($3, ''), email),
+                        phone = COALESCE(NULLIF($4, ''), phone),
+                        subjects = $5,
+                        subject_codes = $6,
+                        grades_taught = $7,
+                        classes_taught = $8
+                    WHERE user_id = $9
+                `, [firstName, lastName, normalizedEmail, phone, subsArray, subjectCodes, gradesArray, classesArray, targetUserId]);
+            } else {
+                await db.query(`
+                    INSERT INTO employees (user_id, full_name, surname, email, phone, subjects, subject_codes, grades_taught, classes_taught)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                `, [targetUserId, firstName || 'Teacher', lastName || 'Educator', normalizedEmail, phone, subsArray, subjectCodes, gradesArray, classesArray]);
+            }
+
+            if (newlyAddedSubjects.length > 0) {
+                const teacherEmail = normalizedEmail || userRes.rows[0]?.email;
+                const teacherName = `${firstName || userRes.rows[0]?.full_name} ${lastName || userRes.rows[0]?.surname}`.trim();
+
+                const workloadNotice = `Official CAPS Workload Update: You have been assigned the following subject(s): ${newlyAddedSubjects.join(', ')}. Your Teacher Dashboard and Class Registers have been updated accordingly.`;
+                
+                await db.query(`
+                    INSERT INTO messages (sender_id, recipient_id, subject, body, content, created_at)
+                    VALUES ($1, $2, $3, $4, $4, CURRENT_TIMESTAMP)
+                `, [
+                    req.user?.id || targetUserId,
+                    targetUserId,
+                    'CAPS Workload Assignment: ' + newlyAddedSubjects.join(', '),
+                    workloadNotice
+                ]);
+
+                try {
+                    await db.query(`
+                        INSERT INTO notifications (user_id, title, message, type)
+                        VALUES ($1, $2, $3, 'system')
+                    `, [targetUserId, 'New Subject Assignment', workloadNotice]);
+                } catch (notifErr) {
+                    console.error('[NOTIF ERROR]', notifErr.message);
+                }
+
+                if (teacherEmail && emailService && emailService.sendTeacherSubjectAssignment) {
+                    emailService.sendTeacherSubjectAssignment({
+                        teacherName,
+                        newSubjects: newlyAddedSubjects,
+                        allSubjects: subsArray,
+                        gradesTaught: gradesArray,
+                        classesTaught: classesArray,
+                        to: teacherEmail
+                    }).catch(mErr => console.error('[EMAIL ERROR] Failed to send subject assignment email:', mErr.message));
+                }
+            }
+        } else if (detectedRole === 'learner') {
+            const childUpdateRes = await db.query(`
+                UPDATE children
+                SET full_name = COALESCE(NULLIF($1, ''), full_name),
+                    surname = COALESCE(NULLIF($2, ''), surname),
+                    grade = COALESCE($3, grade),
+                    stream = COALESCE(NULLIF($4, ''), stream),
+                    learner_number = COALESCE(NULLIF($5, ''), learner_number)
+                WHERE learner_user_id = $6 OR id = $6
+                RETURNING *;
+            `, [firstName, lastName, grade ? parseInt(grade, 10) : null, stream, learner_number, targetUserId || id]);
+
+            if (childUpdateRes.rows.length === 0 && !targetUserId) {
+                await db.query('ROLLBACK');
+                return res.status(404).json({ error: 'Learner record not found.' });
+            }
+        }
+
+        await db.query('COMMIT');
+
+        res.json({
+            success: true,
+            message: 'User profile updated successfully.',
+            newly_added_subjects: newlyAddedSubjects
+        });
+
+    } catch (err) {
+        await db.query('ROLLBACK');
+        console.error('Error updating user profile:', err);
+        res.status(500).json({ error: 'Failed to update user profile: ' + err.message });
+    }
+};
+
+/**
+ * Updates teacher assigned subjects, grades, and classes.
+ * Dispatches an automated official email to the teacher if new subjects were added.
+ */
+exports.updateTeacherSubjects = async (req, res) => {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'Teacher ID is required.' });
+
+    const { subjects, grades_taught, classes_taught } = req.body;
+
+    const subsArray = Array.isArray(subjects) ? subjects : (subjects ? subjects.split(',').map(s=>s.trim()).filter(Boolean) : []);
+    const gradesArray = Array.isArray(grades_taught) ? grades_taught.map(Number) : (grades_taught ? grades_taught.split(',').map(g=>parseInt(g.trim(),10)).filter(Boolean) : []);
+    const classesArray = Array.isArray(classes_taught) ? classes_taught : (classes_taught ? classes_taught.split(',').map(c=>c.trim()).filter(Boolean) : []);
+
+    try {
+        await db.query('BEGIN');
+
+        let teacherUser = null;
+        const userRes = await db.query(`
+            SELECT u.id, u.email, u.full_name, u.surname, r.name as role
+            FROM users u
+            JOIN roles r ON u.role_id = r.id
+            WHERE (u.id = $1 OR u.id IN (SELECT user_id FROM employees WHERE id = $1)) AND r.name = 'teacher'
+        `, [id]);
+
+        if (userRes.rows.length === 0) {
+            const empDirect = await db.query('SELECT user_id, full_name, surname, email FROM employees WHERE id = $1 OR user_id = $1', [id]);
+            if (empDirect.rows.length > 0) {
+                teacherUser = {
+                    id: empDirect.rows[0].user_id,
+                    email: empDirect.rows[0].email,
+                    full_name: empDirect.rows[0].full_name,
+                    surname: empDirect.rows[0].surname
+                };
+            }
+        } else {
+            teacherUser = userRes.rows[0];
+        }
+
+        if (!teacherUser) {
+            await db.query('ROLLBACK');
+            return res.status(404).json({ error: 'Teacher record not found.' });
+        }
+
+        const curEmp = await db.query('SELECT subjects FROM employees WHERE user_id = $1', [teacherUser.id]);
+        let oldSubjects = [];
+        if (curEmp.rows.length > 0 && Array.isArray(curEmp.rows[0].subjects)) {
+            oldSubjects = curEmp.rows[0].subjects;
+        }
+
+        const newlyAddedSubjects = subsArray.filter(s => !oldSubjects.includes(s));
+        const subjectCodes = subsArray.map(s => (s.replace(/[^A-Za-z0-9]/g, '').slice(0, 4) + '10').toUpperCase());
+
+        if (curEmp.rows.length > 0) {
+            await db.query(`
+                UPDATE employees
+                SET subjects = $1,
+                    subject_codes = $2,
+                    grades_taught = $3,
+                    classes_taught = $4
+                WHERE user_id = $5
+            `, [subsArray, subjectCodes, gradesArray, classesArray, teacherUser.id]);
+        } else {
+            await db.query(`
+                INSERT INTO employees (user_id, full_name, surname, email, subjects, subject_codes, grades_taught, classes_taught)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            `, [teacherUser.id, teacherUser.full_name, teacherUser.surname, teacherUser.email, subsArray, subjectCodes, gradesArray, classesArray]);
+        }
+
+        if (newlyAddedSubjects.length > 0) {
+            const workloadNotice = `Official CAPS Workload Update: You have been assigned the following subject(s): ${newlyAddedSubjects.join(', ')}. Your Teacher Dashboard and Class Registers have been updated accordingly.`;
+
+            await db.query(`
+                INSERT INTO messages (sender_id, recipient_id, subject, body, content, created_at)
+                VALUES ($1, $2, $3, $4, $4, CURRENT_TIMESTAMP)
+            `, [
+                req.user?.id || teacherUser.id,
+                teacherUser.id,
+                'CAPS Workload Assignment: ' + newlyAddedSubjects.join(', '),
+                workloadNotice
+            ]);
+
+            try {
+                await db.query(`
+                    INSERT INTO notifications (user_id, title, message, type)
+                    VALUES ($1, $2, $3, 'system')
+                `, [teacherUser.id, 'New Subject Assignment', workloadNotice]);
+            } catch (notifErr) {
+                console.error('[NOTIF ERROR]', notifErr.message);
+            }
+
+            if (teacherUser.email && emailService && emailService.sendTeacherSubjectAssignment) {
+                emailService.sendTeacherSubjectAssignment({
+                    teacherName: `${teacherUser.full_name} ${teacherUser.surname}`,
+                    newSubjects: newlyAddedSubjects,
+                    allSubjects: subsArray,
+                    gradesTaught: gradesArray,
+                    classesTaught: classesArray,
+                    to: teacherUser.email
+                }).catch(mErr => console.error('[EMAIL ERROR] Failed to send subject assignment email:', mErr.message));
+            }
+        }
+
+        await db.query('COMMIT');
+
+        res.json({
+            success: true,
+            message: `Teacher subjects updated successfully. Assigned: ${subsArray.join(', ')}`,
+            newly_added_subjects: newlyAddedSubjects
+        });
+
+    } catch (err) {
+        await db.query('ROLLBACK');
+        console.error('Error updating teacher subjects:', err);
+        res.status(500).json({ error: 'Failed to update teacher subjects: ' + err.message });
     }
 };
 

@@ -289,7 +289,7 @@ async function loadTeacherData() {
                 <td>${(teacher.subjects || []).join(', ') || 'N/A'}</td>
                 <td>${(teacher.grades_taught || []).join(', ') || 'N/A'}</td>
                 <td>${(teacher.classes_taught || []).join(', ') || 'N/A'}</td>
-                <td><button class="btn btn-info btn-small">Edit</button></td>
+                <td><button class="btn btn-info btn-small" onclick="window.openEditUserModal(${teacher.id}, 'teacher')"><i class="fas fa-edit"></i> Edit</button></td>
             </tr>`).join('') :
             '<tr><td colspan="6" class="table-message">No teachers found.</td></tr>';
     } catch (error) {
@@ -1122,7 +1122,7 @@ async function loadUserData(role) {
                 <td>${user.full_name} ${user.surname}</td>
                 <td><a href="mailto:${user.email}">${user.email}</a></td>
                 <td>${new Date(user.created_at).toLocaleDateString()}</td>
-                <td><button class="btn btn-info btn-small">Edit</button></td>
+                <td><button class="btn btn-info btn-small" onclick="window.openEditUserModal(${user.id}, '${role}')"><i class="fas fa-edit"></i> Edit</button></td>
             </tr>`).join('') :
             `<tr><td colspan="5" class="table-message">No ${role}s found.</td></tr>`;
     } catch (error) {
@@ -1130,6 +1130,171 @@ async function loadUserData(role) {
         document.getElementById(`${role}-users-table-body`).innerHTML = `<tr><td colspan="5" class="table-message table-error-message">Error loading ${role} data.</td></tr>`;
     }
 }
+
+const STANDARD_CAPS_SUBJECTS = [
+    'Mathematics',
+    'Mathematical Literacy',
+    'Physical Sciences',
+    'Life Sciences',
+    'English FAL',
+    'English HL',
+    'Afrikaans FAL',
+    'Accounting',
+    'Business Studies',
+    'Economics',
+    'Geography',
+    'History',
+    'Life Orientation',
+    'Computer Applications Technology',
+    'Information Technology',
+    'Tourism',
+    'Agricultural Sciences',
+    'Consumer Studies',
+    'Visual Arts'
+];
+
+window.openEditUserModal = async function(userId, role) {
+    const modal = document.getElementById('editUserModal');
+    if (!modal) return;
+
+    modal.style.display = 'flex';
+    document.getElementById('edit-user-id').value = userId;
+    document.getElementById('edit-user-role').value = role || 'user';
+    document.getElementById('editUserRoleBadge').textContent = (role || 'User').toUpperCase();
+    document.getElementById('editUserModalTitle').textContent = `Edit ${(role || 'User').charAt(0).toUpperCase() + (role || 'user').slice(1)} Profile`;
+
+    // Toggle role-specific sections
+    const teacherSection = document.getElementById('edit-user-teacher-section');
+    const learnerSection = document.getElementById('edit-user-learner-section');
+    if (teacherSection) teacherSection.style.display = role === 'teacher' ? 'block' : 'none';
+    if (learnerSection) learnerSection.style.display = role === 'learner' ? 'block' : 'none';
+
+    // Reset inputs
+    document.getElementById('edit-user-fullname').value = 'Loading...';
+    document.getElementById('edit-user-surname').value = '';
+    document.getElementById('edit-user-email').value = '';
+    document.getElementById('edit-user-phone').value = '';
+
+    // Render subjects checkboxes if teacher
+    if (role === 'teacher') {
+        const subContainer = document.getElementById('teacher-subjects-checkboxes');
+        if (subContainer) {
+            subContainer.innerHTML = STANDARD_CAPS_SUBJECTS.map(s => `
+                <label style="color:#cbd5e1; font-size:0.8rem; display:flex; align-items:center; gap:0.35rem; cursor:pointer;">
+                    <input type="checkbox" name="teacher_subject" value="${s}"> ${s}
+                </label>
+            `).join('');
+        }
+    }
+
+    try {
+        const res = await apiRequest(`/api/admin/users/profile/${userId}`);
+        const user = res.user || res;
+
+        document.getElementById('edit-user-fullname').value = user.full_name || '';
+        document.getElementById('edit-user-surname').value = user.surname || '';
+        document.getElementById('edit-user-email').value = user.email || '';
+        document.getElementById('edit-user-phone').value = user.phone || '';
+
+        if (role === 'teacher') {
+            const assignedSubjects = Array.isArray(user.subjects) ? user.subjects : [];
+            const subBoxes = document.querySelectorAll('input[name="teacher_subject"]');
+            subBoxes.forEach(cb => {
+                cb.checked = assignedSubjects.some(as => as.toLowerCase().trim() === cb.value.toLowerCase().trim());
+            });
+
+            const assignedGrades = Array.isArray(user.grades_taught) ? user.grades_taught.map(String) : [];
+            const gradeBoxes = document.querySelectorAll('input[name="teacher_grades"]');
+            gradeBoxes.forEach(gb => {
+                gb.checked = assignedGrades.includes(gb.value);
+            });
+
+            const classesInput = document.getElementById('edit-teacher-classes');
+            if (classesInput) {
+                classesInput.value = Array.isArray(user.classes_taught) ? user.classes_taught.join(', ') : (user.classes_taught || '');
+            }
+        }
+
+        if (role === 'learner') {
+            const gradeSelect = document.getElementById('edit-learner-grade');
+            if (gradeSelect && user.grade) gradeSelect.value = String(user.grade);
+
+            const streamSelect = document.getElementById('edit-learner-stream');
+            if (streamSelect && user.stream) streamSelect.value = user.stream;
+
+            const lrnInput = document.getElementById('edit-learner-number');
+            if (lrnInput) lrnInput.value = user.learner_number || '';
+        }
+    } catch (err) {
+        console.error('Error loading user profile details:', err);
+        alert('Failed to load user profile: ' + err.message);
+    }
+};
+
+window.handleSaveUserProfile = async function(event) {
+    if (event) event.preventDefault();
+    const btn = document.getElementById('save-user-profile-btn');
+    const modal = document.getElementById('editUserModal');
+    const userId = document.getElementById('edit-user-id')?.value;
+    const role = document.getElementById('edit-user-role')?.value;
+
+    if (!userId) return;
+
+    const payload = {
+        full_name: document.getElementById('edit-user-fullname')?.value?.trim(),
+        surname: document.getElementById('edit-user-surname')?.value?.trim(),
+        email: document.getElementById('edit-user-email')?.value?.trim(),
+        phone: document.getElementById('edit-user-phone')?.value?.trim(),
+        role: role
+    };
+
+    if (role === 'teacher') {
+        const selectedSubjects = Array.from(document.querySelectorAll('input[name="teacher_subject"]:checked')).map(cb => cb.value);
+        const selectedGrades = Array.from(document.querySelectorAll('input[name="teacher_grades"]:checked')).map(cb => parseInt(cb.value, 10));
+        const classesRaw = document.getElementById('edit-teacher-classes')?.value?.trim() || '';
+        const classesTaught = classesRaw.split(',').map(c => c.trim()).filter(Boolean);
+
+        payload.subjects = selectedSubjects;
+        payload.grades_taught = selectedGrades;
+        payload.classes_taught = classesTaught;
+    }
+
+    if (role === 'learner') {
+        payload.grade = document.getElementById('edit-learner-grade')?.value;
+        payload.stream = document.getElementById('edit-learner-stream')?.value;
+        payload.learner_number = document.getElementById('edit-learner-number')?.value?.trim();
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    }
+
+    try {
+        const result = await apiRequest(`/api/admin/users/${userId}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+        });
+
+        alert(result.message || 'User profile updated successfully!');
+        if (modal) modal.style.display = 'none';
+
+        // Refresh tables
+        if (role === 'teacher') {
+            loadTeacherData();
+        } else {
+            loadUserData(role);
+        }
+    } catch (err) {
+        console.error('Error saving user profile:', err);
+        alert('Failed to save profile: ' + err.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Save Profile Changes';
+        }
+    }
+};
 
 window.logout = function () {
     localStorage.clear();
