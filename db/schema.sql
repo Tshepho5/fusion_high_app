@@ -585,7 +585,7 @@ VALUES ('20250001@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5
  
 
 SELECT * 
-FROM children;
+FROM users;
 
 
 SELECT DISTINCT name 
