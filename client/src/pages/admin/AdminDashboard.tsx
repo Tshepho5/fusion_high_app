@@ -111,7 +111,7 @@ export const AdminDashboard: React.FC = () => {
       {activeTab === 'timetable' && <AdminTimetable />}
       {activeTab === 'exam-seating' && <ExamSeatingManager />}
       {activeTab === 'sports' && <SportsExtracurriculars />}
-      {activeTab === 'textbooks' && <TextbookAssetTracker />}
+      {activeTab === 'textbooks' && <TextbookAssetTracker forcedRole="admin" />}
       {activeTab === 'calendar' && <SchoolCalendar />}
       {activeTab === 'announcements' && <AnnouncementsFeed />}
       {activeTab === 'messages' && <LearnerMessages />}

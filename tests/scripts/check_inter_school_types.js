@@ -1,4 +1,4 @@
-const db = require('../db/db');
+const db = require('../../db/db');
 
 async function run() {
   try {
@@ -12,7 +12,7 @@ async function run() {
     console.log(cols.rows);
 
     console.log('--- TESTING getCompetitions queries ---');
-    const interSchoolController = require('../public/src/controller/interSchoolController');
+    const interSchoolController = require('../../public/src/controller/interSchoolController');
 
     const fakeReq1 = { query: { category: 'all' } };
     const fakeRes1 = {

@@ -18,9 +18,22 @@ import {
   X
 } from 'lucide-react';
 
-export const TextbookAssetTracker: React.FC = () => {
-  const { role } = useAuth();
-  const isStaff = role === 'admin' || role === 'teacher';
+interface TextbookAssetTrackerProps {
+  forcedRole?: 'admin' | 'teacher' | 'learner';
+}
+
+export const TextbookAssetTracker: React.FC<TextbookAssetTrackerProps> = ({ forcedRole }) => {
+  const { role, user } = useAuth();
+  const currentRole = (role || user?.role || '').toLowerCase();
+  const isStaff =
+    forcedRole === 'admin' ||
+    forcedRole === 'teacher' ||
+    currentRole === 'admin' ||
+    currentRole === 'teacher' ||
+    currentRole === 'superadmin' ||
+    Boolean(user?.is_superadmin) ||
+    window.location.pathname.includes('/admin') ||
+    window.location.pathname.includes('/teacher');
 
   const [inventory, setInventory] = useState<any[]>([]);
   const [myBooks, setMyBooks] = useState<any[]>([]);
@@ -60,51 +73,77 @@ export const TextbookAssetTracker: React.FC = () => {
     replacement_fee: 0
   });
 
-  useEffect(() => {
-    fetchData();
-  }, [selectedGrade]);
-
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
       if (isStaff) {
+        const gradeParam = selectedGrade !== 'all' && !isNaN(parseInt(selectedGrade, 10))
+          ? { grade: parseInt(selectedGrade, 10) }
+          : undefined;
+
         const [invData, lData] = await Promise.allSettled([
-          textbookService.getInventory(selectedGrade !== 'all' ? { grade: parseInt(selectedGrade, 10) } : undefined),
+          textbookService.getInventory(gradeParam),
           adminService.getLearners()
         ]);
+
         if (invData.status === 'fulfilled') {
-          const invList = Array.isArray(invData.value)
-            ? invData.value
-            : (invData.value?.inventory || invData.value?.textbooks || []);
+          const val = invData.value;
+          let invList: any[] = [];
+          if (Array.isArray(val)) {
+            invList = val;
+          } else if (val && Array.isArray(val.inventory)) {
+            invList = val.inventory;
+          } else if (val && Array.isArray(val.textbooks)) {
+            invList = val.textbooks;
+          } else if (val && Array.isArray(val.data)) {
+            invList = val.data;
+          } else if (val && val.error) {
+            setError(val.error);
+          }
           setInventory(invList);
+        } else {
+          console.error('Failed to load textbook inventory:', invData.reason);
+          setError(
+            invData.reason?.response?.data?.error ||
+            invData.reason?.message ||
+            'Could not load textbook inventory.'
+          );
         }
+
         if (lData.status === 'fulfilled') {
-          const lList = Array.isArray(lData.value)
-            ? lData.value
-            : (lData.value?.learners || []);
+          const lVal = lData.value;
+          const lList = Array.isArray(lVal)
+            ? lVal
+            : (lVal?.learners || lVal?.data || []);
           setLearners(lList);
-          if (lList.length > 0) {
+          if (lList.length > 0 && !issueForm.child_id) {
             const firstId = lList[0]?.id ?? lList[0]?.learner_id;
             if (firstId !== undefined && firstId !== null) {
               setIssueForm(prev => ({ ...prev, child_id: firstId.toString() }));
             }
           }
+        } else {
+          console.warn('Could not fetch learners for textbook allocations:', lData.reason);
         }
       } else {
         const books = await textbookService.getMyBooks();
         const bookList = Array.isArray(books)
           ? books
-          : (books?.textbooks || books?.allocations || []);
+          : (books?.textbooks || books?.allocations || books?.data || []);
         setMyBooks(bookList);
       }
     } catch (err: any) {
       console.error('Error fetching textbooks:', err);
-      setError('Could not load textbook inventory.');
+      setError(err?.response?.data?.error || err?.message || 'Could not load textbook inventory.');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+  }, [selectedGrade, isStaff]);
 
   const handleAddTextbook = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -255,20 +294,23 @@ export const TextbookAssetTracker: React.FC = () => {
             <BookOpen className="w-6 h-6 text-brand-400" />
             <span>Textbook Inventory</span>
           </h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Monitor CAPS book stock, classroom distributions, and learner barcode tracking.
+          </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleAutoBillOverdue}
             disabled={scanningOverdue}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50 cursor-pointer"
           >
             <Barcode className="w-4 h-4" />
             <span>{scanningOverdue ? 'Scanning & Invoicing...' : '⚡ 1-Click Overdue Scan & Loss Invoicing'}</span>
           </button>
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all"
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add New Textbook</span>
@@ -277,16 +319,29 @@ export const TextbookAssetTracker: React.FC = () => {
       </div>
 
       {success && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2 animate-fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{success}</span>
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center justify-between gap-2 animate-fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{success}</span>
+          </div>
+          <button onClick={() => setSuccess(null)} className="text-emerald-400 hover:text-white p-1">
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 
       {error && (
-        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2 animate-fade-in">
-          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-          <span>{error}</span>
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-3 animate-fade-in">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={() => fetchData()}
+            className="px-3 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 font-bold text-[11px] transition-colors shrink-0"
+          >
+            Retry Fetch
+          </button>
         </div>
       )}
 
@@ -309,8 +364,8 @@ export const TextbookAssetTracker: React.FC = () => {
             <button
               key={g}
               onClick={() => setSelectedGrade(g)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                selectedGrade === g ? 'bg-brand-600 text-white' : 'bg-surface-dark text-slate-300 border border-white/10'
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                selectedGrade === g ? 'bg-brand-600 text-white shadow-sm' : 'bg-surface-dark text-slate-300 border border-white/10 hover:border-white/20'
               }`}
             >
               {g === 'all' ? 'All' : `Gr ${g}`}
@@ -319,61 +374,101 @@ export const TextbookAssetTracker: React.FC = () => {
         </div>
       </div>
 
-      {/* Inventory Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredInventory.map((item) => {
-          const available = item.available_copies || 0;
-          const total = item.total_copies || 0;
-          const issued = total - available;
+      {/* Inventory Grid / Empty State */}
+      {filteredInventory.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredInventory.map((item) => {
+            const available = Number(item.available_copies ?? 0);
+            const total = Number(item.total_copies ?? 0);
+            const issued = Math.max(0, total - available);
 
-          return (
-            <div
-              key={item.id}
-              className="p-6 rounded-3xl bg-surface-dark border border-white/10 hover:border-brand-500/40 shadow-xl transition-all space-y-4 flex flex-col justify-between"
+            return (
+              <div
+                key={item.id}
+                className="p-6 rounded-3xl bg-surface-dark border border-white/10 hover:border-brand-500/40 shadow-xl transition-all space-y-4 flex flex-col justify-between group"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Badge variant="indigo" size="sm">Grade {item.grade}</Badge>
+                    <span className="text-xs font-bold font-mono text-emerald-400">{available} in Stock</span>
+                  </div>
+
+                  <h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors">{item.title}</h3>
+                  <p className="text-xs text-slate-400">{item.subject} | {item.publisher || 'CAPS Publisher'}</p>
+
+                  <div className="pt-2 border-t border-white/5 space-y-1 text-[11px] text-slate-300">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Barcode:</span>
+                      <span className="font-mono text-cyan-300">{item.barcode || item.isbn || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Issued to Learners:</span>
+                      <span>{issued} Copies</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Replacement Cost:</span>
+                      <span className="font-semibold text-white">R{parseFloat(item.unit_cost_zar || 250).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-white/5">
+                  <button
+                    type="button"
+                    disabled={available <= 0}
+                    onClick={() => {
+                      setSelectedBook(item);
+                      setIsIssueModalOpen(true);
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                    <span>{available > 0 ? 'Issue Copy to Learner' : 'Out of Stock'}</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="p-12 rounded-3xl bg-surface-dark border border-white/10 text-center space-y-4 shadow-xl">
+          <div className="w-16 h-16 rounded-2xl bg-teal-500/10 border border-teal-500/30 text-teal-400 flex items-center justify-center mx-auto">
+            <BookOpen className="w-8 h-8" />
+          </div>
+          <div className="max-w-md mx-auto space-y-1">
+            <h3 className="text-base font-bold text-white">
+              {searchQuery || selectedGrade !== 'all'
+                ? 'No Textbooks Match Your Filters'
+                : 'No Textbooks In School Inventory'}
+            </h3>
+            <p className="text-xs text-slate-400">
+              {searchQuery || selectedGrade !== 'all'
+                ? 'Try clearing your search query or selecting "All Grades" to view available titles.'
+                : 'Start tracking school textbook stock and learner distributions by adding your first textbook to the catalog.'}
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-2 pt-2">
+            {(searchQuery || selectedGrade !== 'all') && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedGrade('all');
+                }}
+                className="px-4 py-2 rounded-xl bg-surface-darker hover:bg-white/10 border border-white/10 text-slate-300 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Reset Filters
+              </button>
+            )}
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all cursor-pointer"
             >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Badge variant="indigo" size="sm">Grade {item.grade}</Badge>
-                  <span className="text-xs font-bold font-mono text-emerald-400">{available} in Stock</span>
-                </div>
-
-                <h3 className="text-base font-bold text-white">{item.title}</h3>
-                <p className="text-xs text-slate-400">{item.subject} | {item.publisher}</p>
-
-                <div className="pt-2 border-t border-white/5 space-y-1 text-[11px] text-slate-300">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Barcode:</span>
-                    <span className="font-mono text-cyan-300">{item.barcode || 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Issued to Learners:</span>
-                    <span>{issued} Copies</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Replacement Cost:</span>
-                    <span className="font-semibold text-white">R{parseFloat(item.unit_cost_zar || 250).toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-white/5">
-                <button
-                  type="button"
-                  disabled={available <= 0}
-                  onClick={() => {
-                    setSelectedBook(item);
-                    setIsIssueModalOpen(true);
-                  }}
-                  className="w-full py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
-                >
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                  <span>Issue Copy to Learner</span>
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              <Plus className="w-4 h-4" />
+              <span>Add First Textbook</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal: Add Textbook */}
       {isAddModalOpen && (

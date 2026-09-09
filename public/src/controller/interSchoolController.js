@@ -3,6 +3,7 @@ const db = require('../../../db/db');
 /**
  * Returns all inter-school competitions, derby fixtures, and academic olympiads.
  * Supports filtering by category ('sports', 'academics', 'cultural') or school_id.
+ * Explicit type casting ensures no PostgreSQL operator integer = text mismatch can occur.
  */
 exports.getCompetitions = async (req, res) => {
   try {
@@ -34,27 +35,27 @@ exports.getCompetitions = async (req, res) => {
         a.primary_color AS away_school_color,
         a.circuit AS away_school_circuit
       FROM inter_school_competitions c
-      JOIN schools h ON c.home_school_id = h.id
-      JOIN schools a ON c.away_school_id = a.id
+      LEFT JOIN schools h ON (c.home_school_id::text = h.id::text)
+      LEFT JOIN schools a ON (c.away_school_id::text = a.id::text)
       WHERE 1=1
     `;
     const params = [];
 
-    if (category && category !== 'all' && category !== 'undefined') {
+    if (category && category !== 'all' && category !== 'undefined' && category !== 'null') {
       params.push(String(category).trim().toLowerCase());
-      query += ` AND LOWER(c.category) = $${params.length}`;
+      query += ` AND LOWER(c.category::text) = $${params.length}::text`;
     }
 
-    if (status && status !== 'all' && status !== 'undefined') {
+    if (status && status !== 'all' && status !== 'undefined' && status !== 'null') {
       params.push(String(status).trim().toLowerCase());
-      query += ` AND LOWER(c.status) = $${params.length}`;
+      query += ` AND LOWER(c.status::text) = $${params.length}::text`;
     }
 
-    if (school_id && school_id !== 'all' && school_id !== 'undefined') {
+    if (school_id && school_id !== 'all' && school_id !== 'undefined' && school_id !== 'null') {
       const parsedSchoolId = parseInt(school_id, 10);
       if (!isNaN(parsedSchoolId) && parsedSchoolId > 0) {
         params.push(parsedSchoolId);
-        query += ` AND (c.home_school_id = $${params.length}::integer OR c.away_school_id = $${params.length}::integer)`;
+        query += ` AND (c.home_school_id::text = $${params.length}::text OR c.away_school_id::text = $${params.length}::text OR c.school_id::text = $${params.length}::text)`;
       }
     }
 
@@ -91,30 +92,40 @@ exports.createCompetition = async (req, res) => {
       });
     }
 
-    if (parseInt(home_school_id, 10) === parseInt(away_school_id, 10)) {
+    const homeId = parseInt(home_school_id, 10);
+    const awayId = parseInt(away_school_id, 10);
+
+    if (isNaN(homeId) || isNaN(awayId)) {
+      return res.status(400).json({ error: 'Valid Home school and Away school IDs are required.' });
+    }
+
+    if (homeId === awayId) {
       return res.status(400).json({ error: 'Home school and Away school must be distinct institutions.' });
     }
 
     const query = `
       INSERT INTO inter_school_competitions (
         title, activity_type, category, home_school_id, away_school_id,
-        event_date, venue, trophy_title, highlights, created_by, status
+        event_date, venue, trophy_title, highlights, created_by, status, school_id
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'scheduled')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'scheduled', $11)
       RETURNING *;
     `;
 
+    const createdBy = req.user?.id ? parseInt(req.user.id, 10) : null;
+
     const { rows } = await db.query(query, [
-      title.trim(),
-      activity_type.trim(),
-      category.toLowerCase().trim(),
-      parseInt(home_school_id, 10),
-      parseInt(away_school_id, 10),
+      String(title).trim(),
+      String(activity_type).trim(),
+      String(category).toLowerCase().trim(),
+      homeId,
+      awayId,
       new Date(event_date),
-      venue ? venue.trim() : 'Neutral Venue / Host School Grounds',
-      trophy_title ? trophy_title.trim() : null,
-      highlights ? highlights.trim() : null,
-      req.user?.id || null
+      venue ? String(venue).trim() : 'Neutral Venue / Host School Grounds',
+      trophy_title ? String(trophy_title).trim() : null,
+      highlights ? String(highlights).trim() : null,
+      isNaN(createdBy) ? null : createdBy,
+      homeId
     ]);
 
     res.status(201).json({
@@ -135,24 +146,29 @@ exports.updateScoreAndStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { home_score, away_score, status, highlights } = req.body;
+    const parsedId = parseInt(id, 10);
+
+    if (isNaN(parsedId)) {
+      return res.status(400).json({ error: 'Invalid competition ID' });
+    }
 
     const query = `
       UPDATE inter_school_competitions
       SET 
-        home_score = COALESCE($1, home_score),
-        away_score = COALESCE($2, away_score),
-        status = COALESCE($3, status),
-        highlights = COALESCE($4, highlights)
-      WHERE id = $5
+        home_score = COALESCE($1::integer, home_score),
+        away_score = COALESCE($2::integer, away_score),
+        status = COALESCE($3::text, status),
+        highlights = COALESCE($4::text, highlights)
+      WHERE id::text = $5::text
       RETURNING *;
     `;
 
     const { rows } = await db.query(query, [
-      home_score !== undefined ? parseInt(home_score, 10) : null,
-      away_score !== undefined ? parseInt(away_score, 10) : null,
+      home_score !== undefined && home_score !== null ? parseInt(home_score, 10) : null,
+      away_score !== undefined && away_score !== null ? parseInt(away_score, 10) : null,
       status || null,
       highlights || null,
-      parseInt(id, 10)
+      parsedId
     ]);
 
     if (rows.length === 0) {
@@ -180,9 +196,9 @@ exports.getLeaderboard = async (req, res) => {
 
     let catFilter = '';
     const params = [];
-    if (category && category !== 'all' && category !== 'undefined') {
+    if (category && category !== 'all' && category !== 'undefined' && category !== 'null') {
       params.push(String(category).trim().toLowerCase());
-      catFilter = ` AND LOWER(c.category) = $1`;
+      catFilter = ` AND LOWER(c.category::text) = $1::text`;
     }
 
     const query = `
@@ -201,7 +217,7 @@ exports.getLeaderboard = async (req, res) => {
           away_score AS conceded,
           CASE WHEN trophy_title IS NOT NULL AND home_score > away_score THEN 1 ELSE 0 END AS trophies
         FROM inter_school_competitions c
-        WHERE c.status = 'completed' ${catFilter}
+        WHERE c.status::text = 'completed' ${catFilter}
 
         UNION ALL
 
@@ -219,7 +235,7 @@ exports.getLeaderboard = async (req, res) => {
           home_score AS conceded,
           CASE WHEN trophy_title IS NOT NULL AND away_score > home_score THEN 1 ELSE 0 END AS trophies
         FROM inter_school_competitions c
-        WHERE c.status = 'completed' ${catFilter}
+        WHERE c.status::text = 'completed' ${catFilter}
       )
       SELECT 
         s.id AS school_id,
