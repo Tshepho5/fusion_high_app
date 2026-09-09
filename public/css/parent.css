@@ -17,6 +17,7 @@ body {
     color: #ffffff !important;
     display: flex;
     height: 100vh;
+    overflow-x: hidden;
 }
 
 a {
@@ -32,14 +33,77 @@ a {
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+    will-change: margin-left, transform;
+    position: relative;
+    z-index: 1000;
+}
+
+/* Desktop Collapse (> 1024px) */
+@media screen and (min-width: 1025px) {
+    .sidebar.collapsed {
+        margin-left: -280px !important;
+        opacity: 0;
+        pointer-events: none;
+    }
 }
 
 .sidebar-brand {
-    padding: 2rem;
-    font-size: 1.5rem;
+    padding: 1.25rem 1.5rem;
+    font-size: 1.35rem;
     font-weight: 800;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     color: var(--secondary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    letter-spacing: 0.5px;
+}
+
+.brand-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.brand-wrapper .brand-icon {
+    font-size: 1.3rem;
+    color: var(--secondary);
+    flex-shrink: 0;
+}
+
+.brand-wrapper .brand-text {
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.sidebar-close-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #94a3b8;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+}
+
+.sidebar-close-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #ffffff;
+    transform: translateX(-2px);
+}
+
+.sidebar-close-btn:active {
+    transform: translateX(0);
 }
 
 .nav-list {
@@ -86,20 +150,79 @@ a {
 }
 
 .top-bar {
-    background: var(--sidebar);
+    background: #0F172A;
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    backdrop-filter: blur(8px);
     height: 70px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 2.5rem;
-    border-bottom: 1px solid #334155;
+    padding: 0 1.5rem;
+    border-bottom: 1px solid #1E293B;
+    box-sizing: border-box;
+}
+
+.top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.sidebar-toggle-btn {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #94a3b8;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+}
+
+.sidebar-toggle-btn:hover {
+    background: #334155;
+    border-color: #475569;
+    color: #38bdf8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.sidebar-toggle-btn:active {
+    transform: translateY(0);
+}
+
+.sidebar-toggle-btn.sidebar-is-closed {
+    color: #38bdf8;
+    border-color: rgba(56, 189, 248, 0.4);
+    background: rgba(56, 189, 248, 0.08);
+}
+
+/* Hide fixed floating hamburger on parent dashboard in favor of the header toggle button */
+body .hamburger {
+    display: none !important;
 }
 
 .top-bar h1 {
-    font-size: 1.25rem;
+    font-size: 1.3rem;
     margin: 0;
-    font-weight: 600;
-    color: var(--primary);
+    font-weight: 700;
+    color: #f8fafc;
+    white-space: nowrap;
+}
+
+.top-bar-subtitle {
+    margin: 2px 0 0 0;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    white-space: nowrap;
 }
 
 .user-menu {

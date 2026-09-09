@@ -584,8 +584,8 @@ VALUES ('20250001@fusion.high', '$2a$10$wA.Gv1Cj2L8xJ/A.ABcdeu7i9.p1.p2.p3.p4.p5
       
  
 
-SELECT *
-FROM users;
+SELECT * 
+FROM children;
 
 
 SELECT DISTINCT name 
@@ -593,7 +593,7 @@ SELECT DISTINCT name
  WHERE grade = 11 AND (stream ILIKE 'Science' OR stream = 'General') 
  ORDER BY name; 
 
-
+ 
 -- Create the corresponding child record, with parent_id as NULL
 
 INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)

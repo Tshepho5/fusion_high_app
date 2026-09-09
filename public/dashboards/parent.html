@@ -15,22 +15,22 @@
 
     <style>
         /* Responsive Styles for Parent Dashboard */
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
             .main-content-flex {
                 padding-left: 0;
             }
 
+            .content.main-content-flex {
+                padding-top: 0 !important;
+            }
+
             .sidebar {
-                transform: translateX(-100%);
-                z-index: 1000;
+                transform: translateX(-105%);
+                z-index: 9998;
             }
 
             .sidebar.active {
                 transform: translateX(0);
-            }
-
-            .hamburger {
-                display: flex;
             }
 
             .grid-stats,
@@ -42,23 +42,30 @@
             }
 
             .top-bar {
-                padding-left: 50px;
-                /* Space for hamburger */
+                padding: 0.75rem 1rem;
             }
         }
     </style>
 </head>
 
 <body>
-    <!-- Hamburger Menu for Mobile -->
+    <!-- Hamburger Menu (fallback) -->
     <div class="hamburger">
         <div></div>
         <div></div>
         <div></div>
     </div>
 
-    <nav class="sidebar">
-        <div class="sidebar-brand">FUSION HIGH</div>
+    <nav class="sidebar" id="parent-sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-wrapper">
+                <i class="fas fa-graduation-cap brand-icon"></i>
+                <span class="brand-text">FUSION HIGH</span>
+            </div>
+            <button id="parent-sidebar-close" class="sidebar-close-btn" aria-label="Close Side Panel" title="Collapse Side Panel">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        </div>
         <ul class="nav-list">
             <li class="nav-item active" onclick="switchTab('overview', this)"><i class="fas fa-home"></i> Overview</li>
             <li class="nav-item" onclick="switchTab('children', this)"><i class="fas fa-users"></i> My Children</li>
@@ -74,10 +81,15 @@
     </nav>
 
     <main class="content main-content-flex">
-        <header class="top-bar" style="display:flex; justify-content:space-between; align-items:center; padding:1rem 1.5rem; background:#0F172A; border-bottom:1px solid #1E293B;">
-            <div>
-                <h1 id="view-title" style="margin:0; font-size:1.4rem; color:#f8fafc;">Parent Dashboard</h1>
-                <p style="margin:2px 0 0 0; font-size:0.8rem; color:#94a3b8;">Stay informed. Support success.</p>
+        <header class="top-bar">
+            <div class="top-bar-left">
+                <button id="parent-sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle Side Panel" title="Toggle Side Panel (Ctrl+B)">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div>
+                    <h1 id="view-title">Parent Dashboard</h1>
+                    <p class="top-bar-subtitle">Stay informed. Support success.</p>
+                </div>
             </div>
             <div class="user-menu" style="display:flex; align-items:center; gap:1.25rem;">
                 <select id="parent-term-select" style="background:#1E293B; color:#F8FAFC; border:1px solid #334155; border-radius:6px; padding:0.45rem 0.75rem; font-size:0.85rem; cursor:pointer;" onchange="if(window.loadParentOverview) window.loadParentOverview(this.value);">
