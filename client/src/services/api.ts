@@ -75,7 +75,7 @@ export const userService = {
     api.post('/api/profile/picture', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     }).then(res => res.data),
-  changePassword: (passwords: { currentPassword?: string; newPassword: string }) => 
+  changePassword: (passwords: { currentPassword?: string; newPassword?: string; confirmPassword?: string; current_password?: string; new_password?: string; confirm_password?: string }) => 
     api.post('/api/change-password', passwords).then(res => res.data),
   getMessages: () => api.get('/api/messages').then(res => res.data),
   getUnreadCount: () => api.get('/api/messages/unread-count').then(res => res.data),

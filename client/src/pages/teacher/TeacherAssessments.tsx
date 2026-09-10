@@ -850,7 +850,9 @@ export const TeacherAssessments: React.FC = () => {
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-extrabold text-white">{batch.assessment_name}</span>
+                          <span className="text-sm font-extrabold text-white">
+                            {batch.assessment_name ? batch.assessment_name.replace(/\(\s*(\d+)\s*\/\s*\d+\s*\)/g, '($1%)') : 'Class Assessment'}
+                          </span>
                           <Badge variant="indigo" size="sm">{batch.term || 'Term 3'}</Badge>
                           <Badge variant={batchLevel.variant} size="sm">Avg {batch.class_average}%</Badge>
                         </div>

@@ -7,7 +7,7 @@ async function createParentApplicationsTable() {
             CREATE TABLE IF NOT EXISTS parent_portal_applications (
                 id SERIAL PRIMARY KEY,
                 application_number VARCHAR(50) UNIQUE NOT NULL,
-                school_id INTEGER REFERENCES schools(id) ON DELETE SET NULL DEFAULT 1,
+                school_id VARCHAR(100) DEFAULT '1',
                 parent_name VARCHAR(255) NOT NULL,
                 parent_surname VARCHAR(255) NOT NULL,
                 parent_id_number VARCHAR(20) NOT NULL,
@@ -30,7 +30,7 @@ async function createParentApplicationsTable() {
                 num_children INTEGER DEFAULT 1,
                 status VARCHAR(50) DEFAULT 'pending',
                 admin_notes TEXT,
-                reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                reviewed_by VARCHAR(100),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 reviewed_at TIMESTAMP
             );

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { reportService } from '../../services/api';
 import { Badge } from './Badge';
 import { LoadingSpinner } from './LoadingSpinner';
+import { FusionAppIcon } from './FusionAppIcon';
 import {
   Printer,
   Download,
@@ -149,8 +150,8 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({ childId, initial
       {/* Control Bar (Hidden on Print) */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-surface-dark border border-white/10 shadow-lg print:hidden">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 text-white shadow-glow-indigo">
-            <Award className="w-5 h-5" />
+          <div className="p-2 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 text-white shadow-glow-indigo flex items-center justify-center">
+            <FusionAppIcon className="w-6 h-6" />
           </div>
           <div>
             <h3 className="text-sm font-bold text-white font-display flex items-center gap-2">
@@ -266,9 +267,8 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({ childId, initial
           {/* Header Banner in Landscape */}
           <div className="border-b-2 border-brand-500/40 pb-4 flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 via-indigo-700 to-cyan-600 flex items-center justify-center p-2 shadow-glow-indigo border border-white/20 print:border-black shrink-0">
-                <img src="/assets/FH.png" alt="Logo" className="w-full h-full object-contain filter brightness-110" onError={(e: any) => { e.target.style.display = 'none'; }} />
-                <Building2 className="w-8 h-8 text-white hidden" />
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 via-indigo-700 to-cyan-600 flex items-center justify-center p-1.5 shadow-glow-indigo border border-white/20 print:border-black shrink-0">
+                <FusionAppIcon className="w-12 h-12" />
               </div>
               <div>
                 <h1 className="text-2xl font-black font-display tracking-tight text-white print:text-black uppercase leading-tight">

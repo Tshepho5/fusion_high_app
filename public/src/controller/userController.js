@@ -246,13 +246,16 @@ exports.updatePreferences = async (req, res) => {
 };
 
 exports.changePassword = async (req, res) => {
-    const currentPassword = req.body.currentPassword || req.body.current_password;
-    const newPassword = req.body.newPassword || req.body.new_password;
-    const confirmPassword = req.body.confirmPassword || req.body.confirm_password || newPassword;
+    const currentPassword = (req.body.currentPassword || req.body.current_password || '').toString().trim();
+    const newPassword = (req.body.newPassword || req.body.new_password || '').toString().trim();
+    const confirmPassword = (req.body.confirmPassword || req.body.confirm_password || req.body.confirmationPassword || newPassword).toString().trim();
     const userId = req.user.id;
 
-    if (!currentPassword || !newPassword) {
-        return res.status(400).json({ success: false, error: 'Current password and new password are required.' });
+    if (!currentPassword) {
+        return res.status(400).json({ success: false, error: 'Current password is required.' });
+    }
+    if (!newPassword) {
+        return res.status(400).json({ success: false, error: 'New password is required.' });
     }
 
     if (newPassword !== confirmPassword) {

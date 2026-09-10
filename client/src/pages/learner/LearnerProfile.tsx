@@ -113,8 +113,17 @@ export const LearnerProfile: React.FC = () => {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      setStatusMsg({ type: 'error', text: 'New passwords do not match.' });
+    const curr = currentPassword.trim();
+    const next = newPassword.trim();
+    const conf = confirmPassword.trim();
+
+    if (!curr || !next || !conf) {
+      setStatusMsg({ type: 'error', text: 'All password fields are required.' });
+      return;
+    }
+
+    if (next !== conf) {
+      setStatusMsg({ type: 'error', text: 'New password and confirmation password do not match.' });
       return;
     }
 
@@ -122,13 +131,20 @@ export const LearnerProfile: React.FC = () => {
     setStatusMsg(null);
 
     try {
-      await userService.changePassword({ currentPassword, newPassword });
+      await userService.changePassword({
+        current_password: curr,
+        new_password: next,
+        confirm_password: conf,
+        currentPassword: curr,
+        newPassword: next,
+        confirmPassword: conf
+      });
       setStatusMsg({ type: 'success', text: 'Password changed successfully!' });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      setStatusMsg({ type: 'error', text: err.response?.data?.error || 'Failed to change password.' });
+      setStatusMsg({ type: 'error', text: err.response?.data?.error || err.message || 'Failed to change password.' });
     } finally {
       setLoading(false);
     }

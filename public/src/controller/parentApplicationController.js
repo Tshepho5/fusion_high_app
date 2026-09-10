@@ -13,6 +13,66 @@ function generateParentAppNumber(year = new Date().getFullYear()) {
 }
 
 /**
+ * Module-level Schema Engine
+ * Guarantees parent_portal_applications table exists across all database environments (local & cloud)
+ */
+let isSchemaEnsured = false;
+async function ensureParentAppSchema() {
+    if (isSchemaEnsured) return;
+    try {
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS parent_portal_applications (
+                id SERIAL PRIMARY KEY,
+                application_number VARCHAR(50) UNIQUE NOT NULL,
+                school_id VARCHAR(100) DEFAULT '1',
+                parent_name VARCHAR(255) NOT NULL,
+                parent_surname VARCHAR(255) NOT NULL,
+                parent_id_number VARCHAR(20) NOT NULL,
+                parent_email VARCHAR(255) NOT NULL,
+                parent_phone VARCHAR(50) NOT NULL,
+                physical_address TEXT DEFAULT 'Not provided',
+                parent_type VARCHAR(50) DEFAULT 'Parent',
+                password_hash TEXT NOT NULL,
+                dob DATE,
+                gender VARCHAR(20),
+                country VARCHAR(100) DEFAULT 'South Africa',
+                race VARCHAR(50) DEFAULT 'Black',
+                child_first_name VARCHAR(255),
+                child_surname VARCHAR(255),
+                child_id_number VARCHAR(20),
+                child_grade INTEGER,
+                child_stream VARCHAR(50) DEFAULT 'General',
+                children_details JSONB DEFAULT '[]'::jsonb,
+                is_twins_or_multiple BOOLEAN DEFAULT FALSE,
+                num_children INTEGER DEFAULT 1,
+                status VARCHAR(50) DEFAULT 'pending',
+                admin_notes TEXT,
+                reviewed_by VARCHAR(100),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reviewed_at TIMESTAMP
+            );
+
+            ALTER TABLE parent_portal_applications ALTER COLUMN physical_address DROP NOT NULL;
+            ALTER TABLE parent_portal_applications ALTER COLUMN physical_address SET DEFAULT 'Not provided';
+            ALTER TABLE parent_portal_applications ALTER COLUMN child_first_name DROP NOT NULL;
+            ALTER TABLE parent_portal_applications ALTER COLUMN child_surname DROP NOT NULL;
+            ALTER TABLE parent_portal_applications ALTER COLUMN child_id_number DROP NOT NULL;
+            ALTER TABLE parent_portal_applications ALTER COLUMN child_grade DROP NOT NULL;
+            ALTER TABLE parent_portal_applications ADD COLUMN IF NOT EXISTS children_details JSONB DEFAULT '[]'::jsonb;
+            ALTER TABLE parent_portal_applications ADD COLUMN IF NOT EXISTS is_twins_or_multiple BOOLEAN DEFAULT FALSE;
+            ALTER TABLE parent_portal_applications ADD COLUMN IF NOT EXISTS num_children INTEGER DEFAULT 1;
+
+            CREATE INDEX IF NOT EXISTS idx_parent_apps_school_status ON parent_portal_applications(school_id, status);
+            CREATE INDEX IF NOT EXISTS idx_parent_apps_email ON parent_portal_applications(parent_email);
+        `);
+        isSchemaEnsured = true;
+    } catch (e) {
+        console.warn('Schema check warning in parentApplicationController:', e.message);
+    }
+}
+ensureParentAppSchema().catch(() => {});
+
+/**
  * 1. Submit Parent Portal Access Application (Public)
  */
 exports.submitParentApplication = async (req, res) => {
@@ -109,61 +169,6 @@ exports.submitParentApplication = async (req, res) => {
     const targetSchoolId = parseInt(school_id || 1, 10);
 
     try {
-let isSchemaEnsured = false;
-async function ensureParentAppSchema() {
-    if (isSchemaEnsured) return;
-    try {
-        await db.query(`
-            CREATE TABLE IF NOT EXISTS parent_portal_applications (
-                id SERIAL PRIMARY KEY,
-                application_number VARCHAR(50) UNIQUE NOT NULL,
-                school_id INTEGER REFERENCES schools(id) ON DELETE SET NULL DEFAULT 1,
-                parent_name VARCHAR(255) NOT NULL,
-                parent_surname VARCHAR(255) NOT NULL,
-                parent_id_number VARCHAR(20) NOT NULL,
-                parent_email VARCHAR(255) NOT NULL,
-                parent_phone VARCHAR(50) NOT NULL,
-                physical_address TEXT DEFAULT 'Not provided',
-                parent_type VARCHAR(50) DEFAULT 'Parent',
-                password_hash TEXT NOT NULL,
-                dob DATE,
-                gender VARCHAR(20),
-                country VARCHAR(100) DEFAULT 'South Africa',
-                race VARCHAR(50) DEFAULT 'Black',
-                child_first_name VARCHAR(255),
-                child_surname VARCHAR(255),
-                child_id_number VARCHAR(20),
-                child_grade INTEGER,
-                child_stream VARCHAR(50) DEFAULT 'General',
-                children_details JSONB DEFAULT '[]'::jsonb,
-                is_twins_or_multiple BOOLEAN DEFAULT FALSE,
-                num_children INTEGER DEFAULT 1,
-                status VARCHAR(50) DEFAULT 'pending',
-                admin_notes TEXT,
-                reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                reviewed_at TIMESTAMP
-            );
-
-            ALTER TABLE parent_portal_applications ALTER COLUMN physical_address DROP NOT NULL;
-            ALTER TABLE parent_portal_applications ALTER COLUMN physical_address SET DEFAULT 'Not provided';
-            ALTER TABLE parent_portal_applications ALTER COLUMN child_first_name DROP NOT NULL;
-            ALTER TABLE parent_portal_applications ALTER COLUMN child_surname DROP NOT NULL;
-            ALTER TABLE parent_portal_applications ALTER COLUMN child_id_number DROP NOT NULL;
-            ALTER TABLE parent_portal_applications ALTER COLUMN child_grade DROP NOT NULL;
-            ALTER TABLE parent_portal_applications ADD COLUMN IF NOT EXISTS children_details JSONB DEFAULT '[]'::jsonb;
-            ALTER TABLE parent_portal_applications ADD COLUMN IF NOT EXISTS is_twins_or_multiple BOOLEAN DEFAULT FALSE;
-            ALTER TABLE parent_portal_applications ADD COLUMN IF NOT EXISTS num_children INTEGER DEFAULT 1;
-
-            CREATE INDEX IF NOT EXISTS idx_parent_apps_school_status ON parent_portal_applications(school_id, status);
-            CREATE INDEX IF NOT EXISTS idx_parent_apps_email ON parent_portal_applications(parent_email);
-        `);
-        isSchemaEnsured = true;
-    } catch (e) {
-        console.warn('Schema check warning in parentApplicationController:', e.message);
-    }
-}
-
         await ensureParentAppSchema();
 
         // Check if parent is already registered in users table
@@ -177,7 +182,7 @@ async function ensureParentAppSchema() {
         // Validate target school ID
         let validSchoolId = 1;
         try {
-            const schCheck = await db.query('SELECT id FROM schools WHERE id = $1', [targetSchoolId]);
+            const schCheck = await db.query('SELECT id FROM schools WHERE id::text = $1::text', [String(targetSchoolId)]);
             if (schCheck.rows.length > 0) {
                 validSchoolId = schCheck.rows[0].id;
             } else {
@@ -313,7 +318,7 @@ async function ensureParentAppSchema() {
         let schoolName = 'Fusion High School';
         try {
             if (validSchoolId) {
-                const sRes = await db.query('SELECT name FROM schools WHERE id = $1', [validSchoolId]);
+                const sRes = await db.query('SELECT name FROM schools WHERE id::text = $1::text', [String(validSchoolId)]);
                 if (sRes.rows.length > 0) schoolName = sRes.rows[0].name;
             }
         } catch (_) {}
@@ -364,21 +369,23 @@ exports.getSchoolParentApplications = async (req, res) => {
     const isSuperAdmin = Boolean(req.user?.is_superadmin);
 
     try {
+        await ensureParentAppSchema();
+
         let query = `
             SELECT pa.*, s.name as school_name,
                    c.id as matched_child_id, c.learner_number as matched_learner_number, 
                    c.grade as matched_grade, c.stream as matched_stream, c.parent_id as current_child_parent_id,
                    u.id_number as matched_child_id_number
             FROM parent_portal_applications pa
-            LEFT JOIN schools s ON pa.school_id = s.id
-            LEFT JOIN users u ON (u.id_number = pa.child_id_number OR LOWER(u.full_name) = LOWER(pa.child_first_name) AND LOWER(u.surname) = LOWER(pa.child_surname))
-            LEFT JOIN children c ON (c.learner_user_id = u.id OR c.learner_number = pa.child_id_number OR (LOWER(c.full_name) = LOWER(pa.child_first_name) AND LOWER(c.surname) = LOWER(pa.child_surname)))
+            LEFT JOIN schools s ON pa.school_id::text = s.id::text
+            LEFT JOIN users u ON (u.id_number = pa.child_id_number OR (LOWER(u.full_name) = LOWER(pa.child_first_name) AND LOWER(u.surname) = LOWER(pa.child_surname)))
+            LEFT JOIN children c ON (c.learner_user_id::text = u.id::text OR c.learner_number = pa.child_id_number OR (LOWER(c.full_name) = LOWER(pa.child_first_name) AND LOWER(c.surname) = LOWER(pa.child_surname)))
         `;
 
         const params = [];
         if (!isSuperAdmin) {
-            params.push(adminSchoolId);
-            query += ` WHERE pa.school_id = $1`;
+            params.push(String(adminSchoolId));
+            query += ` WHERE pa.school_id::text = $1::text`;
         }
 
         query += ` ORDER BY pa.created_at DESC`;
@@ -457,6 +464,7 @@ exports.decideParentApplication = async (req, res) => {
     }
 
     try {
+        await ensureParentAppSchema();
         const appRes = await db.query('SELECT * FROM parent_portal_applications WHERE id = $1 LIMIT 1', [id]);
         if (appRes.rows.length === 0) {
             return res.status(404).json({ error: 'Parent application record not found.' });
@@ -470,7 +478,7 @@ exports.decideParentApplication = async (req, res) => {
         // Fetch School Data
         let schoolName = 'Fusion High School';
         try {
-            const sRes = await db.query('SELECT name FROM schools WHERE id = $1', [app.school_id]);
+            const sRes = await db.query('SELECT name FROM schools WHERE id::text = $1::text', [String(app.school_id)]);
             if (sRes.rows.length > 0) schoolName = sRes.rows[0].name;
         } catch (_) {}
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { learnerService } from '../../services/api';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { FusionAIIcon } from '../../components/common/FusionAIIcon';
+import { FusionAppIcon } from '../../components/common/FusionAppIcon';
 import {
   GraduationCap,
   BookOpen,
@@ -203,7 +204,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
     { id: 'performance', label: 'Subject Performance', icon: TrendingUp, color: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' },
     { id: 'career-advisor', label: 'Matric APS & Careers', icon: Compass, color: 'text-purple-400 bg-purple-500/15 border-purple-500/30' },
     { id: 'bursaries', label: 'NSFAS & Bursaries', icon: GraduationCap, color: 'text-amber-400 bg-amber-500/15 border-amber-500/30' },
-    { id: 'reports', label: 'CAPS Report Cards', icon: Award, color: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' },
+    { id: 'reports', label: 'CAPS Report Cards', icon: FusionAppIcon, color: 'text-cyan-400 bg-cyan-500/15 border-cyan-500/30' },
     { id: 'finance', label: 'Fee Statements', icon: CreditCard, color: 'text-teal-400 bg-teal-500/15 border-teal-500/30' },
     { id: 'timetable', label: 'Weekly Timetable', icon: Clock, color: 'text-sky-400 bg-sky-500/15 border-sky-500/30' },
     { id: 'calendar', label: 'School Calendar', icon: Calendar, color: 'text-violet-400 bg-violet-500/15 border-violet-500/30' },

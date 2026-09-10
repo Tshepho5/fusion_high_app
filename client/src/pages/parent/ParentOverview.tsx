@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
+import { FusionAppIcon } from '../../components/common/FusionAppIcon';
 
 type GridViewMode = 'grid' | 'compact' | 'list';
 
@@ -80,7 +81,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
 
   // PARENT MODULES (ICON + NAME ONLY)
   const parentModules = [
-    { id: 'reports', label: 'CAPS Report Cards', icon: Award, color: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' },
+    { id: 'reports', label: 'CAPS Report Cards', icon: FusionAppIcon, color: 'text-cyan-400 bg-cyan-500/15 border-cyan-500/30' },
     { id: 'finance', label: 'School Fee Statements', icon: CreditCard, color: 'text-teal-400 bg-teal-500/15 border-teal-500/30' },
     { id: 'attendance', label: 'Attendance & Absence', icon: CalendarCheck, color: 'text-indigo-400 bg-indigo-500/15 border-indigo-500/30' },
     { id: 'ptc', label: 'Parent-Teacher Conferences', icon: Users, color: 'text-cyan-400 bg-cyan-500/15 border-cyan-500/30' },

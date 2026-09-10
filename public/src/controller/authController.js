@@ -1321,11 +1321,19 @@ exports.resetPassword = async (req, res) => {
 };
 
 exports.changePassword = async (req, res) => {
-    const { current_password, new_password, confirm_password } = req.body;
+    const current_password = (req.body.current_password || req.body.currentPassword || '').toString().trim();
+    const new_password = (req.body.new_password || req.body.newPassword || '').toString().trim();
+    const confirm_password = (req.body.confirm_password || req.body.confirmPassword || req.body.confirmationPassword || req.body.newPasswordConfirmation || '').toString().trim();
     const userId = req.user.id;
 
-    if (!current_password || !new_password || !confirm_password) {
-        return res.status(400).json({ error: 'Current password, new password, and confirmation password are required.' });
+    if (!current_password) {
+        return res.status(400).json({ error: 'Current password is required.' });
+    }
+    if (!new_password) {
+        return res.status(400).json({ error: 'New password is required.' });
+    }
+    if (!confirm_password) {
+        return res.status(400).json({ error: 'Confirmation password is required.' });
     }
     if (new_password !== confirm_password) {
         return res.status(400).json({ error: 'New password and confirmation password do not match.' });

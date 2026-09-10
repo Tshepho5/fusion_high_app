@@ -334,7 +334,7 @@ exports.saveClassMarks = async (req, res) => {
 
         for (const m of marks) {
             const rawId = m.child_id || m.learner_id || m.id;
-            const scoreCandidate = m.grade !== undefined ? m.grade : (m.mark !== undefined ? m.mark : (m.mark_obtained !== undefined ? m.mark_obtained : m.score));
+            const scoreCandidate = m.mark_obtained !== undefined ? m.mark_obtained : (m.mark !== undefined ? m.mark : (m.score !== undefined ? m.score : m.grade));
             const rawScore = parseFloat(scoreCandidate);
 
             if (rawId && !isNaN(rawScore)) {
@@ -369,12 +369,15 @@ exports.saveClassMarks = async (req, res) => {
 
                 // Calculate percentage score (0 - 100)
                 let pctScore = rawScore;
-                if (maxMark !== 100 && maxMark > 0) {
+                if (m.grade !== undefined && m.mark_obtained !== undefined && !isNaN(parseFloat(m.grade))) {
+                    pctScore = Math.round(parseFloat(m.grade));
+                } else if (maxMark !== 100 && maxMark > 0) {
                     pctScore = Math.round((rawScore / maxMark) * 100);
                 }
                 pctScore = Math.min(100, Math.max(0, pctScore));
 
-                const remarkNote = `${assessmentTitle} (${rawScore}/${maxMark})`;
+                // Display percentage instead of raw/total (e.g. (80%) instead of (80/50))
+                const remarkNote = `${assessmentTitle} (${pctScore}%)`;
 
                 // 1. UPSERT into progress table
                 const existingProgressRes = await db.query(
@@ -658,8 +661,22 @@ exports.getClassMarksHistory = async (req, res) => {
                 ? Math.round(valid.reduce((acc, m) => acc + Number(m.mark_percentage), 0) / valid.length)
                 : 0;
 
+            // Display average percentage instead of displaying out of total (e.g. change 80/50 to 80%)
+            let formattedName = group.assessment_name || 'Class Assessment';
+            if (/\(\s*\d+\s*\/\s*\d+\s*\)/.test(formattedName)) {
+                const match = formattedName.match(/\(\s*(\d+)\s*\/\s*(\d+)\s*\)/);
+                if (match) {
+                    const firstNum = parseInt(match[1], 10);
+                    const pctVal = firstNum > 0 && firstNum <= 100 ? firstNum : avg;
+                    formattedName = formattedName.replace(/\(\s*\d+\s*\/\s*\d+\s*\)/, `(${pctVal}%)`);
+                } else {
+                    formattedName = formattedName.replace(/\(\s*\d+\s*\/\s*\d+\s*\)/, `(${avg}%)`);
+                }
+            }
+
             return {
                 ...group,
+                assessment_name: formattedName,
                 total_learners: marksList.length,
                 class_average: avg
             };
