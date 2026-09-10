@@ -579,14 +579,6 @@ function validateStep(step) {
       shakeElement(cardProofRes);
       return false;
     }
-
-    if (gradeVal > 8 && (!reportCardDoc.files || reportCardDoc.files.length === 0)) {
-      showModal('error', 'Document Required', `Latest Academic Report Card is required for Grade ${gradeVal} transfer admission.`);
-      const cardReportCard = document.getElementById('card-report-card');
-      cardReportCard.scrollIntoView({ behavior: 'smooth' });
-      shakeElement(cardReportCard);
-      return false;
-    }
   }
 
   if (!isValid && firstInvalidElement) {

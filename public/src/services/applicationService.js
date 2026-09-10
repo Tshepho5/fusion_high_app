@@ -348,16 +348,6 @@ async function verifyApplicationWithAI(applicationData, uploadedDocs = []) {
     overallScore -= 15;
   }
 
-  if (grade_applied > 8 && !docTypes.includes('report_card') && !docTypes.includes('transfer_letter')) {
-    issues.push({
-      field: 'report_card',
-      type: 'MISSING_DOCUMENT',
-      message: `Latest Academic Report Card is required for Grade ${grade_applied} admissions.`,
-      details: 'Learners applying for Grade 9, 10, 11, or 12 must upload their previous term/grade report card.'
-    });
-    overallScore -= 25;
-  }
-
   // 4. Content Verification with Gemini AI (if available) or PDF Text Analysis
   for (const doc of uploadedDocs) {
     const extractedText = await extractDocumentText(doc.file_path, doc.mime_type);
