@@ -236,7 +236,7 @@ export const LandingPage: React.FC = () => {
             }`}
           >
             <p className="text-xs sm:text-sm text-slate-400 font-mono tracking-wide">
-              "Connecting Today, Empowering Tomorrow." • DBE CAPS Aligned
+              Connecting Today, Empowering Tomorrow.
             </p>
           </div>
 
