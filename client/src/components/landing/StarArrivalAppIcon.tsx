@@ -4,15 +4,25 @@ import { FusionAppIcon } from '../common/FusionAppIcon';
 interface StarArrivalAppIconProps {
   className?: string;
   containerClassName?: string;
+  onArrivalComplete?: () => void;
+  onReplay?: () => void;
 }
 
 export const StarArrivalAppIcon: React.FC<StarArrivalAppIconProps> = ({
   className = 'w-28 h-28 sm:w-36 sm:h-36',
-  containerClassName = 'w-36 h-36 sm:w-44 sm:h-44'
+  containerClassName = 'w-36 h-36 sm:w-44 sm:h-44',
+  onArrivalComplete,
+  onReplay
 }) => {
   const [animKey, setAnimKey] = useState<number>(0);
   const [isTraveling, setIsTraveling] = useState<boolean>(true);
   const [hasArrived, setHasArrived] = useState<boolean>(false);
+
+  const onArrivalCompleteRef = React.useRef(onArrivalComplete);
+  onArrivalCompleteRef.current = onArrivalComplete;
+
+  const onReplayRef = React.useRef(onReplay);
+  onReplayRef.current = onReplay;
 
   useEffect(() => {
     setIsTraveling(true);
@@ -22,6 +32,7 @@ export const StarArrivalAppIcon: React.FC<StarArrivalAppIconProps> = ({
     const arrivalTimer = setTimeout(() => {
       setIsTraveling(false);
       setHasArrived(true);
+      onArrivalCompleteRef.current?.();
     }, 5000);
 
     return () => clearTimeout(arrivalTimer);
@@ -29,6 +40,7 @@ export const StarArrivalAppIcon: React.FC<StarArrivalAppIconProps> = ({
 
   const handleReplay = () => {
     setAnimKey(prev => prev + 1);
+    onReplayRef.current?.();
   };
 
   return (
