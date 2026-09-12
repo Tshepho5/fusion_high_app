@@ -274,6 +274,18 @@ export const adminService = {
     api.post(`/api/applications/${id}/decision`, payload).then(res => res.data),
   getAcademicOverview: (params?: any) => api.get('/api/admin/academics/overview', { params }).then(res => res.data),
   moderateBatch: (payload: any) => api.post('/api/admin/academics/moderate', payload).then(res => res.data),
+  getSubjectsSummary: (params?: { grade?: string | number; stream?: string; term?: string }) => 
+    api.get('/api/admin/academics/subjects-summary', { params }).then(res => res.data),
+  getSubjectLearners: (params: { subject: string; grade?: string | number; stream?: string; term?: string }) => 
+    api.get('/api/admin/academics/subject-learners', { params }).then(res => res.data),
+  getGradeTemplateMarks: (params: { grade: string | number; stream?: string; className?: string; term?: string; academicYear?: string | number }) => 
+    api.get('/api/report-cards/grade-template', { params }).then(res => res.data),
+  saveGradeTemplate: (payload: any) => 
+    api.post('/api/report-cards/save-grade-template', payload).then(res => res.data),
+  publishGradeReports: (payload: any) => 
+    api.post('/api/report-cards/publish-grade-reports', payload).then(res => res.data),
+  getOfficialReportCardView: (params: { childId: number | string; term?: string; academicYear?: string | number }) => 
+    api.get('/api/report-cards/view-card', { params }).then(res => res.data),
 };
 
 // Parent Portal APIs (children, progress, attendance, messages)

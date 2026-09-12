@@ -15,6 +15,8 @@ import { TextbookAssetTracker } from '../../components/common/TextbookAssetTrack
 import { MatricPassRateProjector } from '../../components/admin/MatricPassRateProjector';
 import { EducatorLeaveReliefManager } from '../../components/admin/EducatorLeaveReliefManager';
 import { AcademicAssessmentAudits } from '../../components/admin/AcademicAssessmentAudits';
+import { SchoolSubjectsManager } from '../../components/admin/SchoolSubjectsManager';
+import { ReportCardStudio } from '../../components/admin/ReportCardStudio';
 import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
 import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
 import { MultiSchoolCommandCenter } from '../../components/admin/MultiSchoolCommandCenter';
@@ -46,6 +48,8 @@ export const AdminDashboard: React.FC = () => {
       case 'consultations': return 'Parent-Educator Academic Consultation Schedule';
       case 'users': return 'User Directory & Permissions';
       case 'finance': return 'School Fees, Invoicing & Collection Analytics';
+      case 'subjects': return 'School Curriculum, Grades 8-12 & Subject Registers';
+      case 'reports': return 'CAPS Official Report Card Studio & Publishing';
       case 'marks': return 'CAPS Academic Assessment & SBA Mark Audits';
       case 'bursaries': return 'National Tertiary Bursaries Catalog';
       case 'matric-projector': return 'Matric Candidate Pass Rate Projector (Grade 12)';
@@ -103,6 +107,10 @@ export const AdminDashboard: React.FC = () => {
       {activeTab === 'inter-school' && <InterSchoolCompetitions />}
       {activeTab === 'consultations' && <ParentTeacherConsultations />}
       {activeTab === 'users' && <AdminUsers />}
+      {activeTab === 'subjects' && (
+        <SchoolSubjectsManager onOpenReportCardStudio={(g, s) => handleSelectTab('reports')} />
+      )}
+      {activeTab === 'reports' && <ReportCardStudio />}
       {activeTab === 'marks' && <AcademicAssessmentAudits />}
       {activeTab === 'finance' && <SchoolFeesManager userRole="admin" />}
       {activeTab === 'bursaries' && <BursaryScholarshipHub />}

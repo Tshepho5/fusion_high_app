@@ -1885,15 +1885,15 @@ exports.getAcademicOverview = async (req, res) => {
         `;
         const params = [schoolId];
 
-        if (grade) {
+        if (grade && grade !== 'all' && !isNaN(parseInt(grade, 10))) {
             params.push(parseInt(grade, 10));
             query += ` AND c.grade = $${params.length}`;
         }
-        if (subject) {
+        if (subject && subject !== 'all' && subject.trim() !== '') {
             params.push(`%${subject.trim()}%`);
             query += ` AND p.subject ILIKE $${params.length}`;
         }
-        if (term) {
+        if (term && term !== 'all' && term.trim() !== '') {
             params.push(`%${term.trim()}%`);
             query += ` AND p.term ILIKE $${params.length}`;
         }

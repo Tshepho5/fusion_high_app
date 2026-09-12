@@ -87,7 +87,8 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
       case 'admin':
         return [
           { id: 'overview', label: 'School Analytics Hub', desc: 'Overall school enrollment, attendance & pass rates', category: 'academic', icon: LayoutDashboard, gradient: 'from-blue-600 to-indigo-600' },
-          { id: 'marks', label: 'Academic Assessment Audits', desc: 'Grade mark schedules, SBA verification & DBE reports', category: 'academic', icon: FileSpreadsheet, gradient: 'from-emerald-600 to-teal-600', badge: 'CAPS' },
+          { id: 'subjects', label: 'School Curriculum & Subjects', desc: 'All curriculum subjects across Grades 8-12, registers & flags', category: 'academic', icon: BookOpen, gradient: 'from-blue-600 to-indigo-600', badge: 'Gr 8-12' },
+          { id: 'marks', label: 'CAPS Mark Audits & Report Cards', desc: 'SBA continuous assessment weightings & official report cards', category: 'academic', icon: FileSpreadsheet, gradient: 'from-emerald-600 to-teal-600', badge: 'CAPS' },
           { id: 'finance', label: 'School Fees & Finance', desc: 'Tuition invoicing, payment receipts & collection analytics', category: 'operations', icon: CreditCard, gradient: 'from-emerald-600 to-teal-600', badge: 'ZAR' },
           { id: 'users', label: 'User Directory', desc: 'Manage teachers, parents, learners & staff accounts', category: 'operations', icon: Users, gradient: 'from-cyan-600 to-blue-600' },
           { id: 'matric-projector', label: 'Matric Pass Projector', desc: 'Grade 12 Bachelor pass & distinction forecast analytics', category: 'academic', icon: GraduationCap, gradient: 'from-purple-600 to-pink-600', badge: 'Gr12' },

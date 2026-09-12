@@ -3,6 +3,8 @@ import { adminService } from '../../services/api';
 import { Badge } from '../common/Badge';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Modal } from '../common/Modal';
+import { SchoolSubjectsManager } from './SchoolSubjectsManager';
+import { ReportCardStudio } from './ReportCardStudio';
 import {
   FileSpreadsheet,
   Search,
@@ -65,7 +67,8 @@ interface SubjectSchedule {
 }
 
 export const AcademicAssessmentAudits: React.FC = () => {
-  const [loading, setLoading] = useState(true);
+  const [activeSubTab, setActiveSubTab] = useState<'subjects' | 'report-cards' | 'audits'>('subjects');
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<{
     summary: any;
@@ -107,8 +110,10 @@ export const AcademicAssessmentAudits: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchAudits();
-  }, [selectedGrade, selectedSubject, selectedTerm]);
+    if (activeSubTab === 'audits') {
+      fetchAudits();
+    }
+  }, [activeSubTab, selectedGrade, selectedSubject, selectedTerm]);
 
   const handleOpenModeration = (sched: SubjectSchedule) => {
     setActiveSubjectForModeration(sched);
@@ -187,10 +192,6 @@ export const AcademicAssessmentAudits: React.FC = () => {
     return <Badge variant="rose" size="sm">Level 1-2 (&lt;40%)</Badge>;
   };
 
-  if (loading) {
-    return <LoadingSpinner text="Loading Academic Assessment & SBA Audits..." />;
-  }
-
   const summary = data?.summary || {
     total_assessments_recorded: 14,
     school_average_mark: 78,
@@ -201,13 +202,65 @@ export const AcademicAssessmentAudits: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 p-4 rounded-2xl bg-emerald-500/90 text-white font-bold text-xs shadow-2xl flex items-center gap-2 border border-emerald-400/30 animate-bounce">
-          <CheckCircle2 className="w-5 h-5 text-white" />
-          <span>{toastMessage}</span>
-        </div>
+      {/* Sub-Navigation Switcher */}
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-surface-dark border border-white/10 shadow-sm overflow-x-auto custom-scrollbar">
+        <button
+          onClick={() => setActiveSubTab('subjects')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-extrabold text-xs transition-all shrink-0 ${
+            activeSubTab === 'subjects'
+              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-glow-blue border border-blue-400/40'
+              : 'text-slate-300 hover:text-white hover:bg-white/5 border border-transparent'
+          }`}
+        >
+          <BookOpen className="w-4 h-4 text-cyan-300" />
+          <span>School Curriculum & Subjects (Grades 8 - 12)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('report-cards')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-extrabold text-xs transition-all shrink-0 ${
+            activeSubTab === 'report-cards'
+              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-glow-emerald border border-emerald-400/40'
+              : 'text-slate-300 hover:text-white hover:bg-white/5 border border-transparent'
+          }`}
+        >
+          <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
+          <span>CAPS Report Card Studio & Holding %</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('audits')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-extrabold text-xs transition-all shrink-0 ${
+            activeSubTab === 'audits'
+              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-glow-indigo border border-purple-400/40'
+              : 'text-slate-300 hover:text-white hover:bg-white/5 border border-transparent'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4 text-purple-300" />
+          <span>SBA Mark Audits & Moderation</span>
+        </button>
+      </div>
+
+      {activeSubTab === 'subjects' && (
+        <SchoolSubjectsManager onOpenReportCardStudio={() => setActiveSubTab('report-cards')} />
       )}
+
+      {activeSubTab === 'report-cards' && (
+        <ReportCardStudio />
+      )}
+
+      {activeSubTab === 'audits' && (
+        loading ? (
+          <LoadingSpinner text="Loading Academic Assessment & SBA Audits..." />
+        ) : (
+          <div className="space-y-6">
+            {/* Toast Notification */}
+            {toastMessage && (
+              <div className="fixed top-5 right-5 z-50 p-4 rounded-2xl bg-emerald-500/90 text-white font-bold text-xs shadow-2xl flex items-center gap-2 border border-emerald-400/30 animate-bounce">
+                <CheckCircle2 className="w-5 h-5 text-white" />
+                <span>{toastMessage}</span>
+              </div>
+            )}
 
       {/* Header Banner */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-950/70 via-surface-dark to-surface-dark border border-emerald-500/20 p-6 shadow-xl">
@@ -410,7 +463,9 @@ export const AcademicAssessmentAudits: React.FC = () => {
             onChange={(e) => setSelectedGrade(e.target.value)}
             className="px-3 py-2 rounded-xl bg-surface-darker border border-white/10 text-xs font-semibold text-white focus:ring-2 focus:ring-emerald-500"
           >
-            <option value="all">All Grades</option>
+            <option value="all">All Grades (8-12)</option>
+            <option value="8">Grade 8</option>
+            <option value="9">Grade 9</option>
             <option value="10">Grade 10</option>
             <option value="11">Grade 11</option>
             <option value="12">Grade 12</option>
@@ -609,6 +664,9 @@ export const AcademicAssessmentAudits: React.FC = () => {
             </div>
           </div>
         </Modal>
+      )}
+          </div>
+        )
       )}
     </div>
   );
