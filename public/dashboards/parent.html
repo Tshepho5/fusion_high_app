@@ -71,6 +71,7 @@
             <li class="nav-item" onclick="switchTab('children', this)"><i class="fas fa-users"></i> My Children</li>
             <li class="nav-item" onclick="switchTab('announcements', this)"><i class="fas fa-bullhorn"></i> School News</li>
             <li class="nav-item" onclick="switchTab('performance', this)"><i class="fas fa-chart-line"></i> Performance</li>
+            <li class="nav-item" onclick="switchTab('reports', this)"><i class="fas fa-award" style="color:#f59e0b;"></i> Report Cards</li>
             <li class="nav-item" onclick="switchTab('attendance', this)"><i class="fas fa-calendar-check"></i> Attendance</li>
             <li class="nav-item" onclick="switchTab('timetable', this)"><i class="fas fa-clock"></i> Timetable</li>
             <li class="nav-item" onclick="switchTab('messages', this)"><i class="fas fa-envelope"></i> Messages <span id="unread-messages-badge" class="notification-badge hidden"></span></li>
@@ -200,6 +201,33 @@
                             <!-- Injected by JS -->
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- Official Report Cards View -->
+            <div id="reports" class="section">
+                <div class="parent-card" style="margin-bottom:1.5rem; background:#1E293B; border:1px solid #334155; border-radius:12px; padding:1.5rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                        <div>
+                            <h2 style="color:#F8FAFC; margin:0 0 0.3rem 0; font-size:1.3rem; display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fas fa-award" style="color:#f59e0b;"></i> Official CAPS Learner Report Cards
+                            </h2>
+                            <p style="color:#94a3b8; font-size:0.85rem; margin:0;">Download and inspect official South African DBE-formatted report cards certified by the School Examination Board.</p>
+                        </div>
+                        <div style="display:flex; gap:0.75rem; align-items:center;">
+                            <label style="color:#cbd5e1; font-size:0.82rem; font-weight:600;">Select Child:</label>
+                            <select id="parent-report-card-child-select" style="background:#0F172A; color:#F8FAFC; border:1px solid #334155; border-radius:6px; padding:0.45rem 0.75rem; font-size:0.85rem; cursor:pointer;" onchange="window.loadParentChildReportCards(this.value)">
+                                <!-- Injected dynamically by JS -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="parent-report-cards-container">
+                    <div style="text-align:center; padding:3rem; color:#94a3b8;">
+                        <i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>
+                        Loading official report cards for your child...
+                    </div>
                 </div>
             </div>
 
@@ -626,6 +654,34 @@
                     </div>
                     <button type="submit" class="btn btn-primary">Send Message</button>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Official South African DBE/CAPS Report Card Parent View Modal -->
+    <div id="parentOfficialReportCardModal" class="modal-container hidden" style="position:fixed; z-index:99999; left:0; top:0; width:100%; height:100%; overflow:auto; background:rgba(0,0,0,0.85); backdrop-filter:blur(5px);">
+        <div class="modal-content" style="background:#ffffff; color:#0f172a; border-radius:12px; max-width:880px; margin:30px auto; padding:2rem; box-shadow:0 25px 50px -12px rgba(0,0,0,0.9); position:relative;">
+            <!-- Action Toolbar (Hidden in print) -->
+            <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:1rem; margin-bottom:1.5rem;">
+                <span style="font-weight:700; color:#475569; font-size:0.9rem;"><i class="fas fa-certificate text-warning me-1"></i> Official CAPS Document - Fusion High School</span>
+                <div style="display:flex; gap:0.6rem;">
+                    <button class="btn btn-primary btn-sm" onclick="window.print()" style="background:#0284c7; border:none; color:#fff; padding:6px 14px; border-radius:6px; font-weight:600; cursor:pointer;">
+                        <i class="fas fa-print me-1"></i> Print / Download PDF
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('parentOfficialReportCardModal').classList.add('hidden')" style="background:#e2e8f0; border:none; color:#334155; padding:6px 14px; border-radius:6px; font-weight:600; cursor:pointer;">
+                        Close
+                    </button>
+                </div>
+            </div>
+
+            <!-- Printable Area with Watermark -->
+            <div id="parent-report-card-printable-area" style="position:relative; background:#ffffff; color:#0f172a; padding:1.5rem; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                <div style="position:absolute; top:45%; left:50%; transform:translate(-50%, -50%); opacity:0.06; pointer-events:none; z-index:1; text-align:center;">
+                    <img src="/assets/FH.png" onerror="this.src='/assets/fusion-app-icon.png'" alt="Fusion High Watermark" style="width:360px; height:auto;">
+                </div>
+                <div id="parent-official-report-card-content" style="position:relative; z-index:2;">
+                    <!-- Rendered by JS -->
+                </div>
             </div>
         </div>
     </div>

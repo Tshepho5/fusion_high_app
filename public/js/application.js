@@ -119,9 +119,9 @@ function initSchoolSelector() {
     const motto = selectedOpt.getAttribute('data-motto') || 'Innovate, Lead, Transform';
 
     if (emisTag) emisTag.textContent = `EMIS ${emis}`;
-    if (circuitText) circuitText.textContent = `📍 Circuit: ${circuit} • Limpopo DBE`;
+    if (circuitText) circuitText.textContent = ` Circuit: ${circuit} • Limpopo DBE`;
     if (mottoText) mottoText.textContent = `"${motto}"`;
-    if (brandBadge) brandBadge.textContent = `⚡ ${schoolName} Admissions`;
+    if (brandBadge) brandBadge.textContent = ` ${schoolName} Admissions`;
     if (portalTitle) portalTitle.textContent = `${schoolName} Learner Admissions`;
   }
 

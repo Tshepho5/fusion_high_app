@@ -416,15 +416,16 @@ exports.saveClassMarks = async (req, res) => {
                 if (existingMarksRes.rows.length > 0) {
                     await db.query(
                         `UPDATE marks
-                         SET score = $1, max_score = $2, percentage = $3, grade = $4, is_published = $5, assessment_name = $6, updated_at = NOW()
-                         WHERE id = $7`,
-                        [rawScore, maxMark, pctScore, childGrade, isPublished, assessmentTitle, existingMarksRes.rows[0].id]
+                         SET score = $1, max_score = $2, percentage = $3, grade = $4, is_published = $5,
+                             published_to_admin = $5, status = $6, assessment_name = $7, weight = $8, updated_at = NOW()
+                         WHERE id = $9`,
+                        [rawScore, maxMark, pctScore, childGrade, isPublished, isPublished ? 'published' : 'draft', assessmentTitle, maxMark, existingMarksRes.rows[0].id]
                     );
                 } else {
                     await db.query(
-                        `INSERT INTO marks (learner_id, child_id, subject, subject_name, term, mark_type, score, max_score, percentage, grade, is_published, assessment_name, recorded_by, recorded_at, updated_at)
-                         VALUES ($1, $1, $2, $2, $3, 'Assessment', $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
-                        [childId, subject, termNum, rawScore, maxMark, pctScore, childGrade, isPublished, assessmentTitle, teacherId]
+                        `INSERT INTO marks (learner_id, child_id, subject, subject_name, term, mark_type, score, max_score, percentage, grade, is_published, published_to_admin, status, assessment_name, weight, recorded_by, recorded_at, updated_at)
+                         VALUES ($1, $1, $2, $2, $3, 'Assessment', $4, $5, $6, $7, $8, $8, $9, $10, $11, $12, NOW(), NOW())`,
+                        [childId, subject, termNum, rawScore, maxMark, pctScore, childGrade, isPublished, isPublished ? 'published' : 'draft', assessmentTitle, maxMark, teacherId]
                     );
                 }
 

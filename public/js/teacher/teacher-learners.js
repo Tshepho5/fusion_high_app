@@ -421,8 +421,8 @@ export async function saveClassMarkSheet(isPublished = true) {
         });
 
         const statusMsg = isPublished
-            ? `Mark Register for "${assessment_name}" (${subject} Grade ${grade}) published successfully!\nUpdated scores are now live across Learner, Parent, and Principal/Admin portals.`
-            : `Draft marks for "${assessment_name}" (${subject} Grade ${grade}) saved as draft successfully. These marks can be edited and published whenever ready.`;
+            ? `Mark Register for "${assessment_name}" (${subject} Grade ${grade}) published to Admin Dashboard successfully!\nScores have been transmitted to the Principal / Admin for official CAPS Grade Report Card compilation.`
+            : `Draft marks for "${assessment_name}" (${subject} Grade ${grade}) saved as draft successfully. These marks can be edited and published to the Admin Dashboard whenever ready.`;
 
         alert(statusMsg);
         modal.style.display = 'none';

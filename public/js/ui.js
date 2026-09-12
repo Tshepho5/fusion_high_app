@@ -56,6 +56,8 @@ export function switchTab(tabId, el) {
     if (window.loadParentResources) window.loadParentResources();
   } else if (tabId === 'settings') {
     if (window.loadParentSettings) window.loadParentSettings();
+  } else if (tabId === 'reports') {
+    if (window.loadParentReportCardsTab) window.loadParentReportCardsTab();
   }
 }
 

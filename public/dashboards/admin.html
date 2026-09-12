@@ -30,6 +30,7 @@
       <li class="nav-item active" onclick="switchTab('overview', this)"><i class="fas fa-tachometer-alt"></i> Dashboard</li>
       <li class="nav-item" onclick="switchTab('reports', this)"><i class="fas fa-file-alt"></i> Reports</li>
       <li class="nav-item" onclick="switchTab('academics', this)"><i class="fas fa-book-open"></i> Academics</li>
+      <li class="nav-item" onclick="switchTab('report-cards', this)"><i class="fas fa-award" style="color:#f59e0b;"></i> Report Card Studio</li>
       <li class="nav-item" onclick="switchTab('users', this, 'teacher')"><i class="fas fa-chalkboard-teacher"></i> Teachers</li>
       <li class="nav-item" onclick="switchTab('users', this, 'learner')"><i class="fas fa-user-graduate"></i> Learners</li>
       <li class="nav-item" onclick="switchTab('timetables', this)"><i class="fas fa-calendar-alt"></i> Timetables</li>
@@ -756,6 +757,151 @@
           </div>
         </div>
       </section>
+      <!-- End Academics Section -->
+
+      <!-- Report Card Studio & Mark Transfer Section -->
+      <section id="report-cards" class="section">
+        <!-- Header & Quick Actions -->
+        <div class="card mb-1rem" style="background:#1e293b; border:1px solid #334155; padding:1.5rem; border-radius:14px; margin-bottom:1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <h2 class="card-title" style="color:#ffffff; font-size:1.4rem; margin:0 0 0.4rem 0;">
+                <i class="fas fa-award" style="color:#f59e0b; margin-right:0.5rem;"></i> South African CAPS Report Card Studio & Transfer
+              </h2>
+              <p style="color:#94a3b8; font-size:0.88rem; margin:0;">
+                Review teacher-submitted marks, transfer calculated assessments and weighted contributions to the official CAPS template, edit inline, and publish verified report cards to parents & teachers.
+              </p>
+            </div>
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+              <button class="btn btn-secondary" onclick="window.loadSchoolSubjectsSummary()" style="background:#334155; border:1px solid #475569; color:#f8fafc; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer;">
+                <i class="fas fa-sync-alt me-1"></i> Refresh Data
+              </button>
+              <button class="btn btn-primary" onclick="window.transferMarksToReportCardTemplate()" style="background:linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border:none; color:#fff; padding:8px 18px; border-radius:8px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(99,102,241,0.3);">
+                <i class="fas fa-file-import me-1"></i> Transfer Marks to Template
+              </button>
+            </div>
+          </div>
+
+          <!-- Selection & Filter Bar -->
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) 120px; gap:1rem; align-items:flex-end; margin-top:1.5rem; padding-top:1.25rem; border-top:1px solid #334155;">
+            <div>
+              <label style="color:#cbd5e1; font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Grade</label>
+              <select id="rc-filter-grade" class="form-control" style="background:#0f172a; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;" onchange="window.loadGradeTemplateGrid()">
+                <option value="10" selected>Grade 10</option>
+                <option value="11">Grade 11</option>
+                <option value="12">Grade 12</option>
+                <option value="8">Grade 8</option>
+                <option value="9">Grade 9</option>
+              </select>
+            </div>
+
+            <div>
+              <label style="color:#cbd5e1; font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Academic Stream</label>
+              <select id="rc-filter-stream" class="form-control" style="background:#0f172a; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;" onchange="window.loadGradeTemplateGrid()">
+                <option value="Science" selected>Science</option>
+                <option value="Commerce">Commerce</option>
+                <option value="Tourism">Tourism</option>
+                <option value="General">General</option>
+                <option value="All">All Streams</option>
+              </select>
+            </div>
+
+            <div>
+              <label style="color:#cbd5e1; font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Class Section</label>
+              <select id="rc-filter-class" class="form-control" style="background:#0f172a; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;" onchange="window.loadGradeTemplateGrid()">
+                <option value="All" selected>All Classes</option>
+                <option value="10A">10A</option>
+                <option value="10B">10B</option>
+                <option value="11A">11A</option>
+                <option value="11B">11B</option>
+                <option value="12A">12A</option>
+                <option value="12B">12B</option>
+              </select>
+            </div>
+
+            <div>
+              <label style="color:#cbd5e1; font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Academic Term</label>
+              <select id="rc-filter-term" class="form-control" style="background:#0f172a; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;" onchange="window.loadGradeTemplateGrid()">
+                <option value="Term 3" selected>Term 3</option>
+                <option value="Term 1">Term 1</option>
+                <option value="Term 2">Term 2</option>
+                <option value="Term 4">Term 4</option>
+              </select>
+            </div>
+
+            <div>
+              <button type="button" class="btn btn-primary" onclick="window.loadGradeTemplateGrid()" style="width:100%; height:42px; background:#38bdf8; border:none; color:#0f172a; font-weight:700; border-radius:8px; cursor:pointer;">
+                <i class="fas fa-search me-1"></i> Load
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- School Subjects Command Center (Live cards with Teacher Marks status & View Learners button) -->
+        <div class="card mb-1rem" style="background:#1e293b; border:1px solid #334155; padding:1.5rem; border-radius:14px; margin-bottom:1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <div>
+              <h3 style="color:#ffffff; font-size:1.15rem; margin:0 0 0.25rem 0;">
+                <i class="fas fa-layer-group" style="color:#38bdf8; margin-right:0.5rem;"></i> School Subjects & Teacher Submission Status
+              </h3>
+              <p style="color:#94a3b8; font-size:0.82rem; margin:0;">Real-time overview of teacher marks published into the admin dashboard.</p>
+            </div>
+            <span id="subjects-summary-count-badge" style="background:#0f172a; color:#38bdf8; padding:4px 10px; border-radius:20px; font-size:0.8rem; font-weight:700; border:1px solid #334155;">
+              Loading subjects...
+            </span>
+          </div>
+
+          <div id="school-subjects-summary-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:1rem;">
+            <!-- Rendered by JS: Cards for each subject with assigned teachers, marks count, status badge, and View Learners button -->
+          </div>
+        </div>
+
+        <!-- Interactive South African Report Card Template Grid (The Waiting Template) -->
+        <div class="card" style="background:#1e293b; border:1px solid #334155; padding:1.5rem; border-radius:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem; border-bottom:1px solid #334155; padding-bottom:1rem;">
+            <div>
+              <h3 id="rc-template-header-title" style="color:#ffffff; font-size:1.2rem; margin:0 0 0.35rem 0;">
+                <i class="fas fa-table" style="color:#10b981; margin-right:0.5rem;"></i> Report Card Master Template Grid
+              </h3>
+              <p id="rc-template-header-sub" style="color:#94a3b8; font-size:0.82rem; margin:0;">
+                Template waiting to be populated. Click "Transfer Marks to Template" above to calculate and display assessment holdings.
+              </p>
+            </div>
+            <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+              <button class="btn" onclick="window.saveGradeReportCardTemplate()" style="background:#10b981; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer;">
+                <i class="fas fa-save me-1"></i> Save Verified Template
+              </button>
+              <button class="btn" onclick="window.publishGradeReportCards()" style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color:#fff; border:none; padding:8px 18px; border-radius:8px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(245,158,11,0.3);">
+                <i class="fas fa-paper-plane me-1"></i> Publish to Parents & Teachers
+              </button>
+            </div>
+          </div>
+
+          <!-- Assessment Weight & Contribution Notification Banner -->
+          <div id="rc-holding-calc-banner" style="display:none; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); border-radius:10px; padding:0.85rem 1.25rem; margin-bottom:1rem; color:#cbd5e1; font-size:0.83rem;">
+            <i class="fas fa-calculator" style="color:#818cf8; margin-right:0.5rem; font-size:1rem;"></i>
+            <strong>Assessment Weights Calculated:</strong> Each assessment raw mark has been weighted and holding percentages computed per subject outcome. You may edit any mark inline; average percentages and CAPS levels update in real time.
+          </div>
+
+          <div class="table-responsive" style="max-height:600px; overflow-y:auto; border:1px solid #334155; border-radius:8px;">
+            <table class="table" id="rc-master-template-table" style="width:100%; border-collapse:collapse; text-align:left; font-size:0.85rem;">
+              <thead id="rc-master-template-thead" style="position:sticky; top:0; background:#0f172a; z-index:5;">
+                <!-- Dynamically generated headers with Learner Info, Subjects, Average, Status, and Actions -->
+              </thead>
+              <tbody id="rc-master-template-tbody">
+                <tr>
+                  <td colspan="10" style="text-align:center; padding:3rem 1rem; color:#94a3b8;">
+                    <i class="fas fa-file-invoice" style="font-size:2.5rem; color:#475569; margin-bottom:1rem; display:block;"></i>
+                    Template is ready and waiting to be filled.<br>
+                    Select your Grade and Stream above, then click <strong>"Transfer Marks to Template"</strong> to calculate and preview outcomes.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      <!-- End Report Card Studio Section -->
 
 
       <!-- Timetables Section -->
@@ -1266,6 +1412,87 @@
             <button type="submit" class="btn btn-primary" style="background:#6366f1; border:none; color:#fff; padding:8px 18px; border-radius:8px; font-weight:600;"><i class="fas fa-paper-plane me-1"></i> Publish Announcement</button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subject Learners Register & Flags Modal -->
+  <div id="subjectLearnersModal" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px);">
+    <div class="modal-content" style="background:#0f172a; border:1px solid #334155; color:#fff; border-radius:14px; max-width:980px; margin:40px auto; padding:1.75rem; box-shadow:0 25px 50px -12px rgba(0,0,0,0.8);">
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid #334155; padding-bottom:1rem; margin-bottom:1.25rem;">
+        <div>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <span class="badge" style="background:#4f46e5; color:#fff; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.75rem;" id="modal-subject-grade-badge">Grade 10</span>
+            <span class="badge" style="background:#0284c7; color:#fff; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.75rem;" id="modal-subject-stream-badge">Science</span>
+          </div>
+          <h3 id="modal-subject-title" style="color:#ffffff; margin:0.4rem 0 0.2rem 0; font-size:1.35rem; font-weight:700;">Subject Learners Register</h3>
+          <p id="modal-subject-meta" style="color:#94a3b8; font-size:0.83rem; margin:0;">Real-time attendance register, assessment scores, and academic/attendance risk flags.</p>
+        </div>
+        <span class="close-btn" onclick="document.getElementById('subjectLearnersModal').style.display='none'" style="color:#94a3b8; font-size:1.8rem; cursor:pointer; line-height:1;">&times;</span>
+      </div>
+
+      <div class="modal-body">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem;">
+          <input type="text" id="modal-subject-search-input" placeholder="Search learner by name, number, or class..." style="background:#1e293b; color:#fff; border:1px solid #334155; border-radius:8px; padding:0.55rem 1rem; width:280px; font-size:0.85rem;" onkeyup="window.filterSubjectLearnersModal(this.value)">
+          <div style="display:flex; gap:0.5rem; font-size:0.78rem;">
+            <span style="display:inline-flex; align-items:center; gap:4px; color:#ef4444;"><i class="fas fa-circle" style="font-size:8px;"></i> Critical Risk (&lt;40%)</span>
+            <span style="display:inline-flex; align-items:center; gap:4px; color:#f59e0b;"><i class="fas fa-circle" style="font-size:8px;"></i> At Risk (40-49%)</span>
+            <span style="display:inline-flex; align-items:center; gap:4px; color:#10b981;"><i class="fas fa-circle" style="font-size:8px;"></i> On Track (50-69%)</span>
+            <span style="display:inline-flex; align-items:center; gap:4px; color:#eab308;"><i class="fas fa-crown" style="font-size:10px;"></i> Distinction (70%+)</span>
+          </div>
+        </div>
+
+        <div class="table-responsive" style="max-height:480px; overflow-y:auto; border:1px solid #334155; border-radius:8px;">
+          <table class="table" style="width:100%; border-collapse:collapse; font-size:0.84rem; text-align:left;">
+            <thead style="position:sticky; top:0; background:#1e293b; color:#cbd5e1; z-index:3;">
+              <tr>
+                <th style="padding:10px 12px;">Learner</th>
+                <th style="padding:10px 12px;">Class</th>
+                <th style="padding:10px 12px; text-align:center;">Assessments</th>
+                <th style="padding:10px 12px; text-align:center;">Subject Mark</th>
+                <th style="padding:10px 12px; text-align:center;">CAPS Level</th>
+                <th style="padding:10px 12px;">Attendance Register</th>
+                <th style="padding:10px 12px;">Risk & Status Flags</th>
+              </tr>
+            </thead>
+            <tbody id="modal-subject-learners-tbody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.25rem; border-top:1px solid #334155; padding-top:1rem;">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('subjectLearnersModal').style.display='none'" style="background:#334155; color:#cbd5e1; border:none; padding:8px 16px; border-radius:8px; font-weight:600; cursor:pointer;">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Official South African DBE/CAPS Report Card Preview Modal -->
+  <div id="officialReportCardModal" class="modal" style="display:none; position:fixed; z-index:99999; left:0; top:0; width:100%; height:100%; overflow:auto; background:rgba(0,0,0,0.8); backdrop-filter:blur(5px);">
+    <div class="modal-content" style="background:#ffffff; color:#0f172a; border-radius:12px; max-width:880px; margin:30px auto; padding:2rem; box-shadow:0 25px 50px -12px rgba(0,0,0,0.9); position:relative;">
+      <!-- Action Toolbar (Hidden in print) -->
+      <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:1rem; margin-bottom:1.5rem;">
+        <span style="font-weight:700; color:#475569; font-size:0.9rem;"><i class="fas fa-certificate text-warning me-1"></i> Official DBE / CAPS Formatted Document</span>
+        <div style="display:flex; gap:0.6rem;">
+          <button class="btn btn-primary btn-sm" onclick="window.printOfficialReportCard()" style="background:#0284c7; border:none; color:#fff; padding:6px 14px; border-radius:6px; font-weight:600; cursor:pointer;">
+            <i class="fas fa-print me-1"></i> Print / Save PDF
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('officialReportCardModal').style.display='none'" style="background:#e2e8f0; border:none; color:#334155; padding:6px 14px; border-radius:6px; font-weight:600; cursor:pointer;">
+            Close
+          </button>
+        </div>
+      </div>
+
+      <!-- Printable Document Container -->
+      <div id="official-report-card-printable-area" style="position:relative; background:#ffffff; color:#0f172a; padding:1.5rem; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <!-- Watermark Container -->
+        <div style="position:absolute; top:45%; left:50%; transform:translate(-50%, -50%); opacity:0.06; pointer-events:none; z-index:1; text-align:center;">
+          <img src="/assets/FH.png" onerror="this.src='/assets/fusion-app-icon.png'" alt="Fusion High Watermark" style="width:360px; height:auto;">
+        </div>
+
+        <div id="official-report-card-content" style="position:relative; z-index:2;">
+          <!-- Rendered dynamically by window.renderOfficialReportCardView -->
+        </div>
       </div>
     </div>
   </div>

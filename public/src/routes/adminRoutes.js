@@ -64,6 +64,8 @@ router.post('/reports/generate', auth, isAdmin, adminController.generateReport);
 // Academics Overview & Assessment Audits
 router.get('/academics/overview', auth, isAdmin, adminController.getAcademicOverview);
 router.post('/academics/moderate', auth, isAdmin, adminController.moderateAssessmentBatch);
+router.get('/academics/subjects-summary', auth, isAdmin, adminController.getSchoolSubjectsSummary);
+router.get('/academics/subject-learners', auth, isAdmin, adminController.getSubjectLearnersWithFlags);
 
 // Admissions Management
 router.get('/admissions', auth, isAdmin, adminController.getAllAdmissions);
