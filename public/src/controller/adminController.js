@@ -3027,19 +3027,24 @@ exports.getSchoolSubjectsSummary = async (req, res) => {
         const gradeFilter = req.query.grade ? parseInt(req.query.grade, 10) : null;
         const streamFilter = (req.query.stream || '').trim();
 
-        // 1. Fetch subjects
+        // 1. Fetch subjects directly from the database subjects table
         let subjQuery = `
             SELECT s.id, s.name, s.code, s.grade, s.stream
             FROM subjects s
-            WHERE s.school_id = $1
+            WHERE 1=1
         `;
-        const params = [schoolId];
+        const params = [];
         if (gradeFilter) {
             params.push(gradeFilter);
             subjQuery += ` AND s.grade = $${params.length}`;
         }
         if (streamFilter && streamFilter !== 'All') {
-            params.push(streamFilter);
+            let normStream = streamFilter;
+            if (normStream.toLowerCase().includes('science')) normStream = 'Science';
+            else if (normStream.toLowerCase().includes('commerce')) normStream = 'Commerce';
+            else if (normStream.toLowerCase().includes('tourism')) normStream = 'Tourism';
+            else if (normStream.toLowerCase().includes('general')) normStream = 'General';
+            params.push(normStream);
             subjQuery += ` AND (s.stream = $${params.length} OR s.stream = 'General' OR s.stream IS NULL)`;
         }
         subjQuery += ` ORDER BY s.grade ASC, s.name ASC;`;

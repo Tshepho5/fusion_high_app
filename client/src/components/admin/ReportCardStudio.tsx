@@ -102,18 +102,49 @@ export const ReportCardStudio: React.FC = () => {
         academicYear: academicYear
       });
 
-      setLearners(res.learners || []);
-      setSubjectColumns(res.subjects || []);
+      const formattedLearners: TemplateLearner[] = (res.learners || []).map((l: any) => {
+        const subjectsDict: Record<string, number> = {};
+        if (Array.isArray(l.subjects)) {
+          l.subjects.forEach((s: any) => {
+            subjectsDict[s.subject || s.name] = Number(s.mark) || 0;
+          });
+        } else if (typeof l.subjects === 'object' && l.subjects !== null) {
+          Object.assign(subjectsDict, l.subjects);
+        }
+
+        return {
+          child_id: l.child_id || l.id,
+          full_name: l.full_name || l.learner_name,
+          surname: l.surname || l.learner_surname || '',
+          learner_number: l.learner_number || '',
+          grade: l.grade,
+          class_name: l.class_name || `${selectedGrade}A`,
+          stream: l.stream || selectedStream,
+          attendance_rate: l.attendance_percentage || l.attendance?.percentage || l.attendance_rate || 95,
+          days_present: l.attendance?.days_present || l.days_present || 48,
+          days_absent: l.attendance?.days_absent || l.days_absent || 2,
+          subjects: subjectsDict,
+          average_mark: Number(l.overall_average) || 0,
+          overall_caps_level: l.overall_level || 4,
+          promotion_decision: l.promotion_status || l.promotion_decision || 'Promoted',
+          teacher_comment: l.teacher_comment || '',
+          principal_comment: l.principal_comment || ''
+        };
+      });
+
+      setLearners(formattedLearners);
+      setSubjectColumns(res.subjects || res.schoolSubjects || []);
       if (res.assessment_weights && res.assessment_weights.length > 0) {
         setAssessmentWeights(res.assessment_weights);
       }
 
-      setToastMessage(`Transferred marks & calculated SBA weightings for Grade ${selectedGrade} (${res.learners?.length || 0} learners)`);
+      setToastMessage(`Transferred marks & calculated SBA weightings for Grade ${selectedGrade} (${formattedLearners.length} learners)`);
       setTimeout(() => setToastMessage(null), 5000);
     } catch (err: any) {
       console.error('Failed to load grade template marks:', err);
-      setToastMessage(`Error: ${err.message}`);
-      setTimeout(() => setToastMessage(null), 5000);
+      const errMsg = err.response?.data?.error || err.message;
+      setToastMessage(`Error: ${errMsg}`);
+      setTimeout(() => setToastMessage(null), 6000);
     } finally {
       setLoading(false);
     }

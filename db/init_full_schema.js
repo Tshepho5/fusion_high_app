@@ -1107,8 +1107,34 @@ async function initializeAllDatabaseTables(customClient) {
         teacher_comment TEXT,
         principal_comment TEXT,
         is_published BOOLEAN DEFAULT TRUE,
+        class_name VARCHAR(50),
+        stream VARCHAR(50),
+        promotion_status VARCHAR(100),
+        days_present INTEGER DEFAULT 0,
+        days_absent INTEGER DEFAULT 0,
+        total_days INTEGER DEFAULT 0,
+        attendance_percentage NUMERIC(5,2),
+        principal_signature TEXT,
+        published_at TIMESTAMP WITH TIME ZONE,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE report_cards ADD COLUMN IF NOT EXISTS class_name VARCHAR(50);
+      ALTER TABLE report_cards ADD COLUMN IF NOT EXISTS stream VARCHAR(50);
+      ALTER TABLE report_cards ADD COLUMN IF NOT EXISTS promotion_status VARCHAR(100);
+      ALTER TABLE report_cards ADD COLUMN IF NOT EXISTS days_present INTEGER DEFAULT 0;
+      ALTER TABLE report_cards ADD COLUMN IF NOT EXISTS days_absent INTEGER DEFAULT 0;
+      ALTER TABLE report_cards ADD COLUMN IF NOT EXISTS total_days INTEGER DEFAULT 0;
+      ALTER TABLE report_cards ADD COLUMN IF NOT EXISTS attendance_percentage NUMERIC(5,2);
+      ALTER TABLE report_cards ADD COLUMN IF NOT EXISTS principal_signature TEXT;
+      ALTER TABLE report_cards ADD COLUMN IF NOT EXISTS published_at TIMESTAMP WITH TIME ZONE;
+      ALTER TABLE report_cards ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS postal_address TEXT;
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS published_to_admin BOOLEAN DEFAULT FALSE;
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'submitted';
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS weight NUMERIC DEFAULT 100;
 
       DO $$
       BEGIN
