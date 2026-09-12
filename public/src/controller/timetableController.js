@@ -176,8 +176,8 @@ exports.generateAITimetable = async (req, res) => {
                 [targetGrade, stream, schoolId]
             ),
             db.query(
-                `SELECT name FROM subjects WHERE (grade = $1 OR grade IS NULL) AND (stream = $2 OR stream = 'General' OR stream ILIKE 'General%') AND school_id = $3 ORDER BY name;`,
-                [targetGrade, stream, schoolId]
+                `SELECT name FROM subjects WHERE (grade = $1 OR grade IS NULL) AND (stream = $2 OR stream = 'General' OR stream ILIKE 'General%') ORDER BY name;`,
+                [targetGrade, stream]
             ),
             // Fetch all other active published timetables for THIS school to avoid educator double-booking
             db.query(

@@ -1070,7 +1070,7 @@ exports.getSchoolMetadata = async (req, res) => {
             db.query('SELECT id, name, description FROM departments WHERE school_id = $1 ORDER BY id', [schoolId]),
             db.query('SELECT id, name FROM employee_roles ORDER BY id'),
             db.query('SELECT id, name, grade, stream FROM classes WHERE school_id = $1 ORDER BY grade, name', [schoolId]),
-            db.query('SELECT id, name, code, grade, stream FROM subjects WHERE school_id = $1 ORDER BY grade, name', [schoolId])
+            db.query('SELECT id, name, code, grade, stream FROM subjects ORDER BY grade, name')
         ]);
 
         let departments = deptsRes.rows;
@@ -1902,8 +1902,8 @@ exports.getAcademicOverview = async (req, res) => {
 
         const progressRes = await db.query(query, params);
 
-        // Fetch distinct subjects & grades available in database for this school
-        const subjectsRes = await db.query(`SELECT DISTINCT name FROM subjects WHERE (school_id = $1 OR (school_id IS NULL AND $1 = 1)) ORDER BY name ASC`, [schoolId]);
+        // Fetch distinct subjects available in database
+        const subjectsRes = await db.query(`SELECT DISTINCT name FROM subjects ORDER BY name ASC`);
         const allSubjects = subjectsRes.rows.map(r => r.name);
 
         // Calculate overall SBA metrics
@@ -3069,17 +3069,18 @@ exports.getSchoolSubjectsSummary = async (req, res) => {
             );
             const teacherName = educator ? `${educator.full_name} ${educator.surname}` : 'Department Educator';
 
-            // Count learners
-            const learnerCountRes = await db.query(`
+            // Count learners enrolled in this grade/stream from database
+            let countQuery = `
                 SELECT COUNT(DISTINCT c.id) as count
                 FROM children c
                 WHERE c.school_id = $1 AND c.grade = $2
-                  AND (
-                    c.subjects @> ARRAY[$3::text]
-                    OR c.subjects IS NULL
-                    OR $3 = ANY(c.subjects)
-                  );
-            `, [schoolId, sub.grade, sub.name]);
+            `;
+            const countParams = [schoolId, sub.grade];
+            if (sub.grade >= 10 && sub.stream && sub.stream !== 'General') {
+                countParams.push(sub.stream);
+                countQuery += ` AND (c.stream = $${countParams.length} OR c.stream IS NULL)`;
+            }
+            const learnerCountRes = await db.query(countQuery, countParams);
             const learnerCount = parseInt(learnerCountRes.rows[0]?.count || '0', 10);
 
             // Compute assessment statistics & marks
@@ -3096,9 +3097,9 @@ exports.getSchoolSubjectsSummary = async (req, res) => {
 
             const stats = marksStatsRes.rows[0];
             const recordedCount = parseInt(stats?.total_marks_recorded || '0', 10);
-            const avgMark = recordedCount > 0 ? Number(stats.avg_mark) : 68;
+            const avgMark = recordedCount > 0 ? Number(stats.avg_mark) : 0;
             const passCount = parseInt(stats?.passed_count || '0', 10);
-            const passRate = recordedCount > 0 ? Math.round((passCount / recordedCount) * 100) : 85;
+            const passRate = recordedCount > 0 ? Math.round((passCount / recordedCount) * 100) : 0;
             const isPublished = parseInt(stats?.published_count || '0', 10) > 0;
 
             subjectsSummary.push({
@@ -3108,8 +3109,8 @@ exports.getSchoolSubjectsSummary = async (req, res) => {
                 grade: sub.grade,
                 stream: sub.stream || 'General',
                 teacher_name: teacherName,
-                learner_count: learnerCount || 42,
-                assessments_count: parseInt(stats?.assessments_count || '0', 10) || 1,
+                learner_count: learnerCount,
+                assessments_count: parseInt(stats?.assessments_count || '0', 10),
                 average_mark: avgMark,
                 pass_rate: passRate,
                 status: isPublished ? 'Published to Admin' : (recordedCount > 0 ? 'Submitted' : 'Pending Entry'),
@@ -3172,54 +3173,52 @@ exports.getSubjectLearnersWithFlags = async (req, res) => {
             `, [l.id, subject, term]);
 
             let assessments = marksRes.rows;
-            let subjectAvg = 65; // standard default if not yet entered
+            let subjectAvg = null;
+            let capsLevel = null;
+            let capsDescriptor = 'No Marks Recorded';
+            let academicRiskFlag = 'neutral';
+            let academicFlagLabel = 'No Marks Recorded';
 
             if (assessments.length > 0) {
                 const sum = assessments.reduce((acc, a) => acc + Number(a.percentage || 0), 0);
                 subjectAvg = Math.round(sum / assessments.length);
-            }
 
-            // CAPS Level
-            let capsLevel = 4;
-            let capsDescriptor = 'Level 4: Adequate (50 - 59%)';
-            let academicRiskFlag = 'good'; // green
-            let academicFlagLabel = 'On Track (50-79%)';
-
-            if (subjectAvg >= 80) {
-                capsLevel = 7;
-                capsDescriptor = 'Level 7: Outstanding (80 - 100%)';
-                academicRiskFlag = 'distinction';
-                academicFlagLabel = 'Distinction / Top Achiever (80-100%)';
-            } else if (subjectAvg >= 70) {
-                capsLevel = 6;
-                capsDescriptor = 'Level 6: Meritorious (70 - 79%)';
-                academicRiskFlag = 'good';
-                academicFlagLabel = 'Meritorious (70-79%)';
-            } else if (subjectAvg >= 60) {
-                capsLevel = 5;
-                capsDescriptor = 'Level 5: Substantial (60 - 69%)';
-                academicRiskFlag = 'good';
-                academicFlagLabel = 'Substantial (60-69%)';
-            } else if (subjectAvg >= 50) {
-                capsLevel = 4;
-                capsDescriptor = 'Level 4: Adequate (50 - 59%)';
-                academicRiskFlag = 'good';
-                academicFlagLabel = 'Adequate (50-59%)';
-            } else if (subjectAvg >= 40) {
-                capsLevel = 3;
-                capsDescriptor = 'Level 3: Moderate (40 - 49%)';
-                academicRiskFlag = 'moderate'; // amber
-                academicFlagLabel = 'Moderate / At-Risk (40-49%)';
-            } else if (subjectAvg >= 30) {
-                capsLevel = 2;
-                capsDescriptor = 'Level 2: Elementary (30 - 39%)';
-                academicRiskFlag = 'critical'; // red
-                academicFlagLabel = 'Critical Risk / Failing (30-39%)';
-            } else {
-                capsLevel = 1;
-                capsDescriptor = 'Level 1: Not Achieved (0 - 29%)';
-                academicRiskFlag = 'critical'; // red
-                academicFlagLabel = 'Critical Risk / Failing (<30%)';
+                if (subjectAvg >= 80) {
+                    capsLevel = 7;
+                    capsDescriptor = 'Level 7: Outstanding (80 - 100%)';
+                    academicRiskFlag = 'distinction';
+                    academicFlagLabel = 'Distinction / Top Achiever (80-100%)';
+                } else if (subjectAvg >= 70) {
+                    capsLevel = 6;
+                    capsDescriptor = 'Level 6: Meritorious (70 - 79%)';
+                    academicRiskFlag = 'good';
+                    academicFlagLabel = 'Meritorious (70-79%)';
+                } else if (subjectAvg >= 60) {
+                    capsLevel = 5;
+                    capsDescriptor = 'Level 5: Substantial (60 - 69%)';
+                    academicRiskFlag = 'good';
+                    academicFlagLabel = 'Substantial (60-69%)';
+                } else if (subjectAvg >= 50) {
+                    capsLevel = 4;
+                    capsDescriptor = 'Level 4: Adequate (50 - 59%)';
+                    academicRiskFlag = 'good';
+                    academicFlagLabel = 'Adequate (50-59%)';
+                } else if (subjectAvg >= 40) {
+                    capsLevel = 3;
+                    capsDescriptor = 'Level 3: Moderate (40 - 49%)';
+                    academicRiskFlag = 'moderate'; // amber
+                    academicFlagLabel = 'Moderate / At-Risk (40-49%)';
+                } else if (subjectAvg >= 30) {
+                    capsLevel = 2;
+                    capsDescriptor = 'Level 2: Elementary (30 - 39%)';
+                    academicRiskFlag = 'critical'; // red
+                    academicFlagLabel = 'Critical Risk / Failing (30-39%)';
+                } else {
+                    capsLevel = 1;
+                    capsDescriptor = 'Level 1: Not Achieved (0 - 29%)';
+                    academicRiskFlag = 'critical'; // red
+                    academicFlagLabel = 'Critical Risk / Failing (<30%)';
+                }
             }
 
             // 2. Fetch attendance register summary
@@ -3233,19 +3232,21 @@ exports.getSubjectLearnersWithFlags = async (req, res) => {
             `, [l.id]);
 
             const attData = attRes.rows[0];
-            const totalDays = parseInt(attData?.total_days || '50', 10) || 50;
-            const daysPresent = parseInt(attData?.days_present || '46', 10);
-            const daysAbsent = parseInt(attData?.days_absent || (totalDays - daysPresent), 10);
-            const attPct = totalDays > 0 ? Math.round((daysPresent / totalDays) * 100) : 92;
+            const totalDays = parseInt(attData?.total_days || '0', 10);
+            const daysPresent = parseInt(attData?.days_present || '0', 10);
+            const daysAbsent = parseInt(attData?.days_absent || '0', 10);
+            const attPct = totalDays > 0 ? Math.round((daysPresent / totalDays) * 100) : 100;
 
             let attendanceFlag = 'good'; // green
-            let attendanceFlagLabel = 'Good Attendance (≥90%)';
-            if (attPct < 80) {
-                attendanceFlag = 'chronic_absent'; // red
-                attendanceFlagLabel = 'Chronic Absenteeism (<80%)';
-            } else if (attPct < 90) {
-                attendanceFlag = 'warning'; // amber
-                attendanceFlagLabel = 'Attendance Warning (80-89%)';
+            let attendanceFlagLabel = totalDays > 0 ? 'Good Attendance (≥90%)' : 'No Register Entries';
+            if (totalDays > 0) {
+                if (attPct < 80) {
+                    attendanceFlag = 'chronic_absent'; // red
+                    attendanceFlagLabel = 'Chronic Absenteeism (<80%)';
+                } else if (attPct < 90) {
+                    attendanceFlag = 'warning'; // amber
+                    attendanceFlagLabel = 'Attendance Warning (80-89%)';
+                }
             }
 
             // 3. Behavioral incidents count
