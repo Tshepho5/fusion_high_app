@@ -230,14 +230,14 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
   }, [allModules, selectedCategory, searchQuery]);
 
   return (
-    <div className="space-y-6 animate-fade-in text-slate-100 pb-20">
+    <div className="space-y-6 animate-fade-in text-slate-800 dark:text-slate-100 pb-20">
       {/* Header Banner with View Mode Switcher & Search */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-surface-dark border border-white/10 shadow-lg relative overflow-hidden">
+      <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-xl sm:text-2xl font-black font-display text-white tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-black font-display text-slate-900 dark:text-white tracking-tight">
               More Modules
             </h1>
           </div>
@@ -251,18 +251,18 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search modules..."
-                className="w-full pl-9 pr-4 py-2 rounded-xl bg-surface-darker border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
+                className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-100 dark:bg-surface-darker border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
               />
             </div>
 
             {/* View Mode Switcher Buttons */}
-            <div className="flex items-center gap-1 p-1 bg-surface-darker rounded-xl border border-white/10 shrink-0">
+            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-surface-darker rounded-xl border border-slate-200 dark:border-white/10 shrink-0">
               <button
                 onClick={() => handleSetViewMode('grid')}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   viewMode === 'grid'
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 border border-cyan-500/40 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
                 title="Standard Grid"
               >
@@ -272,8 +272,8 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
                 onClick={() => handleSetViewMode('compact')}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   viewMode === 'compact'
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 border border-cyan-500/40 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
                 title="Compact App Tiles"
               >
@@ -283,8 +283,8 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
                 onClick={() => handleSetViewMode('list')}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   viewMode === 'list'
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 border border-cyan-500/40 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
                 title="List View"
               >
@@ -302,8 +302,8 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
               onClick={() => setSelectedCategory(cat.id)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 selectedCategory === cat.id
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                  : 'bg-surface-darker/60 text-slate-400 hover:text-white hover:bg-white/5 border border-white/5'
+                  ? 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 border border-cyan-500/40 shadow-sm'
+                  : 'bg-slate-100 dark:bg-surface-darker/60 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5 border border-slate-200 dark:border-white/5'
               }`}
             >
               {cat.label}
@@ -323,17 +323,17 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
               <div
                 key={item.id}
                 onClick={() => onNavigateTab(item.id)}
-                className="card-interactive p-4 rounded-2xl bg-surface-dark border border-white/10 hover:border-cyan-500/50 hover:bg-surface-darker transition-all duration-300 cursor-pointer flex items-center gap-3.5 shadow-sm group hover:-translate-y-0.5"
+                className="card-interactive p-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 hover:border-indigo-500/50 dark:hover:border-cyan-500/50 hover:bg-slate-50 dark:hover:bg-surface-darker transition-all duration-300 cursor-pointer flex items-center gap-3.5 shadow-sm group hover:-translate-y-0.5"
               >
                 <div className={`w-11 h-11 rounded-2xl ${item.iconBg} border flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm shrink-0`}>
                   <IconComp className={`w-5 h-5 ${item.color}`} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-xs sm:text-sm font-bold text-white group-hover:text-cyan-300 transition-colors leading-snug">
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-cyan-300 transition-colors leading-snug">
                     {item.title}
                   </h3>
                   {item.badge && (
-                    <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-white/5 border border-white/10 text-slate-400 uppercase tracking-wider">
+                    <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                       {item.badge}
                     </span>
                   )}
@@ -355,13 +355,13 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
               <div
                 key={item.id}
                 onClick={() => onNavigateTab(item.id)}
-                className="card-interactive p-3.5 rounded-2xl bg-surface-dark border border-white/10 hover:border-cyan-500/50 hover:bg-surface-darker transition-all duration-300 cursor-pointer flex flex-col items-center justify-center text-center gap-2.5 shadow-sm group hover:-translate-y-1"
+                className="card-interactive p-3.5 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 hover:border-indigo-500/50 dark:hover:border-cyan-500/50 hover:bg-slate-50 dark:hover:bg-surface-darker transition-all duration-300 cursor-pointer flex flex-col items-center justify-center text-center gap-2.5 shadow-sm group hover:-translate-y-1"
                 title={item.title}
               >
                 <div className={`w-12 h-12 rounded-2xl ${item.iconBg} border flex items-center justify-center group-hover:scale-115 transition-transform shadow-sm`}>
                   <IconComp className={`w-6 h-6 ${item.color}`} />
                 </div>
-                <span className="text-[11px] font-bold text-white group-hover:text-cyan-300 transition-colors line-clamp-2 leading-tight">
+                <span className="text-[11px] font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-cyan-300 transition-colors line-clamp-2 leading-tight">
                   {item.title}
                 </span>
               </div>
@@ -381,17 +381,17 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
               <div
                 key={item.id}
                 onClick={() => onNavigateTab(item.id)}
-                className="card-interactive p-3 px-4 rounded-xl bg-surface-dark border border-white/10 hover:border-cyan-500/50 hover:bg-surface-darker transition-all duration-300 cursor-pointer flex items-center justify-between shadow-sm group hover:-translate-y-0.5"
+                className="card-interactive p-3 px-4 rounded-xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 hover:border-indigo-500/50 dark:hover:border-cyan-500/50 hover:bg-slate-50 dark:hover:bg-surface-darker transition-all duration-300 cursor-pointer flex items-center justify-between shadow-sm group hover:-translate-y-0.5"
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-9 h-9 rounded-xl ${item.iconBg} border flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform`}>
                     <IconComp className={`w-4.5 h-4.5 ${item.color}`} />
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-white group-hover:text-cyan-300 transition-colors">
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-cyan-300 transition-colors">
                     {item.title}
                   </span>
                 </div>
-                <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
+                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
               </div>
             );
           })}
@@ -399,12 +399,12 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
       )}
 
       {filteredModules.length === 0 && (
-        <div className="text-center py-12 p-6 rounded-2xl bg-surface-dark border border-white/10 space-y-2">
-          <HelpCircle className="w-8 h-8 text-slate-500 mx-auto" />
-          <p className="text-sm font-bold text-slate-300">No modules match your search</p>
+        <div className="text-center py-12 p-6 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 space-y-2">
+          <HelpCircle className="w-8 h-8 text-slate-400 mx-auto" />
+          <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No modules match your search</p>
           <button
             onClick={() => { setSearchQuery(''); setSelectedCategory('all'); }}
-            className="mt-2 px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 text-xs font-bold border border-cyan-500/30 hover:bg-cyan-500/30 transition-all cursor-pointer"
+            className="mt-2 px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 text-xs font-bold border border-cyan-500/30 hover:bg-cyan-500/30 transition-all cursor-pointer"
           >
             Clear Filters
           </button>
