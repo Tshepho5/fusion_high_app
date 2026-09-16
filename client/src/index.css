@@ -1284,5 +1284,128 @@ input.login-glowing-input-light::placeholder {
   animation: placeholder-glow-light 2.5s ease-in-out infinite !important;
 }
 
+/* =========================================================================
+   ANIMATED ROTATING BORDER GLOW ON HOVER (MATCHING TEACHER PORTAL)
+   ========================================================================= */
+
+@property --border-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes rotateBorderGlow {
+  0% {
+    --border-angle: 0deg;
+  }
+  100% {
+    --border-angle: 360deg;
+  }
+}
+
+@keyframes borderGlowPulse {
+  0%, 100% {
+    box-shadow: 0 10px 24px -4px rgba(0, 0, 0, 0.25), 0 0 18px -2px rgba(99, 102, 241, 0.35);
+  }
+  50% {
+    box-shadow: 0 14px 28px -4px rgba(0, 0, 0, 0.3), 0 0 24px 1px rgba(6, 182, 212, 0.45);
+  }
+}
+
+.animated-border-card {
+  position: relative;
+  isolation: isolate;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+}
+
+.animated-border-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--border-angle),
+    transparent 0deg,
+    transparent 110deg,
+    rgba(99, 102, 241, 0.25) 140deg,
+    #6366f1 180deg,
+    #06b6d4 205deg,
+    #818cf8 230deg,
+    transparent 260deg,
+    transparent 360deg
+  );
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 10;
+}
+
+.animated-border-card:hover::before {
+  opacity: 1;
+  animation: rotateBorderGlow 2.5s linear infinite;
+}
+
+.animated-border-card:hover {
+  transform: translateY(-3px);
+  animation: borderGlowPulse 2.5s ease-in-out infinite;
+  border-color: transparent !important;
+}
+
+/* =========================================================================
+   SKELETON SHIMMER WAVE ANIMATION
+   ========================================================================= */
+
+@keyframes skeleton-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.shimmer-wave {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-wave::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.08) 20%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.08) 80%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: skeleton-shimmer 1.8s infinite;
+  pointer-events: none;
+}
+
+.theme-light .shimmer-wave::after,
+.light .shimmer-wave::after {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.03) 20%,
+    rgba(0, 0, 0, 0.08) 50%,
+    rgba(0, 0, 0, 0.03) 80%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
 
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { adminService } from '../../services/api';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { AdminOverviewSkeleton } from '../../components/admin/AdminOverviewSkeleton';
 import { Modal } from '../../components/common/Modal';
 import {
   Users,
@@ -382,7 +383,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
     });
   }, [masterSubjects, selectedGrade, selectedCategory, subjectSearch]);
 
-  if (loading) return <LoadingSpinner text="Loading administrative control center..." />;
+  if (loading) return <AdminOverviewSkeleton />;
 
   const totalLearners = stats?.enrolled_learners !== undefined 
     ? Number(stats.enrolled_learners) 
@@ -494,7 +495,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
               <div
                 key={idx}
                 onClick={() => onNavigateTab(m.tab)}
-                className="min-w-[270px] max-w-[300px] shrink-0 snap-start rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 hover:border-indigo-500/50 p-4 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group space-y-3 cursor-pointer"
+                className="min-w-[270px] max-w-[300px] shrink-0 snap-start rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 hover:border-indigo-500/50 p-4 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group space-y-3 cursor-pointer animated-border-card"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{m.title}</span>
@@ -686,7 +687,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   return (
                     <div
                       key={sub.id}
-                      className="min-w-[320px] max-w-[350px] shrink-0 snap-start rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group overflow-hidden"
+                      className="min-w-[320px] max-w-[350px] shrink-0 snap-start rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group overflow-hidden animated-border-card"
                     >
                       {/* Subject Background Picture Banner */}
                       <div className="relative h-32 w-full overflow-hidden bg-slate-900">
@@ -789,7 +790,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   return (
                     <div
                       key={sub.id}
-                      className="rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group overflow-hidden"
+                      className="rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group overflow-hidden animated-border-card"
                     >
                       {/* Subject Background Picture Banner */}
                       <div className="relative h-32 w-full overflow-hidden bg-slate-900">
@@ -893,7 +894,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     <div
                       key={sub.id}
                       onClick={() => setViewMoreSubject(sub)}
-                      className="rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-md cursor-pointer group overflow-hidden flex flex-col justify-between"
+                      className="rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-md cursor-pointer group overflow-hidden flex flex-col justify-between animated-border-card"
                     >
                       <div className="relative h-20 w-full overflow-hidden bg-slate-900">
                         <img
@@ -934,7 +935,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   return (
                     <div
                       key={sub.id}
-                      className="p-3 sm:px-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                      className="p-3 sm:px-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 group animated-border-card"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 relative bg-slate-900">
@@ -1065,7 +1066,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 <div
                   key={func.id}
                   onClick={() => onNavigateTab(func.id)}
-                  className="p-3.5 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-surface-darker transition-all cursor-pointer flex items-center gap-3 shadow-sm group"
+                  className="p-3.5 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-surface-darker transition-all cursor-pointer flex items-center gap-3 shadow-sm group animated-border-card"
                 >
                   <div className={`w-10 h-10 rounded-xl ${func.color} border flex items-center justify-center group-hover:scale-105 transition-transform shrink-0`}>
                     <IconComp className="w-5 h-5" />
@@ -1088,7 +1089,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 <div
                   key={func.id}
                   onClick={() => onNavigateTab(func.id)}
-                  className="p-3 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-surface-darker transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-2 shadow-sm group"
+                  className="p-3 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-surface-darker transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-2 shadow-sm group animated-border-card"
                 >
                   <div className={`w-11 h-11 rounded-2xl ${func.color} border flex items-center justify-center group-hover:scale-110 transition-transform`}>
                     <IconComp className="w-5 h-5" />
@@ -1111,7 +1112,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 <div
                   key={func.id}
                   onClick={() => onNavigateTab(func.id)}
-                  className="p-3 px-4 rounded-xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-surface-darker transition-all cursor-pointer flex items-center justify-between shadow-sm group"
+                  className="p-3 px-4 rounded-xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-surface-darker transition-all cursor-pointer flex items-center justify-between shadow-sm group animated-border-card"
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-lg ${func.color} border flex items-center justify-center shrink-0`}>

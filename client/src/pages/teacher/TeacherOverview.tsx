@@ -481,7 +481,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
               return (
                 <div
                   key={card.id || idx}
-                  className="min-w-[310px] max-w-[340px] shrink-0 snap-start rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden"
+                  className="min-w-[310px] max-w-[340px] shrink-0 snap-start rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden animated-border-card"
                 >
                   {/* Subject Picture Banner with Profile Overlay */}
                   <div className="relative h-28 w-full overflow-hidden bg-slate-900">
@@ -611,7 +611,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
               return (
                 <div
                   key={card.id || idx}
-                  className="rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden w-full"
+                  className="rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden w-full animated-border-card"
                 >
                   {/* Subject Picture Banner with Profile Overlay */}
                   <div className="relative h-28 w-full overflow-hidden bg-slate-900">
@@ -732,12 +732,13 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
             {displayCards.map((card: any, idx: number) => {
               const enrolledCount = card.learner_count ?? card.enrolled_count ?? 0;
+              const periodRoomText = card.period_room || (card.period ? `Period ${card.period} • ${card.room || 'Room ' + card.class_name}` : `Room ${card.room || card.class_name} • Scheduled`);
               const coverImage = getSubjectCoverImage(card.subject_name);
 
               return (
                 <div
                   key={card.id || idx}
-                  className="rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden"
+                  className="rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden animated-border-card"
                 >
                   <div className="relative h-20 w-full overflow-hidden bg-slate-900">
                     <img
@@ -759,45 +760,31 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     </div>
                   </div>
 
-                  <div className="p-2.5 space-y-2">
-                    <div className="flex items-center justify-between text-[11px] text-slate-400">
-                      <span className="truncate">{card.room || 'Room ' + card.class_name}</span>
-                      <span className="text-cyan-300 font-bold shrink-0">{enrolledCount} Enrolled</span>
+                  <div className="p-2 space-y-1">
+                    <div className="flex items-center justify-between text-[11px] text-slate-300">
+                      <span className="font-mono text-indigo-400 font-semibold">{periodRoomText}</span>
+                      <span className="text-cyan-400 font-bold flex items-center gap-1">
+                        <Users className="w-3 h-3" />
+                        {enrolledCount}
+                      </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <button
-                        onClick={() => handleOpenSubjectAttendance(card)}
-                        className="py-1 px-2 rounded-lg bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600 hover:text-white text-[11px] font-bold border border-emerald-500/30 flex items-center justify-center gap-1 transition-all cursor-pointer"
-                        title="Register"
-                      >
-                        <CalendarCheck className="w-3 h-3" />
-                        <span>Register</span>
-                      </button>
+                    <div className="pt-1.5 border-t border-white/5 flex items-center justify-between">
                       <button
                         onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                        className="py-1 px-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
-                        title="Marks"
+                        className="text-[10.5px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
+                        title="Enter Marks"
                       >
                         <FileSpreadsheet className="w-3 h-3" />
                         <span>Marks</span>
                       </button>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-1 border-t border-white/5">
-                      <button
-                        onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                        className="text-[10px] font-bold text-pink-300 hover:text-white flex items-center gap-1 cursor-pointer"
-                      >
-                        <FileText className="w-3 h-3" />
-                        <span>Homework</span>
-                      </button>
                       <button
                         onClick={() => setViewAllSubject(card)}
-                        className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-0.5 cursor-pointer"
+                        className="text-[10.5px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-0.5 cursor-pointer"
+                        title="View All Tools"
                       >
-                        <Eye className="w-3 h-3" />
-                        <span>View All</span>
+                        <span>More</span>
+                        <ChevronRight className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
@@ -818,7 +805,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
               return (
                 <div
                   key={card.id || idx}
-                  className="p-3 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group shadow-sm"
+                  className="p-3 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group shadow-sm animated-border-card"
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 bg-slate-900 border border-white/10">
