@@ -50,13 +50,36 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
   const isTeacher = user?.role === 'teacher';
   const primaryTeacherTab = isTeacher ? getPrimaryTabFromActive(activeTab) : null;
 
+  // Reusable Downward Spotlight Glow (From User Reference Image)
+  const renderSpotlightGlow = (isActive: boolean) => {
+    if (!isActive) return null;
+    return (
+      <>
+        {/* 1. Top Glowing Horizontal Light Bar Emitter (Horizontal lamp at the top rim) */}
+        <div className="absolute -top-[1.5px] left-1/2 -translate-x-1/2 w-7 sm:w-9 h-[2.5px] sm:h-[3px] rounded-full bg-cyan-300 shadow-[0_0_8px_#38bdf8,0_0_16px_#22d3ee,0_0_24px_#06b6d4] z-20" />
+
+        {/* 2. Downward Projector Light Beam Cone (Shoots light down onto the active module) */}
+        <div className="absolute inset-0 pointer-events-none -z-10 overflow-hidden rounded-xl">
+          <div
+            className="w-full h-full bg-gradient-to-b from-cyan-400/45 via-cyan-500/20 to-transparent blur-[1.5px]"
+            style={{
+              clipPath: 'polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)',
+            }}
+          />
+          {/* Ambient Diffuse Core Glow */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-8 bg-cyan-400/30 blur-md rounded-full pointer-events-none" />
+        </div>
+      </>
+    );
+  };
+
   return (
     <div className="fixed bottom-3 inset-x-0 md:left-72 z-40 flex justify-center items-center pointer-events-none select-none animate-bounce-in px-2 sm:px-4">
       <div 
         data-theme-preserve="true" 
         className="pointer-events-auto relative flex items-center justify-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-2xl md:rounded-full bg-[#0B1120]/95 backdrop-blur-2xl border border-white/15 shadow-2xl shadow-black/80 ring-1 ring-white/10 max-w-full"
       >
-        {/* Subtle glowing underlay */}
+        {/* Subtle ambient underlay */}
         <div className="absolute -inset-0.5 rounded-2xl md:rounded-full bg-gradient-to-r from-indigo-500/20 via-cyan-500/20 to-indigo-500/20 blur-md -z-10 pointer-events-none" />
 
         {isTeacher ? (
@@ -74,14 +97,9 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
               }`}
               title="Home (Teaching Subjects)"
             >
-              {primaryTeacherTab === 'home' && (
-                <div className="absolute inset-0 rounded-xl bg-cyan-500/20 border border-cyan-400/40 shadow-[0_0_12px_rgba(6,182,212,0.3)] -z-10 animate-fade-in" />
-              )}
-              {primaryTeacherTab === 'home' && (
-                <div className="absolute -top-1 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#22d3ee] animate-pulse" />
-              )}
-              <Home className="w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 group-hover:scale-115 group-hover:-translate-y-0.5" />
-              <span className="text-[9px] sm:text-[10px] tracking-tight mt-0.5">Home</span>
+              {renderSpotlightGlow(primaryTeacherTab === 'home')}
+              <Home className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 ${primaryTeacherTab === 'home' ? 'text-cyan-300 scale-110 drop-shadow-[0_0_8px_rgba(34,211,238,0.7)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`} />
+              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'home' ? 'text-cyan-300 font-bold drop-shadow-[0_0_4px_rgba(34,211,238,0.5)]' : ''}`}>Home</span>
             </button>
 
             {/* 2. Calendar */}
@@ -94,14 +112,9 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
               }`}
               title="Educator Calendar & Timetable"
             >
-              {primaryTeacherTab === 'calendar' && (
-                <div className="absolute inset-0 rounded-xl bg-cyan-500/20 border border-cyan-400/40 shadow-[0_0_12px_rgba(6,182,212,0.3)] -z-10 animate-fade-in" />
-              )}
-              {primaryTeacherTab === 'calendar' && (
-                <div className="absolute -top-1 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#22d3ee] animate-pulse" />
-              )}
-              <Calendar className="w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 group-hover:scale-115 group-hover:-translate-y-0.5" />
-              <span className="text-[9px] sm:text-[10px] tracking-tight mt-0.5">Calendar</span>
+              {renderSpotlightGlow(primaryTeacherTab === 'calendar')}
+              <Calendar className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 ${primaryTeacherTab === 'calendar' ? 'text-cyan-300 scale-110 drop-shadow-[0_0_8px_rgba(34,211,238,0.7)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`} />
+              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'calendar' ? 'text-cyan-300 font-bold drop-shadow-[0_0_4px_rgba(34,211,238,0.5)]' : ''}`}>Calendar</span>
             </button>
 
             {/* 3. Profile */}
@@ -114,13 +127,8 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
               }`}
               title="Teacher Profile"
             >
-              {primaryTeacherTab === 'profile' && (
-                <div className="absolute inset-0 rounded-xl bg-cyan-500/20 border border-cyan-400/40 shadow-[0_0_12px_rgba(6,182,212,0.3)] -z-10 animate-fade-in" />
-              )}
-              {primaryTeacherTab === 'profile' && (
-                <div className="absolute -top-1 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#22d3ee] animate-pulse" />
-              )}
-              <div className="w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full bg-white/10 flex items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-115 group-hover:-translate-y-0.5">
+              {renderSpotlightGlow(primaryTeacherTab === 'profile')}
+              <div className={`w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full bg-white/10 flex items-center justify-center overflow-hidden transition-transform duration-300 ${primaryTeacherTab === 'profile' ? 'ring-2 ring-cyan-400 shadow-[0_0_8px_#22d3ee]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`}>
                 {(user?.profile_picture || user?.profile_picture_path) ? (
                   <img
                     src={getProfilePictureUrl(user.profile_picture || user.profile_picture_path)}
@@ -132,7 +140,7 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
                   <User className="w-3.5 h-3.5" />
                 )}
               </div>
-              <span className="text-[9px] sm:text-[10px] tracking-tight mt-0.5">Profile</span>
+              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'profile' ? 'text-cyan-300 font-bold drop-shadow-[0_0_4px_rgba(34,211,238,0.5)]' : ''}`}>Profile</span>
             </button>
 
             {/* 4. Discover */}
@@ -145,14 +153,9 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
               }`}
               title="Discover Resources & AI Studio"
             >
-              {primaryTeacherTab === 'discover' && (
-                <div className="absolute inset-0 rounded-xl bg-cyan-500/20 border border-cyan-400/40 shadow-[0_0_12px_rgba(6,182,212,0.3)] -z-10 animate-fade-in" />
-              )}
-              {primaryTeacherTab === 'discover' && (
-                <div className="absolute -top-1 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#22d3ee] animate-pulse" />
-              )}
-              <Compass className="w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 group-hover:scale-115 group-hover:-translate-y-0.5" />
-              <span className="text-[9px] sm:text-[10px] tracking-tight mt-0.5">Discover</span>
+              {renderSpotlightGlow(primaryTeacherTab === 'discover')}
+              <Compass className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 ${primaryTeacherTab === 'discover' ? 'text-cyan-300 scale-110 drop-shadow-[0_0_8px_rgba(34,211,238,0.7)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`} />
+              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'discover' ? 'text-cyan-300 font-bold drop-shadow-[0_0_4px_rgba(34,211,238,0.5)]' : ''}`}>Discover</span>
             </button>
 
             {/* 5. Messages */}
@@ -165,21 +168,16 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
               }`}
               title="Communication Hub"
             >
-              {primaryTeacherTab === 'messages' && (
-                <div className="absolute inset-0 rounded-xl bg-cyan-500/20 border border-cyan-400/40 shadow-[0_0_12px_rgba(6,182,212,0.3)] -z-10 animate-fade-in" />
-              )}
-              {primaryTeacherTab === 'messages' && (
-                <div className="absolute -top-1 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#22d3ee] animate-pulse" />
-              )}
+              {renderSpotlightGlow(primaryTeacherTab === 'messages')}
               <div className="relative">
-                <MessageSquare className="w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 group-hover:scale-115 group-hover:-translate-y-0.5" />
+                <MessageSquare className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 ${primaryTeacherTab === 'messages' ? 'text-cyan-300 scale-110 drop-shadow-[0_0_8px_rgba(34,211,238,0.7)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`} />
                 {unreadMessages > 0 && (
                   <span className="absolute -top-1 -right-2 px-1 min-w-[14px] h-3.5 rounded-full bg-rose-500 text-white text-[8px] font-black flex items-center justify-center ring-2 ring-surface-darker animate-pulse">
                     {unreadMessages > 9 ? '9+' : unreadMessages}
                   </span>
                 )}
               </div>
-              <span className="text-[9px] sm:text-[10px] tracking-tight mt-0.5">Messages</span>
+              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'messages' ? 'text-cyan-300 font-bold drop-shadow-[0_0_4px_rgba(34,211,238,0.5)]' : ''}`}>Messages</span>
             </button>
 
             {/* 6. More */}
@@ -192,14 +190,9 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
               }`}
               title="More Modules & Functions"
             >
-              {primaryTeacherTab === 'more' && (
-                <div className="absolute inset-0 rounded-xl bg-cyan-500/20 border border-cyan-400/40 shadow-[0_0_12px_rgba(6,182,212,0.3)] -z-10 animate-fade-in" />
-              )}
-              {primaryTeacherTab === 'more' && (
-                <div className="absolute -top-1 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#22d3ee] animate-pulse" />
-              )}
-              <MoreHorizontal className="w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 group-hover:scale-115 group-hover:-translate-y-0.5" />
-              <span className="text-[9px] sm:text-[10px] tracking-tight mt-0.5">More</span>
+              {renderSpotlightGlow(primaryTeacherTab === 'more')}
+              <MoreHorizontal className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 ${primaryTeacherTab === 'more' ? 'text-cyan-300 scale-110 drop-shadow-[0_0_8px_rgba(34,211,238,0.7)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`} />
+              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'more' ? 'text-cyan-300 font-bold drop-shadow-[0_0_4px_rgba(34,211,238,0.5)]' : ''}`}>More</span>
             </button>
           </>
         ) : (
@@ -210,13 +203,14 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
             {/* 1. Home / Overview Shortcut */}
             <button
               onClick={() => onSelectTab('overview')}
-              className={`flex flex-col items-center justify-center p-2 rounded-full transition-all duration-200 ${
+              className={`group relative flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-200 ${
                 activeTab === 'overview'
-                  ? 'text-cyan-400 bg-white/10 shadow-glow-cyan'
+                  ? 'text-cyan-400 font-bold'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
               title="Home Dashboard"
             >
+              {renderSpotlightGlow(activeTab === 'overview')}
               <Home className="w-5 h-5" />
               <span className="text-[9px] font-bold mt-0.5 hidden sm:block">Home</span>
             </button>
@@ -224,13 +218,14 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
             {/* 2. Calendar / Timetable Shortcut */}
             <button
               onClick={() => onSelectTab('calendar')}
-              className={`flex flex-col items-center justify-center p-2 rounded-full transition-all duration-200 ${
+              className={`group relative flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-200 ${
                 activeTab === 'calendar' || activeTab === 'timetable'
-                  ? 'text-cyan-400 bg-white/10 shadow-glow-cyan'
+                  ? 'text-cyan-400 font-bold'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
               title="Calendar & Timetable"
             >
+              {renderSpotlightGlow(activeTab === 'calendar' || activeTab === 'timetable')}
               <Calendar className="w-5 h-5" />
               <span className="text-[9px] font-bold mt-0.5 hidden sm:block">Calendar</span>
             </button>
@@ -264,32 +259,36 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
             {/* 4. Messages / Chat Shortcut */}
             <button
               onClick={() => onSelectTab('messages')}
-              className={`relative flex flex-col items-center justify-center p-2 rounded-full transition-all duration-200 ${
+              className={`group relative flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-200 ${
                 activeTab === 'messages'
-                  ? 'text-cyan-400 bg-white/10 shadow-glow-cyan'
+                  ? 'text-cyan-400 font-bold'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
               title="Messages & Chat"
             >
-              <MessageSquare className="w-5 h-5" />
-              {unreadMessages > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center ring-2 ring-surface-darker animate-pulse">
-                  {unreadMessages > 9 ? '9+' : unreadMessages}
-                </span>
-              )}
+              {renderSpotlightGlow(activeTab === 'messages')}
+              <div className="relative">
+                <MessageSquare className="w-5 h-5" />
+                {unreadMessages > 0 && (
+                  <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center ring-2 ring-surface-darker animate-pulse">
+                    {unreadMessages > 9 ? '9+' : unreadMessages}
+                  </span>
+                )}
+              </div>
               <span className="text-[9px] font-bold mt-0.5 hidden sm:block">Chat</span>
             </button>
 
             {/* 5. Settings Shortcut */}
             <button
               onClick={() => onSelectTab('settings')}
-              className={`flex flex-col items-center justify-center p-2 rounded-full transition-all duration-200 ${
+              className={`group relative flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-200 ${
                 activeTab === 'settings'
-                  ? 'text-cyan-400 bg-white/10 shadow-glow-cyan'
+                  ? 'text-cyan-400 font-bold'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
               title="App & Technical Settings"
             >
+              {renderSpotlightGlow(activeTab === 'settings')}
               <Settings className="w-5 h-5" />
               <span className="text-[9px] font-bold mt-0.5 hidden sm:block">Settings</span>
             </button>

@@ -164,14 +164,24 @@ export const TeacherNavigationBar: React.FC<TeacherNavigationBarProps> = ({
               }`}
               title={`${item.label} (${isActive ? 'Currently Active' : 'Switch Tab'})`}
             >
-              {/* Active Tab Glowing Pill Backdrop ("Shows Where You Are") */}
+              {/* 🌟 Downward Spotlight Glow & Top Emitter Lamp (As seen in user reference) */}
               {isActive && (
-                <div className="absolute inset-0 rounded-xl sm:rounded-full bg-gradient-to-b from-cyan-500/20 to-indigo-500/10 border border-cyan-400/40 shadow-[0_0_15px_rgba(6,182,212,0.25)] -z-10 animate-fade-in" />
-              )}
+                <>
+                  {/* 1. Top Glowing Horizontal Light Bar Emitter */}
+                  <div className="absolute -top-[1.5px] left-1/2 -translate-x-1/2 w-8 sm:w-10 h-[3px] rounded-full bg-cyan-300 shadow-[0_0_10px_#38bdf8,0_0_20px_#22d3ee,0_0_30px_#06b6d4] z-20" />
 
-              {/* Active Glowing Top Indicator Dot */}
-              {isActive && (
-                <div className="absolute -top-1 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] animate-pulse" />
+                  {/* 2. Downward Projector Light Beam Cone (Shoots light down onto the active icon) */}
+                  <div className="absolute inset-0 pointer-events-none -z-10 overflow-hidden rounded-xl sm:rounded-full">
+                    <div
+                      className="w-full h-full bg-gradient-to-b from-cyan-400/45 via-cyan-500/20 to-transparent blur-[1.5px]"
+                      style={{
+                        clipPath: 'polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)',
+                      }}
+                    />
+                    {/* Soft Ambient Radial Lamp Bloom */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-14 h-10 bg-cyan-400/30 blur-md rounded-full pointer-events-none" />
+                  </div>
+                </>
               )}
 
               {/* Icon Container with Hover Animation & Live Badge */}
