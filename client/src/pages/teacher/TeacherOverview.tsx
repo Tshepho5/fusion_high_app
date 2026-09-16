@@ -39,11 +39,82 @@ import {
   Key,
   RefreshCw,
   ExternalLink,
-  Plus
+  Plus,
+  SlidersHorizontal
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-type GridViewMode = 'grid' | 'compact' | 'list';
+export type SubjectViewMode = 'carousel' | 'grid' | 'compact' | 'list';
+
+/**
+ * Returns a high-definition, authentic visual cover image reflecting the subject's academic field and meaning.
+ */
+export const getSubjectCoverImage = (subjectName: string = ''): string => {
+  const s = subjectName.toLowerCase();
+  
+  // Physical Sciences / Physics / Chemistry / Natural Sciences
+  if (s.includes('physic') || s.includes('chem') || s.includes('science')) {
+    return 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=600&q=80';
+  }
+  
+  // Mathematics / Mathematical Literacy / Tech Maths / Geometry / Algebra
+  if (s.includes('math') || s.includes('algebra') || s.includes('calculus') || s.includes('geometry')) {
+    return 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=600&q=80';
+  }
+  
+  // Life Sciences / Biology / Natural Living
+  if (s.includes('life') || s.includes('bio') || s.includes('living')) {
+    return 'https://images.unsplash.com/photo-1530497610245-94d3c16cda28?auto=format&fit=crop&w=600&q=80';
+  }
+  
+  // Accounting / Business Studies / Economics / EMS / Finance
+  if (s.includes('account') || s.includes('business') || s.includes('econom') || s.includes('ems') || s.includes('finance')) {
+    return 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=600&q=80';
+  }
+  
+  // English / Languages / FAL / Sepedi / Sesotho / Setswana / isiZulu / isiXhosa / Afrikaans
+  if (s.includes('english') || s.includes('language') || s.includes('fal') || s.includes('literature') || s.includes('sepedi') || s.includes('zulu') || s.includes('afrikaans') || s.includes('xhosa') || s.includes('sotho')) {
+    return 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&w=600&q=80';
+  }
+  
+  // Geography / Earth Sciences / Cartography
+  if (s.includes('geograph') || s.includes('earth') || s.includes('map')) {
+    return 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=600&q=80';
+  }
+  
+  // History / Social Sciences / Heritage
+  if (s.includes('histor') || s.includes('social') || s.includes('heritage')) {
+    return 'https://images.unsplash.com/photo-1461360370896-922624d12aa1?auto=format&fit=crop&w=600&q=80';
+  }
+  
+  // Information Technology (IT) / Computer Applications Technology (CAT) / Coding & Robotics
+  if (s.includes('it') || s.includes('cat') || s.includes('comput') || s.includes('coding') || s.includes('software') || s.includes('robot')) {
+    return 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=600&q=80';
+  }
+  
+  // Tourism / Hospitality Studies / Consumer Studies
+  if (s.includes('tour') || s.includes('hospit') || s.includes('consumer') || s.includes('travel')) {
+    return 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=600&q=80';
+  }
+  
+  // Life Orientation / Career Guidance / Physical Education
+  if (s.includes('orient') || s.includes('lo') || s.includes('guidance') || s.includes('sport')) {
+    return 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=600&q=80';
+  }
+  
+  // Visual Arts / Dramatic Arts / Creative Arts / Music
+  if (s.includes('art') || s.includes('drama') || s.includes('music') || s.includes('theatre') || s.includes('creative')) {
+    return 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=600&q=80';
+  }
+  
+  // Agricultural Sciences / Agronomy / Farming
+  if (s.includes('agri') || s.includes('farm') || s.includes('crop')) {
+    return 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=600&q=80';
+  }
+  
+  // Default academic study hall
+  return 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=600&q=80';
+};
 
 interface TeacherOverviewProps {
   onNavigateTab: (tabId: string, params?: any) => void;
@@ -76,6 +147,20 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
 
   // Subject Command Center ("View All" Modal) State
   const [viewAllSubject, setViewAllSubject] = useState<any | null>(null);
+
+  // Subject View Mode State (Persisted in localStorage)
+  const [subjectsViewMode, setSubjectsViewMode] = useState<SubjectViewMode>(() => {
+    return (localStorage.getItem('teacher_subjects_view_mode') as SubjectViewMode) || 'carousel';
+  });
+
+  const handleSetSubjectsViewMode = (mode: SubjectViewMode) => {
+    setSubjectsViewMode(mode);
+    try {
+      localStorage.setItem('teacher_subjects_view_mode', mode);
+    } catch (err) {
+      // ignore
+    }
+  };
 
 
   const scrollCarousel = (direction: number) => {
@@ -284,9 +369,9 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
   return (
     <div className="space-y-6 animate-fade-in text-slate-100 pb-12">
 
-      {/* 1. HORIZONTAL CAROUSEL OF ASSIGNED CLASSES & SUBJECTS */}
+      {/* 1. ASSIGNED CLASSES & SUBJECTS WITH MULTI-VIEW SWITCHER */}
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center">
               <BookOpen className="w-4 h-4" />
@@ -298,130 +383,530 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
             </div>
           </div>
           
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => scrollCarousel(-1)}
-              className="p-2 rounded-xl bg-surface-dark border border-white/10 text-slate-300 hover:text-white hover:border-indigo-500/50 hover:bg-white/5 transition-all shadow-sm active:scale-95"
-              title="Scroll Left"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => scrollCarousel(1)}
-              className="p-2 rounded-xl bg-surface-dark border border-white/10 text-slate-300 hover:text-white hover:border-indigo-500/50 hover:bg-white/5 transition-all shadow-sm active:scale-95"
-              title="Scroll Right"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
+          <div className="flex items-center gap-2">
+            {/* View Mode Switcher */}
+            <div className="flex items-center p-1 rounded-xl bg-surface-dark border border-white/10 shadow-sm">
+              <button
+                type="button"
+                onClick={() => handleSetSubjectsViewMode('carousel')}
+                className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
+                  subjectsViewMode === 'carousel'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                title="Carousel View"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[11px]">Carousel</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSetSubjectsViewMode('grid')}
+                className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
+                  subjectsViewMode === 'grid'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                title="Grid View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[11px]">Grid</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSetSubjectsViewMode('compact')}
+                className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
+                  subjectsViewMode === 'compact'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                title="Compact Tiles"
+              >
+                <Grid3X3 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[11px]">Compact</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSetSubjectsViewMode('list')}
+                className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
+                  subjectsViewMode === 'list'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                title="List View"
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[11px]">List</span>
+              </button>
+            </div>
+
+            {/* Scroll buttons only active in Carousel View */}
+            {subjectsViewMode === 'carousel' && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => scrollCarousel(-1)}
+                  className="p-2 rounded-xl bg-surface-dark border border-white/10 text-slate-300 hover:text-white hover:border-indigo-500/50 hover:bg-white/5 transition-all shadow-sm active:scale-95"
+                  title="Scroll Left"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollCarousel(1)}
+                  className="p-2 rounded-xl bg-surface-dark border border-white/10 text-slate-300 hover:text-white hover:border-indigo-500/50 hover:bg-white/5 transition-all shadow-sm active:scale-95"
+                  title="Scroll Right"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Carousel Container */}
-        <div
-          ref={carouselRef}
-          className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin custom-scrollbar snap-x snap-mandatory scroll-smooth"
-        >
-          {displayCards.map((card: any, idx: number) => {
-            const enrolledCount = card.learner_count ?? card.enrolled_count ?? 0;
-            const periodRoomText = card.period_room || (card.period ? `Period ${card.period} • ${card.room || 'Room ' + card.class_name}` : `Room ${card.room || card.class_name} • Scheduled`);
+        {/* View Mode 1: HORIZONTAL SCROLLING CAROUSEL */}
+        {subjectsViewMode === 'carousel' && (
+          <div
+            ref={carouselRef}
+            className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin custom-scrollbar snap-x snap-mandatory scroll-smooth"
+          >
+            {displayCards.map((card: any, idx: number) => {
+              const enrolledCount = card.learner_count ?? card.enrolled_count ?? 0;
+              const periodRoomText = card.period_room || (card.period ? `Period ${card.period} • ${card.room || 'Room ' + card.class_name}` : `Room ${card.room || card.class_name} • Scheduled`);
+              const coverImage = getSubjectCoverImage(card.subject_name);
 
-            return (
-              <div
-                key={card.id || idx}
-                className="min-w-[310px] max-w-[340px] shrink-0 snap-start rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 p-4 transition-all shadow-md flex flex-col justify-between group space-y-3"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">
-                      {card.class_name || `${card.grade}A`}
-                    </span>
-                    {card.stream && (
-                      <span className="px-1.5 py-0.5 rounded-md text-[9.5px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/20 uppercase tracking-wider">
-                        {card.stream}
+              return (
+                <div
+                  key={card.id || idx}
+                  className="min-w-[310px] max-w-[340px] shrink-0 snap-start rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden"
+                >
+                  {/* Subject Picture Banner with Profile Overlay */}
+                  <div className="relative h-28 w-full overflow-hidden bg-slate-900">
+                    <img
+                      src={coverImage}
+                      alt={card.subject_name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-surface-dark via-surface-dark/40 to-black/40" />
+                    
+                    {/* Top Badges: Grade & Class + Stream + Enrolled */}
+                    <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-600 text-white shadow-sm">
+                          Grade {card.grade} • Class {card.class_name}
+                        </span>
+                        {card.stream && (
+                          <span className="px-1.5 py-0.5 rounded-md text-[9.5px] font-bold bg-amber-500/80 text-white uppercase tracking-wider">
+                            {card.stream}
+                          </span>
+                        )}
+                      </div>
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/60 text-cyan-300 border border-cyan-500/30 flex items-center gap-1 backdrop-blur-md">
+                        <Users className="w-3 h-3 text-cyan-400" />
+                        {enrolledCount}
                       </span>
-                    )}
+                    </div>
+
+                    {/* Bottom Banner Title: Subject Name */}
+                    <div className="absolute bottom-2 inset-x-3">
+                      <h3
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                        className="text-base font-extrabold text-white group-hover:text-indigo-300 transition-colors cursor-pointer truncate drop-shadow-md"
+                        title={`Open ${card.subject_name} Marksheet`}
+                      >
+                        {card.subject_name}
+                      </h3>
+                    </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 flex items-center gap-1">
-                    <Users className="w-3 h-3 text-cyan-400" />
-                    {enrolledCount} Enrolled
-                  </span>
-                </div>
 
-                <div>
-                  <h3
-                    onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                    className="text-base font-bold text-white group-hover:text-indigo-300 transition-colors cursor-pointer leading-snug"
-                    title={`Open ${card.subject_name} Marksheet`}
-                  >
-                    {card.subject_name}
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                    <span className="truncate">{periodRoomText}</span>
-                  </p>
-                </div>
+                  {/* Card Content & Modules */}
+                  <div className="p-3.5 space-y-3">
+                    {/* Period / Room Badge */}
+                    <div className="flex items-center justify-between text-xs text-slate-400">
+                      <span className="flex items-center gap-1.5 truncate">
+                        <Clock className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                        <span className="truncate">{periodRoomText}</span>
+                      </span>
+                      <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 shrink-0">
+                        {card.recent_class_avg || 74}% Avg
+                      </span>
+                    </div>
 
-                {/* Primary Action Buttons */}
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <button
-                    onClick={() => handleOpenSubjectAttendance(card)}
-                    className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600/25 to-teal-600/25 hover:from-emerald-600/40 hover:to-teal-600/40 text-emerald-300 hover:text-white text-xs font-bold border border-emerald-500/30 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
-                    title={`Class Attendance Register & QR Roll-Call for ${card.subject_name}`}
-                  >
-                    <CalendarCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>Register</span>
-                  </button>
-                  <button
-                    onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                    className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
-                    title={`Enter SBA Marks for ${card.subject_name}`}
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
-                    <span>Marks</span>
-                  </button>
-                </div>
+                    {/* Primary Action Buttons (Register & Marks) */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => handleOpenSubjectAttendance(card)}
+                        className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600/25 to-teal-600/25 hover:from-emerald-600/40 hover:to-teal-600/40 text-emerald-300 hover:text-white text-xs font-bold border border-emerald-500/30 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                        title={`Class Attendance Register & QR Roll-Call for ${card.subject_name}`}
+                      >
+                        <CalendarCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>Register</span>
+                      </button>
+                      <button
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                        className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                        title={`Enter SBA Marks for ${card.subject_name}`}
+                      >
+                        <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
+                        <span>Marks</span>
+                      </button>
+                    </div>
 
-                {/* Subject-Specific Module Icons & "View All" */}
-                <div className="flex items-center justify-between gap-1 pt-2 border-t border-white/5">
-                  <div className="flex items-center gap-1">
+                    {/* Subject Modules Quick-Action Chips & "View All" */}
+                    <div className="flex items-center justify-between gap-1.5 pt-2 border-t border-white/5">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                          className="px-2 py-1 rounded-lg bg-pink-500/15 hover:bg-pink-500/30 text-pink-300 border border-pink-500/25 transition-all hover:scale-105 flex items-center gap-1 text-[11px] font-bold shadow-sm cursor-pointer"
+                          title={`Homework for ${card.subject_name}`}
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Homework</span>
+                        </button>
+                        <button
+                          onClick={() => onNavigateTab('ai-tools', { subject: card.subject_name, grade: card.grade, tool: 'lesson-plan' })}
+                          className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/25 text-amber-300 border border-amber-500/20 transition-all hover:scale-105 cursor-pointer"
+                          title="AI Lesson & Test Builder for this Subject"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => onNavigateTab('resources', { subject: card.subject_name, grade: card.grade })}
+                          className="p-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/25 text-purple-300 border border-purple-500/20 transition-all hover:scale-105 cursor-pointer"
+                          title="Past Papers & Learning Resources for this Subject"
+                        >
+                          <Layers className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => setViewAllSubject(card)}
+                        className="text-[11px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 hover:underline pl-1 shrink-0 transition-colors cursor-pointer"
+                        title="View all modules & tools for this subject"
+                      >
+                        <Eye className="w-3 h-3" />
+                        <span>View All</span>
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* View Mode 2: STANDARD RESPONSIVE MULTI-COLUMN GRID */}
+        {subjectsViewMode === 'grid' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {displayCards.map((card: any, idx: number) => {
+              const enrolledCount = card.learner_count ?? card.enrolled_count ?? 0;
+              const periodRoomText = card.period_room || (card.period ? `Period ${card.period} • ${card.room || 'Room ' + card.class_name}` : `Room ${card.room || card.class_name} • Scheduled`);
+              const coverImage = getSubjectCoverImage(card.subject_name);
+
+              return (
+                <div
+                  key={card.id || idx}
+                  className="rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden w-full"
+                >
+                  {/* Subject Picture Banner with Profile Overlay */}
+                  <div className="relative h-28 w-full overflow-hidden bg-slate-900">
+                    <img
+                      src={coverImage}
+                      alt={card.subject_name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-surface-dark via-surface-dark/40 to-black/40" />
+                    
+                    {/* Top Badges */}
+                    <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-600 text-white shadow-sm">
+                          Grade {card.grade} • Class {card.class_name}
+                        </span>
+                        {card.stream && (
+                          <span className="px-1.5 py-0.5 rounded-md text-[9.5px] font-bold bg-amber-500/80 text-white uppercase tracking-wider">
+                            {card.stream}
+                          </span>
+                        )}
+                      </div>
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/60 text-cyan-300 border border-cyan-500/30 flex items-center gap-1 backdrop-blur-md">
+                        <Users className="w-3 h-3 text-cyan-400" />
+                        {enrolledCount}
+                      </span>
+                    </div>
+
+                    {/* Bottom Banner Title */}
+                    <div className="absolute bottom-2 inset-x-3">
+                      <h3
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                        className="text-base font-extrabold text-white group-hover:text-indigo-300 transition-colors cursor-pointer truncate drop-shadow-md"
+                        title={`Open ${card.subject_name} Marksheet`}
+                      >
+                        {card.subject_name}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* Card Content & Modules */}
+                  <div className="p-3.5 space-y-3">
+                    <div className="flex items-center justify-between text-xs text-slate-400">
+                      <span className="flex items-center gap-1.5 truncate">
+                        <Clock className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                        <span className="truncate">{periodRoomText}</span>
+                      </span>
+                      <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 shrink-0">
+                        {card.recent_class_avg || 74}% Avg
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => handleOpenSubjectAttendance(card)}
+                        className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600/25 to-teal-600/25 hover:from-emerald-600/40 hover:to-teal-600/40 text-emerald-300 hover:text-white text-xs font-bold border border-emerald-500/30 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                        title={`Register & QR Roll-Call for ${card.subject_name}`}
+                      >
+                        <CalendarCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>Register</span>
+                      </button>
+                      <button
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                        className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                        title={`Enter SBA Marks for ${card.subject_name}`}
+                      >
+                        <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
+                        <span>Marks</span>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-1.5 pt-2 border-t border-white/5">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                          className="px-2 py-1 rounded-lg bg-pink-500/15 hover:bg-pink-500/30 text-pink-300 border border-pink-500/25 transition-all hover:scale-105 flex items-center gap-1 text-[11px] font-bold shadow-sm cursor-pointer"
+                          title={`Homework for ${card.subject_name}`}
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Homework</span>
+                        </button>
+                        <button
+                          onClick={() => onNavigateTab('ai-tools', { subject: card.subject_name, grade: card.grade, tool: 'lesson-plan' })}
+                          className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/25 text-amber-300 border border-amber-500/20 transition-all hover:scale-105 cursor-pointer"
+                          title="AI Lesson & Test Builder for this Subject"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => onNavigateTab('resources', { subject: card.subject_name, grade: card.grade })}
+                          className="p-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/25 text-purple-300 border border-purple-500/20 transition-all hover:scale-105 cursor-pointer"
+                          title="Past Papers for this Subject"
+                        >
+                          <Layers className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => setViewAllSubject(card)}
+                        className="text-[11px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 hover:underline pl-1 shrink-0 transition-colors cursor-pointer"
+                        title="View all modules & tools for this subject"
+                      >
+                        <Eye className="w-3 h-3" />
+                        <span>View All</span>
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* View Mode 3: COMPACT APP TILES */}
+        {subjectsViewMode === 'compact' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+            {displayCards.map((card: any, idx: number) => {
+              const enrolledCount = card.learner_count ?? card.enrolled_count ?? 0;
+              const coverImage = getSubjectCoverImage(card.subject_name);
+
+              return (
+                <div
+                  key={card.id || idx}
+                  className="rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden"
+                >
+                  <div className="relative h-20 w-full overflow-hidden bg-slate-900">
+                    <img
+                      src={coverImage}
+                      alt={card.subject_name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-surface-dark via-surface-dark/50 to-black/40" />
+                    <div className="absolute top-2 left-2">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-600 text-white">
+                        Grade {card.grade} • {card.class_name}
+                      </span>
+                    </div>
+                    <div className="absolute bottom-1.5 inset-x-2.5">
+                      <h4 className="text-sm font-bold text-white truncate drop-shadow-sm">
+                        {card.subject_name}
+                      </h4>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 space-y-2">
+                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                      <span className="truncate">{card.room || 'Room ' + card.class_name}</span>
+                      <span className="text-cyan-300 font-bold shrink-0">{enrolledCount} Enrolled</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        onClick={() => handleOpenSubjectAttendance(card)}
+                        className="py-1 px-2 rounded-lg bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600 hover:text-white text-[11px] font-bold border border-emerald-500/30 flex items-center justify-center gap-1 transition-all cursor-pointer"
+                        title="Register"
+                      >
+                        <CalendarCheck className="w-3 h-3" />
+                        <span>Register</span>
+                      </button>
+                      <button
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                        className="py-1 px-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                        title="Marks"
+                      >
+                        <FileSpreadsheet className="w-3 h-3" />
+                        <span>Marks</span>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                      <button
+                        onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                        className="text-[10px] font-bold text-pink-300 hover:text-white flex items-center gap-1 cursor-pointer"
+                      >
+                        <FileText className="w-3 h-3" />
+                        <span>Homework</span>
+                      </button>
+                      <button
+                        onClick={() => setViewAllSubject(card)}
+                        className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <Eye className="w-3 h-3" />
+                        <span>View All</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* View Mode 4: FULL-WIDTH HORIZONTAL LIST ROWS */}
+        {subjectsViewMode === 'list' && (
+          <div className="space-y-2.5">
+            {displayCards.map((card: any, idx: number) => {
+              const enrolledCount = card.learner_count ?? card.enrolled_count ?? 0;
+              const periodRoomText = card.period_room || (card.period ? `Period ${card.period} • ${card.room || 'Room ' + card.class_name}` : `Room ${card.room || card.class_name}`);
+              const coverImage = getSubjectCoverImage(card.subject_name);
+
+              return (
+                <div
+                  key={card.id || idx}
+                  className="p-3 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 bg-slate-900 border border-white/10">
+                      <img
+                        src={coverImage}
+                        alt={card.subject_name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-600 text-white">
+                        {card.class_name}
+                      </span>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                          Grade {card.grade}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                          Class {card.class_name}
+                        </span>
+                        {card.stream && (
+                          <span className="px-1.5 py-0.5 rounded-md text-[9.5px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">
+                            {card.stream}
+                          </span>
+                        )}
+                        <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                          <Users className="w-3 h-3 text-cyan-400" />
+                          {enrolledCount} Enrolled
+                        </span>
+                      </div>
+
+                      <h3
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                        className="text-base font-extrabold text-white group-hover:text-indigo-300 transition-colors cursor-pointer"
+                      >
+                        {card.subject_name}
+                      </h3>
+                      <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                        <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>{periodRoomText}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Direct Module Action Buttons & View All */}
+                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
+                    <button
+                      onClick={() => handleOpenSubjectAttendance(card)}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 hover:text-white border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                      title="Register"
+                    >
+                      <CalendarCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Register</span>
+                    </button>
+                    <button
+                      onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                      title="Marks"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5" />
+                      <span>Marks</span>
+                    </button>
                     <button
                       onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                      className="px-2 py-1 rounded-lg bg-pink-500/15 hover:bg-pink-500/30 text-pink-300 border border-pink-500/25 transition-all hover:scale-105 flex items-center gap-1 text-[11px] font-bold shadow-sm"
-                      title={`Homework & Submissions for ${card.subject_name}`}
+                      className="px-3 py-1.5 rounded-xl bg-pink-500/20 hover:bg-pink-500/35 text-pink-300 hover:text-white border border-pink-500/30 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                      title="Homework"
                     >
                       <FileText className="w-3.5 h-3.5" />
                       <span>Homework</span>
                     </button>
                     <button
-                      onClick={() => onNavigateTab('ai-tools', { subject: card.subject_name, grade: card.grade, tool: 'lesson-plan' })}
-                      className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/25 text-amber-300 border border-amber-500/20 transition-all hover:scale-105"
-                      title="AI Lesson & Test Builder for this Subject"
+                      onClick={() => setViewAllSubject(card)}
+                      className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 hover:text-white border border-cyan-500/40 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                      title="View All Functions"
                     >
-                      <Sparkles className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => onNavigateTab('resources', { subject: card.subject_name, grade: card.grade })}
-                      className="p-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/25 text-purple-300 border border-purple-500/20 transition-all hover:scale-105"
-                      title="Past Papers & Learning Resources for this Subject"
-                    >
-                      <Layers className="w-3.5 h-3.5" />
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>View All</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
-
-                  <button
-                    onClick={() => setViewAllSubject(card)}
-                    className="text-[11px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 hover:underline pl-1 shrink-0 transition-colors"
-                    title="View all modules & tools for this subject"
-                  >
-                    <Eye className="w-3 h-3" />
-                    <span>View All</span>
-                    <ChevronRight className="w-3 h-3" />
-                  </button>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* 2. QUICK ACCESS SHORTCUT TO MORE MODULES */}
@@ -454,24 +939,21 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
               </h3>
               <button
                 onClick={() => onNavigateTab('ai-tools')}
-                className="text-xs text-pink-400 hover:text-pink-300 font-semibold"
+                className="text-xs text-pink-400 hover:text-pink-300 font-semibold cursor-pointer"
               >
                 Launch Builder
               </button>
             </div>
-            <p className="text-xs text-slate-400">
-              Instantly generate CAPS-aligned lesson plans, worksheets, marking rubrics, and diagnostic test papers.
-            </p>
             <div className="flex items-center gap-2 pt-1">
               <button
                 onClick={() => onNavigateTab('ai-tools', { tool: 'lesson-plan' })}
-                className="px-3 py-1.5 rounded-xl bg-pink-600/20 text-pink-300 hover:bg-pink-600 hover:text-white border border-pink-500/30 text-xs font-bold transition-all"
+                className="px-3 py-1.5 rounded-xl bg-pink-600/20 text-pink-300 hover:bg-pink-600 hover:text-white border border-pink-500/30 text-xs font-bold transition-all cursor-pointer"
               >
                 Lesson Plan
               </button>
               <button
                 onClick={() => onNavigateTab('ai-tools', { tool: 'test-paper' })}
-                className="px-3 py-1.5 rounded-xl bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600 hover:text-white border border-indigo-500/30 text-xs font-bold transition-all"
+                className="px-3 py-1.5 rounded-xl bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600 hover:text-white border border-indigo-500/30 text-xs font-bold transition-all cursor-pointer"
               >
                 CAPS Test Paper
               </button>
@@ -479,21 +961,18 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
           </div>
 
           <div className="rounded-2xl bg-surface-dark border border-white/10 p-5 shadow-sm space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-white/5">
+            <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold font-display text-white flex items-center gap-2">
                 <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
                 <span>SBA Assessment Workload</span>
               </h3>
               <button
                 onClick={() => onNavigateTab('assessments')}
-                className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold"
+                className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold cursor-pointer"
               >
                 View Marksheets
               </button>
             </div>
-            <p className="text-xs text-slate-400">
-              All term marks and moderation entries are stored in PostgreSQL with instant CAPS weighted averages.
-            </p>
           </div>
         </div>
 
@@ -828,120 +1307,58 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
           maxWidth="4xl"
           alignTop={true}
         >
-          <div className="space-y-3.5 text-slate-200">
-            {/* Subject Overview Card */}
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-brand-950/60 via-surface-darker to-surface-dark border border-brand-500/20 flex flex-col md:flex-row md:items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Badge variant="indigo" size="sm">
-                    Class {viewAllSubject.class_name || `${viewAllSubject.grade}A`}
-                  </Badge>
-                  {viewAllSubject.stream && (
-                    <Badge variant="amber" size="sm">
-                      {viewAllSubject.stream} Stream
-                    </Badge>
-                  )}
-                  <Badge variant="cyan" size="sm">
-                    CAPS DBE Limpopo & Gauteng
-                  </Badge>
-                </div>
-                <h3 className="text-xl font-extrabold text-white font-display">
-                  {viewAllSubject.subject_name}
-                </h3>
-                <p className="text-xs text-slate-400 mt-1 flex items-center gap-2">
-                  <Clock className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>{viewAllSubject.period_room || `Period ${viewAllSubject.period || 1} • ${viewAllSubject.room || 'Room 10A'}`}</span>
-                </p>
-              </div>
-
-              {/* Live Subject KPI Counters */}
-              <div className="grid grid-cols-3 gap-2">
-                <div className="p-2.5 rounded-xl bg-surface-dark border border-white/5 text-center min-w-[80px]">
-                  <p className="text-[10px] uppercase font-bold text-slate-400">Enrolled</p>
-                  <p className="text-sm font-bold font-mono text-cyan-400 mt-0.5">{viewAllSubject.learner_count ?? viewAllSubject.enrolled_count ?? 0}</p>
-                </div>
-                <div className="p-2.5 rounded-xl bg-surface-dark border border-white/5 text-center min-w-[80px]">
-                  <p className="text-[10px] uppercase font-bold text-slate-400">Class Avg</p>
-                  <p className="text-sm font-bold font-mono text-emerald-400 mt-0.5">{viewAllSubject.recent_class_avg || 75}%</p>
-                </div>
-                <div className="p-2.5 rounded-xl bg-surface-dark border border-white/5 text-center min-w-[80px]">
-                  <p className="text-[10px] uppercase font-bold text-slate-400">Attendance</p>
-                  <p className="text-sm font-bold font-mono text-indigo-300 mt-0.5">{viewAllSubject.attendance_rate || 98}%</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Dedicated Homework & Submissions Space for This Subject */}
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-pink-950/40 via-surface-darker to-surface-dark border border-pink-500/25 space-y-2.5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-pink-500/15 text-pink-400 border border-pink-500/30 flex items-center justify-center shrink-0">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="text-sm font-bold text-white">
-                        Homework & Submissions Space
-                      </h4>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 font-mono font-medium">
-                        {viewAllSubject.subject_name} • Grade {viewAllSubject.grade}
+          <div className="space-y-4 text-slate-200">
+            {/* Subject Profile Banner with Subject Meaning Picture */}
+            <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-lg bg-slate-900">
+              <img
+                src={getSubjectCoverImage(viewAllSubject.subject_name)}
+                alt={viewAllSubject.subject_name}
+                className="w-full h-36 sm:h-44 object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-surface-darker via-surface-darker/60 to-black/30" />
+              
+              <div className="absolute bottom-0 inset-x-0 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-indigo-600 text-white shadow-sm">
+                      Grade {viewAllSubject.grade}
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-cyan-600 text-white shadow-sm">
+                      Class {viewAllSubject.class_name || `${viewAllSubject.grade}A`}
+                    </span>
+                    {viewAllSubject.stream && (
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/80 text-white uppercase tracking-wider">
+                        {viewAllSubject.stream}
                       </span>
-                    </div>
+                    )}
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-display drop-shadow-md">
+                    {viewAllSubject.subject_name}
+                  </h3>
+                  <div className="text-xs text-slate-300 mt-1 flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>{viewAllSubject.period_room || `Period ${viewAllSubject.period || 1} • ${viewAllSubject.room || 'Room ' + viewAllSubject.class_name}`}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => {
-                      const target = viewAllSubject;
-                      setViewAllSubject(null);
-                      onNavigateTab('assignments', { subject: target.subject_name, grade: target.grade, class: target.class_name, create: 'true' });
-                    }}
-                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-bold text-xs shadow-glow-pink flex items-center gap-1.5 transition-all active:scale-95"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Publish Homework</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      const target = viewAllSubject;
-                      setViewAllSubject(null);
-                      onNavigateTab('assignments', { subject: target.subject_name, grade: target.grade, class: target.class_name });
-                    }}
-                    className="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-pink-300 border border-pink-500/30 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95"
-                  >
-                    <span>Open Hub</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Quick Status Bar for this subject */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-white/5">
-                <div className="p-2.5 rounded-xl bg-surface-dark/80 border border-white/5 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400 font-medium">Target Class</span>
-                  <span className="text-xs font-mono font-bold text-cyan-300">Grade {viewAllSubject.grade}{viewAllSubject.class_name ? ` (${viewAllSubject.class_name})` : ''}</span>
-                </div>
-                <div className="p-2.5 rounded-xl bg-surface-dark/80 border border-white/5 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400 font-medium">Curriculum</span>
-                  <span className="text-xs font-mono font-bold text-amber-300">CAPS Term 3</span>
-                </div>
-                <div className="p-2.5 rounded-xl bg-surface-dark/80 border border-white/5 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400 font-medium">AI Evaluator</span>
-                  <span className="text-xs font-mono font-bold text-emerald-400">Instant Marking</span>
-                </div>
-                <div className="p-2.5 rounded-xl bg-surface-dark/80 border border-white/5 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400 font-medium">SBA Sync</span>
-                  <span className="text-xs font-mono font-bold text-indigo-300">Auto-recorded</span>
+                <div className="flex items-center gap-2">
+                  <div className="px-3 py-1.5 rounded-xl bg-black/50 backdrop-blur-md border border-white/15 text-center min-w-[72px]">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Enrolled</span>
+                    <span className="text-sm font-bold font-mono text-cyan-300">{viewAllSubject.learner_count ?? viewAllSubject.enrolled_count ?? 0}</span>
+                  </div>
+                  <div className="px-3 py-1.5 rounded-xl bg-black/50 backdrop-blur-md border border-white/15 text-center min-w-[72px]">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Class Avg</span>
+                    <span className="text-sm font-bold font-mono text-emerald-300">{viewAllSubject.recent_class_avg || 74}%</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Subject Modules Selection Grid */}
-            <div className="space-y-3">
+            {/* Subject Modules Selection Grid (Icon + Title Only, No Descriptions) */}
+            <div className="space-y-3 pt-1">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
                 <LayoutGrid className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Subject Modules</span>
+                <span>Subject Modules & Functions</span>
               </h4>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3">
