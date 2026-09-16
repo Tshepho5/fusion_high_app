@@ -567,7 +567,13 @@ export const parentApplicationService = {
     }).then(res => res.data),
 };
 
-
-
-
-
+// Behavioral & Environmental Hybrid Machine Learning API
+export const behaviorMlService = {
+  getPersonas: () => api.get('/api/ml/behavior/personas').then(res => res.data),
+  simulateWhatIf: (student: any, adjustments: any) => 
+    api.post('/api/ml/behavior/simulate', { student, adjustments }).then(res => res.data),
+  getLearnerPrediction: (childId: string | number, subject?: string) =>
+    api.get(`/api/ml/behavior/learner/${childId}${subject ? `?subject=${encodeURIComponent(subject)}` : ''}`).then(res => res.data),
+  getClassPrediction: (classId: string | number) => 
+    api.get(`/api/ml/behavior/class/${classId}`).then(res => res.data),
+};

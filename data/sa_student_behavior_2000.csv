@@ -1,0 +1,2001 @@
+student_id,gender,grade,stream,class_name,class_section,class_size,subject,semester,visited_resources,announcements_viewed,discussion_participation,absence_days,weekly_study_hours,homework_completion_rate,final_score,caps_level,performance_class,is_pass
+FHS0001,Male,Grade 8,General,8C,C,42,Technology,Semester 2,39,38,43,Above-7,9.8,69,31,2,L,0
+FHS0002,Male,Grade 8,General,8A,A,38,Life Orientation,Semester 1,99,59,60,Under-7,14.1,70,83,7,H,1
+FHS0003,Male,Grade 8,General,8B,B,38,Life Orientation,Semester 2,28,30,33,Under-7,9.9,53,50,4,M,1
+FHS0004,Male,Grade 8,General,8C,C,42,Life Orientation,Semester 1,77,22,64,Under-7,15.0,72,73,6,H,1
+FHS0005,Male,Grade 8,General,8C,C,42,Social Sciences,Semester 2,51,46,77,Under-7,10.7,80,67,5,M,1
+FHS0006,Male,Grade 8,General,8B,B,35,Life Orientation,Semester 2,37,32,14,Under-7,11.7,60,41,3,M,1
+FHS0007,Male,Grade 8,General,8B,B,42,EMS,Semester 2,63,31,47,Under-7,10.1,68,66,5,M,1
+FHS0008,Male,Grade 8,General,8A,A,45,Mathematics,Semester 1,55,48,56,Under-7,14.6,80,60,5,M,1
+FHS0009,Female,Grade 8,General,8B,B,35,Mathematics,Semester 1,76,59,87,Under-7,14.5,91,83,7,H,1
+FHS0010,Male,Grade 8,General,8B,B,38,Life Orientation,Semester 2,67,60,57,Under-7,20.7,100,84,7,H,1
+FHS0011,Male,Grade 8,General,8B,B,35,Life Orientation,Semester 1,22,32,42,Above-7,6.2,50,26,1,L,0
+FHS0012,Male,Grade 8,General,8A,A,45,Technology,Semester 2,77,44,63,Under-7,17.3,52,66,5,M,1
+FHS0013,Female,Grade 8,General,8C,C,35,English FAL,Semester 2,71,27,62,Above-7,13.1,71,49,3,M,1
+FHS0014,Male,Grade 8,General,8A,A,35,English FAL,Semester 2,71,60,38,Under-7,12.4,87,52,4,M,1
+FHS0015,Female,Grade 8,General,8A,A,48,English FAL,Semester 2,42,51,58,Under-7,8.9,46,40,3,M,1
+FHS0016,Female,Grade 8,General,8C,C,42,English FAL,Semester 1,65,83,79,Under-7,16.0,87,76,6,H,1
+FHS0017,Female,Grade 8,General,8B,B,38,Technology,Semester 1,48,88,38,Above-7,19.2,78,51,4,M,1
+FHS0018,Male,Grade 8,General,8A,A,35,Social Sciences,Semester 1,73,42,94,Above-7,18.2,58,58,4,M,1
+FHS0019,Female,Grade 8,General,8A,A,38,Life Orientation,Semester 1,79,58,72,Under-7,25.8,81,96,7,H,1
+FHS0020,Female,Grade 8,General,8A,A,38,Social Sciences,Semester 2,37,40,15,Under-7,8.0,78,53,4,M,1
+FHS0021,Male,Grade 8,General,8A,A,38,Natural Sciences,Semester 2,77,70,69,Under-7,19.3,68,74,6,H,1
+FHS0022,Female,Grade 8,General,8C,C,38,Mathematics,Semester 2,43,54,49,Above-7,8.8,68,27,1,L,0
+FHS0023,Female,Grade 8,General,8C,C,35,Natural Sciences,Semester 1,74,49,25,Above-7,13.9,78,46,3,M,1
+FHS0024,Male,Grade 8,General,8A,A,38,EMS,Semester 2,66,41,89,Under-7,18.9,59,72,6,H,1
+FHS0025,Male,Grade 8,General,8B,B,42,Life Orientation,Semester 2,72,54,36,Under-7,14.8,86,68,5,M,1
+FHS0026,Male,Grade 8,General,8B,B,35,Technology,Semester 1,47,39,32,Under-7,10.5,71,50,4,M,1
+FHS0027,Female,Grade 8,General,8C,C,35,Mathematics,Semester 1,98,63,78,Under-7,19.4,98,80,7,H,1
+FHS0028,Male,Grade 8,General,8C,C,42,Social Sciences,Semester 2,65,36,22,Above-7,14.0,41,21,1,L,0
+FHS0029,Female,Grade 8,General,8B,B,35,English FAL,Semester 1,19,36,54,Above-7,7.9,40,22,1,L,0
+FHS0030,Female,Grade 8,General,8A,A,42,Mathematics,Semester 2,94,57,63,Under-7,15.9,89,61,5,M,1
+FHS0031,Female,Grade 8,General,8B,B,35,Mathematics,Semester 2,69,72,11,Under-7,12.0,76,58,4,M,1
+FHS0032,Female,Grade 8,General,8C,C,38,Natural Sciences,Semester 1,43,20,47,Above-7,2.0,15,7,1,L,0
+FHS0033,Male,Grade 8,General,8C,C,38,Technology,Semester 1,44,3,30,Above-7,2.0,41,5,1,L,0
+FHS0034,Female,Grade 8,General,8C,C,38,Social Sciences,Semester 1,47,47,56,Above-7,8.1,73,47,3,M,1
+FHS0035,Female,Grade 8,General,8B,B,32,English FAL,Semester 1,65,76,48,Under-7,14.1,78,64,5,M,1
+FHS0036,Female,Grade 8,General,8A,A,45,English FAL,Semester 2,56,30,81,Under-7,17.1,72,66,5,M,1
+FHS0037,Male,Grade 8,General,8B,B,38,Mathematics,Semester 2,25,40,35,Above-7,7.7,73,22,1,L,0
+FHS0038,Male,Grade 8,General,8C,C,32,Mathematics,Semester 1,59,33,42,Under-7,14.8,70,58,4,M,1
+FHS0039,Male,Grade 8,General,8C,C,35,English FAL,Semester 2,96,54,45,Under-7,15.5,83,64,5,M,1
+FHS0040,Male,Grade 8,General,8B,B,38,Natural Sciences,Semester 1,45,1,38,Under-7,15.0,66,53,4,M,1
+FHS0041,Female,Grade 8,General,8A,A,32,English FAL,Semester 1,55,24,28,Under-7,11.5,56,45,3,M,1
+FHS0042,Female,Grade 8,General,8B,B,42,Social Sciences,Semester 2,0,3,20,Above-7,3.4,14,5,1,L,0
+FHS0043,Female,Grade 8,General,8B,B,35,Life Orientation,Semester 2,51,52,27,Above-7,10.2,51,37,2,L,0
+FHS0044,Male,Grade 8,General,8C,C,32,EMS,Semester 1,31,47,58,Above-7,7.1,53,12,1,L,0
+FHS0045,Male,Grade 8,General,8A,A,38,Natural Sciences,Semester 2,52,71,53,Under-7,11.4,63,52,4,M,1
+FHS0046,Female,Grade 8,General,8B,B,42,Mathematics,Semester 2,29,37,12,Above-7,5.7,10,5,1,L,0
+FHS0047,Male,Grade 8,General,8B,B,38,Social Sciences,Semester 1,37,63,38,Above-7,10.1,59,39,2,L,0
+FHS0048,Female,Grade 8,General,8B,B,38,English FAL,Semester 1,79,62,99,Under-7,15.0,100,68,5,M,1
+FHS0049,Male,Grade 8,General,8B,B,38,Life Orientation,Semester 1,73,43,41,Under-7,14.4,44,59,4,M,1
+FHS0050,Male,Grade 8,General,8B,B,38,Mathematics,Semester 2,89,66,59,Under-7,21.4,74,74,6,H,1
+FHS0051,Male,Grade 8,General,8C,C,32,Life Orientation,Semester 2,64,29,37,Under-7,10.2,53,57,4,M,1
+FHS0052,Female,Grade 8,General,8A,A,45,Social Sciences,Semester 2,43,61,75,Under-7,12.0,49,43,3,M,1
+FHS0053,Female,Grade 8,General,8C,C,38,Technology,Semester 2,62,36,82,Under-7,14.0,62,58,4,M,1
+FHS0054,Female,Grade 8,General,8A,A,38,Technology,Semester 1,55,23,44,Above-7,7.6,49,22,1,L,0
+FHS0055,Male,Grade 8,General,8A,A,42,Life Orientation,Semester 2,52,6,46,Under-7,9.1,60,40,3,M,1
+FHS0056,Male,Grade 8,General,8A,A,35,Mathematics,Semester 1,13,40,0,Under-7,8.3,24,11,1,L,0
+FHS0057,Female,Grade 8,General,8C,C,42,Technology,Semester 2,49,42,39,Under-7,11.5,47,58,4,M,1
+FHS0058,Male,Grade 8,General,8A,A,42,Social Sciences,Semester 2,73,45,52,Under-7,15.1,80,63,5,M,1
+FHS0059,Male,Grade 8,General,8B,B,32,Life Orientation,Semester 2,69,72,63,Under-7,16.1,85,75,6,H,1
+FHS0060,Male,Grade 8,General,8A,A,32,Mathematics,Semester 1,58,29,53,Under-7,21.1,85,61,5,M,1
+FHS0061,Male,Grade 8,General,8A,A,35,Mathematics,Semester 1,77,24,70,Under-7,16.0,74,55,4,M,1
+FHS0062,Female,Grade 8,General,8A,A,42,English FAL,Semester 1,84,38,40,Under-7,15.5,65,63,5,M,1
+FHS0063,Male,Grade 8,General,8B,B,38,English FAL,Semester 2,40,23,15,Above-7,9.1,40,14,1,L,0
+FHS0064,Female,Grade 8,General,8C,C,32,EMS,Semester 1,63,14,12,Under-7,10.5,55,46,3,M,1
+FHS0065,Female,Grade 8,General,8C,C,45,Mathematics,Semester 1,88,53,64,Under-7,16.1,72,67,5,M,1
+FHS0066,Male,Grade 8,General,8A,A,35,Mathematics,Semester 2,87,90,67,Under-7,20.0,95,78,6,H,1
+FHS0067,Male,Grade 8,General,8C,C,42,Natural Sciences,Semester 2,99,41,32,Above-7,20.5,90,51,4,M,1
+FHS0068,Male,Grade 8,General,8A,A,35,Natural Sciences,Semester 2,94,82,61,Under-7,14.5,84,84,7,H,1
+FHS0069,Female,Grade 8,General,8B,B,35,Social Sciences,Semester 1,90,92,99,Under-7,14.0,84,85,7,H,1
+FHS0070,Male,Grade 8,General,8A,A,38,Natural Sciences,Semester 2,38,56,23,Under-7,13.1,47,29,1,L,0
+FHS0071,Male,Grade 8,General,8B,B,35,Social Sciences,Semester 2,88,79,66,Under-7,18.4,75,79,6,H,1
+FHS0072,Male,Grade 8,General,8B,B,32,English FAL,Semester 2,38,20,20,Under-7,7.5,68,38,2,L,0
+FHS0073,Female,Grade 8,General,8A,A,35,Mathematics,Semester 2,63,55,59,Under-7,17.2,89,51,4,M,1
+FHS0074,Female,Grade 8,General,8B,B,42,Life Orientation,Semester 2,60,46,71,Under-7,20.2,100,72,6,H,1
+FHS0075,Female,Grade 8,General,8A,A,48,Mathematics,Semester 1,66,59,57,Under-7,17.3,81,62,5,M,1
+FHS0076,Female,Grade 8,General,8C,C,38,Natural Sciences,Semester 2,18,33,31,Under-7,2.0,45,24,1,L,0
+FHS0077,Female,Grade 8,General,8A,A,42,English FAL,Semester 1,80,0,75,Under-7,10.1,72,57,4,M,1
+FHS0078,Female,Grade 8,General,8A,A,42,Life Orientation,Semester 2,0,7,53,Under-7,2.0,30,12,1,L,0
+FHS0079,Female,Grade 8,General,8C,C,35,English FAL,Semester 1,28,33,24,Under-7,4.3,42,24,1,L,0
+FHS0080,Female,Grade 8,General,8A,A,32,English FAL,Semester 1,69,58,58,Under-7,10.1,79,56,4,M,1
+FHS0081,Male,Grade 8,General,8A,A,32,Natural Sciences,Semester 1,83,62,61,Under-7,17.0,100,71,6,H,1
+FHS0082,Female,Grade 8,General,8B,B,32,Mathematics,Semester 2,41,15,31,Under-7,8.1,49,26,1,L,0
+FHS0083,Female,Grade 8,General,8B,B,45,Technology,Semester 2,44,54,57,Above-7,6.2,68,22,1,L,0
+FHS0084,Female,Grade 8,General,8B,B,35,Technology,Semester 1,90,83,25,Under-7,14.8,82,80,7,H,1
+FHS0085,Male,Grade 8,General,8A,A,35,EMS,Semester 1,42,42,49,Under-7,5.7,48,35,2,L,0
+FHS0086,Male,Grade 8,General,8C,C,42,Social Sciences,Semester 1,33,16,43,Above-7,14.0,64,14,1,L,0
+FHS0087,Female,Grade 8,General,8A,A,38,Mathematics,Semester 2,44,50,47,Above-7,2.7,57,32,2,L,0
+FHS0088,Female,Grade 8,General,8C,C,38,Natural Sciences,Semester 1,69,53,66,Under-7,14.6,61,62,5,M,1
+FHS0089,Male,Grade 8,General,8A,A,35,EMS,Semester 2,36,48,71,Under-7,7.3,68,58,4,M,1
+FHS0090,Male,Grade 8,General,8B,B,38,English FAL,Semester 1,66,72,81,Under-7,22.4,65,69,5,M,1
+FHS0091,Male,Grade 8,General,8B,B,38,EMS,Semester 1,11,37,54,Under-7,4.1,64,40,3,M,1
+FHS0092,Male,Grade 8,General,8A,A,38,EMS,Semester 2,31,39,41,Under-7,16.3,64,60,5,M,1
+FHS0093,Male,Grade 8,General,8C,C,45,Technology,Semester 2,44,36,47,Above-7,13.5,52,22,1,L,0
+FHS0094,Male,Grade 8,General,8B,B,38,Social Sciences,Semester 2,84,53,51,Under-7,17.3,54,58,4,M,1
+FHS0095,Male,Grade 8,General,8C,C,35,Social Sciences,Semester 1,27,37,48,Under-7,6.4,37,19,1,L,0
+FHS0096,Male,Grade 8,General,8A,A,35,Technology,Semester 1,50,45,33,Under-7,15.7,85,63,5,M,1
+FHS0097,Male,Grade 8,General,8A,A,42,Natural Sciences,Semester 1,66,71,71,Under-7,14.3,97,78,6,H,1
+FHS0098,Male,Grade 8,General,8A,A,35,Technology,Semester 2,8,0,35,Above-7,2.0,33,5,1,L,0
+FHS0099,Male,Grade 8,General,8B,B,38,English FAL,Semester 2,72,69,53,Under-7,13.4,81,59,4,M,1
+FHS0100,Male,Grade 8,General,8A,A,32,English FAL,Semester 1,99,56,55,Under-7,21.6,81,90,7,H,1
+FHS0101,Male,Grade 8,General,8C,C,32,EMS,Semester 2,39,49,35,Above-7,8.7,56,33,2,L,0
+FHS0102,Female,Grade 8,General,8A,A,32,EMS,Semester 2,52,36,54,Under-7,10.6,58,64,5,M,1
+FHS0103,Male,Grade 8,General,8A,A,48,Life Orientation,Semester 2,56,58,49,Under-7,10.0,67,55,4,M,1
+FHS0104,Female,Grade 8,General,8B,B,38,Natural Sciences,Semester 1,99,32,54,Under-7,14.8,79,74,6,H,1
+FHS0105,Male,Grade 8,General,8C,C,45,Mathematics,Semester 1,52,57,56,Under-7,14.7,69,59,4,M,1
+FHS0106,Female,Grade 8,General,8B,B,32,Technology,Semester 2,78,54,9,Under-7,9.6,72,49,3,M,1
+FHS0107,Female,Grade 8,General,8B,B,42,Life Orientation,Semester 1,74,49,38,Under-7,19.1,85,72,6,H,1
+FHS0108,Female,Grade 8,General,8B,B,35,Mathematics,Semester 2,84,38,53,Under-7,15.8,53,43,3,M,1
+FHS0109,Female,Grade 8,General,8A,A,38,EMS,Semester 1,68,47,55,Under-7,16.3,100,71,6,H,1
+FHS0110,Female,Grade 8,General,8A,A,35,Life Orientation,Semester 1,27,64,48,Under-7,11.9,64,62,5,M,1
+FHS0111,Male,Grade 8,General,8B,B,42,Social Sciences,Semester 2,66,57,51,Above-7,11.6,66,32,2,L,0
+FHS0112,Female,Grade 8,General,8B,B,42,Social Sciences,Semester 1,57,3,60,Under-7,21.9,97,60,5,M,1
+FHS0113,Female,Grade 8,General,8A,A,38,EMS,Semester 1,61,25,41,Above-7,10.9,68,35,2,L,0
+FHS0114,Male,Grade 8,General,8A,A,45,Social Sciences,Semester 1,20,16,28,Above-7,2.0,25,5,1,L,0
+FHS0115,Male,Grade 8,General,8B,B,48,Natural Sciences,Semester 1,26,26,40,Under-7,12.9,56,17,1,L,0
+FHS0116,Female,Grade 8,General,8B,B,38,English FAL,Semester 1,11,16,48,Under-7,15.1,52,31,2,L,0
+FHS0117,Female,Grade 8,General,8B,B,32,Life Orientation,Semester 1,61,64,86,Under-7,17.9,99,88,7,H,1
+FHS0118,Male,Grade 8,General,8A,A,35,Natural Sciences,Semester 1,47,58,66,Under-7,20.5,91,70,6,H,1
+FHS0119,Male,Grade 8,General,8C,C,38,Natural Sciences,Semester 1,37,5,25,Under-7,7.2,58,25,1,L,0
+FHS0120,Female,Grade 8,General,8A,A,42,English FAL,Semester 1,45,53,47,Under-7,16.0,79,65,5,M,1
+FHS0121,Female,Grade 8,General,8C,C,32,Technology,Semester 2,42,65,63,Under-7,11.6,69,63,5,M,1
+FHS0122,Male,Grade 8,General,8A,A,32,Mathematics,Semester 1,47,73,54,Under-7,18.8,75,57,4,M,1
+FHS0123,Male,Grade 8,General,8B,B,35,EMS,Semester 2,90,51,54,Above-7,14.0,98,64,5,M,1
+FHS0124,Female,Grade 8,General,8A,A,42,EMS,Semester 2,45,10,59,Above-7,18.7,78,47,3,M,1
+FHS0125,Male,Grade 8,General,8B,B,32,English FAL,Semester 2,85,44,70,Under-7,15.1,82,69,5,M,1
+FHS0126,Female,Grade 8,General,8A,A,35,Mathematics,Semester 1,93,81,85,Under-7,20.8,100,78,6,H,1
+FHS0127,Male,Grade 8,General,8B,B,48,Natural Sciences,Semester 2,23,24,19,Under-7,6.0,38,25,1,L,0
+FHS0128,Male,Grade 8,General,8A,A,35,English FAL,Semester 2,47,23,77,Under-7,9.9,59,50,4,M,1
+FHS0129,Female,Grade 8,General,8B,B,38,English FAL,Semester 2,99,41,15,Under-7,10.5,98,62,5,M,1
+FHS0130,Female,Grade 8,General,8C,C,32,Social Sciences,Semester 2,76,78,71,Under-7,23.3,92,88,7,H,1
+FHS0131,Male,Grade 8,General,8B,B,32,Social Sciences,Semester 1,85,83,76,Under-7,15.2,82,74,6,H,1
+FHS0132,Female,Grade 8,General,8A,A,35,Life Orientation,Semester 2,91,41,90,Under-7,13.7,89,83,7,H,1
+FHS0133,Female,Grade 8,General,8B,B,32,Mathematics,Semester 2,41,45,47,Above-7,11.5,62,19,1,L,0
+FHS0134,Female,Grade 8,General,8A,A,32,Mathematics,Semester 1,65,53,80,Under-7,17.4,67,67,5,M,1
+FHS0135,Male,Grade 8,General,8B,B,38,Mathematics,Semester 1,74,91,67,Under-7,16.6,83,76,6,H,1
+FHS0136,Male,Grade 8,General,8B,B,38,Social Sciences,Semester 1,50,56,24,Under-7,9.8,42,43,3,M,1
+FHS0137,Male,Grade 8,General,8A,A,45,Social Sciences,Semester 1,44,21,49,Under-7,7.5,42,31,2,L,0
+FHS0138,Male,Grade 8,General,8A,A,38,Technology,Semester 1,44,44,33,Above-7,3.1,34,23,1,L,0
+FHS0139,Female,Grade 8,General,8B,B,35,Life Orientation,Semester 1,90,80,99,Under-7,23.2,87,88,7,H,1
+FHS0140,Male,Grade 8,General,8B,B,38,Social Sciences,Semester 1,61,72,50,Above-7,11.0,59,41,3,M,1
+FHS0141,Female,Grade 8,General,8C,C,38,EMS,Semester 1,41,63,8,Above-7,19.8,68,35,2,L,0
+FHS0142,Female,Grade 8,General,8B,B,42,Life Orientation,Semester 2,22,49,23,Above-7,5.0,58,26,1,L,0
+FHS0143,Female,Grade 8,General,8A,A,45,Natural Sciences,Semester 1,65,69,68,Under-7,18.3,83,65,5,M,1
+FHS0144,Female,Grade 8,General,8B,B,42,EMS,Semester 2,99,68,87,Under-7,18.2,82,83,7,H,1
+FHS0145,Male,Grade 8,General,8C,C,35,English FAL,Semester 1,79,47,51,Under-7,8.9,80,60,5,M,1
+FHS0146,Female,Grade 8,General,8B,B,35,Mathematics,Semester 2,99,73,24,Under-7,23.3,77,65,5,M,1
+FHS0147,Male,Grade 8,General,8B,B,32,Social Sciences,Semester 2,75,62,84,Under-7,16.2,81,88,7,H,1
+FHS0148,Male,Grade 8,General,8A,A,35,Social Sciences,Semester 2,68,58,66,Under-7,14.9,77,70,6,H,1
+FHS0149,Male,Grade 8,General,8A,A,45,Technology,Semester 2,28,16,27,Under-7,7.0,24,9,1,L,0
+FHS0150,Male,Grade 8,General,8A,A,35,EMS,Semester 2,86,71,84,Under-7,20.0,93,86,7,H,1
+FHS0151,Male,Grade 8,General,8B,B,48,EMS,Semester 1,12,30,7,Above-7,3.5,42,5,1,L,0
+FHS0152,Male,Grade 8,General,8B,B,38,Technology,Semester 1,52,66,39,Under-7,11.1,68,45,3,M,1
+FHS0153,Female,Grade 8,General,8A,A,35,Social Sciences,Semester 2,48,66,50,Under-7,14.4,79,67,5,M,1
+FHS0154,Female,Grade 8,General,8B,B,38,EMS,Semester 1,49,33,54,Under-7,9.5,69,65,5,M,1
+FHS0155,Male,Grade 8,General,8C,C,38,Life Orientation,Semester 1,54,49,71,Under-7,17.4,70,70,6,H,1
+FHS0156,Male,Grade 8,General,8A,A,38,English FAL,Semester 2,80,86,32,Under-7,23.5,74,78,6,H,1
+FHS0157,Male,Grade 8,General,8C,C,48,Technology,Semester 2,93,61,45,Under-7,20.0,99,80,7,H,1
+FHS0158,Male,Grade 8,General,8A,A,32,English FAL,Semester 1,49,62,75,Under-7,17.3,72,55,4,M,1
+FHS0159,Female,Grade 8,General,8B,B,32,Natural Sciences,Semester 2,92,43,64,Under-7,23.3,90,80,7,H,1
+FHS0160,Female,Grade 8,General,8A,A,45,English FAL,Semester 1,45,71,48,Under-7,18.4,58,67,5,M,1
+FHS0161,Female,Grade 8,General,8A,A,35,Technology,Semester 2,35,5,43,Under-7,13.0,30,30,2,L,0
+FHS0162,Female,Grade 8,General,8A,A,38,Life Orientation,Semester 2,52,11,30,Under-7,6.3,50,47,3,M,1
+FHS0163,Male,Grade 8,General,8A,A,45,Technology,Semester 1,31,38,56,Above-7,13.5,35,14,1,L,0
+FHS0164,Male,Grade 8,General,8B,B,35,Life Orientation,Semester 1,65,21,57,Under-7,13.2,45,54,4,M,1
+FHS0165,Male,Grade 8,General,8B,B,42,English FAL,Semester 1,26,1,40,Above-7,3.6,59,10,1,L,0
+FHS0166,Male,Grade 8,General,8A,A,45,Life Orientation,Semester 2,64,55,55,Under-7,9.9,67,56,4,M,1
+FHS0167,Female,Grade 8,General,8A,A,42,Technology,Semester 1,72,94,37,Under-7,20.2,100,59,4,M,1
+FHS0168,Male,Grade 8,General,8C,C,32,Social Sciences,Semester 2,57,39,43,Under-7,8.6,65,50,4,M,1
+FHS0169,Male,Grade 8,General,8C,C,38,EMS,Semester 1,57,67,44,Under-7,10.9,64,61,5,M,1
+FHS0170,Male,Grade 8,General,8A,A,35,EMS,Semester 1,57,47,44,Under-7,17.7,92,64,5,M,1
+FHS0171,Male,Grade 8,General,8A,A,35,EMS,Semester 2,61,38,53,Under-7,11.6,63,53,4,M,1
+FHS0172,Female,Grade 8,General,8B,B,35,EMS,Semester 1,63,38,65,Under-7,17.3,74,76,6,H,1
+FHS0173,Male,Grade 8,General,8C,C,35,English FAL,Semester 2,60,0,71,Under-7,7.8,62,57,4,M,1
+FHS0174,Male,Grade 8,General,8A,A,35,Social Sciences,Semester 1,48,76,51,Under-7,12.3,64,49,3,M,1
+FHS0175,Female,Grade 8,General,8B,B,42,Natural Sciences,Semester 2,87,66,68,Under-7,22.8,90,71,6,H,1
+FHS0176,Female,Grade 8,General,8B,B,35,Life Orientation,Semester 1,44,28,47,Above-7,10.2,71,48,3,M,1
+FHS0177,Female,Grade 8,General,8A,A,48,Natural Sciences,Semester 2,20,59,34,Under-7,7.5,58,40,3,M,1
+FHS0178,Female,Grade 8,General,8C,C,45,Natural Sciences,Semester 2,96,99,58,Under-7,18.1,100,83,7,H,1
+FHS0179,Male,Grade 8,General,8B,B,32,English FAL,Semester 1,30,60,39,Under-7,11.3,57,47,3,M,1
+FHS0180,Male,Grade 8,General,8C,C,38,Natural Sciences,Semester 2,34,11,13,Above-7,10.1,49,22,1,L,0
+FHS0181,Female,Grade 8,General,8A,A,45,Natural Sciences,Semester 2,62,16,46,Under-7,15.2,98,52,4,M,1
+FHS0182,Female,Grade 8,General,8C,C,38,EMS,Semester 2,49,94,62,Under-7,10.8,68,76,6,H,1
+FHS0183,Male,Grade 8,General,8B,B,38,Natural Sciences,Semester 1,68,61,99,Under-7,18.8,96,82,7,H,1
+FHS0184,Male,Grade 8,General,8C,C,42,Natural Sciences,Semester 2,53,28,66,Under-7,17.7,72,57,4,M,1
+FHS0185,Male,Grade 8,General,8A,A,42,English FAL,Semester 2,33,35,46,Under-7,15.1,69,58,4,M,1
+FHS0186,Female,Grade 8,General,8B,B,48,Natural Sciences,Semester 1,91,50,64,Under-7,17.0,66,83,7,H,1
+FHS0187,Female,Grade 8,General,8A,A,35,English FAL,Semester 2,85,30,96,Above-7,22.3,100,72,6,H,1
+FHS0188,Female,Grade 8,General,8A,A,35,EMS,Semester 2,41,43,60,Under-7,11.0,54,55,4,M,1
+FHS0189,Male,Grade 8,General,8B,B,42,English FAL,Semester 1,48,66,68,Under-7,20.6,86,59,4,M,1
+FHS0190,Male,Grade 8,General,8C,C,38,English FAL,Semester 2,47,41,19,Above-7,9.0,34,25,1,L,0
+FHS0191,Female,Grade 8,General,8C,C,42,English FAL,Semester 2,61,31,21,Under-7,14.5,65,44,3,M,1
+FHS0192,Male,Grade 8,General,8B,B,42,Life Orientation,Semester 2,87,79,51,Above-7,18.9,87,65,5,M,1
+FHS0193,Male,Grade 8,General,8A,A,35,Social Sciences,Semester 1,47,46,54,Above-7,9.3,58,35,2,L,0
+FHS0194,Female,Grade 8,General,8B,B,38,Social Sciences,Semester 2,88,59,33,Under-7,15.8,52,69,5,M,1
+FHS0195,Female,Grade 8,General,8A,A,38,Natural Sciences,Semester 1,79,59,51,Under-7,19.6,89,68,5,M,1
+FHS0196,Male,Grade 8,General,8B,B,38,English FAL,Semester 1,63,17,88,Under-7,5.8,50,38,2,L,0
+FHS0197,Female,Grade 8,General,8B,B,38,Social Sciences,Semester 1,75,64,76,Under-7,18.9,80,76,6,H,1
+FHS0198,Female,Grade 8,General,8A,A,42,Social Sciences,Semester 1,74,31,49,Under-7,8.4,40,56,4,M,1
+FHS0199,Female,Grade 8,General,8A,A,38,Natural Sciences,Semester 1,28,33,39,Above-7,10.3,62,32,2,L,0
+FHS0200,Male,Grade 8,General,8A,A,35,EMS,Semester 2,58,57,64,Under-7,14.8,76,76,6,H,1
+FHS0201,Female,Grade 8,General,8A,A,38,Natural Sciences,Semester 2,97,29,64,Under-7,16.2,68,86,7,H,1
+FHS0202,Female,Grade 8,General,8C,C,45,Life Orientation,Semester 1,64,0,81,Above-7,15.0,85,48,3,M,1
+FHS0203,Male,Grade 8,General,8C,C,32,Life Orientation,Semester 1,70,90,87,Under-7,23.5,79,83,7,H,1
+FHS0204,Male,Grade 8,General,8B,B,32,English FAL,Semester 2,51,52,61,Under-7,2.0,53,33,2,L,0
+FHS0205,Female,Grade 8,General,8C,C,35,Social Sciences,Semester 2,49,40,61,Above-7,14.6,73,50,4,M,1
+FHS0206,Male,Grade 8,General,8B,B,35,Mathematics,Semester 1,59,58,72,Under-7,12.4,80,51,4,M,1
+FHS0207,Male,Grade 8,General,8B,B,38,Social Sciences,Semester 1,28,53,99,Under-7,6.3,82,54,4,M,1
+FHS0208,Male,Grade 8,General,8B,B,35,Life Orientation,Semester 1,65,46,38,Above-7,9.1,71,51,4,M,1
+FHS0209,Female,Grade 8,General,8C,C,35,English FAL,Semester 1,45,42,40,Above-7,10.8,37,19,1,L,0
+FHS0210,Female,Grade 8,General,8C,C,45,EMS,Semester 1,50,44,33,Under-7,15.9,93,69,5,M,1
+FHS0211,Female,Grade 8,General,8A,A,48,Mathematics,Semester 2,38,37,17,Above-7,8.4,19,8,1,L,0
+FHS0212,Female,Grade 8,General,8B,B,42,Natural Sciences,Semester 1,61,44,42,Above-7,11.7,41,17,1,L,0
+FHS0213,Male,Grade 8,General,8B,B,42,Social Sciences,Semester 1,63,44,8,Under-7,3.9,45,35,2,L,0
+FHS0214,Female,Grade 8,General,8A,A,42,EMS,Semester 2,61,47,41,Under-7,8.9,51,46,3,M,1
+FHS0215,Male,Grade 8,General,8A,A,32,English FAL,Semester 1,49,14,36,Under-7,8.8,36,38,2,L,0
+FHS0216,Female,Grade 8,General,8C,C,35,Life Orientation,Semester 2,52,25,53,Under-7,14.7,69,57,4,M,1
+FHS0217,Female,Grade 8,General,8C,C,35,Mathematics,Semester 1,52,38,32,Under-7,15.5,75,45,3,M,1
+FHS0218,Male,Grade 8,General,8C,C,32,English FAL,Semester 1,21,37,43,Above-7,4.0,26,5,1,L,0
+FHS0219,Male,Grade 8,General,8B,B,42,Life Orientation,Semester 2,26,49,65,Under-7,7.6,55,50,4,M,1
+FHS0220,Male,Grade 8,General,8B,B,42,Life Orientation,Semester 1,37,5,41,Under-7,13.6,50,38,2,L,0
+FHS0221,Female,Grade 8,General,8B,B,42,Natural Sciences,Semester 1,53,54,63,Under-7,18.9,100,65,5,M,1
+FHS0222,Female,Grade 8,General,8A,A,45,English FAL,Semester 1,27,53,25,Under-7,7.2,42,35,2,L,0
+FHS0223,Male,Grade 8,General,8C,C,35,Social Sciences,Semester 2,59,13,81,Above-7,14.8,75,36,2,L,0
+FHS0224,Female,Grade 8,General,8A,A,35,Natural Sciences,Semester 1,72,55,47,Under-7,17.4,100,83,7,H,1
+FHS0225,Male,Grade 8,General,8B,B,32,Natural Sciences,Semester 1,32,26,22,Under-7,8.1,49,26,1,L,0
+FHS0226,Female,Grade 8,General,8C,C,32,EMS,Semester 1,55,58,65,Under-7,14.9,93,73,6,H,1
+FHS0227,Male,Grade 8,General,8A,A,35,Life Orientation,Semester 1,65,90,54,Under-7,20.8,78,88,7,H,1
+FHS0228,Female,Grade 8,General,8A,A,35,Social Sciences,Semester 2,69,50,47,Above-7,11.5,71,46,3,M,1
+FHS0229,Female,Grade 8,General,8A,A,35,Life Orientation,Semester 2,72,19,21,Under-7,15.6,50,59,4,M,1
+FHS0230,Female,Grade 8,General,8B,B,42,Life Orientation,Semester 1,89,74,53,Under-7,21.9,98,88,7,H,1
+FHS0231,Male,Grade 8,General,8A,A,32,Social Sciences,Semester 2,95,22,88,Under-7,18.7,70,76,6,H,1
+FHS0232,Male,Grade 8,General,8B,B,42,Natural Sciences,Semester 1,44,8,68,Above-7,13.5,60,25,1,L,0
+FHS0233,Female,Grade 8,General,8B,B,42,English FAL,Semester 1,84,23,75,Under-7,15.3,85,69,5,M,1
+FHS0234,Male,Grade 8,General,8B,B,42,EMS,Semester 2,57,28,38,Above-7,7.7,55,26,1,L,0
+FHS0235,Male,Grade 8,General,8B,B,45,Life Orientation,Semester 2,59,35,51,Under-7,7.9,55,54,4,M,1
+FHS0236,Female,Grade 8,General,8C,C,38,Mathematics,Semester 2,59,54,60,Under-7,17.8,80,67,5,M,1
+FHS0237,Male,Grade 8,General,8B,B,35,Natural Sciences,Semester 2,52,35,42,Above-7,7.2,37,19,1,L,0
+FHS0238,Female,Grade 8,General,8B,B,35,EMS,Semester 2,99,99,55,Under-7,16.9,100,90,7,H,1
+FHS0239,Female,Grade 8,General,8C,C,48,Life Orientation,Semester 2,68,77,83,Under-7,14.5,100,87,7,H,1
+FHS0240,Male,Grade 8,General,8B,B,38,Mathematics,Semester 2,26,42,31,Under-7,7.2,44,23,1,L,0
+FHS0241,Male,Grade 8,General,8A,A,38,Technology,Semester 1,45,47,19,Under-7,11.6,60,53,4,M,1
+FHS0242,Female,Grade 8,General,8B,B,35,Life Orientation,Semester 2,36,25,26,Under-7,5.7,39,39,2,L,0
+FHS0243,Female,Grade 8,General,8A,A,35,EMS,Semester 1,43,50,53,Under-7,6.2,40,45,3,M,1
+FHS0244,Female,Grade 8,General,8C,C,35,EMS,Semester 2,65,16,34,Under-7,15.6,86,64,5,M,1
+FHS0245,Female,Grade 8,General,8A,A,35,Life Orientation,Semester 2,98,39,50,Under-7,21.4,67,72,6,H,1
+FHS0246,Female,Grade 8,General,8C,C,35,Technology,Semester 2,44,34,53,Under-7,6.6,55,56,4,M,1
+FHS0247,Male,Grade 8,General,8A,A,38,Natural Sciences,Semester 1,49,21,39,Above-7,4.5,47,20,1,L,0
+FHS0248,Male,Grade 8,General,8A,A,35,Technology,Semester 2,55,49,46,Above-7,14.7,71,41,3,M,1
+FHS0249,Male,Grade 8,General,8C,C,42,Natural Sciences,Semester 1,55,32,41,Under-7,10.9,59,46,3,M,1
+FHS0250,Male,Grade 8,General,8A,A,48,Life Orientation,Semester 2,13,45,16,Above-7,10.7,29,9,1,L,0
+FHS0251,Female,Grade 8,General,8A,A,48,English FAL,Semester 2,74,71,83,Under-7,14.4,100,74,6,H,1
+FHS0252,Female,Grade 8,General,8C,C,35,English FAL,Semester 2,19,7,34,Under-7,2.0,45,12,1,L,0
+FHS0253,Male,Grade 8,General,8C,C,45,Life Orientation,Semester 1,16,21,69,Above-7,9.0,47,29,1,L,0
+FHS0254,Male,Grade 8,General,8A,A,38,Life Orientation,Semester 1,69,52,79,Under-7,17.2,88,79,6,H,1
+FHS0255,Female,Grade 8,General,8B,B,35,Technology,Semester 1,57,25,64,Under-7,19.9,86,71,6,H,1
+FHS0256,Male,Grade 8,General,8B,B,38,Technology,Semester 1,74,16,65,Above-7,17.2,74,37,2,L,0
+FHS0257,Male,Grade 8,General,8A,A,35,EMS,Semester 2,24,26,44,Above-7,11.4,59,29,1,L,0
+FHS0258,Male,Grade 8,General,8A,A,38,EMS,Semester 2,90,65,65,Under-7,19.1,78,81,7,H,1
+FHS0259,Male,Grade 8,General,8A,A,45,Technology,Semester 2,63,50,47,Under-7,14.1,53,52,4,M,1
+FHS0260,Female,Grade 8,General,8B,B,32,Natural Sciences,Semester 2,66,30,30,Above-7,7.9,79,36,2,L,0
+FHS0261,Female,Grade 8,General,8C,C,42,Life Orientation,Semester 2,69,39,50,Under-7,11.0,70,59,4,M,1
+FHS0262,Female,Grade 8,General,8C,C,35,Technology,Semester 2,36,23,32,Under-7,4.3,55,30,2,L,0
+FHS0263,Male,Grade 8,General,8A,A,32,Social Sciences,Semester 2,39,37,19,Under-7,6.1,30,30,2,L,0
+FHS0264,Male,Grade 8,General,8C,C,35,Life Orientation,Semester 2,90,31,65,Under-7,17.2,99,74,6,H,1
+FHS0265,Female,Grade 8,General,8C,C,42,English FAL,Semester 1,78,62,46,Under-7,13.8,69,69,5,M,1
+FHS0266,Female,Grade 8,General,8A,A,42,English FAL,Semester 2,81,54,52,Above-7,9.3,56,46,3,M,1
+FHS0267,Male,Grade 8,General,8C,C,38,Technology,Semester 1,0,0,63,Under-7,9.4,37,18,1,L,0
+FHS0268,Male,Grade 8,General,8A,A,45,Life Orientation,Semester 1,63,22,46,Under-7,15.3,77,60,5,M,1
+FHS0269,Female,Grade 8,General,8B,B,32,EMS,Semester 1,59,48,26,Under-7,11.6,39,48,3,M,1
+FHS0270,Female,Grade 8,General,8B,B,42,Mathematics,Semester 2,45,20,52,Under-7,10.1,54,26,1,L,0
+FHS0271,Male,Grade 8,General,8B,B,35,Social Sciences,Semester 1,88,52,50,Under-7,21.0,91,86,7,H,1
+FHS0272,Female,Grade 8,General,8C,C,35,Natural Sciences,Semester 1,74,44,71,Under-7,19.8,82,73,6,H,1
+FHS0273,Female,Grade 8,General,8A,A,45,EMS,Semester 1,63,51,59,Under-7,18.0,73,77,6,H,1
+FHS0274,Female,Grade 8,General,8A,A,38,EMS,Semester 2,66,23,22,Above-7,12.0,66,42,3,M,1
+FHS0275,Female,Grade 8,General,8A,A,42,Mathematics,Semester 2,99,19,82,Under-7,21.5,96,74,6,H,1
+FHS0276,Female,Grade 8,General,8B,B,42,English FAL,Semester 1,71,46,81,Under-7,13.9,100,78,6,H,1
+FHS0277,Male,Grade 8,General,8C,C,35,English FAL,Semester 1,17,19,43,Above-7,5.3,28,14,1,L,0
+FHS0278,Male,Grade 8,General,8A,A,38,English FAL,Semester 1,70,31,67,Under-7,13.7,84,72,6,H,1
+FHS0279,Male,Grade 8,General,8A,A,45,Natural Sciences,Semester 1,60,10,57,Above-7,12.3,67,33,2,L,0
+FHS0280,Female,Grade 8,General,8A,A,38,Technology,Semester 1,63,50,50,Above-7,14.6,64,25,1,L,0
+FHS0281,Male,Grade 8,General,8B,B,38,Mathematics,Semester 1,36,10,3,Under-7,5.5,47,9,1,L,0
+FHS0282,Male,Grade 8,General,8A,A,48,Technology,Semester 1,87,67,57,Under-7,20.8,66,64,5,M,1
+FHS0283,Male,Grade 8,General,8A,A,35,Mathematics,Semester 2,11,45,24,Under-7,7.8,56,19,1,L,0
+FHS0284,Female,Grade 8,General,8B,B,38,Social Sciences,Semester 1,65,79,32,Above-7,14.9,74,35,2,L,0
+FHS0285,Female,Grade 8,General,8B,B,38,English FAL,Semester 1,41,28,33,Under-7,11.9,58,40,3,M,1
+FHS0286,Female,Grade 8,General,8B,B,32,EMS,Semester 2,82,9,37,Under-7,2.0,52,41,3,M,1
+FHS0287,Male,Grade 8,General,8A,A,38,English FAL,Semester 2,37,30,61,Under-7,14.2,61,56,4,M,1
+FHS0288,Female,Grade 8,General,8A,A,32,Social Sciences,Semester 2,48,9,30,Under-7,10.0,50,39,2,L,0
+FHS0289,Female,Grade 8,General,8C,C,32,Natural Sciences,Semester 1,47,31,27,Under-7,6.6,62,27,1,L,0
+FHS0290,Female,Grade 8,General,8A,A,42,English FAL,Semester 1,93,67,72,Under-7,11.5,65,57,4,M,1
+FHS0291,Female,Grade 8,General,8A,A,35,Natural Sciences,Semester 1,83,45,69,Under-7,24.2,76,72,6,H,1
+FHS0292,Female,Grade 8,General,8A,A,42,Natural Sciences,Semester 2,40,47,34,Above-7,15.6,75,32,2,L,0
+FHS0293,Male,Grade 8,General,8B,B,38,Social Sciences,Semester 1,73,51,43,Under-7,16.5,78,69,5,M,1
+FHS0294,Female,Grade 8,General,8B,B,38,Technology,Semester 1,13,0,52,Above-7,2.0,37,5,1,L,0
+FHS0295,Female,Grade 8,General,8C,C,32,Life Orientation,Semester 2,88,67,56,Under-7,16.0,72,82,7,H,1
+FHS0296,Female,Grade 8,General,8A,A,45,Life Orientation,Semester 2,92,60,58,Under-7,17.0,100,81,7,H,1
+FHS0297,Male,Grade 8,General,8C,C,45,English FAL,Semester 2,80,10,59,Under-7,17.9,85,69,5,M,1
+FHS0298,Male,Grade 8,General,8B,B,45,EMS,Semester 1,95,51,72,Under-7,17.5,85,78,6,H,1
+FHS0299,Male,Grade 8,General,8A,A,32,Life Orientation,Semester 2,23,18,41,Above-7,2.5,21,12,1,L,0
+FHS0300,Male,Grade 8,General,8A,A,45,Technology,Semester 1,52,9,12,Above-7,6.3,43,12,1,L,0
+FHS0301,Female,Grade 8,General,8A,A,32,Natural Sciences,Semester 1,83,80,42,Under-7,27.6,100,82,7,H,1
+FHS0302,Female,Grade 8,General,8A,A,38,Life Orientation,Semester 1,79,81,51,Under-7,19.1,93,73,6,H,1
+FHS0303,Male,Grade 8,General,8A,A,32,EMS,Semester 1,50,48,72,Above-7,8.9,60,30,2,L,0
+FHS0304,Female,Grade 8,General,8B,B,35,English FAL,Semester 1,50,54,57,Above-7,14.7,69,43,3,M,1
+FHS0305,Female,Grade 8,General,8C,C,35,EMS,Semester 1,42,72,69,Under-7,20.5,99,82,7,H,1
+FHS0306,Female,Grade 8,General,8B,B,35,Natural Sciences,Semester 1,97,99,84,Under-7,21.3,99,89,7,H,1
+FHS0307,Male,Grade 8,General,8A,A,35,EMS,Semester 1,93,55,94,Under-7,17.2,74,87,7,H,1
+FHS0308,Male,Grade 8,General,8C,C,35,Life Orientation,Semester 2,49,48,77,Under-7,11.0,66,71,6,H,1
+FHS0309,Male,Grade 8,General,8A,A,35,Technology,Semester 2,42,8,69,Under-7,10.6,55,50,4,M,1
+FHS0310,Male,Grade 8,General,8A,A,42,Technology,Semester 1,4,6,42,Above-7,7.1,46,5,1,L,0
+FHS0311,Male,Grade 8,General,8B,B,42,EMS,Semester 2,43,1,23,Under-7,10.0,67,38,2,L,0
+FHS0312,Male,Grade 8,General,8A,A,38,Technology,Semester 1,84,71,68,Under-7,17.0,91,83,7,H,1
+FHS0313,Male,Grade 8,General,8B,B,42,Technology,Semester 2,75,76,45,Above-7,14.4,79,55,4,M,1
+FHS0314,Female,Grade 8,General,8B,B,38,Technology,Semester 1,70,45,71,Under-7,16.6,93,74,6,H,1
+FHS0315,Female,Grade 8,General,8A,A,42,Technology,Semester 2,53,38,75,Under-7,18.6,100,74,6,H,1
+FHS0316,Male,Grade 8,General,8C,C,42,EMS,Semester 1,61,11,65,Above-7,18.9,84,45,3,M,1
+FHS0317,Male,Grade 8,General,8C,C,35,Natural Sciences,Semester 2,73,20,53,Above-7,9.6,73,38,2,L,0
+FHS0318,Female,Grade 8,General,8B,B,38,English FAL,Semester 2,46,59,52,Above-7,4.2,59,31,2,L,0
+FHS0319,Female,Grade 8,General,8A,A,35,English FAL,Semester 1,26,45,17,Above-7,9.6,64,31,2,L,0
+FHS0320,Female,Grade 8,General,8C,C,42,Mathematics,Semester 1,81,80,83,Under-7,18.9,91,70,6,H,1
+FHS0321,Male,Grade 8,General,8B,B,45,EMS,Semester 2,50,56,51,Above-7,8.7,73,42,3,M,1
+FHS0322,Female,Grade 8,General,8C,C,32,Mathematics,Semester 1,27,33,39,Under-7,11.4,45,37,2,L,0
+FHS0323,Female,Grade 8,General,8B,B,35,Technology,Semester 1,88,45,39,Above-7,17.0,89,46,3,M,1
+FHS0324,Female,Grade 8,General,8B,B,42,Life Orientation,Semester 1,99,62,68,Under-7,20.6,95,97,7,H,1
+FHS0325,Male,Grade 8,General,8C,C,42,EMS,Semester 2,74,62,55,Under-7,15.1,79,69,5,M,1
+FHS0326,Female,Grade 8,General,8B,B,35,Natural Sciences,Semester 1,73,96,57,Under-7,20.9,100,83,7,H,1
+FHS0327,Female,Grade 8,General,8A,A,35,English FAL,Semester 2,53,42,53,Under-7,18.4,74,53,4,M,1
+FHS0328,Male,Grade 8,General,8A,A,32,Natural Sciences,Semester 2,61,41,26,Above-7,10.2,65,30,2,L,0
+FHS0329,Female,Grade 8,General,8B,B,35,Mathematics,Semester 2,56,70,64,Above-7,12.2,60,40,3,M,1
+FHS0330,Female,Grade 8,General,8A,A,38,EMS,Semester 1,69,36,65,Under-7,17.1,95,76,6,H,1
+FHS0331,Male,Grade 8,General,8A,A,38,English FAL,Semester 2,63,18,37,Under-7,8.5,39,48,3,M,1
+FHS0332,Female,Grade 8,General,8B,B,32,Social Sciences,Semester 1,27,0,0,Under-7,11.3,53,30,2,L,0
+FHS0333,Female,Grade 8,General,8B,B,38,Natural Sciences,Semester 1,59,53,64,Under-7,14.3,82,57,4,M,1
+FHS0334,Male,Grade 8,General,8A,A,38,Mathematics,Semester 2,11,14,56,Under-7,7.0,57,23,1,L,0
+FHS0335,Female,Grade 8,General,8C,C,42,Life Orientation,Semester 1,75,58,61,Under-7,18.2,85,73,6,H,1
+FHS0336,Male,Grade 8,General,8C,C,35,Mathematics,Semester 2,54,45,60,Above-7,9.9,49,18,1,L,0
+FHS0337,Female,Grade 8,General,8C,C,38,Natural Sciences,Semester 1,42,12,35,Above-7,6.0,36,10,1,L,0
+FHS0338,Male,Grade 8,General,8C,C,35,English FAL,Semester 1,34,0,67,Under-7,4.9,46,33,2,L,0
+FHS0339,Female,Grade 8,General,8B,B,32,Mathematics,Semester 2,55,63,84,Under-7,17.3,70,66,5,M,1
+FHS0340,Female,Grade 8,General,8B,B,42,EMS,Semester 1,63,42,62,Above-7,10.9,88,49,3,M,1
+FHS0341,Female,Grade 8,General,8A,A,42,Natural Sciences,Semester 1,84,78,79,Under-7,18.5,77,83,7,H,1
+FHS0342,Female,Grade 8,General,8B,B,42,Life Orientation,Semester 1,66,53,60,Under-7,17.0,98,70,6,H,1
+FHS0343,Female,Grade 8,General,8A,A,42,Technology,Semester 1,60,33,19,Under-7,13.4,73,48,3,M,1
+FHS0344,Male,Grade 8,General,8B,B,35,EMS,Semester 2,78,61,77,Under-7,22.0,83,78,6,H,1
+FHS0345,Female,Grade 8,General,8B,B,35,Technology,Semester 1,78,57,68,Under-7,18.0,92,81,7,H,1
+FHS0346,Female,Grade 8,General,8C,C,35,Natural Sciences,Semester 2,38,66,54,Under-7,11.3,49,43,3,M,1
+FHS0347,Female,Grade 8,General,8A,A,35,EMS,Semester 1,73,34,49,Under-7,15.2,76,67,5,M,1
+FHS0348,Male,Grade 8,General,8B,B,45,Life Orientation,Semester 2,63,28,67,Above-7,8.9,49,26,1,L,0
+FHS0349,Male,Grade 8,General,8B,B,38,Natural Sciences,Semester 1,40,6,4,Above-7,2.0,34,5,1,L,0
+FHS0350,Male,Grade 8,General,8A,A,42,English FAL,Semester 2,86,45,91,Under-7,18.8,92,73,6,H,1
+FHS0351,Male,Grade 8,General,8A,A,38,Technology,Semester 2,13,18,52,Above-7,11.0,42,12,1,L,0
+FHS0352,Male,Grade 8,General,8C,C,32,EMS,Semester 1,66,49,62,Under-7,14.3,65,60,5,M,1
+FHS0353,Female,Grade 8,General,8B,B,38,Technology,Semester 2,38,37,38,Above-7,16.9,66,34,2,L,0
+FHS0354,Male,Grade 8,General,8A,A,45,Social Sciences,Semester 1,82,73,77,Under-7,19.2,74,76,6,H,1
+FHS0355,Female,Grade 8,General,8B,B,42,Social Sciences,Semester 1,84,59,62,Under-7,16.6,100,87,7,H,1
+FHS0356,Male,Grade 8,General,8A,A,42,Life Orientation,Semester 1,52,85,68,Under-7,19.8,65,74,6,H,1
+FHS0357,Male,Grade 8,General,8C,C,42,Technology,Semester 1,67,12,12,Above-7,7.6,72,33,2,L,0
+FHS0358,Male,Grade 8,General,8C,C,35,EMS,Semester 2,80,37,47,Under-7,20.5,92,73,6,H,1
+FHS0359,Male,Grade 8,General,8A,A,48,Mathematics,Semester 1,67,62,66,Under-7,14.7,78,63,5,M,1
+FHS0360,Female,Grade 8,General,8A,A,42,Life Orientation,Semester 1,76,71,53,Under-7,16.6,77,66,5,M,1
+FHS0361,Female,Grade 8,General,8B,B,42,Technology,Semester 2,99,30,67,Under-7,23.2,90,85,7,H,1
+FHS0362,Female,Grade 8,General,8C,C,38,Mathematics,Semester 2,46,31,42,Under-7,11.2,69,40,3,M,1
+FHS0363,Female,Grade 8,General,8B,B,42,English FAL,Semester 2,61,12,48,Above-7,11.5,60,36,2,L,0
+FHS0364,Female,Grade 8,General,8B,B,38,Mathematics,Semester 2,50,36,20,Under-7,10.3,58,42,3,M,1
+FHS0365,Male,Grade 8,General,8A,A,38,Life Orientation,Semester 1,61,25,24,Under-7,9.3,34,41,3,M,1
+FHS0366,Male,Grade 8,General,8C,C,38,Life Orientation,Semester 2,74,26,46,Under-7,8.3,37,38,2,L,0
+FHS0367,Female,Grade 8,General,8B,B,35,English FAL,Semester 1,91,62,71,Under-7,19.2,76,88,7,H,1
+FHS0368,Female,Grade 8,General,8A,A,35,Technology,Semester 1,68,59,40,Above-7,11.3,62,47,3,M,1
+FHS0369,Male,Grade 8,General,8C,C,32,Social Sciences,Semester 1,74,75,63,Under-7,15.7,83,74,6,H,1
+FHS0370,Female,Grade 8,General,8A,A,38,Mathematics,Semester 1,66,36,14,Above-7,9.7,30,5,1,L,0
+FHS0371,Female,Grade 8,General,8A,A,35,EMS,Semester 1,35,4,23,Above-7,3.2,37,17,1,L,0
+FHS0372,Female,Grade 8,General,8C,C,45,Natural Sciences,Semester 2,63,58,89,Under-7,19.5,86,86,7,H,1
+FHS0373,Male,Grade 8,General,8A,A,45,Mathematics,Semester 1,75,38,56,Under-7,15.0,66,53,4,M,1
+FHS0374,Female,Grade 8,General,8B,B,42,Mathematics,Semester 1,95,60,70,Under-7,16.0,88,77,6,H,1
+FHS0375,Female,Grade 8,General,8B,B,32,Mathematics,Semester 2,94,39,61,Under-7,20.7,75,76,6,H,1
+FHS0376,Female,Grade 8,General,8A,A,45,Natural Sciences,Semester 1,33,14,32,Under-7,6.8,36,44,3,M,1
+FHS0377,Male,Grade 8,General,8B,B,45,EMS,Semester 1,23,45,57,Under-7,16.1,38,43,3,M,1
+FHS0378,Female,Grade 8,General,8A,A,42,Natural Sciences,Semester 1,61,51,66,Under-7,13.9,81,82,7,H,1
+FHS0379,Female,Grade 8,General,8B,B,35,Life Orientation,Semester 1,66,44,63,Under-7,11.2,69,76,6,H,1
+FHS0380,Male,Grade 8,General,8A,A,35,English FAL,Semester 1,87,55,88,Under-7,20.3,90,86,7,H,1
+FHS0381,Male,Grade 8,General,8B,B,35,Technology,Semester 2,45,38,27,Under-7,16.6,86,57,4,M,1
+FHS0382,Female,Grade 8,General,8C,C,35,Mathematics,Semester 2,84,46,28,Under-7,7.5,72,43,3,M,1
+FHS0383,Male,Grade 8,General,8B,B,42,English FAL,Semester 2,34,47,61,Under-7,14.6,70,58,4,M,1
+FHS0384,Female,Grade 8,General,8A,A,35,Mathematics,Semester 2,45,33,34,Under-7,2.0,40,25,1,L,0
+FHS0385,Female,Grade 8,General,8A,A,38,Natural Sciences,Semester 2,51,28,76,Above-7,15.3,66,47,3,M,1
+FHS0386,Male,Grade 8,General,8C,C,45,Mathematics,Semester 2,78,10,65,Under-7,16.4,93,67,5,M,1
+FHS0387,Female,Grade 8,General,8A,A,38,English FAL,Semester 2,62,40,48,Under-7,12.9,89,61,5,M,1
+FHS0388,Male,Grade 8,General,8B,B,42,English FAL,Semester 1,73,56,48,Under-7,16.5,93,69,5,M,1
+FHS0389,Male,Grade 8,General,8C,C,42,Mathematics,Semester 2,83,42,85,Above-7,21.9,98,47,3,M,1
+FHS0390,Female,Grade 8,General,8A,A,35,Life Orientation,Semester 1,77,34,45,Under-7,16.2,63,47,3,M,1
+FHS0391,Female,Grade 8,General,8C,C,42,Life Orientation,Semester 1,60,3,43,Under-7,11.6,61,46,3,M,1
+FHS0392,Female,Grade 8,General,8C,C,32,Technology,Semester 2,83,72,58,Above-7,12.9,96,54,4,M,1
+FHS0393,Female,Grade 8,General,8A,A,48,EMS,Semester 2,8,9,26,Above-7,7.7,12,12,1,L,0
+FHS0394,Female,Grade 8,General,8C,C,32,Natural Sciences,Semester 2,61,75,58,Under-7,15.9,95,70,6,H,1
+FHS0395,Female,Grade 8,General,8B,B,38,Natural Sciences,Semester 1,68,31,39,Under-7,15.2,60,52,4,M,1
+FHS0396,Female,Grade 8,General,8C,C,35,EMS,Semester 1,30,18,62,Under-7,9.0,47,46,3,M,1
+FHS0397,Male,Grade 8,General,8C,C,45,English FAL,Semester 1,35,47,12,Under-7,7.3,34,24,1,L,0
+FHS0398,Male,Grade 8,General,8B,B,32,Mathematics,Semester 1,41,91,45,Under-7,10.6,74,53,4,M,1
+FHS0399,Female,Grade 8,General,8B,B,32,Life Orientation,Semester 2,76,86,68,Under-7,20.6,74,78,6,H,1
+FHS0400,Female,Grade 8,General,8A,A,42,Social Sciences,Semester 1,23,16,17,Above-7,5.6,25,5,1,L,0
+FHS0401,Female,Grade 9,General,9A,A,48,Life Orientation,Semester 2,59,45,65,Under-7,14.3,57,64,5,M,1
+FHS0402,Female,Grade 9,General,9C,C,32,EMS,Semester 2,52,50,35,Under-7,11.9,70,63,5,M,1
+FHS0403,Male,Grade 9,General,9C,C,35,Life Orientation,Semester 2,83,39,70,Under-7,22.2,68,74,6,H,1
+FHS0404,Female,Grade 9,General,9C,C,35,English FAL,Semester 2,91,57,81,Above-7,23.5,71,59,4,M,1
+FHS0405,Female,Grade 9,General,9A,A,45,Social Sciences,Semester 2,74,40,68,Under-7,10.9,77,72,6,H,1
+FHS0406,Female,Grade 9,General,9A,A,45,Life Orientation,Semester 1,48,51,52,Under-7,9.6,63,49,3,M,1
+FHS0407,Male,Grade 9,General,9B,B,38,Life Orientation,Semester 2,22,10,34,Under-7,8.8,33,40,3,M,1
+FHS0408,Female,Grade 9,General,9B,B,45,Social Sciences,Semester 2,0,26,44,Above-7,2.0,46,5,1,L,0
+FHS0409,Female,Grade 9,General,9A,A,45,EMS,Semester 1,69,10,52,Under-7,12.7,61,55,4,M,1
+FHS0410,Female,Grade 9,General,9C,C,45,Natural Sciences,Semester 2,62,73,53,Under-7,19.8,90,62,5,M,1
+FHS0411,Male,Grade 9,General,9A,A,38,Life Orientation,Semester 2,63,54,78,Under-7,15.7,76,76,6,H,1
+FHS0412,Male,Grade 9,General,9C,C,38,Mathematics,Semester 1,53,48,78,Under-7,15.3,64,65,5,M,1
+FHS0413,Male,Grade 9,General,9A,A,48,English FAL,Semester 2,47,41,64,Under-7,16.8,60,61,5,M,1
+FHS0414,Male,Grade 9,General,9B,B,38,Social Sciences,Semester 2,28,56,19,Above-7,4.9,30,15,1,L,0
+FHS0415,Female,Grade 9,General,9A,A,38,English FAL,Semester 2,32,44,55,Above-7,12.4,45,22,1,L,0
+FHS0416,Female,Grade 9,General,9B,B,35,English FAL,Semester 1,37,4,22,Under-7,6.7,49,31,2,L,0
+FHS0417,Male,Grade 9,General,9B,B,42,English FAL,Semester 1,80,24,18,Above-7,12.5,65,37,2,L,0
+FHS0418,Male,Grade 9,General,9A,A,42,Life Orientation,Semester 1,52,43,34,Under-7,18.5,93,74,6,H,1
+FHS0419,Male,Grade 9,General,9A,A,32,Life Orientation,Semester 2,86,30,39,Above-7,18.8,64,57,4,M,1
+FHS0420,Male,Grade 9,General,9A,A,45,Technology,Semester 2,65,51,37,Under-7,13.8,60,54,4,M,1
+FHS0421,Female,Grade 9,General,9B,B,42,Social Sciences,Semester 2,46,50,19,Under-7,5.6,61,46,3,M,1
+FHS0422,Female,Grade 9,General,9A,A,42,English FAL,Semester 1,63,50,49,Above-7,15.4,63,49,3,M,1
+FHS0423,Female,Grade 9,General,9C,C,48,Technology,Semester 2,66,62,67,Under-7,22.2,80,62,5,M,1
+FHS0424,Female,Grade 9,General,9B,B,35,Natural Sciences,Semester 2,35,45,79,Under-7,15.1,64,64,5,M,1
+FHS0425,Female,Grade 9,General,9B,B,48,Natural Sciences,Semester 1,53,12,53,Above-7,13.8,55,36,2,L,0
+FHS0426,Male,Grade 9,General,9B,B,35,Natural Sciences,Semester 2,81,70,68,Under-7,15.3,97,79,6,H,1
+FHS0427,Female,Grade 9,General,9A,A,42,Social Sciences,Semester 2,73,87,58,Above-7,15.2,67,56,4,M,1
+FHS0428,Female,Grade 9,General,9A,A,35,Social Sciences,Semester 2,98,79,28,Under-7,18.0,93,78,6,H,1
+FHS0429,Female,Grade 9,General,9B,B,45,Technology,Semester 2,99,40,76,Under-7,15.9,79,78,6,H,1
+FHS0430,Male,Grade 9,General,9A,A,45,English FAL,Semester 1,73,31,58,Under-7,13.0,85,54,4,M,1
+FHS0431,Male,Grade 9,General,9A,A,38,Technology,Semester 2,80,55,58,Under-7,19.2,87,77,6,H,1
+FHS0432,Male,Grade 9,General,9B,B,35,Technology,Semester 2,59,37,27,Under-7,9.6,52,36,2,L,0
+FHS0433,Male,Grade 9,General,9C,C,42,Life Orientation,Semester 2,18,34,27,Under-7,8.0,33,26,1,L,0
+FHS0434,Female,Grade 9,General,9B,B,42,Technology,Semester 1,66,80,42,Under-7,13.1,87,66,5,M,1
+FHS0435,Female,Grade 9,General,9B,B,32,Social Sciences,Semester 2,67,66,40,Under-7,11.8,64,54,4,M,1
+FHS0436,Female,Grade 9,General,9B,B,42,Technology,Semester 1,32,41,29,Above-7,9.2,39,18,1,L,0
+FHS0437,Male,Grade 9,General,9B,B,45,English FAL,Semester 1,71,38,47,Above-7,15.8,63,48,3,M,1
+FHS0438,Female,Grade 9,General,9A,A,38,Mathematics,Semester 1,80,58,82,Under-7,23.5,89,69,5,M,1
+FHS0439,Female,Grade 9,General,9C,C,38,English FAL,Semester 1,56,31,60,Under-7,16.3,50,72,6,H,1
+FHS0440,Male,Grade 9,General,9C,C,32,Life Orientation,Semester 1,63,25,77,Under-7,17.8,70,66,5,M,1
+FHS0441,Male,Grade 9,General,9A,A,32,Mathematics,Semester 2,65,64,87,Under-7,11.9,49,57,4,M,1
+FHS0442,Male,Grade 9,General,9B,B,38,Life Orientation,Semester 2,36,15,17,Under-7,4.2,21,22,1,L,0
+FHS0443,Male,Grade 9,General,9B,B,35,English FAL,Semester 2,13,17,19,Above-7,7.3,51,11,1,L,0
+FHS0444,Male,Grade 9,General,9C,C,32,Technology,Semester 1,57,33,59,Under-7,17.8,74,79,6,H,1
+FHS0445,Female,Grade 9,General,9A,A,35,Life Orientation,Semester 1,48,45,35,Under-7,9.8,71,67,5,M,1
+FHS0446,Female,Grade 9,General,9B,B,38,Social Sciences,Semester 1,50,65,64,Under-7,11.2,60,62,5,M,1
+FHS0447,Male,Grade 9,General,9C,C,38,Social Sciences,Semester 2,44,47,24,Above-7,11.7,54,26,1,L,0
+FHS0448,Female,Grade 9,General,9B,B,38,Technology,Semester 1,72,39,58,Under-7,15.3,74,59,4,M,1
+FHS0449,Female,Grade 9,General,9B,B,35,English FAL,Semester 1,97,67,50,Above-7,14.5,64,64,5,M,1
+FHS0450,Male,Grade 9,General,9A,A,42,English FAL,Semester 2,68,68,59,Above-7,13.3,76,54,4,M,1
+FHS0451,Male,Grade 9,General,9A,A,38,Natural Sciences,Semester 1,46,14,58,Under-7,16.9,64,62,5,M,1
+FHS0452,Male,Grade 9,General,9B,B,35,Technology,Semester 1,48,37,35,Under-7,10.5,74,51,4,M,1
+FHS0453,Male,Grade 9,General,9B,B,42,Technology,Semester 2,63,55,72,Above-7,16.8,81,37,2,L,0
+FHS0454,Male,Grade 9,General,9A,A,42,English FAL,Semester 1,37,9,30,Under-7,10.9,66,34,2,L,0
+FHS0455,Male,Grade 9,General,9B,B,35,Technology,Semester 2,55,30,51,Under-7,10.6,57,56,4,M,1
+FHS0456,Male,Grade 9,General,9B,B,38,Social Sciences,Semester 1,56,15,81,Under-7,14.8,64,52,4,M,1
+FHS0457,Male,Grade 9,General,9B,B,38,Natural Sciences,Semester 1,54,70,63,Under-7,8.7,63,53,4,M,1
+FHS0458,Male,Grade 9,General,9B,B,38,English FAL,Semester 1,21,8,42,Under-7,13.0,48,32,2,L,0
+FHS0459,Male,Grade 9,General,9C,C,42,English FAL,Semester 1,56,34,47,Under-7,16.0,65,55,4,M,1
+FHS0460,Female,Grade 9,General,9B,B,38,EMS,Semester 2,46,43,30,Above-7,6.1,70,36,2,L,0
+FHS0461,Male,Grade 9,General,9A,A,38,Technology,Semester 1,42,45,30,Under-7,8.3,84,54,4,M,1
+FHS0462,Female,Grade 9,General,9A,A,32,Life Orientation,Semester 2,46,57,22,Under-7,8.2,52,51,4,M,1
+FHS0463,Female,Grade 9,General,9B,B,35,EMS,Semester 1,52,75,61,Under-7,18.0,72,61,5,M,1
+FHS0464,Female,Grade 9,General,9B,B,45,Mathematics,Semester 1,32,34,0,Under-7,2.6,55,27,1,L,0
+FHS0465,Female,Grade 9,General,9A,A,32,Social Sciences,Semester 1,44,0,42,Under-7,8.3,41,39,2,L,0
+FHS0466,Male,Grade 9,General,9A,A,32,Natural Sciences,Semester 2,70,75,70,Under-7,15.1,100,78,6,H,1
+FHS0467,Female,Grade 9,General,9B,B,42,English FAL,Semester 1,29,49,84,Under-7,10.9,75,36,2,L,0
+FHS0468,Male,Grade 9,General,9A,A,48,Social Sciences,Semester 1,55,39,34,Above-7,6.2,49,22,1,L,0
+FHS0469,Female,Grade 9,General,9B,B,38,Natural Sciences,Semester 1,0,50,35,Above-7,6.8,51,7,1,L,0
+FHS0470,Male,Grade 9,General,9A,A,32,EMS,Semester 1,50,50,75,Under-7,17.6,90,69,5,M,1
+FHS0471,Female,Grade 9,General,9B,B,45,Social Sciences,Semester 1,89,73,69,Above-7,19.6,100,71,6,H,1
+FHS0472,Male,Grade 9,General,9C,C,38,Social Sciences,Semester 1,62,46,82,Under-7,17.0,88,57,4,M,1
+FHS0473,Female,Grade 9,General,9B,B,35,Natural Sciences,Semester 1,37,73,54,Under-7,7.5,69,52,4,M,1
+FHS0474,Female,Grade 9,General,9C,C,42,Social Sciences,Semester 2,99,72,64,Under-7,21.2,100,71,6,H,1
+FHS0475,Male,Grade 9,General,9A,A,38,English FAL,Semester 2,70,36,13,Under-7,15.4,70,62,5,M,1
+FHS0476,Male,Grade 9,General,9B,B,32,Mathematics,Semester 1,90,83,93,Under-7,21.5,95,85,7,H,1
+FHS0477,Male,Grade 9,General,9B,B,35,English FAL,Semester 2,54,42,33,Under-7,8.8,38,40,3,M,1
+FHS0478,Male,Grade 9,General,9C,C,45,Mathematics,Semester 2,22,51,56,Above-7,13.3,53,11,1,L,0
+FHS0479,Male,Grade 9,General,9A,A,38,EMS,Semester 2,28,26,40,Above-7,10.3,49,25,1,L,0
+FHS0480,Male,Grade 9,General,9A,A,38,Life Orientation,Semester 2,58,38,36,Above-7,12.1,50,29,1,L,0
+FHS0481,Male,Grade 9,General,9A,A,35,EMS,Semester 1,0,25,32,Above-7,3.3,26,5,1,L,0
+FHS0482,Female,Grade 9,General,9B,B,35,Technology,Semester 1,62,39,55,Above-7,12.2,47,32,2,L,0
+FHS0483,Male,Grade 9,General,9C,C,48,Social Sciences,Semester 2,29,43,44,Under-7,10.6,53,48,3,M,1
+FHS0484,Female,Grade 9,General,9C,C,38,Mathematics,Semester 2,47,25,27,Under-7,7.8,72,37,2,L,0
+FHS0485,Male,Grade 9,General,9A,A,32,Mathematics,Semester 1,73,38,43,Under-7,11.3,62,51,4,M,1
+FHS0486,Male,Grade 9,General,9B,B,42,Natural Sciences,Semester 1,80,58,51,Under-7,16.8,74,69,5,M,1
+FHS0487,Female,Grade 9,General,9C,C,35,English FAL,Semester 2,23,31,15,Under-7,6.4,21,12,1,L,0
+FHS0488,Male,Grade 9,General,9B,B,35,Social Sciences,Semester 2,53,63,8,Under-7,10.5,90,50,4,M,1
+FHS0489,Female,Grade 9,General,9B,B,42,EMS,Semester 1,99,54,63,Under-7,19.0,100,84,7,H,1
+FHS0490,Male,Grade 9,General,9B,B,38,English FAL,Semester 1,34,42,26,Above-7,8.7,66,37,2,L,0
+FHS0491,Female,Grade 9,General,9C,C,45,Mathematics,Semester 1,64,84,42,Above-7,22.3,78,40,3,M,1
+FHS0492,Male,Grade 9,General,9B,B,45,Natural Sciences,Semester 2,57,16,51,Under-7,10.0,77,45,3,M,1
+FHS0493,Female,Grade 9,General,9C,C,32,EMS,Semester 2,89,84,68,Under-7,18.6,100,91,7,H,1
+FHS0494,Male,Grade 9,General,9A,A,42,EMS,Semester 1,49,13,73,Under-7,9.0,58,55,4,M,1
+FHS0495,Male,Grade 9,General,9A,A,32,Life Orientation,Semester 2,94,43,86,Under-7,15.1,82,80,7,H,1
+FHS0496,Male,Grade 9,General,9A,A,38,Technology,Semester 2,41,77,47,Under-7,19.2,87,58,4,M,1
+FHS0497,Female,Grade 9,General,9B,B,38,Social Sciences,Semester 1,50,32,57,Under-7,14.2,64,62,5,M,1
+FHS0498,Female,Grade 9,General,9B,B,35,Life Orientation,Semester 2,60,42,71,Above-7,13.1,84,45,3,M,1
+FHS0499,Female,Grade 9,General,9B,B,35,Social Sciences,Semester 1,4,0,46,Above-7,5.4,31,6,1,L,0
+FHS0500,Female,Grade 9,General,9A,A,42,Technology,Semester 1,50,39,49,Under-7,8.0,54,41,3,M,1
+FHS0501,Male,Grade 9,General,9B,B,38,English FAL,Semester 2,82,67,73,Under-7,19.6,93,77,6,H,1
+FHS0502,Male,Grade 9,General,9B,B,38,Life Orientation,Semester 1,59,50,64,Under-7,21.1,80,85,7,H,1
+FHS0503,Female,Grade 9,General,9A,A,32,EMS,Semester 1,88,20,68,Under-7,15.9,73,79,6,H,1
+FHS0504,Female,Grade 9,General,9C,C,42,EMS,Semester 2,58,36,27,Above-7,13.7,56,41,3,M,1
+FHS0505,Female,Grade 9,General,9A,A,38,Mathematics,Semester 1,62,19,40,Under-7,14.0,55,53,4,M,1
+FHS0506,Male,Grade 9,General,9C,C,35,Natural Sciences,Semester 2,65,66,54,Under-7,17.1,84,68,5,M,1
+FHS0507,Male,Grade 9,General,9C,C,42,Technology,Semester 1,45,0,45,Above-7,5.4,36,14,1,L,0
+FHS0508,Female,Grade 9,General,9B,B,32,Mathematics,Semester 2,80,90,89,Under-7,16.4,87,86,7,H,1
+FHS0509,Male,Grade 9,General,9B,B,35,Life Orientation,Semester 1,79,41,18,Above-7,14.0,50,49,3,M,1
+FHS0510,Female,Grade 9,General,9B,B,38,Mathematics,Semester 2,38,45,60,Above-7,4.5,61,25,1,L,0
+FHS0511,Male,Grade 9,General,9B,B,32,Social Sciences,Semester 1,75,62,91,Under-7,18.6,97,89,7,H,1
+FHS0512,Male,Grade 9,General,9A,A,35,English FAL,Semester 1,97,39,51,Under-7,12.3,61,69,5,M,1
+FHS0513,Male,Grade 9,General,9B,B,45,Life Orientation,Semester 1,81,54,93,Above-7,12.5,93,75,6,H,1
+FHS0514,Female,Grade 9,General,9B,B,35,Life Orientation,Semester 2,96,61,67,Under-7,16.2,75,86,7,H,1
+FHS0515,Male,Grade 9,General,9B,B,45,Life Orientation,Semester 2,80,69,62,Under-7,17.1,99,71,6,H,1
+FHS0516,Female,Grade 9,General,9C,C,35,Mathematics,Semester 2,23,6,3,Above-7,8.5,53,13,1,L,0
+FHS0517,Female,Grade 9,General,9A,A,38,EMS,Semester 2,86,92,48,Under-7,10.6,68,74,6,H,1
+FHS0518,Female,Grade 9,General,9B,B,35,Mathematics,Semester 1,83,31,78,Under-7,13.6,87,60,5,M,1
+FHS0519,Female,Grade 9,General,9A,A,45,English FAL,Semester 1,50,17,24,Above-7,8.8,50,19,1,L,0
+FHS0520,Female,Grade 9,General,9B,B,32,Mathematics,Semester 1,30,21,21,Under-7,16.5,38,27,1,L,0
+FHS0521,Male,Grade 9,General,9C,C,38,Social Sciences,Semester 2,86,61,62,Under-7,11.8,71,79,6,H,1
+FHS0522,Male,Grade 9,General,9B,B,38,English FAL,Semester 2,47,60,45,Above-7,17.0,59,34,2,L,0
+FHS0523,Female,Grade 9,General,9B,B,42,Social Sciences,Semester 1,68,55,80,Above-7,15.2,74,47,3,M,1
+FHS0524,Male,Grade 9,General,9B,B,42,EMS,Semester 2,30,41,26,Above-7,7.7,38,32,2,L,0
+FHS0525,Female,Grade 9,General,9C,C,32,Social Sciences,Semester 2,68,33,77,Under-7,21.5,84,75,6,H,1
+FHS0526,Female,Grade 9,General,9B,B,38,Natural Sciences,Semester 2,50,33,65,Under-7,11.5,78,51,4,M,1
+FHS0527,Male,Grade 9,General,9A,A,42,Mathematics,Semester 1,66,96,36,Under-7,13.0,75,69,5,M,1
+FHS0528,Female,Grade 9,General,9B,B,32,English FAL,Semester 2,92,39,65,Above-7,12.6,68,64,5,M,1
+FHS0529,Female,Grade 9,General,9C,C,38,Social Sciences,Semester 1,49,46,40,Under-7,12.2,65,53,4,M,1
+FHS0530,Female,Grade 9,General,9C,C,38,EMS,Semester 1,73,51,95,Under-7,12.1,73,69,5,M,1
+FHS0531,Male,Grade 9,General,9A,A,35,Mathematics,Semester 2,45,38,80,Under-7,12.8,45,59,4,M,1
+FHS0532,Male,Grade 9,General,9A,A,38,English FAL,Semester 1,44,29,31,Above-7,9.2,58,20,1,L,0
+FHS0533,Female,Grade 9,General,9A,A,35,Natural Sciences,Semester 2,48,33,54,Under-7,8.5,72,45,3,M,1
+FHS0534,Female,Grade 9,General,9A,A,32,English FAL,Semester 1,43,42,32,Above-7,8.4,60,17,1,L,0
+FHS0535,Male,Grade 9,General,9B,B,42,Social Sciences,Semester 2,71,0,43,Under-7,15.4,51,40,3,M,1
+FHS0536,Female,Grade 9,General,9C,C,48,Social Sciences,Semester 1,67,30,47,Above-7,10.8,29,23,1,L,0
+FHS0537,Female,Grade 9,General,9A,A,42,English FAL,Semester 1,62,55,79,Under-7,13.4,77,56,4,M,1
+FHS0538,Female,Grade 9,General,9A,A,35,Life Orientation,Semester 2,40,12,54,Above-7,7.7,47,34,2,L,0
+FHS0539,Female,Grade 9,General,9A,A,35,Technology,Semester 2,41,59,50,Under-7,9.9,50,42,3,M,1
+FHS0540,Male,Grade 9,General,9B,B,35,Life Orientation,Semester 1,25,0,8,Under-7,2.0,45,31,2,L,0
+FHS0541,Female,Grade 9,General,9C,C,38,EMS,Semester 2,24,29,58,Under-7,9.0,48,51,4,M,1
+FHS0542,Female,Grade 9,General,9A,A,35,Technology,Semester 1,58,58,69,Under-7,8.7,64,64,5,M,1
+FHS0543,Male,Grade 9,General,9C,C,32,Natural Sciences,Semester 1,64,53,33,Under-7,8.5,70,54,4,M,1
+FHS0544,Female,Grade 9,General,9A,A,38,Life Orientation,Semester 1,19,16,57,Under-7,9.2,60,51,4,M,1
+FHS0545,Female,Grade 9,General,9A,A,42,Natural Sciences,Semester 1,61,27,29,Under-7,9.3,52,45,3,M,1
+FHS0546,Female,Grade 9,General,9C,C,35,Natural Sciences,Semester 2,24,51,0,Under-7,8.7,18,32,2,L,0
+FHS0547,Female,Grade 9,General,9B,B,38,Natural Sciences,Semester 2,90,82,63,Above-7,14.9,100,69,5,M,1
+FHS0548,Male,Grade 9,General,9C,C,48,English FAL,Semester 2,63,37,31,Under-7,9.7,55,58,4,M,1
+FHS0549,Female,Grade 9,General,9B,B,48,EMS,Semester 1,84,58,41,Under-7,14.0,87,76,6,H,1
+FHS0550,Female,Grade 9,General,9C,C,38,Natural Sciences,Semester 2,48,44,34,Under-7,15.7,64,60,5,M,1
+FHS0551,Male,Grade 9,General,9B,B,38,Mathematics,Semester 1,56,22,54,Under-7,6.8,49,42,3,M,1
+FHS0552,Male,Grade 9,General,9A,A,35,Mathematics,Semester 1,63,20,53,Above-7,13.1,52,17,1,L,0
+FHS0553,Female,Grade 9,General,9B,B,38,English FAL,Semester 2,97,60,76,Under-7,17.2,86,81,7,H,1
+FHS0554,Male,Grade 9,General,9A,A,38,Natural Sciences,Semester 1,33,15,17,Above-7,2.0,33,5,1,L,0
+FHS0555,Male,Grade 9,General,9B,B,32,Mathematics,Semester 1,28,12,70,Under-7,3.1,33,32,2,L,0
+FHS0556,Female,Grade 9,General,9A,A,38,EMS,Semester 2,70,78,96,Under-7,21.4,88,87,7,H,1
+FHS0557,Female,Grade 9,General,9C,C,38,Natural Sciences,Semester 2,38,72,37,Under-7,11.6,52,36,2,L,0
+FHS0558,Female,Grade 9,General,9A,A,35,Technology,Semester 1,67,55,29,Above-7,12.2,47,27,1,L,0
+FHS0559,Male,Grade 9,General,9B,B,38,Social Sciences,Semester 2,14,34,29,Under-7,8.4,50,29,1,L,0
+FHS0560,Female,Grade 9,General,9A,A,42,EMS,Semester 2,54,27,65,Under-7,2.4,48,47,3,M,1
+FHS0561,Female,Grade 9,General,9C,C,38,English FAL,Semester 1,99,29,57,Under-7,19.1,96,81,7,H,1
+FHS0562,Male,Grade 9,General,9B,B,48,Mathematics,Semester 2,76,79,54,Under-7,14.9,84,66,5,M,1
+FHS0563,Male,Grade 9,General,9A,A,42,Technology,Semester 1,71,99,70,Under-7,14.8,83,78,6,H,1
+FHS0564,Female,Grade 9,General,9B,B,42,EMS,Semester 2,45,42,58,Above-7,6.1,39,30,2,L,0
+FHS0565,Female,Grade 9,General,9C,C,42,Life Orientation,Semester 1,77,10,59,Under-7,12.1,79,57,4,M,1
+FHS0566,Female,Grade 9,General,9A,A,45,Mathematics,Semester 2,21,21,72,Above-7,11.4,54,10,1,L,0
+FHS0567,Female,Grade 9,General,9C,C,35,Social Sciences,Semester 2,45,45,20,Under-7,11.6,38,41,3,M,1
+FHS0568,Male,Grade 9,General,9B,B,48,Natural Sciences,Semester 2,20,12,48,Under-7,5.1,21,20,1,L,0
+FHS0569,Male,Grade 9,General,9B,B,48,Technology,Semester 1,46,61,19,Under-7,6.2,52,35,2,L,0
+FHS0570,Male,Grade 9,General,9A,A,42,English FAL,Semester 2,56,33,51,Above-7,9.7,78,46,3,M,1
+FHS0571,Male,Grade 9,General,9C,C,32,EMS,Semester 2,40,52,34,Under-7,9.3,68,49,3,M,1
+FHS0572,Female,Grade 9,General,9B,B,38,Mathematics,Semester 1,85,37,79,Under-7,13.7,100,83,7,H,1
+FHS0573,Male,Grade 9,General,9B,B,35,Life Orientation,Semester 1,80,49,55,Above-7,17.1,79,68,5,M,1
+FHS0574,Female,Grade 9,General,9B,B,42,Life Orientation,Semester 1,81,72,58,Under-7,15.4,85,75,6,H,1
+FHS0575,Female,Grade 9,General,9A,A,32,EMS,Semester 2,13,12,24,Under-7,14.0,58,41,3,M,1
+FHS0576,Male,Grade 9,General,9B,B,42,Natural Sciences,Semester 1,26,49,39,Under-7,15.7,60,56,4,M,1
+FHS0577,Male,Grade 9,General,9A,A,42,Natural Sciences,Semester 1,65,65,57,Under-7,14.8,96,66,5,M,1
+FHS0578,Male,Grade 9,General,9B,B,42,Technology,Semester 2,48,37,60,Under-7,11.4,70,53,4,M,1
+FHS0579,Male,Grade 9,General,9A,A,38,Technology,Semester 2,21,13,23,Above-7,13.3,53,19,1,L,0
+FHS0580,Male,Grade 9,General,9A,A,35,Social Sciences,Semester 2,65,16,73,Under-7,11.6,60,61,5,M,1
+FHS0581,Female,Grade 9,General,9A,A,42,Natural Sciences,Semester 2,86,73,65,Under-7,16.2,53,66,5,M,1
+FHS0582,Male,Grade 9,General,9B,B,35,Natural Sciences,Semester 2,53,36,57,Above-7,5.8,36,23,1,L,0
+FHS0583,Female,Grade 9,General,9B,B,32,Life Orientation,Semester 1,79,60,66,Under-7,20.0,95,88,7,H,1
+FHS0584,Male,Grade 9,General,9C,C,35,EMS,Semester 1,62,75,45,Above-7,17.3,88,53,4,M,1
+FHS0585,Female,Grade 9,General,9A,A,42,Mathematics,Semester 1,63,33,39,Under-7,7.5,73,39,2,L,0
+FHS0586,Male,Grade 9,General,9B,B,32,Natural Sciences,Semester 2,60,59,96,Under-7,24.0,88,87,7,H,1
+FHS0587,Female,Grade 9,General,9B,B,32,Social Sciences,Semester 2,40,47,36,Above-7,7.8,35,22,1,L,0
+FHS0588,Female,Grade 9,General,9C,C,42,Mathematics,Semester 2,23,8,1,Under-7,6.2,51,8,1,L,0
+FHS0589,Male,Grade 9,General,9C,C,42,Social Sciences,Semester 2,27,18,39,Above-7,2.0,30,11,1,L,0
+FHS0590,Female,Grade 9,General,9C,C,35,EMS,Semester 1,58,66,94,Under-7,18.4,81,80,7,H,1
+FHS0591,Male,Grade 9,General,9B,B,42,EMS,Semester 2,0,23,46,Above-7,2.0,43,9,1,L,0
+FHS0592,Female,Grade 9,General,9A,A,42,Social Sciences,Semester 2,76,34,55,Under-7,12.7,75,66,5,M,1
+FHS0593,Male,Grade 9,General,9B,B,42,Life Orientation,Semester 1,98,62,70,Under-7,13.7,83,93,7,H,1
+FHS0594,Male,Grade 9,General,9A,A,38,Natural Sciences,Semester 2,64,46,38,Under-7,2.6,48,51,4,M,1
+FHS0595,Female,Grade 9,General,9C,C,35,English FAL,Semester 2,65,75,67,Under-7,14.9,78,67,5,M,1
+FHS0596,Female,Grade 9,General,9B,B,38,EMS,Semester 2,62,36,46,Under-7,16.4,77,59,4,M,1
+FHS0597,Male,Grade 9,General,9A,A,48,Life Orientation,Semester 1,81,53,54,Under-7,18.8,78,68,5,M,1
+FHS0598,Male,Grade 9,General,9B,B,38,Life Orientation,Semester 1,83,74,67,Under-7,19.3,66,92,7,H,1
+FHS0599,Male,Grade 9,General,9A,A,35,Social Sciences,Semester 1,72,49,59,Under-7,15.6,100,61,5,M,1
+FHS0600,Female,Grade 9,General,9A,A,32,English FAL,Semester 1,41,35,23,Under-7,7.8,50,41,3,M,1
+FHS0601,Female,Grade 9,General,9A,A,45,Mathematics,Semester 2,51,57,32,Under-7,11.5,45,27,1,L,0
+FHS0602,Female,Grade 9,General,9C,C,45,Natural Sciences,Semester 1,71,52,25,Under-7,12.8,91,58,4,M,1
+FHS0603,Female,Grade 9,General,9A,A,35,EMS,Semester 2,78,76,72,Under-7,18.5,88,86,7,H,1
+FHS0604,Female,Grade 9,General,9B,B,45,EMS,Semester 2,99,62,96,Under-7,15.8,85,87,7,H,1
+FHS0605,Male,Grade 9,General,9B,B,35,Technology,Semester 1,79,67,59,Under-7,15.0,89,74,6,H,1
+FHS0606,Male,Grade 9,General,9C,C,32,Natural Sciences,Semester 2,52,73,49,Under-7,10.0,72,56,4,M,1
+FHS0607,Female,Grade 9,General,9B,B,42,Natural Sciences,Semester 2,54,38,37,Above-7,16.8,83,41,3,M,1
+FHS0608,Female,Grade 9,General,9B,B,35,Mathematics,Semester 1,9,11,23,Under-7,8.9,29,6,1,L,0
+FHS0609,Male,Grade 9,General,9C,C,35,Technology,Semester 2,65,76,64,Under-7,12.4,76,80,7,H,1
+FHS0610,Male,Grade 9,General,9B,B,32,English FAL,Semester 1,39,5,13,Above-7,5.5,33,7,1,L,0
+FHS0611,Female,Grade 9,General,9B,B,42,Natural Sciences,Semester 2,89,35,40,Under-7,16.9,63,67,5,M,1
+FHS0612,Male,Grade 9,General,9B,B,38,Technology,Semester 2,64,59,67,Under-7,18.4,87,70,6,H,1
+FHS0613,Female,Grade 9,General,9A,A,38,Natural Sciences,Semester 1,37,30,45,Under-7,12.6,40,52,4,M,1
+FHS0614,Female,Grade 9,General,9A,A,38,Natural Sciences,Semester 2,63,35,38,Under-7,6.8,49,44,3,M,1
+FHS0615,Female,Grade 9,General,9B,B,38,English FAL,Semester 2,24,50,50,Under-7,10.1,47,52,4,M,1
+FHS0616,Female,Grade 9,General,9A,A,38,EMS,Semester 1,99,90,87,Under-7,18.6,89,97,7,H,1
+FHS0617,Female,Grade 9,General,9C,C,38,EMS,Semester 1,84,80,45,Under-7,7.7,86,73,6,H,1
+FHS0618,Male,Grade 9,General,9A,A,42,Mathematics,Semester 2,49,71,69,Under-7,15.1,96,50,4,M,1
+FHS0619,Female,Grade 9,General,9C,C,35,Social Sciences,Semester 1,70,50,49,Under-7,18.4,62,61,5,M,1
+FHS0620,Female,Grade 9,General,9A,A,32,Social Sciences,Semester 2,58,99,81,Under-7,18.2,86,81,7,H,1
+FHS0621,Female,Grade 9,General,9B,B,35,Life Orientation,Semester 1,45,51,26,Under-7,12.9,61,58,4,M,1
+FHS0622,Male,Grade 9,General,9B,B,42,EMS,Semester 1,33,1,34,Under-7,6.9,38,33,2,L,0
+FHS0623,Female,Grade 9,General,9B,B,45,Mathematics,Semester 2,43,69,82,Under-7,13.2,71,48,3,M,1
+FHS0624,Male,Grade 9,General,9C,C,42,Life Orientation,Semester 2,70,40,33,Under-7,14.6,73,63,5,M,1
+FHS0625,Male,Grade 9,General,9A,A,35,English FAL,Semester 1,48,20,62,Under-7,12.4,85,52,4,M,1
+FHS0626,Female,Grade 9,General,9A,A,42,Life Orientation,Semester 1,79,52,71,Under-7,14.2,91,81,7,H,1
+FHS0627,Female,Grade 9,General,9B,B,42,Natural Sciences,Semester 1,80,18,37,Under-7,17.3,67,57,4,M,1
+FHS0628,Male,Grade 9,General,9B,B,48,Mathematics,Semester 2,35,22,61,Under-7,3.6,18,31,2,L,0
+FHS0629,Female,Grade 9,General,9C,C,38,EMS,Semester 2,43,17,55,Under-7,12.2,47,39,2,L,0
+FHS0630,Female,Grade 9,General,9C,C,35,Social Sciences,Semester 2,68,28,26,Under-7,11.7,64,50,4,M,1
+FHS0631,Male,Grade 9,General,9B,B,38,Social Sciences,Semester 2,53,28,62,Under-7,16.1,75,49,3,M,1
+FHS0632,Male,Grade 9,General,9A,A,38,Natural Sciences,Semester 2,63,46,45,Under-7,13.0,71,58,4,M,1
+FHS0633,Female,Grade 9,General,9B,B,42,Social Sciences,Semester 1,39,3,23,Above-7,4.0,36,13,1,L,0
+FHS0634,Male,Grade 9,General,9C,C,35,Technology,Semester 2,53,60,62,Under-7,12.8,62,50,4,M,1
+FHS0635,Male,Grade 9,General,9B,B,42,Life Orientation,Semester 1,47,49,31,Under-7,14.4,98,61,5,M,1
+FHS0636,Female,Grade 9,General,9B,B,35,Social Sciences,Semester 2,24,26,40,Above-7,2.0,36,11,1,L,0
+FHS0637,Male,Grade 9,General,9C,C,35,English FAL,Semester 1,71,75,68,Under-7,20.5,82,84,7,H,1
+FHS0638,Male,Grade 9,General,9A,A,35,Life Orientation,Semester 1,77,46,64,Under-7,15.4,84,77,6,H,1
+FHS0639,Male,Grade 9,General,9A,A,45,Technology,Semester 1,46,8,44,Under-7,6.5,20,39,2,L,0
+FHS0640,Female,Grade 9,General,9C,C,42,Mathematics,Semester 2,90,83,70,Above-7,15.9,92,49,3,M,1
+FHS0641,Female,Grade 9,General,9A,A,38,Natural Sciences,Semester 1,81,45,63,Above-7,14.7,77,51,4,M,1
+FHS0642,Male,Grade 9,General,9A,A,35,Social Sciences,Semester 2,58,28,38,Above-7,11.0,68,30,2,L,0
+FHS0643,Male,Grade 9,General,9B,B,32,EMS,Semester 1,42,53,12,Above-7,9.3,37,21,1,L,0
+FHS0644,Female,Grade 9,General,9C,C,38,Social Sciences,Semester 2,99,61,69,Under-7,21.0,95,91,7,H,1
+FHS0645,Male,Grade 9,General,9C,C,42,Natural Sciences,Semester 1,47,50,45,Above-7,15.2,47,33,2,L,0
+FHS0646,Female,Grade 9,General,9B,B,42,Life Orientation,Semester 2,63,55,57,Under-7,16.0,72,71,6,H,1
+FHS0647,Male,Grade 9,General,9C,C,32,English FAL,Semester 2,74,57,60,Under-7,18.5,81,76,6,H,1
+FHS0648,Male,Grade 9,General,9C,C,32,EMS,Semester 1,68,52,75,Under-7,22.0,100,82,7,H,1
+FHS0649,Female,Grade 9,General,9B,B,42,EMS,Semester 2,95,51,42,Under-7,23.3,100,90,7,H,1
+FHS0650,Male,Grade 9,General,9B,B,35,Natural Sciences,Semester 2,51,27,47,Under-7,13.8,63,46,3,M,1
+FHS0651,Female,Grade 9,General,9C,C,35,Life Orientation,Semester 1,67,51,76,Under-7,16.8,92,71,6,H,1
+FHS0652,Female,Grade 9,General,9A,A,32,Life Orientation,Semester 2,63,40,75,Under-7,14.4,82,88,7,H,1
+FHS0653,Male,Grade 9,General,9A,A,38,Life Orientation,Semester 2,30,20,61,Under-7,13.3,74,57,4,M,1
+FHS0654,Male,Grade 9,General,9B,B,42,English FAL,Semester 2,15,3,46,Above-7,2.0,42,6,1,L,0
+FHS0655,Female,Grade 9,General,9B,B,42,Social Sciences,Semester 1,48,37,48,Under-7,9.2,65,49,3,M,1
+FHS0656,Female,Grade 9,General,9B,B,32,EMS,Semester 2,55,66,63,Under-7,12.4,76,68,5,M,1
+FHS0657,Male,Grade 9,General,9A,A,32,Social Sciences,Semester 1,31,33,28,Above-7,6.2,26,16,1,L,0
+FHS0658,Male,Grade 9,General,9A,A,32,Technology,Semester 1,88,75,77,Under-7,20.3,89,83,7,H,1
+FHS0659,Female,Grade 9,General,9C,C,45,Natural Sciences,Semester 1,66,59,71,Under-7,17.7,90,69,5,M,1
+FHS0660,Female,Grade 9,General,9B,B,42,Technology,Semester 1,88,71,49,Above-7,18.3,91,59,4,M,1
+FHS0661,Male,Grade 9,General,9A,A,45,Life Orientation,Semester 2,56,7,28,Under-7,6.5,64,44,3,M,1
+FHS0662,Female,Grade 9,General,9A,A,32,Mathematics,Semester 2,69,49,96,Under-7,20.1,62,59,4,M,1
+FHS0663,Female,Grade 9,General,9A,A,38,Technology,Semester 1,76,69,73,Under-7,17.4,83,77,6,H,1
+FHS0664,Male,Grade 9,General,9B,B,42,Natural Sciences,Semester 2,81,68,61,Under-7,15.8,87,81,7,H,1
+FHS0665,Female,Grade 9,General,9C,C,35,Life Orientation,Semester 2,99,39,51,Under-7,15.3,84,76,6,H,1
+FHS0666,Female,Grade 9,General,9B,B,35,Mathematics,Semester 2,43,57,68,Under-7,12.0,78,52,4,M,1
+FHS0667,Female,Grade 9,General,9B,B,42,Social Sciences,Semester 1,78,44,52,Under-7,14.6,100,70,6,H,1
+FHS0668,Male,Grade 9,General,9B,B,35,EMS,Semester 2,75,46,72,Under-7,19.3,83,83,7,H,1
+FHS0669,Male,Grade 9,General,9B,B,42,Natural Sciences,Semester 1,92,28,68,Under-7,9.8,75,76,6,H,1
+FHS0670,Female,Grade 9,General,9C,C,35,Mathematics,Semester 2,80,21,48,Under-7,18.1,81,55,4,M,1
+FHS0671,Male,Grade 9,General,9A,A,35,Life Orientation,Semester 1,39,36,31,Above-7,12.4,43,19,1,L,0
+FHS0672,Female,Grade 9,General,9C,C,42,Social Sciences,Semester 2,0,9,7,Under-7,6.6,42,16,1,L,0
+FHS0673,Male,Grade 9,General,9A,A,48,English FAL,Semester 2,45,38,21,Under-7,12.0,56,26,1,L,0
+FHS0674,Female,Grade 9,General,9B,B,45,Natural Sciences,Semester 1,47,32,81,Under-7,15.4,72,56,4,M,1
+FHS0675,Female,Grade 9,General,9C,C,42,EMS,Semester 2,59,47,12,Under-7,16.5,55,64,5,M,1
+FHS0676,Male,Grade 9,General,9B,B,45,Mathematics,Semester 2,51,38,51,Under-7,12.9,66,41,3,M,1
+FHS0677,Female,Grade 9,General,9A,A,35,Life Orientation,Semester 1,56,47,48,Under-7,9.6,66,61,5,M,1
+FHS0678,Female,Grade 9,General,9A,A,32,Mathematics,Semester 1,52,12,61,Above-7,3.5,46,18,1,L,0
+FHS0679,Female,Grade 9,General,9B,B,38,Social Sciences,Semester 1,70,26,75,Above-7,13.1,70,44,3,M,1
+FHS0680,Female,Grade 9,General,9C,C,42,Natural Sciences,Semester 1,89,53,41,Under-7,15.0,82,66,5,M,1
+FHS0681,Female,Grade 9,General,9B,B,38,Social Sciences,Semester 1,27,11,24,Under-7,2.0,40,24,1,L,0
+FHS0682,Female,Grade 9,General,9B,B,42,English FAL,Semester 2,67,75,59,Above-7,17.5,50,33,2,L,0
+FHS0683,Male,Grade 9,General,9C,C,38,Social Sciences,Semester 1,96,40,70,Above-7,14.3,81,57,4,M,1
+FHS0684,Female,Grade 9,General,9C,C,45,English FAL,Semester 2,99,37,59,Under-7,18.1,100,69,5,M,1
+FHS0685,Male,Grade 9,General,9A,A,32,Social Sciences,Semester 2,38,48,21,Under-7,9.3,64,47,3,M,1
+FHS0686,Male,Grade 9,General,9C,C,32,English FAL,Semester 2,46,55,74,Under-7,10.2,78,66,5,M,1
+FHS0687,Female,Grade 9,General,9A,A,35,Life Orientation,Semester 1,66,38,13,Above-7,16.4,67,41,3,M,1
+FHS0688,Female,Grade 9,General,9B,B,38,Life Orientation,Semester 2,77,49,55,Under-7,16.1,77,65,5,M,1
+FHS0689,Female,Grade 9,General,9C,C,45,Mathematics,Semester 2,49,0,36,Under-7,12.7,57,35,2,L,0
+FHS0690,Male,Grade 9,General,9A,A,38,Social Sciences,Semester 1,33,62,59,Above-7,13.3,52,27,1,L,0
+FHS0691,Male,Grade 9,General,9C,C,38,Mathematics,Semester 1,49,62,44,Under-7,5.0,64,45,3,M,1
+FHS0692,Female,Grade 9,General,9C,C,38,Natural Sciences,Semester 1,85,80,99,Under-7,20.8,88,91,7,H,1
+FHS0693,Female,Grade 9,General,9B,B,35,Social Sciences,Semester 1,50,12,26,Under-7,13.2,70,54,4,M,1
+FHS0694,Male,Grade 9,General,9B,B,32,Technology,Semester 2,17,40,33,Above-7,9.0,38,24,1,L,0
+FHS0695,Male,Grade 9,General,9A,A,42,Life Orientation,Semester 1,56,33,51,Under-7,14.1,49,61,5,M,1
+FHS0696,Male,Grade 9,General,9A,A,32,English FAL,Semester 2,54,20,25,Under-7,10.3,82,45,3,M,1
+FHS0697,Female,Grade 9,General,9A,A,35,Life Orientation,Semester 2,58,69,46,Under-7,16.8,63,53,4,M,1
+FHS0698,Male,Grade 9,General,9A,A,38,Natural Sciences,Semester 2,34,6,22,Above-7,8.8,52,18,1,L,0
+FHS0699,Female,Grade 9,General,9C,C,35,Natural Sciences,Semester 1,99,70,82,Under-7,21.3,92,90,7,H,1
+FHS0700,Male,Grade 9,General,9B,B,38,Mathematics,Semester 1,60,0,28,Above-7,5.7,24,5,1,L,0
+FHS0701,Male,Grade 9,General,9B,B,35,English FAL,Semester 2,49,13,34,Under-7,14.8,48,38,2,L,0
+FHS0702,Female,Grade 9,General,9A,A,38,Life Orientation,Semester 1,61,38,63,Under-7,18.6,74,70,6,H,1
+FHS0703,Male,Grade 9,General,9A,A,38,EMS,Semester 1,89,88,58,Under-7,18.7,96,92,7,H,1
+FHS0704,Female,Grade 9,General,9C,C,42,Life Orientation,Semester 2,83,60,32,Under-7,16.3,80,57,4,M,1
+FHS0705,Male,Grade 9,General,9A,A,35,Life Orientation,Semester 2,65,96,55,Above-7,16.8,70,43,3,M,1
+FHS0706,Female,Grade 9,General,9A,A,38,EMS,Semester 2,25,59,30,Under-7,10.9,65,42,3,M,1
+FHS0707,Male,Grade 9,General,9B,B,48,Life Orientation,Semester 2,32,12,35,Above-7,9.6,31,29,1,L,0
+FHS0708,Male,Grade 9,General,9A,A,38,Technology,Semester 1,89,67,70,Above-7,16.0,62,55,4,M,1
+FHS0709,Male,Grade 9,General,9B,B,38,English FAL,Semester 2,92,35,66,Under-7,18.4,71,71,6,H,1
+FHS0710,Female,Grade 9,General,9A,A,42,Social Sciences,Semester 2,27,25,15,Above-7,5.8,26,5,1,L,0
+FHS0711,Female,Grade 9,General,9C,C,42,Social Sciences,Semester 2,99,21,37,Under-7,19.2,60,61,5,M,1
+FHS0712,Male,Grade 9,General,9C,C,38,Mathematics,Semester 2,59,50,54,Under-7,16.5,70,52,4,M,1
+FHS0713,Female,Grade 9,General,9B,B,42,EMS,Semester 1,67,54,61,Under-7,14.3,70,76,6,H,1
+FHS0714,Female,Grade 9,General,9C,C,38,Mathematics,Semester 2,72,63,41,Under-7,19.0,100,66,5,M,1
+FHS0715,Female,Grade 9,General,9B,B,38,English FAL,Semester 1,60,28,46,Above-7,11.3,57,44,3,M,1
+FHS0716,Female,Grade 9,General,9B,B,35,Technology,Semester 1,92,66,71,Under-7,13.6,97,78,6,H,1
+FHS0717,Male,Grade 9,General,9A,A,32,Natural Sciences,Semester 1,55,50,29,Above-7,9.3,39,37,2,L,0
+FHS0718,Male,Grade 9,General,9B,B,38,Technology,Semester 1,61,45,53,Above-7,13.0,44,41,3,M,1
+FHS0719,Male,Grade 9,General,9A,A,38,Natural Sciences,Semester 2,70,44,53,Above-7,3.8,48,35,2,L,0
+FHS0720,Male,Grade 9,General,9A,A,32,Mathematics,Semester 1,51,39,33,Above-7,19.4,84,36,2,L,0
+FHS0721,Female,Grade 9,General,9B,B,45,Mathematics,Semester 1,41,27,53,Above-7,14.4,52,16,1,L,0
+FHS0722,Male,Grade 9,General,9B,B,32,Technology,Semester 2,60,38,43,Above-7,15.1,53,44,3,M,1
+FHS0723,Female,Grade 9,General,9A,A,42,Technology,Semester 2,89,85,62,Under-7,15.7,88,78,6,H,1
+FHS0724,Male,Grade 9,General,9C,C,35,English FAL,Semester 2,86,45,62,Under-7,16.8,80,72,6,H,1
+FHS0725,Male,Grade 9,General,9A,A,38,EMS,Semester 2,85,54,74,Under-7,18.3,85,78,6,H,1
+FHS0726,Female,Grade 9,General,9B,B,42,Life Orientation,Semester 2,6,19,29,Under-7,4.1,11,23,1,L,0
+FHS0727,Female,Grade 9,General,9C,C,35,Social Sciences,Semester 2,42,41,50,Above-7,8.5,34,29,1,L,0
+FHS0728,Male,Grade 9,General,9B,B,45,Life Orientation,Semester 1,39,44,47,Under-7,13.0,64,48,3,M,1
+FHS0729,Female,Grade 9,General,9C,C,32,Technology,Semester 1,33,60,16,Under-7,12.4,72,41,3,M,1
+FHS0730,Male,Grade 9,General,9C,C,35,Social Sciences,Semester 1,43,35,72,Under-7,7.4,88,66,5,M,1
+FHS0731,Male,Grade 9,General,9C,C,38,Natural Sciences,Semester 1,74,63,68,Under-7,18.8,74,69,5,M,1
+FHS0732,Female,Grade 9,General,9B,B,38,Social Sciences,Semester 2,99,99,75,Under-7,19.0,80,90,7,H,1
+FHS0733,Female,Grade 9,General,9B,B,48,Life Orientation,Semester 1,65,54,44,Under-7,17.2,67,68,5,M,1
+FHS0734,Female,Grade 9,General,9A,A,45,EMS,Semester 2,99,39,77,Under-7,16.7,69,75,6,H,1
+FHS0735,Male,Grade 9,General,9C,C,42,Mathematics,Semester 1,82,66,67,Under-7,21.8,89,68,5,M,1
+FHS0736,Female,Grade 9,General,9C,C,48,English FAL,Semester 2,64,75,35,Under-7,17.6,74,68,5,M,1
+FHS0737,Female,Grade 9,General,9A,A,42,Life Orientation,Semester 2,71,72,76,Under-7,19.9,99,86,7,H,1
+FHS0738,Male,Grade 9,General,9C,C,38,Natural Sciences,Semester 1,24,18,38,Above-7,2.7,35,5,1,L,0
+FHS0739,Female,Grade 9,General,9A,A,38,Mathematics,Semester 1,56,40,86,Under-7,14.4,76,56,4,M,1
+FHS0740,Female,Grade 9,General,9B,B,35,English FAL,Semester 2,47,11,58,Above-7,14.9,77,28,1,L,0
+FHS0741,Female,Grade 9,General,9A,A,42,Technology,Semester 1,55,67,77,Under-7,19.3,95,70,6,H,1
+FHS0742,Male,Grade 9,General,9A,A,38,Mathematics,Semester 1,79,13,68,Under-7,17.3,81,50,4,M,1
+FHS0743,Male,Grade 9,General,9B,B,38,English FAL,Semester 1,56,41,86,Under-7,15.5,56,58,4,M,1
+FHS0744,Male,Grade 9,General,9A,A,35,Life Orientation,Semester 1,40,54,67,Under-7,6.1,62,53,4,M,1
+FHS0745,Male,Grade 9,General,9A,A,38,Natural Sciences,Semester 2,29,29,25,Under-7,6.5,66,41,3,M,1
+FHS0746,Male,Grade 9,General,9B,B,32,Life Orientation,Semester 2,74,66,49,Above-7,13.7,55,55,4,M,1
+FHS0747,Female,Grade 9,General,9C,C,35,EMS,Semester 1,72,70,57,Under-7,22.0,100,83,7,H,1
+FHS0748,Male,Grade 9,General,9B,B,42,Mathematics,Semester 1,50,91,41,Above-7,17.5,52,26,1,L,0
+FHS0749,Male,Grade 9,General,9A,A,32,English FAL,Semester 2,30,44,42,Above-7,8.9,71,19,1,L,0
+FHS0750,Female,Grade 9,General,9A,A,38,Social Sciences,Semester 1,76,44,66,Under-7,11.9,64,68,5,M,1
+FHS0751,Male,Grade 9,General,9B,B,32,Life Orientation,Semester 1,53,24,48,Under-7,6.8,64,59,4,M,1
+FHS0752,Female,Grade 9,General,9B,B,45,Social Sciences,Semester 1,75,41,60,Under-7,14.4,92,76,6,H,1
+FHS0753,Male,Grade 9,General,9B,B,45,Natural Sciences,Semester 2,60,34,74,Under-7,15.2,90,59,4,M,1
+FHS0754,Female,Grade 9,General,9A,A,35,Technology,Semester 1,31,51,39,Under-7,8.5,57,59,4,M,1
+FHS0755,Female,Grade 9,General,9C,C,32,Life Orientation,Semester 2,25,17,22,Above-7,10.6,57,28,1,L,0
+FHS0756,Male,Grade 9,General,9C,C,35,Life Orientation,Semester 2,42,42,72,Under-7,10.2,52,44,3,M,1
+FHS0757,Male,Grade 9,General,9C,C,45,Natural Sciences,Semester 2,37,90,37,Above-7,4.5,52,26,1,L,0
+FHS0758,Female,Grade 9,General,9C,C,35,Mathematics,Semester 2,67,81,51,Above-7,20.2,61,38,2,L,0
+FHS0759,Female,Grade 9,General,9A,A,42,Natural Sciences,Semester 2,78,65,27,Under-7,19.7,85,74,6,H,1
+FHS0760,Female,Grade 9,General,9C,C,38,Social Sciences,Semester 2,72,79,70,Under-7,20.3,100,74,6,H,1
+FHS0761,Male,Grade 9,General,9B,B,38,EMS,Semester 1,35,28,33,Above-7,10.6,62,24,1,L,0
+FHS0762,Male,Grade 9,General,9C,C,35,Natural Sciences,Semester 1,17,27,57,Above-7,5.8,33,5,1,L,0
+FHS0763,Female,Grade 9,General,9A,A,35,Technology,Semester 2,52,64,47,Under-7,14.8,81,72,6,H,1
+FHS0764,Female,Grade 9,General,9C,C,42,Life Orientation,Semester 2,46,95,54,Above-7,15.9,69,45,3,M,1
+FHS0765,Male,Grade 9,General,9A,A,45,Mathematics,Semester 2,66,42,27,Above-7,9.3,71,34,2,L,0
+FHS0766,Female,Grade 9,General,9B,B,32,Mathematics,Semester 2,63,75,67,Under-7,13.3,76,56,4,M,1
+FHS0767,Male,Grade 9,General,9A,A,38,Natural Sciences,Semester 1,40,60,72,Under-7,17.2,59,59,4,M,1
+FHS0768,Female,Grade 9,General,9B,B,38,Technology,Semester 1,66,43,76,Under-7,17.1,82,79,6,H,1
+FHS0769,Male,Grade 9,General,9B,B,35,Social Sciences,Semester 1,53,41,15,Above-7,10.7,60,24,1,L,0
+FHS0770,Male,Grade 9,General,9B,B,48,EMS,Semester 1,20,33,45,Above-7,12.9,32,20,1,L,0
+FHS0771,Male,Grade 9,General,9A,A,45,Life Orientation,Semester 1,76,51,30,Under-7,8.8,52,55,4,M,1
+FHS0772,Male,Grade 9,General,9B,B,35,EMS,Semester 2,80,63,42,Under-7,11.4,46,56,4,M,1
+FHS0773,Male,Grade 9,General,9C,C,35,Technology,Semester 1,93,74,51,Under-7,19.4,81,82,7,H,1
+FHS0774,Female,Grade 9,General,9B,B,42,Natural Sciences,Semester 2,87,43,52,Under-7,16.7,74,72,6,H,1
+FHS0775,Female,Grade 9,General,9A,A,45,Mathematics,Semester 1,99,68,74,Under-7,17.5,86,74,6,H,1
+FHS0776,Female,Grade 9,General,9A,A,45,English FAL,Semester 1,62,32,40,Under-7,16.1,65,58,4,M,1
+FHS0777,Male,Grade 9,General,9A,A,35,Social Sciences,Semester 1,63,27,52,Under-7,16.8,69,55,4,M,1
+FHS0778,Female,Grade 9,General,9A,A,38,Technology,Semester 2,76,37,50,Under-7,9.7,69,59,4,M,1
+FHS0779,Male,Grade 9,General,9C,C,42,English FAL,Semester 2,47,48,31,Under-7,8.2,51,42,3,M,1
+FHS0780,Female,Grade 9,General,9A,A,45,English FAL,Semester 1,60,37,31,Under-7,14.8,71,43,3,M,1
+FHS0781,Female,Grade 9,General,9C,C,45,Natural Sciences,Semester 1,81,46,47,Under-7,9.9,57,65,5,M,1
+FHS0782,Female,Grade 9,General,9B,B,38,Mathematics,Semester 2,57,36,52,Above-7,15.2,57,39,2,L,0
+FHS0783,Male,Grade 9,General,9A,A,32,Life Orientation,Semester 1,30,45,35,Under-7,8.7,51,40,3,M,1
+FHS0784,Female,Grade 9,General,9C,C,35,Mathematics,Semester 1,50,40,44,Under-7,13.3,83,60,5,M,1
+FHS0785,Female,Grade 9,General,9C,C,35,EMS,Semester 1,79,54,68,Under-7,21.8,88,82,7,H,1
+FHS0786,Male,Grade 9,General,9B,B,42,Technology,Semester 2,86,35,70,Under-7,17.8,67,66,5,M,1
+FHS0787,Male,Grade 9,General,9A,A,32,Natural Sciences,Semester 2,36,42,51,Above-7,9.0,67,23,1,L,0
+FHS0788,Female,Grade 9,General,9B,B,45,Life Orientation,Semester 1,84,80,77,Above-7,17.1,73,70,6,H,1
+FHS0789,Female,Grade 9,General,9C,C,38,Natural Sciences,Semester 2,71,54,78,Under-7,22.3,88,84,7,H,1
+FHS0790,Female,Grade 9,General,9B,B,35,Mathematics,Semester 1,66,66,95,Under-7,20.7,94,77,6,H,1
+FHS0791,Male,Grade 9,General,9B,B,35,Social Sciences,Semester 2,84,72,71,Under-7,20.9,72,71,6,H,1
+FHS0792,Male,Grade 9,General,9A,A,38,Mathematics,Semester 1,74,11,52,Under-7,11.5,70,40,3,M,1
+FHS0793,Male,Grade 9,General,9A,A,45,Life Orientation,Semester 2,75,99,46,Under-7,18.8,100,78,6,H,1
+FHS0794,Male,Grade 9,General,9B,B,32,English FAL,Semester 1,74,32,47,Under-7,14.5,90,59,4,M,1
+FHS0795,Female,Grade 9,General,9A,A,42,Life Orientation,Semester 1,70,0,32,Under-7,10.3,48,35,2,L,0
+FHS0796,Male,Grade 9,General,9B,B,35,Life Orientation,Semester 1,57,28,39,Under-7,6.5,49,56,4,M,1
+FHS0797,Male,Grade 9,General,9B,B,48,Mathematics,Semester 1,57,49,20,Under-7,5.2,43,34,2,L,0
+FHS0798,Female,Grade 9,General,9A,A,42,English FAL,Semester 1,24,23,3,Above-7,3.8,44,5,1,L,0
+FHS0799,Male,Grade 9,General,9C,C,35,Mathematics,Semester 1,54,17,8,Above-7,2.0,39,5,1,L,0
+FHS0800,Female,Grade 9,General,9A,A,42,Natural Sciences,Semester 1,81,51,62,Under-7,14.7,86,64,5,M,1
+FHS0801,Female,Grade 10,Commerce,10B,B,42,Accounting,Semester 1,82,46,51,Under-7,12.9,88,61,5,M,1
+FHS0802,Female,Grade 10,Tourism,10C,C,35,Life Orientation,Semester 2,54,60,2,Under-7,13.0,65,62,5,M,1
+FHS0803,Female,Grade 10,Commerce,10B,B,35,Mathematical Literacy,Semester 2,63,92,55,Under-7,19.1,74,68,5,M,1
+FHS0804,Male,Grade 10,Commerce,10B,B,48,Accounting,Semester 2,49,69,82,Under-7,18.4,59,45,3,M,1
+FHS0805,Female,Grade 10,Commerce,10B,B,32,Economics,Semester 2,68,58,81,Under-7,16.2,81,72,6,H,1
+FHS0806,Male,Grade 10,Science,10A,A,38,Life Orientation,Semester 2,62,16,58,Under-7,15.1,84,73,6,H,1
+FHS0807,Female,Grade 10,Commerce,10B,B,38,Life Orientation,Semester 1,38,71,33,Under-7,10.2,58,51,4,M,1
+FHS0808,Male,Grade 10,Commerce,10B,B,32,Life Orientation,Semester 1,68,57,39,Above-7,13.3,98,66,5,M,1
+FHS0809,Female,Grade 10,Commerce,10B,B,45,Life Orientation,Semester 1,99,97,42,Under-7,16.2,84,87,7,H,1
+FHS0810,Male,Grade 10,Science,10A,A,32,Mathematics,Semester 2,70,64,73,Under-7,14.0,75,50,4,M,1
+FHS0811,Female,Grade 10,Tourism,10C,C,42,Mathematical Literacy,Semester 1,49,75,50,Above-7,5.8,45,32,2,L,0
+FHS0812,Female,Grade 10,Tourism,10C,C,32,English FAL,Semester 2,30,54,50,Under-7,10.6,65,50,4,M,1
+FHS0813,Female,Grade 10,Science,10A,A,35,Life Sciences,Semester 2,61,44,60,Above-7,8.8,71,40,3,M,1
+FHS0814,Female,Grade 10,Science,10A,A,35,Life Sciences,Semester 1,49,60,81,Under-7,19.1,81,72,6,H,1
+FHS0815,Female,Grade 10,Science,10A,A,48,English FAL,Semester 1,62,58,32,Under-7,18.1,66,67,5,M,1
+FHS0816,Female,Grade 10,Science,10A,A,35,Life Sciences,Semester 1,22,41,40,Above-7,4.2,68,9,1,L,0
+FHS0817,Female,Grade 10,Tourism,10C,C,35,Life Orientation,Semester 1,39,33,46,Under-7,10.6,61,48,3,M,1
+FHS0818,Male,Grade 10,Commerce,10B,B,42,Business Studies,Semester 2,89,52,29,Under-7,20.0,82,67,5,M,1
+FHS0819,Female,Grade 10,Tourism,10C,C,42,Tourism,Semester 1,64,83,56,Above-7,21.4,74,49,3,M,1
+FHS0820,Female,Grade 10,Tourism,10C,C,32,Mathematical Literacy,Semester 1,76,39,69,Under-7,13.0,65,61,5,M,1
+FHS0821,Female,Grade 10,Tourism,10C,C,32,Life Orientation,Semester 2,68,32,66,Under-7,3.1,75,57,4,M,1
+FHS0822,Male,Grade 10,Commerce,10B,B,35,Mathematical Literacy,Semester 1,56,2,62,Under-7,13.3,62,41,3,M,1
+FHS0823,Female,Grade 10,Tourism,10C,C,42,History,Semester 1,51,51,57,Under-7,9.7,65,55,4,M,1
+FHS0824,Female,Grade 10,Science,10A,A,35,Life Orientation,Semester 2,48,77,51,Under-7,16.6,64,72,6,H,1
+FHS0825,Female,Grade 10,Tourism,10C,C,38,Mathematical Literacy,Semester 2,46,58,43,Above-7,13.9,39,43,3,M,1
+FHS0826,Male,Grade 10,Commerce,10B,B,42,Mathematics,Semester 2,66,58,82,Under-7,22.2,88,77,6,H,1
+FHS0827,Male,Grade 10,Science,10A,A,42,Mathematics,Semester 1,39,22,8,Above-7,2.0,15,5,1,L,0
+FHS0828,Female,Grade 10,Tourism,10C,C,42,Geography,Semester 2,36,35,41,Above-7,2.0,72,7,1,L,0
+FHS0829,Female,Grade 10,Science,10A,A,38,Physical Sciences,Semester 2,41,15,35,Above-7,4.0,54,5,1,L,0
+FHS0830,Male,Grade 10,Commerce,10B,B,32,English FAL,Semester 2,64,45,39,Under-7,16.3,79,56,4,M,1
+FHS0831,Male,Grade 10,Science,10A,A,45,Physical Sciences,Semester 2,67,52,45,Under-7,23.2,96,78,6,H,1
+FHS0832,Female,Grade 10,Commerce,10B,B,32,Economics,Semester 1,81,70,99,Under-7,19.1,75,79,6,H,1
+FHS0833,Male,Grade 10,Tourism,10C,C,45,Life Orientation,Semester 1,53,9,69,Under-7,13.7,57,44,3,M,1
+FHS0834,Male,Grade 10,Tourism,10C,C,42,English FAL,Semester 1,39,30,53,Under-7,11.9,50,30,2,L,0
+FHS0835,Male,Grade 10,Commerce,10B,B,45,Business Studies,Semester 2,76,61,82,Under-7,12.7,90,86,7,H,1
+FHS0836,Male,Grade 10,Science,10A,A,38,Information Technology,Semester 1,25,28,18,Under-7,8.7,37,26,1,L,0
+FHS0837,Female,Grade 10,Science,10A,A,38,Life Orientation,Semester 2,59,47,51,Under-7,8.7,62,42,3,M,1
+FHS0838,Female,Grade 10,Science,10A,A,45,Physical Sciences,Semester 2,75,43,57,Under-7,15.2,92,59,4,M,1
+FHS0839,Female,Grade 10,Tourism,10C,C,35,English FAL,Semester 1,50,56,23,Under-7,12.2,68,45,3,M,1
+FHS0840,Male,Grade 10,Science,10A,A,35,Information Technology,Semester 2,1,0,38,Above-7,6.7,33,5,1,L,0
+FHS0841,Female,Grade 10,Commerce,10B,B,32,Accounting,Semester 1,58,39,81,Under-7,9.4,68,51,4,M,1
+FHS0842,Male,Grade 10,Science,10A,A,32,Life Sciences,Semester 2,25,46,39,Under-7,13.9,51,47,3,M,1
+FHS0843,Male,Grade 10,Commerce,10B,B,42,English FAL,Semester 2,72,4,24,Under-7,2.0,36,40,3,M,1
+FHS0844,Male,Grade 10,Science,10A,A,45,English FAL,Semester 2,69,99,68,Under-7,12.7,67,76,6,H,1
+FHS0845,Female,Grade 10,Commerce,10B,B,45,Life Orientation,Semester 2,99,83,56,Under-7,12.5,78,93,7,H,1
+FHS0846,Female,Grade 10,Commerce,10B,B,35,English FAL,Semester 1,69,35,34,Under-7,13.7,88,64,5,M,1
+FHS0847,Female,Grade 10,Tourism,10C,C,45,History,Semester 1,76,24,62,Above-7,17.8,66,36,2,L,0
+FHS0848,Male,Grade 10,Science,10A,A,35,Life Sciences,Semester 2,71,54,52,Above-7,13.2,62,33,2,L,0
+FHS0849,Male,Grade 10,Tourism,10C,C,32,History,Semester 2,99,59,73,Under-7,15.6,93,83,7,H,1
+FHS0850,Male,Grade 10,Commerce,10B,B,32,Accounting,Semester 1,66,43,78,Under-7,16.0,92,60,5,M,1
+FHS0851,Male,Grade 10,Science,10A,A,32,Life Orientation,Semester 1,43,33,45,Under-7,11.0,67,51,4,M,1
+FHS0852,Male,Grade 10,Science,10A,A,42,English FAL,Semester 2,73,23,79,Under-7,16.4,71,59,4,M,1
+FHS0853,Female,Grade 10,Tourism,10C,C,45,Life Orientation,Semester 1,38,40,36,Under-7,8.9,67,56,4,M,1
+FHS0854,Female,Grade 10,Science,10A,A,35,Geography,Semester 1,64,52,45,Under-7,13.0,74,71,6,H,1
+FHS0855,Male,Grade 10,Commerce,10B,B,42,Accounting,Semester 2,61,86,50,Under-7,17.7,74,61,5,M,1
+FHS0856,Female,Grade 10,Science,10A,A,38,Information Technology,Semester 2,15,52,22,Above-7,7.4,33,5,1,L,0
+FHS0857,Female,Grade 10,Commerce,10B,B,42,Life Orientation,Semester 2,22,17,17,Under-7,2.0,43,29,1,L,0
+FHS0858,Female,Grade 10,Science,10A,A,35,Geography,Semester 1,45,52,31,Under-7,15.3,93,51,4,M,1
+FHS0859,Male,Grade 10,Science,10A,A,42,Information Technology,Semester 1,39,22,23,Under-7,7.2,44,37,2,L,0
+FHS0860,Male,Grade 10,Tourism,10C,C,38,History,Semester 1,50,56,51,Above-7,9.3,63,28,1,L,0
+FHS0861,Female,Grade 10,Commerce,10B,B,32,Mathematical Literacy,Semester 1,54,18,34,Above-7,12.3,37,32,2,L,0
+FHS0862,Female,Grade 10,Commerce,10B,B,35,Business Studies,Semester 2,34,0,40,Above-7,5.9,25,7,1,L,0
+FHS0863,Male,Grade 10,Commerce,10B,B,35,English FAL,Semester 1,79,70,36,Under-7,12.5,64,67,5,M,1
+FHS0864,Female,Grade 10,Science,10A,A,38,Mathematics,Semester 2,67,45,48,Under-7,13.4,49,38,2,L,0
+FHS0865,Male,Grade 10,Commerce,10B,B,32,Mathematical Literacy,Semester 1,59,25,67,Under-7,20.2,73,69,5,M,1
+FHS0866,Male,Grade 10,Commerce,10B,B,42,Business Studies,Semester 1,28,37,49,Above-7,15.2,64,31,2,L,0
+FHS0867,Male,Grade 10,Science,10A,A,38,Geography,Semester 1,62,28,55,Above-7,8.1,67,41,3,M,1
+FHS0868,Female,Grade 10,Commerce,10B,B,42,Life Orientation,Semester 1,81,87,83,Under-7,16.7,86,90,7,H,1
+FHS0869,Female,Grade 10,Tourism,10C,C,35,Tourism,Semester 2,80,69,26,Under-7,6.3,67,63,5,M,1
+FHS0870,Male,Grade 10,Science,10A,A,35,Mathematics,Semester 2,64,44,51,Above-7,10.1,76,28,1,L,0
+FHS0871,Female,Grade 10,Commerce,10B,B,45,English FAL,Semester 1,50,60,34,Above-7,8.2,80,32,2,L,0
+FHS0872,Male,Grade 10,Science,10A,A,42,Physical Sciences,Semester 1,50,36,19,Under-7,6.4,76,28,1,L,0
+FHS0873,Male,Grade 10,Commerce,10B,B,35,Business Studies,Semester 1,25,45,42,Under-7,8.5,40,33,2,L,0
+FHS0874,Female,Grade 10,Science,10A,A,38,Life Orientation,Semester 2,58,44,68,Above-7,19.4,63,49,3,M,1
+FHS0875,Male,Grade 10,Science,10A,A,35,Physical Sciences,Semester 1,47,58,28,Under-7,7.2,76,32,2,L,0
+FHS0876,Female,Grade 10,Commerce,10B,B,45,Life Orientation,Semester 2,52,27,1,Under-7,7.5,44,42,3,M,1
+FHS0877,Female,Grade 10,Commerce,10B,B,32,Business Studies,Semester 1,78,51,81,Under-7,10.9,69,67,5,M,1
+FHS0878,Male,Grade 10,Science,10A,A,45,Geography,Semester 2,73,48,40,Under-7,13.5,66,44,3,M,1
+FHS0879,Male,Grade 10,Commerce,10B,B,45,Business Studies,Semester 1,78,41,50,Under-7,11.3,84,69,5,M,1
+FHS0880,Female,Grade 10,Commerce,10B,B,45,Economics,Semester 2,32,41,35,Under-7,14.1,40,21,1,L,0
+FHS0881,Male,Grade 10,Science,10A,A,38,Physical Sciences,Semester 2,78,63,71,Above-7,14.7,68,51,4,M,1
+FHS0882,Female,Grade 10,Science,10A,A,35,Physical Sciences,Semester 2,65,47,30,Above-7,9.4,30,8,1,L,0
+FHS0883,Female,Grade 10,Tourism,10C,C,42,English FAL,Semester 1,3,0,22,Above-7,2.6,40,5,1,L,0
+FHS0884,Male,Grade 10,Tourism,10C,C,35,History,Semester 2,63,29,60,Above-7,9.3,72,40,3,M,1
+FHS0885,Male,Grade 10,Science,10A,A,35,Life Sciences,Semester 2,41,21,73,Above-7,8.2,57,34,2,L,0
+FHS0886,Female,Grade 10,Science,10A,A,48,Mathematics,Semester 1,71,29,60,Under-7,17.1,58,59,4,M,1
+FHS0887,Male,Grade 10,Commerce,10B,B,35,Economics,Semester 2,66,62,53,Under-7,14.1,62,66,5,M,1
+FHS0888,Male,Grade 10,Commerce,10B,B,35,Business Studies,Semester 2,71,72,53,Under-7,18.6,62,70,6,H,1
+FHS0889,Female,Grade 10,Science,10A,A,38,English FAL,Semester 1,54,24,52,Above-7,6.9,45,31,2,L,0
+FHS0890,Female,Grade 10,Tourism,10C,C,35,History,Semester 2,39,32,36,Above-7,13.9,71,19,1,L,0
+FHS0891,Male,Grade 10,Science,10A,A,35,Life Orientation,Semester 2,61,31,55,Under-7,18.7,80,73,6,H,1
+FHS0892,Male,Grade 10,Tourism,10C,C,35,Mathematical Literacy,Semester 2,69,44,40,Under-7,16.2,68,70,6,H,1
+FHS0893,Male,Grade 10,Commerce,10B,B,32,Mathematics,Semester 2,0,33,28,Above-7,6.7,44,5,1,L,0
+FHS0894,Male,Grade 10,Science,10A,A,35,English FAL,Semester 2,55,29,34,Under-7,9.9,67,48,3,M,1
+FHS0895,Female,Grade 10,Commerce,10B,B,35,Life Orientation,Semester 2,38,30,23,Above-7,9.7,52,21,1,L,0
+FHS0896,Male,Grade 10,Commerce,10B,B,35,Life Orientation,Semester 1,59,5,45,Under-7,6.2,52,42,3,M,1
+FHS0897,Male,Grade 10,Science,10A,A,42,Life Sciences,Semester 2,35,39,43,Under-7,4.9,45,33,2,L,0
+FHS0898,Male,Grade 10,Science,10A,A,32,Mathematics,Semester 2,26,50,9,Above-7,3.5,29,5,1,L,0
+FHS0899,Male,Grade 10,Science,10A,A,32,Mathematics,Semester 2,52,23,42,Under-7,15.6,75,46,3,M,1
+FHS0900,Male,Grade 10,Science,10A,A,48,Life Sciences,Semester 1,21,13,22,Above-7,2.0,29,5,1,L,0
+FHS0901,Male,Grade 10,Science,10A,A,38,Physical Sciences,Semester 1,50,49,57,Under-7,9.1,64,47,3,M,1
+FHS0902,Female,Grade 10,Science,10A,A,35,Life Sciences,Semester 1,45,17,20,Under-7,9.9,47,37,2,L,0
+FHS0903,Male,Grade 10,Tourism,10C,C,42,Life Orientation,Semester 2,89,51,63,Under-7,19.7,78,72,6,H,1
+FHS0904,Male,Grade 10,Science,10A,A,38,English FAL,Semester 2,85,31,74,Under-7,8.9,66,73,6,H,1
+FHS0905,Female,Grade 10,Science,10A,A,42,Physical Sciences,Semester 2,34,14,46,Under-7,6.8,56,23,1,L,0
+FHS0906,Male,Grade 10,Commerce,10B,B,38,Mathematics,Semester 2,64,44,71,Above-7,17.1,77,44,3,M,1
+FHS0907,Female,Grade 10,Commerce,10B,B,38,Business Studies,Semester 2,74,42,44,Under-7,11.8,63,53,4,M,1
+FHS0908,Male,Grade 10,Science,10A,A,32,Geography,Semester 1,52,17,70,Under-7,9.2,63,42,3,M,1
+FHS0909,Male,Grade 10,Commerce,10B,B,38,Mathematics,Semester 1,89,6,53,Under-7,18.3,72,54,4,M,1
+FHS0910,Female,Grade 10,Science,10A,A,42,Life Orientation,Semester 1,65,43,36,Under-7,4.8,37,56,4,M,1
+FHS0911,Male,Grade 10,Science,10A,A,48,Mathematics,Semester 2,20,54,41,Under-7,16.2,57,22,1,L,0
+FHS0912,Female,Grade 10,Tourism,10C,C,32,English FAL,Semester 1,53,50,46,Under-7,10.2,57,52,4,M,1
+FHS0913,Male,Grade 10,Science,10A,A,32,Information Technology,Semester 1,49,50,27,Above-7,7.8,44,30,2,L,0
+FHS0914,Male,Grade 10,Commerce,10B,B,45,Business Studies,Semester 2,42,26,11,Above-7,8.0,52,10,1,L,0
+FHS0915,Male,Grade 10,Tourism,10C,C,35,English FAL,Semester 1,36,38,39,Under-7,3.5,47,34,2,L,0
+FHS0916,Male,Grade 10,Tourism,10C,C,32,Mathematical Literacy,Semester 1,61,49,52,Under-7,7.9,52,52,4,M,1
+FHS0917,Female,Grade 10,Science,10A,A,45,Geography,Semester 2,66,30,42,Under-7,15.8,81,59,4,M,1
+FHS0918,Female,Grade 10,Science,10A,A,35,Life Sciences,Semester 2,56,52,69,Under-7,22.6,83,75,6,H,1
+FHS0919,Male,Grade 10,Tourism,10C,C,48,English FAL,Semester 1,88,71,46,Under-7,16.6,71,71,6,H,1
+FHS0920,Female,Grade 10,Tourism,10C,C,42,English FAL,Semester 2,76,63,64,Under-7,14.7,68,60,5,M,1
+FHS0921,Female,Grade 10,Commerce,10B,B,35,English FAL,Semester 2,20,24,19,Above-7,13.3,36,12,1,L,0
+FHS0922,Female,Grade 10,Commerce,10B,B,42,Business Studies,Semester 1,70,69,43,Under-7,17.0,68,61,5,M,1
+FHS0923,Female,Grade 10,Science,10A,A,38,Geography,Semester 1,90,73,78,Under-7,18.8,63,76,6,H,1
+FHS0924,Male,Grade 10,Commerce,10B,B,32,Accounting,Semester 1,74,57,60,Above-7,13.5,67,45,3,M,1
+FHS0925,Male,Grade 10,Science,10A,A,32,Geography,Semester 2,65,99,28,Above-7,16.9,98,56,4,M,1
+FHS0926,Male,Grade 10,Science,10A,A,42,Mathematics,Semester 2,76,66,59,Under-7,12.4,70,59,4,M,1
+FHS0927,Female,Grade 10,Commerce,10B,B,35,English FAL,Semester 1,14,0,50,Under-7,6.2,45,20,1,L,0
+FHS0928,Female,Grade 10,Science,10A,A,35,Physical Sciences,Semester 1,61,41,69,Under-7,15.5,90,50,4,M,1
+FHS0929,Female,Grade 10,Science,10A,A,35,Life Orientation,Semester 1,76,74,54,Under-7,13.7,86,75,6,H,1
+FHS0930,Female,Grade 10,Science,10A,A,42,English FAL,Semester 2,87,25,41,Under-7,9.0,64,54,4,M,1
+FHS0931,Male,Grade 10,Tourism,10C,C,35,Life Orientation,Semester 1,23,2,20,Under-7,7.5,40,31,2,L,0
+FHS0932,Male,Grade 10,Tourism,10C,C,35,Mathematical Literacy,Semester 2,43,71,60,Above-7,7.9,35,39,2,L,0
+FHS0933,Male,Grade 10,Commerce,10B,B,35,Accounting,Semester 1,46,14,67,Under-7,5.7,51,22,1,L,0
+FHS0934,Male,Grade 10,Science,10A,A,42,Geography,Semester 2,65,72,35,Under-7,20.3,100,78,6,H,1
+FHS0935,Male,Grade 10,Science,10A,A,42,Life Orientation,Semester 2,52,19,48,Under-7,10.4,37,20,1,L,0
+FHS0936,Female,Grade 10,Commerce,10B,B,32,Business Studies,Semester 1,35,25,48,Under-7,3.7,47,47,3,M,1
+FHS0937,Female,Grade 10,Tourism,10C,C,48,Mathematical Literacy,Semester 1,72,57,63,Under-7,17.8,72,42,3,M,1
+FHS0938,Female,Grade 10,Science,10A,A,32,English FAL,Semester 1,51,20,50,Above-7,7.3,41,19,1,L,0
+FHS0939,Female,Grade 10,Tourism,10C,C,35,History,Semester 1,77,76,55,Under-7,13.5,93,76,6,H,1
+FHS0940,Male,Grade 10,Tourism,10C,C,45,History,Semester 1,99,62,43,Under-7,18.9,48,71,6,H,1
+FHS0941,Female,Grade 10,Commerce,10B,B,38,Business Studies,Semester 2,34,56,72,Under-7,18.6,54,54,4,M,1
+FHS0942,Male,Grade 10,Tourism,10C,C,38,History,Semester 2,17,65,24,Under-7,7.8,61,40,3,M,1
+FHS0943,Male,Grade 10,Science,10A,A,32,Life Orientation,Semester 2,21,21,71,Above-7,4.5,57,26,1,L,0
+FHS0944,Female,Grade 10,Tourism,10C,C,35,Life Orientation,Semester 1,81,48,78,Under-7,15.0,88,81,7,H,1
+FHS0945,Female,Grade 10,Science,10A,A,38,Mathematics,Semester 2,35,27,31,Under-7,5.8,43,27,1,L,0
+FHS0946,Male,Grade 10,Tourism,10C,C,35,Life Orientation,Semester 1,84,42,79,Above-7,15.5,79,43,3,M,1
+FHS0947,Female,Grade 10,Science,10A,A,42,Physical Sciences,Semester 2,46,39,34,Above-7,2.0,34,5,1,L,0
+FHS0948,Male,Grade 10,Commerce,10B,B,38,English FAL,Semester 2,21,14,6,Under-7,3.0,20,7,1,L,0
+FHS0949,Male,Grade 10,Science,10A,A,38,Mathematics,Semester 2,42,34,26,Above-7,9.3,49,17,1,L,0
+FHS0950,Male,Grade 10,Science,10A,A,32,Life Sciences,Semester 2,56,44,34,Under-7,18.2,74,51,4,M,1
+FHS0951,Female,Grade 10,Commerce,10B,B,32,Life Orientation,Semester 1,28,28,25,Under-7,8.3,48,42,3,M,1
+FHS0952,Male,Grade 10,Commerce,10B,B,42,Accounting,Semester 2,78,41,29,Under-7,19.3,60,49,3,M,1
+FHS0953,Male,Grade 10,Commerce,10B,B,42,Mathematics,Semester 1,46,18,22,Under-7,12.2,49,27,1,L,0
+FHS0954,Female,Grade 10,Commerce,10B,B,48,English FAL,Semester 2,54,68,27,Under-7,19.0,83,60,5,M,1
+FHS0955,Male,Grade 10,Science,10A,A,38,Information Technology,Semester 1,68,56,56,Under-7,5.2,64,64,5,M,1
+FHS0956,Female,Grade 10,Commerce,10B,B,35,Life Orientation,Semester 1,45,36,65,Above-7,10.0,42,42,3,M,1
+FHS0957,Male,Grade 10,Science,10A,A,38,Physical Sciences,Semester 2,93,63,75,Under-7,18.2,81,79,6,H,1
+FHS0958,Male,Grade 10,Tourism,10C,C,45,Life Orientation,Semester 2,28,0,26,Under-7,2.9,62,20,1,L,0
+FHS0959,Male,Grade 10,Tourism,10C,C,38,Life Orientation,Semester 1,48,29,51,Under-7,11.4,61,62,5,M,1
+FHS0960,Male,Grade 10,Science,10A,A,38,Life Orientation,Semester 1,86,98,58,Under-7,21.4,85,95,7,H,1
+FHS0961,Male,Grade 10,Tourism,10C,C,38,Life Orientation,Semester 2,49,7,59,Above-7,10.0,67,43,3,M,1
+FHS0962,Male,Grade 10,Commerce,10B,B,38,Accounting,Semester 2,67,54,56,Under-7,21.1,80,73,6,H,1
+FHS0963,Male,Grade 10,Science,10A,A,35,Physical Sciences,Semester 2,60,53,66,Under-7,11.3,75,62,5,M,1
+FHS0964,Female,Grade 10,Tourism,10C,C,42,History,Semester 1,34,52,39,Under-7,12.8,69,53,4,M,1
+FHS0965,Female,Grade 10,Commerce,10B,B,42,Mathematics,Semester 1,77,42,56,Under-7,15.0,66,48,3,M,1
+FHS0966,Male,Grade 10,Tourism,10C,C,42,History,Semester 1,70,60,35,Under-7,19.5,72,61,5,M,1
+FHS0967,Male,Grade 10,Science,10A,A,35,Life Orientation,Semester 1,79,69,39,Above-7,11.9,88,60,5,M,1
+FHS0968,Male,Grade 10,Science,10A,A,35,Life Orientation,Semester 2,63,38,37,Under-7,8.9,42,58,4,M,1
+FHS0969,Male,Grade 10,Commerce,10B,B,35,Mathematical Literacy,Semester 2,74,50,44,Under-7,16.1,55,59,4,M,1
+FHS0970,Male,Grade 10,Science,10A,A,32,Information Technology,Semester 2,47,59,36,Above-7,11.7,60,36,2,L,0
+FHS0971,Male,Grade 10,Science,10A,A,32,Geography,Semester 1,76,79,50,Above-7,21.0,70,55,4,M,1
+FHS0972,Female,Grade 10,Commerce,10B,B,38,Mathematics,Semester 1,69,72,46,Under-7,13.5,71,59,4,M,1
+FHS0973,Female,Grade 10,Science,10A,A,38,Physical Sciences,Semester 2,56,48,49,Under-7,12.3,47,29,1,L,0
+FHS0974,Female,Grade 10,Tourism,10C,C,32,English FAL,Semester 1,91,56,58,Under-7,12.7,80,73,6,H,1
+FHS0975,Female,Grade 10,Commerce,10B,B,35,Accounting,Semester 2,69,39,39,Under-7,9.9,46,50,4,M,1
+FHS0976,Male,Grade 10,Commerce,10B,B,45,Life Orientation,Semester 2,65,54,28,Under-7,10.3,50,47,3,M,1
+FHS0977,Male,Grade 10,Commerce,10B,B,38,Life Orientation,Semester 2,44,34,19,Under-7,2.1,39,23,1,L,0
+FHS0978,Male,Grade 10,Commerce,10B,B,32,Mathematics,Semester 2,78,29,50,Under-7,13.7,79,38,2,L,0
+FHS0979,Female,Grade 10,Commerce,10B,B,32,English FAL,Semester 1,67,29,61,Under-7,9.1,51,56,4,M,1
+FHS0980,Female,Grade 10,Science,10A,A,48,Life Orientation,Semester 1,27,61,74,Under-7,5.4,81,49,3,M,1
+FHS0981,Male,Grade 10,Commerce,10B,B,38,Economics,Semester 1,25,41,20,Under-7,11.3,47,32,2,L,0
+FHS0982,Male,Grade 10,Commerce,10B,B,35,Business Studies,Semester 1,57,28,54,Under-7,9.0,65,44,3,M,1
+FHS0983,Male,Grade 10,Commerce,10B,B,32,Mathematics,Semester 2,73,60,32,Above-7,16.6,59,37,2,L,0
+FHS0984,Male,Grade 10,Science,10A,A,35,Physical Sciences,Semester 1,57,6,40,Under-7,9.4,47,17,1,L,0
+FHS0985,Male,Grade 10,Commerce,10B,B,32,Economics,Semester 2,50,25,16,Under-7,2.8,33,16,1,L,0
+FHS0986,Male,Grade 10,Commerce,10B,B,48,Mathematical Literacy,Semester 2,77,97,48,Under-7,16.3,87,70,6,H,1
+FHS0987,Male,Grade 10,Tourism,10C,C,35,Life Orientation,Semester 1,33,25,36,Above-7,8.4,45,14,1,L,0
+FHS0988,Female,Grade 10,Commerce,10B,B,32,Accounting,Semester 2,98,52,95,Under-7,22.0,100,76,6,H,1
+FHS0989,Female,Grade 10,Tourism,10C,C,42,Tourism,Semester 2,33,10,34,Under-7,4.8,50,33,2,L,0
+FHS0990,Female,Grade 10,Commerce,10B,B,45,Business Studies,Semester 1,66,29,59,Under-7,15.1,71,46,3,M,1
+FHS0991,Female,Grade 10,Science,10A,A,38,Life Orientation,Semester 2,52,43,59,Under-7,13.0,71,55,4,M,1
+FHS0992,Female,Grade 10,Science,10A,A,32,English FAL,Semester 1,82,89,61,Under-7,13.8,66,66,5,M,1
+FHS0993,Male,Grade 10,Tourism,10C,C,32,Mathematical Literacy,Semester 2,58,38,10,Under-7,12.0,66,47,3,M,1
+FHS0994,Male,Grade 10,Science,10A,A,42,Life Orientation,Semester 1,38,40,24,Above-7,4.6,42,15,1,L,0
+FHS0995,Male,Grade 10,Commerce,10B,B,32,Business Studies,Semester 2,59,84,64,Under-7,23.1,85,75,6,H,1
+FHS0996,Female,Grade 10,Science,10A,A,35,Geography,Semester 1,98,42,89,Under-7,17.7,78,75,6,H,1
+FHS0997,Male,Grade 10,Commerce,10B,B,38,Life Orientation,Semester 1,31,40,27,Above-7,5.6,64,25,1,L,0
+FHS0998,Male,Grade 10,Science,10A,A,38,Mathematics,Semester 1,33,41,92,Under-7,11.4,81,39,2,L,0
+FHS0999,Male,Grade 10,Commerce,10B,B,42,Accounting,Semester 2,89,76,60,Under-7,16.8,95,78,6,H,1
+FHS1000,Female,Grade 10,Science,10A,A,32,Mathematics,Semester 1,53,83,51,Under-7,9.4,64,45,3,M,1
+FHS1001,Female,Grade 10,Science,10A,A,35,Life Orientation,Semester 1,56,33,43,Under-7,14.6,89,73,6,H,1
+FHS1002,Male,Grade 10,Science,10A,A,42,Life Orientation,Semester 1,60,50,49,Above-7,20.1,78,42,3,M,1
+FHS1003,Female,Grade 10,Commerce,10B,B,42,Mathematics,Semester 1,38,16,22,Above-7,11.5,32,17,1,L,0
+FHS1004,Male,Grade 10,Science,10A,A,42,English FAL,Semester 2,68,44,42,Under-7,12.0,87,48,3,M,1
+FHS1005,Male,Grade 10,Commerce,10B,B,42,English FAL,Semester 1,72,54,45,Under-7,20.4,92,71,6,H,1
+FHS1006,Male,Grade 10,Science,10A,A,42,English FAL,Semester 1,85,39,64,Under-7,14.8,94,83,7,H,1
+FHS1007,Male,Grade 10,Science,10A,A,42,English FAL,Semester 2,79,73,60,Under-7,21.5,83,89,7,H,1
+FHS1008,Male,Grade 10,Commerce,10B,B,35,Accounting,Semester 2,62,62,58,Above-7,10.0,65,37,2,L,0
+FHS1009,Female,Grade 10,Science,10A,A,38,English FAL,Semester 1,22,25,30,Under-7,6.6,35,35,2,L,0
+FHS1010,Female,Grade 10,Tourism,10C,C,35,Mathematical Literacy,Semester 2,99,43,56,Under-7,10.8,81,78,6,H,1
+FHS1011,Male,Grade 10,Tourism,10C,C,42,Life Orientation,Semester 1,44,40,52,Under-7,3.4,45,39,2,L,0
+FHS1012,Male,Grade 10,Commerce,10B,B,32,Business Studies,Semester 2,44,25,54,Under-7,9.3,46,40,3,M,1
+FHS1013,Male,Grade 10,Science,10A,A,42,Physical Sciences,Semester 2,53,78,49,Under-7,17.0,75,53,4,M,1
+FHS1014,Female,Grade 10,Commerce,10B,B,38,Business Studies,Semester 2,50,57,56,Above-7,12.8,73,47,3,M,1
+FHS1015,Female,Grade 10,Tourism,10C,C,32,Geography,Semester 2,56,35,11,Under-7,7.7,72,45,3,M,1
+FHS1016,Female,Grade 10,Science,10A,A,38,Information Technology,Semester 1,21,35,14,Under-7,6.7,28,24,1,L,0
+FHS1017,Male,Grade 10,Science,10A,A,35,Mathematics,Semester 1,91,65,74,Under-7,19.4,83,72,6,H,1
+FHS1018,Male,Grade 10,Commerce,10B,B,42,Life Orientation,Semester 1,54,82,37,Under-7,11.2,52,49,3,M,1
+FHS1019,Female,Grade 10,Science,10A,A,45,Mathematics,Semester 1,99,56,75,Under-7,21.2,100,73,6,H,1
+FHS1020,Female,Grade 10,Science,10A,A,42,English FAL,Semester 1,51,32,35,Under-7,7.4,55,43,3,M,1
+FHS1021,Male,Grade 10,Science,10A,A,42,Geography,Semester 2,32,44,56,Above-7,12.5,54,26,1,L,0
+FHS1022,Male,Grade 10,Science,10A,A,42,Physical Sciences,Semester 1,84,38,75,Under-7,13.5,73,58,4,M,1
+FHS1023,Female,Grade 10,Tourism,10C,C,48,Tourism,Semester 1,38,20,18,Under-7,7.7,42,37,2,L,0
+FHS1024,Male,Grade 10,Commerce,10B,B,35,Mathematics,Semester 2,73,60,38,Under-7,16.8,92,64,5,M,1
+FHS1025,Female,Grade 10,Tourism,10C,C,42,Life Orientation,Semester 2,77,74,84,Under-7,15.8,84,83,7,H,1
+FHS1026,Male,Grade 10,Commerce,10B,B,35,Business Studies,Semester 1,53,78,65,Above-7,16.4,70,46,3,M,1
+FHS1027,Female,Grade 10,Tourism,10C,C,48,English FAL,Semester 1,73,36,48,Under-7,22.8,83,72,6,H,1
+FHS1028,Male,Grade 10,Commerce,10B,B,35,Life Orientation,Semester 1,26,67,68,Under-7,6.5,38,42,3,M,1
+FHS1029,Female,Grade 10,Science,10A,A,35,Mathematics,Semester 2,74,16,35,Under-7,17.1,76,49,3,M,1
+FHS1030,Female,Grade 10,Science,10A,A,38,Physical Sciences,Semester 1,68,51,37,Under-7,15.2,83,62,5,M,1
+FHS1031,Male,Grade 10,Science,10A,A,35,Life Sciences,Semester 1,62,36,44,Above-7,18.3,58,44,3,M,1
+FHS1032,Male,Grade 10,Tourism,10C,C,38,Mathematical Literacy,Semester 2,82,50,60,Under-7,9.3,56,58,4,M,1
+FHS1033,Male,Grade 10,Science,10A,A,38,Life Sciences,Semester 2,71,38,37,Under-7,11.9,68,58,4,M,1
+FHS1034,Male,Grade 10,Science,10A,A,45,Information Technology,Semester 1,41,41,53,Under-7,12.3,69,64,5,M,1
+FHS1035,Female,Grade 10,Commerce,10B,B,35,Mathematical Literacy,Semester 1,46,53,57,Under-7,11.7,69,66,5,M,1
+FHS1036,Male,Grade 10,Commerce,10B,B,35,Life Orientation,Semester 1,77,70,31,Under-7,14.0,73,70,6,H,1
+FHS1037,Male,Grade 10,Commerce,10B,B,38,Mathematical Literacy,Semester 2,35,16,50,Under-7,13.7,67,51,4,M,1
+FHS1038,Female,Grade 10,Science,10A,A,48,Physical Sciences,Semester 1,52,66,23,Above-7,10.8,29,14,1,L,0
+FHS1039,Female,Grade 10,Commerce,10B,B,42,Mathematics,Semester 1,54,59,88,Under-7,17.7,65,48,3,M,1
+FHS1040,Male,Grade 10,Tourism,10C,C,38,Mathematical Literacy,Semester 2,44,44,73,Under-7,14.4,57,46,3,M,1
+FHS1041,Female,Grade 10,Science,10A,A,35,Mathematics,Semester 1,38,33,60,Above-7,9.6,65,17,1,L,0
+FHS1042,Male,Grade 10,Commerce,10B,B,45,Mathematics,Semester 1,99,73,58,Under-7,16.7,83,82,7,H,1
+FHS1043,Male,Grade 10,Science,10A,A,42,Geography,Semester 2,70,39,56,Under-7,16.4,84,63,5,M,1
+FHS1044,Male,Grade 10,Tourism,10C,C,35,Mathematical Literacy,Semester 2,92,70,46,Under-7,18.6,75,71,6,H,1
+FHS1045,Female,Grade 10,Commerce,10B,B,45,Business Studies,Semester 1,52,46,46,Under-7,7.9,40,35,2,L,0
+FHS1046,Female,Grade 10,Tourism,10C,C,38,History,Semester 2,99,54,56,Under-7,19.6,84,82,7,H,1
+FHS1047,Male,Grade 10,Science,10A,A,38,English FAL,Semester 1,43,50,55,Above-7,14.6,63,40,3,M,1
+FHS1048,Female,Grade 10,Science,10A,A,45,English FAL,Semester 1,55,60,47,Above-7,4.9,50,17,1,L,0
+FHS1049,Female,Grade 10,Commerce,10B,B,42,Business Studies,Semester 2,65,71,76,Above-7,12.4,75,46,3,M,1
+FHS1050,Female,Grade 10,Science,10A,A,42,English FAL,Semester 1,55,60,86,Under-7,14.4,76,71,6,H,1
+FHS1051,Male,Grade 10,Science,10A,A,35,Physical Sciences,Semester 1,14,28,43,Above-7,2.0,59,7,1,L,0
+FHS1052,Male,Grade 10,Tourism,10C,C,35,Geography,Semester 2,40,55,60,Under-7,17.3,91,75,6,H,1
+FHS1053,Male,Grade 10,Commerce,10B,B,38,Business Studies,Semester 2,75,62,65,Under-7,16.8,78,77,6,H,1
+FHS1054,Female,Grade 10,Science,10A,A,42,Life Sciences,Semester 2,45,28,44,Under-7,4.6,48,45,3,M,1
+FHS1055,Female,Grade 10,Tourism,10C,C,48,English FAL,Semester 2,97,56,93,Under-7,20.6,96,87,7,H,1
+FHS1056,Male,Grade 10,Tourism,10C,C,42,English FAL,Semester 2,80,67,99,Under-7,13.1,84,82,7,H,1
+FHS1057,Male,Grade 10,Commerce,10B,B,35,English FAL,Semester 2,96,63,65,Under-7,19.5,91,82,7,H,1
+FHS1058,Female,Grade 10,Commerce,10B,B,42,Mathematical Literacy,Semester 2,43,41,55,Under-7,9.4,61,40,3,M,1
+FHS1059,Male,Grade 10,Tourism,10C,C,35,Geography,Semester 2,95,93,57,Under-7,15.0,84,78,6,H,1
+FHS1060,Female,Grade 10,Commerce,10B,B,42,Mathematical Literacy,Semester 2,77,38,90,Under-7,22.6,98,88,7,H,1
+FHS1061,Female,Grade 10,Commerce,10B,B,35,Mathematical Literacy,Semester 2,76,50,42,Above-7,17.6,84,50,4,M,1
+FHS1062,Male,Grade 10,Tourism,10C,C,32,History,Semester 2,41,25,35,Under-7,4.8,52,21,1,L,0
+FHS1063,Female,Grade 10,Tourism,10C,C,35,Life Orientation,Semester 1,45,41,55,Under-7,13.0,37,63,5,M,1
+FHS1064,Male,Grade 10,Commerce,10B,B,38,Accounting,Semester 2,52,57,52,Above-7,10.1,77,30,2,L,0
+FHS1065,Female,Grade 10,Tourism,10C,C,38,English FAL,Semester 1,68,76,67,Under-7,20.6,86,77,6,H,1
+FHS1066,Female,Grade 10,Commerce,10B,B,35,Business Studies,Semester 1,50,38,24,Above-7,15.6,69,39,2,L,0
+FHS1067,Male,Grade 10,Commerce,10B,B,45,Business Studies,Semester 1,86,67,61,Under-7,23.5,82,81,7,H,1
+FHS1068,Male,Grade 10,Science,10A,A,45,Life Orientation,Semester 2,50,43,0,Under-7,5.2,39,37,2,L,0
+FHS1069,Female,Grade 10,Commerce,10B,B,32,Economics,Semester 2,41,53,33,Above-7,6.8,30,17,1,L,0
+FHS1070,Female,Grade 10,Tourism,10C,C,42,Mathematical Literacy,Semester 1,87,60,69,Under-7,18.3,89,92,7,H,1
+FHS1071,Female,Grade 10,Science,10A,A,45,Life Orientation,Semester 1,57,27,54,Under-7,11.4,42,41,3,M,1
+FHS1072,Male,Grade 10,Science,10A,A,45,Geography,Semester 1,36,41,13,Above-7,8.7,39,10,1,L,0
+FHS1073,Male,Grade 10,Commerce,10B,B,42,Mathematical Literacy,Semester 1,57,42,48,Under-7,12.8,50,47,3,M,1
+FHS1074,Female,Grade 10,Tourism,10C,C,32,Mathematical Literacy,Semester 2,92,77,55,Under-7,17.8,76,80,7,H,1
+FHS1075,Male,Grade 10,Tourism,10C,C,38,History,Semester 1,91,45,50,Under-7,21.8,63,65,5,M,1
+FHS1076,Female,Grade 10,Tourism,10C,C,48,History,Semester 2,33,26,38,Under-7,11.2,55,39,2,L,0
+FHS1077,Female,Grade 10,Tourism,10C,C,38,Life Orientation,Semester 2,52,50,0,Above-7,6.4,45,27,1,L,0
+FHS1078,Female,Grade 10,Commerce,10B,B,35,Economics,Semester 1,41,27,14,Under-7,11.0,65,47,3,M,1
+FHS1079,Male,Grade 10,Commerce,10B,B,45,English FAL,Semester 1,38,26,59,Under-7,8.6,35,42,3,M,1
+FHS1080,Female,Grade 10,Commerce,10B,B,38,English FAL,Semester 1,50,4,67,Under-7,10.3,66,58,4,M,1
+FHS1081,Female,Grade 10,Commerce,10B,B,38,Mathematical Literacy,Semester 1,45,49,29,Above-7,10.0,43,21,1,L,0
+FHS1082,Male,Grade 10,Science,10A,A,35,Life Orientation,Semester 1,38,44,39,Above-7,8.5,49,15,1,L,0
+FHS1083,Female,Grade 10,Commerce,10B,B,42,Mathematical Literacy,Semester 2,76,76,68,Under-7,13.0,60,71,6,H,1
+FHS1084,Female,Grade 10,Tourism,10C,C,35,Mathematical Literacy,Semester 2,98,78,73,Under-7,19.5,96,88,7,H,1
+FHS1085,Female,Grade 10,Science,10A,A,42,Life Orientation,Semester 1,39,26,39,Under-7,5.5,40,42,3,M,1
+FHS1086,Female,Grade 10,Science,10A,A,35,Physical Sciences,Semester 2,53,12,40,Under-7,10.1,70,32,2,L,0
+FHS1087,Male,Grade 10,Commerce,10B,B,42,English FAL,Semester 1,38,28,55,Above-7,10.5,53,20,1,L,0
+FHS1088,Male,Grade 10,Science,10A,A,35,English FAL,Semester 2,72,59,57,Under-7,12.3,43,54,4,M,1
+FHS1089,Female,Grade 10,Commerce,10B,B,42,English FAL,Semester 2,90,75,70,Under-7,22.9,76,75,6,H,1
+FHS1090,Female,Grade 10,Commerce,10B,B,42,Mathematical Literacy,Semester 2,58,62,42,Above-7,8.9,65,32,2,L,0
+FHS1091,Male,Grade 10,Tourism,10C,C,35,English FAL,Semester 1,77,82,64,Under-7,15.8,100,74,6,H,1
+FHS1092,Female,Grade 10,Science,10A,A,35,Geography,Semester 1,73,75,75,Under-7,18.4,87,80,7,H,1
+FHS1093,Female,Grade 10,Tourism,10C,C,32,History,Semester 1,46,5,18,Under-7,7.6,46,39,2,L,0
+FHS1094,Female,Grade 10,Commerce,10B,B,42,English FAL,Semester 2,66,59,64,Under-7,10.1,55,60,5,M,1
+FHS1095,Female,Grade 10,Commerce,10B,B,42,English FAL,Semester 1,66,99,40,Above-7,15.9,76,50,4,M,1
+FHS1096,Male,Grade 10,Commerce,10B,B,38,Accounting,Semester 1,56,64,86,Under-7,16.3,95,70,6,H,1
+FHS1097,Male,Grade 10,Tourism,10C,C,38,Mathematical Literacy,Semester 1,53,43,63,Above-7,7.9,45,31,2,L,0
+FHS1098,Female,Grade 10,Commerce,10B,B,45,Accounting,Semester 2,51,48,46,Under-7,15.1,78,59,4,M,1
+FHS1099,Male,Grade 10,Science,10A,A,38,Geography,Semester 1,80,48,80,Under-7,13.7,80,87,7,H,1
+FHS1100,Male,Grade 10,Commerce,10B,B,38,Life Orientation,Semester 2,77,55,56,Under-7,14.3,84,91,7,H,1
+FHS1101,Male,Grade 10,Tourism,10C,C,38,Tourism,Semester 2,47,51,45,Under-7,16.8,68,55,4,M,1
+FHS1102,Female,Grade 10,Science,10A,A,38,Life Sciences,Semester 1,59,37,49,Under-7,12.3,63,66,5,M,1
+FHS1103,Male,Grade 10,Commerce,10B,B,45,English FAL,Semester 1,46,27,25,Above-7,9.3,64,22,1,L,0
+FHS1104,Female,Grade 10,Commerce,10B,B,48,Accounting,Semester 1,93,67,61,Under-7,15.2,81,65,5,M,1
+FHS1105,Male,Grade 10,Commerce,10B,B,35,Economics,Semester 1,46,72,79,Under-7,22.3,85,70,6,H,1
+FHS1106,Female,Grade 10,Commerce,10B,B,32,Mathematical Literacy,Semester 2,67,35,60,Under-7,18.4,76,73,6,H,1
+FHS1107,Female,Grade 10,Commerce,10B,B,38,Mathematical Literacy,Semester 2,99,14,70,Under-7,14.9,91,78,6,H,1
+FHS1108,Male,Grade 10,Science,10A,A,45,Information Technology,Semester 2,34,57,19,Under-7,2.0,28,19,1,L,0
+FHS1109,Male,Grade 10,Commerce,10B,B,35,Mathematics,Semester 1,69,44,16,Under-7,11.8,44,36,2,L,0
+FHS1110,Male,Grade 10,Science,10A,A,32,Physical Sciences,Semester 1,65,42,32,Under-7,5.0,51,42,3,M,1
+FHS1111,Male,Grade 10,Science,10A,A,32,Mathematics,Semester 2,96,82,49,Under-7,12.5,98,79,6,H,1
+FHS1112,Female,Grade 10,Commerce,10B,B,38,Mathematics,Semester 1,21,2,28,Under-7,6.0,53,23,1,L,0
+FHS1113,Male,Grade 10,Commerce,10B,B,38,Mathematical Literacy,Semester 1,46,25,40,Above-7,14.3,59,23,1,L,0
+FHS1114,Male,Grade 10,Commerce,10B,B,38,Accounting,Semester 1,80,43,63,Under-7,11.1,57,53,4,M,1
+FHS1115,Female,Grade 10,Science,10A,A,45,Physical Sciences,Semester 1,81,61,23,Under-7,12.6,55,55,4,M,1
+FHS1116,Male,Grade 10,Science,10A,A,45,Life Orientation,Semester 2,55,38,76,Under-7,12.6,83,70,6,H,1
+FHS1117,Male,Grade 10,Commerce,10B,B,35,Accounting,Semester 1,48,64,80,Under-7,15.4,56,63,5,M,1
+FHS1118,Female,Grade 10,Commerce,10B,B,38,Mathematics,Semester 2,35,26,58,Under-7,2.7,38,30,2,L,0
+FHS1119,Male,Grade 10,Tourism,10C,C,35,English FAL,Semester 2,61,44,68,Under-7,9.4,88,72,6,H,1
+FHS1120,Male,Grade 10,Commerce,10B,B,38,English FAL,Semester 2,75,57,42,Under-7,9.7,46,53,4,M,1
+FHS1121,Male,Grade 10,Science,10A,A,35,Physical Sciences,Semester 2,55,25,21,Under-7,6.5,50,33,2,L,0
+FHS1122,Female,Grade 10,Tourism,10C,C,45,History,Semester 1,46,38,29,Above-7,7.8,32,11,1,L,0
+FHS1123,Male,Grade 10,Science,10A,A,48,Information Technology,Semester 2,34,15,69,Above-7,12.5,60,24,1,L,0
+FHS1124,Female,Grade 10,Science,10A,A,45,English FAL,Semester 2,67,32,28,Under-7,16.3,70,56,4,M,1
+FHS1125,Male,Grade 10,Commerce,10B,B,35,Mathematical Literacy,Semester 1,62,66,99,Above-7,15.4,78,47,3,M,1
+FHS1126,Female,Grade 10,Science,10A,A,32,Physical Sciences,Semester 1,69,42,37,Above-7,11.2,82,34,2,L,0
+FHS1127,Male,Grade 10,Commerce,10B,B,42,English FAL,Semester 1,38,14,32,Under-7,6.8,34,28,1,L,0
+FHS1128,Female,Grade 10,Science,10A,A,35,Life Sciences,Semester 1,68,40,72,Above-7,15.8,66,58,4,M,1
+FHS1129,Male,Grade 10,Science,10A,A,35,Physical Sciences,Semester 1,75,93,70,Under-7,11.3,83,65,5,M,1
+FHS1130,Female,Grade 10,Science,10A,A,38,English FAL,Semester 1,72,72,65,Above-7,13.4,88,69,5,M,1
+FHS1131,Male,Grade 10,Commerce,10B,B,48,Life Orientation,Semester 2,76,65,73,Under-7,22.7,85,74,6,H,1
+FHS1132,Female,Grade 10,Tourism,10C,C,32,English FAL,Semester 2,73,80,44,Under-7,18.3,97,69,5,M,1
+FHS1133,Female,Grade 10,Tourism,10C,C,32,History,Semester 2,5,0,5,Above-7,3.8,24,5,1,L,0
+FHS1134,Female,Grade 10,Tourism,10C,C,38,Life Orientation,Semester 2,29,23,25,Above-7,5.8,23,13,1,L,0
+FHS1135,Female,Grade 10,Science,10A,A,35,Geography,Semester 2,55,37,42,Under-7,10.8,61,51,4,M,1
+FHS1136,Female,Grade 10,Science,10A,A,38,Life Orientation,Semester 1,53,67,56,Under-7,12.0,64,76,6,H,1
+FHS1137,Male,Grade 10,Commerce,10B,B,45,Economics,Semester 2,98,44,67,Under-7,25.8,100,95,7,H,1
+FHS1138,Male,Grade 10,Science,10A,A,45,Physical Sciences,Semester 1,55,55,68,Under-7,18.3,73,57,4,M,1
+FHS1139,Male,Grade 10,Science,10A,A,38,Physical Sciences,Semester 2,46,46,45,Under-7,15.7,76,54,4,M,1
+FHS1140,Female,Grade 10,Science,10A,A,35,Geography,Semester 1,88,71,49,Above-7,16.4,59,53,4,M,1
+FHS1141,Female,Grade 10,Science,10A,A,35,Information Technology,Semester 1,44,26,57,Above-7,16.6,67,29,1,L,0
+FHS1142,Male,Grade 10,Tourism,10C,C,35,Tourism,Semester 1,80,79,88,Under-7,13.3,93,95,7,H,1
+FHS1143,Female,Grade 10,Commerce,10B,B,45,Economics,Semester 2,77,80,57,Under-7,16.3,95,80,7,H,1
+FHS1144,Female,Grade 10,Science,10A,A,35,Geography,Semester 2,92,60,50,Under-7,16.7,89,88,7,H,1
+FHS1145,Female,Grade 10,Science,10A,A,42,Information Technology,Semester 2,20,45,0,Under-7,5.5,35,15,1,L,0
+FHS1146,Female,Grade 10,Commerce,10B,B,35,Accounting,Semester 2,60,85,84,Under-7,18.4,68,62,5,M,1
+FHS1147,Female,Grade 10,Science,10A,A,42,Life Sciences,Semester 1,80,60,52,Under-7,15.2,74,64,5,M,1
+FHS1148,Male,Grade 10,Commerce,10B,B,45,Accounting,Semester 2,76,81,56,Above-7,11.3,64,60,5,M,1
+FHS1149,Female,Grade 10,Science,10A,A,42,Physical Sciences,Semester 2,75,74,39,Under-7,16.9,100,67,5,M,1
+FHS1150,Female,Grade 10,Commerce,10B,B,42,Business Studies,Semester 2,59,50,95,Under-7,21.5,81,77,6,H,1
+FHS1151,Female,Grade 10,Science,10A,A,42,English FAL,Semester 1,62,91,91,Under-7,22.6,100,87,7,H,1
+FHS1152,Male,Grade 10,Commerce,10B,B,35,Economics,Semester 2,17,6,39,Above-7,2.0,41,5,1,L,0
+FHS1153,Male,Grade 10,Science,10A,A,38,Mathematics,Semester 2,57,21,30,Under-7,5.6,52,42,3,M,1
+FHS1154,Male,Grade 10,Science,10A,A,48,Life Sciences,Semester 1,62,29,66,Above-7,13.1,46,21,1,L,0
+FHS1155,Female,Grade 10,Science,10A,A,45,Geography,Semester 1,55,52,42,Under-7,19.4,71,57,4,M,1
+FHS1156,Female,Grade 10,Science,10A,A,32,Mathematics,Semester 1,61,22,22,Above-7,16.6,67,24,1,L,0
+FHS1157,Female,Grade 10,Commerce,10B,B,35,Economics,Semester 2,46,58,53,Under-7,14.0,92,61,5,M,1
+FHS1158,Male,Grade 10,Science,10A,A,35,Life Orientation,Semester 1,57,48,42,Under-7,12.2,49,51,4,M,1
+FHS1159,Female,Grade 10,Science,10A,A,42,Life Sciences,Semester 2,30,41,40,Above-7,2.0,43,6,1,L,0
+FHS1160,Male,Grade 10,Commerce,10B,B,38,Mathematical Literacy,Semester 2,58,60,36,Under-7,12.5,82,61,5,M,1
+FHS1161,Male,Grade 10,Science,10A,A,45,Information Technology,Semester 2,82,60,38,Under-7,15.3,80,69,5,M,1
+FHS1162,Female,Grade 10,Tourism,10C,C,42,Mathematical Literacy,Semester 1,73,66,34,Under-7,19.6,89,62,5,M,1
+FHS1163,Female,Grade 10,Science,10A,A,35,Geography,Semester 2,70,52,32,Under-7,13.3,68,55,4,M,1
+FHS1164,Male,Grade 10,Tourism,10C,C,32,Mathematical Literacy,Semester 1,81,90,85,Under-7,16.8,92,85,7,H,1
+FHS1165,Male,Grade 10,Science,10A,A,35,Physical Sciences,Semester 1,73,74,38,Under-7,21.3,79,60,5,M,1
+FHS1166,Female,Grade 10,Science,10A,A,42,Geography,Semester 1,99,51,65,Under-7,18.4,94,76,6,H,1
+FHS1167,Female,Grade 10,Science,10A,A,35,Mathematics,Semester 2,43,29,13,Under-7,2.0,41,20,1,L,0
+FHS1168,Female,Grade 10,Tourism,10C,C,38,Mathematical Literacy,Semester 1,75,47,99,Under-7,13.0,85,98,7,H,1
+FHS1169,Female,Grade 10,Commerce,10B,B,35,Life Orientation,Semester 2,99,75,69,Under-7,25.5,100,98,7,H,1
+FHS1170,Female,Grade 10,Science,10A,A,35,Physical Sciences,Semester 2,60,24,35,Above-7,13.2,70,30,2,L,0
+FHS1171,Female,Grade 10,Science,10A,A,38,Life Orientation,Semester 1,68,31,57,Above-7,11.6,48,51,4,M,1
+FHS1172,Female,Grade 10,Science,10A,A,35,English FAL,Semester 2,57,42,59,Above-7,14.7,58,47,3,M,1
+FHS1173,Male,Grade 10,Science,10A,A,45,Life Orientation,Semester 2,14,25,69,Under-7,7.1,61,31,2,L,0
+FHS1174,Female,Grade 10,Commerce,10B,B,35,Mathematical Literacy,Semester 2,38,23,54,Under-7,9.8,50,35,2,L,0
+FHS1175,Female,Grade 10,Tourism,10C,C,35,English FAL,Semester 2,62,53,22,Above-7,10.8,68,21,1,L,0
+FHS1176,Female,Grade 10,Commerce,10B,B,35,Mathematics,Semester 1,89,57,49,Under-7,16.0,84,70,6,H,1
+FHS1177,Female,Grade 10,Commerce,10B,B,45,Business Studies,Semester 2,56,35,35,Above-7,10.8,53,28,1,L,0
+FHS1178,Female,Grade 10,Commerce,10B,B,35,Mathematics,Semester 1,47,48,71,Under-7,7.9,67,45,3,M,1
+FHS1179,Female,Grade 10,Science,10A,A,32,English FAL,Semester 1,52,23,19,Above-7,10.1,49,21,1,L,0
+FHS1180,Female,Grade 10,Commerce,10B,B,35,Business Studies,Semester 2,50,43,33,Above-7,13.1,46,30,2,L,0
+FHS1181,Male,Grade 10,Science,10A,A,32,Geography,Semester 2,53,36,76,Under-7,10.3,51,41,3,M,1
+FHS1182,Male,Grade 10,Tourism,10C,C,35,English FAL,Semester 1,39,64,32,Above-7,7.9,69,44,3,M,1
+FHS1183,Female,Grade 10,Commerce,10B,B,35,Mathematical Literacy,Semester 1,51,84,62,Under-7,19.6,85,76,6,H,1
+FHS1184,Male,Grade 10,Tourism,10C,C,32,Tourism,Semester 1,21,43,21,Under-7,4.3,33,33,2,L,0
+FHS1185,Male,Grade 10,Commerce,10B,B,32,Life Orientation,Semester 2,81,50,56,Under-7,16.5,58,56,4,M,1
+FHS1186,Female,Grade 10,Commerce,10B,B,38,Mathematics,Semester 2,66,59,55,Under-7,18.2,65,64,5,M,1
+FHS1187,Female,Grade 10,Science,10A,A,48,Information Technology,Semester 1,91,55,80,Under-7,21.1,95,73,6,H,1
+FHS1188,Male,Grade 10,Tourism,10C,C,32,Mathematical Literacy,Semester 2,81,84,38,Under-7,12.8,72,72,6,H,1
+FHS1189,Male,Grade 10,Commerce,10B,B,42,Mathematics,Semester 1,21,47,30,Above-7,4.4,36,5,1,L,0
+FHS1190,Male,Grade 10,Science,10A,A,35,Life Orientation,Semester 1,69,69,99,Under-7,23.4,81,97,7,H,1
+FHS1191,Female,Grade 10,Tourism,10C,C,35,English FAL,Semester 1,60,39,85,Above-7,10.2,69,44,3,M,1
+FHS1192,Female,Grade 10,Science,10A,A,32,Geography,Semester 1,40,68,29,Above-7,9.0,47,25,1,L,0
+FHS1193,Male,Grade 10,Commerce,10B,B,32,Business Studies,Semester 2,38,8,34,Under-7,5.3,39,28,1,L,0
+FHS1194,Male,Grade 10,Commerce,10B,B,35,Economics,Semester 2,51,41,20,Under-7,8.3,57,32,2,L,0
+FHS1195,Female,Grade 10,Commerce,10B,B,35,Accounting,Semester 1,16,34,12,Under-7,2.0,33,18,1,L,0
+FHS1196,Male,Grade 10,Science,10A,A,38,Life Orientation,Semester 1,99,86,45,Under-7,18.3,93,90,7,H,1
+FHS1197,Male,Grade 10,Tourism,10C,C,38,English FAL,Semester 2,81,99,75,Under-7,15.5,100,90,7,H,1
+FHS1198,Male,Grade 10,Commerce,10B,B,38,Economics,Semester 1,43,34,62,Under-7,6.8,44,53,4,M,1
+FHS1199,Female,Grade 10,Commerce,10B,B,35,Mathematical Literacy,Semester 2,74,48,72,Under-7,14.9,61,58,4,M,1
+FHS1200,Female,Grade 10,Science,10A,A,32,English FAL,Semester 2,25,27,12,Above-7,2.0,20,5,1,L,0
+FHS1201,Male,Grade 11,Science,11A,A,35,Life Sciences,Semester 2,45,52,60,Under-7,14.6,64,55,4,M,1
+FHS1202,Male,Grade 11,Commerce,11B,B,38,Business Studies,Semester 1,27,0,24,Under-7,8.6,42,30,2,L,0
+FHS1203,Female,Grade 11,Science,11A,A,35,Physical Sciences,Semester 1,34,43,51,Under-7,12.7,59,42,3,M,1
+FHS1204,Female,Grade 11,Science,11A,A,42,Geography,Semester 2,43,29,70,Under-7,13.5,73,55,4,M,1
+FHS1205,Male,Grade 11,Science,11A,A,35,Information Technology,Semester 2,31,49,40,Above-7,3.8,56,21,1,L,0
+FHS1206,Female,Grade 11,Commerce,11B,B,35,Economics,Semester 2,72,30,59,Under-7,15.8,76,54,4,M,1
+FHS1207,Male,Grade 11,Science,11A,A,38,Life Sciences,Semester 1,81,48,79,Under-7,16.2,72,70,6,H,1
+FHS1208,Female,Grade 11,Science,11A,A,42,Geography,Semester 1,55,38,37,Under-7,15.3,80,58,4,M,1
+FHS1209,Female,Grade 11,Tourism,11C,C,38,English FAL,Semester 2,75,43,51,Above-7,12.7,61,42,3,M,1
+FHS1210,Female,Grade 11,Commerce,11B,B,32,Business Studies,Semester 1,62,47,61,Under-7,17.3,81,64,5,M,1
+FHS1211,Male,Grade 11,Commerce,11B,B,38,Business Studies,Semester 2,48,55,39,Above-7,7.9,60,33,2,L,0
+FHS1212,Male,Grade 11,Tourism,11C,C,32,History,Semester 2,58,25,22,Above-7,10.8,54,23,1,L,0
+FHS1213,Male,Grade 11,Commerce,11B,B,35,Accounting,Semester 2,73,62,66,Above-7,18.8,60,49,3,M,1
+FHS1214,Female,Grade 11,Science,11A,A,45,English FAL,Semester 1,26,39,28,Under-7,9.2,62,44,3,M,1
+FHS1215,Female,Grade 11,Tourism,11C,C,45,Tourism,Semester 1,85,57,51,Under-7,21.0,83,65,5,M,1
+FHS1216,Female,Grade 11,Science,11A,A,42,Mathematics,Semester 2,74,73,40,Under-7,17.3,79,59,4,M,1
+FHS1217,Female,Grade 11,Tourism,11C,C,42,Mathematical Literacy,Semester 1,47,56,63,Above-7,10.6,69,42,3,M,1
+FHS1218,Male,Grade 11,Science,11A,A,38,Information Technology,Semester 2,70,36,47,Under-7,17.1,67,63,5,M,1
+FHS1219,Female,Grade 11,Science,11A,A,42,Geography,Semester 2,45,68,85,Under-7,16.0,81,65,5,M,1
+FHS1220,Female,Grade 11,Commerce,11B,B,32,Accounting,Semester 2,68,26,79,Under-7,15.9,99,64,5,M,1
+FHS1221,Male,Grade 11,Science,11A,A,35,Life Sciences,Semester 2,32,28,29,Under-7,2.0,52,28,1,L,0
+FHS1222,Female,Grade 11,Science,11A,A,42,Information Technology,Semester 1,36,29,40,Under-7,6.8,26,40,3,M,1
+FHS1223,Male,Grade 11,Commerce,11B,B,35,Accounting,Semester 1,64,45,39,Under-7,17.2,73,52,4,M,1
+FHS1224,Female,Grade 11,Science,11A,A,38,Life Orientation,Semester 1,67,1,67,Under-7,7.5,61,67,5,M,1
+FHS1225,Male,Grade 11,Science,11A,A,48,Life Sciences,Semester 1,57,11,5,Under-7,14.0,68,37,2,L,0
+FHS1226,Male,Grade 11,Tourism,11C,C,38,Mathematical Literacy,Semester 1,66,72,23,Under-7,13.4,67,50,4,M,1
+FHS1227,Female,Grade 11,Science,11A,A,38,Information Technology,Semester 1,55,42,68,Above-7,18.2,66,36,2,L,0
+FHS1228,Female,Grade 11,Tourism,11C,C,32,Life Orientation,Semester 2,31,2,46,Under-7,8.5,45,35,2,L,0
+FHS1229,Female,Grade 11,Commerce,11B,B,32,Business Studies,Semester 1,81,95,56,Under-7,19.7,84,77,6,H,1
+FHS1230,Female,Grade 11,Tourism,11C,C,32,History,Semester 1,63,29,20,Under-7,9.4,49,58,4,M,1
+FHS1231,Female,Grade 11,Tourism,11C,C,35,Mathematical Literacy,Semester 1,28,16,44,Under-7,14.9,45,41,3,M,1
+FHS1232,Male,Grade 11,Tourism,11C,C,32,Tourism,Semester 1,80,58,51,Under-7,12.1,65,70,6,H,1
+FHS1233,Female,Grade 11,Commerce,11B,B,35,Economics,Semester 1,16,0,18,Under-7,2.9,46,15,1,L,0
+FHS1234,Male,Grade 11,Science,11A,A,45,Life Sciences,Semester 2,45,41,59,Under-7,12.9,51,45,3,M,1
+FHS1235,Male,Grade 11,Science,11A,A,35,English FAL,Semester 2,83,74,63,Under-7,18.8,81,68,5,M,1
+FHS1236,Female,Grade 11,Commerce,11B,B,42,Accounting,Semester 2,73,54,68,Above-7,11.6,76,34,2,L,0
+FHS1237,Male,Grade 11,Commerce,11B,B,42,English FAL,Semester 1,99,44,40,Under-7,23.7,100,76,6,H,1
+FHS1238,Male,Grade 11,Science,11A,A,38,Physical Sciences,Semester 2,62,0,50,Under-7,15.1,48,47,3,M,1
+FHS1239,Male,Grade 11,Commerce,11B,B,42,Mathematical Literacy,Semester 2,30,0,22,Under-7,9.7,45,20,1,L,0
+FHS1240,Female,Grade 11,Tourism,11C,C,48,History,Semester 2,81,55,72,Under-7,15.4,82,56,4,M,1
+FHS1241,Male,Grade 11,Science,11A,A,35,Physical Sciences,Semester 1,72,89,97,Under-7,14.0,61,69,5,M,1
+FHS1242,Male,Grade 11,Science,11A,A,45,Information Technology,Semester 2,60,63,33,Above-7,8.0,68,48,3,M,1
+FHS1243,Female,Grade 11,Commerce,11B,B,38,English FAL,Semester 1,62,24,62,Under-7,16.8,80,67,5,M,1
+FHS1244,Male,Grade 11,Commerce,11B,B,35,Life Orientation,Semester 2,60,30,53,Under-7,17.0,75,66,5,M,1
+FHS1245,Female,Grade 11,Tourism,11C,C,32,Tourism,Semester 1,44,43,50,Under-7,12.4,82,63,5,M,1
+FHS1246,Male,Grade 11,Science,11A,A,32,Life Orientation,Semester 2,64,12,41,Under-7,16.0,75,58,4,M,1
+FHS1247,Female,Grade 11,Science,11A,A,48,Life Sciences,Semester 1,36,0,37,Above-7,10.2,62,15,1,L,0
+FHS1248,Male,Grade 11,Science,11A,A,38,Physical Sciences,Semester 2,25,36,55,Under-7,12.8,50,30,2,L,0
+FHS1249,Male,Grade 11,Tourism,11C,C,42,History,Semester 1,46,19,73,Under-7,14.4,71,58,4,M,1
+FHS1250,Female,Grade 11,Commerce,11B,B,32,Mathematical Literacy,Semester 1,92,53,84,Under-7,17.4,94,84,7,H,1
+FHS1251,Male,Grade 11,Commerce,11B,B,45,English FAL,Semester 1,73,70,60,Under-7,17.2,81,81,7,H,1
+FHS1252,Female,Grade 11,Commerce,11B,B,42,Business Studies,Semester 2,71,43,47,Under-7,16.4,67,61,5,M,1
+FHS1253,Female,Grade 11,Tourism,11C,C,38,Life Orientation,Semester 1,54,75,45,Under-7,20.3,72,78,6,H,1
+FHS1254,Male,Grade 11,Commerce,11B,B,48,Mathematical Literacy,Semester 2,79,68,53,Under-7,19.1,67,68,5,M,1
+FHS1255,Male,Grade 11,Science,11A,A,42,Life Orientation,Semester 2,67,32,34,Under-7,5.6,77,59,4,M,1
+FHS1256,Male,Grade 11,Tourism,11C,C,38,Mathematical Literacy,Semester 1,46,59,60,Above-7,9.0,36,19,1,L,0
+FHS1257,Female,Grade 11,Tourism,11C,C,35,English FAL,Semester 2,33,19,10,Under-7,9.3,26,33,2,L,0
+FHS1258,Female,Grade 11,Science,11A,A,45,Life Sciences,Semester 1,45,45,27,Under-7,10.5,74,46,3,M,1
+FHS1259,Female,Grade 11,Commerce,11B,B,42,Life Orientation,Semester 1,26,19,53,Above-7,3.1,50,19,1,L,0
+FHS1260,Male,Grade 11,Science,11A,A,48,Life Orientation,Semester 1,79,55,45,Above-7,17.9,59,62,5,M,1
+FHS1261,Female,Grade 11,Science,11A,A,48,English FAL,Semester 1,87,42,64,Under-7,17.6,93,73,6,H,1
+FHS1262,Female,Grade 11,Commerce,11B,B,42,Economics,Semester 2,81,85,87,Above-7,11.6,83,69,5,M,1
+FHS1263,Male,Grade 11,Science,11A,A,32,Mathematics,Semester 1,88,70,47,Under-7,22.5,83,82,7,H,1
+FHS1264,Female,Grade 11,Science,11A,A,45,English FAL,Semester 2,49,44,48,Under-7,11.3,58,42,3,M,1
+FHS1265,Male,Grade 11,Commerce,11B,B,48,English FAL,Semester 1,30,46,44,Under-7,7.2,33,26,1,L,0
+FHS1266,Male,Grade 11,Science,11A,A,42,Physical Sciences,Semester 2,75,70,67,Under-7,11.1,68,57,4,M,1
+FHS1267,Female,Grade 11,Science,11A,A,32,Geography,Semester 1,80,60,44,Under-7,11.4,50,60,5,M,1
+FHS1268,Female,Grade 11,Tourism,11C,C,38,Life Orientation,Semester 2,77,55,99,Under-7,23.4,87,94,7,H,1
+FHS1269,Female,Grade 11,Tourism,11C,C,38,History,Semester 2,78,26,17,Under-7,7.1,74,46,3,M,1
+FHS1270,Female,Grade 11,Tourism,11C,C,42,Geography,Semester 2,64,19,43,Under-7,3.5,55,33,2,L,0
+FHS1271,Male,Grade 11,Commerce,11B,B,35,Economics,Semester 1,34,22,59,Under-7,7.9,32,21,1,L,0
+FHS1272,Male,Grade 11,Tourism,11C,C,38,Life Orientation,Semester 1,91,87,81,Under-7,16.4,91,90,7,H,1
+FHS1273,Female,Grade 11,Tourism,11C,C,38,History,Semester 1,70,73,74,Under-7,11.7,69,80,7,H,1
+FHS1274,Male,Grade 11,Science,11A,A,42,Life Orientation,Semester 2,22,30,47,Under-7,2.2,30,20,1,L,0
+FHS1275,Male,Grade 11,Commerce,11B,B,38,Mathematical Literacy,Semester 2,11,0,15,Above-7,2.0,25,5,1,L,0
+FHS1276,Male,Grade 11,Commerce,11B,B,32,Mathematical Literacy,Semester 2,84,26,59,Under-7,9.7,69,69,5,M,1
+FHS1277,Female,Grade 11,Tourism,11C,C,45,Mathematical Literacy,Semester 2,79,37,71,Under-7,19.1,90,75,6,H,1
+FHS1278,Male,Grade 11,Tourism,11C,C,35,Tourism,Semester 1,96,99,65,Under-7,18.3,90,98,7,H,1
+FHS1279,Female,Grade 11,Commerce,11B,B,32,Life Orientation,Semester 1,41,57,35,Above-7,11.0,61,46,3,M,1
+FHS1280,Female,Grade 11,Tourism,11C,C,32,English FAL,Semester 1,44,19,26,Under-7,15.1,58,34,2,L,0
+FHS1281,Male,Grade 11,Science,11A,A,35,Life Sciences,Semester 2,81,20,89,Under-7,15.1,94,80,7,H,1
+FHS1282,Female,Grade 11,Science,11A,A,38,Geography,Semester 1,29,53,71,Under-7,19.0,71,62,5,M,1
+FHS1283,Male,Grade 11,Science,11A,A,35,Geography,Semester 2,73,38,49,Under-7,16.0,69,66,5,M,1
+FHS1284,Female,Grade 11,Tourism,11C,C,38,English FAL,Semester 2,79,55,89,Under-7,11.2,73,67,5,M,1
+FHS1285,Female,Grade 11,Science,11A,A,42,Life Orientation,Semester 1,66,37,44,Under-7,13.0,75,59,4,M,1
+FHS1286,Male,Grade 11,Commerce,11B,B,35,Economics,Semester 1,60,25,82,Under-7,15.7,55,68,5,M,1
+FHS1287,Female,Grade 11,Commerce,11B,B,35,Life Orientation,Semester 2,68,40,59,Above-7,10.3,52,32,2,L,0
+FHS1288,Female,Grade 11,Commerce,11B,B,42,Business Studies,Semester 2,75,90,68,Under-7,20.3,81,69,5,M,1
+FHS1289,Female,Grade 11,Tourism,11C,C,32,Geography,Semester 2,72,49,53,Above-7,14.4,67,46,3,M,1
+FHS1290,Female,Grade 11,Commerce,11B,B,38,Life Orientation,Semester 2,83,82,84,Under-7,14.1,75,77,6,H,1
+FHS1291,Male,Grade 11,Commerce,11B,B,35,Mathematical Literacy,Semester 2,90,19,76,Under-7,12.6,83,67,5,M,1
+FHS1292,Male,Grade 11,Tourism,11C,C,35,History,Semester 1,47,30,58,Under-7,11.6,63,53,4,M,1
+FHS1293,Female,Grade 11,Tourism,11C,C,35,Mathematical Literacy,Semester 2,73,51,58,Under-7,7.6,66,57,4,M,1
+FHS1294,Female,Grade 11,Tourism,11C,C,32,Mathematical Literacy,Semester 2,73,43,69,Above-7,19.2,85,51,4,M,1
+FHS1295,Male,Grade 11,Science,11A,A,38,Geography,Semester 1,41,21,77,Under-7,14.3,65,44,3,M,1
+FHS1296,Male,Grade 11,Science,11A,A,35,Life Sciences,Semester 1,62,38,55,Under-7,13.0,80,66,5,M,1
+FHS1297,Female,Grade 11,Commerce,11B,B,32,Life Orientation,Semester 2,48,39,29,Under-7,6.3,52,40,3,M,1
+FHS1298,Female,Grade 11,Tourism,11C,C,45,History,Semester 2,73,72,75,Under-7,18.7,89,75,6,H,1
+FHS1299,Female,Grade 11,Science,11A,A,42,Information Technology,Semester 2,68,34,72,Under-7,11.2,59,48,3,M,1
+FHS1300,Female,Grade 11,Science,11A,A,32,Information Technology,Semester 2,6,28,54,Under-7,4.3,31,23,1,L,0
+FHS1301,Female,Grade 11,Commerce,11B,B,42,Mathematics,Semester 2,99,65,62,Under-7,17.0,98,77,6,H,1
+FHS1302,Female,Grade 11,Tourism,11C,C,35,History,Semester 1,55,32,39,Above-7,11.4,45,18,1,L,0
+FHS1303,Female,Grade 11,Commerce,11B,B,42,Mathematical Literacy,Semester 1,37,58,31,Above-7,9.1,42,18,1,L,0
+FHS1304,Female,Grade 11,Science,11A,A,38,Information Technology,Semester 2,88,68,84,Under-7,14.8,97,77,6,H,1
+FHS1305,Male,Grade 11,Commerce,11B,B,38,Economics,Semester 1,22,33,48,Under-7,9.8,38,46,3,M,1
+FHS1306,Male,Grade 11,Science,11A,A,35,Information Technology,Semester 2,99,58,59,Under-7,16.5,69,85,7,H,1
+FHS1307,Male,Grade 11,Science,11A,A,38,Information Technology,Semester 2,93,41,64,Under-7,11.9,89,72,6,H,1
+FHS1308,Male,Grade 11,Tourism,11C,C,48,History,Semester 2,77,60,77,Under-7,17.2,75,72,6,H,1
+FHS1309,Female,Grade 11,Science,11A,A,32,Information Technology,Semester 1,73,70,90,Under-7,18.9,89,79,6,H,1
+FHS1310,Female,Grade 11,Tourism,11C,C,35,History,Semester 1,50,52,39,Above-7,6.8,55,33,2,L,0
+FHS1311,Female,Grade 11,Science,11A,A,38,Life Sciences,Semester 2,78,51,54,Under-7,24.1,100,76,6,H,1
+FHS1312,Male,Grade 11,Commerce,11B,B,32,Accounting,Semester 2,43,51,9,Above-7,9.7,38,16,1,L,0
+FHS1313,Female,Grade 11,Tourism,11C,C,45,History,Semester 2,40,39,6,Under-7,12.6,34,46,3,M,1
+FHS1314,Female,Grade 11,Commerce,11B,B,42,Economics,Semester 1,28,75,37,Under-7,10.8,47,48,3,M,1
+FHS1315,Male,Grade 11,Science,11A,A,38,English FAL,Semester 2,91,48,79,Under-7,12.6,86,75,6,H,1
+FHS1316,Female,Grade 11,Tourism,11C,C,38,Geography,Semester 2,87,4,85,Under-7,18.1,68,75,6,H,1
+FHS1317,Female,Grade 11,Tourism,11C,C,35,Mathematical Literacy,Semester 2,64,27,34,Under-7,6.1,53,37,2,L,0
+FHS1318,Female,Grade 11,Science,11A,A,35,Information Technology,Semester 1,36,44,33,Under-7,9.4,58,43,3,M,1
+FHS1319,Female,Grade 11,Tourism,11C,C,42,Mathematical Literacy,Semester 1,34,39,25,Above-7,11.5,78,25,1,L,0
+FHS1320,Female,Grade 11,Science,11A,A,42,English FAL,Semester 2,58,56,86,Under-7,11.7,70,65,5,M,1
+FHS1321,Male,Grade 11,Tourism,11C,C,35,Life Orientation,Semester 2,76,56,65,Under-7,12.9,71,82,7,H,1
+FHS1322,Male,Grade 11,Commerce,11B,B,32,Mathematical Literacy,Semester 1,41,35,43,Under-7,13.0,43,35,2,L,0
+FHS1323,Male,Grade 11,Commerce,11B,B,35,Mathematics,Semester 2,9,32,59,Above-7,6.6,38,5,1,L,0
+FHS1324,Male,Grade 11,Science,11A,A,38,Geography,Semester 2,48,67,10,Above-7,12.2,49,20,1,L,0
+FHS1325,Male,Grade 11,Science,11A,A,42,Life Orientation,Semester 1,41,44,48,Above-7,10.2,67,25,1,L,0
+FHS1326,Male,Grade 11,Commerce,11B,B,45,Economics,Semester 2,18,23,59,Under-7,5.4,50,34,2,L,0
+FHS1327,Female,Grade 11,Science,11A,A,38,Physical Sciences,Semester 1,34,15,10,Above-7,2.0,44,5,1,L,0
+FHS1328,Male,Grade 11,Commerce,11B,B,48,Economics,Semester 1,55,78,49,Under-7,10.5,63,59,4,M,1
+FHS1329,Male,Grade 11,Tourism,11C,C,38,Life Orientation,Semester 1,53,42,69,Under-7,7.2,35,48,3,M,1
+FHS1330,Male,Grade 11,Tourism,11C,C,38,Mathematical Literacy,Semester 2,59,48,33,Under-7,9.4,74,55,4,M,1
+FHS1331,Female,Grade 11,Commerce,11B,B,38,Accounting,Semester 1,89,69,62,Above-7,10.6,76,56,4,M,1
+FHS1332,Female,Grade 11,Tourism,11C,C,38,Life Orientation,Semester 2,40,34,53,Under-7,14.2,70,54,4,M,1
+FHS1333,Male,Grade 11,Science,11A,A,42,Geography,Semester 1,58,51,43,Under-7,13.6,64,54,4,M,1
+FHS1334,Female,Grade 11,Science,11A,A,48,Life Orientation,Semester 1,55,41,48,Under-7,10.4,57,53,4,M,1
+FHS1335,Male,Grade 11,Science,11A,A,35,Information Technology,Semester 1,33,22,42,Above-7,10.6,38,20,1,L,0
+FHS1336,Female,Grade 11,Tourism,11C,C,38,Tourism,Semester 2,38,28,46,Above-7,10.1,51,29,1,L,0
+FHS1337,Male,Grade 11,Science,11A,A,32,Information Technology,Semester 2,46,89,59,Under-7,19.4,94,79,6,H,1
+FHS1338,Male,Grade 11,Commerce,11B,B,32,Life Orientation,Semester 2,9,50,34,Above-7,10.2,36,19,1,L,0
+FHS1339,Female,Grade 11,Commerce,11B,B,42,English FAL,Semester 1,70,56,52,Under-7,14.7,86,70,6,H,1
+FHS1340,Male,Grade 11,Science,11A,A,38,Life Orientation,Semester 2,81,73,42,Under-7,15.0,91,80,7,H,1
+FHS1341,Female,Grade 11,Science,11A,A,42,Physical Sciences,Semester 2,58,87,74,Under-7,15.6,76,70,6,H,1
+FHS1342,Male,Grade 11,Science,11A,A,42,Geography,Semester 2,49,38,68,Under-7,10.7,73,56,4,M,1
+FHS1343,Male,Grade 11,Tourism,11C,C,42,Geography,Semester 2,52,59,43,Above-7,9.3,46,23,1,L,0
+FHS1344,Male,Grade 11,Commerce,11B,B,32,Mathematical Literacy,Semester 1,99,92,96,Under-7,17.7,100,92,7,H,1
+FHS1345,Male,Grade 11,Commerce,11B,B,35,Business Studies,Semester 2,79,57,66,Under-7,11.7,76,72,6,H,1
+FHS1346,Male,Grade 11,Science,11A,A,38,Life Sciences,Semester 1,56,61,38,Under-7,16.8,68,49,3,M,1
+FHS1347,Male,Grade 11,Science,11A,A,32,Life Sciences,Semester 1,43,33,71,Under-7,7.4,44,44,3,M,1
+FHS1348,Male,Grade 11,Commerce,11B,B,45,Economics,Semester 2,56,30,60,Under-7,8.7,31,51,4,M,1
+FHS1349,Male,Grade 11,Commerce,11B,B,38,English FAL,Semester 1,91,64,11,Under-7,17.5,69,80,7,H,1
+FHS1350,Female,Grade 11,Tourism,11C,C,42,Life Orientation,Semester 1,71,44,58,Under-7,20.7,93,75,6,H,1
+FHS1351,Male,Grade 11,Science,11A,A,32,Mathematics,Semester 1,26,33,43,Under-7,6.0,73,27,1,L,0
+FHS1352,Male,Grade 11,Tourism,11C,C,32,English FAL,Semester 1,57,67,72,Under-7,12.6,54,68,5,M,1
+FHS1353,Male,Grade 11,Science,11A,A,32,Life Orientation,Semester 1,34,41,34,Above-7,2.1,38,25,1,L,0
+FHS1354,Male,Grade 11,Science,11A,A,35,Physical Sciences,Semester 2,26,13,21,Under-7,9.4,40,13,1,L,0
+FHS1355,Female,Grade 11,Science,11A,A,38,Information Technology,Semester 2,67,55,51,Under-7,13.2,59,61,5,M,1
+FHS1356,Male,Grade 11,Science,11A,A,35,Geography,Semester 2,60,0,17,Above-7,10.2,57,20,1,L,0
+FHS1357,Male,Grade 11,Tourism,11C,C,38,History,Semester 1,63,57,26,Under-7,9.2,64,38,2,L,0
+FHS1358,Male,Grade 11,Tourism,11C,C,35,Tourism,Semester 1,47,44,68,Above-7,5.7,60,40,3,M,1
+FHS1359,Female,Grade 11,Science,11A,A,45,English FAL,Semester 2,65,67,72,Under-7,18.6,73,63,5,M,1
+FHS1360,Female,Grade 11,Tourism,11C,C,38,English FAL,Semester 2,33,44,42,Under-7,14.0,89,39,2,L,0
+FHS1361,Male,Grade 11,Commerce,11B,B,45,Economics,Semester 2,93,62,61,Under-7,23.2,100,89,7,H,1
+FHS1362,Female,Grade 11,Commerce,11B,B,32,Life Orientation,Semester 1,77,55,68,Above-7,14.3,75,59,4,M,1
+FHS1363,Female,Grade 11,Science,11A,A,35,Physical Sciences,Semester 2,89,76,62,Under-7,15.6,89,82,7,H,1
+FHS1364,Male,Grade 11,Science,11A,A,35,Mathematics,Semester 1,74,70,96,Under-7,11.0,79,58,4,M,1
+FHS1365,Male,Grade 11,Science,11A,A,35,Mathematics,Semester 2,73,76,76,Under-7,15.4,65,58,4,M,1
+FHS1366,Female,Grade 11,Tourism,11C,C,38,Life Orientation,Semester 2,19,21,33,Above-7,3.4,47,9,1,L,0
+FHS1367,Male,Grade 11,Tourism,11C,C,32,Life Orientation,Semester 1,36,38,59,Under-7,14.2,94,66,5,M,1
+FHS1368,Female,Grade 11,Commerce,11B,B,42,Mathematical Literacy,Semester 1,67,63,26,Under-7,16.4,68,54,4,M,1
+FHS1369,Female,Grade 11,Tourism,11C,C,42,English FAL,Semester 1,62,51,23,Above-7,7.2,48,17,1,L,0
+FHS1370,Male,Grade 11,Science,11A,A,35,English FAL,Semester 2,64,30,54,Under-7,6.4,42,44,3,M,1
+FHS1371,Female,Grade 11,Tourism,11C,C,42,English FAL,Semester 2,54,39,34,Above-7,9.8,51,24,1,L,0
+FHS1372,Male,Grade 11,Commerce,11B,B,45,Business Studies,Semester 2,57,61,64,Under-7,15.5,72,61,5,M,1
+FHS1373,Female,Grade 11,Science,11A,A,35,Information Technology,Semester 1,59,38,34,Above-7,18.1,50,37,2,L,0
+FHS1374,Female,Grade 11,Commerce,11B,B,48,English FAL,Semester 2,67,47,49,Above-7,13.1,76,38,2,L,0
+FHS1375,Male,Grade 11,Science,11A,A,38,Geography,Semester 1,87,52,70,Under-7,14.6,83,80,7,H,1
+FHS1376,Female,Grade 11,Commerce,11B,B,32,English FAL,Semester 1,60,53,44,Under-7,5.1,72,50,4,M,1
+FHS1377,Female,Grade 11,Science,11A,A,42,Physical Sciences,Semester 2,38,64,45,Under-7,11.7,67,55,4,M,1
+FHS1378,Female,Grade 11,Science,11A,A,48,Physical Sciences,Semester 2,68,65,50,Under-7,20.8,90,61,5,M,1
+FHS1379,Female,Grade 11,Tourism,11C,C,48,History,Semester 1,69,23,34,Under-7,7.2,61,51,4,M,1
+FHS1380,Female,Grade 11,Tourism,11C,C,42,Mathematical Literacy,Semester 2,40,22,52,Under-7,13.7,61,49,3,M,1
+FHS1381,Female,Grade 11,Science,11A,A,45,Life Orientation,Semester 2,79,25,67,Above-7,12.0,81,50,4,M,1
+FHS1382,Male,Grade 11,Science,11A,A,42,Life Orientation,Semester 1,40,27,50,Under-7,11.3,56,39,2,L,0
+FHS1383,Female,Grade 11,Tourism,11C,C,35,English FAL,Semester 2,40,3,35,Under-7,7.0,39,25,1,L,0
+FHS1384,Male,Grade 11,Science,11A,A,38,Information Technology,Semester 1,42,33,37,Under-7,9.6,40,44,3,M,1
+FHS1385,Male,Grade 11,Science,11A,A,38,Information Technology,Semester 1,80,61,55,Under-7,18.1,83,76,6,H,1
+FHS1386,Male,Grade 11,Tourism,11C,C,38,English FAL,Semester 1,65,49,44,Under-7,14.7,72,62,5,M,1
+FHS1387,Male,Grade 11,Science,11A,A,38,Information Technology,Semester 2,51,43,53,Under-7,12.1,56,51,4,M,1
+FHS1388,Male,Grade 11,Commerce,11B,B,45,Business Studies,Semester 1,56,48,45,Under-7,13.7,62,35,2,L,0
+FHS1389,Female,Grade 11,Science,11A,A,45,English FAL,Semester 1,93,71,51,Under-7,21.5,76,73,6,H,1
+FHS1390,Male,Grade 11,Commerce,11B,B,45,Business Studies,Semester 2,32,71,59,Under-7,10.3,57,41,3,M,1
+FHS1391,Male,Grade 11,Tourism,11C,C,45,Tourism,Semester 1,99,70,45,Under-7,12.6,73,70,6,H,1
+FHS1392,Male,Grade 11,Tourism,11C,C,48,Life Orientation,Semester 2,54,47,34,Above-7,13.6,98,53,4,M,1
+FHS1393,Female,Grade 11,Commerce,11B,B,35,Business Studies,Semester 1,25,16,36,Under-7,8.4,60,26,1,L,0
+FHS1394,Female,Grade 11,Science,11A,A,35,Life Sciences,Semester 1,69,58,42,Under-7,20.2,78,67,5,M,1
+FHS1395,Male,Grade 11,Science,11A,A,42,Physical Sciences,Semester 1,36,41,39,Under-7,8.9,53,37,2,L,0
+FHS1396,Male,Grade 11,Tourism,11C,C,35,Life Orientation,Semester 2,90,65,76,Under-7,17.9,97,88,7,H,1
+FHS1397,Female,Grade 11,Science,11A,A,35,Mathematics,Semester 2,95,99,61,Under-7,25.3,89,76,6,H,1
+FHS1398,Male,Grade 11,Commerce,11B,B,35,Economics,Semester 2,61,69,42,Under-7,13.6,68,53,4,M,1
+FHS1399,Female,Grade 11,Science,11A,A,35,Information Technology,Semester 1,52,40,43,Under-7,7.3,65,41,3,M,1
+FHS1400,Male,Grade 11,Tourism,11C,C,32,Life Orientation,Semester 1,98,74,66,Under-7,18.3,90,90,7,H,1
+FHS1401,Female,Grade 11,Science,11A,A,38,English FAL,Semester 1,63,32,78,Under-7,8.8,63,50,4,M,1
+FHS1402,Male,Grade 11,Science,11A,A,45,Life Sciences,Semester 2,44,38,10,Under-7,7.8,40,34,2,L,0
+FHS1403,Male,Grade 11,Science,11A,A,42,Information Technology,Semester 2,92,54,69,Under-7,22.3,81,81,7,H,1
+FHS1404,Female,Grade 11,Science,11A,A,42,Mathematics,Semester 1,78,35,61,Under-7,18.0,82,52,4,M,1
+FHS1405,Male,Grade 11,Commerce,11B,B,48,Mathematical Literacy,Semester 2,78,86,62,Under-7,17.4,64,81,7,H,1
+FHS1406,Male,Grade 11,Commerce,11B,B,32,Accounting,Semester 2,97,53,57,Under-7,23.6,74,75,6,H,1
+FHS1407,Female,Grade 11,Science,11A,A,32,Life Orientation,Semester 1,39,31,5,Under-7,12.0,36,40,3,M,1
+FHS1408,Male,Grade 11,Science,11A,A,35,Information Technology,Semester 2,41,0,21,Under-7,5.4,42,14,1,L,0
+FHS1409,Male,Grade 11,Science,11A,A,42,Physical Sciences,Semester 2,51,76,10,Under-7,5.6,57,41,3,M,1
+FHS1410,Female,Grade 11,Commerce,11B,B,35,Mathematical Literacy,Semester 2,60,58,48,Under-7,19.7,71,58,4,M,1
+FHS1411,Male,Grade 11,Science,11A,A,35,English FAL,Semester 2,91,29,76,Under-7,18.7,94,74,6,H,1
+FHS1412,Female,Grade 11,Commerce,11B,B,38,Economics,Semester 1,64,32,30,Under-7,6.1,50,39,2,L,0
+FHS1413,Female,Grade 11,Tourism,11C,C,42,Tourism,Semester 2,48,52,39,Under-7,9.6,53,44,3,M,1
+FHS1414,Female,Grade 11,Commerce,11B,B,38,Mathematical Literacy,Semester 2,70,36,60,Under-7,17.7,69,69,5,M,1
+FHS1415,Male,Grade 11,Commerce,11B,B,48,Mathematical Literacy,Semester 2,99,63,89,Under-7,15.2,95,82,7,H,1
+FHS1416,Male,Grade 11,Commerce,11B,B,42,Accounting,Semester 2,50,43,66,Under-7,15.6,61,52,4,M,1
+FHS1417,Female,Grade 11,Science,11A,A,35,Geography,Semester 2,39,12,35,Above-7,12.7,59,38,2,L,0
+FHS1418,Female,Grade 11,Tourism,11C,C,48,Life Orientation,Semester 2,70,58,64,Under-7,19.6,90,61,5,M,1
+FHS1419,Female,Grade 11,Science,11A,A,38,Life Sciences,Semester 1,67,71,35,Above-7,10.1,50,23,1,L,0
+FHS1420,Male,Grade 11,Commerce,11B,B,38,Life Orientation,Semester 2,60,67,45,Under-7,9.8,58,62,5,M,1
+FHS1421,Female,Grade 11,Commerce,11B,B,38,Mathematics,Semester 1,66,53,57,Under-7,10.0,51,42,3,M,1
+FHS1422,Female,Grade 11,Tourism,11C,C,35,Tourism,Semester 2,76,63,47,Above-7,8.6,45,35,2,L,0
+FHS1423,Female,Grade 11,Science,11A,A,38,Geography,Semester 1,65,34,53,Above-7,12.1,62,32,2,L,0
+FHS1424,Male,Grade 11,Science,11A,A,42,Geography,Semester 1,80,36,60,Under-7,17.0,56,50,4,M,1
+FHS1425,Female,Grade 11,Science,11A,A,42,Life Orientation,Semester 1,99,47,86,Under-7,24.8,88,89,7,H,1
+FHS1426,Female,Grade 11,Tourism,11C,C,45,Tourism,Semester 1,22,19,31,Above-7,4.5,52,16,1,L,0
+FHS1427,Male,Grade 11,Tourism,11C,C,42,English FAL,Semester 2,88,34,35,Under-7,10.4,70,61,5,M,1
+FHS1428,Female,Grade 11,Science,11A,A,38,Geography,Semester 2,29,69,30,Above-7,12.1,45,28,1,L,0
+FHS1429,Female,Grade 11,Science,11A,A,38,English FAL,Semester 1,44,53,44,Under-7,14.5,81,50,4,M,1
+FHS1430,Male,Grade 11,Tourism,11C,C,35,Geography,Semester 1,33,15,1,Above-7,6.3,48,20,1,L,0
+FHS1431,Male,Grade 11,Tourism,11C,C,45,Life Orientation,Semester 1,75,76,33,Under-7,11.7,59,57,4,M,1
+FHS1432,Female,Grade 11,Science,11A,A,38,English FAL,Semester 2,99,91,82,Under-7,20.9,97,90,7,H,1
+FHS1433,Female,Grade 11,Tourism,11C,C,45,English FAL,Semester 1,99,55,55,Under-7,16.9,68,63,5,M,1
+FHS1434,Female,Grade 11,Science,11A,A,32,Life Orientation,Semester 2,89,61,48,Under-7,23.7,77,71,6,H,1
+FHS1435,Female,Grade 11,Science,11A,A,35,Mathematics,Semester 1,69,1,78,Under-7,21.3,71,53,4,M,1
+FHS1436,Female,Grade 11,Commerce,11B,B,32,Accounting,Semester 1,61,48,51,Above-7,16.1,68,48,3,M,1
+FHS1437,Male,Grade 11,Tourism,11C,C,42,Geography,Semester 2,95,42,51,Under-7,20.0,78,65,5,M,1
+FHS1438,Female,Grade 11,Science,11A,A,32,Geography,Semester 1,70,29,47,Under-7,10.8,76,65,5,M,1
+FHS1439,Male,Grade 11,Science,11A,A,35,Mathematics,Semester 1,36,45,49,Above-7,9.9,77,13,1,L,0
+FHS1440,Female,Grade 11,Science,11A,A,35,Geography,Semester 2,34,47,45,Under-7,11.2,49,50,4,M,1
+FHS1441,Male,Grade 11,Commerce,11B,B,42,Economics,Semester 2,73,47,62,Under-7,18.9,67,74,6,H,1
+FHS1442,Female,Grade 11,Science,11A,A,42,Information Technology,Semester 2,52,22,14,Under-7,7.6,12,28,1,L,0
+FHS1443,Male,Grade 11,Commerce,11B,B,48,Economics,Semester 1,78,62,62,Under-7,13.5,97,83,7,H,1
+FHS1444,Female,Grade 11,Commerce,11B,B,38,Mathematics,Semester 2,83,45,76,Under-7,11.2,70,88,7,H,1
+FHS1445,Male,Grade 11,Commerce,11B,B,38,Life Orientation,Semester 2,45,24,32,Under-7,6.8,43,55,4,M,1
+FHS1446,Male,Grade 11,Science,11A,A,35,Information Technology,Semester 1,78,99,76,Under-7,20.0,92,68,5,M,1
+FHS1447,Female,Grade 11,Commerce,11B,B,32,Economics,Semester 2,56,57,59,Under-7,9.9,74,57,4,M,1
+FHS1448,Male,Grade 11,Science,11A,A,35,Life Orientation,Semester 1,8,10,38,Above-7,9.7,47,14,1,L,0
+FHS1449,Female,Grade 11,Commerce,11B,B,32,Economics,Semester 1,49,46,30,Under-7,11.3,60,62,5,M,1
+FHS1450,Male,Grade 11,Science,11A,A,42,Life Sciences,Semester 2,69,73,68,Under-7,22.8,73,80,7,H,1
+FHS1451,Male,Grade 11,Science,11A,A,45,Mathematics,Semester 2,24,0,26,Under-7,2.0,51,17,1,L,0
+FHS1452,Male,Grade 11,Science,11A,A,42,Geography,Semester 1,48,57,38,Under-7,15.9,77,59,4,M,1
+FHS1453,Male,Grade 11,Science,11A,A,42,Information Technology,Semester 2,73,50,77,Under-7,12.9,51,46,3,M,1
+FHS1454,Male,Grade 11,Commerce,11B,B,45,Business Studies,Semester 1,34,48,44,Under-7,12.7,63,41,3,M,1
+FHS1455,Male,Grade 11,Tourism,11C,C,32,Geography,Semester 2,51,54,66,Under-7,18.2,70,55,4,M,1
+FHS1456,Female,Grade 11,Tourism,11C,C,38,History,Semester 1,57,43,6,Under-7,14.1,70,46,3,M,1
+FHS1457,Male,Grade 11,Commerce,11B,B,42,Life Orientation,Semester 2,64,48,37,Under-7,15.5,87,67,5,M,1
+FHS1458,Male,Grade 11,Science,11A,A,32,Information Technology,Semester 2,85,71,50,Under-7,22.4,100,87,7,H,1
+FHS1459,Male,Grade 11,Science,11A,A,38,Physical Sciences,Semester 1,55,45,59,Under-7,16.2,84,63,5,M,1
+FHS1460,Female,Grade 11,Tourism,11C,C,45,Mathematical Literacy,Semester 2,74,79,51,Above-7,11.2,77,43,3,M,1
+FHS1461,Male,Grade 11,Science,11A,A,38,Life Sciences,Semester 1,52,16,14,Under-7,12.8,59,43,3,M,1
+FHS1462,Male,Grade 11,Science,11A,A,35,English FAL,Semester 2,67,26,36,Under-7,11.5,76,60,5,M,1
+FHS1463,Male,Grade 11,Science,11A,A,48,Life Orientation,Semester 2,44,24,60,Above-7,11.0,69,27,1,L,0
+FHS1464,Male,Grade 11,Science,11A,A,42,English FAL,Semester 2,37,51,32,Under-7,11.6,66,46,3,M,1
+FHS1465,Male,Grade 11,Science,11A,A,45,Life Sciences,Semester 1,79,20,61,Under-7,12.0,62,57,4,M,1
+FHS1466,Male,Grade 11,Science,11A,A,38,Geography,Semester 2,65,38,42,Under-7,12.6,50,67,5,M,1
+FHS1467,Female,Grade 11,Tourism,11C,C,42,Mathematical Literacy,Semester 1,70,61,60,Under-7,16.6,89,62,5,M,1
+FHS1468,Female,Grade 11,Commerce,11B,B,32,Mathematical Literacy,Semester 2,57,46,33,Under-7,9.6,70,66,5,M,1
+FHS1469,Male,Grade 11,Science,11A,A,32,Information Technology,Semester 1,27,6,31,Above-7,10.7,49,18,1,L,0
+FHS1470,Male,Grade 11,Science,11A,A,32,Geography,Semester 1,55,48,63,Under-7,13.4,68,57,4,M,1
+FHS1471,Male,Grade 11,Science,11A,A,35,Mathematics,Semester 2,49,44,21,Above-7,6.4,53,12,1,L,0
+FHS1472,Male,Grade 11,Science,11A,A,38,Mathematics,Semester 1,58,33,37,Under-7,8.2,42,27,1,L,0
+FHS1473,Male,Grade 11,Tourism,11C,C,32,English FAL,Semester 2,43,34,39,Under-7,5.3,41,39,2,L,0
+FHS1474,Female,Grade 11,Commerce,11B,B,45,Mathematical Literacy,Semester 2,83,78,72,Under-7,18.4,88,76,6,H,1
+FHS1475,Female,Grade 11,Commerce,11B,B,45,Mathematical Literacy,Semester 1,78,56,65,Under-7,13.2,65,64,5,M,1
+FHS1476,Female,Grade 11,Science,11A,A,42,Physical Sciences,Semester 2,23,50,55,Above-7,10.8,49,6,1,L,0
+FHS1477,Female,Grade 11,Science,11A,A,42,Life Orientation,Semester 2,50,51,70,Under-7,20.0,86,60,5,M,1
+FHS1478,Female,Grade 11,Science,11A,A,38,Geography,Semester 2,14,15,28,Under-7,2.0,40,25,1,L,0
+FHS1479,Female,Grade 11,Science,11A,A,38,English FAL,Semester 2,69,16,39,Under-7,9.5,48,58,4,M,1
+FHS1480,Male,Grade 11,Science,11A,A,35,English FAL,Semester 1,62,57,41,Under-7,15.7,53,54,4,M,1
+FHS1481,Male,Grade 11,Science,11A,A,35,Life Sciences,Semester 2,38,62,34,Under-7,7.1,43,46,3,M,1
+FHS1482,Male,Grade 11,Science,11A,A,32,Physical Sciences,Semester 1,55,65,77,Above-7,16.1,47,24,1,L,0
+FHS1483,Male,Grade 11,Commerce,11B,B,42,Mathematical Literacy,Semester 1,94,38,66,Above-7,21.8,83,58,4,M,1
+FHS1484,Male,Grade 11,Commerce,11B,B,38,Economics,Semester 1,64,23,9,Above-7,7.6,61,27,1,L,0
+FHS1485,Male,Grade 11,Science,11A,A,38,Life Sciences,Semester 2,75,59,59,Under-7,18.6,94,79,6,H,1
+FHS1486,Female,Grade 11,Commerce,11B,B,42,Mathematical Literacy,Semester 1,73,39,47,Under-7,18.8,67,66,5,M,1
+FHS1487,Male,Grade 11,Tourism,11C,C,32,Life Orientation,Semester 1,82,80,70,Under-7,19.0,65,71,6,H,1
+FHS1488,Male,Grade 11,Tourism,11C,C,38,Life Orientation,Semester 1,68,36,59,Under-7,7.2,76,70,6,H,1
+FHS1489,Male,Grade 11,Commerce,11B,B,35,English FAL,Semester 1,98,69,44,Under-7,17.7,92,75,6,H,1
+FHS1490,Male,Grade 11,Commerce,11B,B,35,English FAL,Semester 1,81,66,57,Under-7,10.0,71,67,5,M,1
+FHS1491,Female,Grade 11,Science,11A,A,38,Mathematics,Semester 1,73,66,73,Under-7,15.8,61,60,5,M,1
+FHS1492,Male,Grade 11,Science,11A,A,32,English FAL,Semester 1,51,32,26,Under-7,10.4,52,49,3,M,1
+FHS1493,Male,Grade 11,Science,11A,A,35,Physical Sciences,Semester 1,70,45,65,Under-7,12.9,48,54,4,M,1
+FHS1494,Male,Grade 11,Science,11A,A,35,Life Sciences,Semester 1,56,28,60,Above-7,18.8,56,40,3,M,1
+FHS1495,Female,Grade 11,Tourism,11C,C,38,Geography,Semester 1,59,27,95,Under-7,20.7,76,57,4,M,1
+FHS1496,Female,Grade 11,Commerce,11B,B,42,Mathematics,Semester 2,68,1,50,Under-7,13.9,79,48,3,M,1
+FHS1497,Female,Grade 11,Commerce,11B,B,42,Business Studies,Semester 2,36,88,67,Above-7,12.3,56,37,2,L,0
+FHS1498,Female,Grade 11,Commerce,11B,B,42,English FAL,Semester 1,55,47,52,Under-7,13.7,74,70,6,H,1
+FHS1499,Female,Grade 11,Commerce,11B,B,32,Life Orientation,Semester 2,50,59,67,Above-7,8.1,63,48,3,M,1
+FHS1500,Male,Grade 11,Commerce,11B,B,42,Mathematics,Semester 2,56,67,24,Under-7,9.3,51,32,2,L,0
+FHS1501,Male,Grade 11,Commerce,11B,B,32,Business Studies,Semester 1,34,47,1,Above-7,3.9,41,5,1,L,0
+FHS1502,Male,Grade 11,Science,11A,A,38,Life Orientation,Semester 2,58,64,15,Under-7,13.4,58,55,4,M,1
+FHS1503,Male,Grade 11,Science,11A,A,45,English FAL,Semester 1,80,57,46,Under-7,24.2,95,71,6,H,1
+FHS1504,Female,Grade 11,Commerce,11B,B,48,Mathematics,Semester 2,94,84,86,Under-7,26.6,92,79,6,H,1
+FHS1505,Male,Grade 11,Commerce,11B,B,42,Life Orientation,Semester 1,31,0,0,Above-7,5.8,32,5,1,L,0
+FHS1506,Female,Grade 11,Science,11A,A,38,English FAL,Semester 1,66,4,30,Under-7,8.4,43,25,1,L,0
+FHS1507,Female,Grade 11,Science,11A,A,38,English FAL,Semester 1,81,83,77,Under-7,19.9,100,78,6,H,1
+FHS1508,Female,Grade 11,Commerce,11B,B,38,Life Orientation,Semester 2,64,15,77,Under-7,9.7,65,71,6,H,1
+FHS1509,Male,Grade 11,Commerce,11B,B,42,English FAL,Semester 1,48,27,26,Under-7,15.0,67,45,3,M,1
+FHS1510,Female,Grade 11,Commerce,11B,B,35,Mathematical Literacy,Semester 2,56,53,43,Under-7,7.7,52,53,4,M,1
+FHS1511,Male,Grade 11,Commerce,11B,B,42,English FAL,Semester 2,69,33,57,Under-7,19.6,60,65,5,M,1
+FHS1512,Female,Grade 11,Commerce,11B,B,48,Business Studies,Semester 1,31,1,47,Above-7,2.0,35,5,1,L,0
+FHS1513,Female,Grade 11,Tourism,11C,C,42,History,Semester 2,64,74,37,Under-7,16.2,78,66,5,M,1
+FHS1514,Female,Grade 11,Science,11A,A,32,Life Sciences,Semester 1,97,77,65,Under-7,22.9,86,85,7,H,1
+FHS1515,Male,Grade 11,Science,11A,A,42,Life Sciences,Semester 2,34,43,65,Under-7,15.6,72,50,4,M,1
+FHS1516,Female,Grade 11,Tourism,11C,C,35,History,Semester 2,77,55,67,Above-7,14.5,70,40,3,M,1
+FHS1517,Male,Grade 11,Science,11A,A,32,Physical Sciences,Semester 1,47,39,49,Under-7,12.4,42,33,2,L,0
+FHS1518,Male,Grade 11,Tourism,11C,C,35,Geography,Semester 2,58,40,16,Above-7,14.1,65,43,3,M,1
+FHS1519,Female,Grade 11,Science,11A,A,45,Information Technology,Semester 2,75,60,56,Under-7,11.5,61,49,3,M,1
+FHS1520,Female,Grade 11,Science,11A,A,38,Mathematics,Semester 1,60,69,71,Under-7,15.2,72,61,5,M,1
+FHS1521,Female,Grade 11,Science,11A,A,35,Geography,Semester 2,63,35,43,Under-7,3.1,64,52,4,M,1
+FHS1522,Female,Grade 11,Commerce,11B,B,42,Business Studies,Semester 2,12,68,22,Above-7,11.0,56,28,1,L,0
+FHS1523,Female,Grade 11,Science,11A,A,38,English FAL,Semester 2,44,29,65,Under-7,13.3,71,57,4,M,1
+FHS1524,Female,Grade 11,Science,11A,A,32,Mathematics,Semester 1,81,46,70,Under-7,10.8,67,43,3,M,1
+FHS1525,Male,Grade 11,Commerce,11B,B,35,English FAL,Semester 2,59,49,75,Under-7,13.6,68,69,5,M,1
+FHS1526,Male,Grade 11,Science,11A,A,35,Physical Sciences,Semester 1,0,32,25,Under-7,9.0,39,5,1,L,0
+FHS1527,Female,Grade 11,Commerce,11B,B,45,Business Studies,Semester 2,98,71,81,Under-7,18.5,81,78,6,H,1
+FHS1528,Male,Grade 11,Science,11A,A,38,Mathematics,Semester 2,22,43,28,Under-7,3.5,26,10,1,L,0
+FHS1529,Female,Grade 11,Science,11A,A,38,Information Technology,Semester 1,67,66,53,Under-7,12.4,79,66,5,M,1
+FHS1530,Male,Grade 11,Commerce,11B,B,38,Mathematical Literacy,Semester 2,34,90,52,Above-7,12.6,69,42,3,M,1
+FHS1531,Male,Grade 11,Tourism,11C,C,35,English FAL,Semester 2,43,28,0,Under-7,12.9,62,41,3,M,1
+FHS1532,Female,Grade 11,Science,11A,A,42,Life Orientation,Semester 1,99,77,96,Under-7,17.4,90,98,7,H,1
+FHS1533,Male,Grade 11,Science,11A,A,35,Life Orientation,Semester 2,6,35,39,Under-7,9.8,48,36,2,L,0
+FHS1534,Female,Grade 11,Science,11A,A,32,English FAL,Semester 2,52,30,68,Under-7,17.2,81,63,5,M,1
+FHS1535,Male,Grade 11,Science,11A,A,38,Life Orientation,Semester 2,76,29,62,Under-7,17.1,95,76,6,H,1
+FHS1536,Male,Grade 11,Science,11A,A,38,English FAL,Semester 1,63,78,90,Under-7,16.0,83,73,6,H,1
+FHS1537,Male,Grade 11,Science,11A,A,38,Life Sciences,Semester 2,43,51,44,Under-7,16.9,41,55,4,M,1
+FHS1538,Female,Grade 11,Tourism,11C,C,38,Mathematical Literacy,Semester 1,92,57,29,Under-7,19.6,90,75,6,H,1
+FHS1539,Male,Grade 11,Science,11A,A,38,Mathematics,Semester 2,86,80,93,Under-7,14.9,87,84,7,H,1
+FHS1540,Female,Grade 11,Tourism,11C,C,35,Life Orientation,Semester 2,60,48,61,Under-7,9.9,49,62,5,M,1
+FHS1541,Female,Grade 11,Commerce,11B,B,42,Accounting,Semester 2,88,53,36,Under-7,15.8,54,51,4,M,1
+FHS1542,Female,Grade 11,Commerce,11B,B,42,Economics,Semester 1,45,50,56,Under-7,14.8,67,51,4,M,1
+FHS1543,Female,Grade 11,Commerce,11B,B,38,Business Studies,Semester 2,73,54,44,Under-7,13.1,59,63,5,M,1
+FHS1544,Female,Grade 11,Tourism,11C,C,35,Geography,Semester 2,49,30,73,Above-7,13.6,55,36,2,L,0
+FHS1545,Male,Grade 11,Science,11A,A,38,English FAL,Semester 1,63,91,66,Under-7,13.7,79,78,6,H,1
+FHS1546,Male,Grade 11,Science,11A,A,35,English FAL,Semester 2,90,42,66,Under-7,22.2,87,71,6,H,1
+FHS1547,Male,Grade 11,Tourism,11C,C,32,Tourism,Semester 1,30,43,17,Under-7,13.5,62,30,2,L,0
+FHS1548,Male,Grade 11,Commerce,11B,B,48,Life Orientation,Semester 1,52,17,39,Under-7,3.0,71,34,2,L,0
+FHS1549,Female,Grade 11,Science,11A,A,48,Information Technology,Semester 1,59,59,33,Under-7,13.4,83,59,4,M,1
+FHS1550,Female,Grade 11,Commerce,11B,B,45,Mathematical Literacy,Semester 1,14,24,0,Under-7,2.0,36,9,1,L,0
+FHS1551,Female,Grade 11,Tourism,11C,C,42,Geography,Semester 2,61,53,56,Under-7,10.7,57,52,4,M,1
+FHS1552,Female,Grade 11,Science,11A,A,38,Physical Sciences,Semester 2,51,48,46,Under-7,13.9,49,30,2,L,0
+FHS1553,Male,Grade 11,Science,11A,A,32,Physical Sciences,Semester 1,27,43,18,Under-7,2.9,40,22,1,L,0
+FHS1554,Male,Grade 11,Science,11A,A,38,English FAL,Semester 1,79,37,48,Under-7,12.4,58,63,5,M,1
+FHS1555,Female,Grade 11,Commerce,11B,B,32,English FAL,Semester 1,60,19,71,Under-7,16.5,62,62,5,M,1
+FHS1556,Female,Grade 11,Commerce,11B,B,35,English FAL,Semester 2,76,35,59,Under-7,19.2,72,68,5,M,1
+FHS1557,Male,Grade 11,Commerce,11B,B,42,Mathematical Literacy,Semester 1,57,17,29,Above-7,12.0,50,32,2,L,0
+FHS1558,Male,Grade 11,Tourism,11C,C,45,Mathematical Literacy,Semester 2,48,52,89,Under-7,15.4,54,54,4,M,1
+FHS1559,Female,Grade 11,Science,11A,A,35,Physical Sciences,Semester 1,98,59,77,Under-7,22.3,100,83,7,H,1
+FHS1560,Male,Grade 11,Science,11A,A,42,Life Orientation,Semester 1,68,43,90,Above-7,13.9,54,47,3,M,1
+FHS1561,Male,Grade 11,Tourism,11C,C,42,History,Semester 2,64,21,62,Under-7,12.2,62,53,4,M,1
+FHS1562,Female,Grade 11,Commerce,11B,B,38,Life Orientation,Semester 2,84,63,65,Under-7,18.9,83,82,7,H,1
+FHS1563,Male,Grade 11,Commerce,11B,B,35,Economics,Semester 1,71,42,63,Under-7,13.4,75,63,5,M,1
+FHS1564,Female,Grade 11,Commerce,11B,B,45,English FAL,Semester 1,74,55,58,Above-7,19.4,90,54,4,M,1
+FHS1565,Male,Grade 11,Science,11A,A,38,Life Sciences,Semester 1,30,40,43,Above-7,5.8,58,28,1,L,0
+FHS1566,Male,Grade 11,Commerce,11B,B,42,Accounting,Semester 1,69,64,62,Under-7,17.7,81,70,6,H,1
+FHS1567,Female,Grade 11,Science,11A,A,32,Mathematics,Semester 2,29,14,34,Under-7,7.4,50,22,1,L,0
+FHS1568,Female,Grade 11,Commerce,11B,B,32,Economics,Semester 1,61,75,60,Under-7,9.7,52,64,5,M,1
+FHS1569,Male,Grade 11,Science,11A,A,38,Mathematics,Semester 2,90,41,65,Under-7,22.8,94,77,6,H,1
+FHS1570,Male,Grade 11,Science,11A,A,38,Geography,Semester 1,33,44,60,Under-7,14.4,56,58,4,M,1
+FHS1571,Female,Grade 11,Commerce,11B,B,42,English FAL,Semester 1,73,53,80,Under-7,15.5,77,66,5,M,1
+FHS1572,Male,Grade 11,Tourism,11C,C,45,Life Orientation,Semester 2,51,17,31,Under-7,15.6,62,60,5,M,1
+FHS1573,Female,Grade 11,Commerce,11B,B,45,English FAL,Semester 2,63,72,83,Above-7,20.0,78,46,3,M,1
+FHS1574,Male,Grade 11,Tourism,11C,C,35,Life Orientation,Semester 1,81,38,45,Under-7,14.4,74,62,5,M,1
+FHS1575,Male,Grade 11,Commerce,11B,B,45,English FAL,Semester 1,48,61,32,Under-7,11.6,69,52,4,M,1
+FHS1576,Male,Grade 11,Commerce,11B,B,35,Life Orientation,Semester 2,95,30,50,Under-7,22.1,88,78,6,H,1
+FHS1577,Male,Grade 11,Tourism,11C,C,32,Life Orientation,Semester 2,53,5,50,Under-7,13.1,55,56,4,M,1
+FHS1578,Female,Grade 11,Commerce,11B,B,38,Accounting,Semester 1,43,45,35,Under-7,3.4,36,23,1,L,0
+FHS1579,Female,Grade 11,Science,11A,A,32,Information Technology,Semester 1,98,45,91,Under-7,16.7,90,88,7,H,1
+FHS1580,Female,Grade 11,Tourism,11C,C,32,History,Semester 2,31,31,0,Above-7,6.8,40,5,1,L,0
+FHS1581,Female,Grade 11,Science,11A,A,35,Mathematics,Semester 2,60,50,65,Under-7,11.7,75,50,4,M,1
+FHS1582,Female,Grade 11,Tourism,11C,C,42,History,Semester 1,74,62,71,Under-7,18.0,75,71,6,H,1
+FHS1583,Female,Grade 11,Tourism,11C,C,35,Geography,Semester 1,75,19,61,Under-7,13.6,50,62,5,M,1
+FHS1584,Female,Grade 11,Commerce,11B,B,45,Business Studies,Semester 1,63,51,45,Under-7,17.4,68,64,5,M,1
+FHS1585,Male,Grade 11,Science,11A,A,48,Geography,Semester 2,55,31,72,Above-7,16.0,71,34,2,L,0
+FHS1586,Male,Grade 11,Tourism,11C,C,38,Geography,Semester 1,35,52,5,Above-7,10.1,44,14,1,L,0
+FHS1587,Female,Grade 11,Science,11A,A,38,Physical Sciences,Semester 2,26,29,24,Under-7,5.6,28,26,1,L,0
+FHS1588,Male,Grade 11,Science,11A,A,35,Information Technology,Semester 1,87,58,48,Under-7,16.7,91,62,5,M,1
+FHS1589,Male,Grade 11,Commerce,11B,B,35,Mathematics,Semester 2,41,36,49,Above-7,2.7,57,9,1,L,0
+FHS1590,Female,Grade 11,Commerce,11B,B,35,Business Studies,Semester 2,74,30,33,Under-7,6.6,66,57,4,M,1
+FHS1591,Male,Grade 11,Science,11A,A,48,Life Orientation,Semester 2,74,58,54,Under-7,17.9,75,81,7,H,1
+FHS1592,Male,Grade 11,Commerce,11B,B,38,Mathematics,Semester 2,74,32,33,Above-7,7.9,70,28,1,L,0
+FHS1593,Male,Grade 11,Science,11A,A,38,Mathematics,Semester 1,63,46,51,Under-7,19.9,57,47,3,M,1
+FHS1594,Male,Grade 11,Science,11A,A,35,Life Sciences,Semester 1,75,61,79,Under-7,18.9,73,71,6,H,1
+FHS1595,Female,Grade 11,Commerce,11B,B,38,English FAL,Semester 1,99,22,45,Above-7,13.6,63,54,4,M,1
+FHS1596,Female,Grade 11,Science,11A,A,35,Life Orientation,Semester 1,36,14,4,Under-7,8.1,25,34,2,L,0
+FHS1597,Female,Grade 11,Science,11A,A,32,Information Technology,Semester 1,51,22,16,Under-7,10.0,33,33,2,L,0
+FHS1598,Male,Grade 11,Tourism,11C,C,35,Geography,Semester 1,73,71,32,Under-7,5.0,74,56,4,M,1
+FHS1599,Male,Grade 11,Commerce,11B,B,45,Accounting,Semester 1,24,5,36,Above-7,5.0,39,6,1,L,0
+FHS1600,Female,Grade 11,Science,11A,A,38,Geography,Semester 1,99,30,69,Above-7,14.8,84,48,3,M,1
+FHS1601,Male,Grade 12,Science,12A,A,42,English FAL,Semester 2,71,50,61,Under-7,21.1,86,68,5,M,1
+FHS1602,Male,Grade 12,Science,12A,A,35,Life Orientation,Semester 1,65,66,84,Under-7,16.4,60,80,7,H,1
+FHS1603,Male,Grade 12,Science,12A,A,35,Information Technology,Semester 1,29,40,34,Above-7,5.8,36,14,1,L,0
+FHS1604,Male,Grade 12,Science,12A,A,38,Information Technology,Semester 2,75,41,43,Under-7,15.6,83,60,5,M,1
+FHS1605,Male,Grade 12,Science,12A,A,38,Life Sciences,Semester 1,26,35,50,Under-7,6.5,47,40,3,M,1
+FHS1606,Female,Grade 12,Science,12A,A,42,Life Orientation,Semester 1,83,45,65,Under-7,20.3,77,69,5,M,1
+FHS1607,Female,Grade 12,Science,12A,A,45,Geography,Semester 1,88,50,78,Under-7,14.3,78,64,5,M,1
+FHS1608,Female,Grade 12,Tourism,12C,C,35,Mathematical Literacy,Semester 1,69,33,48,Under-7,9.3,75,48,3,M,1
+FHS1609,Male,Grade 12,Tourism,12C,C,38,English FAL,Semester 1,78,45,59,Above-7,17.6,55,57,4,M,1
+FHS1610,Male,Grade 12,Commerce,12B,B,35,Business Studies,Semester 1,44,40,29,Above-7,9.0,29,29,1,L,0
+FHS1611,Male,Grade 12,Commerce,12B,B,42,Accounting,Semester 1,55,36,28,Above-7,3.2,28,5,1,L,0
+FHS1612,Male,Grade 12,Tourism,12C,C,45,Mathematical Literacy,Semester 2,89,43,52,Above-7,15.7,78,53,4,M,1
+FHS1613,Male,Grade 12,Commerce,12B,B,35,Accounting,Semester 2,97,51,37,Under-7,12.2,86,67,5,M,1
+FHS1614,Male,Grade 12,Science,12A,A,35,Life Sciences,Semester 1,30,46,40,Under-7,7.9,61,48,3,M,1
+FHS1615,Female,Grade 12,Science,12A,A,35,English FAL,Semester 2,30,26,39,Above-7,10.4,61,22,1,L,0
+FHS1616,Female,Grade 12,Science,12A,A,45,Life Orientation,Semester 1,65,60,77,Under-7,17.5,75,76,6,H,1
+FHS1617,Female,Grade 12,Commerce,12B,B,38,Life Orientation,Semester 2,44,11,37,Under-7,12.1,69,59,4,M,1
+FHS1618,Male,Grade 12,Science,12A,A,35,English FAL,Semester 1,54,50,39,Above-7,6.5,55,29,1,L,0
+FHS1619,Male,Grade 12,Commerce,12B,B,35,Business Studies,Semester 2,61,50,26,Under-7,11.1,69,51,4,M,1
+FHS1620,Male,Grade 12,Commerce,12B,B,45,Mathematical Literacy,Semester 2,82,26,48,Under-7,17.8,94,56,4,M,1
+FHS1621,Male,Grade 12,Science,12A,A,42,Physical Sciences,Semester 1,31,26,53,Above-7,10.0,28,18,1,L,0
+FHS1622,Male,Grade 12,Commerce,12B,B,45,Life Orientation,Semester 1,42,14,44,Above-7,4.2,28,16,1,L,0
+FHS1623,Male,Grade 12,Science,12A,A,45,Life Sciences,Semester 2,72,47,23,Under-7,9.4,53,34,2,L,0
+FHS1624,Female,Grade 12,Commerce,12B,B,48,Life Orientation,Semester 2,55,29,11,Under-7,9.3,54,52,4,M,1
+FHS1625,Male,Grade 12,Commerce,12B,B,38,Mathematics,Semester 2,75,14,30,Above-7,18.7,64,10,1,L,0
+FHS1626,Male,Grade 12,Science,12A,A,35,Life Orientation,Semester 1,64,72,79,Under-7,15.3,80,89,7,H,1
+FHS1627,Female,Grade 12,Commerce,12B,B,45,Mathematical Literacy,Semester 2,61,45,52,Under-7,12.4,70,50,4,M,1
+FHS1628,Female,Grade 12,Tourism,12C,C,32,Life Orientation,Semester 1,92,54,39,Under-7,13.8,74,80,7,H,1
+FHS1629,Male,Grade 12,Science,12A,A,38,Life Sciences,Semester 2,44,42,52,Under-7,11.8,54,42,3,M,1
+FHS1630,Female,Grade 12,Commerce,12B,B,45,Economics,Semester 1,44,19,15,Above-7,5.0,55,19,1,L,0
+FHS1631,Male,Grade 12,Tourism,12C,C,42,English FAL,Semester 2,54,7,65,Under-7,15.0,79,41,3,M,1
+FHS1632,Female,Grade 12,Science,12A,A,38,Life Orientation,Semester 1,64,38,71,Above-7,17.2,73,61,5,M,1
+FHS1633,Female,Grade 12,Science,12A,A,35,Mathematics,Semester 2,87,29,53,Above-7,20.3,63,46,3,M,1
+FHS1634,Female,Grade 12,Tourism,12C,C,35,Life Orientation,Semester 1,74,76,58,Under-7,16.1,82,73,6,H,1
+FHS1635,Female,Grade 12,Tourism,12C,C,38,Life Orientation,Semester 2,55,45,57,Above-7,13.5,36,41,3,M,1
+FHS1636,Female,Grade 12,Tourism,12C,C,32,Geography,Semester 1,80,58,85,Under-7,21.7,92,89,7,H,1
+FHS1637,Female,Grade 12,Science,12A,A,35,Physical Sciences,Semester 2,31,4,15,Above-7,4.2,35,5,1,L,0
+FHS1638,Female,Grade 12,Science,12A,A,48,Mathematics,Semester 2,70,57,32,Under-7,17.1,88,59,4,M,1
+FHS1639,Female,Grade 12,Commerce,12B,B,38,Accounting,Semester 2,28,43,15,Under-7,3.2,31,11,1,L,0
+FHS1640,Female,Grade 12,Science,12A,A,38,Physical Sciences,Semester 1,59,87,85,Under-7,16.6,73,65,5,M,1
+FHS1641,Female,Grade 12,Science,12A,A,35,Life Sciences,Semester 1,0,17,49,Above-7,3.2,21,5,1,L,0
+FHS1642,Male,Grade 12,Commerce,12B,B,38,Business Studies,Semester 2,62,34,62,Above-7,7.9,67,48,3,M,1
+FHS1643,Female,Grade 12,Science,12A,A,38,Geography,Semester 1,67,25,41,Above-7,17.5,86,40,3,M,1
+FHS1644,Male,Grade 12,Commerce,12B,B,35,Mathematics,Semester 1,26,44,54,Above-7,6.4,15,8,1,L,0
+FHS1645,Male,Grade 12,Commerce,12B,B,32,Mathematics,Semester 2,39,16,31,Under-7,4.8,47,24,1,L,0
+FHS1646,Male,Grade 12,Science,12A,A,42,Information Technology,Semester 2,57,29,38,Under-7,9.3,45,51,4,M,1
+FHS1647,Female,Grade 12,Science,12A,A,38,Life Orientation,Semester 2,70,49,68,Under-7,9.9,69,70,6,H,1
+FHS1648,Female,Grade 12,Tourism,12C,C,42,Mathematical Literacy,Semester 1,47,37,42,Under-7,19.4,70,52,4,M,1
+FHS1649,Female,Grade 12,Commerce,12B,B,35,Business Studies,Semester 2,86,45,62,Under-7,21.9,71,77,6,H,1
+FHS1650,Female,Grade 12,Science,12A,A,42,Life Orientation,Semester 2,60,46,64,Under-7,13.9,76,59,4,M,1
+FHS1651,Male,Grade 12,Commerce,12B,B,32,English FAL,Semester 2,64,50,54,Under-7,12.0,59,37,2,L,0
+FHS1652,Female,Grade 12,Science,12A,A,42,Geography,Semester 2,37,0,35,Under-7,6.9,46,25,1,L,0
+FHS1653,Female,Grade 12,Commerce,12B,B,38,Economics,Semester 2,53,60,84,Above-7,16.0,64,48,3,M,1
+FHS1654,Male,Grade 12,Commerce,12B,B,42,Life Orientation,Semester 1,60,23,14,Under-7,17.4,54,47,3,M,1
+FHS1655,Female,Grade 12,Tourism,12C,C,32,History,Semester 2,66,26,61,Under-7,17.3,57,51,4,M,1
+FHS1656,Female,Grade 12,Commerce,12B,B,35,Mathematics,Semester 2,34,68,7,Under-7,9.5,44,15,1,L,0
+FHS1657,Male,Grade 12,Science,12A,A,45,Life Orientation,Semester 2,78,58,79,Under-7,10.9,64,60,5,M,1
+FHS1658,Male,Grade 12,Commerce,12B,B,35,Business Studies,Semester 1,68,35,38,Above-7,16.6,94,48,3,M,1
+FHS1659,Male,Grade 12,Tourism,12C,C,38,English FAL,Semester 2,51,27,10,Under-7,7.7,51,28,1,L,0
+FHS1660,Male,Grade 12,Commerce,12B,B,38,Mathematical Literacy,Semester 2,99,49,72,Under-7,13.6,66,76,6,H,1
+FHS1661,Male,Grade 12,Tourism,12C,C,35,Geography,Semester 1,73,37,47,Above-7,13.0,68,45,3,M,1
+FHS1662,Female,Grade 12,Commerce,12B,B,32,Life Orientation,Semester 1,57,41,93,Under-7,16.3,76,68,5,M,1
+FHS1663,Male,Grade 12,Tourism,12C,C,35,History,Semester 1,86,85,73,Under-7,19.1,91,72,6,H,1
+FHS1664,Male,Grade 12,Commerce,12B,B,38,Mathematical Literacy,Semester 2,44,72,23,Above-7,15.1,68,42,3,M,1
+FHS1665,Female,Grade 12,Commerce,12B,B,35,Business Studies,Semester 1,99,70,84,Under-7,23.0,97,98,7,H,1
+FHS1666,Male,Grade 12,Tourism,12C,C,42,English FAL,Semester 2,40,36,57,Above-7,9.4,65,27,1,L,0
+FHS1667,Male,Grade 12,Commerce,12B,B,45,Mathematics,Semester 2,51,49,36,Under-7,7.7,60,40,3,M,1
+FHS1668,Female,Grade 12,Science,12A,A,32,English FAL,Semester 2,45,41,22,Under-7,11.5,72,45,3,M,1
+FHS1669,Female,Grade 12,Commerce,12B,B,38,English FAL,Semester 2,87,63,48,Under-7,14.1,77,59,4,M,1
+FHS1670,Female,Grade 12,Science,12A,A,42,Mathematics,Semester 2,80,55,41,Under-7,14.0,68,54,4,M,1
+FHS1671,Female,Grade 12,Science,12A,A,32,English FAL,Semester 1,67,55,37,Above-7,14.5,54,42,3,M,1
+FHS1672,Female,Grade 12,Commerce,12B,B,38,Business Studies,Semester 1,72,44,66,Under-7,16.7,75,68,5,M,1
+FHS1673,Male,Grade 12,Science,12A,A,35,Life Sciences,Semester 1,68,49,53,Under-7,11.4,70,51,4,M,1
+FHS1674,Male,Grade 12,Commerce,12B,B,38,Mathematics,Semester 1,32,70,42,Under-7,9.9,74,52,4,M,1
+FHS1675,Male,Grade 12,Commerce,12B,B,32,Accounting,Semester 2,88,45,79,Under-7,14.2,71,58,4,M,1
+FHS1676,Female,Grade 12,Commerce,12B,B,42,Life Orientation,Semester 1,69,54,59,Under-7,16.5,83,76,6,H,1
+FHS1677,Female,Grade 12,Science,12A,A,35,Physical Sciences,Semester 1,15,4,26,Under-7,9.1,54,17,1,L,0
+FHS1678,Male,Grade 12,Science,12A,A,35,Mathematics,Semester 1,57,37,32,Under-7,13.0,65,37,2,L,0
+FHS1679,Female,Grade 12,Tourism,12C,C,48,Geography,Semester 1,60,33,47,Under-7,11.7,63,56,4,M,1
+FHS1680,Male,Grade 12,Science,12A,A,42,Geography,Semester 2,49,42,68,Under-7,13.9,71,56,4,M,1
+FHS1681,Male,Grade 12,Tourism,12C,C,38,Life Orientation,Semester 2,76,68,36,Under-7,17.3,89,83,7,H,1
+FHS1682,Male,Grade 12,Tourism,12C,C,38,Mathematical Literacy,Semester 1,99,56,99,Under-7,23.4,84,79,6,H,1
+FHS1683,Male,Grade 12,Science,12A,A,32,Life Orientation,Semester 2,50,50,43,Under-7,11.9,66,53,4,M,1
+FHS1684,Female,Grade 12,Commerce,12B,B,42,English FAL,Semester 1,43,15,65,Under-7,8.4,38,26,1,L,0
+FHS1685,Female,Grade 12,Science,12A,A,38,Life Orientation,Semester 2,95,85,60,Under-7,16.0,84,83,7,H,1
+FHS1686,Female,Grade 12,Science,12A,A,42,Life Sciences,Semester 2,60,77,75,Above-7,13.9,62,46,3,M,1
+FHS1687,Female,Grade 12,Science,12A,A,32,Life Orientation,Semester 1,29,22,7,Under-7,2.0,35,11,1,L,0
+FHS1688,Male,Grade 12,Science,12A,A,42,Mathematics,Semester 1,43,15,58,Above-7,10.1,63,27,1,L,0
+FHS1689,Female,Grade 12,Commerce,12B,B,35,Accounting,Semester 1,80,38,53,Under-7,17.6,81,66,5,M,1
+FHS1690,Male,Grade 12,Tourism,12C,C,38,Geography,Semester 2,79,66,67,Under-7,15.8,70,72,6,H,1
+FHS1691,Male,Grade 12,Commerce,12B,B,32,Economics,Semester 2,48,26,53,Above-7,17.1,70,43,3,M,1
+FHS1692,Male,Grade 12,Commerce,12B,B,32,Mathematical Literacy,Semester 2,56,57,65,Under-7,14.7,51,57,4,M,1
+FHS1693,Male,Grade 12,Science,12A,A,32,Information Technology,Semester 1,61,50,38,Under-7,17.1,75,51,4,M,1
+FHS1694,Male,Grade 12,Science,12A,A,38,Information Technology,Semester 1,31,43,47,Under-7,11.2,45,37,2,L,0
+FHS1695,Male,Grade 12,Tourism,12C,C,35,Geography,Semester 1,51,37,24,Under-7,9.8,60,49,3,M,1
+FHS1696,Female,Grade 12,Tourism,12C,C,42,History,Semester 1,76,23,57,Under-7,15.0,61,63,5,M,1
+FHS1697,Female,Grade 12,Science,12A,A,38,English FAL,Semester 1,46,56,31,Under-7,9.1,57,61,5,M,1
+FHS1698,Female,Grade 12,Tourism,12C,C,35,Mathematical Literacy,Semester 2,28,53,24,Above-7,3.2,61,22,1,L,0
+FHS1699,Female,Grade 12,Commerce,12B,B,42,Mathematics,Semester 2,23,11,62,Under-7,5.5,33,18,1,L,0
+FHS1700,Male,Grade 12,Science,12A,A,38,Mathematics,Semester 1,39,62,46,Under-7,9.3,46,40,3,M,1
+FHS1701,Female,Grade 12,Tourism,12C,C,32,Tourism,Semester 1,81,61,55,Under-7,17.9,87,97,7,H,1
+FHS1702,Female,Grade 12,Tourism,12C,C,48,Mathematical Literacy,Semester 2,10,31,52,Above-7,4.5,43,5,1,L,0
+FHS1703,Male,Grade 12,Tourism,12C,C,32,History,Semester 1,45,26,33,Under-7,11.1,45,50,4,M,1
+FHS1704,Male,Grade 12,Commerce,12B,B,38,Mathematics,Semester 1,93,45,48,Under-7,18.2,98,68,5,M,1
+FHS1705,Male,Grade 12,Science,12A,A,45,Information Technology,Semester 2,61,48,46,Under-7,15.9,63,47,3,M,1
+FHS1706,Female,Grade 12,Science,12A,A,35,Mathematics,Semester 1,66,66,69,Under-7,19.9,85,68,5,M,1
+FHS1707,Male,Grade 12,Science,12A,A,35,Life Orientation,Semester 2,63,19,55,Above-7,7.9,28,25,1,L,0
+FHS1708,Female,Grade 12,Commerce,12B,B,32,Life Orientation,Semester 2,39,32,27,Above-7,10.6,58,38,2,L,0
+FHS1709,Female,Grade 12,Tourism,12C,C,38,English FAL,Semester 1,83,19,54,Above-7,14.6,79,46,3,M,1
+FHS1710,Female,Grade 12,Tourism,12C,C,48,Geography,Semester 2,42,33,50,Under-7,8.6,46,31,2,L,0
+FHS1711,Male,Grade 12,Science,12A,A,45,Life Sciences,Semester 1,76,48,77,Under-7,17.1,70,70,6,H,1
+FHS1712,Female,Grade 12,Tourism,12C,C,42,Mathematical Literacy,Semester 2,86,68,56,Under-7,14.3,82,68,5,M,1
+FHS1713,Male,Grade 12,Tourism,12C,C,38,History,Semester 1,18,37,23,Under-7,5.3,25,14,1,L,0
+FHS1714,Female,Grade 12,Tourism,12C,C,42,Tourism,Semester 2,42,32,81,Under-7,11.5,48,65,5,M,1
+FHS1715,Female,Grade 12,Science,12A,A,42,English FAL,Semester 2,47,38,78,Above-7,5.1,61,31,2,L,0
+FHS1716,Male,Grade 12,Science,12A,A,35,English FAL,Semester 2,66,40,43,Under-7,14.8,93,68,5,M,1
+FHS1717,Male,Grade 12,Commerce,12B,B,42,Mathematics,Semester 1,48,13,19,Above-7,11.4,18,5,1,L,0
+FHS1718,Male,Grade 12,Commerce,12B,B,35,Mathematical Literacy,Semester 1,33,36,42,Under-7,10.4,56,46,3,M,1
+FHS1719,Female,Grade 12,Science,12A,A,42,Mathematics,Semester 1,50,34,56,Under-7,12.7,55,31,2,L,0
+FHS1720,Male,Grade 12,Science,12A,A,38,English FAL,Semester 1,80,60,57,Above-7,19.4,79,55,4,M,1
+FHS1721,Male,Grade 12,Science,12A,A,42,Physical Sciences,Semester 2,62,49,53,Under-7,9.4,53,44,3,M,1
+FHS1722,Female,Grade 12,Commerce,12B,B,38,Economics,Semester 2,67,69,64,Under-7,17.7,85,67,5,M,1
+FHS1723,Male,Grade 12,Science,12A,A,42,Geography,Semester 2,89,93,99,Under-7,14.7,100,86,7,H,1
+FHS1724,Female,Grade 12,Commerce,12B,B,32,Life Orientation,Semester 1,71,40,50,Under-7,15.0,53,67,5,M,1
+FHS1725,Male,Grade 12,Science,12A,A,45,English FAL,Semester 1,99,58,50,Under-7,22.3,84,86,7,H,1
+FHS1726,Female,Grade 12,Science,12A,A,35,Life Orientation,Semester 1,99,69,65,Under-7,19.4,90,88,7,H,1
+FHS1727,Female,Grade 12,Science,12A,A,42,Physical Sciences,Semester 2,57,43,80,Under-7,18.6,79,60,5,M,1
+FHS1728,Female,Grade 12,Tourism,12C,C,35,Mathematical Literacy,Semester 2,90,50,45,Under-7,14.7,92,87,7,H,1
+FHS1729,Female,Grade 12,Science,12A,A,42,English FAL,Semester 2,73,51,76,Under-7,20.3,84,72,6,H,1
+FHS1730,Female,Grade 12,Science,12A,A,48,Life Sciences,Semester 1,73,57,48,Under-7,24.2,85,65,5,M,1
+FHS1731,Female,Grade 12,Tourism,12C,C,35,Tourism,Semester 1,48,7,34,Above-7,4.3,62,22,1,L,0
+FHS1732,Female,Grade 12,Science,12A,A,42,Life Orientation,Semester 2,23,0,42,Under-7,4.8,49,29,1,L,0
+FHS1733,Male,Grade 12,Commerce,12B,B,35,Mathematical Literacy,Semester 2,77,33,36,Under-7,14.6,72,48,3,M,1
+FHS1734,Male,Grade 12,Commerce,12B,B,35,Business Studies,Semester 1,51,58,40,Under-7,9.9,60,50,4,M,1
+FHS1735,Male,Grade 12,Science,12A,A,42,Geography,Semester 1,37,39,10,Under-7,19.3,42,50,4,M,1
+FHS1736,Female,Grade 12,Science,12A,A,35,Mathematics,Semester 1,48,9,43,Under-7,7.3,65,29,1,L,0
+FHS1737,Male,Grade 12,Science,12A,A,38,Life Orientation,Semester 2,33,7,64,Under-7,13.1,61,41,3,M,1
+FHS1738,Female,Grade 12,Tourism,12C,C,42,Tourism,Semester 2,39,2,20,Above-7,2.0,34,6,1,L,0
+FHS1739,Female,Grade 12,Commerce,12B,B,38,Accounting,Semester 2,53,43,49,Under-7,13.1,83,49,3,M,1
+FHS1740,Female,Grade 12,Tourism,12C,C,38,History,Semester 2,38,54,54,Under-7,14.4,67,67,5,M,1
+FHS1741,Female,Grade 12,Science,12A,A,35,Mathematics,Semester 1,71,15,56,Under-7,17.6,66,62,5,M,1
+FHS1742,Female,Grade 12,Commerce,12B,B,42,Business Studies,Semester 1,48,37,33,Under-7,9.5,55,44,3,M,1
+FHS1743,Male,Grade 12,Science,12A,A,42,Information Technology,Semester 1,28,54,55,Above-7,12.5,31,28,1,L,0
+FHS1744,Male,Grade 12,Commerce,12B,B,38,English FAL,Semester 1,37,50,21,Under-7,14.8,69,49,3,M,1
+FHS1745,Male,Grade 12,Science,12A,A,38,Physical Sciences,Semester 1,60,47,50,Under-7,14.0,61,55,4,M,1
+FHS1746,Male,Grade 12,Commerce,12B,B,38,Mathematics,Semester 2,68,55,36,Under-7,20.2,78,45,3,M,1
+FHS1747,Female,Grade 12,Science,12A,A,35,Life Sciences,Semester 1,20,67,11,Under-7,12.4,33,28,1,L,0
+FHS1748,Male,Grade 12,Commerce,12B,B,38,Business Studies,Semester 2,45,26,46,Above-7,7.5,51,18,1,L,0
+FHS1749,Male,Grade 12,Commerce,12B,B,38,Accounting,Semester 1,27,35,64,Above-7,10.6,65,31,2,L,0
+FHS1750,Female,Grade 12,Science,12A,A,45,Geography,Semester 1,54,46,51,Under-7,15.6,51,51,4,M,1
+FHS1751,Female,Grade 12,Commerce,12B,B,45,Economics,Semester 1,51,66,43,Under-7,8.9,41,38,2,L,0
+FHS1752,Female,Grade 12,Science,12A,A,45,Geography,Semester 1,62,14,25,Under-7,15.0,65,44,3,M,1
+FHS1753,Male,Grade 12,Commerce,12B,B,32,Life Orientation,Semester 1,88,41,57,Under-7,16.6,67,86,7,H,1
+FHS1754,Female,Grade 12,Science,12A,A,38,Mathematics,Semester 1,30,36,43,Above-7,7.1,39,16,1,L,0
+FHS1755,Male,Grade 12,Commerce,12B,B,42,English FAL,Semester 1,26,39,9,Under-7,5.0,35,41,3,M,1
+FHS1756,Male,Grade 12,Commerce,12B,B,32,Life Orientation,Semester 1,99,54,59,Under-7,21.3,98,93,7,H,1
+FHS1757,Female,Grade 12,Science,12A,A,35,Mathematics,Semester 2,28,10,40,Above-7,6.1,63,5,1,L,0
+FHS1758,Male,Grade 12,Tourism,12C,C,35,Geography,Semester 1,91,32,75,Under-7,19.2,71,70,6,H,1
+FHS1759,Female,Grade 12,Science,12A,A,38,Life Orientation,Semester 1,16,36,49,Under-7,7.3,28,32,2,L,0
+FHS1760,Female,Grade 12,Commerce,12B,B,35,Life Orientation,Semester 1,64,24,81,Above-7,14.2,64,52,4,M,1
+FHS1761,Male,Grade 12,Commerce,12B,B,42,Economics,Semester 1,65,61,92,Under-7,22.3,91,80,7,H,1
+FHS1762,Male,Grade 12,Science,12A,A,45,Geography,Semester 2,58,37,28,Under-7,7.5,63,43,3,M,1
+FHS1763,Male,Grade 12,Tourism,12C,C,42,Geography,Semester 1,82,70,50,Under-7,16.8,84,60,5,M,1
+FHS1764,Male,Grade 12,Tourism,12C,C,38,Life Orientation,Semester 2,87,52,36,Under-7,17.7,68,73,6,H,1
+FHS1765,Female,Grade 12,Science,12A,A,32,Geography,Semester 1,66,47,53,Above-7,14.1,72,46,3,M,1
+FHS1766,Male,Grade 12,Science,12A,A,42,Mathematics,Semester 1,47,77,52,Under-7,7.2,49,40,3,M,1
+FHS1767,Female,Grade 12,Commerce,12B,B,42,English FAL,Semester 1,4,40,44,Under-7,15.4,54,39,2,L,0
+FHS1768,Male,Grade 12,Tourism,12C,C,35,Life Orientation,Semester 2,87,71,55,Under-7,16.5,76,68,5,M,1
+FHS1769,Male,Grade 12,Tourism,12C,C,45,Tourism,Semester 2,54,33,40,Under-7,16.9,64,61,5,M,1
+FHS1770,Male,Grade 12,Science,12A,A,38,Information Technology,Semester 2,63,34,30,Under-7,6.1,42,47,3,M,1
+FHS1771,Male,Grade 12,Tourism,12C,C,38,Tourism,Semester 2,13,12,46,Above-7,7.0,44,15,1,L,0
+FHS1772,Female,Grade 12,Science,12A,A,35,Information Technology,Semester 1,72,39,63,Above-7,6.6,41,46,3,M,1
+FHS1773,Female,Grade 12,Commerce,12B,B,32,Mathematical Literacy,Semester 1,60,67,42,Under-7,10.8,81,62,5,M,1
+FHS1774,Female,Grade 12,Commerce,12B,B,38,Life Orientation,Semester 2,51,44,70,Under-7,9.2,83,68,5,M,1
+FHS1775,Female,Grade 12,Science,12A,A,45,Geography,Semester 1,22,0,37,Above-7,2.0,36,5,1,L,0
+FHS1776,Female,Grade 12,Commerce,12B,B,48,Business Studies,Semester 1,88,20,59,Under-7,19.2,83,61,5,M,1
+FHS1777,Male,Grade 12,Science,12A,A,42,Life Orientation,Semester 2,60,14,30,Under-7,15.1,60,48,3,M,1
+FHS1778,Female,Grade 12,Tourism,12C,C,45,Mathematical Literacy,Semester 2,72,65,62,Above-7,14.7,73,56,4,M,1
+FHS1779,Female,Grade 12,Commerce,12B,B,32,Life Orientation,Semester 2,87,70,80,Under-7,19.1,96,84,7,H,1
+FHS1780,Female,Grade 12,Science,12A,A,32,Life Sciences,Semester 2,90,38,77,Above-7,18.3,91,54,4,M,1
+FHS1781,Female,Grade 12,Commerce,12B,B,32,Life Orientation,Semester 2,45,35,47,Above-7,5.9,42,24,1,L,0
+FHS1782,Male,Grade 12,Science,12A,A,35,Geography,Semester 1,77,36,32,Above-7,13.2,62,50,4,M,1
+FHS1783,Female,Grade 12,Science,12A,A,35,Life Orientation,Semester 1,70,1,20,Under-7,13.2,65,56,4,M,1
+FHS1784,Male,Grade 12,Science,12A,A,38,Physical Sciences,Semester 1,49,18,38,Above-7,5.1,51,9,1,L,0
+FHS1785,Male,Grade 12,Science,12A,A,48,Information Technology,Semester 2,51,22,34,Under-7,9.0,58,49,3,M,1
+FHS1786,Female,Grade 12,Commerce,12B,B,42,Economics,Semester 1,76,32,27,Above-7,11.8,75,45,3,M,1
+FHS1787,Male,Grade 12,Commerce,12B,B,32,Economics,Semester 2,76,6,55,Under-7,15.7,78,61,5,M,1
+FHS1788,Female,Grade 12,Science,12A,A,38,Mathematics,Semester 1,23,36,24,Under-7,10.1,93,46,3,M,1
+FHS1789,Male,Grade 12,Tourism,12C,C,35,Tourism,Semester 1,34,45,44,Under-7,4.3,56,44,3,M,1
+FHS1790,Female,Grade 12,Science,12A,A,32,Information Technology,Semester 1,75,95,61,Under-7,21.6,86,80,7,H,1
+FHS1791,Male,Grade 12,Science,12A,A,42,Mathematics,Semester 1,34,44,32,Above-7,10.0,47,5,1,L,0
+FHS1792,Male,Grade 12,Commerce,12B,B,35,Mathematical Literacy,Semester 1,37,14,10,Under-7,5.1,24,16,1,L,0
+FHS1793,Female,Grade 12,Science,12A,A,32,Life Sciences,Semester 2,36,24,16,Above-7,12.3,62,21,1,L,0
+FHS1794,Female,Grade 12,Tourism,12C,C,42,Life Orientation,Semester 1,40,73,40,Under-7,13.9,79,66,5,M,1
+FHS1795,Male,Grade 12,Tourism,12C,C,45,History,Semester 1,55,47,50,Above-7,16.6,92,48,3,M,1
+FHS1796,Female,Grade 12,Commerce,12B,B,32,Business Studies,Semester 1,38,34,26,Under-7,8.2,68,43,3,M,1
+FHS1797,Female,Grade 12,Tourism,12C,C,32,Tourism,Semester 2,91,55,50,Under-7,17.7,82,80,7,H,1
+FHS1798,Female,Grade 12,Commerce,12B,B,42,Mathematics,Semester 2,79,62,60,Under-7,21.0,81,74,6,H,1
+FHS1799,Male,Grade 12,Commerce,12B,B,42,Mathematics,Semester 2,8,0,39,Under-7,3.4,25,5,1,L,0
+FHS1800,Male,Grade 12,Science,12A,A,32,Geography,Semester 2,64,48,51,Under-7,7.5,58,42,3,M,1
+FHS1801,Female,Grade 12,Science,12A,A,48,English FAL,Semester 1,99,63,99,Under-7,19.5,82,83,7,H,1
+FHS1802,Female,Grade 12,Tourism,12C,C,35,Life Orientation,Semester 2,57,51,65,Under-7,16.0,81,70,6,H,1
+FHS1803,Female,Grade 12,Science,12A,A,32,Life Orientation,Semester 2,0,34,31,Above-7,5.5,19,5,1,L,0
+FHS1804,Male,Grade 12,Commerce,12B,B,35,English FAL,Semester 1,70,25,55,Under-7,13.9,41,47,3,M,1
+FHS1805,Male,Grade 12,Commerce,12B,B,35,Accounting,Semester 1,36,50,54,Above-7,7.6,46,11,1,L,0
+FHS1806,Male,Grade 12,Commerce,12B,B,32,English FAL,Semester 1,0,0,39,Above-7,2.7,28,5,1,L,0
+FHS1807,Female,Grade 12,Science,12A,A,32,Geography,Semester 1,81,42,73,Under-7,24.3,88,74,6,H,1
+FHS1808,Female,Grade 12,Commerce,12B,B,32,Accounting,Semester 2,79,66,66,Under-7,13.6,80,81,7,H,1
+FHS1809,Female,Grade 12,Science,12A,A,38,Physical Sciences,Semester 2,28,63,96,Above-7,10.5,60,33,2,L,0
+FHS1810,Female,Grade 12,Science,12A,A,32,English FAL,Semester 2,63,38,64,Under-7,6.2,52,50,4,M,1
+FHS1811,Male,Grade 12,Commerce,12B,B,38,English FAL,Semester 2,88,52,57,Above-7,13.3,70,49,3,M,1
+FHS1812,Female,Grade 12,Science,12A,A,48,Geography,Semester 1,99,47,58,Under-7,8.4,55,49,3,M,1
+FHS1813,Male,Grade 12,Commerce,12B,B,32,Mathematics,Semester 2,55,51,80,Under-7,21.2,81,55,4,M,1
+FHS1814,Male,Grade 12,Commerce,12B,B,42,English FAL,Semester 2,40,41,46,Under-7,11.4,59,44,3,M,1
+FHS1815,Female,Grade 12,Commerce,12B,B,38,Economics,Semester 1,48,37,59,Under-7,23.2,80,62,5,M,1
+FHS1816,Male,Grade 12,Commerce,12B,B,48,Mathematical Literacy,Semester 2,46,60,91,Under-7,17.3,55,56,4,M,1
+FHS1817,Male,Grade 12,Science,12A,A,32,Life Sciences,Semester 2,39,23,59,Under-7,12.0,78,53,4,M,1
+FHS1818,Female,Grade 12,Science,12A,A,32,Physical Sciences,Semester 1,81,63,66,Under-7,19.0,91,65,5,M,1
+FHS1819,Male,Grade 12,Science,12A,A,35,Physical Sciences,Semester 2,26,7,30,Under-7,13.5,39,28,1,L,0
+FHS1820,Female,Grade 12,Commerce,12B,B,42,Accounting,Semester 1,72,31,42,Under-7,15.0,51,51,4,M,1
+FHS1821,Female,Grade 12,Commerce,12B,B,38,Business Studies,Semester 2,64,22,75,Under-7,10.0,65,52,4,M,1
+FHS1822,Male,Grade 12,Tourism,12C,C,32,English FAL,Semester 2,35,53,51,Under-7,14.0,54,52,4,M,1
+FHS1823,Male,Grade 12,Science,12A,A,42,Physical Sciences,Semester 2,54,82,40,Under-7,12.7,62,55,4,M,1
+FHS1824,Female,Grade 12,Tourism,12C,C,35,History,Semester 2,60,69,66,Above-7,15.1,69,62,5,M,1
+FHS1825,Male,Grade 12,Science,12A,A,38,English FAL,Semester 2,63,42,47,Above-7,9.0,52,24,1,L,0
+FHS1826,Female,Grade 12,Commerce,12B,B,35,Mathematical Literacy,Semester 1,30,20,41,Under-7,2.0,68,24,1,L,0
+FHS1827,Female,Grade 12,Tourism,12C,C,32,Mathematical Literacy,Semester 2,66,50,45,Under-7,13.2,68,59,4,M,1
+FHS1828,Male,Grade 12,Science,12A,A,42,Geography,Semester 1,77,55,69,Under-7,18.5,80,73,6,H,1
+FHS1829,Male,Grade 12,Tourism,12C,C,38,History,Semester 2,35,31,33,Under-7,6.0,52,37,2,L,0
+FHS1830,Female,Grade 12,Commerce,12B,B,38,English FAL,Semester 2,58,39,58,Under-7,3.6,67,54,4,M,1
+FHS1831,Male,Grade 12,Tourism,12C,C,48,History,Semester 1,91,51,54,Under-7,16.8,82,75,6,H,1
+FHS1832,Male,Grade 12,Science,12A,A,32,Physical Sciences,Semester 1,72,40,61,Under-7,7.2,68,50,4,M,1
+FHS1833,Male,Grade 12,Science,12A,A,38,Life Sciences,Semester 1,70,29,57,Under-7,14.9,70,71,6,H,1
+FHS1834,Male,Grade 12,Commerce,12B,B,48,Life Orientation,Semester 2,52,34,38,Under-7,11.5,69,51,4,M,1
+FHS1835,Female,Grade 12,Tourism,12C,C,32,History,Semester 2,51,41,15,Above-7,5.5,56,27,1,L,0
+FHS1836,Male,Grade 12,Tourism,12C,C,32,English FAL,Semester 2,54,66,62,Under-7,9.3,71,74,6,H,1
+FHS1837,Female,Grade 12,Science,12A,A,32,Life Orientation,Semester 1,43,6,27,Above-7,10.4,46,8,1,L,0
+FHS1838,Female,Grade 12,Science,12A,A,38,Life Sciences,Semester 2,50,55,54,Under-7,9.1,67,47,3,M,1
+FHS1839,Male,Grade 12,Tourism,12C,C,38,History,Semester 2,61,46,89,Under-7,14.0,91,68,5,M,1
+FHS1840,Female,Grade 12,Tourism,12C,C,35,Geography,Semester 1,82,36,44,Under-7,12.5,52,54,4,M,1
+FHS1841,Male,Grade 12,Commerce,12B,B,32,Mathematical Literacy,Semester 1,57,57,76,Above-7,14.6,73,40,3,M,1
+FHS1842,Male,Grade 12,Tourism,12C,C,35,Geography,Semester 1,90,55,73,Under-7,15.8,95,75,6,H,1
+FHS1843,Male,Grade 12,Commerce,12B,B,38,Mathematical Literacy,Semester 1,62,53,59,Under-7,17.9,86,66,5,M,1
+FHS1844,Female,Grade 12,Commerce,12B,B,38,Life Orientation,Semester 1,40,53,37,Above-7,13.6,53,27,1,L,0
+FHS1845,Female,Grade 12,Science,12A,A,35,Physical Sciences,Semester 2,29,0,24,Above-7,3.8,39,5,1,L,0
+FHS1846,Female,Grade 12,Science,12A,A,35,Information Technology,Semester 2,71,77,59,Under-7,17.4,78,70,6,H,1
+FHS1847,Female,Grade 12,Commerce,12B,B,35,Business Studies,Semester 1,74,75,51,Under-7,11.3,62,54,4,M,1
+FHS1848,Male,Grade 12,Tourism,12C,C,42,Tourism,Semester 2,12,14,21,Above-7,6.6,36,8,1,L,0
+FHS1849,Female,Grade 12,Commerce,12B,B,35,Mathematics,Semester 1,57,10,43,Under-7,14.5,58,46,3,M,1
+FHS1850,Male,Grade 12,Science,12A,A,38,English FAL,Semester 1,64,48,72,Under-7,12.2,83,70,6,H,1
+FHS1851,Female,Grade 12,Commerce,12B,B,35,Economics,Semester 2,42,34,30,Under-7,12.6,66,51,4,M,1
+FHS1852,Male,Grade 12,Science,12A,A,38,Life Sciences,Semester 2,85,64,75,Under-7,22.2,95,83,7,H,1
+FHS1853,Female,Grade 12,Tourism,12C,C,38,Tourism,Semester 1,96,24,65,Under-7,20.0,88,79,6,H,1
+FHS1854,Female,Grade 12,Tourism,12C,C,35,Tourism,Semester 2,78,52,56,Under-7,16.3,89,73,6,H,1
+FHS1855,Female,Grade 12,Science,12A,A,35,Mathematics,Semester 1,93,65,50,Under-7,11.3,72,58,4,M,1
+FHS1856,Male,Grade 12,Science,12A,A,48,Mathematics,Semester 1,84,65,37,Under-7,9.1,79,63,5,M,1
+FHS1857,Female,Grade 12,Commerce,12B,B,38,Economics,Semester 1,72,27,86,Under-7,11.2,83,63,5,M,1
+FHS1858,Female,Grade 12,Science,12A,A,38,Life Orientation,Semester 1,2,27,22,Under-7,9.6,48,41,3,M,1
+FHS1859,Female,Grade 12,Commerce,12B,B,32,Accounting,Semester 1,52,75,55,Under-7,15.8,57,53,4,M,1
+FHS1860,Male,Grade 12,Science,12A,A,38,Life Orientation,Semester 1,39,0,42,Above-7,14.4,66,39,2,L,0
+FHS1861,Male,Grade 12,Commerce,12B,B,42,English FAL,Semester 1,47,55,40,Above-7,15.3,73,41,3,M,1
+FHS1862,Female,Grade 12,Science,12A,A,42,Life Sciences,Semester 1,49,36,58,Under-7,10.0,58,44,3,M,1
+FHS1863,Female,Grade 12,Commerce,12B,B,38,English FAL,Semester 2,78,39,49,Under-7,12.1,74,64,5,M,1
+FHS1864,Female,Grade 12,Science,12A,A,38,English FAL,Semester 1,41,41,26,Under-7,6.2,52,36,2,L,0
+FHS1865,Female,Grade 12,Science,12A,A,38,Mathematics,Semester 2,43,29,34,Under-7,9.9,38,30,2,L,0
+FHS1866,Male,Grade 12,Commerce,12B,B,35,Business Studies,Semester 1,65,38,44,Under-7,17.1,61,57,4,M,1
+FHS1867,Female,Grade 12,Commerce,12B,B,35,Business Studies,Semester 1,62,51,57,Under-7,10.9,78,60,5,M,1
+FHS1868,Female,Grade 12,Science,12A,A,42,Mathematics,Semester 2,19,32,20,Under-7,11.8,50,22,1,L,0
+FHS1869,Male,Grade 12,Science,12A,A,35,Information Technology,Semester 2,72,65,51,Under-7,21.9,80,77,6,H,1
+FHS1870,Male,Grade 12,Science,12A,A,32,Mathematics,Semester 2,19,18,41,Above-7,11.8,46,13,1,L,0
+FHS1871,Male,Grade 12,Science,12A,A,35,Physical Sciences,Semester 2,63,19,72,Under-7,19.1,65,50,4,M,1
+FHS1872,Female,Grade 12,Science,12A,A,42,Information Technology,Semester 1,53,65,37,Under-7,12.0,67,52,4,M,1
+FHS1873,Male,Grade 12,Commerce,12B,B,38,Mathematics,Semester 2,70,51,46,Above-7,14.7,69,39,2,L,0
+FHS1874,Male,Grade 12,Science,12A,A,35,Life Orientation,Semester 2,24,61,66,Under-7,16.2,55,65,5,M,1
+FHS1875,Male,Grade 12,Science,12A,A,32,Information Technology,Semester 1,57,76,86,Under-7,14.4,68,61,5,M,1
+FHS1876,Female,Grade 12,Commerce,12B,B,42,Economics,Semester 2,70,46,49,Under-7,20.1,67,71,6,H,1
+FHS1877,Male,Grade 12,Commerce,12B,B,42,Accounting,Semester 2,76,80,85,Under-7,15.9,82,63,5,M,1
+FHS1878,Male,Grade 12,Science,12A,A,42,Mathematics,Semester 2,33,10,35,Under-7,7.2,45,28,1,L,0
+FHS1879,Female,Grade 12,Tourism,12C,C,35,History,Semester 1,49,32,34,Above-7,12.1,62,38,2,L,0
+FHS1880,Female,Grade 12,Science,12A,A,42,Physical Sciences,Semester 2,86,50,51,Above-7,17.6,81,52,4,M,1
+FHS1881,Female,Grade 12,Science,12A,A,45,Life Sciences,Semester 2,29,6,24,Under-7,2.0,20,20,1,L,0
+FHS1882,Female,Grade 12,Science,12A,A,42,Geography,Semester 2,82,50,72,Under-7,16.4,86,72,6,H,1
+FHS1883,Female,Grade 12,Science,12A,A,32,Life Orientation,Semester 2,55,73,66,Under-7,9.6,51,52,4,M,1
+FHS1884,Male,Grade 12,Science,12A,A,32,Life Orientation,Semester 1,57,39,14,Above-7,10.4,72,32,2,L,0
+FHS1885,Male,Grade 12,Tourism,12C,C,32,History,Semester 1,47,32,71,Under-7,9.3,64,55,4,M,1
+FHS1886,Female,Grade 12,Science,12A,A,35,Information Technology,Semester 2,49,49,35,Under-7,11.8,67,60,5,M,1
+FHS1887,Male,Grade 12,Commerce,12B,B,35,Mathematical Literacy,Semester 2,39,34,15,Above-7,14.6,41,26,1,L,0
+FHS1888,Female,Grade 12,Commerce,12B,B,38,Accounting,Semester 1,28,17,9,Above-7,8.0,35,5,1,L,0
+FHS1889,Male,Grade 12,Science,12A,A,38,Information Technology,Semester 2,71,32,74,Above-7,15.5,79,43,3,M,1
+FHS1890,Male,Grade 12,Commerce,12B,B,42,English FAL,Semester 2,9,31,15,Above-7,10.7,38,5,1,L,0
+FHS1891,Male,Grade 12,Commerce,12B,B,35,Life Orientation,Semester 1,70,14,18,Under-7,21.2,50,60,5,M,1
+FHS1892,Male,Grade 12,Science,12A,A,35,Life Sciences,Semester 2,47,26,30,Above-7,8.5,45,37,2,L,0
+FHS1893,Male,Grade 12,Tourism,12C,C,42,Tourism,Semester 1,37,56,65,Under-7,8.4,65,44,3,M,1
+FHS1894,Male,Grade 12,Commerce,12B,B,42,Mathematics,Semester 1,50,29,17,Under-7,9.6,67,39,2,L,0
+FHS1895,Female,Grade 12,Science,12A,A,45,Geography,Semester 2,33,27,40,Under-7,10.1,45,40,3,M,1
+FHS1896,Female,Grade 12,Science,12A,A,35,Life Orientation,Semester 2,46,27,53,Above-7,12.2,65,31,2,L,0
+FHS1897,Female,Grade 12,Commerce,12B,B,35,Life Orientation,Semester 1,74,96,53,Under-7,12.4,79,73,6,H,1
+FHS1898,Male,Grade 12,Commerce,12B,B,38,English FAL,Semester 2,53,12,74,Under-7,7.2,44,42,3,M,1
+FHS1899,Female,Grade 12,Commerce,12B,B,42,Mathematics,Semester 1,59,66,48,Under-7,9.9,61,41,3,M,1
+FHS1900,Male,Grade 12,Tourism,12C,C,35,History,Semester 1,59,74,24,Under-7,13.4,77,70,6,H,1
+FHS1901,Female,Grade 12,Science,12A,A,32,Physical Sciences,Semester 1,35,37,38,Above-7,8.7,43,10,1,L,0
+FHS1902,Male,Grade 12,Science,12A,A,38,Geography,Semester 1,52,24,22,Under-7,2.0,39,38,2,L,0
+FHS1903,Female,Grade 12,Science,12A,A,42,English FAL,Semester 2,52,40,31,Under-7,12.3,37,50,4,M,1
+FHS1904,Female,Grade 12,Commerce,12B,B,32,Mathematics,Semester 1,78,0,30,Above-7,10.8,80,37,2,L,0
+FHS1905,Female,Grade 12,Commerce,12B,B,42,Business Studies,Semester 1,78,61,73,Under-7,18.8,91,80,7,H,1
+FHS1906,Male,Grade 12,Science,12A,A,42,Life Sciences,Semester 1,14,16,56,Under-7,6.3,44,27,1,L,0
+FHS1907,Male,Grade 12,Tourism,12C,C,35,History,Semester 1,78,92,78,Above-7,16.1,74,70,6,H,1
+FHS1908,Male,Grade 12,Commerce,12B,B,42,Life Orientation,Semester 1,63,85,43,Under-7,15.6,99,67,5,M,1
+FHS1909,Male,Grade 12,Science,12A,A,38,Physical Sciences,Semester 1,56,58,33,Under-7,11.2,52,40,3,M,1
+FHS1910,Female,Grade 12,Tourism,12C,C,42,Mathematical Literacy,Semester 2,82,40,61,Under-7,14.0,71,62,5,M,1
+FHS1911,Male,Grade 12,Science,12A,A,45,Information Technology,Semester 1,99,50,33,Under-7,18.3,79,74,6,H,1
+FHS1912,Male,Grade 12,Science,12A,A,42,Physical Sciences,Semester 1,93,42,63,Under-7,15.6,82,58,4,M,1
+FHS1913,Female,Grade 12,Science,12A,A,42,Information Technology,Semester 1,86,33,66,Above-7,17.0,57,43,3,M,1
+FHS1914,Female,Grade 12,Commerce,12B,B,35,English FAL,Semester 2,48,44,47,Above-7,11.4,43,32,2,L,0
+FHS1915,Male,Grade 12,Tourism,12C,C,38,Life Orientation,Semester 1,58,64,58,Under-7,16.1,71,78,6,H,1
+FHS1916,Male,Grade 12,Science,12A,A,42,Life Sciences,Semester 1,35,55,55,Above-7,9.6,68,16,1,L,0
+FHS1917,Male,Grade 12,Commerce,12B,B,38,Accounting,Semester 1,65,57,70,Under-7,15.9,79,61,5,M,1
+FHS1918,Female,Grade 12,Science,12A,A,38,Physical Sciences,Semester 2,84,56,50,Under-7,19.4,78,76,6,H,1
+FHS1919,Male,Grade 12,Commerce,12B,B,45,Business Studies,Semester 2,49,18,51,Above-7,8.8,72,24,1,L,0
+FHS1920,Female,Grade 12,Science,12A,A,42,Life Sciences,Semester 2,68,68,52,Under-7,11.5,90,55,4,M,1
+FHS1921,Male,Grade 12,Tourism,12C,C,32,Life Orientation,Semester 2,60,46,26,Under-7,15.6,77,68,5,M,1
+FHS1922,Female,Grade 12,Science,12A,A,32,Physical Sciences,Semester 1,61,74,76,Under-7,18.3,59,59,4,M,1
+FHS1923,Male,Grade 12,Science,12A,A,38,Geography,Semester 2,39,15,39,Under-7,6.3,42,44,3,M,1
+FHS1924,Male,Grade 12,Science,12A,A,38,English FAL,Semester 2,38,51,34,Under-7,12.8,51,40,3,M,1
+FHS1925,Male,Grade 12,Tourism,12C,C,35,Mathematical Literacy,Semester 1,58,56,43,Above-7,9.3,57,41,3,M,1
+FHS1926,Female,Grade 12,Science,12A,A,45,Mathematics,Semester 1,1,10,13,Above-7,6.2,12,5,1,L,0
+FHS1927,Female,Grade 12,Science,12A,A,45,Information Technology,Semester 1,73,24,87,Under-7,26.6,79,68,5,M,1
+FHS1928,Male,Grade 12,Science,12A,A,38,Geography,Semester 1,8,27,16,Under-7,6.7,46,30,2,L,0
+FHS1929,Male,Grade 12,Tourism,12C,C,35,English FAL,Semester 1,50,0,40,Above-7,8.1,67,35,2,L,0
+FHS1930,Male,Grade 12,Commerce,12B,B,48,English FAL,Semester 1,43,3,28,Under-7,10.1,52,44,3,M,1
+FHS1931,Female,Grade 12,Science,12A,A,32,Physical Sciences,Semester 2,41,38,59,Under-7,10.2,79,44,3,M,1
+FHS1932,Male,Grade 12,Science,12A,A,45,Information Technology,Semester 2,35,13,40,Under-7,3.2,42,40,3,M,1
+FHS1933,Male,Grade 12,Science,12A,A,35,Mathematics,Semester 2,66,47,52,Under-7,11.0,60,39,2,L,0
+FHS1934,Male,Grade 12,Commerce,12B,B,35,Life Orientation,Semester 2,95,99,73,Under-7,16.6,100,97,7,H,1
+FHS1935,Male,Grade 12,Commerce,12B,B,38,Economics,Semester 2,22,60,0,Under-7,7.8,64,23,1,L,0
+FHS1936,Male,Grade 12,Science,12A,A,35,English FAL,Semester 1,22,40,27,Above-7,9.1,35,13,1,L,0
+FHS1937,Male,Grade 12,Science,12A,A,35,Information Technology,Semester 1,52,50,36,Above-7,15.2,56,36,2,L,0
+FHS1938,Male,Grade 12,Commerce,12B,B,38,Business Studies,Semester 1,62,62,57,Under-7,20.5,73,65,5,M,1
+FHS1939,Male,Grade 12,Commerce,12B,B,35,Accounting,Semester 2,94,77,20,Under-7,27.1,85,74,6,H,1
+FHS1940,Female,Grade 12,Commerce,12B,B,42,English FAL,Semester 1,54,24,26,Under-7,5.5,51,28,1,L,0
+FHS1941,Male,Grade 12,Science,12A,A,42,Life Orientation,Semester 2,41,50,62,Under-7,15.4,83,65,5,M,1
+FHS1942,Male,Grade 12,Science,12A,A,45,Geography,Semester 2,48,33,56,Above-7,15.0,69,43,3,M,1
+FHS1943,Female,Grade 12,Commerce,12B,B,45,Mathematical Literacy,Semester 1,90,28,76,Under-7,18.2,89,75,6,H,1
+FHS1944,Female,Grade 12,Tourism,12C,C,35,History,Semester 2,39,58,44,Above-7,5.2,38,27,1,L,0
+FHS1945,Female,Grade 12,Tourism,12C,C,42,Mathematical Literacy,Semester 1,73,37,75,Under-7,13.8,58,72,6,H,1
+FHS1946,Female,Grade 12,Science,12A,A,38,Mathematics,Semester 1,32,23,43,Under-7,12.8,33,24,1,L,0
+FHS1947,Male,Grade 12,Science,12A,A,42,Information Technology,Semester 1,88,79,70,Under-7,21.0,81,77,6,H,1
+FHS1948,Female,Grade 12,Tourism,12C,C,32,Geography,Semester 1,82,81,84,Under-7,20.1,83,79,6,H,1
+FHS1949,Male,Grade 12,Commerce,12B,B,42,Business Studies,Semester 1,49,29,79,Under-7,11.9,64,53,4,M,1
+FHS1950,Female,Grade 12,Science,12A,A,42,Physical Sciences,Semester 1,66,0,71,Under-7,12.9,54,27,1,L,0
+FHS1951,Female,Grade 12,Tourism,12C,C,42,English FAL,Semester 2,66,68,64,Above-7,12.2,77,44,3,M,1
+FHS1952,Male,Grade 12,Science,12A,A,42,English FAL,Semester 1,49,33,40,Under-7,13.8,49,48,3,M,1
+FHS1953,Male,Grade 12,Tourism,12C,C,45,History,Semester 2,38,48,40,Under-7,9.7,64,58,4,M,1
+FHS1954,Female,Grade 12,Science,12A,A,32,Mathematics,Semester 2,21,65,62,Under-7,22.1,60,50,4,M,1
+FHS1955,Male,Grade 12,Science,12A,A,38,English FAL,Semester 2,25,57,61,Under-7,15.2,51,31,2,L,0
+FHS1956,Male,Grade 12,Tourism,12C,C,42,English FAL,Semester 1,48,48,39,Under-7,9.6,57,36,2,L,0
+FHS1957,Male,Grade 12,Science,12A,A,45,Physical Sciences,Semester 2,75,36,54,Under-7,10.0,68,53,4,M,1
+FHS1958,Female,Grade 12,Science,12A,A,38,Geography,Semester 1,38,21,38,Above-7,7.5,62,17,1,L,0
+FHS1959,Male,Grade 12,Science,12A,A,38,Geography,Semester 1,77,52,53,Under-7,15.3,86,71,6,H,1
+FHS1960,Male,Grade 12,Commerce,12B,B,48,Mathematics,Semester 1,99,66,71,Under-7,20.4,84,86,7,H,1
+FHS1961,Female,Grade 12,Tourism,12C,C,48,Mathematical Literacy,Semester 2,63,81,60,Under-7,20.4,76,72,6,H,1
+FHS1962,Male,Grade 12,Science,12A,A,38,Physical Sciences,Semester 1,43,15,63,Under-7,4.0,44,25,1,L,0
+FHS1963,Female,Grade 12,Science,12A,A,35,Physical Sciences,Semester 2,66,47,36,Under-7,9.5,55,39,2,L,0
+FHS1964,Male,Grade 12,Science,12A,A,42,Physical Sciences,Semester 2,65,43,56,Under-7,21.0,77,60,5,M,1
+FHS1965,Female,Grade 12,Tourism,12C,C,45,Tourism,Semester 1,55,82,55,Under-7,14.4,91,59,4,M,1
+FHS1966,Male,Grade 12,Tourism,12C,C,42,English FAL,Semester 2,36,35,33,Under-7,11.4,60,35,2,L,0
+FHS1967,Male,Grade 12,Commerce,12B,B,32,English FAL,Semester 1,35,0,34,Under-7,3.0,47,26,1,L,0
+FHS1968,Female,Grade 12,Science,12A,A,35,Life Orientation,Semester 2,65,28,67,Under-7,15.9,54,60,5,M,1
+FHS1969,Female,Grade 12,Commerce,12B,B,42,Economics,Semester 1,99,49,52,Under-7,21.2,70,76,6,H,1
+FHS1970,Male,Grade 12,Science,12A,A,35,Physical Sciences,Semester 2,53,0,14,Under-7,14.4,45,29,1,L,0
+FHS1971,Male,Grade 12,Science,12A,A,48,Life Sciences,Semester 2,58,40,81,Under-7,18.8,66,51,4,M,1
+FHS1972,Female,Grade 12,Commerce,12B,B,42,Accounting,Semester 2,78,43,87,Above-7,14.0,59,43,3,M,1
+FHS1973,Female,Grade 12,Commerce,12B,B,35,Life Orientation,Semester 2,66,46,87,Above-7,10.6,79,62,5,M,1
+FHS1974,Male,Grade 12,Tourism,12C,C,35,English FAL,Semester 1,24,2,26,Above-7,8.0,44,5,1,L,0
+FHS1975,Female,Grade 12,Science,12A,A,35,Life Sciences,Semester 1,68,48,53,Under-7,12.0,71,68,5,M,1
+FHS1976,Female,Grade 12,Science,12A,A,42,English FAL,Semester 2,58,54,51,Under-7,13.9,67,59,4,M,1
+FHS1977,Male,Grade 12,Tourism,12C,C,32,Life Orientation,Semester 2,34,23,35,Under-7,2.0,34,25,1,L,0
+FHS1978,Female,Grade 12,Tourism,12C,C,38,Tourism,Semester 2,56,24,66,Under-7,13.0,73,72,6,H,1
+FHS1979,Male,Grade 12,Commerce,12B,B,38,English FAL,Semester 2,40,43,40,Under-7,17.6,66,43,3,M,1
+FHS1980,Female,Grade 12,Commerce,12B,B,38,Economics,Semester 1,24,18,44,Above-7,8.9,41,20,1,L,0
+FHS1981,Male,Grade 12,Tourism,12C,C,32,Tourism,Semester 1,67,59,59,Under-7,16.0,82,68,5,M,1
+FHS1982,Female,Grade 12,Commerce,12B,B,38,English FAL,Semester 2,31,56,17,Under-7,2.6,39,38,2,L,0
+FHS1983,Female,Grade 12,Tourism,12C,C,32,Life Orientation,Semester 2,1,12,20,Above-7,2.0,40,5,1,L,0
+FHS1984,Female,Grade 12,Tourism,12C,C,32,Tourism,Semester 2,54,82,41,Above-7,16.7,64,32,2,L,0
+FHS1985,Female,Grade 12,Commerce,12B,B,42,Accounting,Semester 2,83,96,44,Under-7,15.9,78,67,5,M,1
+FHS1986,Female,Grade 12,Commerce,12B,B,48,Mathematics,Semester 1,24,24,35,Above-7,11.4,57,7,1,L,0
+FHS1987,Male,Grade 12,Science,12A,A,35,Life Orientation,Semester 1,75,50,64,Under-7,18.2,77,94,7,H,1
+FHS1988,Female,Grade 12,Commerce,12B,B,35,Mathematical Literacy,Semester 1,52,21,49,Under-7,12.9,58,43,3,M,1
+FHS1989,Male,Grade 12,Commerce,12B,B,42,Life Orientation,Semester 1,36,33,12,Under-7,4.5,25,38,2,L,0
+FHS1990,Male,Grade 12,Science,12A,A,35,Mathematics,Semester 1,73,12,50,Under-7,13.3,58,45,3,M,1
+FHS1991,Male,Grade 12,Science,12A,A,45,Life Orientation,Semester 1,75,54,36,Under-7,18.4,95,70,6,H,1
+FHS1992,Female,Grade 12,Science,12A,A,32,Information Technology,Semester 2,88,57,82,Under-7,16.6,72,77,6,H,1
+FHS1993,Male,Grade 12,Science,12A,A,35,English FAL,Semester 1,78,18,26,Under-7,10.6,49,42,3,M,1
+FHS1994,Male,Grade 12,Science,12A,A,38,Information Technology,Semester 1,56,38,48,Under-7,18.3,68,61,5,M,1
+FHS1995,Male,Grade 12,Commerce,12B,B,35,English FAL,Semester 1,90,80,15,Under-7,14.2,59,63,5,M,1
+FHS1996,Female,Grade 12,Tourism,12C,C,42,Life Orientation,Semester 2,78,51,61,Under-7,13.3,78,72,6,H,1
+FHS1997,Female,Grade 12,Science,12A,A,42,English FAL,Semester 2,57,15,68,Under-7,10.8,24,36,2,L,0
+FHS1998,Female,Grade 12,Tourism,12C,C,42,Life Orientation,Semester 1,67,26,24,Under-7,8.6,58,42,3,M,1
+FHS1999,Male,Grade 12,Science,12A,A,45,Life Sciences,Semester 1,99,67,59,Under-7,21.0,81,78,6,H,1
+FHS2000,Male,Grade 12,Commerce,12B,B,42,Economics,Semester 1,51,21,41,Above-7,8.1,71,28,1,L,0

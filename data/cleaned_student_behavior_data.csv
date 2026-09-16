@@ -1,0 +1,68 @@
+gender,grade,class_section,subject,semester,visited_resources,announcements_viewed,discussion_participation,absence_days,performance_class,is_pass
+Male,Grade 8,A,Mathematics,Semester 1,14,12,19,Above-7,L,0
+Female,Grade 8,A,Mathematics,Semester 1,70,44,60,Above-7,H,1
+Male,Grade 8,A,Natural Sciences,Semester 1,85,52,43,Under-7,M,1
+Male,Grade 9,A,Information Technology,Semester 1,12,7,33,Above-7,L,0
+Female,Grade 9,A,Information Technology,Semester 1,35,28,90,Under-7,M,1
+Female,Grade 9,A,Information Technology,Semester 1,33,30,90,Under-7,M,1
+Female,Grade 12,A,English FAL,Semester 1,4,39,90,Under-7,H,1
+Female,Grade 12,A,English FAL,Semester 1,80,40,88,Under-7,H,1
+Female,Grade 12,A,English FAL,Semester 1,39,50,77,Under-7,M,1
+Female,Grade 12,A,English FAL,Semester 1,14,12,70,Above-7,L,0
+Male,Grade 12,A,English FAL,Semester 1,15,16,50,Above-7,L,0
+Female,Grade 12,A,English FAL,Semester 1,90,16,40,Under-7,M,1
+Female,Grade 11,A,Natural Sciences,Semester 1,70,19,75,Under-7,H,1
+Male,Grade 12,A,English FAL,Semester 1,50,8,30,Above-7,L,0
+Male,Grade 8,B,Mathematics,Semester 1,5,4,1,Above-7,L,0
+Male,Grade 10,A,Information Technology,Semester 1,70,32,40,Under-7,M,1
+Male,Grade 10,A,Information Technology,Semester 1,90,70,80,Under-7,H,1
+Male,Grade 10,A,Information Technology,Semester 1,13,16,12,Under-7,M,1
+Male,Grade 10,A,Information Technology,Semester 1,5,7,2,Above-7,L,0
+Male,Grade 12,A,English FAL,Semester 1,5,18,19,Above-7,L,0
+Female,Grade 12,A,English FAL,Semester 1,10,19,30,Above-7,M,1
+Female,Grade 12,A,English FAL,Semester 1,75,23,80,Under-7,H,1
+Female,Grade 12,A,Information Technology,Semester 1,69,35,30,Under-7,H,1
+Male,Grade 9,A,Information Technology,Semester 1,70,37,44,Under-7,M,1
+Male,Grade 9,A,Information Technology,Semester 1,80,33,33,Under-7,M,1
+Male,Grade 11,A,Natural Sciences,Semester 2,63,71,89,Under-7,M,1
+Female,Grade 11,B,Natural Sciences,Semester 2,91,98,40,Under-7,H,1
+Male,Grade 11,B,English FAL,Semester 2,50,33,41,Above-7,M,1
+Male,Grade 11,B,Mathematics,Semester 2,58,73,91,Under-7,H,1
+Male,Grade 11,B,Natural Sciences,Semester 2,50,33,40,Under-7,M,1
+Male,Grade 11,B,Mathematics,Semester 2,84,77,81,Above-7,H,1
+Female,Grade 8,A,Physical Sciences,Semester 1,89,22,31,Under-7,H,1
+Female,Grade 8,A,Physical Sciences,Semester 2,92,29,43,Under-7,H,1
+Male,Grade 8,A,Physical Sciences,Semester 1,80,62,11,Above-7,M,1
+Male,Grade 8,A,Physical Sciences,Semester 2,82,69,13,Above-7,M,1
+Male,Grade 8,A,Physical Sciences,Semester 1,0,2,41,Above-7,L,0
+Male,Grade 8,A,Physical Sciences,Semester 2,2,9,49,Above-7,L,0
+Male,Grade 8,A,Physical Sciences,Semester 1,87,72,10,Above-7,M,1
+Male,Grade 8,A,Physical Sciences,Semester 2,88,79,20,Above-7,M,1
+Male,Grade 8,A,Physical Sciences,Semester 1,82,76,19,Under-7,M,1
+Male,Grade 8,A,Physical Sciences,Semester 2,82,75,29,Under-7,M,1
+Male,Grade 8,A,History,Semester 1,77,76,75,Above-7,M,1
+Male,Grade 8,A,History,Semester 2,76,65,70,Above-7,M,1
+Male,Grade 8,A,Physical Sciences,Semester 1,72,64,39,Above-7,L,0
+Male,Grade 8,A,Physical Sciences,Semester 2,76,66,40,Above-7,L,0
+Male,Grade 8,A,History,Semester 1,92,74,89,Under-7,H,1
+Male,Grade 8,A,History,Semester 2,84,77,85,Under-7,H,1
+Female,Grade 8,A,Physical Sciences,Semester 1,97,22,10,Under-7,H,1
+Female,Grade 8,A,Physical Sciences,Semester 2,98,20,2,Under-7,H,1
+Female,Grade 8,A,History,Semester 1,87,57,80,Under-7,M,1
+Female,Grade 8,A,History,Semester 2,88,43,72,Under-7,M,1
+Female,Grade 8,A,Physical Sciences,Semester 1,90,52,30,Under-7,H,1
+Female,Grade 8,A,Physical Sciences,Semester 2,91,49,22,Under-7,H,1
+Male,Grade 8,A,Physical Sciences,Semester 1,91,80,81,Under-7,H,1
+Male,Grade 8,A,Physical Sciences,Semester 2,90,80,83,Under-7,H,1
+Male,Grade 8,A,History,Semester 1,87,72,89,Above-7,M,1
+Male,Grade 8,A,History,Semester 2,77,83,92,Above-7,M,1
+Female,Grade 8,A,Physical Sciences,Semester 1,99,42,90,Under-7,H,1
+Female,Grade 8,A,Physical Sciences,Semester 2,96,45,92,Under-7,H,1
+Female,Grade 8,A,Physical Sciences,Semester 1,9,14,80,Above-7,L,0
+Female,Grade 8,A,Physical Sciences,Semester 2,6,15,85,Above-7,L,0
+Male,Grade 8,A,History,Semester 1,86,86,41,Under-7,M,1
+Male,Grade 8,A,History,Semester 2,82,78,53,Under-7,M,1
+Female,Grade 8,A,Physical Sciences,Semester 1,7,4,8,Above-7,L,0
+Female,Grade 8,A,Physical Sciences,Semester 2,4,5,8,Above-7,L,0
+Female,Grade 8,A,History,Semester 1,17,14,57,Above-7,L,0
+Female,Grade 8,A,History,Semester 2,14,23,62,Above-7,L,0

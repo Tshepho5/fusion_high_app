@@ -1,0 +1,360 @@
+{
+  "version": "2.0.0-behavior-sa-hybrid",
+  "dataset_records": 2000,
+  "metrics": {
+    "classifier": {
+      "champion": "LogisticRegression",
+      "accuracy": 0.9125,
+      "roc_auc": 0.9702,
+      "f1_score": 0.9391,
+      "all_models": {
+        "LogisticRegression": {
+          "Accuracy": 0.9125,
+          "Precision": 0.9215,
+          "Recall": 0.9574,
+          "F1-Score": 0.9391,
+          "ROC-AUC": 0.9702,
+          "CV-Accuracy": 0.925
+        },
+        "RandomForest": {
+          "Accuracy": 0.8975,
+          "Precision": 0.9057,
+          "Recall": 0.9539,
+          "F1-Score": 0.9292,
+          "ROC-AUC": 0.9605,
+          "CV-Accuracy": 0.9056
+        },
+        "HistGradientBoosting": {
+          "Accuracy": 0.8925,
+          "Precision": 0.9107,
+          "Recall": 0.9397,
+          "F1-Score": 0.925,
+          "ROC-AUC": 0.96,
+          "CV-Accuracy": 0.9088
+        }
+      }
+    },
+    "regressor": {
+      "champion": "Ridge",
+      "r2_score": 0.8925,
+      "mae": 5.65,
+      "rmse": 6.99,
+      "all_models": {
+        "Ridge": {
+          "R2": 0.8925,
+          "MAE": 5.6505,
+          "RMSE": 6.9856,
+          "CV-R2": 0.8968
+        },
+        "RandomForest": {
+          "R2": 0.8503,
+          "MAE": 6.6111,
+          "RMSE": 8.2453,
+          "CV-R2": 0.8646
+        },
+        "HistGradientBoosting": {
+          "R2": 0.8679,
+          "MAE": 6.2108,
+          "RMSE": 7.7444,
+          "CV-R2": 0.8785
+        }
+      }
+    },
+    "unsupervised_clustering": {
+      "algorithm": "KMeans",
+      "n_clusters": 4,
+      "silhouette_score": 0.1906
+    }
+  },
+  "feature_names": [
+    "class_size",
+    "visited_resources",
+    "announcements_viewed",
+    "discussion_participation",
+    "weekly_study_hours",
+    "homework_completion_rate",
+    "gender_Male",
+    "grade_Grade 11",
+    "grade_Grade 12",
+    "grade_Grade 8",
+    "grade_Grade 9",
+    "stream_General",
+    "stream_Science",
+    "stream_Tourism",
+    "class_section_B",
+    "class_section_C",
+    "subject_Business Studies",
+    "subject_EMS",
+    "subject_Economics",
+    "subject_English FAL",
+    "subject_Geography",
+    "subject_History",
+    "subject_Information Technology",
+    "subject_Life Orientation",
+    "subject_Life Sciences",
+    "subject_Mathematical Literacy",
+    "subject_Mathematics",
+    "subject_Natural Sciences",
+    "subject_Physical Sciences",
+    "subject_Social Sciences",
+    "subject_Technology",
+    "subject_Tourism",
+    "semester_Semester 2",
+    "absence_days_Under-7"
+  ],
+  "feature_importance_top10": [
+    {
+      "feature": "absence_days_Under-7",
+      "importance": 0.1107
+    },
+    {
+      "feature": "visited_resources",
+      "importance": 0.0465
+    },
+    {
+      "feature": "homework_completion_rate",
+      "importance": 0.0357
+    },
+    {
+      "feature": "announcements_viewed",
+      "importance": 0.0287
+    },
+    {
+      "feature": "discussion_participation",
+      "importance": 0.0122
+    },
+    {
+      "feature": "weekly_study_hours",
+      "importance": 0.0107
+    },
+    {
+      "feature": "subject_Mathematics",
+      "importance": 0.0077
+    },
+    {
+      "feature": "subject_Mathematical Literacy",
+      "importance": 0.006
+    },
+    {
+      "feature": "subject_Life Orientation",
+      "importance": 0.0052
+    },
+    {
+      "feature": "class_size",
+      "importance": 0.003
+    }
+  ],
+  "unsupervised_personas": [
+    {
+      "cluster_id": 3,
+      "rank": 1,
+      "persona_name": "Autonomous High-Achiever",
+      "badge": "bg-emerald-100 text-emerald-800 border-emerald-300",
+      "color": "#10B981",
+      "description": "Exemplary study ethic, maximum LMS resource views, and proactive self-directed revision.",
+      "recommendation": "Candidate for Advanced Programmes (AP Mathematics / AP Physics), subject Olympiads, and peer tutoring roles.",
+      "mean_score": 72.2,
+      "pass_rate": "99.2%",
+      "avg_visited_resources": 78.6,
+      "avg_study_hours": 17.8,
+      "avg_homework_rate": 83.6
+    },
+    {
+      "cluster_id": 2,
+      "rank": 2,
+      "persona_name": "Consistent Striver",
+      "badge": "bg-blue-100 text-blue-800 border-blue-300",
+      "color": "#3B82F6",
+      "description": "Dependable attendance and homework completion with steady class participation.",
+      "recommendation": "Maintain structured revision routine and introduce timed DBE past exam paper simulations.",
+      "mean_score": 50.0,
+      "pass_rate": "79.4%",
+      "avg_visited_resources": 57.0,
+      "avg_study_hours": 12.4,
+      "avg_homework_rate": 64.7
+    },
+    {
+      "cluster_id": 1,
+      "rank": 3,
+      "persona_name": "Passive / Inconsistent Learner",
+      "badge": "bg-amber-100 text-amber-800 border-amber-300",
+      "color": "#F59E0B",
+      "description": "Attends class but displays low digital portal engagement and inconsistent assignment submissions.",
+      "recommendation": "Assign peer study buddy, monitor weekly homework log, and schedule an educator check-in.",
+      "mean_score": 47.8,
+      "pass_rate": "74.2%",
+      "avg_visited_resources": 56.5,
+      "avg_study_hours": 12.7,
+      "avg_homework_rate": 63.9
+    },
+    {
+      "cluster_id": 0,
+      "rank": 4,
+      "persona_name": "Critical Truant / High-Risk",
+      "badge": "bg-red-100 text-red-800 border-red-300",
+      "color": "#EF4444",
+      "description": "Chronic absence, low study hours, and delayed homework resulting in severe content backlogs.",
+      "recommendation": "Urgent intervention: Compulsory attendance recovery plan, parent notification, and subject remedial bootcamp.",
+      "mean_score": 23.9,
+      "pass_rate": "14.9%",
+      "avg_visited_resources": 33.2,
+      "avg_study_hours": 6.8,
+      "avg_homework_rate": 42.4
+    }
+  ],
+  "scaler": {
+    "num_cols": [
+      "class_size",
+      "visited_resources",
+      "announcements_viewed",
+      "discussion_participation",
+      "weekly_study_hours",
+      "homework_completion_rate"
+    ],
+    "mean": [
+      38.3875,
+      58.5025,
+      44.705,
+      50.255625,
+      12.929,
+      65.674375
+    ],
+    "scale": [
+      4.581467423217151,
+      21.96545569183576,
+      21.60692539441926,
+      20.226474751161533,
+      5.1573899891321,
+      19.006304042590052
+    ]
+  },
+  "logistic_regression": {
+    "intercept": 0.30585053179883,
+    "coefficients": {
+      "class_size": -0.2731182838216495,
+      "visited_resources": 1.2369363613440125,
+      "announcements_viewed": 0.8684718927897338,
+      "discussion_participation": 0.8441066624024719,
+      "weekly_study_hours": 0.8578884908278277,
+      "homework_completion_rate": 1.3191151546006346,
+      "gender_Male": -0.06773405735929923,
+      "grade_Grade 11": 0.09899725715826234,
+      "grade_Grade 12": 0.3714350064955365,
+      "grade_Grade 8": 0.0010186154052158635,
+      "grade_Grade 9": 0.20915771648516085,
+      "stream_General": 0.21017633189037754,
+      "stream_Science": -0.3393814646312438,
+      "stream_Tourism": -0.05691658587939566,
+      "class_section_B": -0.39386303638487635,
+      "class_section_C": -0.31839531912226954,
+      "subject_Business Studies": -0.05029836028991705,
+      "subject_EMS": 0.6851253226094592,
+      "subject_Economics": 0.3320631564168436,
+      "subject_English FAL": 0.06167489239170647,
+      "subject_Geography": 0.6466421844643063,
+      "subject_History": 0.26355217461198077,
+      "subject_Information Technology": 0.5916561801244198,
+      "subject_Life Orientation": 1.1438457302259752,
+      "subject_Life Sciences": 0.2429808737717322,
+      "subject_Mathematical Literacy": 0.6544694763883645,
+      "subject_Mathematics": -1.8990430617540575,
+      "subject_Natural Sciences": -0.03993493160964117,
+      "subject_Physical Sciences": -1.7691421307486765,
+      "subject_Social Sciences": -0.03788689168449788,
+      "subject_Technology": -0.3903342307003054,
+      "subject_Tourism": 0.08191386007481485,
+      "semester_Semester 2": -0.1906054234151946,
+      "absence_days_Under-7": 3.795661327066548
+    }
+  },
+  "linear_regressor": {
+    "intercept": 35.330425425401096,
+    "coefficients": {
+      "class_size": -1.0380042721111522,
+      "visited_resources": 6.291232546652166,
+      "announcements_viewed": 3.13532127713397,
+      "discussion_participation": 3.3890729037297316,
+      "weekly_study_hours": 3.4071101046954655,
+      "homework_completion_rate": 4.891113603852999,
+      "gender_Male": -0.1613780189501648,
+      "grade_Grade 11": -0.22628180499991063,
+      "grade_Grade 12": 0.004186550752212727,
+      "grade_Grade 8": -0.16331833100117393,
+      "grade_Grade 9": 0.8022515108292647,
+      "stream_General": 0.638933179828952,
+      "stream_Science": 0.33063208029613367,
+      "stream_Tourism": 0.7675290841065555,
+      "class_section_B": 0.04469468600537382,
+      "class_section_C": -0.6048113042021432,
+      "subject_Business Studies": 2.886837542023797,
+      "subject_EMS": 7.481302322030913,
+      "subject_Economics": 4.4407319123336375,
+      "subject_English FAL": 3.118352060156392,
+      "subject_Geography": 3.5881832375139706,
+      "subject_History": 5.016290257767172,
+      "subject_Information Technology": 3.1708769651374937,
+      "subject_Life Orientation": 8.031232033920375,
+      "subject_Life Sciences": 3.2335096778615235,
+      "subject_Mathematical Literacy": 3.390352553788193,
+      "subject_Mathematics": -4.276355181685076,
+      "subject_Natural Sciences": 2.8670052783884947,
+      "subject_Physical Sciences": -4.698876851833214,
+      "subject_Social Sciences": 3.386198464166969,
+      "subject_Technology": 3.0467309409433745,
+      "subject_Tourism": 6.649887661847891,
+      "semester_Semester 2": -0.12481717176608445,
+      "absence_days_Under-7": 16.69102080914413
+    }
+  },
+  "caps_levels": [
+    {
+      "level": 7,
+      "min": 80,
+      "max": 100,
+      "label": "Outstanding Achievement",
+      "color": "#10B981"
+    },
+    {
+      "level": 6,
+      "min": 70,
+      "max": 79,
+      "label": "Meritorious Achievement",
+      "color": "#059669"
+    },
+    {
+      "level": 5,
+      "min": 60,
+      "max": 69,
+      "label": "Substantial Achievement",
+      "color": "#3B82F6"
+    },
+    {
+      "level": 4,
+      "min": 50,
+      "max": 59,
+      "label": "Adequate Achievement",
+      "color": "#6366F1"
+    },
+    {
+      "level": 3,
+      "min": 40,
+      "max": 49,
+      "label": "Moderate Achievement",
+      "color": "#F59E0B"
+    },
+    {
+      "level": 2,
+      "min": 30,
+      "max": 39,
+      "label": "Elementary Achievement",
+      "color": "#EF4444"
+    },
+    {
+      "level": 1,
+      "min": 0,
+      "max": 29,
+      "label": "Not Achieved (Critical)",
+      "color": "#DC2626"
+    }
+  ]
+}
