@@ -77,15 +77,6 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
   // Subject Command Center ("View All" Modal) State
   const [viewAllSubject, setViewAllSubject] = useState<any | null>(null);
 
-  // Optional Grid View Switcher
-  const [modulesViewMode, setModulesViewMode] = useState<GridViewMode>(() => {
-    return (localStorage.getItem('teacher_modules_view_mode') as GridViewMode) || 'grid';
-  });
-
-  const handleSetViewMode = (mode: GridViewMode) => {
-    setModulesViewMode(mode);
-    localStorage.setItem('teacher_modules_view_mode', mode);
-  };
 
   const scrollCarousel = (direction: number) => {
     if (carouselRef.current) {
@@ -289,15 +280,6 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
         };
       });
 
-  // TEACHER MODULES (NON-DUPLICATE SCHOOL-WIDE & EDUCATOR TOOLS)
-  const teacherModules = [
-    { id: 'calendar', label: 'Academic Calendar', icon: Calendar, color: 'text-violet-400 bg-violet-500/15 border-violet-500/30' },
-    { id: 'sports', label: 'Sports & Extracurriculars', icon: Trophy, color: 'text-amber-400 bg-amber-500/15 border-amber-500/30' },
-    { id: 'my-leave', label: 'Leave & Relief Duty', icon: Briefcase, color: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' },
-    { id: 'exam-seating', label: 'Exam Seating Allocations', icon: Award, color: 'text-indigo-400 bg-indigo-500/15 border-indigo-500/30' },
-    { id: 'messages', label: 'Communication Hub', icon: MessageSquare, color: 'text-sky-400 bg-sky-500/15 border-sky-500/30' },
-    { id: 'settings', label: 'Technical Settings', icon: Settings, color: 'text-slate-300 bg-slate-700/30 border-slate-600/30' }
-  ];
 
   return (
     <div className="space-y-6 animate-fade-in text-slate-100 pb-12">
@@ -442,128 +424,25 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
         </div>
       </section>
 
-      {/* 2. TEACHER MODULES & QUICK TOOLS (ICON + NAME ONLY WITH OPTIONAL GRID VIEWS) */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center">
-              <LayoutGrid className="w-4 h-4" />
-            </div>
-            <h2 className="text-base md:text-lg font-bold font-display text-white tracking-tight">
-              Educator Functions & Tools
-            </h2>
+      {/* 2. QUICK ACCESS SHORTCUT TO MORE MODULES */}
+      <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 flex items-center justify-between gap-4 shadow-sm hover:border-cyan-500/30 transition-all">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shrink-0">
+            <LayoutGrid className="w-5 h-5" />
           </div>
-
-          {/* Optional Grid View Selectors */}
-          <div className="flex items-center gap-1 p-1 bg-surface-dark rounded-xl border border-white/10">
-            <button
-              onClick={() => handleSetViewMode('grid')}
-              className={`p-1.5 rounded-lg transition-colors ${
-                modulesViewMode === 'grid'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-              title="Standard Grid"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => handleSetViewMode('compact')}
-              className={`p-1.5 rounded-lg transition-colors ${
-                modulesViewMode === 'compact'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-              title="Compact App Tiles"
-            >
-              <Grid3X3 className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => handleSetViewMode('list')}
-              className={`p-1.5 rounded-lg transition-colors ${
-                modulesViewMode === 'list'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-              title="List View"
-            >
-              <List className="w-3.5 h-3.5" />
-            </button>
+          <div>
+            <h3 className="text-xs sm:text-sm font-bold text-white">All Institutional & Administrative Modules</h3>
+            <p className="text-[11px] sm:text-xs text-slate-400">Grading marksheets, attendance roll-call, leave management, and inventories are organized in the More tab.</p>
           </div>
         </div>
-
-        {/* View Mode 1: Standard Grid (Icon + Name) */}
-        {modulesViewMode === 'grid' && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {teacherModules.map((func) => {
-              const IconComp = func.icon;
-              return (
-                <div
-                  key={func.id}
-                  onClick={() => onNavigateTab(func.id)}
-                  className="p-3.5 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex items-center gap-3 shadow-sm group"
-                >
-                  <div className={`w-10 h-10 rounded-xl ${func.color} border flex items-center justify-center group-hover:scale-105 transition-transform shrink-0`}>
-                    <IconComp className="w-5 h-5" />
-                  </div>
-                  <span className="text-xs font-bold text-white group-hover:text-indigo-300 transition-colors leading-tight">
-                    {func.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* View Mode 2: Compact App Tiles */}
-        {modulesViewMode === 'compact' && (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5">
-            {teacherModules.map((func) => {
-              const IconComp = func.icon;
-              return (
-                <div
-                  key={func.id}
-                  onClick={() => onNavigateTab(func.id)}
-                  className="p-3 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-2 shadow-sm group"
-                >
-                  <div className={`w-11 h-11 rounded-2xl ${func.color} border flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                    <IconComp className="w-5 h-5" />
-                  </div>
-                  <span className="text-[11px] font-bold text-white group-hover:text-indigo-300 transition-colors line-clamp-2 leading-tight">
-                    {func.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* View Mode 3: List View */}
-        {modulesViewMode === 'list' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {teacherModules.map((func) => {
-              const IconComp = func.icon;
-              return (
-                <div
-                  key={func.id}
-                  onClick={() => onNavigateTab(func.id)}
-                  className="p-3 px-4 rounded-xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex items-center justify-between shadow-sm group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg ${func.color} border flex items-center justify-center shrink-0`}>
-                      <IconComp className="w-4 h-4" />
-                    </div>
-                    <span className="text-xs font-bold text-white group-hover:text-indigo-300 transition-colors">
-                      {func.label}
-                    </span>
-                  </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-white transition-colors" />
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+        <button
+          onClick={() => onNavigateTab('more')}
+          className="px-3.5 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 hover:text-white border border-cyan-500/40 text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+        >
+          <span>Open More</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
 
       {/* 3. TWO-COLUMN EDUCATOR LOWER SECTION */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

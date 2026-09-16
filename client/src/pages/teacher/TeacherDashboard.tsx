@@ -21,7 +21,11 @@ import { SportsExtracurriculars } from '../../components/common/SportsExtracurri
 import { TextbookAssetTracker } from '../../components/common/TextbookAssetTracker';
 import { EducatorLeaveReliefManager } from '../../components/admin/EducatorLeaveReliefManager';
 import { TeacherAssignments } from '../../components/teacher/TeacherAssignments';
-import { ArrowLeft, ChevronRight, Home } from 'lucide-react';
+import { TeacherNavigationBar, getPrimaryTabFromActive } from '../../components/teacher/TeacherNavigationBar';
+import { TeacherMoreHub } from './TeacherMoreHub';
+import { TeacherDiscoverHub } from './TeacherDiscoverHub';
+import { TeacherCalendarHub } from './TeacherCalendarHub';
+import { ArrowLeft, ChevronRight, Home, LayoutGrid, Compass, Calendar, MessageSquare, User } from 'lucide-react';
 
 export const TeacherDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -49,33 +53,76 @@ export const TeacherDashboard: React.FC = () => {
 
   const getTabTitle = () => {
     switch (activeTab) {
+      case 'home':
+      case 'overview':
+        return 'Educator Workspace & Assigned Subjects';
       case 'subjects':
       case 'classes':
       case 'workload':
         return 'My Subjects & CAPS Workload';
-      case 'resources': return 'Learning Resources & Past Papers Studio';
-      case 'ai-tools': return 'AI Lesson & Test Builder';
+      case 'discover':
+        return 'Discover Teaching Innovation';
+      case 'resources':
+        return 'Learning Resources & Past Papers Studio';
+      case 'ai-tools':
+        return 'AI Lesson & Test Builder';
+      case 'calendar':
+      case 'timetable':
+        return 'Educator Timetable & Academic Calendar';
+      case 'more':
+        return 'More Modules & Educator Functions';
       case 'ptc':
-      case 'consultations': return 'Parent-Teacher Consultations & Conferences';
-      case 'inter-school': return 'Inter-School Derbies, Sports & Academic Olympiads';
-      case 'conduct': return 'Merit & Disciplinary Management';
-      case 'my-leave': return 'Educator Leave & Relief Duty';
-      case 'exam-seating': return 'Examination Seating Planner';
-      case 'sports': return 'Sports & Extracurricular Clubs';
-      case 'textbooks': return 'Textbook & Learning Asset Inventory';
-      case 'timetable': return 'Educator Timetable & Curriculum Allocations';
-      case 'calendar': return 'Academic & Events Calendar';
-      case 'attendance': return 'Class Attendance Register';
-      case 'assessments': return 'Marks & Assessments';
-      case 'assignments': return 'Homework & Digital Assignment Submission Hub';
-      case 'announcements': return 'School Notices & Broadcasts';
-      case 'messages': return 'Communication Hub';
-      case 'settings': return 'App & Technical Settings';
-      case 'profile': return 'Teacher Profile';
-      case 'overview':
-      default: return 'Educator Workspace';
+      case 'consultations':
+        return 'Parent-Teacher Consultations & Conferences';
+      case 'inter-school':
+        return 'Inter-School Derbies, Sports & Academic Olympiads';
+      case 'conduct':
+        return 'Merit & Disciplinary Management';
+      case 'my-leave':
+        return 'Educator Leave & Relief Duty';
+      case 'exam-seating':
+        return 'Examination Seating Planner';
+      case 'sports':
+        return 'Sports & Extracurricular Clubs';
+      case 'textbooks':
+        return 'Textbook & Learning Asset Inventory';
+      case 'attendance':
+        return 'Class Attendance Register';
+      case 'assessments':
+        return 'Marks & Assessments';
+      case 'assignments':
+        return 'Homework & Digital Assignment Submission Hub';
+      case 'announcements':
+        return 'School Notices & Broadcasts';
+      case 'messages':
+        return 'Communication Hub';
+      case 'settings':
+        return 'App & Technical Settings';
+      case 'profile':
+        return 'Educator Profile';
+      default:
+        return 'Educator Workspace';
     }
   };
+
+  const primaryCategory = getPrimaryTabFromActive(activeTab);
+  const isSubModule = activeTab !== 'overview' && activeTab !== 'home' && activeTab !== 'calendar' && activeTab !== 'profile' && activeTab !== 'discover' && activeTab !== 'messages' && activeTab !== 'more';
+
+  // Determine intelligent backtrack target
+  const getBacktrackConfig = () => {
+    if (activeTab === 'subjects' || activeTab === 'classes' || activeTab === 'workload') {
+      return { target: 'overview', label: 'Back to Subjects', parentLabel: 'Home' };
+    }
+    if (activeTab === 'resources' || activeTab === 'ai-tools' || activeTab === 'inter-school') {
+      return { target: 'discover', label: 'Back to Discover', parentLabel: 'Discover' };
+    }
+    if (activeTab === 'announcements' || activeTab === 'ptc') {
+      return { target: 'messages', label: 'Back to Messages', parentLabel: 'Messages' };
+    }
+    return { target: 'more', label: 'Back to More Modules', parentLabel: 'More Modules' };
+  };
+
+  const backtrack = getBacktrackConfig();
 
   return (
     <DashboardLayout
@@ -83,25 +130,37 @@ export const TeacherDashboard: React.FC = () => {
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
     >
-      {/* Universal Module Backtrack Navigation Bar */}
-      {activeTab !== 'overview' && (
+      {/* 🌟 Modern Teacher Floating Navigation Bar (Home, Calendar, Profile, Discover, Messages, More) */}
+      <div className="sticky top-0 z-30 mb-6 pb-1 pt-1 backdrop-blur-md bg-canvas-dark/40">
+        <TeacherNavigationBar
+          activeTab={activeTab}
+          onSelectTab={handleSelectTab}
+          className="max-w-xl mx-auto w-full"
+        />
+      </div>
+
+      {/* Universal Breadcrumb & Backtrack Bar for Sub-Modules */}
+      {isSubModule && (
         <div className="flex items-center justify-between gap-3 p-3 mb-6 rounded-2xl bg-surface-dark border border-white/10 shadow-sm animate-fade-in">
           <button
-            onClick={() => handleSelectTab('overview')}
-            className="px-3.5 py-1.5 rounded-xl bg-surface-darker hover:bg-white/10 border border-white/10 hover:border-brand-500/40 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-2 transition-all shadow-sm group"
-            title="Back to Educator Overview"
+            onClick={() => handleSelectTab(backtrack.target)}
+            className="px-3.5 py-1.5 rounded-xl bg-surface-darker hover:bg-white/10 border border-white/10 hover:border-cyan-500/40 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-2 transition-all shadow-sm group cursor-pointer"
+            title={backtrack.label}
           >
             <ArrowLeft className="w-4 h-4 text-cyan-400 group-hover:-translate-x-1 transition-transform" />
-            <span>Back to Overview</span>
+            <span>{backtrack.label}</span>
           </button>
 
           <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 font-mono">
             <button
-              onClick={() => handleSelectTab('overview')}
+              onClick={() => handleSelectTab(backtrack.target)}
               className="hover:text-white flex items-center gap-1 transition-colors"
             >
-              <Home className="w-3.5 h-3.5 text-brand-400" />
-              <span>Workspace</span>
+              {backtrack.parentLabel === 'More Modules' && <LayoutGrid className="w-3.5 h-3.5 text-cyan-400" />}
+              {backtrack.parentLabel === 'Discover' && <Compass className="w-3.5 h-3.5 text-purple-400" />}
+              {backtrack.parentLabel === 'Home' && <Home className="w-3.5 h-3.5 text-indigo-400" />}
+              {backtrack.parentLabel === 'Messages' && <MessageSquare className="w-3.5 h-3.5 text-sky-400" />}
+              <span>{backtrack.parentLabel}</span>
             </button>
             <ChevronRight className="w-3 h-3 text-slate-600" />
             <span className="text-cyan-300 font-bold">{getTabTitle()}</span>
@@ -109,9 +168,36 @@ export const TeacherDashboard: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'overview' && (
+      {/* ========================================================================= */}
+      {/* 1. PRIMARY TABS                                                          */}
+      {/* ========================================================================= */}
+      {(activeTab === 'overview' || activeTab === 'home') && (
         <TeacherOverview onNavigateTab={handleSelectTab} />
       )}
+
+      {activeTab === 'calendar' && (
+        <TeacherCalendarHub initialSubTab="timetable" />
+      )}
+
+      {activeTab === 'profile' && (
+        <LearnerProfile />
+      )}
+
+      {activeTab === 'discover' && (
+        <TeacherDiscoverHub onNavigateTab={handleSelectTab} />
+      )}
+
+      {activeTab === 'messages' && (
+        <LearnerMessages />
+      )}
+
+      {activeTab === 'more' && (
+        <TeacherMoreHub onNavigateTab={handleSelectTab} />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2. SUB-MODULE VIEWS (Zero data loss, directly accessible from More/Links)  */}
+      {/* ========================================================================= */}
       {(activeTab === 'subjects' || activeTab === 'classes' || activeTab === 'workload') && (
         <TeacherSubjects onNavigateTab={handleSelectTab} />
       )}
@@ -140,12 +226,9 @@ export const TeacherDashboard: React.FC = () => {
         />
       )}
       {activeTab === 'timetable' && <TeacherTimetable />}
-      {activeTab === 'calendar' && <SchoolCalendar />}
       {activeTab === 'attendance' && <TeacherAttendance />}
       {activeTab === 'assessments' && <TeacherAssessments />}
       {activeTab === 'announcements' && <AnnouncementsFeed />}
-      {activeTab === 'messages' && <LearnerMessages />}
-      {activeTab === 'profile' && <LearnerProfile />}
       {activeTab === 'settings' && <LearnerSettings />}
     </DashboardLayout>
   );
