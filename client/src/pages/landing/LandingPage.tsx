@@ -113,10 +113,23 @@ export const LandingPage: React.FC = () => {
   return (
     <div
       data-theme-preserve="true"
-      className="min-h-screen bg-[#070B14] text-slate-100 flex flex-col justify-between selection:bg-blue-600 selection:text-white relative overflow-hidden transition-colors duration-300"
+      className="min-h-screen text-slate-100 flex flex-col justify-between selection:bg-blue-600 selection:text-white relative overflow-hidden transition-colors duration-300"
     >
-      {/* Dynamic Ambient Starlight Background */}
-      <CosmicCanvasBackground particleCount={40} interactive={true} />
+      {/* 1. Official Landing Page Background Art */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat -z-30 pointer-events-none transform scale-100 transition-transform duration-1000 ease-out"
+        style={{
+          backgroundImage: "url('/assets/landing-bg.png'), url('/assets/Landing%20page.png')",
+          backgroundAttachment: 'fixed',
+        }}
+      />
+
+      {/* 2. Adaptive Optical Contrast Scrim & Ambient Vignette (ensures text is 100% crisp without disturbance) */}
+      <div className="absolute inset-0 bg-gradient-to-b from-slate-950/85 via-slate-950/75 to-slate-950/90 backdrop-blur-[1.5px] -z-20 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(15,23,42,0.4)_0%,rgba(2,6,23,0.85)_100%)] -z-20 pointer-events-none" />
+
+      {/* 3. Dynamic Ambient Starlight & Constellation Canvas */}
+      <CosmicCanvasBackground particleCount={35} interactive={true} />
 
       {/* 4-Second Particle Logo Assembly Intro Animation (on replay) */}
       {showIntro && <ParticleLogoIntro onComplete={handleIntroComplete} />}
@@ -127,15 +140,15 @@ export const LandingPage: React.FC = () => {
       <HelpSupportModal isOpen={isFaqOpen} onClose={() => setIsFaqOpen(false)} defaultTab="faq" />
 
       {/* Prestigious Global Header */}
-      <header className="relative z-30 px-4 md:px-8 py-3.5 bg-[#090D18]/90 border-b border-white/10 backdrop-blur-xl">
+      <header className="relative z-30 px-4 md:px-8 py-3.5 bg-slate-950/85 border-b border-white/10 backdrop-blur-xl shadow-lg">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           {/* Logo & Platform Name */}
           <Link to="/" className="flex items-center gap-3.5 group">
-            <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl p-1 border border-blue-500/30 bg-blue-950/40 flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
+            <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl p-1 border border-blue-500/30 bg-blue-950/60 flex items-center justify-center group-hover:scale-105 transition-transform shadow-md">
               <FusionAppIcon className="w-8 h-8 md:w-9 md:h-9" />
             </div>
             <div>
-              <span className="font-display text-base md:text-lg font-black tracking-tight text-white block leading-tight uppercase group-hover:text-blue-300 transition-colors">
+              <span className="font-display text-base md:text-lg font-black tracking-tight text-white block leading-tight uppercase group-hover:text-blue-300 transition-colors drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">
                 FUSION HIGH SCHOOLS
               </span>
             </div>
@@ -145,28 +158,28 @@ export const LandingPage: React.FC = () => {
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => setIsAboutOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 text-xs font-medium transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-slate-100 hover:text-white border border-white/15 text-xs font-medium backdrop-blur-md transition-all shadow-sm"
             >
-              <Info className="w-3.5 h-3.5 text-blue-400" />
+              <Info className="w-3.5 h-3.5 text-cyan-400" />
               <span className="hidden sm:inline">About</span>
             </button>
 
             <button
               onClick={() => setIsTermsOpen(true)}
-              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-medium transition-all"
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-slate-200 hover:text-white border border-white/15 text-xs font-medium backdrop-blur-md transition-all shadow-sm"
             >
-              <Scale className="w-3.5 h-3.5 text-slate-400" />
+              <Scale className="w-3.5 h-3.5 text-slate-300" />
               <span>Policies</span>
             </button>
 
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-all border border-white/10"
+              className="p-2 rounded-lg text-slate-200 hover:text-white hover:bg-white/15 transition-all border border-white/15 bg-white/5 backdrop-blur-md shadow-sm"
               title={`Switch Theme`}
               aria-label="Toggle Theme"
             >
               {theme === 'light' ? (
-                <Moon className="w-4 h-4 text-blue-400" />
+                <Moon className="w-4 h-4 text-cyan-400" />
               ) : (
                 <Sun className="w-4 h-4 text-amber-400" />
               )}
@@ -189,14 +202,14 @@ export const LandingPage: React.FC = () => {
 
             {/* Step 1: Welcome Message Badge (Types out letter-by-letter after 5-second icon arrival) */}
             <div
-              className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/80 text-xs font-semibold text-slate-300 shadow-sm backdrop-blur-md transition-all duration-500 ${
+              className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-950/85 border border-cyan-500/40 text-xs font-semibold text-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.6)] backdrop-blur-md transition-all duration-500 ${
                 phase === 'icon_arrival'
                   ? 'opacity-0 scale-90 pointer-events-none'
                   : 'opacity-100 scale-100'
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-              <span className="text-cyan-300 font-bold tracking-wide">
+              <span className="text-cyan-300 font-bold tracking-wide drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
                 {welcomeText}
                 {phase === 'typing_welcome' && (
                   <span className="inline-block w-1 h-3 bg-cyan-400 ml-1 animate-pulse align-middle" />
@@ -205,16 +218,16 @@ export const LandingPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Step 2: Main Heading - "South Africa's Unified High Schools" (Types out letter-by-letter) */}
+          {/* Step 2: Main Heading - "South Africa's Unified High Schools" (Types out letter-by-letter with high optical contrast) */}
           <div className="min-h-[72px] sm:min-h-[96px] md:min-h-[110px] flex items-center justify-center max-w-3xl mx-auto">
             {phase !== 'icon_arrival' && (
-              <h1 className="text-3xl sm:text-5xl md:text-5xl font-black font-display tracking-tight text-white leading-tight">
+              <h1 className="text-3xl sm:text-5xl md:text-5xl font-black font-display tracking-tight text-white leading-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">
                 {/* Prefix: "South Africa's Unified " */}
-                <span>{headingText.slice(0, SPLIT_INDEX)}</span>
+                <span className="drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] text-slate-50">{headingText.slice(0, SPLIT_INDEX)}</span>
                 
                 {/* Radiant Highlight: "High Schools" */}
                 {headingText.length > SPLIT_INDEX && (
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-200 to-sky-300">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-300 via-blue-400 to-cyan-300 drop-shadow-[0_2px_14px_rgba(37,99,235,0.7)] font-black">
                     {headingText.slice(SPLIT_INDEX)}
                   </span>
                 )}
@@ -227,7 +240,7 @@ export const LandingPage: React.FC = () => {
             )}
           </div>
 
-          {/* Slogan Badge - Fades in gently after typing completes */}
+          {/* Slogan Badge - Fades in gently after typing completes with protected text backdrop */}
           <div
             className={`transition-all duration-700 ease-out ${
               phase === 'ready'
@@ -235,9 +248,11 @@ export const LandingPage: React.FC = () => {
                 : 'opacity-0 -translate-y-2 pointer-events-none'
             }`}
           >
-            <p className="text-xs sm:text-sm text-slate-400 font-mono tracking-wide">
-              Connecting Today, Empowering Tomorrow.
-            </p>
+            <div className="inline-block px-4 py-1.5 rounded-full bg-slate-950/65 border border-white/10 backdrop-blur-md shadow-md">
+              <p className="text-xs sm:text-sm text-slate-200 font-mono tracking-wide drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
+                Connecting Today, Empowering Tomorrow.
+              </p>
+            </div>
           </div>
 
           {/* Step 3: Glowing Circular "Get Started" Action Menu - Appears AFTER typing is complete */}
@@ -256,7 +271,7 @@ export const LandingPage: React.FC = () => {
             <button
               type="button"
               onClick={handleSkipAnimation}
-              className="text-[11px] font-mono text-slate-500 hover:text-cyan-400 transition-colors pt-2 underline underline-offset-4 cursor-pointer"
+              className="text-[11px] font-mono text-slate-400 hover:text-cyan-400 transition-colors pt-2 underline underline-offset-4 cursor-pointer drop-shadow-sm bg-slate-950/40 px-3 py-1 rounded-full backdrop-blur-sm border border-white/5"
               title="Skip intro animation"
             >
               Skip intro animation →
