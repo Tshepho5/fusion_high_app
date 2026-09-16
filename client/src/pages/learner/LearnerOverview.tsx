@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { learnerService } from '../../services/api';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { LearnerOverviewSkeleton } from '../../components/learner/LearnerOverviewSkeleton';
 import { FusionAIIcon } from '../../components/common/FusionAIIcon';
 import { FusionAppIcon } from '../../components/common/FusionAppIcon';
 import {
@@ -170,7 +171,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
   }, []);
 
   if (loading) {
-    return <LoadingSpinner text="Loading your learner portal..." />;
+    return <LearnerOverviewSkeleton />;
   }
 
   const unreadAnnouncements = announcements.filter(a => !readIds.includes(a.id));
@@ -257,7 +258,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
           {displaySubjects.map((sub, idx) => (
             <div
               key={idx}
-              className="min-w-[290px] max-w-[320px] shrink-0 snap-start rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 p-4 transition-all shadow-md flex flex-col justify-between group space-y-3 card-interactive"
+              className="min-w-[290px] max-w-[320px] shrink-0 snap-start rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 p-4 transition-all shadow-md flex flex-col justify-between group space-y-3 card-interactive animated-border-card"
             >
               {/* Card Header: Grade Badge + Due Alerts */}
               <div className="flex items-start justify-between gap-2">
@@ -383,7 +384,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 <div
                   key={func.id}
                   onClick={() => onNavigateTab(func.id)}
-                  className="p-3.5 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex items-center gap-3 shadow-sm group card-interactive"
+                  className="p-3.5 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex items-center gap-3 shadow-sm group card-interactive animated-border-card"
                 >
                   <div className={`w-10 h-10 rounded-xl ${func.color} border flex items-center justify-center group-hover:scale-105 transition-transform shrink-0`}>
                     <IconComp className="w-5 h-5" />
@@ -406,7 +407,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 <div
                   key={func.id}
                   onClick={() => onNavigateTab(func.id)}
-                  className="p-3 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-2 shadow-sm group card-interactive"
+                  className="p-3 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-2 shadow-sm group card-interactive animated-border-card"
                 >
                   <div className={`w-11 h-11 rounded-2xl ${func.color} border flex items-center justify-center group-hover:scale-110 transition-transform`}>
                     <IconComp className="w-5 h-5" />
@@ -429,7 +430,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 <div
                   key={func.id}
                   onClick={() => onNavigateTab(func.id)}
-                  className="p-3 px-4 rounded-xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex items-center justify-between shadow-sm group card-interactive"
+                  className="p-3 px-4 rounded-xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex items-center justify-between shadow-sm group card-interactive animated-border-card"
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-lg ${func.color} border flex items-center justify-center shrink-0`}>
@@ -454,7 +455,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
         <div className="space-y-4">
           
           {/* Pending Tasks */}
-          <div className="rounded-2xl bg-surface-dark border border-white/10 p-5 shadow-sm space-y-3">
+          <div className="rounded-2xl bg-surface-dark border border-white/10 p-5 shadow-sm space-y-3 animated-border-card">
             <div className="flex items-center justify-between pb-2 border-b border-white/5">
               <h3 className="text-sm font-bold font-display text-white flex items-center gap-2">
                 <FileText className="w-4 h-4 text-indigo-400" />
@@ -492,7 +493,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
           </div>
 
           {/* AI Model Recommended Study Topics */}
-          <div className="rounded-2xl bg-surface-dark border border-white/10 p-5 shadow-sm space-y-3">
+          <div className="rounded-2xl bg-surface-dark border border-white/10 p-5 shadow-sm space-y-3 animated-border-card">
             <div className="flex items-center justify-between pb-2 border-b border-white/5">
               <h3 className="text-sm font-bold font-display text-white flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-pink-400" />
@@ -540,7 +541,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
         <div className="space-y-4">
           
           {/* Performance Summary */}
-          <div className="rounded-2xl bg-surface-dark border border-white/10 p-5 shadow-sm space-y-3">
+          <div className="rounded-2xl bg-surface-dark border border-white/10 p-5 shadow-sm space-y-3 animated-border-card">
             <div className="flex items-center justify-between pb-2 border-b border-white/5">
               <h3 className="text-sm font-bold font-display text-white flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-emerald-400" />
@@ -573,7 +574,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
           </div>
 
           {/* Recent School Notices */}
-          <div className="rounded-2xl bg-surface-dark border border-white/10 p-5 shadow-sm space-y-3">
+          <div className="rounded-2xl bg-surface-dark border border-white/10 p-5 shadow-sm space-y-3 animated-border-card">
             <div className="flex items-center justify-between pb-2 border-b border-white/5">
               <h3 className="text-sm font-bold font-display text-white flex items-center gap-2">
                 <Megaphone className="w-4 h-4 text-amber-400" />
@@ -583,7 +584,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 onClick={() => onNavigateTab('announcements')}
                 className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold"
               >
-                View All
+                Noticeboard
               </button>
             </div>
 

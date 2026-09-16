@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { parentService } from '../../services/api';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { ParentOverviewSkeleton } from '../../components/parent/ParentOverviewSkeleton';
 import {
   Users,
   GraduationCap,
@@ -77,7 +78,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <LoadingSpinner text="Fetching linked learner records..." />;
+  if (loading) return <ParentOverviewSkeleton />;
 
   // PARENT MODULES (ICON + NAME ONLY)
   const parentModules = [
@@ -143,7 +144,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
               return (
                 <div
                   key={idx}
-                  className="min-w-[290px] max-w-[320px] shrink-0 snap-start rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 p-4 transition-all shadow-md flex flex-col justify-between group space-y-3"
+                  className="min-w-[290px] max-w-[320px] shrink-0 snap-start rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 p-4 transition-all shadow-md flex flex-col justify-between group space-y-3 animated-border-card"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">
@@ -269,7 +270,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                 <div
                   key={func.id}
                   onClick={() => onNavigateTab(func.id)}
-                  className="p-3.5 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex items-center gap-3 shadow-sm group"
+                  className="p-3.5 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex items-center gap-3 shadow-sm group animated-border-card"
                 >
                   <div className={`w-10 h-10 rounded-xl ${func.color} border flex items-center justify-center group-hover:scale-105 transition-transform shrink-0`}>
                     <IconComp className="w-5 h-5" />
@@ -292,7 +293,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                 <div
                   key={func.id}
                   onClick={() => onNavigateTab(func.id)}
-                  className="p-3 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-2 shadow-sm group"
+                  className="p-3 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-2 shadow-sm group animated-border-card"
                 >
                   <div className={`w-11 h-11 rounded-2xl ${func.color} border flex items-center justify-center group-hover:scale-110 transition-transform`}>
                     <IconComp className="w-5 h-5" />
@@ -315,7 +316,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                 <div
                   key={func.id}
                   onClick={() => onNavigateTab(func.id)}
-                  className="p-3 px-4 rounded-xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex items-center justify-between shadow-sm group"
+                  className="p-3 px-4 rounded-xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 hover:bg-surface-darker transition-all cursor-pointer flex items-center justify-between shadow-sm group animated-border-card"
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-lg ${func.color} border flex items-center justify-center shrink-0`}>
@@ -338,7 +339,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
         
         {/* Left Column: Fees & Statements */}
         <div className="space-y-4">
-          <div className="rounded-2xl bg-surface-dark border border-white/10 p-5 shadow-sm space-y-3">
+          <div className="rounded-2xl bg-surface-dark border border-white/10 p-5 shadow-sm space-y-3 animated-border-card">
             <div className="flex items-center justify-between pb-2 border-b border-white/5">
               <h3 className="text-sm font-bold font-display text-white flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-teal-400" />
@@ -359,7 +360,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
 
         {/* Right Column: School Notices */}
         <div className="space-y-4">
-          <div className="rounded-2xl bg-surface-dark border border-white/10 p-5 shadow-sm space-y-3">
+          <div className="rounded-2xl bg-surface-dark border border-white/10 p-5 shadow-sm space-y-3 animated-border-card">
             <div className="flex items-center justify-between pb-2 border-b border-white/5">
               <h3 className="text-sm font-bold font-display text-white flex items-center gap-2">
                 <Megaphone className="w-4 h-4 text-cyan-400" />

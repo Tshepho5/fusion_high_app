@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { teacherService } from '../../services/api';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { TeacherOverviewSkeleton } from '../../components/teacher/TeacherOverviewSkeleton';
 import { Modal } from '../../components/common/Modal';
 import { Badge } from '../../components/common/Badge';
 import { TeacherQRScannerModal } from '../../components/teacher/TeacherQRScannerModal';
@@ -329,7 +330,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <LoadingSpinner text="Loading educator workspace..." />;
+  if (loading) return <TeacherOverviewSkeleton />;
 
   const teacherName = stats?.teacher_name || user?.full_name || 'Educator';
   const subjectsList = workload?.subjects && workload.subjects.length > 0 ? workload.subjects : (user?.subjects || ['Physical Sciences', 'Mathematics']);
