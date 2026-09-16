@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
 import { CommandPalette } from '../common/CommandPalette';
 import { BottomNavigationDock } from './BottomNavigationDock';
 import { MainMenuLauncherModal } from './MainMenuLauncherModal';
 import { FloatingAIChatModule } from '../common/FloatingAIChatModule';
+import { LoadingSpinner } from '../common/LoadingSpinner';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -26,6 +27,21 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [mainMenuOpen, setMainMenuOpen] = useState(false);
+
+  // Tab transition state to display the shimmer skeleton whenever user switches tabs
+  const [isTabTransitioning, setIsTabTransitioning] = useState(false);
+  const prevTabRef = useRef(activeTab);
+
+  useEffect(() => {
+    if (prevTabRef.current !== activeTab) {
+      prevTabRef.current = activeTab;
+      setIsTabTransitioning(true);
+      const timer = setTimeout(() => {
+        setIsTabTransitioning(false);
+      }, 240);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab]);
 
   // Global key listener for Ctrl+K or Cmd+K or Ctrl+M for Main Menu
   useEffect(() => {
@@ -76,6 +92,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
       {/* Main Content Column with Fixed Top Header and Isolated Scroll Container */}
       <div className="flex flex-1 flex-col h-screen overflow-hidden min-w-0 z-10 relative">
+        {/* Laser Shimmer Top Progress Bar when switching tabs */}
+        {isTabTransitioning && (
+          <div className="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r from-transparent via-cyan-400 to-indigo-500 z-50 animate-pulse pointer-events-none" />
+        )}
+
         <Navbar
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
@@ -87,7 +108,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           className={`flex-1 overflow-y-auto min-h-0 custom-scrollbar ${activeTab === 'messages' ? 'p-2 md:p-4 pb-24 md:pb-28' : 'p-4 md:p-8 py-6 pb-28 md:pb-32'
             } max-w-7xl w-full mx-auto animate-fade-in flex flex-col`}
         >
-          {children}
+          {isTabTransitioning ? (
+            <LoadingSpinner text={`Loading ${title || 'Workspace'}...`} />
+          ) : (
+            children
+          )}
         </main>
 
         {/* 🌟 Centered Floating Bottom Navigation Dock */}
