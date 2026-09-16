@@ -30,6 +30,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { learnerService } from '../../services/api';
+import { FusionChatbotMascot } from './FusionChatbotMascot';
 
 interface HelpSupportModalProps {
   isOpen: boolean;
@@ -771,7 +772,21 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
                   isLight ? 'bg-white border-slate-200' : 'bg-surface-dark border-white/5'
                 }`}
               >
-                <AnimatedSupportMascot isThinking={isAiThinking} isWaving={true} />
+                <div className="flex items-center gap-3">
+                  <FusionChatbotMascot size={46} isHovered={true} />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-extrabold tracking-wide">Fusion AI Guide</span>
+                      <span className="flex h-2 w-2 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      </span>
+                    </div>
+                    <span className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                      {isAiThinking ? 'Analyzing CAPS & Fusion School Data...' : 'Always online • Ready to assist'}
+                    </span>
+                  </div>
+                </div>
 
                 <div className="flex items-center gap-3">
                   <button
@@ -807,8 +822,8 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
                   >
                     {/* Avatar */}
                     {msg.sender === 'ai' ? (
-                      <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 border border-white/20 flex items-center justify-center text-white shrink-0 shadow-sm">
-                        <Bot className="w-4 h-4" />
+                      <div className="shrink-0 drop-shadow-sm rounded-full overflow-hidden">
+                        <FusionChatbotMascot size={32} />
                       </div>
                     ) : (
                       <div className="w-8 h-8 rounded-xl bg-indigo-600 border border-white/20 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">

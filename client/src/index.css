@@ -1395,6 +1395,81 @@ input.login-glowing-input-light::placeholder {
   pointer-events: none;
 }
 
+/* =========================================================================
+   FUSION HIGH CHATBOT MASCOT ANIMATIONS
+   ========================================================================= */
+
+@keyframes mascotHandWave {
+  0% {
+    transform: rotate(0deg);
+  }
+  15% {
+    transform: rotate(-22deg);
+  }
+  30% {
+    transform: rotate(18deg);
+  }
+  45% {
+    transform: rotate(-18deg);
+  }
+  60% {
+    transform: rotate(16deg);
+  }
+  75% {
+    transform: rotate(-12deg);
+  }
+  90% {
+    transform: rotate(8deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes mascotGentleFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-2.5px);
+  }
+}
+
+@keyframes mascotSpeechPop {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.92);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.02);
+  }
+  25% {
+    transform: translateY(0px) scale(1);
+  }
+  90% {
+    opacity: 1;
+    transform: translateY(0px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.95);
+  }
+}
+
+.animate-mascot-wave {
+  animation: mascotHandWave 1.8s ease-in-out infinite;
+  transform-origin: 26px 74px;
+}
+
+.animate-mascot-float {
+  animation: mascotGentleFloat 3s ease-in-out infinite;
+}
+
+.animate-mascot-speech {
+  animation: mascotSpeechPop 4.5s ease-in-out forwards;
+}
+
 .theme-light .shimmer-wave::after,
 .light .shimmer-wave::after {
   background: linear-gradient(

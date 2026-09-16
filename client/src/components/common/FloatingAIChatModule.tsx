@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, Sparkles, MessageSquare, X } from 'lucide-react';
 import { HelpSupportModal } from './HelpSupportModal';
+import { FusionChatbotMascot } from './FusionChatbotMascot';
 
 interface FloatingAIChatModuleProps {
   onSelectTab?: (tab: string) => void;
@@ -9,6 +9,7 @@ interface FloatingAIChatModuleProps {
 export const FloatingAIChatModule: React.FC<FloatingAIChatModuleProps> = ({ onSelectTab }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [modalTab, setModalTab] = useState<'ai-support' | 'faq'>('ai-support');
+  const [isHovered, setIsHovered] = useState(false);
 
   // Position state (persisted in localStorage if desired)
   const [position, setPosition] = useState<{ x: number; y: number }>(() => {
@@ -22,8 +23,8 @@ export const FloatingAIChatModule: React.FC<FloatingAIChatModuleProps> = ({ onSe
       }
     } catch (_) {}
     // Default initial bottom-right position
-    const defaultX = typeof window !== 'undefined' ? Math.max(16, window.innerWidth - 80) : 1200;
-    const defaultY = typeof window !== 'undefined' ? Math.max(16, window.innerHeight - 140) : 700;
+    const defaultX = typeof window !== 'undefined' ? Math.max(16, window.innerWidth - 88) : 1200;
+    const defaultY = typeof window !== 'undefined' ? Math.max(16, window.innerHeight - 150) : 700;
     return { x: defaultX, y: defaultY };
   });
 
@@ -40,8 +41,8 @@ export const FloatingAIChatModule: React.FC<FloatingAIChatModuleProps> = ({ onSe
   useEffect(() => {
     const handleResize = () => {
       setPosition((prev) => {
-        const maxX = Math.max(16, window.innerWidth - 76);
-        const maxY = Math.max(16, window.innerHeight - 76);
+        const maxX = Math.max(16, window.innerWidth - 84);
+        const maxY = Math.max(16, window.innerHeight - 84);
         return {
           x: Math.min(Math.max(16, prev.x), maxX),
           y: Math.min(Math.max(16, prev.y), maxY),
@@ -76,8 +77,8 @@ export const FloatingAIChatModule: React.FC<FloatingAIChatModuleProps> = ({ onSe
       hasMovedRef.current = true;
     }
 
-    const maxX = Math.max(16, window.innerWidth - 76);
-    const maxY = Math.max(16, window.innerHeight - 76);
+    const maxX = Math.max(16, window.innerWidth - 84);
+    const maxY = Math.max(16, window.innerHeight - 84);
 
     const newX = Math.min(Math.max(16, dragStartRef.current.posX + deltaX), maxX);
     const newY = Math.min(Math.max(16, dragStartRef.current.posY + deltaY), maxY);
@@ -123,40 +124,41 @@ export const FloatingAIChatModule: React.FC<FloatingAIChatModuleProps> = ({ onSe
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        className={`fixed top-0 left-0 z-30 select-none group cursor-grab active:cursor-grabbing transition-shadow duration-200 ${
-          isDragging ? 'scale-105 shadow-2xl' : 'hover:scale-105'
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={`fixed top-0 left-0 z-40 select-none group cursor-grab active:cursor-grabbing transition-shadow duration-200 ${
+          isDragging ? 'scale-110 shadow-2xl' : 'hover:scale-105'
         }`}
-        title="24/7 AI Assistant • Drag to move anywhere"
+        title="Fusion AI Mascot • Click to Chat • Drag to Move"
       >
-        {/* Glow Halo */}
-        <div className="absolute -inset-1.5 rounded-full bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-600 opacity-70 blur-md group-hover:opacity-100 group-hover:blur-lg transition-all animate-pulse-subtle pointer-events-none" />
+        {/* Ambient Halo Glow */}
+        <div className="absolute -inset-1.5 rounded-full bg-gradient-to-r from-red-500 via-rose-500 to-indigo-600 opacity-60 blur-md group-hover:opacity-100 group-hover:blur-lg transition-all animate-pulse pointer-events-none" />
 
-        {/* Circular Action Button */}
-        <div className="relative w-14 h-14 rounded-full bg-gradient-to-tr from-indigo-900 via-brand-600 to-cyan-500 border-2 border-cyan-300/80 shadow-2xl flex items-center justify-center text-white overflow-hidden ring-2 ring-white/20">
+        {/* Circular Action Button with Mascot */}
+        <div className="relative rounded-full shadow-2xl flex items-center justify-center ring-2 ring-white/20 group-hover:ring-cyan-400/80 transition-all bg-[#0B0F19]">
           
-          {/* Animated Background Shimmer */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
-
-          {/* AI Bot Icon with Sparkle */}
-          <div className="relative flex items-center justify-center">
-            <Bot className="w-7 h-7 text-white drop-shadow-md group-hover:rotate-12 transition-transform" />
-            <Sparkles className="w-3.5 h-3.5 text-cyan-200 absolute -top-1 -right-1 animate-pulse" />
-          </div>
+          <FusionChatbotMascot
+            size={68}
+            isHovered={isHovered}
+          />
 
           {/* 24/7 Live Pulse Dot */}
-          <span className="absolute top-1 right-1 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border border-white" />
+          <span className="absolute top-1 right-1 flex h-3 w-3 pointer-events-none">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-80" />
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-[#0B0F19]" />
           </span>
         </div>
 
-        {/* Hover Pill Tooltip */}
-        <div className="absolute right-full top-1/2 -translate-y-1/2 mr-3 px-3 py-1.5 rounded-xl bg-slate-900/95 text-white text-[11px] font-bold shadow-xl border border-white/15 whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 hidden sm:flex items-center gap-1.5 backdrop-blur-md">
-          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-          <span>24/7 AI Assistant</span>
-          <span className="text-[9px] font-normal text-slate-400">(Drag to move)</span>
-        </div>
+        {/* Hover Pill Tooltip (Only visible if not dragging) */}
+        {!isDragging && (
+          <div className="absolute right-full top-1/2 -translate-y-1/2 mr-3 px-3 py-1.5 rounded-xl bg-slate-900/95 text-white text-[11px] font-bold shadow-xl border border-white/15 whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 hidden sm:flex items-center gap-1.5 backdrop-blur-md">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+            <span>Fusion AI Assistant</span>
+            <span className="text-[9px] font-normal text-slate-400">(Drag to move)</span>
+          </div>
+        )}
       </div>
     </>
   );
 };
+
