@@ -307,7 +307,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                       onSelectTab(item.id);
                       onClose();
                     }}
-                    className={`group relative flex flex-col items-center justify-center p-3.5 rounded-3xl text-center border transition-all duration-300 hover:scale-105 active:scale-95 ${
+                    className={`group relative flex flex-col items-center justify-center p-3.5 rounded-3xl text-center border transition-all duration-300 hover:scale-105 active:scale-95 card-interactive ${
                       isActive
                         ? 'bg-brand-600/20 border-cyan-400 shadow-glow-cyan'
                         : 'bg-surface-darker/60 hover:bg-surface-darker/90 border-white/5 hover:border-white/20'
@@ -358,7 +358,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                       onSelectTab(item.id);
                       onClose();
                     }}
-                    className={`group relative p-4 rounded-2xl text-left border transition-all duration-200 flex flex-col justify-between overflow-hidden ${
+                    className={`group relative p-4 rounded-2xl text-left border transition-all duration-200 flex flex-col justify-between overflow-hidden card-interactive ${
                       isActive
                         ? 'bg-gradient-to-br from-brand-600/30 via-indigo-600/20 to-cyan-600/20 border-cyan-400 shadow-glow-cyan'
                         : 'bg-surface-darker/80 hover:bg-surface-darker border-white/10 hover:border-white/20 hover:scale-[1.02] shadow-md'

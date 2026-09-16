@@ -1,29 +1,30 @@
 :root {
-    --primary: #ffffff;
-    --secondary: #dc2626;
-    --bg: #0f172a;
-    --sidebar: #1e293b;
-    --text-main: #ffffff;
+    --primary: #f8fafc;
+    --secondary: #4f46e5;
+    --bg: #0b1120;
+    --sidebar: #151e32;
+    --text-main: #f8fafc;
     --text-muted: #94a3b8;
-    --white: #334155;
-    --success: #22c55e;
+    --white: #151e32;
+    --card-border: rgba(255, 255, 255, 0.08);
+    --success: #10b981;
     --danger: #ef4444;
 }
 
 body {
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
     margin: 0;
     background: var(--bg);
-    color: #ffffff !important;
+    color: #f8fafc !important;
     display: flex;
     height: 100vh;
     overflow-x: hidden;
 }
 
 a {
-    color: #ef4444 !important;
+    color: #818cf8 !important;
     text-decoration: none;
-    font-weight: bold;
+    font-weight: 600;
 }
 
 .sidebar {
@@ -1281,3 +1282,93 @@ tr:hover {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
 }
+
+/* Animated Border Shadow on Hover (Rounding Border Shape) */
+@property --border-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes rotateBorderGlow {
+  0% { --border-angle: 0deg; }
+  100% { --border-angle: 360deg; }
+}
+
+@keyframes borderGlowPulse {
+  0%, 100% {
+    box-shadow: 0 10px 24px -4px rgba(0, 0, 0, 0.25), 0 0 18px -2px rgba(99, 102, 241, 0.35);
+  }
+  50% {
+    box-shadow: 0 14px 28px -4px rgba(0, 0, 0, 0.3), 0 0 24px 1px rgba(6, 182, 212, 0.45);
+  }
+}
+
+.stat-card,
+.card,
+.child-card,
+.report-card,
+.fee-card,
+.overview-card,
+.module-card {
+  position: relative;
+  isolation: isolate;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stat-card::before,
+.card::before,
+.child-card::before,
+.report-card::before,
+.fee-card::before,
+.overview-card::before,
+.module-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.75px;
+  background: conic-gradient(
+    from var(--border-angle),
+    transparent 0deg,
+    transparent 110deg,
+    rgba(99, 102, 241, 0.15) 140deg,
+    #6366f1 180deg,
+    #06b6d4 200deg,
+    #818cf8 220deg,
+    transparent 260deg,
+    transparent 360deg
+  );
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 2;
+}
+
+.stat-card:hover::before,
+.card:hover::before,
+.child-card:hover::before,
+.report-card:hover::before,
+.fee-card:hover::before,
+.overview-card:hover::before,
+.module-card:hover::before {
+  opacity: 1;
+  animation: rotateBorderGlow 2.5s linear infinite;
+}
+
+.stat-card:hover,
+.card:hover,
+.child-card:hover,
+.report-card:hover,
+.fee-card:hover,
+.overview-card:hover,
+.module-card:hover {
+  transform: translateY(-2.5px);
+  animation: borderGlowPulse 2.5s ease-in-out infinite;
+  border-color: transparent !important;
+}

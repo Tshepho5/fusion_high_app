@@ -6,25 +6,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-    /* Base Dark Theme (Default) */
-    --bg: #0b0f19;
+    /* Base Serene Slate Dark Theme (Default) */
+    --bg: #0b1120;
     --bg-secondary: #0f172a;
-    --card-bg: #1e293b;
-    --card-bg-subtle: #162032;
-    --card-border: #334155;
-    --card-hover-border: #475569;
-    --sidebar-bg: #090d16;
-    --top-nav-bg: rgba(11, 15, 25, 0.92);
-    --bottom-nav-bg: rgba(15, 23, 42, 0.94);
+    --card-bg: #151e32;
+    --card-bg-subtle: #1e293b;
+    --card-border: rgba(255, 255, 255, 0.08);
+    --card-hover-border: rgba(255, 255, 255, 0.16);
+    --sidebar-bg: #0b1120;
+    --top-nav-bg: rgba(11, 17, 32, 0.95);
+    --bottom-nav-bg: rgba(11, 17, 32, 0.95);
     --text-primary: #f8fafc;
     --text-secondary: #cbd5e1;
     --text-muted: #94a3b8;
     
     /* Primary Accent */
-    --accent: #6366f1;
-    --accent-hover: #4f46e5;
-    --accent-soft: rgba(99, 102, 241, 0.15);
-    --accent-text: #a5b4fc;
+    --accent: #4f46e5;
+    --accent-hover: #4338ca;
+    --accent-soft: rgba(79, 70, 229, 0.15);
+    --accent-text: #818cf8;
     
     /* Semantic Colors */
     --success: #10b981;
@@ -1249,4 +1249,90 @@ input:checked + .slider:before {
     .dashboard-body {
         padding: 1rem;
     }
+}
+
+/* Animated Border Shadow on Hover (Rounding Border Shape) */
+@property --border-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes rotateBorderGlow {
+  0% { --border-angle: 0deg; }
+  100% { --border-angle: 360deg; }
+}
+
+@keyframes borderGlowPulse {
+  0%, 100% {
+    box-shadow: 0 10px 24px -4px rgba(0, 0, 0, 0.25), 0 0 18px -2px rgba(99, 102, 241, 0.35);
+  }
+  50% {
+    box-shadow: 0 14px 28px -4px rgba(0, 0, 0, 0.3), 0 0 24px 1px rgba(6, 182, 212, 0.45);
+  }
+}
+
+.stat-card,
+.card,
+.subject-card,
+.overview-card,
+.workspace-card,
+.module-card {
+  position: relative;
+  isolation: isolate;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stat-card::before,
+.card::before,
+.subject-card::before,
+.overview-card::before,
+.workspace-card::before,
+.module-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.75px;
+  background: conic-gradient(
+    from var(--border-angle),
+    transparent 0deg,
+    transparent 110deg,
+    rgba(99, 102, 241, 0.15) 140deg,
+    #6366f1 180deg,
+    #06b6d4 200deg,
+    #818cf8 220deg,
+    transparent 260deg,
+    transparent 360deg
+  );
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 2;
+}
+
+.stat-card:hover::before,
+.card:hover::before,
+.subject-card:hover::before,
+.overview-card:hover::before,
+.workspace-card:hover::before,
+.module-card:hover::before {
+  opacity: 1;
+  animation: rotateBorderGlow 2.5s linear infinite;
+}
+
+.stat-card:hover,
+.card:hover,
+.subject-card:hover,
+.overview-card:hover,
+.workspace-card:hover,
+.module-card:hover {
+  transform: translateY(-2.5px);
+  animation: borderGlowPulse 2.5s ease-in-out infinite;
+  border-color: transparent !important;
 }

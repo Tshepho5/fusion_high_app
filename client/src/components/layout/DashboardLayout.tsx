@@ -80,9 +80,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
         <main
           key={activeTab}
-          className={`flex-1 overflow-y-auto min-h-0 custom-scrollbar ${
-            activeTab === 'messages' ? 'p-2 md:p-4 pb-24 md:pb-28' : 'p-4 md:p-8 py-6 pb-28 md:pb-32'
-          } max-w-7xl w-full mx-auto animate-fade-in flex flex-col`}
+          className={`flex-1 overflow-y-auto min-h-0 custom-scrollbar ${activeTab === 'messages' ? 'p-2 md:p-4 pb-24 md:pb-28' : 'p-4 md:p-8 py-6 pb-28 md:pb-32'
+            } max-w-7xl w-full mx-auto animate-fade-in flex flex-col`}
         >
           {children}
         </main>

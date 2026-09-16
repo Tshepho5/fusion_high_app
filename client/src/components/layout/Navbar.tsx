@@ -11,9 +11,12 @@ import {
   Search,
   Command,
   Building2,
-  ChevronDown
+  ChevronDown,
+  Sun,
+  Moon
 } from 'lucide-react';
 
+import { useTheme } from '../../context/ThemeContext';
 import { NotificationDropdown } from './NotificationDropdown';
 import { FusionAppIcon } from '../common/FusionAppIcon';
 
@@ -25,6 +28,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPalette, title }) => {
   const { user, role } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const { currentSchool, schoolsList, setSchoolById } = useSchool();
   const [showSchoolMenu, setShowSchoolMenu] = useState(false);
 
@@ -273,6 +277,30 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
           <span>{role || 'User'}</span>
         </div>
 
+        {/* 1-Click Executive Theme Switcher (Light / Dark / Navy) */}
+        <button
+          onClick={toggleTheme}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-surface-dark/90 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all shadow-xs cursor-pointer group"
+          title={`Switch Theme (Current: ${theme === 'light' ? 'Light Mode' : theme === 'navy' ? 'Slate Navy' : 'Dark Mode'})`}
+          aria-label="Toggle theme"
+        >
+          {theme === 'light' ? (
+            <>
+              <Moon className="w-4 h-4 text-indigo-600 transition-transform group-hover:-rotate-12" />
+              <span className="text-[11px] font-semibold text-slate-700 hidden lg:inline">Dark</span>
+            </>
+          ) : theme === 'navy' ? (
+            <>
+              <Sun className="w-4 h-4 text-amber-400 transition-transform group-hover:rotate-45" />
+              <span className="text-[11px] font-semibold text-slate-300 hidden lg:inline">Light</span>
+            </>
+          ) : (
+            <>
+              <Sun className="w-4 h-4 text-amber-400 transition-transform group-hover:rotate-45" />
+              <span className="text-[11px] font-semibold text-slate-300 hidden lg:inline">Light</span>
+            </>
+          )}
+        </button>
 
         {/* Notification Bell Dropdown */}
         <NotificationDropdown />
