@@ -731,9 +731,6 @@ export const LearnerMessages: React.FC = () => {
                 Theme: {activeThemeObj.name}
               </span>
             </h2>
-            <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-              Instant communication with voice notes, photo sharing, and documents across Teachers, Parents, and Learners.
-            </p>
           </div>
         </div>
 
@@ -1307,10 +1304,7 @@ export const LearnerMessages: React.FC = () => {
               <div className="w-14 h-14 rounded-full bg-surface-dark flex items-center justify-center text-emerald-400 mb-3 shadow-xl">
                 <MessageSquare className="w-7 h-7" />
               </div>
-              <h3 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'} mb-1`}>Fusion High School Messenger</h3>
-              <p className="text-slate-400 max-w-sm text-xs">
-                Select a contact from the category list on the left to start sending and receiving messages, voice recordings, photos, and assignments.
-              </p>
+              <h3 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Select a conversation</h3>
             </div>
           )}
         </div>

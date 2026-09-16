@@ -231,9 +231,6 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
             <h2 className="text-2xl md:text-3xl font-extrabold font-display text-white tracking-tight">
               Learning Resources & Past Papers
             </h2>
-            <p className="text-xs md:text-sm text-slate-400 mt-1 max-w-xl">
-              Upload past question papers, CAPS textbooks, study guides, and worksheets. When you publish, targeted notifications are instantly sent to enrolled learners and parents.
-            </p>
           </div>
 
           <button
@@ -352,13 +349,9 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
                   {getTypeBadge(item.resource_type)}
                 </div>
 
-                <h3 className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors line-clamp-2 mb-1">
+                <h3 className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors line-clamp-2 mb-3">
                   {item.title}
                 </h3>
-
-                <p className="text-[11px] text-slate-400 mb-3 line-clamp-2 leading-relaxed">
-                  {item.description || `CAPS ${item.subject} curriculum study resource for Grade ${item.grade}.`}
-                </p>
 
                 <div className="grid grid-cols-2 gap-2 p-2.5 rounded-2xl bg-surface-darker border border-white/5 text-[10px] text-slate-400 font-mono mb-4">
                   <div>

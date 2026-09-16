@@ -207,9 +207,6 @@ export const InterSchoolCompetitions: React.FC = () => {
             <Swords className="w-6 h-6 text-brand-400" />
             Inter-School Derbies & Academic Olympiads
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Connecting high schools across Mankweng and Pretoria for inter-school sports matches, math quizzes, debates, and championships.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">

@@ -447,9 +447,6 @@ export const TeacherAITools: React.FC = () => {
             </div>
             <span>AI Lesson & Quiz Builder</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Subject-specific AI assistant for generating lesson plans, examination papers, marking rubrics, and non-repeating practice quizzes.
-          </p>
         </div>
       </div>
 
