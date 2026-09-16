@@ -127,109 +127,115 @@ export const LoginPage: React.FC = () => {
           />
         </div>
 
-        {/* Login Form Container */}
-        <div
-          className={`rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl space-y-4 transition-colors ${
-            isLight
-              ? 'bg-white/95 border border-slate-200/80 shadow-slate-200/60'
-              : isNavy
-              ? 'bg-[#111C38]/90 border border-blue-900/40'
-              : 'bg-[#0F172A]/90 border border-slate-700/60'
-          }`}
-        >
-          {error && (
-            <div className="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2.5 animate-fade-in shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse shrink-0" />
-              <span className="leading-snug">{error}</span>
-            </div>
-          )}
+        {/* Login Form Container with Animated Glowing Border */}
+        <div className="relative group">
+          {/* Ambient Glow Aura */}
+          <div className="login-glowing-aura" />
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email / Identifier Input */}
+          {/* Border Gradient Rotating Frame */}
+          <div className="login-glowing-card-wrapper relative z-10">
             <div
-              className={`p-3.5 rounded-2xl border transition-all space-y-1 ${
+              className={`rounded-[26px] p-6 sm:p-8 backdrop-blur-2xl space-y-4 transition-colors relative z-10 ${
                 isLight
-                  ? 'bg-slate-50 border-slate-200 focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20'
+                  ? 'bg-white/95 text-slate-900 shadow-xl'
                   : isNavy
-                  ? 'bg-[#0D162D]/90 border-blue-800/40 focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400/30'
-                  : 'bg-[#111923]/90 border-slate-700/60 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500/30'
+                  ? 'bg-[#111C38]/95 text-slate-100 shadow-2xl'
+                  : 'bg-[#0F172A]/95 text-slate-100 shadow-2xl'
               }`}
             >
-              <label
-                className={`block text-[10px] font-mono uppercase tracking-wider font-bold ${
-                  isLight ? 'text-slate-500' : 'text-slate-400'
-                }`}
-              >
-                Email or Learner ID
-              </label>
-              <div className="flex items-center gap-2.5">
-                <Mail
-                  className={`w-4 h-4 shrink-0 ${isLight ? 'text-blue-600' : 'text-blue-400'}`}
-                />
-                <input
-                  type="text"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="Enter email or learner ID (e.g. 1001)"
-                  required
-                  autoComplete="username"
-                  className={`w-full bg-transparent border-none p-0 text-xs sm:text-sm font-medium focus:outline-none ${
-                    isLight
-                      ? 'text-slate-900 placeholder:text-slate-400'
-                      : 'text-white placeholder:text-slate-400'
-                  }`}
-                />
-              </div>
-            </div>
+              {error && (
+                <div className="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2.5 animate-fade-in shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse shrink-0" />
+                  <span className="leading-snug">{error}</span>
+                </div>
+              )}
 
-            {/* Password Input */}
-            <div
-              className={`p-3.5 rounded-2xl border transition-all space-y-1 ${
-                isLight
-                  ? 'bg-slate-50 border-slate-200 focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20'
-                  : isNavy
-                  ? 'bg-[#0D162D]/90 border-blue-800/40 focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400/30'
-                  : 'bg-[#111923]/90 border-slate-700/60 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500/30'
-              }`}
-            >
-              <label
-                className={`block text-[10px] font-mono uppercase tracking-wider font-bold ${
-                  isLight ? 'text-slate-500' : 'text-slate-400'
-                }`}
-              >
-                Password
-              </label>
-              <div className="flex items-center gap-2.5">
-                <Lock
-                  className={`w-4 h-4 shrink-0 ${isLight ? 'text-blue-600' : 'text-blue-400'}`}
-                />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  autoComplete="current-password"
-                  className={`w-full bg-transparent border-none p-0 text-xs sm:text-sm font-medium focus:outline-none ${
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Email / Identifier Input with Glowing Border */}
+                <div
+                  className={`p-3.5 rounded-2xl border transition-all space-y-1 ${
                     isLight
-                      ? 'text-slate-900 placeholder:text-slate-400'
-                      : 'text-white placeholder:text-slate-400'
+                      ? 'bg-slate-50 border-slate-200 login-input-glow-light'
+                      : isNavy
+                      ? 'bg-[#0D162D]/95 border-blue-800/40 login-input-glow-dark'
+                      : 'bg-[#111923]/95 border-slate-700/60 login-input-glow-dark'
                   }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className={`p-1 transition-colors ${
-                    isLight
-                      ? 'text-slate-400 hover:text-blue-600'
-                      : 'text-slate-400 hover:text-blue-300'
-                  }`}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
+                  <label
+                    className={`block text-[10px] font-mono uppercase tracking-wider font-bold ${
+                      isLight ? 'text-slate-500' : 'text-slate-400'
+                    }`}
+                  >
+                    Email or Learner ID
+                  </label>
+                  <div className="flex items-center gap-2.5">
+                    <Mail
+                      className={`w-4 h-4 shrink-0 ${isLight ? 'text-blue-600' : 'text-blue-400'}`}
+                    />
+                    <input
+                      type="text"
+                      value={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
+                      placeholder="Enter email or learner ID (e.g. 1001)"
+                      required
+                      autoComplete="username"
+                      className={`w-full bg-transparent border-none p-0 text-xs sm:text-sm font-medium focus:outline-none login-glowing-input ${
+                        isLight
+                          ? 'text-slate-900 login-glowing-input-light'
+                          : 'text-white login-glowing-input-dark'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Password Input with Glowing Border */}
+                <div
+                  className={`p-3.5 rounded-2xl border transition-all space-y-1 ${
+                    isLight
+                      ? 'bg-slate-50 border-slate-200 login-input-glow-light'
+                      : isNavy
+                      ? 'bg-[#0D162D]/95 border-blue-800/40 login-input-glow-dark'
+                      : 'bg-[#111923]/95 border-slate-700/60 login-input-glow-dark'
+                  }`}
+                >
+                  <label
+                    className={`block text-[10px] font-mono uppercase tracking-wider font-bold ${
+                      isLight ? 'text-slate-500' : 'text-slate-400'
+                    }`}
+                  >
+                    Password
+                  </label>
+                  <div className="flex items-center gap-2.5">
+                    <Lock
+                      className={`w-4 h-4 shrink-0 ${isLight ? 'text-blue-600' : 'text-blue-400'}`}
+                    />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      autoComplete="current-password"
+                      className={`w-full bg-transparent border-none p-0 text-xs sm:text-sm font-medium focus:outline-none login-glowing-input ${
+                        isLight
+                          ? 'text-slate-900 login-glowing-input-light'
+                          : 'text-white login-glowing-input-dark'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className={`p-1 transition-colors ${
+                        isLight
+                          ? 'text-slate-400 hover:text-blue-600'
+                          : 'text-slate-400 hover:text-blue-300'
+                      }`}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
 
             {/* Options Row: Remember Me & Forgotten Password */}
             <div className="flex items-center justify-between pt-1 px-1 text-xs">
@@ -282,6 +288,8 @@ export const LoginPage: React.FC = () => {
               )}
             </button>
           </form>
+            </div>
+          </div>
         </div>
 
         {/* Footer Registration Link */}

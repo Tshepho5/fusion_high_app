@@ -153,9 +153,9 @@ textarea::placeholder {
   transition: color 0.15s ease;
 }
 
-.theme-light input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *)::placeholder,
-html[data-theme="light"] input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *)::placeholder,
-.light input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *)::placeholder,
+.theme-light input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not(.login-glowing-input)::placeholder,
+html[data-theme="light"] input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not(.login-glowing-input)::placeholder,
+.light input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not(.login-glowing-input)::placeholder,
 .theme-light textarea:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *)::placeholder,
 html[data-theme="light"] textarea:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *)::placeholder,
 .light textarea:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *)::placeholder {
@@ -163,12 +163,12 @@ html[data-theme="light"] textarea:not([data-theme-preserve="true"]):not([data-th
   opacity: 1 !important;
 }
 
-.theme-dark input::placeholder,
-html[data-theme="dark"] input::placeholder,
-.theme-navy input::placeholder,
-html[data-theme="navy"] input::placeholder,
-[data-theme-preserve="true"] input::placeholder,
-[data-theme-preserve="true"] * input::placeholder {
+.theme-dark input:not(.login-glowing-input)::placeholder,
+html[data-theme="dark"] input:not(.login-glowing-input)::placeholder,
+.theme-navy input:not(.login-glowing-input)::placeholder,
+html[data-theme="navy"] input:not(.login-glowing-input)::placeholder,
+[data-theme-preserve="true"] input:not(.login-glowing-input)::placeholder,
+[data-theme-preserve="true"] * input:not(.login-glowing-input)::placeholder {
   color: #94A3B8 !important;
   opacity: 0.8 !important;
 }
@@ -1099,5 +1099,190 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
   background-color: #F8FAFC !important;
   border-color: #E2E8F0 !important;
 }
+
+/* =========================================================================
+   LOGIN FORM & PLACEHOLDER GLOWING ANIMATIONS
+   ========================================================================= */
+
+@keyframes login-border-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes login-border-pulse {
+  0%, 100% {
+    opacity: 0.55;
+    filter: blur(16px);
+    transform: scale(0.99);
+  }
+  50% {
+    opacity: 0.95;
+    filter: blur(24px);
+    transform: scale(1.02);
+  }
+}
+
+@keyframes input-glow-pulse-dark {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.25), 0 0 10px -2px rgba(99, 102, 241, 0.25);
+    border-color: rgba(56, 189, 248, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 1.5px rgba(56, 189, 248, 0.65), 0 0 18px 2px rgba(99, 102, 241, 0.45);
+    border-color: rgba(99, 102, 241, 0.7);
+  }
+}
+
+@keyframes input-glow-pulse-light {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2), 0 0 8px -1px rgba(79, 70, 229, 0.15);
+    border-color: rgba(59, 130, 246, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 1.5px rgba(59, 130, 246, 0.55), 0 0 16px 2px rgba(79, 70, 229, 0.3);
+    border-color: rgba(79, 70, 229, 0.6);
+  }
+}
+
+@keyframes placeholder-glow-dark {
+  0%, 100% {
+    color: #64748b !important;
+    text-shadow: 0 0 2px rgba(56, 189, 248, 0.2) !important;
+    opacity: 0.7 !important;
+  }
+  50% {
+    color: #38bdf8 !important;
+    text-shadow: 0 0 8px rgba(56, 189, 248, 0.85), 0 0 18px rgba(99, 102, 241, 0.6) !important;
+    opacity: 1 !important;
+  }
+}
+
+@keyframes placeholder-glow-light {
+  0%, 100% {
+    color: #94a3b8 !important;
+    text-shadow: 0 0 1px rgba(37, 99, 235, 0.2) !important;
+    opacity: 0.7 !important;
+  }
+  50% {
+    color: #2563eb !important;
+    text-shadow: 0 0 8px rgba(59, 130, 246, 0.7), 0 0 16px rgba(99, 102, 241, 0.4) !important;
+    opacity: 1 !important;
+  }
+}
+
+/* Outer Glowing Aura Behind the Form */
+.login-glowing-aura {
+  position: absolute;
+  inset: -6px;
+  border-radius: 2rem;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(56, 189, 248, 0.85) 45deg,
+    rgba(99, 102, 241, 0.85) 90deg,
+    rgba(168, 85, 247, 0.85) 135deg,
+    transparent 180deg,
+    rgba(6, 182, 212, 0.85) 225deg,
+    rgba(59, 130, 246, 0.85) 270deg,
+    rgba(129, 140, 248, 0.85) 315deg,
+    transparent 360deg
+  );
+  filter: blur(18px);
+  animation: login-border-rotate 5s linear infinite, login-border-pulse 3.2s ease-in-out infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Light mode outer aura calibrated */
+.theme-light .login-glowing-aura,
+.light .login-glowing-aura {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(37, 99, 235, 0.65) 45deg,
+    rgba(79, 70, 229, 0.65) 90deg,
+    rgba(147, 51, 234, 0.65) 135deg,
+    transparent 180deg,
+    rgba(14, 165, 233, 0.65) 225deg,
+    rgba(37, 99, 235, 0.65) 270deg,
+    rgba(99, 102, 241, 0.65) 315deg,
+    transparent 360deg
+  );
+  filter: blur(20px);
+}
+
+/* Glowing Border Frame for the Login Card */
+.login-glowing-card-wrapper {
+  position: relative;
+  border-radius: 1.75rem; /* 28px */
+  padding: 2px;
+  overflow: hidden;
+  box-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.45);
+}
+
+.login-glowing-card-wrapper::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    #38bdf8 45deg,
+    #6366f1 90deg,
+    #a855f7 135deg,
+    transparent 180deg,
+    #06b6d4 225deg,
+    #3b82f6 270deg,
+    #818cf8 315deg,
+    transparent 360deg
+  );
+  animation: login-border-rotate 5s linear infinite;
+  z-index: 0;
+}
+
+/* Input Glowing Border Pulse */
+.login-input-glow-dark {
+  animation: input-glow-pulse-dark 3s ease-in-out infinite;
+}
+
+.login-input-glow-dark:focus-within {
+  animation: none;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.85), 0 0 22px 3px rgba(99, 102, 241, 0.6) !important;
+  border-color: #38bdf8 !important;
+}
+
+.login-input-glow-light {
+  animation: input-glow-pulse-light 3s ease-in-out infinite;
+}
+
+.login-input-glow-light:focus-within {
+  animation: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.85), 0 0 18px 2px rgba(79, 70, 229, 0.4) !important;
+  border-color: #2563eb !important;
+}
+
+/* Placeholders with glowing neon pulse */
+.theme-dark input.login-glowing-input::placeholder,
+html[data-theme="dark"] input.login-glowing-input::placeholder,
+.theme-navy input.login-glowing-input::placeholder,
+html[data-theme="navy"] input.login-glowing-input::placeholder,
+input.login-glowing-input-dark::placeholder {
+  animation: placeholder-glow-dark 2.5s ease-in-out infinite !important;
+}
+
+.theme-light input.login-glowing-input::placeholder,
+html[data-theme="light"] input.login-glowing-input::placeholder,
+.light input.login-glowing-input::placeholder,
+input.login-glowing-input-light::placeholder {
+  animation: placeholder-glow-light 2.5s ease-in-out infinite !important;
+}
+
 
 
