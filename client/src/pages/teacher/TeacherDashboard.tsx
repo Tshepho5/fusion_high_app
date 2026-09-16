@@ -129,15 +129,17 @@ export const TeacherDashboard: React.FC = () => {
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
+      customBottomDock={
+        <div className="fixed bottom-3 inset-x-0 md:left-72 z-40 flex justify-center items-center pointer-events-none select-none animate-bounce-in px-2 sm:px-4">
+          <div className="pointer-events-auto">
+            <TeacherNavigationBar
+              activeTab={activeTab}
+              onSelectTab={handleSelectTab}
+            />
+          </div>
+        </div>
+      }
     >
-      {/* 🌟 Modern Teacher Floating Navigation Bar (Home, Calendar, Profile, Discover, Messages, More) */}
-      <div className="sticky top-0 z-30 mb-6 pb-1 pt-1 backdrop-blur-md bg-canvas-dark/40">
-        <TeacherNavigationBar
-          activeTab={activeTab}
-          onSelectTab={handleSelectTab}
-          className="max-w-xl mx-auto w-full"
-        />
-      </div>
 
       {/* Universal Breadcrumb & Backtrack Bar for Sub-Modules */}
       {isSubModule && (

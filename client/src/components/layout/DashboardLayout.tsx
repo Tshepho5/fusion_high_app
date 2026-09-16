@@ -11,6 +11,8 @@ interface DashboardLayoutProps {
   activeTab: string;
   onSelectTab: (tabId: string) => void;
   title?: string;
+  customBottomDock?: React.ReactNode;
+  hideBottomDock?: boolean;
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
@@ -18,6 +20,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   activeTab,
   onSelectTab,
   title,
+  customBottomDock,
+  hideBottomDock = false,
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -86,13 +90,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           {children}
         </main>
 
-        {/* 🌟 Centered Floating Main Menu Bottom Dock */}
-        <BottomNavigationDock
-          activeTab={activeTab}
-          onSelectTab={onSelectTab}
-          onOpenMainMenu={() => setMainMenuOpen((prev) => !prev)}
-          isMainMenuOpen={mainMenuOpen}
-        />
+        {/* 🌟 Centered Floating Bottom Navigation Dock */}
+        {customBottomDock !== undefined ? (
+          customBottomDock
+        ) : !hideBottomDock ? (
+          <BottomNavigationDock
+            activeTab={activeTab}
+            onSelectTab={onSelectTab}
+            onOpenMainMenu={() => setMainMenuOpen((prev) => !prev)}
+            isMainMenuOpen={mainMenuOpen}
+          />
+        ) : null}
 
         {/* 🤖 Movable Circular 24/7 AI Chat Module on all Dashboards */}
         <FloatingAIChatModule onSelectTab={onSelectTab} />
