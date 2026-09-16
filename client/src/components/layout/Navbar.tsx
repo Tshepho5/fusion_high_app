@@ -4,10 +4,6 @@ import { useSchool } from '../../context/SchoolContext';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
 import {
   Menu,
-  GraduationCap,
-  Briefcase,
-  Users,
-  ShieldAlert,
   Search,
   Command,
   Building2,
@@ -32,34 +28,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
   const { currentSchool, schoolsList, setSchoolById } = useSchool();
   const [showSchoolMenu, setShowSchoolMenu] = useState(false);
 
-  const getRoleIcon = () => {
-    switch (role) {
-      case 'admin':
-        return <ShieldAlert className="w-4 h-4 text-rose-400" />;
-      case 'teacher':
-        return <Briefcase className="w-4 h-4 text-cyan-400" />;
-      case 'parent':
-        return <Users className="w-4 h-4 text-amber-400" />;
-      case 'learner':
-      default:
-        return <GraduationCap className="w-4 h-4 text-indigo-400" />;
-    }
-  };
-
-  const getRoleBadgeStyle = () => {
-    switch (role) {
-      case 'admin': return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
-      case 'teacher': return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
-      case 'parent': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-      case 'learner':
-      default: return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
-    }
-  };
-
-
-
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/90 dark:border-white/10 bg-white/95 dark:bg-surface-darker/90 px-4 md:px-8 backdrop-blur-md transition-colors">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/90 dark:border-white/10 bg-white/95 dark:bg-[#0F172A]/95 px-4 md:px-8 backdrop-blur-md transition-colors">
       {/* Left: Mobile Toggle + User Profile Avatar */}
       <div className="flex items-center gap-3">
         {onToggleSidebar && (
@@ -142,8 +112,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
               onClick={() => {
                 if (canSwitch) setShowSchoolMenu(!showSchoolMenu);
               }}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/90 dark:bg-surface-dark/80 border border-slate-200/90 dark:border-white/10 transition-all text-left shadow-xs group ${
-                canSwitch ? 'hover:bg-slate-200/90 dark:hover:bg-surface-dark hover:border-brand-500/40 cursor-pointer' : 'cursor-default opacity-95'
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/90 dark:bg-[#151E32]/90 border border-slate-200/90 dark:border-white/10 transition-all text-left shadow-xs group ${
+                canSwitch ? 'hover:bg-slate-200/90 dark:hover:bg-[#1E293B] hover:border-brand-500/40 cursor-pointer' : 'cursor-default opacity-95'
               }`}
               title={switcherTooltip}
             >
@@ -189,7 +159,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
         {/* Multi-School Switcher Dropdown */}
         {showSchoolMenu && canSwitch && (
           <div
-            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-80 md:w-96 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/15 shadow-2xl p-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl"
+            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-80 md:w-96 rounded-2xl bg-white dark:bg-[#151E32] border border-slate-200/90 dark:border-white/15 shadow-2xl p-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl"
             onMouseLeave={() => setShowSchoolMenu(false)}
           >
             <div className="px-3 py-2 border-b border-slate-200/80 dark:border-white/10 mb-1.5 flex items-center justify-between">
@@ -259,7 +229,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
         {onOpenCommandPalette && (
           <button
             onClick={onOpenCommandPalette}
-            className="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-slate-100/90 dark:bg-surface-dark/90 hover:bg-slate-200/90 dark:hover:bg-white/5 border border-slate-200/90 dark:border-white/10 hover:border-brand-500/40 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all shadow-xs group hover:shadow-glow-indigo"
+            className="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-slate-100/90 dark:bg-[#151E32]/90 hover:bg-slate-200/90 dark:hover:bg-white/5 border border-slate-200/90 dark:border-white/10 hover:border-brand-500/40 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all shadow-xs group hover:shadow-glow-indigo"
             title="Search anywhere (Ctrl + K)"
           >
             <Search className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400 group-hover:scale-110 transition-transform" />
@@ -271,16 +241,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
           </button>
         )}
 
-        {/* Role Pill */}
-        <div className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold uppercase tracking-wider ${getRoleBadgeStyle()}`}>
-          {getRoleIcon()}
-          <span>{role || 'User'}</span>
-        </div>
-
         {/* 1-Click Executive Theme Switcher (Light / Dark / Navy) */}
         <button
           onClick={toggleTheme}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100/90 dark:bg-surface-dark/90 hover:bg-slate-200/90 dark:hover:bg-white/10 border border-slate-200/90 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-xs cursor-pointer group"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100/90 dark:bg-[#151E32]/90 hover:bg-slate-200/90 dark:hover:bg-white/10 border border-slate-200/90 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all shadow-xs cursor-pointer group"
           title={`Switch Theme (Current: ${theme === 'light' ? 'Light Mode' : theme === 'navy' ? 'Slate Navy' : 'Dark Mode'})`}
           aria-label="Toggle theme"
         >
