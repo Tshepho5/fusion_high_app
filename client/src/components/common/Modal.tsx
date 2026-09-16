@@ -63,16 +63,16 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         className={`relative w-full ${maxWidthStyles[maxWidth]} ${
           alignTop ? 'my-0.5 sm:my-2' : 'my-1 sm:my-auto'
-        } rounded-2xl sm:rounded-3xl bg-surface-dark border border-white/10 shadow-2xl z-10 max-h-[96vh] sm:max-h-[92vh] flex flex-col overflow-hidden animate-fade-in`}
+        } rounded-2xl sm:rounded-3xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 shadow-2xl z-10 max-h-[96vh] sm:max-h-[92vh] flex flex-col overflow-hidden animate-fade-in`}
       >
         {/* Modal Header (Fixed at top) */}
-        <div className="flex items-center justify-between border-b border-white/10 px-4 sm:px-5 py-2.5 sm:py-3 bg-surface-darker/70 shrink-0">
-          <h3 className="text-sm sm:text-base font-extrabold font-display text-white tracking-tight">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 px-4 sm:px-5 py-2.5 sm:py-3 bg-slate-100 dark:bg-surface-darker/70 shrink-0">
+          <h3 className="text-sm sm:text-base font-extrabold font-display text-slate-900 dark:text-white tracking-tight">
             {title}
           </h3>
           <button
             onClick={onClose}
-            className="p-1 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/10 transition-colors cursor-pointer"
             title="Close"
           >
             <X className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -80,7 +80,7 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
 
         {/* Modal Body (Scrollable) */}
-        <div className={`p-3 sm:p-4 overflow-y-auto ${bodyClassName} custom-scrollbar text-slate-200`}>
+        <div className={`p-3 sm:p-4 overflow-y-auto ${bodyClassName} custom-scrollbar text-slate-800 dark:text-slate-200`}>
           {children}
         </div>
       </div>

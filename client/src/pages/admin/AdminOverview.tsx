@@ -521,7 +521,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
       {/* ========================================================================= */}
       {/* 2. SCHOOL CURRICULUM SUBJECTS & GRADE EXPLORATION (NEW ADMIN FEATURE)     */}
       {/* ========================================================================= */}
-      <section className="space-y-4 rounded-3xl bg-slate-50/70 dark:bg-surface-dark/40 border border-slate-200/90 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden">
+      <section className="space-y-4 rounded-3xl bg-slate-100/90 dark:bg-surface-darker/80 border border-slate-300/80 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden transition-colors">
         
         {/* Section Top Header with Title and View Mode Switcher */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -539,25 +539,25 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
           <div className="flex flex-wrap items-center gap-2">
             {/* Search Input */}
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={subjectSearch}
                 onChange={(e) => setSubjectSearch(e.target.value)}
                 placeholder="Search subject or educator..."
-                className="pl-8 pr-3 py-1.5 rounded-xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500/60 transition-all w-44 sm:w-56"
+                className="pl-8 pr-3 py-1.5 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all w-44 sm:w-56"
               />
             </div>
 
             {/* View Mode Switcher */}
-            <div className="flex items-center p-1 rounded-xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 shadow-sm">
+            <div className="flex items-center p-1 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 shadow-sm">
               <button
                 type="button"
                 onClick={() => handleSetSubjectsViewMode('carousel')}
                 className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                   subjectsViewMode === 'carousel'
                     ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
                 }`}
                 title="Carousel View"
               >
@@ -571,7 +571,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                   subjectsViewMode === 'grid'
                     ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
                 }`}
                 title="Standard Grid"
               >
@@ -585,7 +585,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                   subjectsViewMode === 'compact'
                     ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
                 }`}
                 title="Compact Tiles"
               >
@@ -599,7 +599,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                   subjectsViewMode === 'list'
                     ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
                 }`}
                 title="List View"
               >
@@ -614,7 +614,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 <button
                   type="button"
                   onClick={() => scrollSubjectsCarousel(-1)}
-                  className="p-2 rounded-xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm active:scale-95 cursor-pointer"
+                  className="p-2 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm active:scale-95 cursor-pointer"
                   title="Scroll Left"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -622,7 +622,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 <button
                   type="button"
                   onClick={() => scrollSubjectsCarousel(1)}
-                  className="p-2 rounded-xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm active:scale-95 cursor-pointer"
+                  className="p-2 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm active:scale-95 cursor-pointer"
                   title="Scroll Right"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -641,7 +641,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 selectedGrade === g.id
                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-indigo-500/25'
-                  : 'bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-indigo-500/40'
+                  : 'bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:border-indigo-500/40'
               }`}
             >
               {g.label}
@@ -655,10 +655,10 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
             <button
               key={c.id}
               onClick={() => setSelectedCategory(c.id)}
-              className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-all shrink-0 cursor-pointer ${
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer ${
                 selectedCategory === c.id
-                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
-                  : 'bg-slate-200/70 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-300/60 dark:hover:bg-white/10'
+                  ? 'bg-indigo-600 text-white shadow-sm border border-indigo-500'
+                  : 'bg-white dark:bg-surface-dark text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-white/10 hover:border-indigo-500/40 hover:text-indigo-600 dark:hover:text-white'
               }`}
             >
               {c.label}
@@ -668,10 +668,10 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
 
         {/* Subject Cards Output Rendering */}
         {filteredSubjects.length === 0 ? (
-          <div className="p-8 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 text-center space-y-2">
+          <div className="p-8 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-center space-y-2">
             <BookOpen className="w-8 h-8 text-slate-400 mx-auto" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">No Subjects Found</h3>
-            <span className="text-xs text-slate-500 dark:text-slate-400">Try adjusting your grade, category, or search filters.</span>
+            <span className="text-xs text-slate-600 dark:text-slate-400">Try adjusting your grade, category, or search filters.</span>
           </div>
         ) : (
           <>
@@ -686,7 +686,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   return (
                     <div
                       key={sub.id}
-                      className="min-w-[320px] max-w-[350px] shrink-0 snap-start rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group overflow-hidden"
+                      className="min-w-[320px] max-w-[350px] shrink-0 snap-start rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group overflow-hidden"
                     >
                       {/* Subject Background Picture Banner */}
                       <div className="relative h-32 w-full overflow-hidden bg-slate-900">
@@ -696,7 +696,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           loading="lazy"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/30" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/30" />
 
                         {/* Top Badges */}
                         <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-1">
@@ -704,11 +704,11 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                             <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-600 text-white shadow-sm">
                               Grade {sub.grade}
                             </span>
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/60 text-cyan-300 border border-cyan-500/30 backdrop-blur-md">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/70 text-cyan-300 border border-cyan-500/40 backdrop-blur-md">
                               {sub.stream}
                             </span>
                           </div>
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/60 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 backdrop-blur-md">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/70 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 backdrop-blur-md">
                             <Users className="w-3 h-3 text-emerald-400" />
                             {sub.learner_count}
                           </span>
@@ -723,7 +723,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           >
                             {sub.name}
                           </h3>
-                          <p className="text-[11px] text-slate-300 font-medium truncate">
+                          <p className="text-[11px] text-slate-200 font-medium truncate">
                             {sub.teacher_name}
                           </p>
                         </div>
@@ -732,10 +732,10 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                       {/* Card Content & Quick Actions */}
                       <div className="p-3.5 space-y-3">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+                          <span className="text-slate-700 dark:text-slate-300 font-mono text-xs font-semibold">
                             {sub.code}
                           </span>
-                          <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                          <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/15 dark:bg-emerald-500/20 px-2.5 py-0.5 rounded-md border border-emerald-500/30">
                             {sub.pass_rate}% Pass Rate
                           </span>
                         </div>
@@ -743,7 +743,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                         <div className="grid grid-cols-2 gap-2 pt-1">
                           <button
                             onClick={() => onNavigateTab('marks', { subject: sub.name, grade: sub.grade })}
-                            className="px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-500/30 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-500/20 hover:bg-indigo-100 dark:hover:bg-indigo-500/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-500/30 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                             title={`Marks Audit for ${sub.name}`}
                           >
                             <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-500" />
@@ -751,7 +751,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           </button>
                           <button
                             onClick={() => onNavigateTab('reports', { subject: sub.name, grade: sub.grade })}
-                            className="px-2.5 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 text-xs font-bold border border-blue-200 dark:border-blue-500/30 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/30 text-blue-700 dark:text-blue-300 text-xs font-bold border border-blue-200 dark:border-blue-500/30 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                             title={`Report Cards for ${sub.name}`}
                           >
                             <FileText className="w-3.5 h-3.5 text-blue-500" />
@@ -760,18 +760,18 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                         </div>
 
                         {/* View More Button */}
-                        <div className="pt-2 border-t border-slate-100 dark:border-white/5 flex items-center justify-between">
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                            Avg Mark: <strong className="text-slate-800 dark:text-slate-200">{sub.average_mark}%</strong>
+                        <div className="pt-2 border-t border-slate-300 dark:border-white/10 flex items-center justify-between">
+                          <span className="text-xs text-slate-700 dark:text-slate-300">
+                            Avg Mark: <strong className="text-slate-900 dark:text-white font-bold">{sub.average_mark}%</strong>
                           </span>
                           <button
                             onClick={() => setViewMoreSubject(sub)}
                             className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 flex items-center gap-1 transition-colors cursor-pointer hover:underline"
                             title="View more modules & tools for this subject"
                           >
-                            <Eye className="w-3.5 h-3.5" />
+                            <Eye className="w-3.5 h-3.5 text-cyan-500" />
                             <span>View More</span>
-                            <ChevronRight className="w-3 h-3" />
+                            <ChevronRight className="w-3 h-3 text-cyan-500" />
                           </button>
                         </div>
                       </div>
@@ -789,7 +789,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   return (
                     <div
                       key={sub.id}
-                      className="rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group overflow-hidden"
+                      className="rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group overflow-hidden"
                     >
                       {/* Subject Background Picture Banner */}
                       <div className="relative h-32 w-full overflow-hidden bg-slate-900">
@@ -799,7 +799,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           loading="lazy"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/30" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/30" />
 
                         {/* Top Badges */}
                         <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-1">
@@ -807,11 +807,11 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                             <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-600 text-white shadow-sm">
                               Grade {sub.grade}
                             </span>
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/60 text-cyan-300 border border-cyan-500/30 backdrop-blur-md">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/70 text-cyan-300 border border-cyan-500/40 backdrop-blur-md">
                               {sub.stream}
                             </span>
                           </div>
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/60 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 backdrop-blur-md">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/70 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 backdrop-blur-md">
                             <Users className="w-3 h-3 text-emerald-400" />
                             {sub.learner_count}
                           </span>
@@ -826,7 +826,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           >
                             {sub.name}
                           </h3>
-                          <p className="text-[11px] text-slate-300 font-medium truncate">
+                          <p className="text-[11px] text-slate-200 font-medium truncate">
                             {sub.teacher_name}
                           </p>
                         </div>
@@ -835,10 +835,10 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                       {/* Card Content & Quick Actions */}
                       <div className="p-3.5 space-y-3">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+                          <span className="text-slate-700 dark:text-slate-300 font-mono text-xs font-semibold">
                             {sub.code}
                           </span>
-                          <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                          <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/15 dark:bg-emerald-500/20 px-2.5 py-0.5 rounded-md border border-emerald-500/30">
                             {sub.pass_rate}% Pass Rate
                           </span>
                         </div>
@@ -846,7 +846,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                         <div className="grid grid-cols-2 gap-2 pt-1">
                           <button
                             onClick={() => onNavigateTab('marks', { subject: sub.name, grade: sub.grade })}
-                            className="px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-500/30 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-500/20 hover:bg-indigo-100 dark:hover:bg-indigo-500/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-500/30 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                             title={`Marks Audit for ${sub.name}`}
                           >
                             <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-500" />
@@ -854,7 +854,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           </button>
                           <button
                             onClick={() => onNavigateTab('reports', { subject: sub.name, grade: sub.grade })}
-                            className="px-2.5 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 text-xs font-bold border border-blue-200 dark:border-blue-500/30 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/30 text-blue-700 dark:text-blue-300 text-xs font-bold border border-blue-200 dark:border-blue-500/30 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                             title={`Report Cards for ${sub.name}`}
                           >
                             <FileText className="w-3.5 h-3.5 text-blue-500" />
@@ -863,18 +863,18 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                         </div>
 
                         {/* View More Button */}
-                        <div className="pt-2 border-t border-slate-100 dark:border-white/5 flex items-center justify-between">
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                            Avg Mark: <strong className="text-slate-800 dark:text-slate-200">{sub.average_mark}%</strong>
+                        <div className="pt-2 border-t border-slate-300 dark:border-white/10 flex items-center justify-between">
+                          <span className="text-xs text-slate-700 dark:text-slate-300">
+                            Avg Mark: <strong className="text-slate-900 dark:text-white font-bold">{sub.average_mark}%</strong>
                           </span>
                           <button
                             onClick={() => setViewMoreSubject(sub)}
                             className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 flex items-center gap-1 transition-colors cursor-pointer hover:underline"
                             title="View more modules & tools for this subject"
                           >
-                            <Eye className="w-3.5 h-3.5" />
+                            <Eye className="w-3.5 h-3.5 text-cyan-500" />
                             <span>View More</span>
-                            <ChevronRight className="w-3 h-3" />
+                            <ChevronRight className="w-3 h-3 text-cyan-500" />
                           </button>
                         </div>
                       </div>
@@ -893,7 +893,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     <div
                       key={sub.id}
                       onClick={() => setViewMoreSubject(sub)}
-                      className="rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-md cursor-pointer group overflow-hidden flex flex-col justify-between"
+                      className="rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-md cursor-pointer group overflow-hidden flex flex-col justify-between"
                     >
                       <div className="relative h-20 w-full overflow-hidden bg-slate-900">
                         <img
@@ -902,20 +902,20 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                           loading="lazy"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/20" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/20" />
                         <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-600 text-white">
                           Gr {sub.grade}
                         </span>
-                        <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-black/60 text-emerald-300 border border-emerald-500/30">
+                        <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-black/70 text-emerald-300 border border-emerald-500/30">
                           {sub.pass_rate}%
                         </span>
                       </div>
 
                       <div className="p-2.5 space-y-1.5 text-center">
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-cyan-500 dark:group-hover:text-cyan-300 transition-colors">
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-cyan-300 transition-colors">
                           {sub.name}
                         </h4>
-                        <div className="flex items-center justify-center gap-1 text-[10px] text-cyan-600 dark:text-cyan-400 font-semibold">
+                        <div className="flex items-center justify-center gap-1 text-[10px] text-cyan-600 dark:text-cyan-400 font-bold">
                           <Eye className="w-3 h-3" />
                           <span>View More</span>
                         </div>
@@ -934,7 +934,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   return (
                     <div
                       key={sub.id}
-                      className="p-3 sm:px-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                      className="p-3 sm:px-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 relative bg-slate-900">
@@ -950,29 +950,29 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-600 text-white">
                               Grade {sub.grade}
                             </span>
-                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 font-mono">
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 font-mono">
                               {sub.code}
                             </span>
-                            <span className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">
+                            <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-500/10 dark:bg-cyan-500/20 px-2 py-0.5 rounded border border-cyan-500/30">
                               {sub.stream}
                             </span>
                           </div>
                           <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
                             {sub.name}
                           </h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                            Educator: {sub.teacher_name}
+                          <p className="text-xs text-slate-600 dark:text-slate-300 truncate">
+                            Educator: <span className="font-semibold text-slate-900 dark:text-white">{sub.teacher_name}</span>
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-white/5">
+                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-300 dark:border-white/10">
                         <div className="text-right hidden md:block">
                           <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1">
                             <Users className="w-3.5 h-3.5 text-indigo-500" />
                             <span>{sub.learner_count} Learners</span>
                           </div>
-                          <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                          <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                             {sub.pass_rate}% Pass Rate
                           </div>
                         </div>
@@ -980,7 +980,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => onNavigateTab('marks', { subject: sub.name, grade: sub.grade })}
-                            className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-indigo-500/20 text-slate-700 dark:text-slate-300 text-xs font-bold border border-slate-200 dark:border-white/10 transition-all cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-500/20 hover:bg-indigo-100 dark:hover:bg-indigo-500/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-500/30 transition-all cursor-pointer"
                             title={`Marks Audit for ${sub.name}`}
                           >
                             Marks
@@ -1236,23 +1236,23 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
 
             {/* Quick Metrics Bar */}
             <div className="grid grid-cols-3 gap-2.5">
-              <div className="p-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-center">
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-semibold">Total Enrolled</span>
+              <div className="p-3 rounded-xl bg-slate-100 dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-center">
+                <span className="text-[11px] text-slate-700 dark:text-slate-300 block font-bold">Total Enrolled</span>
                 <span className="text-base font-black text-slate-900 dark:text-white">{viewMoreSubject.learner_count} Students</span>
               </div>
-              <div className="p-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-center">
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-semibold">Class Average</span>
+              <div className="p-3 rounded-xl bg-slate-100 dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-center">
+                <span className="text-[11px] text-slate-700 dark:text-slate-300 block font-bold">Class Average</span>
                 <span className="text-base font-black text-indigo-600 dark:text-indigo-400">{viewMoreSubject.average_mark}%</span>
               </div>
-              <div className="p-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-center">
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-semibold">CAPS Status</span>
+              <div className="p-3 rounded-xl bg-slate-100 dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-center">
+                <span className="text-[11px] text-slate-700 dark:text-slate-300 block font-bold">CAPS Status</span>
                 <span className="text-base font-black text-emerald-600 dark:text-emerald-400">{viewMoreSubject.status}</span>
               </div>
             </div>
 
             {/* Administrative Subject Operations Grid */}
             <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                 Administrative Operations & Departmental Tools
               </h4>
 
@@ -1266,7 +1266,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     setViewMoreSubject(null);
                     onNavigateTab('marks', { subject: target.name, grade: target.grade });
                   }}
-                  className="p-3 rounded-2xl bg-white dark:bg-surface-darker border border-slate-200 dark:border-white/10 hover:border-indigo-500/50 hover:bg-indigo-50/40 dark:hover:bg-indigo-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
+                  className="p-3 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
                 >
                   <div className="w-10 h-10 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <FileSpreadsheet className="w-5 h-5" />
@@ -1275,7 +1275,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors block truncate">
                       CAPS Marks & SBA Audits
                     </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Grade {viewMoreSubject.grade} Marksheets</span>
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Grade {viewMoreSubject.grade} Marksheets</span>
                   </div>
                 </button>
 
@@ -1287,7 +1287,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     setViewMoreSubject(null);
                     onNavigateTab('reports', { subject: target.name, grade: target.grade });
                   }}
-                  className="p-3 rounded-2xl bg-white dark:bg-surface-darker border border-slate-200 dark:border-white/10 hover:border-blue-500/50 hover:bg-blue-50/40 dark:hover:bg-blue-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
+                  className="p-3 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-blue-500/50 hover:bg-blue-50/50 dark:hover:bg-blue-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
                 >
                   <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <FileText className="w-5 h-5" />
@@ -1296,7 +1296,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors block truncate">
                       Report Card Studio
                     </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Term 1 - 4 Termly Reports</span>
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Term 1 - 4 Termly Reports</span>
                   </div>
                 </button>
 
@@ -1308,7 +1308,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     setViewMoreSubject(null);
                     onNavigateTab('subjects', { subject: target.name, grade: target.grade });
                   }}
-                  className="p-3 rounded-2xl bg-white dark:bg-surface-darker border border-slate-200 dark:border-white/10 hover:border-cyan-500/50 hover:bg-cyan-50/40 dark:hover:bg-cyan-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
+                  className="p-3 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-cyan-500/50 hover:bg-cyan-50/50 dark:hover:bg-cyan-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
                 >
                   <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <BookOpen className="w-5 h-5" />
@@ -1317,7 +1317,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors block truncate">
                       Curriculum Registers & Roster
                     </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Class Enrollment Records</span>
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Class Enrollment Records</span>
                   </div>
                 </button>
 
@@ -1329,7 +1329,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     setViewMoreSubject(null);
                     onNavigateTab('timetable', { subject: target.name, grade: target.grade });
                   }}
-                  className="p-3 rounded-2xl bg-white dark:bg-surface-darker border border-slate-200 dark:border-white/10 hover:border-sky-500/50 hover:bg-sky-50/40 dark:hover:bg-sky-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
+                  className="p-3 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-sky-500/50 hover:bg-sky-50/50 dark:hover:bg-sky-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
                 >
                   <div className="w-10 h-10 rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Clock className="w-5 h-5" />
@@ -1338,7 +1338,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-300 transition-colors block truncate">
                       Master Timetable Allocation
                     </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Periods & Room Scheduling</span>
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Periods & Room Scheduling</span>
                   </div>
                 </button>
 
@@ -1350,7 +1350,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     setViewMoreSubject(null);
                     onNavigateTab('textbooks', { subject: target.name, grade: target.grade });
                   }}
-                  className="p-3 rounded-2xl bg-white dark:bg-surface-darker border border-slate-200 dark:border-white/10 hover:border-teal-500/50 hover:bg-teal-50/40 dark:hover:bg-teal-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
+                  className="p-3 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-teal-500/50 hover:bg-teal-50/50 dark:hover:bg-teal-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
                 >
                   <div className="w-10 h-10 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <HardDrive className="w-5 h-5" />
@@ -1359,7 +1359,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-300 transition-colors block truncate">
                       Textbook Asset Inventory
                     </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Barcode Check-In & Tracking</span>
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Barcode Check-In & Tracking</span>
                   </div>
                 </button>
 
@@ -1371,7 +1371,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     setViewMoreSubject(null);
                     onNavigateTab('exam-seating', { subject: target.name, grade: target.grade });
                   }}
-                  className="p-3 rounded-2xl bg-white dark:bg-surface-darker border border-slate-200 dark:border-white/10 hover:border-emerald-500/50 hover:bg-emerald-50/40 dark:hover:bg-emerald-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
+                  className="p-3 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-emerald-500/50 hover:bg-emerald-50/50 dark:hover:bg-emerald-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
                 >
                   <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Award className="w-5 h-5" />
@@ -1380,7 +1380,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors block truncate">
                       Exam Seating Planner
                     </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Exam Hall Seating Arranger</span>
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Exam Hall Seating Arranger</span>
                   </div>
                 </button>
 
@@ -1393,7 +1393,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                       setViewMoreSubject(null);
                       onNavigateTab('matric-projector', { subject: target.name });
                     }}
-                    className="p-3 rounded-2xl bg-white dark:bg-surface-darker border border-slate-200 dark:border-white/10 hover:border-pink-500/50 hover:bg-pink-50/40 dark:hover:bg-pink-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
+                    className="p-3 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-pink-500/50 hover:bg-pink-50/50 dark:hover:bg-pink-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
                   >
                     <div className="w-10 h-10 rounded-xl bg-pink-500/15 text-pink-600 dark:text-pink-400 border border-pink-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                       <TrendingUp className="w-5 h-5" />
@@ -1402,7 +1402,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                       <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-pink-600 dark:group-hover:text-pink-300 transition-colors block truncate">
                         Matric Pass Rate Projector
                       </span>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400">Grade 12 Target Forecasting</span>
+                      <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Grade 12 Target Forecasting</span>
                     </div>
                   </button>
                 )}
@@ -1415,7 +1415,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     setViewMoreSubject(null);
                     onNavigateTab('leave-relief', { subject: target.name, grade: target.grade });
                   }}
-                  className="p-3 rounded-2xl bg-white dark:bg-surface-darker border border-slate-200 dark:border-white/10 hover:border-amber-500/50 hover:bg-amber-50/40 dark:hover:bg-amber-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
+                  className="p-3 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-amber-500/50 hover:bg-amber-50/50 dark:hover:bg-amber-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
                 >
                   <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Briefcase className="w-5 h-5" />
@@ -1424,7 +1424,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors block truncate">
                       Educator Relief Duty
                     </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Staff Absence Coverage</span>
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Staff Absence Coverage</span>
                   </div>
                 </button>
 
@@ -1436,7 +1436,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     setViewMoreSubject(null);
                     onNavigateTab('inter-school', { subject: target.name });
                   }}
-                  className="p-3 rounded-2xl bg-white dark:bg-surface-darker border border-slate-200 dark:border-white/10 hover:border-purple-500/50 hover:bg-purple-50/40 dark:hover:bg-purple-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
+                  className="p-3 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-purple-500/50 hover:bg-purple-50/50 dark:hover:bg-purple-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
                 >
                   <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Trophy className="w-5 h-5" />
@@ -1445,7 +1445,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors block truncate">
                       Academic Olympiads
                     </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Provincial Derbies & League</span>
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Provincial Derbies & League</span>
                   </div>
                 </button>
 
@@ -1457,7 +1457,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     setViewMoreSubject(null);
                     onNavigateTab('consultations', { subject: target.name, grade: target.grade });
                   }}
-                  className="p-3 rounded-2xl bg-white dark:bg-surface-darker border border-slate-200 dark:border-white/10 hover:border-violet-500/50 hover:bg-violet-50/40 dark:hover:bg-violet-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
+                  className="p-3 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-violet-500/50 hover:bg-violet-50/50 dark:hover:bg-violet-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
                 >
                   <div className="w-10 h-10 rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400 border border-violet-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Users className="w-5 h-5" />
@@ -1466,7 +1466,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-300 transition-colors block truncate">
                       Parent Consultations
                     </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Educator Academic Bookings</span>
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Educator Academic Bookings</span>
                   </div>
                 </button>
 
@@ -1478,7 +1478,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
               <button
                 type="button"
                 onClick={() => setViewMoreSubject(null)}
-                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-800 dark:text-white font-bold text-xs transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-900 dark:text-white font-bold text-xs transition-colors cursor-pointer"
               >
                 Close Control Center
               </button>
