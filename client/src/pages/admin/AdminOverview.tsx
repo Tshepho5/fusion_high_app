@@ -326,14 +326,15 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
               </h3>
               <button
                 onClick={() => onNavigateTab('timetable')}
-                className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold"
+                className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer"
               >
                 Launch Builder
               </button>
             </div>
-            <p className="text-xs text-slate-400">
-              Generate conflict-free weekly schedules across Grade 8-12 with automated teacher subject and room assignment.
-            </p>
+            <div className="flex items-center gap-2 pt-1">
+              <span className="px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold">Weekly Schedule Engine</span>
+              <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-300 text-xs font-medium">Grades 8 - 12</span>
+            </div>
           </div>
         </div>
 
@@ -347,14 +348,15 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
               </h3>
               <button
                 onClick={() => onNavigateTab('finance')}
-                className="text-xs text-teal-400 hover:text-teal-300 font-semibold"
+                className="text-xs text-teal-400 hover:text-teal-300 font-semibold cursor-pointer"
               >
                 Fee Overview
               </button>
             </div>
-            <p className="text-xs text-slate-400">
-              Issue automated term tuition invoices, reconcile bank receipts, and send automated parent reminders.
-            </p>
+            <div className="flex items-center gap-2 pt-1">
+              <span className="px-2.5 py-1 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs font-semibold">Tuition & Invoicing</span>
+              <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-slate-300 text-xs font-medium">Audit Reconciled</span>
+            </div>
           </div>
         </div>
 
