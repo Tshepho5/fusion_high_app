@@ -195,10 +195,10 @@ export const LearnerTimetable: React.FC = () => {
             <h2 className="text-xl md:text-2xl font-extrabold font-display text-white tracking-tight">
               Class Timetable & Schedule
             </h2>
+            <span className="text-xs text-slate-400 font-mono">
+              Grade {user?.grade || user?.academic?.grade || '10'}
+            </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1 font-mono">
-            CAPS Curriculum Schedule • Grade {user?.grade || user?.academic?.grade || '10'} • Customized Grid Views
-          </p>
         </div>
 
         {/* View Switcher & Action Tools */}
@@ -259,14 +259,9 @@ export const LearnerTimetable: React.FC = () => {
 
       {/* Draft Notification if Pending Educator Verification */}
       {activeSchedule?.status === 'draft_teachers' && (
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-3 animate-fade-in">
-          <Clock className="w-5 h-5 text-amber-400 shrink-0" />
-          <div>
-            <p className="font-bold">Educator Review in Progress</p>
-            <p className="text-[11px] text-amber-400/80 mt-0.5">
-              Your subject educators are currently verifying teaching slots and room allocations for this grade. The finalized schedule will be released here once fully approved.
-            </p>
-          </div>
+        <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2.5 animate-fade-in font-bold">
+          <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>Educator Review in Progress</span>
         </div>
       )}
 

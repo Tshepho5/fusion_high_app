@@ -414,9 +414,6 @@ export const SchoolCalendar: React.FC = () => {
                   {year} Academic Year
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Self-updating statutory national public holidays, DBE 4-term schedules, and NSC final examinations
-              </p>
             </div>
           </div>
 
@@ -479,7 +476,6 @@ export const SchoolCalendar: React.FC = () => {
               <p className={`text-[11px] font-mono font-bold mt-1 ${term.active ? 'text-white' : 'text-cyan-400/80'}`}>
                 {term.start} – {term.end}
               </p>
-              <p className="text-[10px] text-slate-400 truncate mt-0.5">{term.desc}</p>
             </div>
           ))}
         </div>

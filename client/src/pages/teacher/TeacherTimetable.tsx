@@ -232,9 +232,6 @@ export const TeacherTimetable: React.FC = () => {
             <Calendar className="w-6 h-6 text-cyan-400" />
             Educator Timetable & Curriculum Allocations
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Review draft allocations, your assigned subject periods are highlighted. Request period swaps with colleagues if needed.
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
