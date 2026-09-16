@@ -19,7 +19,11 @@ import {
   Layers,
   HelpCircle,
   LayoutGrid,
+  Grid3X3,
+  List,
 } from 'lucide-react';
+
+type MoreViewMode = 'grid' | 'compact' | 'list';
 
 interface TeacherMoreHubProps {
   onNavigateTab: (tabId: string, params?: any) => void;
@@ -28,7 +32,6 @@ interface TeacherMoreHubProps {
 interface ModuleItem {
   id: string;
   title: string;
-  subtitle: string;
   category: 'assessments' | 'classroom' | 'admin' | 'curriculum' | 'system';
   icon: React.ElementType;
   badge?: string;
@@ -39,6 +42,14 @@ interface ModuleItem {
 export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab }) => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<MoreViewMode>(() => {
+    return (localStorage.getItem('teacher_more_view_mode') as MoreViewMode) || 'grid';
+  });
+
+  const handleSetViewMode = (mode: MoreViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem('teacher_more_view_mode', mode);
+  };
 
   const categories = [
     { id: 'all', label: 'All Modules' },
@@ -49,12 +60,12 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     { id: 'system', label: 'School System' },
   ];
 
+  // Pure Icon + Title ONLY (No long descriptions or subtitles)
   const allModules: ModuleItem[] = [
     // 1. Grading & Exams
     {
       id: 'assessments',
       title: 'SBA Marksheets & Grading',
-      subtitle: 'CAPS term weighting, mark capture, and automated moderation sheets',
       category: 'assessments',
       icon: FileSpreadsheet,
       badge: 'CAPS Core',
@@ -64,17 +75,15 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     {
       id: 'assignments',
       title: 'Homework & Assignment Hub',
-      subtitle: 'Create digital tasks, track learner submissions, and enter feedback',
       category: 'assessments',
       icon: FileText,
-      badge: 'Interactive',
+      badge: 'Tasks',
       color: 'text-pink-400',
       iconBg: 'bg-pink-500/15 border-pink-500/30',
     },
     {
       id: 'exam-seating',
       title: 'Exam Seating Planner',
-      subtitle: 'Examination hall layout, desk allocations, and invigilation rosters',
       category: 'assessments',
       icon: Award,
       badge: 'Exams',
@@ -86,7 +95,6 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     {
       id: 'attendance',
       title: 'Class Attendance Register',
-      subtitle: 'Daily roll-call, QR code check-ins, and absent learner alerts',
       category: 'classroom',
       icon: CalendarCheck,
       badge: 'Daily Register',
@@ -96,7 +104,6 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     {
       id: 'conduct',
       title: 'Merit & Disciplinary Conduct',
-      subtitle: 'Award academic merits, record minor/major infractions, and detention logs',
       category: 'classroom',
       icon: ShieldCheck,
       badge: 'Conduct',
@@ -106,7 +113,6 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     {
       id: 'textbooks',
       title: 'Textbook & Asset Inventory',
-      subtitle: 'Track prescribed textbooks, barcoded asset returns, and damage fees',
       category: 'classroom',
       icon: BookOpen,
       badge: 'Assets',
@@ -118,7 +124,6 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     {
       id: 'my-leave',
       title: 'Educator Leave & Relief Duty',
-      subtitle: 'Apply for leave, log substitute cover, and view emergency relief allocations',
       category: 'admin',
       icon: Briefcase,
       badge: 'Staff Duty',
@@ -128,7 +133,6 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     {
       id: 'sports',
       title: 'Sports & Extracurriculars',
-      subtitle: 'Team management, coaching schedules, derby fixtures, and player rosters',
       category: 'admin',
       icon: Trophy,
       badge: 'Coaching',
@@ -138,10 +142,9 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     {
       id: 'ptc',
       title: 'Parent-Teacher Consultations',
-      subtitle: 'Schedule one-on-one conference slots, video meetings, and parent notes',
       category: 'admin',
       icon: Users,
-      badge: 'Conferences',
+      badge: 'Meetings',
       color: 'text-sky-400',
       iconBg: 'bg-sky-500/15 border-sky-500/30',
     },
@@ -150,7 +153,6 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     {
       id: 'ai-tools',
       title: 'AI Lesson & Test Paper Studio',
-      subtitle: 'Generate CAPS lesson plans, worksheets, test papers, and rubrics in seconds',
       category: 'curriculum',
       icon: Sparkles,
       badge: 'AI Powered',
@@ -160,7 +162,6 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     {
       id: 'resources',
       title: 'Past Papers & Learning Vault',
-      subtitle: 'Departmental past exam papers, memorandums, and teacher guides',
       category: 'curriculum',
       icon: Layers,
       badge: 'CAPS Vault',
@@ -170,7 +171,6 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     {
       id: 'inter-school',
       title: 'Inter-School Derbies & Olympiads',
-      subtitle: 'Academic derbies, math olympiads, science expos, and regional trophies',
       category: 'curriculum',
       icon: Trophy,
       badge: 'Olympiad',
@@ -182,7 +182,6 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     {
       id: 'timetable',
       title: 'Educator Timetable & Rooms',
-      subtitle: 'View weekly periods, classroom allocations, and period swap requests',
       category: 'system',
       icon: Clock,
       badge: 'Schedule',
@@ -192,7 +191,6 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     {
       id: 'calendar',
       title: 'Academic & Events Calendar',
-      subtitle: 'Official school calendar, term dates, public holidays, and exam blocks',
       category: 'system',
       icon: Calendar,
       badge: 'Official',
@@ -202,7 +200,6 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     {
       id: 'announcements',
       title: 'Staff Notices & Broadcasts',
-      subtitle: 'Official department announcements, staff circulars, and emergency alerts',
       category: 'system',
       icon: Megaphone,
       badge: 'Notices',
@@ -212,7 +209,6 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     {
       id: 'settings',
       title: 'App & Technical Settings',
-      subtitle: 'Theme customization, notification alerts, password & security',
       category: 'system',
       icon: Settings,
       badge: 'System',
@@ -228,52 +224,83 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
       const matchesSearch =
         !query ||
         m.title.toLowerCase().includes(query) ||
-        m.subtitle.toLowerCase().includes(query) ||
         (m.badge && m.badge.toLowerCase().includes(query));
       return matchesCategory && matchesSearch;
     });
   }, [allModules, selectedCategory, searchQuery]);
 
   return (
-    <div className="space-y-6 animate-fade-in text-slate-100 pb-16">
-      {/* Header Banner */}
-      <div className="p-6 rounded-3xl bg-surface-dark border border-white/10 shadow-lg relative overflow-hidden">
+    <div className="space-y-6 animate-fade-in text-slate-100 pb-20">
+      {/* Header Banner with View Mode Switcher & Search */}
+      <div className="p-5 sm:p-6 rounded-3xl bg-surface-dark border border-white/10 shadow-lg relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-semibold">
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Complete Educator Directory</span>
-            </div>
             <h1 className="text-xl sm:text-2xl font-black font-display text-white tracking-tight">
-              More Modules & Educator Functions
+              More Modules
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 max-w-xl">
-              All institutional management tools, grading registers, administrative workflows, and curriculum resources neatly organized in one central hub.
-            </p>
           </div>
 
-          {/* Search Input */}
-          <div className="relative w-full md:w-72">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search modules..."
-              className="w-full pl-9 pr-4 py-2.5 rounded-2xl bg-surface-darker border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all shadow-inner"
-            />
+          {/* Search Input & Grid View Switcher */}
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="relative flex-1 md:w-64">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search modules..."
+                className="w-full pl-9 pr-4 py-2 rounded-xl bg-surface-darker border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
+              />
+            </div>
+
+            {/* View Mode Switcher Buttons */}
+            <div className="flex items-center gap-1 p-1 bg-surface-darker rounded-xl border border-white/10 shrink-0">
+              <button
+                onClick={() => handleSetViewMode('grid')}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  viewMode === 'grid'
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Standard Grid"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleSetViewMode('compact')}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  viewMode === 'compact'
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Compact App Tiles"
+              >
+                <Grid3X3 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleSetViewMode('list')}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  viewMode === 'list'
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="List View"
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Category Filters */}
-        <div className="flex items-center gap-1.5 pt-5 overflow-x-auto custom-scrollbar">
+        <div className="flex items-center gap-1.5 pt-4 overflow-x-auto custom-scrollbar">
           {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 selectedCategory === cat.id
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
                   : 'bg-surface-darker/60 text-slate-400 hover:text-white hover:bg-white/5 border border-white/5'
@@ -285,55 +312,99 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
         </div>
       </div>
 
-      {/* Modules Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredModules.map((item) => {
-          const IconComp = item.icon;
-          return (
-            <div
-              key={item.id}
-              onClick={() => onNavigateTab(item.id)}
-              className="card-interactive p-4 sm:p-5 rounded-2xl bg-surface-dark border border-white/10 hover:border-cyan-500/40 hover:bg-surface-darker transition-all duration-300 cursor-pointer flex flex-col justify-between gap-4 shadow-sm group hover:-translate-y-0.5"
-            >
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className={`w-11 h-11 rounded-2xl ${item.iconBg} border flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm shrink-0`}>
-                    <IconComp className={`w-5 h-5 ${item.color}`} />
-                  </div>
+      {/* ========================================================================= */}
+      {/* VIEW MODE 1: Standard Grid (Icon + Title Only, No Descriptions)          */}
+      {/* ========================================================================= */}
+      {viewMode === 'grid' && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {filteredModules.map((item) => {
+            const IconComp = item.icon;
+            return (
+              <div
+                key={item.id}
+                onClick={() => onNavigateTab(item.id)}
+                className="card-interactive p-4 rounded-2xl bg-surface-dark border border-white/10 hover:border-cyan-500/50 hover:bg-surface-darker transition-all duration-300 cursor-pointer flex items-center gap-3.5 shadow-sm group hover:-translate-y-0.5"
+              >
+                <div className={`w-11 h-11 rounded-2xl ${item.iconBg} border flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm shrink-0`}>
+                  <IconComp className={`w-5 h-5 ${item.color}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xs sm:text-sm font-bold text-white group-hover:text-cyan-300 transition-colors leading-snug">
+                    {item.title}
+                  </h3>
                   {item.badge && (
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-white/5 border border-white/10 text-slate-300">
+                    <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-white/5 border border-white/10 text-slate-400 uppercase tracking-wider">
                       {item.badge}
                     </span>
                   )}
                 </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-                <div>
-                  <h3 className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors">
-                    {item.title}
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
-                    {item.subtitle}
-                  </p>
+      {/* ========================================================================= */}
+      {/* VIEW MODE 2: Compact App Tiles (Icon + Title Centered, Launchpad Style)   */}
+      {/* ========================================================================= */}
+      {viewMode === 'compact' && (
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+          {filteredModules.map((item) => {
+            const IconComp = item.icon;
+            return (
+              <div
+                key={item.id}
+                onClick={() => onNavigateTab(item.id)}
+                className="card-interactive p-3.5 rounded-2xl bg-surface-dark border border-white/10 hover:border-cyan-500/50 hover:bg-surface-darker transition-all duration-300 cursor-pointer flex flex-col items-center justify-center text-center gap-2.5 shadow-sm group hover:-translate-y-1"
+                title={item.title}
+              >
+                <div className={`w-12 h-12 rounded-2xl ${item.iconBg} border flex items-center justify-center group-hover:scale-115 transition-transform shadow-sm`}>
+                  <IconComp className={`w-6 h-6 ${item.color}`} />
                 </div>
+                <span className="text-[11px] font-bold text-white group-hover:text-cyan-300 transition-colors line-clamp-2 leading-tight">
+                  {item.title}
+                </span>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs text-slate-400 font-semibold group-hover:text-cyan-400 transition-colors">
-                <span>Open Module</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+      {/* ========================================================================= */}
+      {/* VIEW MODE 3: List View (Icon + Title + Arrow, Clean Rows)                */}
+      {/* ========================================================================= */}
+      {viewMode === 'list' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {filteredModules.map((item) => {
+            const IconComp = item.icon;
+            return (
+              <div
+                key={item.id}
+                onClick={() => onNavigateTab(item.id)}
+                className="card-interactive p-3 px-4 rounded-xl bg-surface-dark border border-white/10 hover:border-cyan-500/50 hover:bg-surface-darker transition-all duration-300 cursor-pointer flex items-center justify-between shadow-sm group hover:-translate-y-0.5"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-xl ${item.iconBg} border flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform`}>
+                    <IconComp className={`w-4.5 h-4.5 ${item.color}`} />
+                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-white group-hover:text-cyan-300 transition-colors">
+                    {item.title}
+                  </span>
+                </div>
+                <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {filteredModules.length === 0 && (
         <div className="text-center py-12 p-6 rounded-2xl bg-surface-dark border border-white/10 space-y-2">
           <HelpCircle className="w-8 h-8 text-slate-500 mx-auto" />
           <p className="text-sm font-bold text-slate-300">No modules match your search</p>
-          <p className="text-xs text-slate-500">Try searching for a different keyword or reset the category filter.</p>
           <button
             onClick={() => { setSearchQuery(''); setSelectedCategory('all'); }}
-            className="mt-2 px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 text-xs font-bold border border-cyan-500/30 hover:bg-cyan-500/30 transition-all"
+            className="mt-2 px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 text-xs font-bold border border-cyan-500/30 hover:bg-cyan-500/30 transition-all cursor-pointer"
           >
             Clear Filters
           </button>

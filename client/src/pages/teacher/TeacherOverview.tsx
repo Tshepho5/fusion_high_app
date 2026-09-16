@@ -425,19 +425,16 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
       </section>
 
       {/* 2. QUICK ACCESS SHORTCUT TO MORE MODULES */}
-      <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 flex items-center justify-between gap-4 shadow-sm hover:border-cyan-500/30 transition-all">
+      <div className="p-3.5 px-4 rounded-2xl bg-surface-dark border border-white/10 flex items-center justify-between gap-4 shadow-sm hover:border-cyan-500/30 transition-all">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shrink-0">
-            <LayoutGrid className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shrink-0">
+            <LayoutGrid className="w-4.5 h-4.5" />
           </div>
-          <div>
-            <h3 className="text-xs sm:text-sm font-bold text-white">All Institutional & Administrative Modules</h3>
-            <p className="text-[11px] sm:text-xs text-slate-400">Grading marksheets, attendance roll-call, leave management, and inventories are organized in the More tab.</p>
-          </div>
+          <h3 className="text-xs sm:text-sm font-bold text-white">All Institutional & Administrative Modules</h3>
         </div>
         <button
           onClick={() => onNavigateTab('more')}
-          className="px-3.5 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 hover:text-white border border-cyan-500/40 text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+          className="px-3.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 hover:text-white border border-cyan-500/40 text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
         >
           <span>Open More</span>
           <ArrowRight className="w-3.5 h-3.5" />
