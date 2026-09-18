@@ -1,61 +1,193 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard - FUSION_HIGH_APP</title>
+  <title>Admin Portal - Fusion High School</title>
+  
+  <!-- Fonts: Google Outfit, Inter, Caveat -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Dancing+Script:wght@700&family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <!-- Waves Theme Stylesheets -->
+  <link rel="stylesheet" href="/css/waves-theme.css">
   <link rel="stylesheet" href="/css/teacher.css">
-  <link rel="stylesheet" href="/css/responsive-sidebar.css">
   <link rel="stylesheet" href="/css/admin.css">
   <link rel="stylesheet" href="/css/chat-center.css">
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <script>
+    /* Strict Admin Client-Side RBAC Guard */
+    (function enforceAdminRBAC() {
+      const token = localStorage.getItem('token');
+      if (!token) { window.location.href = '/'; return; }
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const role = (payload.role || payload.role_name || '').toLowerCase();
+        if (role !== 'admin' && !payload.is_superadmin) {
+          window.location.href = `/dashboards/${role}.html`;
+        }
+      } catch (e) {
+        localStorage.removeItem('token');
+        window.location.href = '/';
+      }
+    })();
 
+    window.toggleAdminSidebar = function() {
+      const isMobile = window.innerWidth <= 1024;
+      const sidebar = document.querySelector('.sidebar');
+      const overlay = document.querySelector('.sidebar-overlay');
+      const hamburger = document.querySelector('.header-hamburger-btn');
+      if (isMobile) {
+        if (sidebar) sidebar.classList.toggle('active');
+        if (overlay) overlay.classList.toggle('active');
+        if (hamburger) hamburger.classList.toggle('is-active', sidebar && sidebar.classList.contains('active'));
+      } else {
+        const willBeCollapsed = !document.body.classList.contains('sidebar-collapsed');
+        document.body.classList.toggle('sidebar-collapsed', willBeCollapsed);
+        if (sidebar) sidebar.classList.toggle('collapsed', willBeCollapsed);
+        if (hamburger) hamburger.classList.toggle('is-active', willBeCollapsed);
+        try {
+          localStorage.setItem('sidebar_collapsed_admin', willBeCollapsed ? 'true' : 'false');
+        } catch (_) {}
+      }
+    };
+    window.toggleSidebarCollapse = window.toggleAdminSidebar;
+
+    window.toggleAdminMoreLauncher = function(show) {
+      const modal = document.getElementById('adminMoreLauncherModal');
+      if (!modal) return;
+      if (show === undefined) {
+        modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+      } else {
+        modal.style.display = show ? 'flex' : 'none';
+      }
+    };
+
+    window.initThemeSystem = function() {
+      const savedTheme = localStorage.getItem('admin_theme_mode') || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      updateThemeToggleIcon(savedTheme);
+    };
+
+    window.toggleThemeMode = function() {
+      const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('admin_theme_mode', newTheme);
+      updateThemeToggleIcon(newTheme);
+    };
+
+    function updateThemeToggleIcon(theme) {
+      const btn = document.getElementById('theme-toggle-btn');
+      if (btn) {
+        btn.innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+        btn.title = theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+      }
+    }
+  </script>
 </head>
 
 <body>
-  <!-- Hamburger Menu for Mobile -->
-  <div class="hamburger">
-    <div></div>
-    <div></div>
-    <div></div>
+  <!-- Ambient Wave SVG Canvas Backdrop -->
+  <div class="wave-canvas-backdrop" aria-hidden="true">
+    <svg class="wave-canvas-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="waveGradTop" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="var(--wave-color-1)" />
+          <stop offset="100%" stop-color="var(--wave-color-2)" />
+        </linearGradient>
+        <linearGradient id="waveGradMid" x1="100%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="var(--wave-color-2)" />
+          <stop offset="100%" stop-color="var(--wave-color-3)" />
+        </linearGradient>
+        <linearGradient id="waveGradBottom" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="var(--wave-color-deep)" />
+          <stop offset="100%" stop-color="transparent" />
+        </linearGradient>
+      </defs>
+      <path d="M0,0 C360,110 520,30 840,85 C1180,140 1320,35 1440,65 L1440,0 Z" fill="url(#waveGradTop)" opacity="0.8" />
+      <path d="M0,230 C380,320 660,150 1020,270 C1240,340 1380,250 1440,290 L1440,560 C1320,490 1060,570 740,490 C420,410 180,520 0,470 Z" fill="url(#waveGradMid)" opacity="0.6" />
+      <path d="M0,640 C200,620 360,720 520,800 C680,880 850,890 1100,900 L0,900 Z" fill="url(#waveGradBottom)" opacity="0.3" />
+    </svg>
   </div>
 
+  <!-- Mobile Drawer Overlay -->
+  <div class="sidebar-overlay" onclick="window.toggleAdminSidebar()"></div>
+
+  <!-- Unified Waves Sidebar -->
   <aside class="sidebar">
-    <div class="sidebar-brand">FUSION ADMIN</div>
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon"><i class="fas fa-shield-alt"></i></div>
+      <span>FUSION ADMIN</span>
+    </div>
     <ul class="nav-list">
-      <li class="nav-item active" onclick="switchTab('overview', this)"><i class="fas fa-tachometer-alt"></i> Dashboard</li>
-      <li class="nav-item" onclick="switchTab('reports', this)"><i class="fas fa-file-alt"></i> Reports</li>
-      <li class="nav-item" onclick="switchTab('academics', this)"><i class="fas fa-book-open"></i> Academics</li>
-      <li class="nav-item" onclick="switchTab('report-cards', this)"><i class="fas fa-award" style="color:#f59e0b;"></i> Report Card Studio</li>
-      <li class="nav-item" onclick="switchTab('users', this, 'teacher')"><i class="fas fa-chalkboard-teacher"></i> Teachers</li>
-      <li class="nav-item" onclick="switchTab('users', this, 'learner')"><i class="fas fa-user-graduate"></i> Learners</li>
-      <li class="nav-item" onclick="switchTab('timetables', this)"><i class="fas fa-calendar-alt"></i> Timetables</li>
-      <li class="nav-item" onclick="switchTab('announcements', this)"><i class="fas fa-bullhorn"></i> Announcements</li>
-      <li class="nav-item" onclick="switchTab('messages', this)"><i class="fas fa-envelope"></i> Message Center</li>
-      <li class="nav-item" onclick="switchTab('profile', this)"><i class="fas fa-user-circle"></i> My Profile</li>
-      <li class="nav-item" onclick="switchTab('settings', this)"><i class="fas fa-cog"></i> Settings</li>
+      <li class="nav-item active" data-tab="overview" onclick="switchTab('overview', this)"><i class="fas fa-home"></i> <span>Dashboard Home</span></li>
+      <li class="nav-item" data-tab="academics" onclick="switchTab('academics', this)"><i class="fas fa-book-open"></i> <span>Academics</span></li>
+      <li class="nav-item" data-tab="report-cards" onclick="switchTab('report-cards', this)"><i class="fas fa-award" style="color:#f59e0b;"></i> <span>Report Card Studio</span></li>
+      <li class="nav-item" data-tab="users" onclick="switchTab('users', this, 'teacher')"><i class="fas fa-chalkboard-teacher"></i> <span>Teachers</span></li>
+      <li class="nav-item" data-tab="users" onclick="switchTab('users', this, 'learner')"><i class="fas fa-user-graduate"></i> <span>Learners</span></li>
+      <li class="nav-item" data-tab="timetables" onclick="switchTab('timetables', this)"><i class="fas fa-calendar-alt"></i> <span>Timetables</span></li>
+      <li class="nav-item" data-tab="reports" onclick="switchTab('reports', this)"><i class="fas fa-file-alt"></i> <span>Reports &amp; Audits</span></li>
+      <li class="nav-item" data-tab="announcements" onclick="switchTab('announcements', this)"><i class="fas fa-bullhorn"></i> <span>Announcements</span></li>
+      <li class="nav-item" data-tab="messages" onclick="switchTab('messages', this)"><i class="fas fa-envelope"></i> <span>Message Center</span></li>
+      <li class="nav-item" data-tab="profile" onclick="switchTab('profile', this)"><i class="fas fa-user-circle"></i> <span>My Profile</span></li>
+      <li class="nav-item" data-tab="settings" onclick="switchTab('settings', this)"><i class="fas fa-cog"></i> <span>Settings</span></li>
+      <li class="nav-item logout-item" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></li>
     </ul>
-    <div class="sidebar-footer">
-      <li class="nav-item logout-item" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Logout</li>
+    <div class="sidebar-wave-brandmark">
+      <span class="slogan-script-text">Learn &bull; Grow &bull; Achieve</span>
     </div>
   </aside>
 
-
-
-
   <main class="main-content">
     <nav class="top-nav">
-      <h2 id="tab-title">Dashboard</h2>
-      <div class="top-nav-user-info">
-        <img id="top-nav-pfp" src="/assets/default-pfp.png" alt="Profile" class="profile-picture-nav">
-        <div class="user-details-nav">
-          <span id="top-nav-name" class="user-name-nav">Principal</span>
-          <span id="top-nav-role" class="user-role-nav">Admin</span>
+      <div class="top-nav-left">
+        <button type="button" class="header-hamburger-btn" onclick="window.toggleAdminSidebar()" title="Toggle Sidebar">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="school-brand-header">
+          <img src="/assets/schools/fusion-high.svg" alt="Fusion High Crest" class="school-crest-img">
+          <div class="school-brand-text">
+            <span class="school-brand-name">FUSION HIGH SCHOOL</span>
+            <span class="school-brand-motto">Innovate, Lead, Transform</span>
+          </div>
         </div>
+      </div>
+
+      <div class="top-nav-right">
+        <!-- Theme Mode Toggle -->
+        <button type="button" class="header-action-btn" id="theme-toggle-btn" title="Toggle Light/Dark Mode" onclick="window.toggleThemeMode()">
+          <i class="fas fa-sun"></i>
+        </button>
+
+        <!-- Notifications -->
+        <button type="button" class="header-action-btn" id="header-notif-btn" title="Announcements & Notices" onclick="switchTab('announcements', null)">
+          <i class="fas fa-bell"></i>
+          <span class="notification-badge" id="top-notif-badge" style="display:none;">0</span>
+        </button>
+
+        <!-- Admin Profile Chip -->
+        <div class="learner-profile-chip" onclick="switchTab('profile', null)" title="View Profile">
+          <div class="learner-avatar-round" id="top-nav-avatar-circle" style="background: linear-gradient(135deg, #6366f1, #2563eb);">A</div>
+          <div class="learner-meta-text">
+            <span class="learner-meta-name" id="top-nav-name">Principal</span>
+            <span class="learner-meta-grade" id="top-nav-role">Administrator</span>
+          </div>
+          <i class="fas fa-chevron-down learner-chip-chevron"></i>
+        </div>
+
+        <!-- Quick Logout -->
+        <button type="button" class="header-action-btn" title="Sign Out" onclick="handleLogout()" style="color:var(--danger);">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
       </div>
     </nav>
 
@@ -187,6 +319,129 @@
                   <div class="tile-icon icon-blue"><i class="fas fa-calendar-alt"></i></div>
                   <span>Publish Timetable</span>
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Categorized CAPS Curriculum Subjects in Home Overview -->
+        <div class="assigned-subjects-container-card" style="margin-top: 1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.5rem;">
+            <div class="container-card-title" style="margin-bottom:0;">
+              <i class="fas fa-layer-group" style="color:var(--wave-accent-sky);"></i> School Curriculum &amp; Academic Departments
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="switchTab('academics')" style="border-radius:20px; font-size:0.8rem; padding:4px 14px;">
+              Manage Full Curriculum &bull; Master Matrix <i class="fas fa-arrow-right ms-1"></i>
+            </button>
+          </div>
+
+          <!-- 4 CAPS Category Groups -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:1.25rem;">
+            <!-- STEM Sciences -->
+            <div class="overview-card" style="background:var(--wave-surface); border:1px solid var(--wave-border); border-radius:16px; padding:1.25rem;">
+              <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
+                <div style="width:40px; height:40px; border-radius:12px; background:rgba(14, 165, 233, 0.15); color:#0ea5e9; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                  <i class="fas fa-atom"></i>
+                </div>
+                <div>
+                  <h4 style="margin:0; font-size:1rem; font-weight:700; color:var(--wave-text-primary);">STEM &amp; Sciences</h4>
+                  <span style="font-size:0.75rem; color:var(--wave-text-muted);">Grade 8 - 12 CAPS</span>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.85rem;">
+                <div style="display:flex; justify-content:space-between; padding:6px 10px; background:var(--wave-surface-translucent); border-radius:8px;">
+                  <span>Mathematics</span>
+                  <span class="badge" style="background:rgba(14, 165, 233, 0.2); color:#0ea5e9;">Core CAPS</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:6px 10px; background:var(--wave-surface-translucent); border-radius:8px;">
+                  <span>Physical Sciences</span>
+                  <span class="badge" style="background:rgba(16, 185, 129, 0.2); color:#10b981;">Lab Science</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:6px 10px; background:var(--wave-surface-translucent); border-radius:8px;">
+                  <span>Life Sciences</span>
+                  <span class="badge" style="background:rgba(245, 158, 11, 0.2); color:#f59e0b;">Biology</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Languages & Communication -->
+            <div class="overview-card" style="background:var(--wave-surface); border:1px solid var(--wave-border); border-radius:16px; padding:1.25rem;">
+              <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
+                <div style="width:40px; height:40px; border-radius:12px; background:rgba(139, 92, 246, 0.15); color:#8b5cf6; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                  <i class="fas fa-language"></i>
+                </div>
+                <div>
+                  <h4 style="margin:0; font-size:1rem; font-weight:700; color:var(--wave-text-primary);">Languages &amp; Literacy</h4>
+                  <span style="font-size:0.75rem; color:var(--wave-text-muted);">HL &amp; FAL Curriculum</span>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.85rem;">
+                <div style="display:flex; justify-content:space-between; padding:6px 10px; background:var(--wave-surface-translucent); border-radius:8px;">
+                  <span>English Home Language</span>
+                  <span class="badge" style="background:rgba(139, 92, 246, 0.2); color:#8b5cf6;">Primary</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:6px 10px; background:var(--wave-surface-translucent); border-radius:8px;">
+                  <span>Afrikaans FAL</span>
+                  <span class="badge" style="background:rgba(59, 130, 246, 0.2); color:#3b82f6;">First Add.</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:6px 10px; background:var(--wave-surface-translucent); border-radius:8px;">
+                  <span>IsiZulu FAL</span>
+                  <span class="badge" style="background:rgba(16, 185, 129, 0.2); color:#10b981;">First Add.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Commerce & Business -->
+            <div class="overview-card" style="background:var(--wave-surface); border:1px solid var(--wave-border); border-radius:16px; padding:1.25rem;">
+              <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
+                <div style="width:40px; height:40px; border-radius:12px; background:rgba(16, 185, 129, 0.15); color:#10b981; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                  <i class="fas fa-chart-pie"></i>
+                </div>
+                <div>
+                  <h4 style="margin:0; font-size:1rem; font-weight:700; color:var(--wave-text-primary);">Commerce &amp; Accounting</h4>
+                  <span style="font-size:0.75rem; color:var(--wave-text-muted);">Business &amp; Finance</span>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.85rem;">
+                <div style="display:flex; justify-content:space-between; padding:6px 10px; background:var(--wave-surface-translucent); border-radius:8px;">
+                  <span>Accounting</span>
+                  <span class="badge" style="background:rgba(16, 185, 129, 0.2); color:#10b981;">Financial</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:6px 10px; background:var(--wave-surface-translucent); border-radius:8px;">
+                  <span>Business Studies</span>
+                  <span class="badge" style="background:rgba(245, 158, 11, 0.2); color:#f59e0b;">Management</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:6px 10px; background:var(--wave-surface-translucent); border-radius:8px;">
+                  <span>Economics</span>
+                  <span class="badge" style="background:rgba(14, 165, 233, 0.2); color:#0ea5e9;">Macro/Micro</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Humanities & Life Orientation -->
+            <div class="overview-card" style="background:var(--wave-surface); border:1px solid var(--wave-border); border-radius:16px; padding:1.25rem;">
+              <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
+                <div style="width:40px; height:40px; border-radius:12px; background:rgba(245, 158, 11, 0.15); color:#f59e0b; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                  <i class="fas fa-heartbeat"></i>
+                </div>
+                <div>
+                  <h4 style="margin:0; font-size:1rem; font-weight:700; color:var(--wave-text-primary);">Humanities &amp; Life Skills</h4>
+                  <span style="font-size:0.75rem; color:var(--wave-text-muted);">Social Sciences &amp; LO</span>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.85rem;">
+                <div style="display:flex; justify-content:space-between; padding:6px 10px; background:var(--wave-surface-translucent); border-radius:8px;">
+                  <span>Life Orientation (LO)</span>
+                  <span class="badge" style="background:rgba(239, 68, 68, 0.2); color:#ef4444;">Mandatory</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:6px 10px; background:var(--wave-surface-translucent); border-radius:8px;">
+                  <span>Geography</span>
+                  <span class="badge" style="background:rgba(16, 185, 129, 0.2); color:#10b981;">Spatial</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:6px 10px; background:var(--wave-surface-translucent); border-radius:8px;">
+                  <span>History</span>
+                  <span class="badge" style="background:rgba(168, 85, 247, 0.2); color:#c084fc;">Humanities</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1098,10 +1353,102 @@
             </div>
           </div>
         </div>
-      </section>
-
+      <footer class="dashboard-footer" style="margin-top: 2rem; text-align: center; color: var(--wave-text-muted); font-size: 0.8rem; padding-bottom: 2rem;">
+        &copy; 2026 FUSION HIGH SCHOOL. All rights reserved. | School Executive Administrator Portal
+      </footer>
     </div>
+
+    <!-- Bottom Navigation Dock (Strict 5 Tabs: Home, Calendar, More (+), Messages, Profile) -->
+    <nav class="bottom-nav-dock" id="admin-bottom-nav">
+      <a href="javascript:void(0)" class="bottom-nav-item active" data-tab="overview" onclick="switchTab('overview', null)">
+        <i class="fas fa-home"></i>
+        <span>Home</span>
+      </a>
+      <a href="javascript:void(0)" class="bottom-nav-item" data-tab="timetables" onclick="switchTab('timetables', null)">
+        <i class="fas fa-calendar-alt"></i>
+        <span>Calendar</span>
+      </a>
+      <a href="javascript:void(0)" class="bottom-nav-item bottom-nav-more-btn" onclick="window.toggleAdminMoreLauncher(true)" title="All Modules">
+        <div class="bottom-nav-plus-circle">
+          <i class="fas fa-plus"></i>
+        </div>
+        <span>More</span>
+      </a>
+      <a href="javascript:void(0)" class="bottom-nav-item" data-tab="messages" onclick="switchTab('messages', null)">
+        <i class="fas fa-envelope"></i>
+        <span>Messages</span>
+        <span class="bottom-nav-badge" id="admin-bottom-unread-badge" style="display:none;"></span>
+      </a>
+      <a href="javascript:void(0)" class="bottom-nav-item" data-tab="profile" onclick="switchTab('profile', null)">
+        <i class="fas fa-user-circle"></i>
+        <span>Profile</span>
+      </a>
+    </nav>
   </main>
+
+  <!-- More Modules Launcher Modal for Admin -->
+  <div id="adminMoreLauncherModal" class="wave-launcher-backdrop" onclick="if(event.target===this) window.toggleAdminMoreLauncher(false)">
+    <div class="wave-launcher-modal">
+      <div class="wave-launcher-header">
+        <div class="wave-launcher-title">
+          <i class="fas fa-th-large" style="color:var(--wave-accent-sky);"></i>
+          <span>Administrator Applications &amp; Tools</span>
+        </div>
+        <button type="button" class="wave-launcher-close-btn" onclick="window.toggleAdminMoreLauncher(false)">&times;</button>
+      </div>
+      <div class="wave-launcher-grid">
+        <div class="wave-launcher-tile" onclick="switchTab('users', null, 'teacher'); window.toggleAdminMoreLauncher(false);">
+          <div class="wave-launcher-tile-icon" style="background:rgba(14, 165, 233, 0.15); color:#0ea5e9;">
+            <i class="fas fa-chalkboard-teacher"></i>
+          </div>
+          <span class="wave-launcher-tile-name">Teachers</span>
+          <span class="wave-launcher-tile-sub">Staff Directory</span>
+        </div>
+        <div class="wave-launcher-tile" onclick="switchTab('users', null, 'learner'); window.toggleAdminMoreLauncher(false);">
+          <div class="wave-launcher-tile-icon" style="background:rgba(59, 130, 246, 0.15); color:#3b82f6;">
+            <i class="fas fa-user-graduate"></i>
+          </div>
+          <span class="wave-launcher-tile-name">Learners</span>
+          <span class="wave-launcher-tile-sub">Student Roster</span>
+        </div>
+        <div class="wave-launcher-tile" onclick="switchTab('academics', null); window.toggleAdminMoreLauncher(false);">
+          <div class="wave-launcher-tile-icon" style="background:rgba(16, 185, 129, 0.15); color:#10b981;">
+            <i class="fas fa-book-open"></i>
+          </div>
+          <span class="wave-launcher-tile-name">Academics</span>
+          <span class="wave-launcher-tile-sub">Curriculum Master</span>
+        </div>
+        <div class="wave-launcher-tile" onclick="switchTab('report-cards', null); window.toggleAdminMoreLauncher(false);">
+          <div class="wave-launcher-tile-icon" style="background:rgba(245, 158, 11, 0.15); color:#f59e0b;">
+            <i class="fas fa-award"></i>
+          </div>
+          <span class="wave-launcher-tile-name">Report Cards</span>
+          <span class="wave-launcher-tile-sub">CAPS Studio</span>
+        </div>
+        <div class="wave-launcher-tile" onclick="switchTab('reports', null); window.toggleAdminMoreLauncher(false);">
+          <div class="wave-launcher-tile-icon" style="background:rgba(168, 85, 247, 0.15); color:#a855f7;">
+            <i class="fas fa-file-alt"></i>
+          </div>
+          <span class="wave-launcher-tile-name">Reports &amp; Audits</span>
+          <span class="wave-launcher-tile-sub">Executive Analytics</span>
+        </div>
+        <div class="wave-launcher-tile" onclick="switchTab('announcements', null); window.toggleAdminMoreLauncher(false);">
+          <div class="wave-launcher-tile-icon" style="background:rgba(239, 68, 68, 0.15); color:#ef4444;">
+            <i class="fas fa-bullhorn"></i>
+          </div>
+          <span class="wave-launcher-tile-name">Announcements</span>
+          <span class="wave-launcher-tile-sub">Broadcast Notices</span>
+        </div>
+        <div class="wave-launcher-tile" onclick="switchTab('settings', null); window.toggleAdminMoreLauncher(false);">
+          <div class="wave-launcher-tile-icon" style="background:rgba(100, 116, 139, 0.15); color:#94a3b8;">
+            <i class="fas fa-cog"></i>
+          </div>
+          <span class="wave-launcher-tile-name">Settings</span>
+          <span class="wave-launcher-tile-sub">System Configuration</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Class Performance Modal -->
   <div id="classPerformanceModal" class="modal">
@@ -1505,8 +1852,18 @@
     }
     window.logout = handleLogout;
 
-    // When the page loads, call the main dashboard loader
+    // When the page loads, call the main dashboard loader and initialize theme
     document.addEventListener('DOMContentLoaded', () => {
+      if (window.initThemeSystem) window.initThemeSystem();
+      try {
+        if (window.innerWidth > 1024 && localStorage.getItem('sidebar_collapsed_admin') === 'true') {
+          document.body.classList.add('sidebar-collapsed');
+          const sidebar = document.querySelector('.sidebar');
+          if (sidebar) sidebar.classList.add('collapsed');
+          const hamburger = document.querySelector('.header-hamburger-btn');
+          if (hamburger) hamburger.classList.add('is-active');
+        }
+      } catch (_) {}
       if (window.loadAdminDashboard) {
         window.loadAdminDashboard();
       }

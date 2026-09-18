@@ -108,7 +108,44 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
               <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'calendar' ? 'text-[#FF385C] font-black drop-shadow-[0_0_6px_rgba(255,56,92,0.5)]' : 'font-semibold'}`}>Calendar</span>
             </button>
 
-            {/* 3. Profile */}
+            {/* 🌟 3. More (+) Center Button */}
+            <button
+              onClick={() => onSelectTab('more')}
+              className={`group relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                primaryTeacherTab === 'more'
+                  ? 'text-[#FF385C] font-bold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+              title="More Modules & Functions"
+            >
+              {renderSpotlightGlow(primaryTeacherTab === 'more')}
+              <Plus className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 ${primaryTeacherTab === 'more' ? 'text-[#FF385C] scale-110 drop-shadow-[0_0_10px_rgba(255,56,92,0.85)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`} />
+              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'more' ? 'text-[#FF385C] font-black drop-shadow-[0_0_6px_rgba(255,56,92,0.5)]' : 'font-semibold'}`}>More</span>
+            </button>
+
+            {/* 4. Messages */}
+            <button
+              onClick={() => onSelectTab('messages')}
+              className={`group relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                primaryTeacherTab === 'messages'
+                  ? 'text-[#FF385C] font-bold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+              title="Communication Hub"
+            >
+              {renderSpotlightGlow(primaryTeacherTab === 'messages')}
+              <div className="relative">
+                <MessageSquare className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 ${primaryTeacherTab === 'messages' ? 'text-[#FF385C] scale-110 drop-shadow-[0_0_10px_rgba(255,56,92,0.85)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`} />
+                {unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-2 px-1 min-w-[14px] h-3.5 rounded-full bg-[#FF385C] text-white text-[8px] font-black flex items-center justify-center ring-2 ring-[#131418] animate-pulse shadow-sm">
+                    {unreadMessages > 9 ? '9+' : unreadMessages}
+                  </span>
+                )}
+              </div>
+              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'messages' ? 'text-[#FF385C] font-black drop-shadow-[0_0_6px_rgba(255,56,92,0.5)]' : 'font-semibold'}`}>Messages</span>
+            </button>
+
+            {/* 5. Profile */}
             <button
               onClick={() => onSelectTab('profile')}
               className={`group relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-full transition-all duration-300 cursor-pointer ${
@@ -132,58 +169,6 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
                 )}
               </div>
               <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'profile' ? 'text-[#FF385C] font-black drop-shadow-[0_0_6px_rgba(255,56,92,0.5)]' : 'font-semibold'}`}>Profile</span>
-            </button>
-
-            {/* 4. Discover */}
-            <button
-              onClick={() => onSelectTab('discover')}
-              className={`group relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                primaryTeacherTab === 'discover'
-                  ? 'text-[#FF385C] font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
-              title="Discover Resources & AI Studio"
-            >
-              {renderSpotlightGlow(primaryTeacherTab === 'discover')}
-              <Compass className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 ${primaryTeacherTab === 'discover' ? 'text-[#FF385C] scale-110 drop-shadow-[0_0_10px_rgba(255,56,92,0.85)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`} />
-              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'discover' ? 'text-[#FF385C] font-black drop-shadow-[0_0_6px_rgba(255,56,92,0.5)]' : 'font-semibold'}`}>Discover</span>
-            </button>
-
-            {/* 5. Messages */}
-            <button
-              onClick={() => onSelectTab('messages')}
-              className={`group relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                primaryTeacherTab === 'messages'
-                  ? 'text-[#FF385C] font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
-              title="Communication Hub"
-            >
-              {renderSpotlightGlow(primaryTeacherTab === 'messages')}
-              <div className="relative">
-                <MessageSquare className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 ${primaryTeacherTab === 'messages' ? 'text-[#FF385C] scale-110 drop-shadow-[0_0_10px_rgba(255,56,92,0.85)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`} />
-                {unreadMessages > 0 && (
-                  <span className="absolute -top-1 -right-2 px-1 min-w-[14px] h-3.5 rounded-full bg-[#FF385C] text-white text-[8px] font-black flex items-center justify-center ring-2 ring-[#131418] animate-pulse shadow-sm">
-                    {unreadMessages > 9 ? '9+' : unreadMessages}
-                  </span>
-                )}
-              </div>
-              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'messages' ? 'text-[#FF385C] font-black drop-shadow-[0_0_6px_rgba(255,56,92,0.5)]' : 'font-semibold'}`}>Messages</span>
-            </button>
-
-            {/* 6. More */}
-            <button
-              onClick={() => onSelectTab('more')}
-              className={`group relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                primaryTeacherTab === 'more'
-                  ? 'text-[#FF385C] font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
-              title="More Modules & Functions"
-            >
-              {renderSpotlightGlow(primaryTeacherTab === 'more')}
-              <MoreHorizontal className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 ${primaryTeacherTab === 'more' ? 'text-[#FF385C] scale-110 drop-shadow-[0_0_10px_rgba(255,56,92,0.85)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`} />
-              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'more' ? 'text-[#FF385C] font-black drop-shadow-[0_0_6px_rgba(255,56,92,0.5)]' : 'font-semibold'}`}>More</span>
             </button>
           </>
         ) : (

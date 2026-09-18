@@ -1,118 +1,202 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parent Dashboard - Fusion High</title>
+    <title>Parent Portal - Fusion High School</title>
+    
+    <!-- Fonts: Google Outfit, Inter, Caveat -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Dancing+Script:wght@700&family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script
-        src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+    <!-- Wave Theme Stylesheets -->
+    <link rel="stylesheet" href="/css/waves-theme.css">
     <link rel="stylesheet" href="/css/parent.css">
-    <link rel="stylesheet" href="/css/responsive-sidebar.css">
     <link rel="stylesheet" href="/css/chat-center.css">
 
-    <style>
-        /* Responsive Styles for Parent Dashboard */
-        @media (max-width: 1024px) {
-            .main-content-flex {
-                padding-left: 0;
+    <script>
+        /* Strict Parent Client-Side RBAC Guard */
+        (function enforceParentRBAC() {
+            const token = localStorage.getItem('token');
+            if (!token) { window.location.href = '/'; return; }
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const role = (payload.role || payload.role_name || '').toLowerCase();
+                if (role !== 'parent' && role !== 'admin' && !payload.is_superadmin) {
+                    window.location.href = `/dashboards/${role}.html`;
+                }
+            } catch (e) {
+                localStorage.removeItem('token');
+                window.location.href = '/';
             }
+        })();
 
-            .content.main-content-flex {
-                padding-top: 0 !important;
+        window.toggleParentSidebar = function() {
+            const isMobile = window.innerWidth <= 1024;
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            const hamburger = document.querySelector('.header-hamburger-btn');
+            if (isMobile) {
+                if (sidebar) sidebar.classList.toggle('active');
+                if (overlay) overlay.classList.toggle('active');
+                if (hamburger) hamburger.classList.toggle('is-active', sidebar && sidebar.classList.contains('active'));
+            } else {
+                const willBeCollapsed = !document.body.classList.contains('sidebar-collapsed');
+                document.body.classList.toggle('sidebar-collapsed', willBeCollapsed);
+                if (sidebar) sidebar.classList.toggle('collapsed', willBeCollapsed);
+                if (hamburger) hamburger.classList.toggle('is-active', willBeCollapsed);
+                try {
+                    localStorage.setItem('sidebar_collapsed_parent', willBeCollapsed ? 'true' : 'false');
+                } catch (_) {}
             }
+        };
+        window.toggleSidebarCollapse = window.toggleParentSidebar;
 
-            .sidebar {
-                transform: translateX(-105%);
-                z-index: 9998;
+        window.toggleParentMoreLauncher = function(show) {
+            const modal = document.getElementById('parentMoreLauncherModal');
+            if (!modal) return;
+            if (show === undefined) {
+                modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+            } else {
+                modal.style.display = show ? 'flex' : 'none';
             }
+        };
 
-            .sidebar.active {
-                transform: translateX(0);
-            }
+        window.initThemeSystem = function() {
+            const savedTheme = localStorage.getItem('parent_theme_mode') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeToggleIcon(savedTheme);
+        };
 
-            .grid-stats,
-            .at-a-glance-grid,
-            .overview-grid-feeds,
-            .child-grid,
-            .profile-grid {
-                grid-template-columns: 1fr;
-            }
+        window.toggleThemeMode = function() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('parent_theme_mode', newTheme);
+            updateThemeToggleIcon(newTheme);
+        };
 
-            .top-bar {
-                padding: 0.75rem 1rem;
+        function updateThemeToggleIcon(theme) {
+            const btn = document.getElementById('theme-toggle-btn');
+            if (btn) {
+                btn.innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                btn.title = theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
             }
         }
-    </style>
+    </script>
 </head>
 
 <body>
-    <!-- Hamburger Menu (fallback) -->
-    <div class="hamburger">
-        <div></div>
-        <div></div>
-        <div></div>
+    <!-- Ambient Wave SVG Canvas Backdrop -->
+    <div class="wave-canvas-backdrop" aria-hidden="true">
+        <svg class="wave-canvas-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" preserveAspectRatio="none">
+            <defs>
+                <linearGradient id="waveGradTop" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="var(--wave-color-1)" />
+                    <stop offset="100%" stop-color="var(--wave-color-2)" />
+                </linearGradient>
+                <linearGradient id="waveGradMid" x1="100%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="var(--wave-color-2)" />
+                    <stop offset="100%" stop-color="var(--wave-color-3)" />
+                </linearGradient>
+                <linearGradient id="waveGradBottom" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="var(--wave-color-deep)" />
+                    <stop offset="100%" stop-color="transparent" />
+                </linearGradient>
+            </defs>
+            <path d="M0,0 C360,110 520,30 840,85 C1180,140 1320,35 1440,65 L1440,0 Z" fill="url(#waveGradTop)" opacity="0.8" />
+            <path d="M0,230 C380,320 660,150 1020,270 C1240,340 1380,250 1440,290 L1440,560 C1320,490 1060,570 740,490 C420,410 180,520 0,470 Z" fill="url(#waveGradMid)" opacity="0.6" />
+            <path d="M0,640 C200,620 360,720 520,800 C680,880 850,890 1100,900 L0,900 Z" fill="url(#waveGradBottom)" opacity="0.3" />
+        </svg>
     </div>
 
-    <nav class="sidebar" id="parent-sidebar">
+    <!-- Mobile Drawer Overlay -->
+    <div class="sidebar-overlay" onclick="window.toggleParentSidebar()"></div>
+
+    <!-- Unified Waves Sidebar -->
+    <aside class="sidebar" id="parent-sidebar">
         <div class="sidebar-brand">
-            <div class="brand-wrapper">
-                <i class="fas fa-graduation-cap brand-icon"></i>
-                <span class="brand-text">FUSION HIGH</span>
-            </div>
-            <button id="parent-sidebar-close" class="sidebar-close-btn" aria-label="Close Side Panel" title="Collapse Side Panel">
-                <i class="fas fa-chevron-left"></i>
-            </button>
+            <div class="sidebar-brand-icon"><i class="fas fa-heart"></i></div>
+            <span>FUSION PARENT</span>
         </div>
         <ul class="nav-list">
-            <li class="nav-item active" onclick="switchTab('overview', this)"><i class="fas fa-home"></i> Overview</li>
-            <li class="nav-item" onclick="switchTab('children', this)"><i class="fas fa-users"></i> My Children</li>
-            <li class="nav-item" onclick="switchTab('announcements', this)"><i class="fas fa-bullhorn"></i> School News</li>
-            <li class="nav-item" onclick="switchTab('performance', this)"><i class="fas fa-chart-line"></i> Performance</li>
-            <li class="nav-item" onclick="switchTab('reports', this)"><i class="fas fa-award" style="color:#f59e0b;"></i> Report Cards</li>
-            <li class="nav-item" onclick="switchTab('attendance', this)"><i class="fas fa-calendar-check"></i> Attendance</li>
-            <li class="nav-item" onclick="switchTab('timetable', this)"><i class="fas fa-clock"></i> Timetable</li>
-            <li class="nav-item" onclick="switchTab('messages', this)"><i class="fas fa-envelope"></i> Messages <span id="unread-messages-badge" class="notification-badge hidden"></span></li>
-            <li class="nav-item" onclick="switchTab('resources', this)"><i class="fas fa-book-open"></i> Resources</li>
-            <li class="nav-item" onclick="switchTab('settings', this)"><i class="fas fa-cog"></i> Settings</li>
-            <li class="nav-item logout-item" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</li>
+            <li class="nav-item active" data-tab="overview" onclick="switchTab('overview', this)"><i class="fas fa-home"></i> <span>Overview Home</span></li>
+            <li class="nav-item" data-tab="children" onclick="switchTab('children', this)"><i class="fas fa-users"></i> <span>My Children</span></li>
+            <li class="nav-item" data-tab="performance" onclick="switchTab('performance', this)"><i class="fas fa-chart-line"></i> <span>Performance</span></li>
+            <li class="nav-item" data-tab="reports" onclick="switchTab('reports', this)"><i class="fas fa-award" style="color:#f59e0b;"></i> <span>Report Cards</span></li>
+            <li class="nav-item" data-tab="attendance" onclick="switchTab('attendance', this)"><i class="fas fa-calendar-check"></i> <span>Attendance</span></li>
+            <li class="nav-item" data-tab="timetable" onclick="switchTab('timetable', this)"><i class="fas fa-clock"></i> <span>Timetable</span></li>
+            <li class="nav-item" data-tab="announcements" onclick="switchTab('announcements', this)"><i class="fas fa-bullhorn"></i> <span>School News</span></li>
+            <li class="nav-item" data-tab="messages" onclick="switchTab('messages', this)"><i class="fas fa-envelope"></i> <span>Messages</span> <span id="unread-messages-badge" class="badge" style="display:none; background:#ef4444; color:#fff; margin-left:auto;">0</span></li>
+            <li class="nav-item" data-tab="resources" onclick="switchTab('resources', this)"><i class="fas fa-book-open"></i> <span>Resources</span></li>
+            <li class="nav-item" data-tab="settings" onclick="switchTab('settings', this)"><i class="fas fa-cog"></i> <span>Settings</span></li>
+            <li class="nav-item logout-item" onclick="logout()"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></li>
         </ul>
-    </nav>
+        <div class="sidebar-wave-brandmark">
+            <span class="slogan-script-text">Learn &bull; Grow &bull; Achieve</span>
+        </div>
+    </aside>
 
     <main class="content main-content-flex">
-        <header class="top-bar">
-            <div class="top-bar-left">
-                <button id="parent-sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle Side Panel" title="Toggle Side Panel (Ctrl+B)">
-                    <i class="fas fa-bars"></i>
+        <nav class="top-nav">
+            <div class="top-nav-left">
+                <button type="button" class="header-hamburger-btn" onclick="window.toggleParentSidebar()" title="Toggle Sidebar">
+                    <span></span>
+                    <span></span>
+                    <span></span>
                 </button>
-                <div>
-                    <h1 id="view-title">Parent Dashboard</h1>
-                    <p class="top-bar-subtitle">Stay informed. Support success.</p>
-                </div>
-            </div>
-            <div class="user-menu" style="display:flex; align-items:center; gap:1.25rem;">
-                <select id="parent-term-select" style="background:#1E293B; color:#F8FAFC; border:1px solid #334155; border-radius:6px; padding:0.45rem 0.75rem; font-size:0.85rem; cursor:pointer;" onchange="if(window.loadParentOverview) window.loadParentOverview(this.value);">
-                    <option value="This Term (May 5 – Aug 30, 2026)">This Term (May 5 – Aug 30, 2026)</option>
-                    <option value="Term 1">Term 1</option>
-                    <option value="Term 2">Term 2</option>
-                    <option value="Term 3">Term 3</option>
-                    <option value="Term 4">Term 4</option>
-                </select>
-                <div style="position:relative; cursor:pointer;" onclick="switchTab('messages')">
-                    <i class="fas fa-bell" style="font-size:1.2rem; color:#94a3b8;"></i>
-                    <span id="header-unread-badge" style="position:absolute; top:-5px; right:-6px; background:#EF4444; color:#FFF; font-size:0.65rem; font-weight:700; width:16px; height:16px; border-radius:50%; display:none; align-items:center; justify-content:center;"></span>
-                </div>
-                <div style="display:flex; align-items:center; gap:0.6rem;">
-                    <img src="/assets/default-pfp.png" style="width:36px; height:36px; border-radius:50%; object-fit:cover;">
-                    <div>
-                        <span id="user-name" style="font-size:0.85rem; font-weight:600; color:#f8fafc; display:block;">Loading...</span>
-                        <span style="font-size:0.7rem; color:#94a3b8;">Parent</span>
+                <div class="school-brand-header">
+                    <img src="/assets/schools/fusion-high.svg" alt="Fusion High Crest" class="school-crest-img">
+                    <div class="school-brand-text">
+                        <span class="school-brand-name">FUSION HIGH SCHOOL</span>
+                        <span class="school-brand-motto">Family, Integrity, Excellence</span>
                     </div>
                 </div>
             </div>
-        </header>
+
+            <div class="top-nav-right">
+                <!-- Academic Term Selector -->
+                <select id="parent-term-select" style="background:var(--wave-surface); color:var(--wave-text-primary); border:1px solid var(--wave-border); border-radius:20px; padding:0.35rem 0.85rem; font-size:0.8rem; cursor:pointer;" onchange="if(window.loadParentOverview) window.loadParentOverview(this.value);">
+                    <option value="This Term (May 5 – Aug 30, 2026)">Term 3 2026</option>
+                    <option value="Term 1">Term 1 2026</option>
+                    <option value="Term 2">Term 2 2026</option>
+                    <option value="Term 3">Term 3 2026</option>
+                    <option value="Term 4">Term 4 2026</option>
+                </select>
+
+                <!-- Theme Mode Toggle -->
+                <button type="button" class="header-action-btn" id="theme-toggle-btn" title="Toggle Light/Dark Mode" onclick="window.toggleThemeMode()">
+                    <i class="fas fa-sun"></i>
+                </button>
+
+                <!-- Notifications -->
+                <button type="button" class="header-action-btn" id="header-notif-btn" title="School Announcements" onclick="switchTab('announcements', null)">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge" id="header-unread-badge" style="display:none;">0</span>
+                </button>
+
+                <!-- Parent Profile Chip -->
+                <div class="learner-profile-chip" onclick="switchTab('settings', null)" title="Parent Profile">
+                    <div class="learner-avatar-round" id="top-nav-avatar-circle" style="background: linear-gradient(135deg, #ec4899, #8b5cf6);">P</div>
+                    <div class="learner-meta-text">
+                        <span class="learner-meta-name" id="user-name">Parent</span>
+                        <span class="learner-meta-grade">Parent Portal</span>
+                    </div>
+                    <i class="fas fa-chevron-down learner-chip-chevron"></i>
+                </div>
+
+                <!-- Quick Logout -->
+                <button type="button" class="header-action-btn" title="Sign Out" onclick="logout()" style="color:var(--danger);">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </nav>
 
         <div class="dashboard-body">
             <!-- Overview View (Image 2) -->
@@ -623,12 +707,102 @@
 
                 </div>
             </div>
+            <footer class="dashboard-footer" style="margin-top: 2rem; text-align: center; color: var(--wave-text-muted); font-size: 0.8rem; padding-bottom: 2rem;">
+                &copy; 2026 FUSION HIGH SCHOOL. All rights reserved. | Parent &amp; Guardian Portal
+            </footer>
         </div>
 
-        <footer class="dashboard-footer">
-            &copy; 2024 FUSION_HIGH_APP. All rights reserved. | <a href="#" class="footer-link">Privacy Policy</a>
-        </footer>
+        <!-- Bottom Navigation Dock (Strict 5 Tabs: Home, Calendar, More (+), Messages, Profile) -->
+        <nav class="bottom-nav-dock" id="parent-bottom-nav">
+            <a href="javascript:void(0)" class="bottom-nav-item active" data-tab="overview" onclick="switchTab('overview', null)">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </a>
+            <a href="javascript:void(0)" class="bottom-nav-item" data-tab="timetable" onclick="switchTab('timetable', null)">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Calendar</span>
+            </a>
+            <a href="javascript:void(0)" class="bottom-nav-item bottom-nav-more-btn" onclick="window.toggleParentMoreLauncher(true)" title="All Modules">
+                <div class="bottom-nav-plus-circle">
+                    <i class="fas fa-plus"></i>
+                </div>
+                <span>More</span>
+            </a>
+            <a href="javascript:void(0)" class="bottom-nav-item" data-tab="messages" onclick="switchTab('messages', null)">
+                <i class="fas fa-envelope"></i>
+                <span>Messages</span>
+                <span class="bottom-nav-badge" id="parent-bottom-unread-badge" style="display:none;"></span>
+            </a>
+            <a href="javascript:void(0)" class="bottom-nav-item" data-tab="settings" onclick="switchTab('settings', null)">
+                <i class="fas fa-user-circle"></i>
+                <span>Profile</span>
+            </a>
+        </nav>
     </main>
+
+    <!-- More Modules Launcher Modal for Parent -->
+    <div id="parentMoreLauncherModal" class="wave-launcher-backdrop" onclick="if(event.target===this) window.toggleParentMoreLauncher(false)">
+        <div class="wave-launcher-modal">
+            <div class="wave-launcher-header">
+                <div class="wave-launcher-title">
+                    <i class="fas fa-th-large" style="color:var(--wave-accent-sky);"></i>
+                    <span>Parent Applications &amp; Tools</span>
+                </div>
+                <button type="button" class="wave-launcher-close-btn" onclick="window.toggleParentMoreLauncher(false)">&times;</button>
+            </div>
+            <div class="wave-launcher-grid">
+                <div class="wave-launcher-tile" onclick="switchTab('children', null); window.toggleParentMoreLauncher(false);">
+                    <div class="wave-launcher-tile-icon" style="background:rgba(14, 165, 233, 0.15); color:#0ea5e9;">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <span class="wave-launcher-tile-name">My Children</span>
+                    <span class="wave-launcher-tile-sub">Enrolled Profiles</span>
+                </div>
+                <div class="wave-launcher-tile" onclick="switchTab('performance', null); window.toggleParentMoreLauncher(false);">
+                    <div class="wave-launcher-tile-icon" style="background:rgba(16, 185, 129, 0.15); color:#10b981;">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <span class="wave-launcher-tile-name">Performance</span>
+                    <span class="wave-launcher-tile-sub">Subject Marks</span>
+                </div>
+                <div class="wave-launcher-tile" onclick="switchTab('reports', null); window.toggleParentMoreLauncher(false);">
+                    <div class="wave-launcher-tile-icon" style="background:rgba(245, 158, 11, 0.15); color:#f59e0b;">
+                        <i class="fas fa-award"></i>
+                    </div>
+                    <span class="wave-launcher-tile-name">Report Cards</span>
+                    <span class="wave-launcher-tile-sub">Official DBE Cards</span>
+                </div>
+                <div class="wave-launcher-tile" onclick="switchTab('attendance', null); window.toggleParentMoreLauncher(false);">
+                    <div class="wave-launcher-tile-icon" style="background:rgba(59, 130, 246, 0.15); color:#3b82f6;">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <span class="wave-launcher-tile-name">Attendance</span>
+                    <span class="wave-launcher-tile-sub">Daily Register</span>
+                </div>
+                <div class="wave-launcher-tile" onclick="switchTab('resources', null); window.toggleParentMoreLauncher(false);">
+                    <div class="wave-launcher-tile-icon" style="background:rgba(168, 85, 247, 0.15); color:#a855f7;">
+                        <i class="fas fa-book-open"></i>
+                    </div>
+                    <span class="wave-launcher-tile-name">Resources</span>
+                    <span class="wave-launcher-tile-sub">Study Materials</span>
+                </div>
+                <div class="wave-launcher-tile" onclick="switchTab('announcements', null); window.toggleParentMoreLauncher(false);">
+                    <div class="wave-launcher-tile-icon" style="background:rgba(239, 68, 68, 0.15); color:#ef4444;">
+                        <i class="fas fa-bullhorn"></i>
+                    </div>
+                    <span class="wave-launcher-tile-name">School News</span>
+                    <span class="wave-launcher-tile-sub">Notices &amp; Letters</span>
+                </div>
+                <div class="wave-launcher-tile" onclick="switchTab('settings', null); window.toggleParentMoreLauncher(false);">
+                    <div class="wave-launcher-tile-icon" style="background:rgba(100, 116, 139, 0.15); color:#94a3b8;">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <span class="wave-launcher-tile-name">Settings</span>
+                    <span class="wave-launcher-tile-sub">Account &amp; Children</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Messaging Modal -->
     <div id="messageModal" class="modal-container hidden">
@@ -866,6 +1040,27 @@
             if (targetSection) targetSection.classList.add('active');
 
             if (el) el.classList.add('active');
+            else {
+                const navEl = Array.from(document.querySelectorAll('.nav-item')).find(n => n.getAttribute('onclick')?.includes(`'${tabId}'`));
+                if (navEl) navEl.classList.add('active');
+            }
+
+            // Sync Bottom Navigation Dock
+            document.querySelectorAll('.bottom-nav-item').forEach(b => {
+                const bTab = b.getAttribute('data-tab');
+                b.classList.toggle('active', bTab === tabId);
+            });
+
+            // Close mobile drawer if open
+            if (window.innerWidth <= 1024) {
+                const sidebar = document.querySelector('.sidebar');
+                const overlay = document.querySelector('.sidebar-overlay');
+                const hamburger = document.querySelector('.header-hamburger-btn');
+                if (sidebar) sidebar.classList.remove('active');
+                if (overlay) overlay.classList.remove('active');
+                if (hamburger) hamburger.classList.remove('is-active');
+            }
+
             const titleEl = document.getElementById('view-title');
             if (titleEl && el) titleEl.textContent = el.innerText.trim();
             location.hash = tabId;
@@ -880,6 +1075,22 @@
             if (tabId === 'settings' && window.loadParentSettings) window.loadParentSettings();
         }
         window.switchTab = switchTab;
+
+        window.addEventListener('load', () => {
+            if (window.initThemeSystem) window.initThemeSystem();
+            try {
+                if (window.innerWidth > 1024 && localStorage.getItem('sidebar_collapsed_parent') === 'true') {
+                    document.body.classList.add('sidebar-collapsed');
+                    const sidebar = document.querySelector('.sidebar');
+                    if (sidebar) sidebar.classList.add('collapsed');
+                    const hamburger = document.querySelector('.header-hamburger-btn');
+                    if (hamburger) hamburger.classList.add('is-active');
+                }
+            } catch (_) {}
+            const currentHash = location.hash.replace('#', '') || 'overview';
+            switchTab(currentHash);
+        });
+        window.addEventListener('hashchange', () => switchTab(location.hash.replace('#', '')));
 
         async function handleUpdateProfile(e) {
             e.preventDefault();

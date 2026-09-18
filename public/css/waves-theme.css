@@ -1152,3 +1152,161 @@ body.sidebar-collapsed .bottom-nav-dock {
   padding: 1px 5px;
   border-radius: 8px;
 }
+
+/* Elevated More (+) Center Button */
+.bottom-nav-more-btn {
+  position: relative;
+}
+
+.bottom-nav-plus-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0284c7, #2563eb);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.45);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: -6px;
+}
+
+.bottom-nav-item:hover .bottom-nav-plus-circle {
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.65);
+}
+
+/* ==========================================================================
+   More Modules Launcher Modal / Drawer (Accessible across all roles)
+   ========================================================================== */
+.wave-launcher-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 7, 18, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 1200;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 70px;
+}
+
+@media (min-width: 640px) {
+  .wave-launcher-backdrop {
+    align-items: center;
+    padding-bottom: 0;
+  }
+}
+
+.wave-launcher-modal {
+  width: 92%;
+  max-width: 680px;
+  background: var(--wave-surface);
+  border: 1px solid var(--wave-border);
+  border-radius: 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 24px rgba(14, 165, 233, 0.15);
+  padding: 1.5rem;
+  animation: waveLauncherPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+@keyframes waveLauncherPop {
+  from { opacity: 0; transform: scale(0.95) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.wave-launcher-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--wave-border-subtle);
+}
+
+.wave-launcher-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--wave-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wave-launcher-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--wave-border-subtle);
+  color: var(--wave-text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.wave-launcher-close-btn:hover {
+  color: #ffffff;
+  background: #ef4444;
+  border-color: #ef4444;
+}
+
+.wave-launcher-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.85rem;
+}
+
+.wave-launcher-tile {
+  background: var(--wave-surface-translucent);
+  border: 1px solid var(--wave-border-subtle);
+  border-radius: 16px;
+  padding: 1rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  text-decoration: none !important;
+}
+
+.wave-launcher-tile:hover {
+  transform: translateY(-3px);
+  border-color: var(--wave-accent-sky);
+  box-shadow: 0 8px 20px -4px rgba(14, 165, 233, 0.2);
+}
+
+.wave-launcher-tile-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  transition: transform 0.2s ease;
+}
+
+.wave-launcher-tile:hover .wave-launcher-tile-icon {
+  transform: scale(1.08);
+}
+
+.wave-launcher-tile-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--wave-text-primary);
+}
+
+.wave-launcher-tile-sub {
+  font-size: 0.7rem;
+  color: var(--wave-text-muted);
+}

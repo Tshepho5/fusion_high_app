@@ -1,48 +1,41 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Teacher Portal - Fusion High</title>
+  <title>Teacher Portal - Fusion High School</title>
+  
+  <!-- Fonts: Google Outfit, Inter, Caveat -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Dancing+Script:wght@700&family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Core Wave Theme Stylesheets -->
+  <link rel="stylesheet" href="/css/waves-theme.css">
   <link rel="stylesheet" href="/css/teacher.css">
-  <link rel="stylesheet" href="/css/responsive-sidebar.css">
   <link rel="stylesheet" href="/css/chat-center.css">
 
-  <style>
-    /* Responsive Styles for Teacher Dashboard */
-    @media (max-width: 768px) {
-      .main-content-flex {
-        padding-left: 0;
-      }
-
-      .sidebar {
-        transform: translateX(-100%);
-        z-index: 1000;
-      }
-
-      .sidebar.active {
-        transform: translateX(0);
-      }
-
-      .hamburger {
-        display: flex;
-      }
-
-      .grid-fit-300,
-      .grid-fit-280 {
-        grid-template-columns: 1fr;
-      }
-
-      .top-nav {
-        padding-left: 50px;
-        /* Space for hamburger */
-      }
-    }
-  </style>
   <script>
+    /* Strict Teacher Client-Side RBAC Guard */
+    (function enforceTeacherRBAC() {
+      const token = localStorage.getItem('token');
+      if (!token) { window.location.href = '/'; return; }
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const role = (payload.role || payload.role_name || '').toLowerCase();
+        if (role !== 'teacher' && role !== 'admin' && !payload.is_superadmin) {
+          window.location.href = `/dashboards/${role}.html`;
+        }
+      } catch (e) {
+        localStorage.removeItem('token');
+        window.location.href = '/';
+      }
+    })();
+
     function switchTab(tabId, el) {
       const tab = tabId || 'overview';
       let resolvedTabId = tab;
@@ -64,29 +57,80 @@
         targetSection.style.display = 'block';
       }
 
+      // Sync Sidebar Active Item
       const activeNav = el || Array.from(navItems).find(n => 
         n.getAttribute('onclick')?.includes("'" + tab + "'") || 
         n.getAttribute('onclick')?.includes("'" + resolvedTabId + "'")
       );
-
       if (activeNav) {
         const targetEl = activeNav.tagName === 'A' ? activeNav.parentElement : activeNav;
         targetEl.classList.add('active');
-        const titleEl = document.getElementById('tab-title');
-        if (titleEl) titleEl.innerText = targetEl.innerText.trim();
+      }
+
+      // Sync Bottom Nav Active Item
+      document.querySelectorAll('.bottom-nav-item').forEach(b => {
+        const bTab = b.getAttribute('data-tab');
+        b.classList.toggle('active', bTab === resolvedTabId || (resolvedTabId === 'overview' && bTab === 'overview'));
+      });
+
+      // Close mobile drawer if open
+      if (window.innerWidth <= 1024) {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.querySelector('.sidebar-overlay');
+        const hamburger = document.querySelector('.header-hamburger-btn');
+        if (sidebar) sidebar.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
+        if (hamburger) hamburger.classList.remove('is-active');
       }
 
       location.hash = resolvedTabId;
 
-      const mainContent = document.querySelector('.main-content');
+      const mainContent = document.querySelector('.dashboard-body') || document.querySelector('.main-content');
       if (mainContent) mainContent.scrollTop = 0;
       window.scrollTo(0, 0);
 
       if (window.handleTabSwitch) {
         window.handleTabSwitch(resolvedTabId);
       }
+      if (resolvedTabId === 'overview' && window.loadMySubjectsSection) {
+        window.loadMySubjectsSection();
+      }
+      if (resolvedTabId === 'calendar' && window.loadTeacherCalendarSchedule) {
+        window.loadTeacherCalendarSchedule();
+      }
     }
     window.switchTab = switchTab;
+
+    window.toggleTeacherSidebar = function() {
+      const isMobile = window.innerWidth <= 1024;
+      const sidebar = document.querySelector('.sidebar');
+      const overlay = document.querySelector('.sidebar-overlay');
+      const hamburger = document.querySelector('.header-hamburger-btn');
+      if (isMobile) {
+        if (sidebar) sidebar.classList.toggle('active');
+        if (overlay) overlay.classList.toggle('active');
+        if (hamburger) hamburger.classList.toggle('is-active', sidebar && sidebar.classList.contains('active'));
+      } else {
+        const willBeCollapsed = !document.body.classList.contains('sidebar-collapsed');
+        document.body.classList.toggle('sidebar-collapsed', willBeCollapsed);
+        if (sidebar) sidebar.classList.toggle('collapsed', willBeCollapsed);
+        if (hamburger) hamburger.classList.toggle('is-active', willBeCollapsed);
+        try {
+          localStorage.setItem('sidebar_collapsed_teacher', willBeCollapsed ? 'true' : 'false');
+        } catch (_) {}
+      }
+    };
+    window.toggleSidebarCollapse = window.toggleTeacherSidebar;
+
+    window.toggleTeacherMoreLauncher = function(show) {
+      const modal = document.getElementById('teacherMoreLauncherModal');
+      if (!modal) return;
+      if (show === undefined) {
+        modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+      } else {
+        modal.style.display = show ? 'flex' : 'none';
+      }
+    };
 
     function logout() {
       const modal = document.getElementById('logoutConfirmModal');
@@ -107,36 +151,99 @@
 </head>
 
 <body>
-  <!-- Unified Mobile Navigation -->
-  <div class="hamburger">
-    <div></div>
-    <div></div>
-    <div></div>
+  <!-- Ambient Wave SVG Canvas Backdrop -->
+  <div class="wave-canvas-backdrop" aria-hidden="true">
+    <svg class="wave-canvas-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="waveGradTop" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="var(--wave-color-1)" />
+          <stop offset="100%" stop-color="var(--wave-color-2)" />
+        </linearGradient>
+        <linearGradient id="waveGradMid" x1="100%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="var(--wave-color-2)" />
+          <stop offset="100%" stop-color="var(--wave-color-3)" />
+        </linearGradient>
+        <linearGradient id="waveGradBottom" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="var(--wave-color-deep)" />
+          <stop offset="100%" stop-color="transparent" />
+        </linearGradient>
+      </defs>
+      <path d="M0,0 C360,110 520,30 840,85 C1180,140 1320,35 1440,65 L1440,0 Z" fill="url(#waveGradTop)" opacity="0.8" />
+      <path d="M0,230 C380,320 660,150 1020,270 C1240,340 1380,250 1440,290 L1440,560 C1320,490 1060,570 740,490 C420,410 180,520 0,470 Z" fill="url(#waveGradMid)" opacity="0.6" />
+      <path d="M0,640 C200,620 360,720 520,800 C680,880 850,890 1100,900 L0,900 Z" fill="url(#waveGradBottom)" opacity="0.3" />
+    </svg>
   </div>
 
+  <!-- Mobile Drawer Overlay -->
+  <div class="sidebar-overlay" onclick="window.toggleTeacherSidebar()"></div>
+
+  <!-- Unified Waves Sidebar -->
   <aside class="sidebar">
-    <div class="sidebar-brand">FUSION TEACHER</div>
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+      <span>FUSION TEACHER</span>
+    </div>
     <ul class="nav-list">
-      <li class="nav-item active" onclick="switchTab('overview', this)"><i class="fas fa-th-large"></i> Overview</li>
-      <li class="nav-item" onclick="switchTab('my-subjects', this)"><i class="fas fa-book"></i> My Subjects</li>
-      <li class="nav-item" onclick="switchTab('performance', this)"><i class="fas fa-chart-bar"></i> Performance</li>
-      <li class="nav-item" onclick="switchTab('my-learners', this)"><i class="fas fa-users"></i> My Learners</li>
-      <li class="nav-item" onclick="switchTab('attendance', this)"><i class="fas fa-user-check"></i> Attendance</li>
-      <li class="nav-item" onclick="switchTab('messages', this)"><i class="fas fa-envelope"></i> Message Center
-        <span id="unread-messages-badge" class="notification-badge hidden"></span>
-      </li>
-      <li class="nav-item" onclick="switchTab('announcements', this)"><i class="fas fa-bullhorn"></i> Announcements</li>
-      <li class="nav-item" onclick="switchTab('profile', this)"><i class="fas fa-user-circle"></i> My Profile</li>
-      <li class="nav-item" onclick="switchTab('settings', this)"><i class="fas fa-cog"></i> Settings</li>
-      <li class="nav-item logout-item" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</li>
+      <li class="nav-item active" data-tab="overview" onclick="switchTab('overview', this)"><i class="fas fa-home"></i> <span>Home Overview</span></li>
+      <li class="nav-item" data-tab="my-subjects" onclick="switchTab('my-subjects', this)"><i class="fas fa-book-open"></i> <span>My Subjects</span></li>
+      <li class="nav-item" data-tab="performance" onclick="switchTab('performance', this)"><i class="fas fa-chart-line"></i> <span>Performance</span></li>
+      <li class="nav-item" data-tab="my-learners" onclick="switchTab('my-learners', this)"><i class="fas fa-user-graduate"></i> <span>My Learners</span></li>
+      <li class="nav-item" data-tab="attendance" onclick="switchTab('attendance', this)"><i class="fas fa-calendar-check"></i> <span>Attendance</span></li>
+      <li class="nav-item" data-tab="calendar" onclick="switchTab('calendar', this)"><i class="fas fa-calendar-alt"></i> <span>Calendar &amp; Timetable</span></li>
+      <li class="nav-item" data-tab="announcements" onclick="switchTab('announcements', this)"><i class="fas fa-bullhorn"></i> <span>Announcements</span></li>
+      <li class="nav-item" data-tab="messages" onclick="switchTab('messages', this)"><i class="fas fa-envelope"></i> <span>Message Center</span> <span id="unread-messages-badge" class="badge" style="display:none; background:#ef4444; color:#fff; margin-left:auto;">0</span></li>
+      <li class="nav-item" data-tab="profile" onclick="switchTab('profile', this)"><i class="fas fa-user-circle"></i> <span>My Profile</span></li>
+      <li class="nav-item" data-tab="settings" onclick="switchTab('settings', this)"><i class="fas fa-cog"></i> <span>Settings</span></li>
+      <li class="nav-item logout-item" onclick="logout()"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></li>
     </ul>
+    <div class="sidebar-wave-brandmark">
+      <span class="slogan-script-text">Learn &bull; Grow &bull; Achieve</span>
+    </div>
   </aside>
 
   <main class="main-content main-content-flex">
     <nav class="top-nav">
-      <h2 id="tab-title">Teacher Dashboard</h2>
-      <div class="top-nav-user-details">
-        <i class="fas fa-user-tie"></i> <span id="top-teacher-name">Loading...</span>
+      <div class="top-nav-left">
+        <button type="button" class="header-hamburger-btn" onclick="window.toggleTeacherSidebar()" title="Toggle Sidebar">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="school-brand-header">
+          <img src="/assets/schools/fusion-high.svg" alt="Fusion High Crest" class="school-crest-img">
+          <div class="school-brand-text">
+            <span class="school-brand-name">FUSION HIGH SCHOOL</span>
+            <span class="school-brand-motto">Educate, Inspire, Empower</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="top-nav-right">
+        <!-- Theme Mode Toggle -->
+        <button type="button" class="header-action-btn" id="theme-toggle-btn" title="Toggle Light/Dark Mode" onclick="window.toggleThemeMode()">
+          <i class="fas fa-sun"></i>
+        </button>
+
+        <!-- Notifications -->
+        <button type="button" class="header-action-btn" id="header-notif-btn" title="Announcements & Notices" onclick="switchTab('announcements', null)">
+          <i class="fas fa-bell"></i>
+          <span class="notification-badge" id="top-notif-badge" style="display:none;">0</span>
+        </button>
+
+        <!-- Teacher Profile Chip -->
+        <div class="learner-profile-chip" onclick="switchTab('profile', null)" title="View Profile">
+          <div class="learner-avatar-round" id="top-nav-avatar-circle" style="background: linear-gradient(135deg, #059669, #0284c7);">T</div>
+          <div class="learner-meta-text">
+            <span class="learner-meta-name" id="top-teacher-name">Educator</span>
+            <span class="learner-meta-grade">Teacher Portal</span>
+          </div>
+          <i class="fas fa-chevron-down learner-chip-chevron"></i>
+        </div>
+
+        <!-- Quick Logout -->
+        <button type="button" class="header-action-btn" title="Sign Out" onclick="logout()" style="color:var(--danger);">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
       </div>
     </nav>
 
@@ -221,6 +328,21 @@
               <button type="button" class="btn btn-info"
                 onclick="switchTab('announcements', document.querySelectorAll('.nav-item')[6])"><i class="fas fa-bullhorn"></i> Post School Announcement</button>
             </div>
+          </div>
+        </div>
+
+        <!-- Assigned Subjects Categorized in Home Overview with Learners, Performance & Attendance -->
+        <div class="assigned-subjects-container-card" style="margin-top: 1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+            <div class="container-card-title" style="margin-bottom:0;">
+              <i class="fas fa-layer-group" style="color:var(--wave-accent-sky);"></i> My Subjects &amp; Classes
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="switchTab('my-subjects')" style="border-radius:20px; font-size:0.8rem; padding:4px 14px;">
+              Manage All Subjects &bull; AI Studio <i class="fas fa-arrow-right ms-1"></i>
+            </button>
+          </div>
+          <div id="home-subjects-grid" class="subjects-cards-3col-grid">
+            <!-- Dynamically populated from database -->
           </div>
         </div>
       </div>
@@ -716,6 +838,68 @@
         </div>
       </div>
 
+      <!-- Calendar & Timetable Section -->
+      <div id="calendar" class="section">
+        <div class="card" style="margin-bottom: 1.5rem; background: #0f172a; border: 1px solid #334155;">
+          <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <span><i class="fas fa-calendar-alt" style="color:var(--wave-accent-sky);"></i> Educator Weekly Timetable &amp; Schedule</span>
+            <div style="display:flex; gap:0.5rem;">
+              <button type="button" class="btn btn-sm btn-outline" onclick="window.loadTeacherCalendarSchedule()" style="border-radius:20px; font-size:0.8rem; padding:4px 12px;"><i class="fas fa-sync-alt me-1"></i> Refresh</button>
+              <button type="button" class="btn btn-sm btn-primary" onclick="window.print()" style="border-radius:20px; font-size:0.8rem; padding:4px 12px;"><i class="fas fa-print me-1"></i> Print</button>
+            </div>
+          </div>
+          <p style="color: #94a3b8; font-size: 0.88rem; margin: 0 0 1.25rem 0;">
+            View your assigned teaching periods, classroom allocations, and scheduled CAPS assessment dates.
+          </p>
+
+          <div class="table-responsive" style="border-radius: 12px; border: 1px solid #334155; overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; min-width:650px;">
+              <thead>
+                <tr style="background:#1e293b; color:#f8fafc; border-bottom:1px solid #334155; font-size:0.85rem;">
+                  <th style="padding:12px 14px; text-align:left;">Period &amp; Time</th>
+                  <th style="padding:12px 14px; text-align:center;">Monday</th>
+                  <th style="padding:12px 14px; text-align:center;">Tuesday</th>
+                  <th style="padding:12px 14px; text-align:center;">Wednesday</th>
+                  <th style="padding:12px 14px; text-align:center;">Thursday</th>
+                  <th style="padding:12px 14px; text-align:center;">Friday</th>
+                </tr>
+              </thead>
+              <tbody id="teacher-timetable-tbody">
+                <tr style="border-bottom: 1px solid #1e293b;">
+                  <td style="padding: 10px 14px; font-weight: 600; color: #38bdf8;">Period 1<br><span style="font-size: 0.75rem; color: #94a3b8;">08:00 - 08:50</span></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #38bdf8; font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 12A • Room 14</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #34d399; font-size: 0.85rem;">Physical Sciences</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 11B • Lab 2</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #38bdf8; font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 12A • Room 14</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #c084fc; font-size: 0.85rem;">Free Period</strong><br><span style="font-size: 0.75rem; color: #94a3b8;">Prep &amp; Marking</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #38bdf8; font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 10C • Room 12</span></div></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #1e293b;">
+                  <td style="padding: 10px 14px; font-weight: 600; color: #38bdf8;">Period 2<br><span style="font-size: 0.75rem; color: #94a3b8;">08:50 - 09:40</span></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #34d399; font-size: 0.85rem;">Physical Sciences</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 12A • Lab 1</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #38bdf8; font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 10C • Room 12</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #34d399; font-size: 0.85rem;">Physical Sciences</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 12A • Lab 1</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #38bdf8; font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 12A • Room 14</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #34d399; font-size: 0.85rem;">Physical Sciences</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 11B • Lab 2</span></div></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #1e293b; background: rgba(0,0,0,0.2);">
+                  <td style="padding: 8px 14px; font-weight: 700; color: #f59e0b; text-transform: uppercase; font-size: 0.75rem;" colspan="6">
+                    <i class="fas fa-coffee me-1"></i> Morning Break (09:40 - 10:10)
+                  </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #1e293b;">
+                  <td style="padding: 10px 14px; font-weight: 600; color: #38bdf8;">Period 3<br><span style="font-size: 0.75rem; color: #94a3b8;">10:10 - 11:00</span></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #38bdf8; font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 11A • Room 14</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #c084fc; font-size: 0.85rem;">Department Meeting</strong><br><span style="font-size: 0.75rem; color: #94a3b8;">Staffroom</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #38bdf8; font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 11A • Room 14</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #38bdf8; font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 10C • Room 12</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #fbbf24; font-size: 0.85rem;">Assessment Slot</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 12 Test</span></div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- Settings Section -->
       <div id="settings" class="section">
         <div class="card" style="margin-bottom:1.5rem;">
@@ -753,12 +937,95 @@
         </div>
       </div>
 
-      <footer class="dashboard-footer">
-        &copy; 2026 FUSION_HIGH_APP. All rights reserved. | <a href="#"
-          style="color: var(--secondary); text-decoration: none;">Privacy Policy</a>
+      <footer class="dashboard-footer" style="margin-top: 2rem; text-align: center; color: var(--wave-text-muted); font-size: 0.8rem; padding-bottom: 2rem;">
+        &copy; 2026 FUSION HIGH SCHOOL. All rights reserved. | Educator Teaching Portal
       </footer>
     </div>
+
+    <!-- Bottom Navigation Dock (Strict 5 Tabs: Home, Calendar, More (+), Messages, Profile) -->
+    <nav class="bottom-nav-dock" id="teacher-bottom-nav">
+      <a href="javascript:void(0)" class="bottom-nav-item active" data-tab="overview" onclick="switchTab('overview', null)">
+        <i class="fas fa-home"></i>
+        <span>Home</span>
+      </a>
+      <a href="javascript:void(0)" class="bottom-nav-item" data-tab="calendar" onclick="switchTab('calendar', null)">
+        <i class="fas fa-calendar-alt"></i>
+        <span>Calendar</span>
+      </a>
+      <a href="javascript:void(0)" class="bottom-nav-item bottom-nav-more-btn" onclick="window.toggleTeacherMoreLauncher(true)" title="All Modules">
+        <div class="bottom-nav-plus-circle">
+          <i class="fas fa-plus"></i>
+        </div>
+        <span>More</span>
+      </a>
+      <a href="javascript:void(0)" class="bottom-nav-item" data-tab="messages" onclick="switchTab('messages', null)">
+        <i class="fas fa-envelope"></i>
+        <span>Messages</span>
+        <span class="bottom-nav-badge" id="teacher-bottom-unread-badge" style="display:none;"></span>
+      </a>
+      <a href="javascript:void(0)" class="bottom-nav-item" data-tab="profile" onclick="switchTab('profile', null)">
+        <i class="fas fa-user-circle"></i>
+        <span>Profile</span>
+      </a>
+    </nav>
   </main>
+
+  <!-- More Modules Launcher Modal for Teacher -->
+  <div id="teacherMoreLauncherModal" class="wave-launcher-backdrop" onclick="if(event.target===this) window.toggleTeacherMoreLauncher(false)">
+    <div class="wave-launcher-modal">
+      <div class="wave-launcher-header">
+        <div class="wave-launcher-title">
+          <i class="fas fa-th-large" style="color:var(--wave-accent-sky);"></i>
+          <span>Educator Applications &amp; Tools</span>
+        </div>
+        <button type="button" class="wave-launcher-close-btn" onclick="window.toggleTeacherMoreLauncher(false)">&times;</button>
+      </div>
+      <div class="wave-launcher-grid">
+        <div class="wave-launcher-tile" onclick="switchTab('my-subjects', null); window.toggleTeacherMoreLauncher(false);">
+          <div class="wave-launcher-tile-icon" style="background:rgba(14, 165, 233, 0.15); color:#0ea5e9;">
+            <i class="fas fa-book-open"></i>
+          </div>
+          <span class="wave-launcher-tile-name">My Subjects</span>
+          <span class="wave-launcher-tile-sub">CAPS Curriculum</span>
+        </div>
+        <div class="wave-launcher-tile" onclick="switchTab('my-learners', null); window.toggleTeacherMoreLauncher(false);">
+          <div class="wave-launcher-tile-icon" style="background:rgba(59, 130, 246, 0.15); color:#3b82f6;">
+            <i class="fas fa-user-graduate"></i>
+          </div>
+          <span class="wave-launcher-tile-name">My Learners</span>
+          <span class="wave-launcher-tile-sub">Class Rosters</span>
+        </div>
+        <div class="wave-launcher-tile" onclick="switchTab('performance', null); window.toggleTeacherMoreLauncher(false);">
+          <div class="wave-launcher-tile-icon" style="background:rgba(16, 185, 129, 0.15); color:#10b981;">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <span class="wave-launcher-tile-name">Performance</span>
+          <span class="wave-launcher-tile-sub">Marks &amp; Analysis</span>
+        </div>
+        <div class="wave-launcher-tile" onclick="switchTab('attendance', null); window.toggleTeacherMoreLauncher(false);">
+          <div class="wave-launcher-tile-icon" style="background:rgba(245, 158, 11, 0.15); color:#f59e0b;">
+            <i class="fas fa-calendar-check"></i>
+          </div>
+          <span class="wave-launcher-tile-name">Attendance</span>
+          <span class="wave-launcher-tile-sub">Mark Registers</span>
+        </div>
+        <div class="wave-launcher-tile" onclick="switchTab('announcements', null); window.toggleTeacherMoreLauncher(false);">
+          <div class="wave-launcher-tile-icon" style="background:rgba(239, 68, 68, 0.15); color:#ef4444;">
+            <i class="fas fa-bullhorn"></i>
+          </div>
+          <span class="wave-launcher-tile-name">Announcements</span>
+          <span class="wave-launcher-tile-sub">Notices &amp; Alerts</span>
+        </div>
+        <div class="wave-launcher-tile" onclick="switchTab('settings', null); window.toggleTeacherMoreLauncher(false);">
+          <div class="wave-launcher-tile-icon" style="background:rgba(100, 116, 139, 0.15); color:#94a3b8;">
+            <i class="fas fa-cog"></i>
+          </div>
+          <span class="wave-launcher-tile-name">Settings</span>
+          <span class="wave-launcher-tile-sub">Preferences</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Logout Confirmation Modal -->
   <div id="logoutConfirmModal" class="modal" style="display:none;">
@@ -983,6 +1250,45 @@
     </div>
   </div>
 
+  <script>
+    window.initThemeSystem = function() {
+      const savedTheme = localStorage.getItem('teacher_theme_mode') || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      updateThemeToggleIcon(savedTheme);
+    };
+
+    window.toggleThemeMode = function() {
+      const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('teacher_theme_mode', newTheme);
+      updateThemeToggleIcon(newTheme);
+    };
+
+    function updateThemeToggleIcon(theme) {
+      const btn = document.getElementById('theme-toggle-btn');
+      if (btn) {
+        btn.innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+        btn.title = theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+      }
+    }
+
+    window.addEventListener('load', () => {
+      if (window.initThemeSystem) window.initThemeSystem();
+      try {
+        if (window.innerWidth > 1024 && localStorage.getItem('sidebar_collapsed_teacher') === 'true') {
+          document.body.classList.add('sidebar-collapsed');
+          const sidebar = document.querySelector('.sidebar');
+          if (sidebar) sidebar.classList.add('collapsed');
+          const hamburger = document.querySelector('.header-hamburger-btn');
+          if (hamburger) hamburger.classList.add('is-active');
+        }
+      } catch (_) {}
+      const hash = location.hash.replace('#', '') || 'overview';
+      switchTab(hash);
+    });
+    window.addEventListener('hashchange', () => switchTab(location.hash.replace('#', '')));
+  </script>
   <script src="/js/sidebar-toggle.js"></script>
   <script type="module" src="/js/teacher-message-center.js"></script>
   <script type="module" src="/js/teacher-dashboard.js"></script>

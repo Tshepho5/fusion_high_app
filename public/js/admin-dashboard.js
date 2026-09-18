@@ -88,6 +88,22 @@ window.switchTab = function (tabId, el, subCategory = null) {
         targetSection.classList.add('active');
     }
 
+    // Sync Bottom Navigation Dock
+    document.querySelectorAll('.bottom-nav-item').forEach(b => {
+        const bTab = b.getAttribute('data-tab');
+        b.classList.toggle('active', bTab === tabId);
+    });
+
+    // Close mobile drawer if active
+    if (window.innerWidth <= 1024) {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.querySelector('.sidebar-overlay');
+        const hamburger = document.querySelector('.header-hamburger-btn');
+        if (sidebar) sidebar.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
+        if (hamburger) hamburger.classList.remove('is-active');
+    }
+
     // Special handling for the 'users' tab to show specific user roles
     if (tabId === 'users' && subCategory) {
         document.querySelectorAll('#users .dashboard-section').forEach(userCard => userCard.style.display = 'none');

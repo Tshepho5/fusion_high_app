@@ -402,8 +402,6 @@ export function renderLearnerSubjectCards(cards) {
             const teacherName = c.teacher || 'To Be Assigned';
             const masteryVal = Math.round(c.progress || c.curriculum_progress || c.overall_average || 0);
 
-            const shortName = (c.name || '').toLowerCase().includes('english') ? 'English' : c.name;
-
             return `
             <div class="wave-subject-card" data-subject="${c.name}">
                 <div class="wave-card-hero-banner" style="background-image: url('${meta.image}');">
@@ -440,7 +438,7 @@ export function renderLearnerSubjectCards(cards) {
                     </div>
 
                     <button type="button" class="wave-card-cta-btn ${meta.ctaClass}" onclick="window.openSubjectWorkspace('${c.name}')">
-                        Open ${shortName} Workspace <i class="fas fa-arrow-right"></i>
+                        Open ${c.name} Workspace <i class="fas fa-arrow-right"></i>
                     </button>
                 </div>
             </div>

@@ -42,15 +42,21 @@ export async function loadMySubjectsSection() {
 }
 
 export function renderSubjectCards(cards) {
-    const container = document.getElementById('subjects-grid') || document.getElementById('my-subjects-cards-container');
-    if (!container) return;
+    const containers = [
+        document.getElementById('subjects-grid'),
+        document.getElementById('home-subjects-grid'),
+        document.getElementById('my-subjects-cards-container')
+    ].filter(Boolean);
+    if (containers.length === 0) return;
 
     if (!cards || cards.length === 0) {
-        container.innerHTML = `<p style="color:#94a3b8; text-align:center; grid-column: 1 / -1; padding:2rem;">No matching subjects found.</p>`;
+        containers.forEach(c => {
+            c.innerHTML = `<p style="color:#94a3b8; text-align:center; grid-column: 1 / -1; padding:2rem;">No matching subjects found.</p>`;
+        });
         return;
     }
 
-    container.innerHTML = cards.map((c) => {
+    const html = cards.map((c) => {
         const safeCode = (c.code || `${c.subject_name.substring(0,4)}${c.grade}`).replace(/[^a-zA-Z0-9]/g, '');
         const sectionId = `subject-learners-container-${c.grade}-${safeCode}`;
         const listId = `subject-learners-list-${c.grade}-${safeCode}`;
@@ -124,6 +130,10 @@ export function renderSubjectCards(cards) {
         </div>
         `;
     }).join('');
+
+    containers.forEach(c => {
+        c.innerHTML = html;
+    });
 }
 
 export async function toggleSubjectLearnersSection(subject, grade, sectionId, listId, btnEl) {

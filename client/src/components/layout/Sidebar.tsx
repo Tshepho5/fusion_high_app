@@ -16,10 +16,6 @@ import {
   X,
   ChevronRight,
   Menu,
-  GraduationCap,
-  Calendar,
-  MessageSquare,
-  Headphones,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -254,9 +250,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClose();
                 }}
                 className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer ${
-                  activeTab === 'home'
-                    ? 'bg-[#1e50e2] text-white shadow-md'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  isHomeActive
+                    ? isLight
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
+                      : 'bg-[#22D3EE] text-slate-950 font-bold shadow-[0_0_16px_rgba(34,211,238,0.5)]'
+                    : isLight
+                    ? 'text-slate-600 hover:text-slate-950 hover:bg-slate-100'
+                    : 'text-slate-400 hover:text-white hover:bg-[#111827]'
                 }`}
                 title="Home"
                 aria-label="Home"
@@ -271,139 +271,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClose();
               }}
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group ${
-                activeTab === 'home'
-                  ? 'bg-[#1e50e2] text-white shadow-md'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+                isHomeActive
+                  ? isLight
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 border border-blue-600'
+                    : 'bg-[#22D3EE] text-slate-950 font-black shadow-[0_0_18px_rgba(34,211,238,0.45)] border border-cyan-300'
+                  : isLight
+                  ? 'text-slate-700 hover:text-slate-950 hover:bg-slate-100 border border-transparent'
+                  : 'text-slate-300 hover:text-white hover:bg-[#111827] border border-transparent'
               }`}
             >
               <div className="flex items-center gap-3">
-                <Home className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                <Home className={`w-4 h-4 ${isHomeActive ? (isLight ? 'text-white' : 'text-slate-950') : isLight ? 'text-slate-500' : 'text-slate-400'}`} />
                 <span>Home</span>
               </div>
-            </button>
-          )}
-
-          {/* 2. MY SUBJECTS (Matches Reference Picture Active Pill) */}
-          {isCollapsed ? (
-            <div className="flex justify-center">
-              <button
-                onClick={() => {
-                  onSelectTab('overview');
-                  onClose();
-                }}
-                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer ${
-                  isHomeActive
-                    ? 'bg-[#0284c7] text-white shadow-lg shadow-sky-500/30'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+              <ChevronRight
+                className={`w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 ${
+                  isHomeActive ? (isLight ? 'text-white/80' : 'text-slate-950/80') : 'opacity-40'
                 }`}
-                title="My Subjects"
-                aria-label="My Subjects"
-              >
-                <GraduationCap className="w-5 h-5" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => {
-                onSelectTab('overview');
-                onClose();
-              }}
-              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group ${
-                isHomeActive
-                  ? 'bg-[#0284c7] text-white shadow-lg shadow-sky-500/25 border border-sky-400/40'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <GraduationCap className={`w-4 h-4 ${isHomeActive ? 'text-white' : 'text-slate-400'}`} />
-                <span>My Subjects</span>
-              </div>
+              />
             </button>
           )}
 
-          {/* 3. CALENDAR */}
-          {isCollapsed ? (
-            <div className="flex justify-center">
-              <button
-                onClick={() => {
-                  onSelectTab('calendar');
-                  onClose();
-                }}
-                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer ${
-                  activeTab === 'calendar' || activeTab === 'timetable'
-                    ? 'bg-[#0284c7] text-white shadow-md'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-                title="Calendar & Timetable"
-                aria-label="Calendar"
-              >
-                <Calendar className="w-5 h-5" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => {
-                onSelectTab('calendar');
-                onClose();
-              }}
-              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group ${
-                activeTab === 'calendar' || activeTab === 'timetable'
-                  ? 'bg-[#0284c7] text-white shadow-md'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Calendar className="w-4 h-4 text-slate-400 group-hover:text-white" />
-                <span>Calendar</span>
-              </div>
-            </button>
-          )}
-
-          {/* 4. MESSAGES (With Badge 3) */}
-          {isCollapsed ? (
-            <div className="flex justify-center relative">
-              <button
-                onClick={() => {
-                  onSelectTab('messages');
-                  onClose();
-                }}
-                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer relative ${
-                  activeTab === 'messages'
-                    ? 'bg-[#0284c7] text-white shadow-md'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-                title="Messages"
-                aria-label="Messages"
-              >
-                <MessageSquare className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
-                  3
-                </span>
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => {
-                onSelectTab('messages');
-                onClose();
-              }}
-              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group ${
-                activeTab === 'messages'
-                  ? 'bg-[#0284c7] text-white shadow-md'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <MessageSquare className="w-4 h-4 text-slate-400 group-hover:text-white" />
-                <span>Messages</span>
-              </div>
-              <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold shadow-xs">
-                3
-              </span>
-            </button>
-          )}
-
-          {/* 5. PROFILE */}
+          {/* 2. MY PROFILE */}
           {isCollapsed ? (
             <div className="flex justify-center">
               <button
@@ -413,11 +302,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }}
                 className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer ${
                   isProfileActive
-                    ? 'bg-[#0284c7] text-white shadow-md'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    ? isLight
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-[#22D3EE] text-slate-950 font-bold shadow-md'
+                    : isLight
+                    ? 'text-slate-600 hover:text-slate-950 hover:bg-slate-100'
+                    : 'text-slate-400 hover:text-white hover:bg-[#111827]'
                 }`}
-                title="Profile"
-                aria-label="Profile"
+                title="My Profile"
+                aria-label="My Profile"
               >
                 <User className="w-5 h-5" />
               </button>
@@ -430,18 +323,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }}
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group ${
                 isProfileActive
-                  ? 'bg-[#0284c7] text-white shadow-md'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  ? isLight
+                    ? 'bg-blue-600 text-white shadow-md border border-blue-600'
+                    : 'bg-[#22D3EE] text-slate-950 font-black shadow-[0_0_18px_rgba(34,211,238,0.45)] border border-cyan-300'
+                  : isLight
+                  ? 'text-slate-700 hover:text-slate-950 hover:bg-slate-100 border border-transparent'
+                  : 'text-slate-300 hover:text-white hover:bg-[#111827] border border-transparent'
               }`}
             >
               <div className="flex items-center gap-3">
-                <User className="w-4 h-4 text-slate-400 group-hover:text-white" />
-                <span>Profile</span>
+                <User className={`w-4 h-4 ${isProfileActive ? (isLight ? 'text-white' : 'text-slate-950') : isLight ? 'text-slate-500' : 'text-slate-400'}`} />
+                <span>My Profile</span>
               </div>
             </button>
           )}
 
-          {/* 6. SETTINGS */}
+          {/* 3. SETTINGS & PREFERENCES */}
           {isCollapsed ? (
             <div className="flex justify-center">
               <button
@@ -451,11 +348,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }}
                 className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer ${
                   isSettingsActive
-                    ? 'bg-[#0284c7] text-white shadow-md'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    ? isLight
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-[#22D3EE] text-slate-950 font-bold shadow-md'
+                    : isLight
+                    ? 'text-slate-600 hover:text-slate-950 hover:bg-slate-100'
+                    : 'text-slate-400 hover:text-white hover:bg-[#111827]'
                 }`}
-                title="Settings"
-                aria-label="Settings"
+                title="Settings & Preferences"
+                aria-label="Settings & Preferences"
               >
                 <Settings className="w-5 h-5" />
               </button>
@@ -468,18 +369,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }}
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group ${
                 isSettingsActive
-                  ? 'bg-[#0284c7] text-white shadow-md'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  ? isLight
+                    ? 'bg-blue-600 text-white shadow-md border border-blue-600'
+                    : 'bg-[#22D3EE] text-slate-950 font-black shadow-[0_0_18px_rgba(34,211,238,0.45)] border border-cyan-300'
+                  : isLight
+                  ? 'text-slate-700 hover:text-slate-950 hover:bg-slate-100 border border-transparent'
+                  : 'text-slate-300 hover:text-white hover:bg-[#111827] border border-transparent'
               }`}
             >
               <div className="flex items-center gap-3">
-                <Settings className="w-4 h-4 text-slate-400 group-hover:text-white" />
-                <span>Settings</span>
+                <Settings className={`w-4 h-4 ${isSettingsActive ? (isLight ? 'text-white' : 'text-slate-950') : isLight ? 'text-slate-500' : 'text-slate-400'}`} />
+                <span>Settings & Preferences</span>
               </div>
             </button>
           )}
 
-          {/* 7. HELP & SUPPORT */}
+          {/* 4. HELP & SUPPORT */}
           {isCollapsed ? (
             <div className="flex justify-center">
               <button
@@ -487,7 +392,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   setHelpSupportOpen(true);
                   onClose();
                 }}
-                className="w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer text-slate-400 hover:text-white hover:bg-white/5"
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer ${
+                  isLight
+                    ? 'text-slate-600 hover:text-slate-950 hover:bg-slate-100'
+                    : 'text-slate-400 hover:text-white hover:bg-[#111827]'
+                }`}
                 title="Help & Support"
                 aria-label="Help & Support"
               >
@@ -500,21 +409,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 setHelpSupportOpen(true);
                 onClose();
               }}
-              className="w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group text-slate-300 hover:text-white hover:bg-white/5"
+              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group ${
+                isLight
+                  ? 'text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+                  : 'text-slate-300 hover:text-white hover:bg-[#111827]'
+              }`}
             >
               <div className="flex items-center gap-3">
-                <HelpCircle className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                <HelpCircle className={`w-4 h-4 ${isLight ? 'text-slate-500' : 'text-slate-400'}`} />
                 <span>Help & Support</span>
               </div>
             </button>
           )}
 
-          {/* 8. LOGOUT */}
+          {/* 5. LOGOUT */}
           {isCollapsed ? (
             <div className="flex justify-center pt-2">
               <button
                 onClick={logout}
-                className="w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer text-slate-400 hover:text-rose-400 hover:bg-white/5"
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer ${
+                  isLight
+                    ? 'text-rose-600 hover:bg-rose-50'
+                    : 'text-slate-400 hover:text-rose-400 hover:bg-[#111827]'
+                }`}
                 title="Logout"
                 aria-label="Logout"
               >
@@ -524,10 +441,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ) : (
             <button
               onClick={logout}
-              className="w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group mt-1 text-slate-300 hover:text-rose-400 hover:bg-white/5"
+              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group mt-1 ${
+                isLight
+                  ? 'text-slate-700 hover:text-rose-600 hover:bg-rose-50'
+                  : 'text-slate-300 hover:text-rose-400 hover:bg-[#111827]'
+              }`}
             >
               <div className="flex items-center gap-3">
-                <LogOut className="w-4 h-4 text-slate-400 group-hover:text-rose-400" />
+                <LogOut className={`w-4 h-4 ${isLight ? 'text-slate-500 group-hover:text-rose-600' : 'text-slate-400 group-hover:text-rose-400'}`} />
                 <span>Logout</span>
               </div>
             </button>
