@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="/css/responsive-sidebar.css">
     <link rel="stylesheet" href="/css/chat-center.css">
     <link rel="stylesheet" href="/css/learner-my-subjects.css">
-
+    <link rel="stylesheet" href="/css/waves-theme.css">
 
     <style>
         /* Responsive Styles for Learner Dashboard */
@@ -22,77 +22,77 @@
                 padding-left: 0;
             }
 
-            .sidebar {
-                transform: translateX(-100%);
-                z-index: 1000;
-            }
-
-            .sidebar.active {
-                transform: translateX(0);
-            }
-
-            .hamburger {
-                display: flex;
-            }
-
             .stat-grid,
             .grid-layout,
             .workspace-grid {
                 grid-template-columns: 1fr;
             }
-
-            .top-nav {
-                padding-left: 50px; /* Space for hamburger */
-            }
         }
     </style>
 </head>
 
-<body>
-    <!-- Hamburger Menu for Mobile -->
-    <div class="hamburger">
-        <div></div>
-        <div></div>
-        <div></div>
+<body class="wave-dashboard-layout">
+    <!-- SVG Fluid Waves Backdrop Layer -->
+    <div class="wave-canvas-backdrop" aria-hidden="true">
+        <svg class="wave-svg-stream" viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="waveGradTop" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="var(--wave-color-1)" />
+                    <stop offset="100%" stop-color="var(--wave-color-2)" />
+                </linearGradient>
+                <linearGradient id="waveGradMid" x1="100%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="var(--wave-color-2)" />
+                    <stop offset="100%" stop-color="var(--wave-color-3)" />
+                </linearGradient>
+                <linearGradient id="waveGradBottom" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="var(--wave-color-deep)" />
+                    <stop offset="100%" stop-color="transparent" />
+                </linearGradient>
+            </defs>
+            <path d="M0,0 C360,110 520,30 840,85 C1180,140 1320,35 1440,65 L1440,0 Z" fill="url(#waveGradTop)" opacity="0.8" />
+            <path d="M0,230 C380,320 660,150 1020,270 C1240,340 1380,250 1440,290 L1440,560 C1320,490 1060,570 740,490 C420,410 180,520 0,470 Z" fill="url(#waveGradMid)" opacity="0.6" />
+            <path d="M0,640 C200,620 360,720 520,800 C680,880 850,890 1100,900 L0,900 Z" fill="url(#waveGradBottom)" opacity="0.3" />
+        </svg>
     </div>
 
+    <!-- Mobile Drawer Overlay -->
+    <div class="sidebar-overlay" onclick="window.toggleSidebarCollapse()"></div>
+
+    <!-- Sidebar Navigation -->
     <aside class="sidebar">
-        <div class="sidebar-brand">FUSION LEARNER</div>
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon"><i class="fas fa-graduation-cap"></i></div>
+            <span>FUSION LEARNER</span>
+        </div>
         <ul class="nav-list">
-            <li class="nav-item active" onclick="switchTab('home', this)"><i class="fas fa-home"></i> Home</li>
-            <li class="nav-item" onclick="switchTab('subjects', this)"><i class="fas fa-book-open"></i> My Subjects</li>
-            <li class="nav-item" onclick="switchTab('attendance', this)"><i class="fas fa-calendar-check"></i> Attendance</li>
-            <li class="nav-item" onclick="switchTab('timetable', this)"><i class="fas fa-clock"></i> Timetable</li>
-            <li class="nav-item" onclick="switchTab('announcements', this)"><i class="fas fa-bullhorn"></i> Announcements</li>
-            <li class="nav-item" onclick="switchTab('messages', this)"><i class="fas fa-envelope"></i> Message Center <span id="learner-unread-badge" class="badge" style="background:#ef4444; color:#fff; margin-left:auto; display:none;"></span></li>
-            <li class="nav-item" onclick="switchTab('profile', this)"><i class="fas fa-user-circle"></i> My Profile</li>
-            <li class="nav-item" onclick="switchTab('settings', this)"><i class="fas fa-cog"></i> Settings</li>
-            <li class="nav-item logout-item" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</li>
+            <li class="nav-item" data-tab="home" onclick="switchTab('home', this)"><i class="fas fa-home"></i> <span>Home</span></li>
+            <li class="nav-item active" data-tab="subjects" onclick="switchTab('subjects', this)"><i class="fas fa-graduation-cap"></i> <span>My Subjects</span></li>
+            <li class="nav-item" data-tab="timetable" onclick="switchTab('timetable', this)"><i class="fas fa-calendar-alt"></i> <span>Calendar</span></li>
+            <li class="nav-item" data-tab="messages" onclick="switchTab('messages', this)"><i class="fas fa-comment-dots"></i> <span>Messages</span> <span id="learner-unread-badge" class="badge" style="background:#ef4444; color:#fff; margin-left:auto;">3</span></li>
+            <li class="nav-item" data-tab="profile" onclick="switchTab('profile', this)"><i class="fas fa-user"></i> <span>Profile</span></li>
+            <li class="nav-item" data-tab="settings" onclick="switchTab('settings', this)"><i class="fas fa-cog"></i> <span>Settings</span></li>
+            <li class="nav-item" onclick="switchTab('ai-tutor', this)"><i class="fas fa-headset"></i> <span>Help &amp; Support</span></li>
+            <li class="nav-item logout-item" onclick="logout()"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></li>
         </ul>
+        <div class="sidebar-wave-brandmark">
+            <span class="slogan-script-text">Learn &bull; Grow &bull; Achieve</span>
+        </div>
     </aside>
 
     <main class="main-content">
         <nav class="top-nav">
             <div class="top-nav-left">
-                <div class="hamburger" onclick="document.querySelector('.sidebar').classList.toggle('active')">
-                    <div></div>
-                    <div></div>
-                    <div></div>
-                </div>
-                <div class="top-learner-profile-btn" id="top-learner-profile-btn" onclick="switchTab('profile', null)" title="View Profile">
-                    <div class="top-nav-avatar" id="top-nav-avatar-circle">
-                        <i class="fas fa-user-graduate"></i>
+                <button type="button" class="header-hamburger-btn" onclick="window.toggleSidebarCollapse()" title="Toggle Sidebar">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="school-brand-header">
+                    <img src="/assets/schools/fusion-high.svg" alt="Fusion High Crest" class="school-crest-img">
+                    <div class="school-brand-text">
+                        <span class="school-brand-name">FUSION HIGH SCHOOL</span>
+                        <span class="school-brand-motto">Innovate, Lead, Transform</span>
                     </div>
-                    <div class="top-nav-user-meta">
-                        <span class="name" id="top-learner-name">Learner</span>
-                        <span class="role" id="top-learner-grade-badge">Grade 10</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="top-nav-center">
-                <div class="header-brand-title">
-                    <i class="fas fa-graduation-cap"></i> FUSION HIGH
                 </div>
             </div>
 
@@ -124,6 +124,16 @@
                     <span class="notification-badge" id="top-notif-badge" style="display:none;">0</span>
                 </button>
 
+                <!-- Learner Profile Chip (matching screenshot) -->
+                <div class="learner-profile-chip" id="top-learner-profile-btn" onclick="switchTab('profile', null)" title="View Profile">
+                    <div class="learner-avatar-round" id="top-nav-avatar-circle">L</div>
+                    <div class="learner-meta-text">
+                        <span class="learner-meta-name" id="top-learner-name">Learner</span>
+                        <span class="learner-meta-grade" id="top-learner-grade-badge">Grade 12</span>
+                    </div>
+                    <i class="fas fa-chevron-down learner-chip-chevron"></i>
+                </div>
+
                 <!-- Quick Logout Button -->
                 <button type="button" class="header-action-btn" title="Sign Out" onclick="logout()" style="color:var(--danger);">
                     <i class="fas fa-sign-out-alt"></i>
@@ -133,7 +143,7 @@
 
         <div class="dashboard-body">
             <!-- Home / Overview -->
-            <div id="home" class="section active">
+            <div id="home" class="section">
 
                 <!-- 1. Enrolled Subjects Sideways Scroll Carousel -->
                 <div class="subjects-carousel-section">
@@ -324,100 +334,93 @@
                 </div>
             </div>
 
-            <!-- My Subjects View -->
-            <div id="subjects" class="section">
-                <div class="view-header-bar">
-                    <div class="view-header-title">
-                        <h1><i class="fas fa-book-open" style="color: #6366f1;"></i> My Subjects</h1>
-                        <p>View your enrolled CAPS subjects, track curriculum progress, and access subject workspaces.</p>
+            <!-- My Subjects View (Redesigned with Fluid Waves - Active by default) -->
+            <div id="subjects" class="section active">
+                <!-- Top Greeting & Header Controls (Matches Reference Design) -->
+                <div class="wave-subjects-header-banner">
+                    <div>
+                        <div class="wave-greeting-kicker">
+                            <i class="fas fa-sparkles"></i> WELCOME BACK, LEARNER!
+                        </div>
+                        <h1 class="wave-title-h1">My Enrolled Subjects</h1>
+                        <p class="wave-subtitle-p">Access your subjects, resources and stay on track with your learning journey.</p>
                     </div>
-                    <div class="view-header-actions">
-                        <select class="view-select-filter">
-                            <option>Term 2, 2026</option>
-                            <option>Term 1, 2026</option>
-                        </select>
-                    </div>
-                </div>
 
-                <div class="stats-row-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-                    <div class="stat-box-card">
-                        <div class="stat-icon-circle icon-purple"><i class="fas fa-book"></i></div>
-                        <div class="stat-box-info">
-                            <span class="label">Enrolled Subjects</span>
-                            <span class="value" id="stat-enrolled-count">0</span>
-                            <span class="subtext positive">Active curriculum</span>
+                    <div class="wave-controls-right">
+                        <div class="wave-search-box-pill">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="learner-subject-search-box" class="wave-search-input" placeholder="Search subject..." oninput="window.filterLearnerSubjects(this.value)">
                         </div>
-                    </div>
-                    <div class="stat-box-card">
-                        <div class="stat-icon-circle icon-blue"><i class="fas fa-clipboard-list"></i></div>
-                        <div class="stat-box-info">
-                            <span class="label">Upcoming Assessments</span>
-                            <span class="value" id="stat-assessments-count">0</span>
-                            <span class="subtext">Scheduled this term</span>
-                        </div>
-                    </div>
-                    <div class="stat-box-card">
-                        <div class="stat-icon-circle icon-yellow"><i class="fas fa-pencil-alt"></i></div>
-                        <div class="stat-box-info">
-                            <span class="label">Assignments Due</span>
-                            <span class="value" id="stat-assignments-count">0</span>
-                            <span class="subtext warning">Action required</span>
-                        </div>
-                    </div>
-                    <div class="stat-box-card">
-                        <div class="stat-icon-circle icon-green"><i class="fas fa-chart-line"></i></div>
-                        <div class="stat-box-info">
-                            <span class="label">Overall Average</span>
-                            <span class="value" id="stat-overall-avg">0%</span>
-                            <span class="subtext positive">Across all subjects</span>
-                        </div>
-                    </div>
-                    <div class="stat-box-card">
-                        <div class="stat-icon-circle icon-teal" style="background: rgba(168, 85, 247, 0.2); color: #c084fc;"><i class="fas fa-brain"></i></div>
-                        <div class="stat-box-info">
-                            <span class="label">Quizzes Completed</span>
-                            <span class="value" id="stat-quizzes-count">0</span>
-                            <span class="subtext positive">MCQ & Interactive</span>
+                        <div class="wave-view-pill-group">
+                            <button type="button" class="wave-view-pill-btn active" id="wave-btn-grid-view" onclick="window.setLearnerSubjectView('grid')" title="Grid View">
+                                <i class="fas fa-th-large"></i> Grid
+                            </button>
+                            <button type="button" class="wave-view-pill-btn" id="wave-btn-list-view" onclick="window.setLearnerSubjectView('list')" title="List View">
+                                <i class="fas fa-list"></i> List
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <div id="subjects-list-view" style="margin-top: 1.5rem;">
-                    <!-- Top Search & View Control Bar -->
-                    <div class="subjects-filter-bar" style="display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 0.85rem 1.25rem; border-radius: 12px; border: 1px solid #334155; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
-                        <div class="search-input-wrapper" style="position: relative; flex: 1; min-width: 240px;">
-                            <i class="fas fa-search search-icon" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                            <input type="text" id="learner-subject-search-box" class="subject-search-input" placeholder="Search my subjects..." oninput="window.filterLearnerSubjects(this.value)" style="width: 100%; padding: 0.6rem 1rem 0.6rem 2.5rem; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff; font-size: 0.9rem;">
-                        </div>
-                        <div class="filter-controls-right" style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                            <select id="learner-subject-term-select" class="subject-term-select" style="background: #0f172a; border: 1px solid #334155; color: #cbd5e1; padding: 0.55rem 0.9rem; border-radius: 8px; font-size: 0.88rem;">
-                                <option value="Term 3 2026">Term 3 2026</option>
-                                <option value="Term 2 2026" selected>Term 2 2026</option>
-                                <option value="Term 1 2026">Term 1 2026</option>
-                            </select>
-                            <div class="view-toggle-group" style="display: flex; align-items: center; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 3px;">
-                                <span class="view-label" style="font-size: 0.78rem; color: #64748b; font-weight: 600; padding: 0 0.5rem;">Layout:</span>
-                                <button type="button" class="view-toggle-btn active" id="learner-btn-grid-view" onclick="window.setLearnerSubjectView('grid')" title="Grid View" style="padding: 5px 12px; background: #6366f1; color: #fff; border: none; border-radius: 6px; cursor: pointer;"><i class="fas fa-th-large"></i></button>
-                                <button type="button" class="view-toggle-btn" id="learner-btn-list-view" onclick="window.setLearnerSubjectView('list')" title="List View" style="padding: 5px 12px; background: transparent; color: #94a3b8; border: none; border-radius: 6px; cursor: pointer;"><i class="fas fa-list"></i></button>
-                            </div>
-                        </div>
-                    </div>
+                <!-- Category Filter Tabs Row (Matching Reference Design) -->
+                <div class="wave-filter-tabs-row">
+                    <button type="button" class="wave-filter-tab-pill active" onclick="window.filterSubjectCategory('all', this)">
+                        <i class="fas fa-th-large"></i> All Subjects
+                    </button>
+                    <button type="button" class="wave-filter-tab-pill" onclick="window.filterSubjectCategory('sciences_math', this)">
+                        <i class="fas fa-atom"></i> Sciences &amp; Math
+                    </button>
+                    <button type="button" class="wave-filter-tab-pill" onclick="window.filterSubjectCategory('languages', this)">
+                        <i class="fas fa-book-open"></i> Languages
+                    </button>
+                    <button type="button" class="wave-filter-tab-pill" onclick="window.filterSubjectCategory('commerce', this)">
+                        <i class="fas fa-chart-line"></i> Commerce
+                    </button>
+                    <button type="button" class="wave-filter-tab-pill" onclick="window.filterSubjectCategory('humanities', this)">
+                        <i class="fas fa-palette"></i> Humanities &amp; Arts
+                    </button>
+                </div>
 
-                    <!-- Main Enrolled Subjects Container Card -->
-                    <div class="assigned-subjects-container-card" style="background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 1.5rem;">
-                        <div class="container-card-title" style="color: #f8fafc; font-size: 1.15rem; font-weight: 700; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.6rem;">
-                            <i class="fas fa-layer-group" style="color: #6366f1;"></i> Your Enrolled Subjects
-                        </div>
+                <!-- Hidden elements to preserve backward compatibility with existing JS updates -->
+                <div style="display:none;" aria-hidden="true">
+                    <span id="stat-enrolled-count">0</span>
+                    <span id="stat-assessments-count">0</span>
+                    <span id="stat-assignments-count">0</span>
+                    <span id="stat-overall-avg">0%</span>
+                    <span id="stat-quizzes-count">0</span>
+                    <span id="learner-subjects-sync-footer"></span>
+                </div>
 
-                        <!-- 3-Column Subject Cards Grid -->
-                        <div id="learner-subjects-rows-container" class="subjects-cards-3col-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
-                            <p style="color: #94a3b8; padding: 1rem; grid-column: 1/-1; text-align: center;"><i class="fas fa-spinner fa-spin me-2"></i> Loading enrolled subjects...</p>
-                        </div>
+                <!-- 3-Column Subject Cards Grid (Populated DYNAMICALLY with Live Data) -->
+                <div id="learner-subjects-rows-container" class="wave-subject-cards-grid">
+                    <p style="color:var(--wave-text-muted); padding:3rem; grid-column:1/-1; text-align:center; font-weight:600;">
+                        <i class="fas fa-spinner fa-spin me-2" style="color:var(--wave-accent-blue);"></i> Loading live enrolled subjects...
+                    </p>
+                </div>
 
-                        <div class="sync-timestamp-footer" id="learner-subjects-sync-footer" style="margin-top: 1.5rem; text-align: right; font-size: 0.78rem; color: #64748b;">
-                            Last synced: Just now
+                <!-- Bottom Quick Cards Bar (Matching Reference Design) -->
+                <div class="wave-bottom-quick-bar">
+                    <a href="javascript:void(0)" class="wave-quick-status-card" onclick="switchTab('timetable', null)">
+                        <div class="wave-quick-icon-circle">
+                            <i class="fas fa-calendar-check"></i>
                         </div>
-                    </div>
+                        <div class="wave-quick-info">
+                            <span class="wave-quick-title">Today's Classes</span>
+                            <span class="wave-quick-sub" id="wave-quick-classes-count">You have 3 classes today</span>
+                        </div>
+                        <i class="fas fa-chevron-right wave-quick-arrow"></i>
+                    </a>
+
+                    <a href="javascript:void(0)" class="wave-quick-status-card" onclick="switchTab('ai-tutor', null)">
+                        <div class="wave-quick-icon-circle" style="background: rgba(168, 85, 247, 0.12); color: #a855f7;">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="wave-quick-info">
+                            <span class="wave-quick-title">Need Help?</span>
+                            <span class="wave-quick-sub">Ask our AI Tutor</span>
+                        </div>
+                        <i class="fas fa-chevron-right wave-quick-arrow"></i>
+                    </a>
                 </div>
 
                 <!-- Subject Workspace View (Located directly at the bottom inside My Subjects) -->
@@ -1146,22 +1149,30 @@
 
         <!-- Bottom Navigation Dock -->
         <nav class="bottom-nav-dock" id="learner-bottom-nav">
-            <a href="javascript:void(0)" class="bottom-nav-item active" data-tab="home" onclick="switchTab('home', null)">
+            <a href="javascript:void(0)" class="bottom-nav-item" data-tab="home" onclick="switchTab('home', null)">
                 <i class="fas fa-home"></i>
                 <span>Home</span>
+            </a>
+            <a href="javascript:void(0)" class="bottom-nav-item active" data-tab="subjects" onclick="switchTab('subjects', null)">
+                <i class="fas fa-graduation-cap"></i>
+                <span>Subjects</span>
             </a>
             <a href="javascript:void(0)" class="bottom-nav-item" data-tab="timetable" onclick="switchTab('timetable', null)">
                 <i class="fas fa-calendar-alt"></i>
                 <span>Calendar</span>
             </a>
             <a href="javascript:void(0)" class="bottom-nav-item" data-tab="messages" onclick="switchTab('messages', null)">
-                <i class="fas fa-envelope"></i>
+                <i class="fas fa-comment-dots"></i>
                 <span>Messages</span>
-                <span class="bottom-nav-badge" id="bottom-unread-badge" style="display:none;"></span>
+                <span class="bottom-nav-badge" id="bottom-unread-badge">3</span>
             </a>
-            <a href="javascript:void(0)" class="bottom-nav-item" data-tab="settings" onclick="switchTab('settings', null)">
-                <i class="fas fa-cog"></i>
-                <span>Settings</span>
+            <a href="javascript:void(0)" class="bottom-nav-item" data-tab="ai-tutor" onclick="switchTab('ai-tutor', null)">
+                <i class="fas fa-robot"></i>
+                <span>AI Tutor</span>
+            </a>
+            <a href="javascript:void(0)" class="bottom-nav-item" data-tab="profile" onclick="switchTab('profile', null)">
+                <i class="fas fa-user"></i>
+                <span>Profile</span>
             </a>
         </nav>
     </main>
@@ -1169,6 +1180,27 @@
     <script>
         const token = localStorage.getItem('token');
         if (!token) window.location.href = '/';
+
+        window.toggleSidebarCollapse = function() {
+            const isMobile = window.innerWidth <= 1024;
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            const hamburger = document.querySelector('.header-hamburger-btn');
+            if (isMobile) {
+                if (sidebar) sidebar.classList.toggle('active');
+                if (overlay) overlay.classList.toggle('active');
+                if (hamburger) hamburger.classList.toggle('is-active', sidebar && sidebar.classList.contains('active'));
+            } else {
+                const willBeCollapsed = !document.body.classList.contains('sidebar-collapsed');
+                document.body.classList.toggle('sidebar-collapsed', willBeCollapsed);
+                if (sidebar) sidebar.classList.toggle('collapsed', willBeCollapsed);
+                if (hamburger) hamburger.classList.toggle('is-active', willBeCollapsed);
+                try {
+                    localStorage.setItem('sidebar_collapsed_learner', willBeCollapsed ? 'true' : 'false');
+                } catch (_) {}
+            }
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
+        };
 
         function switchTab(tabId, el) {
             if (tabId === 'grades' || tabId === 'assessments' || tabId === 'resources') {
@@ -1190,6 +1222,20 @@
             if (el) {
                 el.classList.add('active');
             }
+
+            // Close mobile drawer if active
+            if (window.innerWidth <= 1024) {
+                const sidebar = document.querySelector('.sidebar');
+                const overlay = document.querySelector('.sidebar-overlay');
+                const hamburger = document.querySelector('.header-hamburger-btn');
+                if (sidebar) sidebar.classList.remove('active');
+                if (overlay) overlay.classList.remove('active');
+                if (hamburger) hamburger.classList.remove('is-active');
+            }
+
+            // Scroll to top of dashboard body
+            const bodyEl = document.querySelector('.dashboard-body');
+            if (bodyEl) bodyEl.scrollTop = 0;
 
             location.hash = tabId;
 
@@ -1217,7 +1263,7 @@
 
         // Theme and Dark/Light Mode Handlers
         window.initThemeSystem = function() {
-            const savedTheme = localStorage.getItem('learner_theme_mode') || 'dark';
+            const savedTheme = localStorage.getItem('learner_theme_mode') || 'light';
             const savedAccent = localStorage.getItem('learner_accent_color') || 'indigo';
             document.documentElement.setAttribute('data-theme', savedTheme);
             if (savedAccent !== 'indigo') {
@@ -1992,7 +2038,15 @@
             const data = await fetchData('/api/profile');
             if (!data) return;
             const elTopName = document.getElementById('top-learner-name');
-            if (elTopName) elTopName.innerText = `${data.full_name || ''} ${data.surname || ''}`;
+            const fullName = `${data.full_name || ''} ${data.surname || ''}`.trim();
+            if (elTopName) elTopName.innerText = fullName || 'Learner';
+
+            const userGrade = data.academic ? data.academic.grade : (data.grade || 12);
+            const elGradeBadge = document.getElementById('top-learner-grade-badge');
+            if (elGradeBadge) elGradeBadge.innerText = `Grade ${userGrade}`;
+
+            const elAvatar = document.getElementById('top-nav-avatar-circle');
+            if (elAvatar) elAvatar.innerText = (data.full_name || data.surname || 'L')[0].toUpperCase();
 
             const elGrade = document.getElementById('stat-grade');
             if (elGrade) elGrade.innerText = data.academic ? data.academic.grade : '-';
@@ -2502,6 +2556,15 @@
 
         window.addEventListener('load', () => {
             if (window.initThemeSystem) window.initThemeSystem();
+            try {
+                if (window.innerWidth > 1024 && localStorage.getItem('sidebar_collapsed_learner') === 'true') {
+                    document.body.classList.add('sidebar-collapsed');
+                    const sidebar = document.querySelector('.sidebar');
+                    if (sidebar) sidebar.classList.add('collapsed');
+                    const hamburger = document.querySelector('.header-hamburger-btn');
+                    if (hamburger) hamburger.classList.add('is-active');
+                }
+            } catch (_) {}
             loadProfile();
             loadProgress();
             loadPerformance();
@@ -2511,7 +2574,7 @@
             if (currentHash) {
                 switchTab(currentHash);
             } else {
-                switchTab('home');
+                switchTab('subjects');
                 if (window.loadLearnerMySubjectsOverview) window.loadLearnerMySubjectsOverview();
             }
         });

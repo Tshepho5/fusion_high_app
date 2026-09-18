@@ -9,7 +9,10 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, HistGradientBoostingClassifier, HistGradientBoostingRegressor
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, mean_absolute_error, mean_squared_error, r2_score
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.svm import SVC, SVR
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, average_precision_score, mean_absolute_error, mean_squared_error, r2_score
 from sklearn.inspection import permutation_importance
 import joblib
 
@@ -80,7 +83,10 @@ def main():
 
     clf_models = {
         'LogisticRegression': LogisticRegression(max_iter=1000, random_state=42),
+        'DecisionTree': DecisionTreeClassifier(max_depth=6, random_state=42),
         'RandomForest': RandomForestClassifier(n_estimators=120, max_depth=6, random_state=42),
+        'SupportVectorMachine': SVC(kernel='rbf', probability=True, random_state=42),
+        'KNN': KNeighborsClassifier(n_neighbors=5),
         'HistGradientBoosting': HistGradientBoostingClassifier(max_iter=100, random_state=42)
     }
 
@@ -101,7 +107,8 @@ def main():
 
         cv_scores = cross_val_score(model, X_train_trans, y_train_cls, cv=5, scoring='roc_auc')
         print(f"  * {name:22} | Acc: {acc:.3f} | Prec: {prec:.3f} | Rec: {rec:.3f} | F1: {f1:.3f} | ROC-AUC: {auc:.3f} (CV AUC: {cv_scores.mean():.3f})")
-
+        
+        #select the best model based on AUC for prediction on future data such that we can predict the probability of passing or failing 
         if auc > best_clf_score:
             best_clf_score = auc
             best_clf_name = name
@@ -111,12 +118,15 @@ def main():
 
     # 6. Train & Compare Regression Models (Final Exam Mark % Projection)
     print("\n" + "-" * 70)
-    print("📈 EVALUATING REGRESSION MODELS (Final Exam Mark % Projection)")
+    print(" EVALUATING REGRESSION MODELS (Final Exam Mark % Projection)")
     print("-" * 70)
 
     reg_models = {
         'Ridge': Ridge(alpha=1.0, random_state=42),
+        'DecisionTree': DecisionTreeRegressor(max_depth=6, random_state=42),
         'RandomForestRegressor': RandomForestRegressor(n_estimators=120, max_depth=6, random_state=42),
+        'SupportVectorRegressor': SVR(kernel='rbf'),
+        'KNN': KNeighborsRegressor(n_neighbors=5),
         'HistGradientBoostingRegressor': HistGradientBoostingRegressor(max_iter=100, random_state=42)
     }
 

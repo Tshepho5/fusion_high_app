@@ -215,12 +215,141 @@ export function renderLearnerCarouselSubjects(cards) {
 }
 window.renderLearnerCarouselSubjects = renderLearnerCarouselSubjects;
 
+export function getSubjectMeta(name, code) {
+    const n = (name || '').toLowerCase();
+    if (n.includes('math') || n.includes('wiskunde') || n.includes('calc')) {
+        return {
+            category: 'MATHEMATICAL SCIENCES',
+            filterGroup: 'sciences_math',
+            image: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=800&q=80',
+            ctaClass: 'cta-math',
+            color: '#0284c7'
+        };
+    }
+    if (n.includes('physic') || n.includes('chem') || n.includes('wetenskap')) {
+        return {
+            category: 'PHYSICAL & CHEMICAL',
+            filterGroup: 'sciences_math',
+            image: 'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=800&q=80',
+            ctaClass: 'cta-physical',
+            color: '#0d9488'
+        };
+    }
+    if (n.includes('life scien') || n.includes('bio') || n.includes('lewen')) {
+        return {
+            category: 'NATURAL SCIENCES',
+            filterGroup: 'sciences_math',
+            image: 'https://images.unsplash.com/photo-1530497610245-94d3c16cda28?auto=format&fit=crop&w=800&q=80',
+            ctaClass: 'cta-life-sciences',
+            color: '#7c3aed'
+        };
+    }
+    if (n.includes('english') || n.includes('sepedi') || n.includes('afrikaans') || n.includes('zulu') || n.includes('xhosa') || n.includes('language') || n.includes('taal')) {
+        return {
+            category: (n.includes('first') || n.includes('fal')) ? 'FIRST ADDITIONAL LANGUAGE' : 'HOME LANGUAGE',
+            filterGroup: 'languages',
+            image: 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&w=800&q=80',
+            ctaClass: 'cta-languages',
+            color: '#db2777'
+        };
+    }
+    if (n.includes('geog') || n.includes('aard') || n.includes('earth') || n.includes('climat')) {
+        return {
+            category: 'EARTH & CLIMATOLOGY',
+            filterGroup: 'humanities',
+            image: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80',
+            ctaClass: 'cta-geography',
+            color: '#d97706'
+        };
+    }
+    if (n.includes('life or') || n.includes('orient') || n.includes('lo')) {
+        return {
+            category: 'WELLNESS & CITIZENSHIP',
+            filterGroup: 'humanities',
+            image: 'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=800&q=80',
+            ctaClass: 'cta-life-orientation',
+            color: '#4f46e5'
+        };
+    }
+    if (n.includes('account') || n.includes('bus') || n.includes('econ') || n.includes('commer')) {
+        return {
+            category: 'COMMERCE & MANAGEMENT',
+            filterGroup: 'commerce',
+            image: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80',
+            ctaClass: 'cta-commerce',
+            color: '#0284c7'
+        };
+    }
+    if (n.includes('hist') || n.includes('art') || n.includes('dram') || n.includes('music')) {
+        return {
+            category: 'HUMANITIES & ARTS',
+            filterGroup: 'humanities',
+            image: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?auto=format&fit=crop&w=800&q=80',
+            ctaClass: 'cta-humanities',
+            color: '#8b5cf6'
+        };
+    }
+    return {
+        category: 'ACADEMIC CURRICULUM',
+        filterGroup: 'all',
+        image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80',
+        ctaClass: 'cta-math',
+        color: '#0284c7'
+    };
+}
+
+let currentSubjectCategoryFilter = 'all';
+let currentSubjectSearchQuery = '';
+
+export function filterSubjectCategory(group, btn) {
+    currentSubjectCategoryFilter = group;
+    document.querySelectorAll('.wave-filter-tab-pill').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    applyLearnerSubjectFilters();
+}
+window.filterSubjectCategory = filterSubjectCategory;
+
+export function filterLearnerSubjects(query) {
+    currentSubjectSearchQuery = (query || '').toLowerCase().trim();
+    applyLearnerSubjectFilters();
+}
+window.filterLearnerSubjects = filterLearnerSubjects;
+
+export function setLearnerSubjectView(mode) {
+    currentLearnerSubjectViewMode = mode;
+    document.getElementById('wave-btn-grid-view')?.classList.toggle('active', mode === 'grid');
+    document.getElementById('wave-btn-list-view')?.classList.toggle('active', mode === 'list');
+    applyLearnerSubjectFilters();
+}
+window.setLearnerSubjectView = setLearnerSubjectView;
+
+export function applyLearnerSubjectFilters() {
+    let filtered = cachedLearnerSubjectCards || [];
+    if (currentSubjectCategoryFilter !== 'all') {
+        filtered = filtered.filter(c => {
+            const meta = getSubjectMeta(c.name, c.code);
+            return meta.filterGroup === currentSubjectCategoryFilter;
+        });
+    }
+    if (currentSubjectSearchQuery) {
+        filtered = filtered.filter(c => {
+            const n = (c.name || '').toLowerCase();
+            const cd = (c.code || '').toLowerCase();
+            const t = (c.teacher || '').toLowerCase();
+            const meta = getSubjectMeta(c.name, c.code);
+            return n.includes(currentSubjectSearchQuery) || cd.includes(currentSubjectSearchQuery) || t.includes(currentSubjectSearchQuery) || meta.category.toLowerCase().includes(currentSubjectSearchQuery);
+        });
+    }
+    renderLearnerSubjectCards(filtered);
+}
+window.applyLearnerSubjectFilters = applyLearnerSubjectFilters;
+
 export function renderLearnerSubjectCards(cards) {
     const container = document.getElementById('learner-subjects-rows-container');
     if (!container) return;
 
     if (!cards || cards.length === 0) {
-        container.innerHTML = `<p style="color:#94a3b8; text-align:center; grid-column: 1 / -1; padding:2rem;">No matching subjects found.</p>`;
+        container.innerHTML = `<p style="color:var(--wave-text-muted); text-align:center; grid-column: 1 / -1; padding:3rem; font-weight:600;"><i class="fas fa-search me-2"></i>No matching subjects found.</p>`;
         return;
     }
 
@@ -229,43 +358,35 @@ export function renderLearnerSubjectCards(cards) {
         container.style.flexDirection = 'column';
         container.style.gap = '1rem';
         container.innerHTML = cards.map((c) => {
-            const safeCode = (c.code || `${c.name.substring(0,4)}${c.grade || 10}`).replace(/[^a-zA-Z0-9]/g, '');
-            const sectionId = `learner-subject-classmates-${c.grade || 10}-${safeCode}`;
-            const listId = `learner-subject-classmates-list-${c.grade || 10}-${safeCode}`;
+            const grade = c.grade || 12;
+            const safeCode = c.code || `${(c.name || 'SUBJ').substring(0, 4).toUpperCase()}${grade}`;
+            const meta = getSubjectMeta(c.name, safeCode);
+            const teacherName = c.teacher || 'To Be Assigned';
+            const masteryVal = Math.round(c.progress || c.curriculum_progress || c.overall_average || 0);
 
             return `
-            <div class="learner-subject-row-card" style="background: #0f172a; border-radius: 14px; padding: 1.25rem; border: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);">
-                <div style="position: absolute; top:0; left:0; bottom:0; width: 4px; background: linear-gradient(180deg, #6366f1, #a855f7);"></div>
-                <div style="cursor: pointer;" onclick="window.openSubjectWorkspace('${c.name}')" title="Click to open ${c.name} workspace">
-                    <span class="badge" style="background:#312e81; color:#a5b4fc; font-size:0.75rem; padding: 3px 8px; border-radius: 4px; font-weight: 600;">Grade ${c.grade || 10} • ${c.code || 'SUBJ10'}</span>
-                    <h3 style="color:#ffffff; font-size:1.18rem; font-weight:700; margin: 0.3rem 0 0.2rem 0; display: flex; align-items: center; gap: 0.4rem;">
-                        ${c.name} <i class="fas fa-external-link-alt" style="font-size: 0.8rem; color: #818cf8;"></i>
-                    </h3>
-                    <div style="font-size:0.85rem; color:#94a3b8;"><i class="fas fa-chalkboard-teacher me-1" style="color:#6366f1;"></i> Teacher: <strong style="color:#f8fafc;">${c.teacher || 'Subject Teacher'}</strong> • ${c.classmates_count || 1} Classmates</div>
+            <div class="wave-subject-card" style="flex-direction: row; align-items: center; padding: 1rem 1.25rem; gap: 1.25rem;">
+                <div style="width: 72px; height: 72px; border-radius: 14px; background-image: url('${meta.image}'); background-size: cover; background-position: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15);"></div>
+                <div style="flex: 1; min-width: 200px;">
+                    <div style="display:flex; align-items:center; gap: 0.5rem; margin-bottom: 2px;">
+                        <span class="wave-subj-code">${safeCode}</span>
+                        <span class="wave-badge-category" style="font-size:0.62rem; padding: 2px 7px;">${meta.category}</span>
+                        <span class="wave-badge-grade" style="font-size:0.62rem; padding: 2px 7px;">Grade ${grade}</span>
+                    </div>
+                    <h3 class="wave-subj-title" style="margin: 0 0 4px 0; font-size: 1.15rem; cursor: pointer;" onclick="window.openSubjectWorkspace('${c.name}')">${c.name}</h3>
+                    <div class="wave-teacher-name" style="font-size: 0.82rem;"><i class="fas fa-user"></i> ${teacherName}</div>
                 </div>
-
-                <div style="display:flex; align-items:center; gap: 1rem; flex-wrap:wrap;">
-                    <div style="text-align:right; margin-right: 0.5rem;">
-                        <div style="font-size:0.75rem; color:#64748b; font-weight:600;">Academic Grade</div>
-                        <div style="font-size:1.1rem; font-weight:800; color:#4ade80;">${c.progress || 75}%</div>
+                <div style="min-width: 140px; text-align: right;">
+                    <div class="wave-mastery-label" style="color: ${meta.color}; margin-bottom: 4px;">${masteryVal}% Mastery</div>
+                    <div class="wave-progress-track" style="margin-bottom: 0; width: 140px;">
+                        <div class="wave-progress-fill" style="width: ${Math.max(masteryVal, 5)}%; background: ${meta.color};"></div>
                     </div>
-                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                        <button type="button" class="btn-secondary-card" onclick="window.openSubjectWorkspace('${c.name}')">
-                            <i class="fas fa-book-reader" style="color:#6366f1;"></i> Chapters
-                        </button>
-                        <button type="button" class="btn-secondary-card" onclick="window.openSubjectResourcesModal('${c.name}', ${c.grade || 10})">
-                            <i class="fas fa-file-pdf" style="color:#a855f7;"></i> Resources (${c.resources_count || 0})
-                        </button>
-                        <button type="button" class="btn-secondary-card" onclick="window.openSubjectUpdatesModal('${c.name}', ${c.grade || 10})">
-                            <i class="fas fa-bullhorn" style="color:#f59e0b;"></i> Updates (${c.announcements_count || 0})
-                        </button>
-                        <button type="button" class="btn-secondary-card" onclick="window.openSubjectTasksModal('${c.name}', ${c.grade || 10})">
-                            <i class="fas fa-clipboard-list" style="color:#60a5fa;"></i> Tasks (${c.assignments_due || 0})
-                        </button>
-                        <button type="button" class="btn-secondary-card" onclick="window.openSubjectGradesModal('${c.name}', ${c.grade || 10})">
-                            <i class="fas fa-chart-line" style="color:#22c55e;"></i> Grades
-                        </button>
-                    </div>
+                </div>
+                <div style="display: flex; gap: 0.4rem; flex-shrink: 0;">
+                    <button type="button" class="wave-action-pill-btn" onclick="window.openSubjectResourcesModal('${c.name}', ${grade})" title="Resources"><i class="fas fa-folder-open"></i></button>
+                    <button type="button" class="wave-action-pill-btn" onclick="window.openSubjectWorkspace('${c.name}')" title="AI Tutor"><i class="fas fa-robot"></i></button>
+                    <button type="button" class="wave-action-pill-btn" onclick="window.openSubjectGradesModal('${c.name}', ${grade})" title="Marks"><i class="fas fa-chart-bar"></i></button>
+                    <button type="button" class="wave-card-cta-btn ${meta.ctaClass}" style="width: auto; padding: 0.5rem 1rem;" onclick="window.openSubjectWorkspace('${c.name}')">Workspace <i class="fas fa-arrow-right"></i></button>
                 </div>
             </div>
             `;
@@ -273,83 +394,54 @@ export function renderLearnerSubjectCards(cards) {
     } else {
         container.style.display = 'grid';
         container.style.gridTemplateColumns = 'repeat(auto-fit, minmax(320px, 1fr))';
-        container.style.gap = '1.25rem';
+        container.style.gap = '1.5rem';
         container.innerHTML = cards.map((c) => {
-            const safeCode = (c.code || `${c.name.substring(0,4)}${c.grade || 10}`).replace(/[^a-zA-Z0-9]/g, '');
-            const sectionId = `learner-subject-classmates-${c.grade || 10}-${safeCode}`;
-            const listId = `learner-subject-classmates-list-${c.grade || 10}-${safeCode}`;
+            const grade = c.grade || 12;
+            const safeCode = c.code || `${(c.name || 'SUBJ').substring(0, 4).toUpperCase()}${grade}`;
+            const meta = getSubjectMeta(c.name, safeCode);
+            const teacherName = c.teacher || 'To Be Assigned';
+            const masteryVal = Math.round(c.progress || c.curriculum_progress || c.overall_average || 0);
+
+            const shortName = (c.name || '').toLowerCase().includes('english') ? 'English' : c.name;
 
             return `
-            <div class="teacher-subject-card" data-subject="${c.name}" data-code="${c.code || 'SUBJ10'}" data-grade="${c.grade || 10}">
-                <div class="card-subject-header">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 0.5rem; flex-wrap:wrap; gap:0.4rem;">
-                        <div>
-                            <span class="badge" style="background:#312e81; color:#a5b4fc; font-size:0.75rem; padding: 3px 8px; border-radius: 4px; font-weight: 600;">Grade ${c.grade || 10} • ${c.code || 'SUBJ10'}</span>
-                            <h3 style="color:#ffffff; font-size:1.2rem; font-weight:700; margin: 0.4rem 0 0 0; cursor:pointer;" onclick="window.openSubjectWorkspace('${c.name}')">
-                                ${c.name}
-                            </h3>
+            <div class="wave-subject-card" data-subject="${c.name}">
+                <div class="wave-card-hero-banner" style="background-image: url('${meta.image}');">
+                    <div class="wave-card-hero-overlay">
+                        <span class="wave-badge-category">${meta.category}</span>
+                        <span class="wave-badge-grade">Grade ${grade}</span>
+                    </div>
+                </div>
+                <div class="wave-card-content">
+                    <div class="wave-subj-code">${safeCode}</div>
+                    <h3 class="wave-subj-title">${c.name}</h3>
+
+                    <div class="wave-card-meta-line">
+                        <div class="wave-teacher-name">
+                            <i class="fas fa-user"></i> ${teacherName}
                         </div>
-                        <div style="display:flex; align-items:center; gap:0.4rem;">
-                            ${c.assignments_due > 0 ? `<span class="badge" style="background:#dc2626; color:#ffffff; padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 0.75rem; display:inline-flex; align-items:center; gap:4px; box-shadow: 0 0 10px rgba(220, 38, 38, 0.5);"><i class="fas fa-bell"></i> ${c.assignments_due} Work Due</span>` : ''}
-                            <span class="badge" style="background:#065f46; color:#34d399; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.85rem;">Avg: ${c.progress || 75}%</span>
-                        </div>
+                        <div class="wave-mastery-label" style="color: ${meta.color};">${masteryVal}% Mastery</div>
                     </div>
-                </div>
 
-                <div class="subject-details-list" style="margin-bottom: 0.5rem;">
-                    <div style="display:flex; justify-content:space-between; color:#cbd5e1; font-size:0.85rem; background:#1e293b; padding:0.5rem 0.75rem; border-radius:6px; border: 1px solid #334155;">
-                        <span><i class="fas fa-chalkboard-teacher me-1" style="color:#6366f1;"></i> Teacher: <strong style="color:#f8fafc;">${c.teacher || 'Subject Teacher'}</strong></span>
-                        <span>Class: <strong style="color:#38bdf8;">${c.class_name || 'Grade 10A'}</strong></span>
+                    <div class="wave-progress-track">
+                        <div class="wave-progress-fill" style="width: ${Math.max(masteryVal, 5)}%; background: ${meta.color};"></div>
                     </div>
-                </div>
 
-                <div class="student-count-box" style="background:#1e293b; border:1px solid #334155; border-radius:8px; padding:0.6rem 0.8rem; margin-bottom: 0.25rem; cursor:pointer;" onclick="window.toggleLearnerClassmates('${c.name}', ${c.grade || 10}, '${sectionId}', '${listId}')">
-                    <div class="student-count-value" style="font-size:0.85rem; font-weight:700; color:#ffffff; display:flex; align-items:center; width:100%;">
-                        <i class="fas fa-users" style="color: #6366f1; margin-right: 6px;"></i> ${c.classmates_count || 1} Enrolled Classmates 
-                        <span style="font-size:0.75rem; color:#38bdf8; font-weight:normal; margin-left:auto;"><i class="fas fa-chevron-down"></i> Expand Roster</span>
+                    <div class="wave-card-pill-actions">
+                        <button type="button" class="wave-action-pill-btn" onclick="window.openSubjectResourcesModal('${c.name}', ${grade})">
+                            <i class="fas fa-folder-open"></i> Resources
+                        </button>
+                        <button type="button" class="wave-action-pill-btn" onclick="window.openSubjectWorkspace('${c.name}')">
+                            <i class="fas fa-robot"></i> AI Tutor
+                        </button>
+                        <button type="button" class="wave-action-pill-btn" onclick="window.openSubjectGradesModal('${c.name}', ${grade})">
+                            <i class="fas fa-chart-bar"></i> Marks
+                        </button>
                     </div>
-                    <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:#94a3b8; margin-top:4px; border-top: 1px solid #334155; padding-top:4px;">
-                        <span>Pending Tasks: <strong style="color:${c.assignments_due > 0 ? '#ef4444' : '#4ade80'};">${c.assignments_due || 0}</strong></span>
-                        <span>Quizzes Done: <strong style="color:#60a5fa;">${c.quizzes_count || 0}</strong></span>
-                    </div>
-                </div>
 
-                <div class="subject-card-actions" style="margin-top:auto;">
-                    <button type="button" class="btn-primary-cta" onclick="window.openSubjectWorkspace('${c.name}')">
-                        <i class="fas fa-book-reader"></i> Open Study Workspace <span class="cta-tag">Grade ${c.grade || 10}</span>
+                    <button type="button" class="wave-card-cta-btn ${meta.ctaClass}" onclick="window.openSubjectWorkspace('${c.name}')">
+                        Open ${shortName} Workspace <i class="fas fa-arrow-right"></i>
                     </button>
-                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:4px;">
-                        <button type="button" class="btn-secondary-card" style="flex:1; min-width:110px;" onclick="window.openSubjectResourcesModal('${c.name}', ${c.grade || 10})">
-                            <i class="fas fa-file-pdf" style="color:#a855f7;"></i> View Resources (${c.resources_count || 0})
-                        </button>
-                        <button type="button" class="btn-secondary-card" style="flex:1; min-width:110px;" onclick="window.openSubjectGradesModal('${c.name}', ${c.grade || 10})">
-                            <i class="fas fa-chart-line" style="color:#22c55e;"></i> Check Grades
-                        </button>
-                        <button type="button" class="btn-secondary-card" style="flex:1; min-width:110px;" onclick="window.openSubjectTasksModal('${c.name}', ${c.grade || 10})">
-                            <i class="fas fa-clipboard-list" style="color:#60a5fa;"></i> Tasks (${c.assignments_due || 0})
-                        </button>
-                        <button type="button" class="btn-secondary-card" style="flex:1; min-width:110px;" onclick="window.openSubjectUpdatesModal('${c.name}', ${c.grade || 10})">
-                            <i class="fas fa-bullhorn" style="color:#f59e0b;"></i> Teacher Updates
-                        </button>
-                        <button type="button" class="btn-secondary-card" style="flex:1; min-width:110px;" onclick="window.openSubjectWorkspace('${c.name}')">
-                            <i class="fas fa-robot" style="color:#38bdf8;"></i> AI Subject Assist
-                        </button>
-                        <button type="button" class="btn-secondary-card" style="flex:1; min-width:110px;" onclick="window.toggleLearnerClassmates('${c.name}', ${c.grade || 10}, '${sectionId}', '${listId}')">
-                            <i class="fas fa-users" style="color:#6366f1;"></i> Classmates
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Embedded Subject Learners Roster Section inside this Subject Card -->
-                <div id="${sectionId}" class="embedded-subject-learners" style="display:none; background:#0f172a; border-radius:10px; padding:1rem; border:1px solid #334155; margin-top:0.9rem;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid #1e293b; padding-bottom:0.5rem;">
-                        <h5 style="color:#f8fafc; margin:0; font-size:0.88rem; font-weight:700;">
-                            <i class="fas fa-user-graduate" style="color:#6366f1; margin-right:4px;"></i> Enrolled Classmates in ${c.name} (Grade ${c.grade || 10})
-                        </h5>
-                    </div>
-                    <div id="${listId}" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:0.5rem;">
-                        <div style="text-align:center; color:#94a3b8; padding:0.5rem; grid-column:1/-1;"><i class="fas fa-spinner fa-spin me-1"></i> Loading classmates...</div>
-                    </div>
                 </div>
             </div>
             `;

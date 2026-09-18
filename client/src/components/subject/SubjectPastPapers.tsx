@@ -897,7 +897,9 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredDbeResources.map((res) => {
-              const fileHref = res.file_path ? (res.file_path.startsWith('/') ? res.file_path : `/${res.file_path}`) : '#';
+              const fileHref = res.file_path 
+                ? (res.file_path.startsWith('/') ? res.file_path : `/${res.file_path}`) 
+                : `/api/resources/${res.id}/download`;
               const isMemo = res.resource_type === 'exam_memo' || /memo/i.test(res.title);
 
               return (
@@ -940,9 +942,10 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
                   <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/5">
                     <a
                       href={fileHref}
+                      download={res.file_name || `${(res.title || 'CAPS_Document').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition-all hover:scale-105"
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition-all hover:scale-105 cursor-pointer"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>Download PDF Document</span>

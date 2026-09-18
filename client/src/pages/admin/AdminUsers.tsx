@@ -715,9 +715,9 @@ export const AdminUsers: React.FC = () => {
 
           <button
             onClick={() => setIsAddParentModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs shadow-md transition-all"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md transition-all"
           >
-            <Heart className="w-4 h-4 text-amber-200" />
+            <Heart className="w-4 h-4 text-violet-200" />
             <span>+ Register Parent</span>
           </button>
 
@@ -1800,7 +1800,7 @@ export const AdminUsers: React.FC = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-extrabold shadow-md transition-all disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-extrabold shadow-md transition-all disabled:opacity-50"
             >
               {submitting ? 'Registering & Sending Email...' : 'Register Parent'}
             </button>

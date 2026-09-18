@@ -1,9 +1,19 @@
 import axios from 'axios';
 
-const API_URL = (import.meta as any).env?.VITE_API_URL || '';
+const getApiBaseUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    // If running in local browser on localhost or 127.0.0.1, always use relative path so local Express backend on port 4000 (or Vite proxy) is called directly
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return '';
+    }
+  }
+  return (import.meta as any).env?.VITE_API_URL || '';
+};
+
+const API_URL = getApiBaseUrl();
 
 const api = axios.create({
-  baseURL: API_URL, // Handled by VITE_API_URL, Vite proxy in dev, or Express in production
+  baseURL: API_URL, // Handled by dynamic base URL, Vite proxy in dev, or Express in production
   headers: {
     'Content-Type': 'application/json',
   },
@@ -182,6 +192,10 @@ export const aiTutorService = {
     api.post('/api/learner/ai-tutor/chat', payload).then(res => res.data),
   deleteSession: (id: number | string) =>
     api.delete(`/api/learner/ai-tutor/conversations/${id}`).then(res => res.data),
+  getLifeSciencesTopics: () =>
+    api.get('/api/ai/life-sciences/topics').then(res => res.data),
+  evaluateLifeSciencesAnswer: (payload: { itemId: string; studentAnswer: string }) =>
+    api.post('/api/ai/life-sciences/evaluate', payload).then(res => res.data),
 };
 
 // Official Academic Report Card Service

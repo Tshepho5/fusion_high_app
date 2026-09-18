@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { SchoolProvider } from './context/SchoolContext';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { PwaInstallPrompt } from './components/common/PwaInstallPrompt';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 // Code-split route components for performance optimization & faster initial bundle loading
 const LandingPage = lazy(() => import('./pages/landing/LandingPage').then(m => ({ default: m.LandingPage })));
@@ -47,6 +48,22 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRole?: string
   return <>{children}</>;
 };
 
+// Smart fallback redirect: If logged in, stay on the dashboard instead of being booted to the Landing Page
+const SmartCatchAll: React.FC = () => {
+  const { isAuthenticated, role, isLoading } = useAuth();
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-canvas-dark">
+        <LoadingSpinner size="lg" text="Loading portal..." />
+      </div>
+    );
+  }
+  if (isAuthenticated && role) {
+    return <Navigate to={`/dashboard/${role.toLowerCase()}`} replace />;
+  }
+  return <Navigate to="/" replace />;
+};
+
 export const App: React.FC = () => {
   return (
     <ThemeProvider>
@@ -63,54 +80,56 @@ export const App: React.FC = () => {
               </div>
             }
           >
-            <Routes>
-              {/* Landing & Public Pages */}
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/about" element={<AboutUsPage />} />
-              <Route path="/terms" element={<TermsPage />} />
+            <ErrorBoundary fallbackTitle="Application Error" fallbackMessage="An issue was detected while rendering the application. Please reload or return to the main dashboard.">
+              <Routes>
+                {/* Landing & Public Pages */}
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/about" element={<AboutUsPage />} />
+                <Route path="/terms" element={<TermsPage />} />
 
-              {/* Auth Routes */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                {/* Auth Routes */}
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-              {/* Dashboard Routes */}
-              <Route
-                path="/dashboard/learner"
-                element={
-                  <ProtectedRoute allowedRole="learner">
-                    <LearnerDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/teacher"
-                element={
-                  <ProtectedRoute allowedRole="teacher">
-                    <TeacherDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/admin"
-                element={
-                  <ProtectedRoute allowedRole="admin">
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/parent"
-                element={
-                  <ProtectedRoute allowedRole="parent">
-                    <ParentDashboard />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Dashboard Routes */}
+                <Route
+                  path="/dashboard/learner"
+                  element={
+                    <ProtectedRoute allowedRole="learner">
+                      <LearnerDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/teacher"
+                  element={
+                    <ProtectedRoute allowedRole="teacher">
+                      <TeacherDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/admin"
+                  element={
+                    <ProtectedRoute allowedRole="admin">
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/parent"
+                  element={
+                    <ProtectedRoute allowedRole="parent">
+                      <ParentDashboard />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Catch-all */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+                {/* Catch-all smart redirect: Authenticated users stay in their dashboard */}
+                <Route path="*" element={<SmartCatchAll />} />
+              </Routes>
+            </ErrorBoundary>
           </Suspense>
           <PwaInstallPrompt />
         </Router>

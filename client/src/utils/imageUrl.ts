@@ -8,11 +8,13 @@ export const getProfilePictureUrl = (path?: string | null): string => {
   }
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   
-  // If running on Vite dev server (port 5173 or 3000), prepend the local Express backend host
-  if (typeof window !== 'undefined' && (window.location.port === '5173' || window.location.port === '3000')) {
-    const backendPort = '4000';
-    const hostname = window.location.hostname || 'localhost';
-    return `http://${hostname}:${backendPort}${cleanPath}`;
+  // If running on local server (Express port 4000 or Vite dev port 5173/3000), route locally
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    if (window.location.port === '5173' || window.location.port === '3000') {
+      const hostname = window.location.hostname || 'localhost';
+      return `http://${hostname}:4000${cleanPath}`;
+    }
+    return cleanPath;
   }
   
   // When running on Firebase Hosting or external domain, route relative upload paths to Render backend

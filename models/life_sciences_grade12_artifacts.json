@@ -1,0 +1,280 @@
+{
+  "subject": "Life Sciences",
+  "grade": 12,
+  "version": "1.0.0-caps-ai",
+  "total_topics": 10,
+  "papers": [
+    "Paper 1: Physiology & Homeostasis",
+    "Paper 2: Genetics, DNA & Evolution"
+  ],
+  "knowledge_base": [
+    {
+      "id": "LS12_P2_001",
+      "paper": "Paper 2",
+      "topic": "DNA: Code of Life",
+      "subtopic": "Protein Synthesis",
+      "question": "Describe the process of transcription during protein synthesis",
+      "keywords": [
+        "transcription",
+        "nucleus",
+        "dna unwinds",
+        "mrna",
+        "rna polymerase",
+        "template",
+        "nuclear pore",
+        "ribosome",
+        "uracil"
+      ],
+      "model_answer": "1. DNA double helix unwinds and unzips as weak hydrogen bonds break.\n2. One DNA strand acts as a template.\n3. Free RNA nucleotides in the nucleoplasm match with complementary bases on the DNA template (Adenine pairs with Uracil, Cytosine with Guanine).\n4. This forms messenger RNA (mRNA).\n5. mRNA leaves the nucleus through a nuclear pore into the cytoplasm and attaches to a ribosome.",
+      "rubric_points": [
+        "DNA unwinds / unzips (1 mark)",
+        "Hydrogen bonds break (1 mark)",
+        "One strand acts as a template (1 mark)",
+        "Free RNA nucleotides pair with complementary bases (1 mark)",
+        "A pairs with U, C pairs with G (1 mark)",
+        "mRNA formed leaves via nuclear pore to ribosome (1 mark)"
+      ],
+      "common_misconceptions": "Learners often state that Thymine binds with Uracil instead of Adenine, or confuse transcription (which happens in the nucleus) with translation (which happens on ribosomes in the cytoplasm)."
+    },
+    {
+      "id": "LS12_P2_002",
+      "paper": "Paper 2",
+      "topic": "DNA: Code of Life",
+      "subtopic": "DNA Replication",
+      "question": "Describe the process of DNA replication and state its biological significance",
+      "keywords": [
+        "dna replication",
+        "interphase",
+        "hydrogen bonds",
+        "template",
+        "complementary",
+        "dna polymerase",
+        "identical",
+        "mitosis"
+      ],
+      "model_answer": "Process:\n1. Takes place during interphase in the nucleus.\n2. The double helix unwinds and unzips when hydrogen bonds between complementary base pairs break.\n3. Each original DNA strand serves as a template.\n4. Free DNA nucleotides in the nucleoplasm attach to their complementary bases (A-T and C-G).\n5. Two identical DNA molecules are formed, each consisting of one original and one new strand (semi-conservative).\nSignificance: Doubles genetic material so each daughter cell receives an identical copy during mitosis.",
+      "rubric_points": [
+        "Occurs during interphase (1 mark)",
+        "Hydrogen bonds break / unwinds & unzips (1 mark)",
+        "Both strands act as templates (1 mark)",
+        "Free DNA nucleotides attach complementarily (1 mark)",
+        "Two identical strands formed (1 mark)",
+        "Significance: Identical genetic material for daughter cells (1 mark)"
+      ],
+      "common_misconceptions": "Confusing replication with transcription. In replication, both DNA strands are copied; in transcription, only one strand is copied into single-stranded mRNA."
+    },
+    {
+      "id": "LS12_P2_003",
+      "paper": "Paper 2",
+      "topic": "Genetics & Inheritance",
+      "subtopic": "Monohybrid Genetic Cross",
+      "question": "How to set up and solve a monohybrid genetic cross according to DBE CAPS format",
+      "keywords": [
+        "genetic cross",
+        "phenotype",
+        "genotype",
+        "alleles",
+        "punnett square",
+        "gametes",
+        "meiosis",
+        "fertilization",
+        "p1",
+        "f1"
+      ],
+      "model_answer": "Official DBE Format:\n1. P1: State Phenotype of parents (e.g. Brown eyes x Blue eyes).\n2. State Genotype of parents (e.g. Bb x bb).\n3. Meiosis: Show Gametes separated in circles or Punnett square (B, b and b, b).\n4. Fertilization: Show F1 Genotypes using Punnett Square or branching (Bb, Bb, bb, bb).\n5. F1 Phenotypes: State resulting ratio (e.g. 1 Brown eyes : 1 Blue eyes / 50% Brown, 50% Blue).",
+      "rubric_points": [
+        "P1 Phenotype and Genotype labeled (1 mark)",
+        "Meiosis & Gametes represented (1 mark)",
+        "Fertilization indicated (1 mark)",
+        "Correct F1 Genotypes in Punnett Square (1 mark)",
+        "F1 Phenotype ratio stated (1 mark)"
+      ],
+      "common_misconceptions": "Omitting labels 'P1', 'Meiosis', 'Fertilization', or 'F1' causes learners to lose standard formatting marks regardless of correct Punnett square."
+    },
+    {
+      "id": "LS12_P2_004",
+      "paper": "Paper 2",
+      "topic": "Genetics & Inheritance",
+      "subtopic": "Sex-Linked Disorders",
+      "question": "Explain why sex-linked disorders such as haemophilia and red-green colour blindness occur more frequently in males than in females",
+      "keywords": [
+        "sex-linked",
+        "x chromosome",
+        "y chromosome",
+        "recessive",
+        "male",
+        "female",
+        "haemophilia",
+        "colour blindness",
+        "carrier"
+      ],
+      "model_answer": "1. Sex-linked disorders are carried on the X chromosome and are caused by recessive alleles.\n2. Males have one X and one Y chromosome (XY), while females have two X chromosomes (XX).\n3. Males only need one copy of the recessive allele on their single X chromosome to have the disorder because the Y chromosome has no corresponding allele.\n4. Females have two X chromosomes, so they require two recessive alleles to suffer from the disorder. If they inherit only one recessive allele, they are unaffected carriers.",
+      "rubric_points": [
+        "Carried on the X chromosome (1 mark)",
+        "Caused by a recessive allele (1 mark)",
+        "Males have XY, females have XX (1 mark)",
+        "Males only have one X chromosome, so a single recessive allele results in condition (1 mark)",
+        "Females need two recessive alleles; one makes them carriers (1 mark)"
+      ],
+      "common_misconceptions": "Learners often say the disorder is on the Y chromosome, or forget that males cannot be carriers of X-linked recessive conditions."
+    },
+    {
+      "id": "LS12_P2_005",
+      "paper": "Paper 2",
+      "topic": "Evolution",
+      "subtopic": "Darwinism vs Lamarckism",
+      "question": "Compare Lamarck's theory of evolution with Darwin's theory of natural selection",
+      "keywords": [
+        "evolution",
+        "darwin",
+        "lamarck",
+        "natural selection",
+        "acquired characteristics",
+        "use and disuse",
+        "variation",
+        "survival of the fittest"
+      ],
+      "model_answer": "Lamarck's Theory:\n- Based on 'Law of Use and Disuse' and 'Inheritance of Acquired Characteristics'.\n- Organisms modify traits during their lifetime in response to needs and pass acquired traits to offspring (e.g. giraffes stretching necks).\n- Disproven because acquired somatic changes do not alter gamete DNA.\n\nDarwin's Theory of Natural Selection:\n- Populations naturally possess inherited phenotypic variation.\n- When environmental conditions change, individuals with favourable variations are better adapted and survive ('survival of the fittest').\n- Surviving individuals reproduce and pass favourable alleles to the next generation.\n- Over time, the proportion of individuals with the adaptation increases.",
+      "rubric_points": [
+        "Lamarck: Use and disuse (1 mark)",
+        "Lamarck: Inheritance of acquired characteristics (1 mark)",
+        "Darwin: Natural variation within species (1 mark)",
+        "Darwin: Environmental pressure / competition (1 mark)",
+        "Darwin: Favourable traits survive and reproduce (1 mark)",
+        "Darwin: Favourable alleles passed to offspring (1 mark)"
+      ],
+      "common_misconceptions": "Using Lamarckian phrasing when answering Darwin questions (e.g. saying 'giraffes grew long necks to reach high leaves' rather than 'giraffes with longer necks survived and reproduced')."
+    },
+    {
+      "id": "LS12_P1_001",
+      "paper": "Paper 1",
+      "topic": "Homeostasis & Endocrine System",
+      "subtopic": "Blood Glucose Regulation",
+      "question": "Describe the negative feedback mechanism that regulates high blood glucose levels after a meal",
+      "keywords": [
+        "glucose",
+        "insulin",
+        "pancreas",
+        "islets of langerhans",
+        "beta cells",
+        "liver",
+        "glycogen",
+        "negative feedback"
+      ],
+      "model_answer": "1. When blood glucose levels rise above normal (e.g. after a meal), beta cells in the Islets of Langerhans in the pancreas detect the increase.\n2. The pancreas secretes the hormone insulin into the blood.\n3. Insulin stimulates cells to absorb glucose from the blood.\n4. Insulin stimulates liver and muscle cells to convert excess glucose into stored glycogen.\n5. As a result, blood glucose levels decrease back to the normal set point (homeostasis).",
+      "rubric_points": [
+        "High glucose detected by pancreas (Islets of Langerhans / beta cells) (1 mark)",
+        "Pancreas secretes insulin (1 mark)",
+        "Glucose taken up by body cells (1 mark)",
+        "Liver/muscles convert glucose to glycogen (1 mark)",
+        "Blood glucose level drops to normal set point (1 mark)"
+      ],
+      "common_misconceptions": "Confusing insulin (lowers glucose) with glucagon (raises glucose), or confusing glucose (soluble sugar) with glycogen (insoluble storage carbohydrate)."
+    },
+    {
+      "id": "LS12_P1_002",
+      "paper": "Paper 1",
+      "topic": "Responding to the Environment: Humans",
+      "subtopic": "Reflex Arc & Action",
+      "question": "Describe the structure and functioning of a reflex arc when a person touches a hot object",
+      "keywords": [
+        "reflex arc",
+        "receptor",
+        "sensory neuron",
+        "interneuron",
+        "spinal cord",
+        "motor neuron",
+        "effector",
+        "muscle",
+        "synapse"
+      ],
+      "model_answer": "1. Heat/pain receptors in the skin detect the thermal stimulus and generate a nerve impulse.\n2. The impulse travels along a sensory neuron via the dorsal root into the spinal cord.\n3. Inside the spinal cord (grey matter), the impulse passes across a synapse to an interneuron / connector neuron.\n4. The impulse then crosses another synapse to a motor neuron.\n5. The impulse exits through the ventral root of the spinal cord along the motor neuron to the effector (bicep muscle).\n6. The muscle contracts and immediately pulls the hand away from the hot object.",
+      "rubric_points": [
+        "Receptor detects stimulus and generates nerve impulse (1 mark)",
+        "Sensory neuron transmits impulse to spinal cord (1 mark)",
+        "Synapse / Interneuron in grey matter transfers impulse (1 mark)",
+        "Motor neuron carries impulse to effector (1 mark)",
+        "Effector (muscle) contracts in rapid involuntary response (1 mark)"
+      ],
+      "common_misconceptions": "Saying the brain makes the decision in a spinal reflex. A reflex is an involuntary, rapid response processed directly in the spinal cord before the brain registers conscious pain."
+    },
+    {
+      "id": "LS12_P1_003",
+      "paper": "Paper 1",
+      "topic": "Human Reproduction",
+      "subtopic": "Menstrual Cycle Hormones",
+      "question": "Explain the roles of FSH, LH, oestrogen, and progesterone in the human menstrual cycle",
+      "keywords": [
+        "fsh",
+        "lh",
+        "oestrogen",
+        "progesterone",
+        "ovulation",
+        "graafian follicle",
+        "corpus luteum",
+        "endometrium"
+      ],
+      "model_answer": "1. FSH (Follicle Stimulating Hormone): Secreted by anterior pituitary; stimulates development of a primary follicle into a mature Graafian follicle in the ovary.\n2. Oestrogen: Secreted by developing Graafian follicle; repairs and thickens the endometrium wall and inhibits FSH.\n3. LH (Luteinising Hormone): Surge from pituitary causes ovulation (release of egg from Graafian follicle) on approximately day 14, and transforms the empty follicle into the corpus luteum.\n4. Progesterone: Secreted by corpus luteum; maintains thickness and vascularity of the endometrium for implantation, and inhibits FSH and LH.",
+      "rubric_points": [
+        "FSH stimulates follicle growth (1 mark)",
+        "Oestrogen repairs / thickens endometrium (1 mark)",
+        "LH causes ovulation around day 14 (1 mark)",
+        "LH causes corpus luteum formation (1 mark)",
+        "Progesterone maintains endometrium lining for pregnancy (1 mark)"
+      ],
+      "common_misconceptions": "Confusing which gland secretes which hormone (Pituitary: FSH and LH; Ovary/Follicle: Oestrogen; Corpus Luteum: Progesterone)."
+    },
+    {
+      "id": "LS12_P1_004",
+      "paper": "Paper 1",
+      "topic": "Responding to the Environment: Humans",
+      "subtopic": "Human Eye: Accommodation",
+      "question": "Describe how the human eye accommodates for viewing an object closer than 6 metres",
+      "keywords": [
+        "accommodation",
+        "ciliary muscles",
+        "suspensory ligaments",
+        "lens",
+        "convex",
+        "refraction",
+        "retina",
+        "near vision"
+      ],
+      "model_answer": "For Near Vision (closer than 6m):\n1. Ciliary muscles contract.\n2. Suspensory ligaments become slack / loosen.\n3. Tension on the lens is reduced.\n4. The lens becomes more rounded / convex / thick.\n5. The refractive power of the lens increases.\n6. Light rays are bent more sharply and focused clearly onto the yellow spot (fovea centralis) of the retina.",
+      "rubric_points": [
+        "Ciliary muscles contract (1 mark)",
+        "Suspensory ligaments slacken (1 mark)",
+        "Tension on lens decreases (1 mark)",
+        "Lens becomes more convex / spherical (1 mark)",
+        "Refractive power increases (1 mark)",
+        "Image focused on retina / fovea centralis (1 mark)"
+      ],
+      "common_misconceptions": "Stating that suspensory ligaments contract. Ligaments are non-muscular and cannot contract; they only tighten or slacken depending on ciliary muscle action."
+    },
+    {
+      "id": "LS12_P1_005",
+      "paper": "Paper 1",
+      "topic": "Plant Responses to Environment",
+      "subtopic": "Auxins & Phototropism",
+      "question": "Explain how auxins cause a plant stem to bend towards unidirectional light (phototropism)",
+      "keywords": [
+        "auxins",
+        "phototropism",
+        "unidirectional light",
+        "shaded side",
+        "cell elongation",
+        "stem bends"
+      ],
+      "model_answer": "1. Auxins are produced at the tip of the stem.\n2. When exposed to unidirectional light, auxins migrate away from light to the shaded side of the stem.\n3. A higher concentration of auxins accumulates on the shaded side.\n4. High auxin concentration stimulates cell elongation in stems.\n5. The cells on the shaded side elongate faster than cells on the illuminated side.\n6. As a result, the stem bends towards the light source (positive phototropism).",
+      "rubric_points": [
+        "Auxins produced in stem tip (1 mark)",
+        "Auxins move to shaded side in unidirectional light (1 mark)",
+        "Higher auxin concentration on shaded side (1 mark)",
+        "Auxins stimulate cell elongation in stems (1 mark)",
+        "Unequal growth causes stem to bend towards light (1 mark)"
+      ],
+      "common_misconceptions": "Forgetting that auxins stimulate growth in stems, but inhibit growth in roots (geotropism)."
+    }
+  ],
+  "vocabulary_size": 377
+}

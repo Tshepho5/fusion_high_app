@@ -60,7 +60,7 @@ export const AdminDiscoverHub: React.FC<AdminDiscoverHubProps> = ({
             onClick={() => setSubTab('inter-school')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               subTab === 'inter-school'
-                ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-md shadow-amber-500/30'
+                ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/30'
                 : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white/5'
             }`}
           >

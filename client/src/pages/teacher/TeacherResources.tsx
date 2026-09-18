@@ -368,10 +368,11 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
               <div className="flex items-center justify-between pt-3 border-t border-white/10 gap-2">
                 <div className="flex items-center gap-2">
                   <a
-                    href={item.file_path}
+                    href={item.file_path ? (item.file_path.startsWith('/') ? item.file_path : `/${item.file_path}`) : `/api/resources/${item.id}/download`}
+                    download={item.file_name || `${(item.title || 'Resource').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 text-xs font-bold transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 text-xs font-bold transition-all cursor-pointer"
                     title="Open Document PDF"
                   >
                     <Download className="w-3.5 h-3.5" />

@@ -14,7 +14,17 @@
           "Recall": 0.9574,
           "F1-Score": 0.9391,
           "ROC-AUC": 0.9702,
+          "PR-AUC": 0.9873,
           "CV-Accuracy": 0.925
+        },
+        "DecisionTree": {
+          "Accuracy": 0.8775,
+          "Precision": 0.8896,
+          "Recall": 0.9433,
+          "F1-Score": 0.9157,
+          "ROC-AUC": 0.8818,
+          "PR-AUC": 0.9167,
+          "CV-Accuracy": 0.8819
         },
         "RandomForest": {
           "Accuracy": 0.8975,
@@ -22,7 +32,26 @@
           "Recall": 0.9539,
           "F1-Score": 0.9292,
           "ROC-AUC": 0.9605,
+          "PR-AUC": 0.9835,
           "CV-Accuracy": 0.9056
+        },
+        "SupportVectorMachine": {
+          "Accuracy": 0.895,
+          "Precision": 0.911,
+          "Recall": 0.9433,
+          "F1-Score": 0.9268,
+          "ROC-AUC": 0.9648,
+          "PR-AUC": 0.9853,
+          "CV-Accuracy": 0.9169
+        },
+        "KNN": {
+          "Accuracy": 0.865,
+          "Precision": 0.8725,
+          "Recall": 0.9468,
+          "F1-Score": 0.9082,
+          "ROC-AUC": 0.9217,
+          "PR-AUC": 0.9522,
+          "CV-Accuracy": 0.885
         },
         "HistGradientBoosting": {
           "Accuracy": 0.8925,
@@ -30,6 +59,7 @@
           "Recall": 0.9397,
           "F1-Score": 0.925,
           "ROC-AUC": 0.96,
+          "PR-AUC": 0.9824,
           "CV-Accuracy": 0.9088
         }
       }
@@ -46,11 +76,29 @@
           "RMSE": 6.9856,
           "CV-R2": 0.8968
         },
+        "DecisionTree": {
+          "R2": 0.7789,
+          "MAE": 8.1011,
+          "RMSE": 10.0197,
+          "CV-R2": 0.7893
+        },
         "RandomForest": {
           "R2": 0.8503,
           "MAE": 6.6111,
           "RMSE": 8.2453,
           "CV-R2": 0.8646
+        },
+        "SupportVectorRegressor": {
+          "R2": 0.8238,
+          "MAE": 7.2326,
+          "RMSE": 8.946,
+          "CV-R2": 0.822
+        },
+        "KNN": {
+          "R2": 0.7793,
+          "MAE": 7.9068,
+          "RMSE": 10.0104,
+          "CV-R2": 0.8141
         },
         "HistGradientBoosting": {
           "R2": 0.8679,

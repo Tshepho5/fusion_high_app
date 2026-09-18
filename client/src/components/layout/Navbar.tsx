@@ -26,13 +26,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/90 dark:border-white/10 bg-white/95 dark:bg-[#0F172A]/95 px-4 md:px-8 backdrop-blur-md transition-colors">
-      {/* Left: Mobile Toggle */}
+      {/* Left: Sidebar Collapse Toggle */}
       <div className="flex items-center gap-3">
         {onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
-            className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/5 transition-colors md:hidden"
+            className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/5 transition-colors cursor-pointer"
             aria-label="Toggle navigation"
+            title="Toggle Sidebar"
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -85,13 +86,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
               onClick={() => {
                 if (canSwitch) setShowSchoolMenu(!showSchoolMenu);
               }}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/90 dark:bg-[#151E32]/90 border border-slate-200/90 dark:border-white/10 transition-all text-left shadow-xs group ${
-                canSwitch ? 'hover:bg-slate-200/90 dark:hover:bg-[#1E293B] hover:border-brand-500/40 cursor-pointer' : 'cursor-default opacity-95'
+              className={`flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white dark:bg-[#081528] border border-slate-200/90 dark:border-sky-500/30 transition-all text-left shadow-xs group ${
+                canSwitch ? 'hover:bg-slate-50 dark:hover:bg-[#0B1E38] hover:border-sky-400 cursor-pointer' : 'cursor-default opacity-95'
               }`}
               title={switcherTooltip}
             >
               <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center border shadow-sm transition-transform group-hover:scale-105 overflow-hidden"
+                className="w-7 h-7 rounded-lg flex items-center justify-center border shadow-sm transition-transform group-hover:scale-105 overflow-hidden shrink-0"
                 style={{
                   backgroundColor: `${currentSchool?.primary_color || '#4f46e5'}20`,
                   borderColor: `${currentSchool?.primary_color || '#4f46e5'}50`
@@ -119,7 +120,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
                   ) : null}
                 </div>
                 {currentSchool?.motto && (
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400/90 font-medium italic truncate max-w-[200px] block">
+                  <span className="text-[10px] text-sky-600 dark:text-cyan-400 font-medium italic truncate max-w-[200px] block">
                     "{currentSchool.motto}"
                   </span>
                 )}
@@ -202,10 +203,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
         <NotificationDropdown />
 
         {/* User Profile Avatar at Top Corner */}
-        <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200/80 dark:border-white/10">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-white font-bold text-sm shadow-sm overflow-hidden shrink-0 border border-white/10 relative">
+        <div className="flex items-center gap-2 pl-2 border-l border-slate-200/80 dark:border-white/10">
+          <div className="w-8 h-8 rounded-full bg-[#0080FF] flex items-center justify-center text-white font-bold text-xs shadow-xs overflow-hidden shrink-0 border border-sky-400/40 relative">
             <span className="select-none">
-              {user?.full_name ? user.full_name.charAt(0).toUpperCase() : (user?.email?.charAt(0).toUpperCase() || 'U')}
+              {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'L'}
             </span>
             {(user?.profile_picture || user?.profile_picture_path) && (
               <img
@@ -218,12 +219,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
           </div>
           <div className="hidden sm:flex flex-col">
             <span className="text-xs font-bold text-slate-900 dark:text-white leading-none truncate max-w-[130px]">
-              {user?.full_name || 'User'}
+              {user?.full_name || 'Learner'}
             </span>
             <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium capitalize mt-0.5">
-              {role === 'learner' ? `Grade ${user?.grade || user?.academic?.grade || '10'}` : (role || 'User')}
+              {role === 'learner' ? `Grade ${user?.grade || user?.academic?.grade || '12'}` : (role || 'User')}
             </span>
           </div>
+          <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block ml-0.5" />
         </div>
       </div>
     </header>

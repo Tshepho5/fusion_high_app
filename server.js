@@ -181,6 +181,94 @@ app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/uploads', express.static('uploads'));
 app.use('/downloads', express.static(path.join(__dirname, 'public', 'downloads')));
 
+// Ensure CAPS curriculum archives and textbook directories exist
+const capsArchiveDir = path.join(__dirname, 'public', 'assets', 'caps_archive');
+ensureDir(capsArchiveDir);
+const textbooksDir = path.join(__dirname, 'uploads', 'textbooks');
+ensureDir(textbooksDir);
+
+const { generateCapsDocumentPdf } = require('./public/src/services/capsDocumentGenerator');
+
+// Dedicated handler to serve or dynamically synthesize and download CAPS resources / past papers
+const handleCapsResourceDownload = async (req, res) => {
+  try {
+    const rawFilename = req.params.filename || req.query.file || 'Curriculum_Resource.pdf';
+    const cleanFilename = path.basename(decodeURIComponent(rawFilename));
+    
+    // Check if file exists in capsArchiveDir or textbooksDir
+    let filePath = path.join(capsArchiveDir, cleanFilename);
+    if (!fs.existsSync(filePath)) {
+      const altPath = path.join(textbooksDir, cleanFilename);
+      if (fs.existsSync(altPath)) filePath = altPath;
+    }
+
+    if (fs.existsSync(filePath) && fs.statSync(filePath).size > 0) {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${cleanFilename}"`);
+      return res.sendFile(filePath);
+    }
+
+    // Lookup metadata from textbooks table in database if available
+    let title = cleanFilename.replace(/\.pdf$/i, '').replace(/_/g, ' ');
+    let subject = 'Curriculum';
+    let grade = 10;
+    let year = 2024;
+    let resourceType = 'past_paper';
+
+    try {
+      const dbRes = await db.query(
+        `SELECT subject, grade, title, year, resource_type FROM textbooks 
+         WHERE file_name ILIKE $1 OR file_path ILIKE $2 LIMIT 1`,
+        [cleanFilename, `%${cleanFilename}%`]
+      );
+      if (dbRes.rows.length > 0) {
+        const row = dbRes.rows[0];
+        if (row.title) title = row.title;
+        if (row.subject) subject = row.subject;
+        if (row.grade) grade = row.grade;
+        if (row.year) year = row.year;
+        if (row.resource_type) resourceType = row.resource_type;
+      } else {
+        const m = cleanFilename.match(/([A-Za-z_]+)_Gr(\d+)_([A-Za-z0-9_]+)/);
+        if (m) {
+          subject = m[1].replace(/_/g, ' ');
+          grade = parseInt(m[2], 10);
+        }
+      }
+    } catch (_) {}
+
+    // Generate to disk cache and stream attachment response
+    const targetPath = path.join(capsArchiveDir, cleanFilename);
+    const doc = generateCapsDocumentPdf({ title, subject, grade, year, resourceType }, targetPath);
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${cleanFilename}"`);
+    doc.pipe(res);
+    doc.end();
+  } catch (err) {
+    console.error('Error downloading CAPS resource:', err);
+    res.status(500).json({ error: 'Failed to download curriculum document.' });
+  }
+};
+
+app.get('/assets/caps_archive/:filename', handleCapsResourceDownload);
+app.get('/uploads/textbooks/:filename', handleCapsResourceDownload);
+app.get('/api/resources/download', handleCapsResourceDownload);
+app.get('/api/resources/:id/download', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const dbRes = await db.query('SELECT * FROM textbooks WHERE id = $1 LIMIT 1', [id]);
+    if (dbRes.rows.length > 0) {
+      const row = dbRes.rows[0];
+      req.params.filename = row.file_name || path.basename(row.file_path || 'document.pdf');
+      return handleCapsResourceDownload(req, res);
+    }
+    res.status(404).json({ error: 'Resource not found.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to download resource.' });
+  }
+});
+
 // Comprehensive System Documentation Download Endpoint
 app.get('/api/documentation/download', (req, res) => {
   const pdfPath = path.join(__dirname, 'public', 'downloads', 'Fusion_High_System_Architecture_and_Development_Documentation.pdf');
@@ -219,6 +307,8 @@ app.post('/api/teacher/timetable/swap-requests/:id/respond', authenticateToken, 
 
 // Universal 24/7 AI Chat Assistant Endpoint (Available to all authenticated roles)
 app.post('/api/ai/chat', authenticateToken, aiTutorController.sendChatMessage);
+app.get('/api/ai/life-sciences/topics', authenticateToken, aiTutorController.getLifeSciencesTopics);
+app.post('/api/ai/life-sciences/evaluate', authenticateToken, aiTutorController.evaluateLifeSciencesAnswer);
 
 // Import and use route modules
 app.use('/api/teacher', teacherRoutes);

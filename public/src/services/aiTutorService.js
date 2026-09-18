@@ -20,6 +20,74 @@ curricula.forEach(curric => {
   }
 });
 
+// Load Dedicated Grade 12 Life Sciences AI Model Knowledge Base
+let lifeSciencesKB = [];
+try {
+  const lsPath = path.join(__dirname, '../../../data/life_sciences_grade12_kb.json');
+  if (fs.existsSync(lsPath)) {
+    lifeSciencesKB = JSON.parse(fs.readFileSync(lsPath, 'utf8'));
+    console.info(`[AI SERVICE] Loaded Grade 12 Life Sciences AI Knowledge Base (${lifeSciencesKB.length} CAPS core topics).`);
+  }
+} catch (e) {
+  console.warn('[AI SERVICE] Could not load Life Sciences KB:', e.message);
+}
+
+function queryLifeSciencesModel(userText) {
+  if (!lifeSciencesKB || lifeSciencesKB.length === 0 || !userText) return null;
+  const lower = userText.toLowerCase();
+  let bestItem = null;
+  let maxMatches = 0;
+
+  for (const item of lifeSciencesKB) {
+    let matches = 0;
+    for (const kw of item.keywords) {
+      if (lower.includes(kw.toLowerCase())) matches += 1.5;
+    }
+    const words = (item.topic + ' ' + item.subtopic + ' ' + item.question).toLowerCase().split(/\s+/);
+    for (const w of words) {
+      if (w.length > 3 && lower.includes(w)) matches += 0.5;
+    }
+    if (matches > maxMatches) {
+      maxMatches = matches;
+      bestItem = item;
+    }
+  }
+
+  return maxMatches >= 1.5 && bestItem ? { ...bestItem, matchScore: maxMatches } : null;
+}
+
+function evaluateLifeSciencesAnswer(itemId, studentAnswer) {
+  const item = lifeSciencesKB.find(x => x.id === itemId);
+  if (!item) return { error: `Topic/Question ID ${itemId} not found in Life Sciences KB.` };
+
+  const lower = (studentAnswer || '').toLowerCase();
+  const matched = item.keywords.filter(k => lower.includes(k.toLowerCase()));
+  const missing = item.keywords.filter(k => !lower.includes(k.toLowerCase()));
+  const total = item.rubric_points.length;
+  const keywordPct = matched.length / Math.max(1, item.keywords.length);
+  const estimatedMark = Math.min(total, Math.round(keywordPct * total));
+  const percentage = Math.round((estimatedMark / total) * 100);
+
+  return {
+    itemId: item.id,
+    topic: item.topic,
+    subtopic: item.subtopic,
+    paper: item.paper,
+    estimatedMark: `${estimatedMark}/${total}`,
+    percentage: `${percentage}%`,
+    matchedTerms: matched,
+    missingTerms: missing,
+    rubricChecklist: item.rubric_points,
+    modelAnswer: item.model_answer,
+    commonMisconceptions: item.common_misconceptions,
+    feedback: percentage >= 80 
+      ? "Outstanding mastery! You used official DBE CAPS scientific terminology accurately."
+      : percentage >= 50
+        ? "Good conceptual understanding! Ensure you include the missing keywords to gain full rubric marks in the exam."
+        : "Needs revision. Official CAPS markers deduct marks if key biological terms are missing."
+  };
+}
+
 const rawGeminiKey = (process.env.GEMINI_API_KEY || '').replace(/^["']|["']$/g, '').trim();
 const genAI = rawGeminiKey ? new GoogleGenerativeAI(rawGeminiKey) : null;
 
@@ -1168,6 +1236,26 @@ ${topicsSummary ? `Available Subject Topics (Grade ${normGrade}): ${topicsSummar
 - At the very end of your response, provide 3 helpful follow-up prompts formatted exactly as:
   [SUGGESTIONS: <Prompt 1> | <Prompt 2> | <Prompt 3>]
 
+${(() => {
+  if (normSubject === 'Life Sciences' || normSubject.includes('Bio')) {
+    const lsMatch = queryLifeSciencesModel(userText);
+    if (lsMatch) {
+      return `
+### DEDICATED GRADE 12 LIFE SCIENCES SPECIALIST MODEL CONTEXT:
+- Target Topic: "${lsMatch.topic}" (${lsMatch.paper}) — Subtopic: "${lsMatch.subtopic}"
+- Official DBE Marking Guidelines / Rubric:
+${lsMatch.rubric_points.map(p => `  * ${p}`).join('\n')}
+- Prescribed Model Answer:
+${lsMatch.model_answer}
+- Common Candidate Trap / Misconception:
+  "${lsMatch.common_misconceptions}"
+- Ensure your explanation directly uses and highlights these critical biological keywords: ${lsMatch.keywords.join(', ')}.
+`;
+    }
+  }
+  return '';
+})()}
+
 ${historyPrompt}
 ${fullName || normRole}: ${userText}
 
@@ -1212,8 +1300,19 @@ Detailed, Warm, Helpful Response:
     }
   } catch (err) {
     console.error('[AI TUTOR ERROR]', err);
-    aiReplyText = `I'm right here with you! Whether you need help with your ${normSubject} subjects, understanding formulas, or finding your way around the portal, I've got you covered. What would you like to explore?`;
-    suggestions = ['Where is my weekly timetable?', 'How do I view CAPS report cards?', 'Explain a key subject concept'];
+    if (normSubject === 'Life Sciences' || normSubject.includes('Bio')) {
+      const lsMatch = queryLifeSciencesModel(userText);
+      if (lsMatch) {
+        aiReplyText = `### 🧬 Grade 12 Life Sciences Specialist Assistant\n**CAPS Focus: ${lsMatch.paper} — ${lsMatch.topic} (${lsMatch.subtopic})**\n\n${lsMatch.model_answer}\n\n---\n#### 📋 Official DBE CAPS Marking Rubric Breakdown:\n${lsMatch.rubric_points.map(p => `• ${p}`).join('\n')}\n\n💡 **Matric Exam Pitfall / Tip**:\n${lsMatch.common_misconceptions}`;
+        suggestions = ['How do I solve a Punnett Square?', 'Describe the human reflex arc', 'Explain blood glucose negative feedback'];
+      } else {
+        aiReplyText = `I'm your dedicated Grade 12 Life Sciences AI Specialist! I can assist you with both Paper 1 (Human reproduction, nervous system, senses, endocrine system & homeostasis, plant tropisms) and Paper 2 (DNA code of life, genetics & inheritance, meiosis, evolution & natural selection). What topic would you like to review?`;
+        suggestions = ['Explain transcription vs translation', 'Describe DNA replication', 'How does eye accommodation work?'];
+      }
+    } else {
+      aiReplyText = `I'm right here with you! Whether you need help with your ${normSubject} subjects, understanding formulas, or finding your way around the portal, I've got you covered. What would you like to explore?`;
+      suggestions = ['Where is my weekly timetable?', 'How do I view CAPS report cards?', 'Explain a key subject concept'];
+    }
   }
 
   // Fallback / Auto-detection of navigation intent if no action link was explicitly generated
@@ -1298,5 +1397,8 @@ module.exports = {
   getConversationDetails,
   startNewConversation,
   deleteConversation,
-  chatWithSubjectTutor
+  chatWithSubjectTutor,
+  queryLifeSciencesModel,
+  evaluateLifeSciencesAnswer,
+  getLifeSciencesKnowledgeBase: () => lifeSciencesKB
 };

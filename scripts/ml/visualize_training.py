@@ -12,9 +12,13 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, HistGradientBoostingClassifier, HistGradientBoostingRegressor
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.svm import SVC, SVR
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score, roc_auc_score,
-    confusion_matrix, roc_curve, mean_absolute_error, mean_squared_error, r2_score
+    confusion_matrix, roc_curve, precision_recall_curve, average_precision_score,
+    mean_absolute_error, mean_squared_error, r2_score
 )
 from sklearn.inspection import permutation_importance
 import joblib
@@ -30,7 +34,7 @@ def print_progress(step, total, title):
 
 def main():
     print("=" * 75)
-    print("🎓 FUSION HIGH: VISUAL MACHINE LEARNING TRAINING & EVALUATION SUITE")
+    print(" FUSION HIGH: VISUAL MACHINE LEARNING TRAINING & EVALUATION SUITE")
     print("=" * 75)
 
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -93,7 +97,10 @@ def main():
     print("\n[Step 3/5] Training At-Risk Classification Models (5-Fold Cross Validation)...")
     clf_models = {
         'Logistic Regression': LogisticRegression(max_iter=1000, random_state=42),
+        'Decision Tree': DecisionTreeClassifier(max_depth=6, random_state=42),
         'Random Forest': RandomForestClassifier(n_estimators=120, max_depth=6, random_state=42),
+        'Support Vector Machine': SVC(kernel='rbf', probability=True, random_state=42),
+        'K-Nearest Neighbors': KNeighborsClassifier(n_neighbors=5),
         'Gradient Boosting': HistGradientBoostingClassifier(max_iter=100, random_state=42)
     }
 
@@ -132,7 +139,10 @@ def main():
     print(f"\n[Step 4/5]  Training Continuous Mark Regressor (Predicting Final Exam %)...")
     reg_models = {
         'Ridge Regression': Ridge(alpha=1.0, random_state=42),
+        'Decision Tree Regressor': DecisionTreeRegressor(max_depth=6, random_state=42),
         'Random Forest Regressor': RandomForestRegressor(n_estimators=120, max_depth=6, random_state=42),
+        'Support Vector Regressor': SVR(kernel='rbf'),
+        'K-Nearest Neighbors Regressor': KNeighborsRegressor(n_neighbors=5),
         'Gradient Boosting Regressor': HistGradientBoostingRegressor(max_iter=100, random_state=42)
     }
 
@@ -173,14 +183,19 @@ def main():
     axes[0, 0].set_ylabel('Actual Status', fontweight='bold')
     axes[0, 0].set_xlabel('Predicted Status', fontweight='bold')
 
-    # Plot 2: ROC Curve
-    fpr, tpr, _ = roc_curve(y_test_cls, y_test_proba)
-    axes[0, 1].plot(fpr, tpr, color='#10B981', lw=2.5, label=f'{best_clf_name} (AUC = {best_clf_score:.3f})')
+    # Plot 2: Multi-Model ROC Curves Comparison
     axes[0, 1].plot([0, 1], [0, 1], color='#94A3B8', linestyle='--', lw=1.5, label='Random Baseline')
-    axes[0, 1].set_title('2. Receiver Operating Characteristic (ROC Curve)', fontsize=12, fontweight='bold')
+    colors = ['#3B82F6', '#F59E0B', '#10B981', '#8B5CF6', '#EC4899', '#06B6D4']
+    for idx, (m_name, m_model) in enumerate(clf_models.items()):
+        m_proba = m_model.predict_proba(X_test_trans)[:, 1]
+        m_fpr, m_tpr, _ = roc_curve(y_test_cls, m_proba)
+        m_auc = roc_auc_score(y_test_cls, m_proba)
+        color = colors[idx % len(colors)]
+        axes[0, 1].plot(m_fpr, m_tpr, lw=2, color=color, label=f'{m_name} (AUC = {m_auc:.3f})')
+    axes[0, 1].set_title('2. Multi-Model ROC Curves (Chapter 5 & 6 Benchmark)', fontsize=12, fontweight='bold')
     axes[0, 1].set_xlabel('False Positive Rate (1 - Specificity)', fontweight='bold')
     axes[0, 1].set_ylabel('True Positive Rate (Recall / Sensitivity)', fontweight='bold')
-    axes[0, 1].legend(loc='lower right')
+    axes[0, 1].legend(loc='lower right', fontsize=8)
 
     # Plot 3: Actual vs Predicted Final Exam Scores
     axes[1, 0].scatter(y_test_reg, y_reg_pred, alpha=0.75, color='#6366F1', edgecolors='k', s=50)

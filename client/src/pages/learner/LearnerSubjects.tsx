@@ -489,7 +489,9 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                 {resources.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {resources.map((res, i) => {
-                      const fileHref = res.file_path ? (res.file_path.startsWith('/') ? res.file_path : `/${res.file_path}`) : '#';
+                      const fileHref = res.file_path 
+                        ? (res.file_path.startsWith('/') ? res.file_path : `/${res.file_path}`) 
+                        : `/api/resources/${res.id || i}/download`;
                       const resTitle = res.title || res.file_name || `${selectedSubName} Resource`;
                       const resType = res.resource_type || 'past_paper';
                       return (
@@ -529,23 +531,22 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                                 setTutorTopic({ id: 'exam-practice', name: `Help me practice with ${resTitle}` });
                                 setActiveTab('ai-tutor');
                               }}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-300 font-bold text-xs border border-cyan-500/20 transition-all"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-300 font-bold text-xs border border-cyan-500/20 transition-all cursor-pointer"
                             >
                               <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
                               <span>Solve with AI</span>
                             </button>
 
-                            {res.file_path && (
-                              <a
-                                href={fileHref}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition-all"
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                                <span>Download PDF</span>
-                              </a>
-                            )}
+                            <a
+                              href={fileHref}
+                              download={res.file_name || `${resTitle.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition-all hover:scale-105 cursor-pointer"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>Download PDF</span>
+                            </a>
                           </div>
                         </div>
                       );

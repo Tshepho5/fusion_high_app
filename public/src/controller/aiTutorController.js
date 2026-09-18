@@ -238,3 +238,41 @@ exports.deleteConversation = async (req, res) => {
         res.status(500).json({ error: 'Failed to remove conversation session.' });
     }
 };
+
+/**
+ * Retrieves the dedicated Grade 12 Life Sciences CAPS topic database.
+ */
+exports.getLifeSciencesTopics = async (req, res) => {
+    try {
+        const kb = aiTutorService.getLifeSciencesKnowledgeBase();
+        res.json({
+            subject: 'Life Sciences',
+            grade: 12,
+            curriculum: 'DBE CAPS (National Senior Certificate)',
+            totalTopics: kb.length,
+            topics: kb
+        });
+    } catch (err) {
+        console.error('[AI TUTOR CONTROLLER ERROR] getLifeSciencesTopics:', err);
+        res.status(500).json({ error: 'Failed to load Life Sciences knowledge base.' });
+    }
+};
+
+/**
+ * Evaluates a learner's exam question response against the official DBE marking rubric.
+ */
+exports.evaluateLifeSciencesAnswer = async (req, res) => {
+    try {
+        const { itemId, studentAnswer } = req.body;
+        if (!itemId || !studentAnswer) {
+            return res.status(400).json({ error: 'Both itemId and studentAnswer are required.' });
+        }
+
+        const evaluation = aiTutorService.evaluateLifeSciencesAnswer(itemId, studentAnswer);
+        res.json(evaluation);
+    } catch (err) {
+        console.error('[AI TUTOR CONTROLLER ERROR] evaluateLifeSciencesAnswer:', err);
+        res.status(500).json({ error: 'Failed to evaluate Life Sciences answer.' });
+    }
+};
+

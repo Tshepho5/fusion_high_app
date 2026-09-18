@@ -12,6 +12,8 @@ router.get('/ai-tutor/conversations', auth, requireRole(['learner', 'teacher', '
 router.get('/ai-tutor/conversations/:id', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.getConversationDetails);
 router.post('/ai-tutor/new-session', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.startNewConversation);
 router.delete('/ai-tutor/conversations/:id', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.deleteConversation);
+router.get('/ai-tutor/life-sciences/topics', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.getLifeSciencesTopics);
+router.post('/ai-tutor/life-sciences/evaluate', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.evaluateLifeSciencesAnswer);
 
 // Shared learning assets & DBE resources (Open to learners, teachers, admins, and parents)
 router.get('/subject-resources', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), learnerController.getSubjectResources);
@@ -24,6 +26,7 @@ router.use(auth, requireRole(['learner', 'admin']));
 // Study Material & Subject Management
 router.get('/subjects', learnerController.getSubjects);
 router.get('/my-subjects-overview', learnerController.getMySubjectsOverview);
+router.get('/subjects/overview', learnerController.getMySubjectsOverview);
 
 router.get('/task', learnerController.getTask);
 router.post('/summarize-topic', learnerController.summarizeTopic);
@@ -46,11 +49,15 @@ router.post('/gamification/award-xp', learnerController.awardGamificationXP);
 
 const timetableController = require('../controller/timetableController');
 
-// Learner Redesign Views Overviews
+// Learner Redesign Views Overviews (both hyphenated and slash-separated routes supported)
 router.get('/attendance-overview', learnerController.getAttendanceOverview);
+router.get('/attendance/overview', learnerController.getAttendanceOverview);
 router.get('/achievements-overview', learnerController.getAchievementsOverview);
+router.get('/achievements/overview', learnerController.getAchievementsOverview);
 router.get('/grades-overview', learnerController.getGradesOverview);
+router.get('/grades/overview', learnerController.getGradesOverview);
 router.get('/announcements-overview', learnerController.getAnnouncementsOverview);
+router.get('/announcements/overview', learnerController.getAnnouncementsOverview);
 router.get('/timetable', timetableController.getLearnerTimetable);
 
 module.exports = router;

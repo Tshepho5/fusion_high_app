@@ -29,7 +29,13 @@ import {
   PlusCircle,
   Trash2,
   History,
-  GraduationCap
+  GraduationCap,
+  Dna,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
+  FileCheck
 } from 'lucide-react';
 
 interface LearnerAITutorProps {
@@ -143,6 +149,18 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Dedicated Subject AI Studio State (Grade 12 Life Sciences)
+  const [activeTab, setActiveTab] = useState<'chat' | 'life-sciences-studio'>('chat');
+  const [lifeSciencesData, setLifeSciencesData] = useState<any[]>([]);
+  const [selectedLsItem, setSelectedLsItem] = useState<any | null>(null);
+  const [studentAnswerText, setStudentAnswerText] = useState<string>('');
+  const [evaluationResult, setEvaluationResult] = useState<any | null>(null);
+  const [evaluating, setEvaluating] = useState<boolean>(false);
+  const [paperFilter, setPaperFilter] = useState<'all' | 'Paper 1' | 'Paper 2'>('all');
+  const [showModelAnswer, setShowModelAnswer] = useState<boolean>(false);
+  const [showRubricDetails, setShowRubricDetails] = useState<boolean>(false);
+  const [loadingLsData, setLoadingLsData] = useState<boolean>(false);
+
   // Voice State
   const [isListening, setIsListening] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
@@ -160,8 +178,60 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
   useEffect(() => {
     if (subject) {
       loadSavedConversations(subject);
+      if (subject.toLowerCase().includes('life sc') || subject.toLowerCase().includes('bio')) {
+        loadLifeSciencesStudio();
+      }
     }
   }, [subject]);
+
+  const loadLifeSciencesStudio = async () => {
+    setLoadingLsData(true);
+    try {
+      const res = await aiTutorService.getLifeSciencesTopics();
+      if (res && res.topics) {
+        setLifeSciencesData(res.topics);
+        if (res.topics.length > 0) {
+          setSelectedLsItem((prev: any) => prev || res.topics[0]);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load Life Sciences studio topics:', err);
+    } finally {
+      setLoadingLsData(false);
+    }
+  };
+
+  const handleEvaluateAnswer = async () => {
+    if (!selectedLsItem || !studentAnswerText.trim()) return;
+    setEvaluating(true);
+    try {
+      const res = await aiTutorService.evaluateLifeSciencesAnswer({
+        itemId: selectedLsItem.id,
+        studentAnswer: studentAnswerText
+      });
+      setEvaluationResult(res);
+      const pct = parseInt(res.percentage || '0', 10);
+      if (pct >= 75) {
+        confetti({
+          particleCount: 50,
+          spread: 60,
+          origin: { y: 0.65 }
+        });
+      }
+    } catch (err) {
+      console.error('Answer evaluation failed:', err);
+    } finally {
+      setEvaluating(false);
+    }
+  };
+
+  const handleSelectLsQuestion = (item: any) => {
+    setSelectedLsItem(item);
+    setStudentAnswerText('');
+    setEvaluationResult(null);
+    setShowModelAnswer(false);
+    setShowRubricDetails(false);
+  };
 
   const loadSyllabus = async () => {
     try {
@@ -537,6 +607,42 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
           </div>
         </div>
 
+        {/* Studio & Chat Mode Switcher */}
+        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-white/5">
+          <button
+            onClick={() => setActiveTab('chat')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'chat'
+                ? 'bg-brand-600 text-white shadow-glow-indigo'
+                : 'bg-surface-darker hover:bg-white/5 text-slate-300 border border-white/10'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>24/7 Subject AI Chat</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('life-sciences-studio');
+              if (!subject.toLowerCase().includes('life sc')) {
+                setSubject('Life Sciences');
+              }
+              loadLifeSciencesStudio();
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'life-sciences-studio'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-glow-emerald border border-emerald-400/40'
+                : 'bg-surface-darker hover:bg-white/5 text-emerald-400 border border-emerald-500/20'
+            }`}
+          >
+            <Dna className="w-4 h-4 text-emerald-300" />
+            <span>Grade 12 Life Sciences Studio</span>
+            <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              AI Rubric Marker
+            </span>
+          </button>
+        </div>
+
         {/* CAPS Syllabus Topics Bar for Selected Subject */}
         {activeTopics.length > 0 && (
           <div className="pt-3 border-t border-white/5 space-y-2">
@@ -572,312 +678,607 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
         )}
       </div>
 
-      {/* Main Chat Interface Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Left / Center Chat Pane (8 Cols) */}
-        <div className="lg:col-span-8 rounded-3xl bg-surface-dark border border-white/10 shadow-xl flex flex-col h-[650px] overflow-hidden">
-          {/* Active Context Bar */}
-          <div className="px-5 py-3 border-b border-white/10 bg-surface-darker/80 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs font-bold text-white font-display">
-                {isLanguageSubject ? `${selectedLanguage} Specialist` : `${subject} Specialist`}
-              </span>
-              <span className="text-[11px] text-slate-400 truncate max-w-[280px]">• {currentTopic}</span>
-            </div>
+      {/* Render Main Content: Either Dedicated Life Sciences Studio OR 24/7 Chat Grid */}
+      {activeTab === 'life-sciences-studio' ? (
+        <div className="space-y-4">
+          {/* Life Sciences Studio Banner */}
+          <div className="rounded-3xl bg-gradient-to-r from-emerald-950/70 via-surface-dark to-surface-darker border border-emerald-500/30 p-6 shadow-xl relative overflow-hidden">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1 max-w-2xl">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    DBE CAPS Model 2026
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    Paper 1 & Paper 2
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-white font-display flex items-center gap-2">
+                  <Dna className="w-5 h-5 text-emerald-400" />
+                  <span>Grade 12 Life Sciences NSC Exam Practice & AI Rubric Studio</span>
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Practice high-frequency national examination questions across Human Reproduction, Endocrine Negative Feedback, Reflex Arcs, Protein Synthesis, and Genetics. Write your answer and receive immediate grading against official DBE marking criteria.
+                </p>
+              </div>
 
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => handleSendMessage(`Please provide a comprehensive study guide for ${subject} on "${currentTopic}". Include key definitions, formulas, rules, and exam tips.`)}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 font-bold text-[11px] border border-brand-500/30 transition-colors"
-              >
-                <BookOpen className="w-3 h-3" />
-                <span>Explain Topic</span>
-              </button>
-              <button
-                onClick={() => handleSendMessage(`Generate a South African CAPS examination practice question for Grade ${learnerGrade} ${subject} on "${currentTopic}". Include mark allocation [e.g. 5 Marks] and test my problem solving.`)}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 font-bold text-[11px] border border-cyan-500/30 transition-colors"
-              >
-                <HelpCircle className="w-3 h-3" />
-                <span>Practice Exam Question</span>
-              </button>
+              {/* Filter Pills */}
+              <div className="flex items-center gap-1.5 bg-surface-darker/90 border border-white/10 p-1.5 rounded-2xl shrink-0">
+                {(['all', 'Paper 1', 'Paper 2'] as const).map((pf) => (
+                  <button
+                    key={pf}
+                    onClick={() => setPaperFilter(pf)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      paperFilter === pf
+                        ? 'bg-emerald-600 text-white shadow-glow-emerald'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {pf === 'all' ? 'All Papers' : pf}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((msg) => {
-              const isAi = msg.sender === 'ai';
-              return (
-                <div
-                  key={msg.id}
-                  className={`flex items-start gap-3 ${isAi ? 'justify-start' : 'justify-end'}`}
+          {/* Studio Workspace Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* Left: Question Explorer (5 Cols) */}
+            <div className="lg:col-span-5 rounded-3xl bg-surface-dark border border-white/10 p-4 shadow-xl flex flex-col h-[680px]">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
+                <div className="flex items-center gap-2">
+                  <FileCheck className="w-4 h-4 text-emerald-400" />
+                  <span className="text-xs font-bold uppercase text-white tracking-wider">
+                    Official Exam Questions ({lifeSciencesData.filter(x => paperFilter === 'all' || x.paper === paperFilter).length})
+                  </span>
+                </div>
+                <button
+                  onClick={loadLifeSciencesStudio}
+                  className="p-1 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors"
+                  title="Refresh Questions"
                 >
-                  {isAi && (
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-white text-xs font-bold shrink-0 mt-1 shadow-sm">
-                      <FusionAIIcon className="w-4 h-4 text-white" />
-                    </div>
-                  )}
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingLsData ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
 
-                  <div
-                    className={`max-w-[88%] rounded-2xl p-4 text-xs leading-relaxed ${
-                      isAi
-                        ? 'bg-surface-darker border border-white/10 text-slate-200'
-                        : 'bg-brand-600 text-white shadow-glow-indigo'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-4 mb-1.5 opacity-60 text-[10px]">
-                      <span className="font-bold">
-                        {isAi ? `${isLanguageSubject ? selectedLanguage : subject} Tutor` : 'You'}
-                      </span>
-                      <span>{msg.timestamp}</span>
-                    </div>
-
-                    <div className="whitespace-pre-wrap space-y-2">
-                      {msg.text}
-                    </div>
-
-                    {/* Interactive AI Suggestion Action Pills */}
-                    {isAi && msg.suggestions && msg.suggestions.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
-                        <p className="text-[10.5px] font-bold text-slate-400 flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 text-amber-400" />
-                          <span>Suggested Next Steps:</span>
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {msg.suggestions.map((sugg, sIdx) => (
-                            <button
-                              key={sIdx}
-                              onClick={() => handleSendMessage(sugg)}
-                              className="px-2.5 py-1 rounded-lg bg-brand-500/10 hover:bg-brand-500/25 text-brand-300 text-[11px] font-medium border border-brand-500/20 text-left transition-all hover:scale-[1.02]"
-                            >
-                              {sugg}
-                            </button>
-                          ))}
+              <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                {lifeSciencesData
+                  .filter(item => paperFilter === 'all' || item.paper === paperFilter)
+                  .map((item) => {
+                    const isSelected = selectedLsItem?.id === item.id;
+                    const isP1 = item.paper === 'Paper 1';
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => handleSelectLsQuestion(item)}
+                        className={`p-3.5 rounded-2xl border text-xs cursor-pointer transition-all ${
+                          isSelected
+                            ? 'bg-emerald-950/40 border-emerald-500/60 shadow-glow-emerald ring-1 ring-emerald-500/40'
+                            : 'bg-surface-darker hover:bg-white/5 border-white/5 text-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                            isP1 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                          }`}>
+                            {item.paper}
+                          </span>
+                          <span className="text-[10px] font-bold text-violet-400">
+                            [{item.rubric_points?.length || 5} Marks]
+                          </span>
                         </div>
+                        <p className="font-bold text-white text-xs line-clamp-1">{item.subtopic}</p>
+                        <p className="text-[11px] text-slate-400 line-clamp-2 mt-1">{item.question}</p>
                       </div>
-                    )}
+                    );
+                  })}
+              </div>
+            </div>
 
-                    {isAi && (
-                      <div className="flex flex-wrap items-center gap-2 mt-3 pt-2 border-t border-white/5">
+            {/* Right: Answer & Rubric Grading Workspace (7 Cols) */}
+            <div className="lg:col-span-7 rounded-3xl bg-surface-dark border border-white/10 p-5 shadow-xl flex flex-col h-[680px] overflow-y-auto space-y-4">
+              {selectedLsItem ? (
+                <>
+                  {/* Selected Question Header */}
+                  <div className="p-4 rounded-2xl bg-surface-darker border border-white/10 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={selectedLsItem.paper === 'Paper 1' ? 'emerald' : 'cyan'} size="sm">
+                          {selectedLsItem.paper}
+                        </Badge>
+                        <span className="text-xs font-bold text-slate-300">{selectedLsItem.topic} • {selectedLsItem.subtopic}</span>
+                      </div>
+                      <span className="text-xs font-bold text-violet-400">
+                        Total: {selectedLsItem.rubric_points?.length || 6} Marks
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-white leading-snug">
+                      {selectedLsItem.question}
+                    </h4>
+                  </div>
+
+                  {/* Student Answer Input Form */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
+                      <span>Your Biological Explanation / Answer:</span>
+                      <span className="text-[11px] font-normal text-slate-400">Include exact scientific terminology</span>
+                    </label>
+                    <textarea
+                      value={studentAnswerText}
+                      onChange={(e) => setStudentAnswerText(e.target.value)}
+                      rows={5}
+                      placeholder="Type your complete answer here. Mention specific enzymes, hormones, base pairings, or biological steps..."
+                      className="w-full rounded-2xl bg-surface-darker border border-white/10 p-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 leading-relaxed resize-none"
+                    />
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                      <div className="flex items-center gap-2">
                         <button
-                          type="button"
-                          onClick={() => toggleReadAloud(msg.id, msg.text)}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                            speakingMsgId === msg.id && isSpeaking
-                              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-glow-emerald animate-pulse'
-                              : 'bg-white/5 hover:bg-white/10 text-emerald-300'
-                          }`}
+                          onClick={handleEvaluateAnswer}
+                          disabled={evaluating || !studentAnswerText.trim()}
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white text-xs font-bold shadow-glow-emerald disabled:opacity-50 transition-all hover:scale-105 active:scale-95"
                         >
-                          {speakingMsgId === msg.id && isSpeaking ? (
+                          {evaluating ? (
                             <>
-                              <VolumeX className="w-3 h-3 text-white" />
-                              <span>Speaking...</span>
+                              <LoadingSpinner size="sm" />
+                              <span>Marking with CAPS Rubric...</span>
                             </>
                           ) : (
                             <>
-                              <Volume2 className="w-3 h-3 text-emerald-400" />
-                              <span>Read Aloud</span>
+                              <Check className="w-4 h-4" />
+                              <span>Grade My Answer with AI Rubric</span>
                             </>
                           )}
                         </button>
 
                         <button
-                          onClick={() => handleSendMessage(`Can you explain this simpler with a simple South African real-world analogy: "${msg.text.slice(0, 70)}..."`)}
-                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[10px] text-brand-300 font-medium transition-colors"
+                          onClick={() => {
+                            setActiveTab('chat');
+                            handleSendMessage(`Can you explain the Grade 12 Life Sciences concept: "${selectedLsItem.question}" (${selectedLsItem.paper} - ${selectedLsItem.subtopic})? Please provide the full step-by-step breakdown and matric exam advice.`);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 border border-brand-500/30 text-xs font-bold transition-all"
                         >
-                          <Lightbulb className="w-3 h-3" />
-                          <span>Explain with Analogy</span>
+                          <HelpCircle className="w-4 h-4" />
+                          <span>Ask AI in Chat</span>
                         </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-
-            {loading && (
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-brand-600/30 flex items-center justify-center text-brand-400">
-                  <FusionAIIcon className="w-4 h-4 text-cyan-400" variant="pulse" />
-                </div>
-                <div className="rounded-2xl bg-surface-darker border border-white/10 p-3 text-xs text-slate-400 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                  <span>Reviewing Grade {learnerGrade} {subject} syllabus and solving...</span>
-                </div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-
-          {/* Speech Error Banner */}
-          {speechError && (
-            <div className="px-4 py-1.5 bg-amber-500/10 border-t border-amber-500/20 text-amber-300 text-[11px] flex items-center gap-1.5">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-              <span>{speechError}</span>
-            </div>
-          )}
-
-          {/* Voice Listening Banner */}
-          {isListening && (
-            <div className="px-4 py-2 bg-rose-500/20 border-t border-rose-500/30 flex items-center justify-between text-rose-300 text-xs">
-              <div className="flex items-center gap-2 font-bold">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-                <span>Listening to your voice... Speak clearly</span>
-              </div>
-              <button
-                type="button"
-                onClick={toggleSpeechRecognition}
-                className="text-[11px] font-bold px-2 py-0.5 rounded bg-rose-500/30 text-white"
-              >
-                Done
-              </button>
-            </div>
-          )}
-
-          {/* Chat Input Bar */}
-          <div className="p-4 border-t border-white/10 bg-surface-darker">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendMessage();
-              }}
-              className="flex items-center gap-2"
-            >
-              <button
-                type="button"
-                onClick={toggleSpeechRecognition}
-                className={`flex h-11 w-11 items-center justify-center rounded-xl transition-all shadow-md shrink-0 ${
-                  isListening
-                    ? 'bg-rose-600 text-white animate-pulse shadow-glow-rose ring-2 ring-rose-400'
-                    : 'bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10'
-                }`}
-                title="Voice Dictation (Speech-to-Text)"
-              >
-                {isListening ? <MicOff className="w-4 h-4 text-white" /> : <Mic className="w-4 h-4 text-rose-400" />}
-              </button>
-
-              <input
-                type="text"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder={`Ask anything about ${subject} (e.g. explain formula, test me, step-by-step calculation)...`}
-                className="flex-1 rounded-xl bg-surface-dark border border-white/10 px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-
-              <button
-                type="submit"
-                disabled={loading || !inputText.trim()}
-                className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-r from-brand-600 to-brand-700 text-white shadow-glow-indigo disabled:opacity-50 transition-all hover:scale-105 active:scale-95 shrink-0"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* Right Sidebar: Saved Conversations & Syllabus Guide (4 Cols) */}
-        <div className="lg:col-span-4 space-y-4">
-          {/* Saved Conversations Drawer */}
-          <div className="rounded-3xl bg-surface-dark border border-white/10 p-5 shadow-xl space-y-3">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <div className="flex items-center gap-2">
-                <History className="w-4 h-4 text-brand-400" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-white">
-                  Saved Sessions ({subject})
-                </h3>
-              </div>
-              <button
-                onClick={() => handleStartNewSession()}
-                className="text-[11px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
-              >
-                <PlusCircle className="w-3.5 h-3.5" />
-                <span>New</span>
-              </button>
-            </div>
-
-            {loadingConversations ? (
-              <div className="py-6 flex items-center justify-center">
-                <LoadingSpinner size="sm" />
-              </div>
-            ) : conversations.length > 0 ? (
-              <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
-                {conversations.map((c) => {
-                  const isSelected = activeConversationId === c.id;
-                  return (
-                    <div
-                      key={c.id}
-                      onClick={() => handleSelectConversation(c)}
-                      className={`p-3 rounded-2xl border text-xs cursor-pointer transition-all flex items-start justify-between gap-2 ${
-                        isSelected
-                          ? 'bg-brand-600/20 border-brand-500/50 shadow-glow-indigo'
-                          : 'bg-surface-darker hover:bg-white/5 border-white/5 text-slate-300'
-                      }`}
-                    >
-                      <div className="space-y-1 min-w-0">
-                        <p className="font-bold text-white line-clamp-1">{c.title || c.topic}</p>
-                        <p className="text-[10px] text-slate-400 line-clamp-1">{c.last_message_preview || 'No messages yet'}</p>
-                        <div className="flex items-center gap-2 text-[9.5px] text-cyan-400">
-                          <span>{c.message_count || 0} messages</span>
-                          <span>•</span>
-                          <span>{new Date(c.updated_at).toLocaleDateString()}</span>
-                        </div>
                       </div>
 
                       <button
-                        onClick={(e) => handleDeleteSession(e, c.id)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0"
-                        title="Delete Session"
+                        onClick={() => setShowModelAnswer(!showModelAnswer)}
+                        className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-colors"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        {showModelAnswer ? 'Hide Memo' : 'View CAPS Model Memo'}
                       </button>
                     </div>
-                  );
-                })}
+                  </div>
+
+                  {/* Evaluation Results Card */}
+                  {evaluationResult && (
+                    <div className="rounded-2xl bg-surface-darker border border-emerald-500/40 p-4 space-y-3 shadow-lg animate-in fade-in duration-300">
+                      <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                        <div className="flex items-center gap-2">
+                          <Award className="w-5 h-5 text-violet-400" />
+                          <span className="text-xs font-bold text-white uppercase tracking-wider">CAPS Rubric Evaluation</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-emerald-400">
+                            {evaluationResult.estimatedMark} Marks
+                          </span>
+                          <span className="text-xs font-bold text-slate-400">
+                            ({evaluationResult.percentage})
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Feedback banner */}
+                      <p className="text-xs text-slate-200 leading-relaxed font-medium">
+                        {evaluationResult.feedback}
+                      </p>
+
+                      {/* Keyword Breakdown */}
+                      <div className="space-y-2 pt-1">
+                        <div>
+                          <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1 mb-1">
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Matched Scientific Keywords ({evaluationResult.matchedTerms?.length || 0}):</span>
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {evaluationResult.matchedTerms?.length > 0 ? (
+                              evaluationResult.matchedTerms.map((term: string, i: number) => (
+                                <span key={i} className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                                  ✓ {term}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-[11px] text-slate-500">None detected.</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="text-[11px] font-bold text-violet-400 flex items-center gap-1 mb-1">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            <span>Missing Technical Terms to Include ({evaluationResult.missingTerms?.length || 0}):</span>
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {evaluationResult.missingTerms?.map((term: string, i: number) => (
+                              <span key={i} className="px-2 py-0.5 rounded-md bg-violet-500/15 text-violet-300 border border-violet-500/25 text-[10px] font-medium">
+                                • {term}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rubric Checklist Accordion */}
+                      <div className="pt-2 border-t border-white/5">
+                        <button
+                          onClick={() => setShowRubricDetails(!showRubricDetails)}
+                          className="flex items-center justify-between w-full text-xs font-bold text-slate-300 hover:text-white"
+                        >
+                          <span>Official DBE Marking Criteria ({evaluationResult.rubricChecklist?.length} Points)</span>
+                          {showRubricDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+                        {showRubricDetails && (
+                          <div className="mt-2 space-y-1 bg-surface-dark/80 p-3 rounded-xl border border-white/5">
+                            {evaluationResult.rubricChecklist?.map((point: string, idx: number) => (
+                              <div key={idx} className="text-[11px] text-slate-300 flex items-start gap-1.5">
+                                <span className="text-emerald-400 font-bold">•</span>
+                                <span>{point}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Common Misconception Warning Banner */}
+                  {selectedLsItem.common_misconceptions && (
+                    <div className="p-3.5 rounded-2xl bg-violet-950/40 border border-violet-500/30 text-violet-200 text-xs space-y-1">
+                      <div className="flex items-center gap-1.5 font-bold text-violet-300">
+                        <AlertTriangle className="w-4 h-4 text-violet-400 shrink-0" />
+                        <span>Common NSC Candidate Trap / Pitfall:</span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed text-violet-100/90">
+                        {selectedLsItem.common_misconceptions}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Official Model Answer Drawer */}
+                  {showModelAnswer && (
+                    <div className="p-4 rounded-2xl bg-surface-darker border border-cyan-500/30 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-cyan-300 uppercase tracking-wider">
+                          Official CAPS Model Memo
+                        </span>
+                        <Badge variant="cyan" size="sm">DBE Standard</Badge>
+                      </div>
+                      <div className="text-xs text-slate-200 whitespace-pre-line leading-relaxed font-mono bg-surface-dark/60 p-3 rounded-xl">
+                        {selectedLsItem.model_answer}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="py-20 text-center text-slate-400 text-xs space-y-2">
+                  <Dna className="w-8 h-8 mx-auto text-slate-600" />
+                  <p>Select a Life Sciences question from the left panel to begin.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Main Chat Interface Grid */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Left / Center Chat Pane (8 Cols) */}
+          <div className="lg:col-span-8 rounded-3xl bg-surface-dark border border-white/10 shadow-xl flex flex-col h-[650px] overflow-hidden">
+            {/* Active Context Bar */}
+            <div className="px-5 py-3 border-b border-white/10 bg-surface-darker/80 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs font-bold text-white font-display">
+                  {isLanguageSubject ? `${selectedLanguage} Specialist` : `${subject} Specialist`}
+                </span>
+                <span className="text-[11px] text-slate-400 truncate max-w-[280px]">• {currentTopic}</span>
               </div>
-            ) : (
-              <div className="py-5 text-center text-slate-400 text-xs space-y-1">
-                <MessageSquare className="w-6 h-6 mx-auto text-slate-600" />
-                <p>No saved conversations for {subject} yet.</p>
-                <p className="text-[10px] text-slate-500">Every question you ask will be saved automatically here.</p>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => handleSendMessage(`Please provide a comprehensive study guide for ${subject} on "${currentTopic}". Include key definitions, formulas, rules, and exam tips.`)}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 font-bold text-[11px] border border-brand-500/30 transition-colors"
+                >
+                  <BookOpen className="w-3 h-3" />
+                  <span>Explain Topic</span>
+                </button>
+                <button
+                  onClick={() => handleSendMessage(`Generate a South African CAPS examination practice question for Grade ${learnerGrade} ${subject} on "${currentTopic}". Include mark allocation [e.g. 5 Marks] and test my problem solving.`)}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 font-bold text-[11px] border border-cyan-500/30 transition-colors"
+                >
+                  <HelpCircle className="w-3 h-3" />
+                  <span>Practice Exam Question</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {messages.map((msg) => {
+                const isAi = msg.sender === 'ai';
+                return (
+                  <div
+                    key={msg.id}
+                    className={`flex items-start gap-3 ${isAi ? 'justify-start' : 'justify-end'}`}
+                  >
+                    {isAi && (
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-white text-xs font-bold shrink-0 mt-1 shadow-sm">
+                        <FusionAIIcon className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+
+                    <div
+                      className={`max-w-[88%] rounded-2xl p-4 text-xs leading-relaxed ${
+                        isAi
+                          ? 'bg-surface-darker border border-white/10 text-slate-200'
+                          : 'bg-brand-600 text-white shadow-glow-indigo'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-4 mb-1.5 opacity-60 text-[10px]">
+                        <span className="font-bold">
+                          {isAi ? `${isLanguageSubject ? selectedLanguage : subject} Tutor` : 'You'}
+                        </span>
+                        <span>{msg.timestamp}</span>
+                      </div>
+
+                      <div className="whitespace-pre-wrap space-y-2">
+                        {msg.text}
+                      </div>
+
+                      {/* Interactive AI Suggestion Action Pills */}
+                      {isAi && msg.suggestions && msg.suggestions.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
+                          <p className="text-[10.5px] font-bold text-slate-400 flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-amber-400" />
+                            <span>Suggested Next Steps:</span>
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {msg.suggestions.map((sugg, sIdx) => (
+                              <button
+                                key={sIdx}
+                                onClick={() => handleSendMessage(sugg)}
+                                className="px-2.5 py-1 rounded-lg bg-brand-500/10 hover:bg-brand-500/25 text-brand-300 text-[11px] font-medium border border-brand-500/20 text-left transition-all hover:scale-[1.02]"
+                              >
+                                {sugg}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {isAi && (
+                        <div className="flex flex-wrap items-center gap-2 mt-3 pt-2 border-t border-white/5">
+                          <button
+                            type="button"
+                            onClick={() => toggleReadAloud(msg.id, msg.text)}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                              speakingMsgId === msg.id && isSpeaking
+                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-glow-emerald animate-pulse'
+                                : 'bg-white/5 hover:bg-white/10 text-emerald-300'
+                            }`}
+                          >
+                            {speakingMsgId === msg.id && isSpeaking ? (
+                              <>
+                                <VolumeX className="w-3 h-3 text-white" />
+                                <span>Speaking...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Volume2 className="w-3 h-3 text-emerald-400" />
+                                <span>Read Aloud</span>
+                              </>
+                            )}
+                          </button>
+
+                          <button
+                            onClick={() => handleSendMessage(`Can you explain this simpler with a simple South African real-world analogy: "${msg.text.slice(0, 70)}..."`)}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[10px] text-brand-300 font-medium transition-colors"
+                          >
+                            <Lightbulb className="w-3 h-3" />
+                            <span>Explain with Analogy</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {loading && (
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-brand-600/30 flex items-center justify-center text-brand-400">
+                    <FusionAIIcon className="w-4 h-4 text-cyan-400" variant="pulse" />
+                  </div>
+                  <div className="rounded-2xl bg-surface-darker border border-white/10 p-3 text-xs text-slate-400 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                    <span>Reviewing Grade {learnerGrade} {subject} syllabus and solving...</span>
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Speech Error Banner */}
+            {speechError && (
+              <div className="px-4 py-1.5 bg-amber-500/10 border-t border-amber-500/20 text-amber-300 text-[11px] flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span>{speechError}</span>
               </div>
             )}
+
+            {/* Voice Listening Banner */}
+            {isListening && (
+              <div className="px-4 py-2 bg-rose-500/20 border-t border-rose-500/30 flex items-center justify-between text-rose-300 text-xs">
+                <div className="flex items-center gap-2 font-bold">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+                  <span>Listening to your voice... Speak clearly</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleSpeechRecognition}
+                  className="text-[11px] font-bold px-2 py-0.5 rounded bg-rose-500/30 text-white"
+                >
+                  Done
+                </button>
+              </div>
+            )}
+
+            {/* Chat Input Bar */}
+            <div className="p-4 border-t border-white/10 bg-surface-darker">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSendMessage();
+                }}
+                className="flex items-center gap-2"
+              >
+                <button
+                  type="button"
+                  onClick={toggleSpeechRecognition}
+                  className={`flex h-11 w-11 items-center justify-center rounded-xl transition-all shadow-md shrink-0 ${
+                    isListening
+                      ? 'bg-rose-600 text-white animate-pulse shadow-glow-rose ring-2 ring-rose-400'
+                      : 'bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10'
+                  }`}
+                  title="Voice Dictation (Speech-to-Text)"
+                >
+                  {isListening ? <MicOff className="w-4 h-4 text-white" /> : <Mic className="w-4 h-4 text-rose-400" />}
+                </button>
+
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder={`Ask anything about ${subject} (e.g. explain formula, test me, step-by-step calculation)...`}
+                  className="flex-1 rounded-xl bg-surface-dark border border-white/10 px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+
+                <button
+                  type="submit"
+                  disabled={loading || !inputText.trim()}
+                  className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-r from-brand-600 to-brand-700 text-white shadow-glow-indigo disabled:opacity-50 transition-all hover:scale-105 active:scale-95 shrink-0"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
+            </div>
           </div>
 
-          {/* Academic CAPS Guidelines Card */}
-          <div className="rounded-3xl bg-surface-dark border border-white/10 p-5 shadow-xl space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-400" />
-              <span>CAPS Tutor Capabilities</span>
-            </h3>
-            <div className="space-y-2 text-xs text-slate-300">
-              <div className="p-2.5 rounded-xl bg-surface-darker border border-white/5 flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold text-white">Syllabus-Aligned Answers</p>
-                  <p className="text-[10.5px] text-slate-400">Explanations strictly adhere to the South African Department of Basic Education standards.</p>
+          {/* Right Sidebar: Saved Conversations & Syllabus Guide (4 Cols) */}
+          <div className="lg:col-span-4 space-y-4">
+            {/* Saved Conversations Drawer */}
+            <div className="rounded-3xl bg-surface-dark border border-white/10 p-5 shadow-xl space-y-3">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <History className="w-4 h-4 text-brand-400" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-white">
+                    Saved Sessions ({subject})
+                  </h3>
                 </div>
+                <button
+                  onClick={() => handleStartNewSession()}
+                  className="text-[11px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>New</span>
+                </button>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-surface-darker border border-white/5 flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold text-white">Strict Academic Focus</p>
-                  <p className="text-[10.5px] text-slate-400">Guards against off-topic distractions to maximize your study productivity.</p>
+              {loadingConversations ? (
+                <div className="py-6 flex items-center justify-center">
+                  <LoadingSpinner size="sm" />
                 </div>
-              </div>
+              ) : conversations.length > 0 ? (
+                <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                  {conversations.map((c) => {
+                    const isSelected = activeConversationId === c.id;
+                    return (
+                      <div
+                        key={c.id}
+                        onClick={() => handleSelectConversation(c)}
+                        className={`p-3 rounded-2xl border text-xs cursor-pointer transition-all flex items-start justify-between gap-2 ${
+                          isSelected
+                            ? 'bg-brand-600/20 border-brand-500/50 shadow-glow-indigo'
+                            : 'bg-surface-darker hover:bg-white/5 border-white/5 text-slate-300'
+                        }`}
+                      >
+                        <div className="space-y-1 min-w-0">
+                          <p className="font-bold text-white line-clamp-1">{c.title || c.topic}</p>
+                          <p className="text-[10px] text-slate-400 line-clamp-1">{c.last_message_preview || 'No messages yet'}</p>
+                          <div className="flex items-center gap-2 text-[9.5px] text-cyan-400">
+                            <span>{c.message_count || 0} messages</span>
+                            <span>•</span>
+                            <span>{new Date(c.updated_at).toLocaleDateString()}</span>
+                          </div>
+                        </div>
 
-              <div className="p-2.5 rounded-xl bg-surface-darker border border-white/5 flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold text-white">Persistent Multi-Session Memory</p>
-                  <p className="text-[10.5px] text-slate-400">Continue previous study sessions or start fresh whenever you tackle new topics.</p>
+                        <button
+                          onClick={(e) => handleDeleteSession(e, c.id)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0"
+                          title="Delete Session"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-5 text-center text-slate-400 text-xs space-y-1">
+                  <MessageSquare className="w-6 h-6 mx-auto text-slate-600" />
+                  <p>No saved conversations for {subject} yet.</p>
+                  <p className="text-[10px] text-slate-500">Every question you ask will be saved automatically here.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Academic CAPS Guidelines Card */}
+            <div className="rounded-3xl bg-surface-dark border border-white/10 p-5 shadow-xl space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-violet-400" />
+                <span>CAPS Tutor Capabilities</span>
+              </h3>
+              <div className="space-y-2 text-xs text-slate-300">
+                <div className="p-2.5 rounded-xl bg-surface-darker border border-white/5 flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-white">Syllabus-Aligned Answers</p>
+                    <p className="text-[10.5px] text-slate-400">Explanations strictly adhere to the South African Department of Basic Education standards.</p>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-surface-darker border border-white/5 flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-white">Strict Academic Focus</p>
+                    <p className="text-[10.5px] text-slate-400">Guards against off-topic distractions to maximize your study productivity.</p>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-surface-darker border border-white/5 flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-white">Persistent Multi-Session Memory</p>
+                    <p className="text-[10.5px] text-slate-400">Continue previous study sessions or start fresh whenever you tackle new topics.</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
+

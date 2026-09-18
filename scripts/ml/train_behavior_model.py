@@ -8,8 +8,11 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, HistGradientBoostingClassifier, HistGradientBoostingRegressor
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.svm import SVC, SVR
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.cluster import KMeans
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, mean_absolute_error, mean_squared_error, r2_score, silhouette_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, average_precision_score, mean_absolute_error, mean_squared_error, r2_score, silhouette_score
 from sklearn.inspection import permutation_importance
 import joblib
 
@@ -90,7 +93,10 @@ def main():
 
     clf_models = {
         'LogisticRegression': LogisticRegression(max_iter=1000, random_state=42),
+        'DecisionTree': DecisionTreeClassifier(max_depth=6, random_state=42),
         'RandomForest': RandomForestClassifier(n_estimators=150, max_depth=8, random_state=42),
+        'SupportVectorMachine': SVC(kernel='rbf', probability=True, random_state=42),
+        'KNN': KNeighborsClassifier(n_neighbors=7),
         'HistGradientBoosting': HistGradientBoostingClassifier(max_iter=120, random_state=42)
     }
 
@@ -109,6 +115,7 @@ def main():
         rec = recall_score(y_test_cls, y_pred, zero_division=0)
         f1 = f1_score(y_test_cls, y_pred, zero_division=0)
         auc = roc_auc_score(y_test_cls, y_proba)
+        pr_auc = average_precision_score(y_test_cls, y_proba)
 
         cv_scores = cross_val_score(model, X_train_trans, y_train_cls, cv=5, scoring='accuracy')
 
@@ -118,12 +125,13 @@ def main():
             'Recall': rec,
             'F1-Score': f1,
             'ROC-AUC': auc,
+            'PR-AUC': pr_auc,
             'CV-Accuracy': cv_scores.mean()
         }
 
         print(f"[{name}]")
         print(f"    - Accuracy: {acc:.1%} (5-Fold CV: {cv_scores.mean():.1%})")
-        print(f"    - ROC-AUC: {auc:.4f} | Precision: {prec:.1%} | Recall: {rec:.1%} | F1: {f1:.4f}")
+        print(f"    - ROC-AUC: {auc:.4f} | PR-AUC: {pr_auc:.4f} | Precision: {prec:.1%} | Recall: {rec:.1%} | F1: {f1:.4f}")
 
         if auc > best_clf_score:
             best_clf_score = auc
@@ -139,7 +147,10 @@ def main():
 
     reg_models = {
         'Ridge': Ridge(alpha=1.0),
+        'DecisionTree': DecisionTreeRegressor(max_depth=6, random_state=42),
         'RandomForest': RandomForestRegressor(n_estimators=150, max_depth=8, random_state=42),
+        'SupportVectorRegressor': SVR(kernel='rbf'),
+        'KNN': KNeighborsRegressor(n_neighbors=7),
         'HistGradientBoosting': HistGradientBoostingRegressor(max_iter=120, random_state=42)
     }
 

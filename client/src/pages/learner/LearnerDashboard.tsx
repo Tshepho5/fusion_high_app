@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
+import { ErrorBoundary } from '../../components/common/ErrorBoundary';
 import { LearnerOverview } from './LearnerOverview';
 import { LearnerSubjects } from './LearnerSubjects';
 import { LearnerAITutor } from './LearnerAITutor';
@@ -21,7 +22,11 @@ import { LearnerAssignments } from '../../components/learner/LearnerAssignments'
 import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
 import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
 import { FusionArcadeHub } from '../../components/learner/FusionArcadeHub';
-import { ArrowLeft, ChevronRight, Home } from 'lucide-react';
+import { LearnerNavigationBar, getLearnerPrimaryTabFromActive } from '../../components/learner/LearnerNavigationBar';
+import { LearnerMoreHub } from './LearnerMoreHub';
+import { LearnerDiscoverHub } from './LearnerDiscoverHub';
+import { LearnerCalendarHub } from './LearnerCalendarHub';
+import { ArrowLeft, ChevronRight, Home, LayoutGrid, Compass, Calendar, MessageSquare } from 'lucide-react';
 
 export const LearnerDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -60,55 +65,124 @@ export const LearnerDashboard: React.FC = () => {
 
   const getTabTitle = () => {
     switch (activeTab) {
-      case 'subjects': return 'My Subjects';
-      case 'performance': return 'Subject Academic Performance';
-      case 'ai-tutor': return 'CAPS AI Study Tutor';
-      case 'career-advisor': return 'Matric APS & University Career Advisor';
-      case 'bursaries': return 'NSFAS & Tertiary Bursary Matching Engine';
-      case 'finance': return 'School Fee Statements & Receipts';
-      case 'exam-seating': return 'Examination Seating & Candidate Slips';
-      case 'sports': return 'Sports & Extracurricular Clubs';
-      case 'inter-school': return 'Inter-School Derbies, Sports & Academic Olympiads';
-      case 'textbooks': return 'My Issued Textbooks';
-      case 'assignments': return 'Homework & Digital Assignments Hub';
-      case 'arcade': return 'Fusion Arcade & CAPS Study Games';
-      case 'reports': return 'Official CAPS Term Report Card';
-      case 'timetable': return 'Weekly Timetable';
-      case 'calendar': return 'Academic & Events Calendar';
-      case 'announcements': return 'School Notices & Broadcasts';
-      case 'messages': return 'Message Center';
-      case 'settings': return 'App & Technical Settings';
-      case 'profile': return 'My Profile & Student ID';
+      case 'home':
       case 'overview':
-      default: return 'Home';
+        return 'Home & Enrolled Subjects';
+      case 'subjects':
+        return 'My Subjects Workspace';
+      case 'performance':
+        return 'Subject Academic Performance';
+      case 'ai-tutor':
+        return 'CAPS AI Study Tutor & Exam Studios';
+      case 'career-advisor':
+        return 'Matric APS & University Career Advisor';
+      case 'bursaries':
+        return 'NSFAS & Tertiary Bursary Matching Engine';
+      case 'finance':
+        return 'School Fee Statements & Receipts';
+      case 'exam-seating':
+        return 'Examination Seating & Candidate Slips';
+      case 'sports':
+        return 'Sports & Extracurricular Clubs';
+      case 'inter-school':
+        return 'Inter-School Derbies, Sports & Academic Olympiads';
+      case 'textbooks':
+        return 'My Issued Textbooks';
+      case 'assignments':
+        return 'Homework & Digital Assignments Hub';
+      case 'arcade':
+        return 'Fusion Arcade & CAPS Study Games';
+      case 'reports':
+        return 'Official CAPS Term Report Card';
+      case 'calendar':
+      case 'timetable':
+        return 'Class Timetable & School Calendar';
+      case 'discover':
+        return 'Discover Learning Innovation';
+      case 'more':
+        return 'More Modules & Quick Functions';
+      case 'announcements':
+        return 'School Notices & Broadcasts';
+      case 'messages':
+        return 'Communication Hub';
+      case 'settings':
+        return 'App & Technical Settings';
+      case 'profile':
+        return 'My Profile & Digital Student ID Card';
+      default:
+        return 'Learner Workspace';
     }
   };
+
+  const isSubModule =
+    activeTab !== 'overview' &&
+    activeTab !== 'home' &&
+    activeTab !== 'calendar' &&
+    activeTab !== 'profile' &&
+    activeTab !== 'messages' &&
+    activeTab !== 'more';
+
+  // Determine intelligent backtrack target
+  const getBacktrackConfig = () => {
+    if (activeTab === 'subjects') {
+      return { target: 'overview', label: 'Back to Subjects', parentLabel: 'Home' };
+    }
+    if (activeTab === 'discover') {
+      return { target: 'more', label: 'Back to More Modules', parentLabel: 'More Modules' };
+    }
+    if (activeTab === 'ai-tutor' || activeTab === 'career-advisor' || activeTab === 'arcade' || activeTab === 'inter-school') {
+      return { target: 'discover', label: 'Back to Discover', parentLabel: 'Discover' };
+    }
+    if (activeTab === 'timetable') {
+      return { target: 'calendar', label: 'Back to Calendar', parentLabel: 'Calendar' };
+    }
+    if (activeTab === 'announcements') {
+      return { target: 'messages', label: 'Back to Messages', parentLabel: 'Messages' };
+    }
+    return { target: 'more', label: 'Back to More Modules', parentLabel: 'More Modules' };
+  };
+
+  const backtrack = getBacktrackConfig();
 
   return (
     <DashboardLayout
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
+      customBottomDock={
+        <div className="fixed bottom-3 inset-x-0 md:left-72 z-40 flex justify-center items-center pointer-events-none select-none animate-bounce-in px-2 sm:px-4">
+          <div className="pointer-events-auto">
+            <LearnerNavigationBar
+              activeTab={activeTab}
+              onSelectTab={handleSelectTab}
+            />
+          </div>
+        </div>
+      }
     >
-      {/* Universal Module Backtrack Navigation Bar */}
-      {activeTab !== 'overview' && (
+      {/* Universal Breadcrumb & Backtrack Bar for Sub-Modules */}
+      {isSubModule && (
         <div className="flex items-center justify-between gap-3 p-3 mb-6 rounded-2xl bg-surface-dark border border-white/10 shadow-sm animate-fade-in">
           <button
-            onClick={() => handleSelectTab('overview')}
-            className="px-3.5 py-1.5 rounded-xl bg-surface-darker hover:bg-white/10 border border-white/10 hover:border-brand-500/40 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-2 transition-all shadow-sm group"
-            title="Back to Main Overview"
+            onClick={() => handleSelectTab(backtrack.target)}
+            className="px-3.5 py-1.5 rounded-xl bg-surface-darker hover:bg-white/10 border border-white/10 hover:border-brand-500/40 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-2 transition-all shadow-sm group cursor-pointer"
+            title={backtrack.label}
           >
             <ArrowLeft className="w-4 h-4 text-cyan-400 group-hover:-translate-x-1 transition-transform" />
-            <span>Back to Overview</span>
+            <span>{backtrack.label}</span>
           </button>
 
           <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 font-mono">
             <button
-              onClick={() => handleSelectTab('overview')}
-              className="hover:text-white flex items-center gap-1 transition-colors"
+              onClick={() => handleSelectTab(backtrack.target)}
+              className="hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
             >
-              <Home className="w-3.5 h-3.5 text-brand-400" />
-              <span>Overview</span>
+              {backtrack.parentLabel === 'More Modules' && <LayoutGrid className="w-3.5 h-3.5 text-cyan-400" />}
+              {backtrack.parentLabel === 'Discover' && <Compass className="w-3.5 h-3.5 text-purple-400" />}
+              {backtrack.parentLabel === 'Home' && <Home className="w-3.5 h-3.5 text-brand-400" />}
+              {backtrack.parentLabel === 'Messages' && <MessageSquare className="w-3.5 h-3.5 text-sky-400" />}
+              {backtrack.parentLabel === 'Calendar' && <Calendar className="w-3.5 h-3.5 text-indigo-400" />}
+              <span>{backtrack.parentLabel}</span>
             </button>
             <ChevronRight className="w-3 h-3 text-slate-600" />
             <span className="text-cyan-300 font-bold">{getTabTitle()}</span>
@@ -116,9 +190,41 @@ export const LearnerDashboard: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'overview' && (
-        <LearnerOverview onNavigateTab={handleSelectTab} />
+      {/* ========================================================================= */}
+      {/* 1. PRIMARY DOCK TABS                                                      */}
+      {/* ========================================================================= */}
+      {(activeTab === 'overview' || activeTab === 'home') && (
+        <ErrorBoundary fallbackTitle="Home Dashboard Interrupted" fallbackMessage="Could not load your subject hub right now. Your enrolled courses and marks are safe.">
+          <LearnerOverview onNavigateTab={handleSelectTab} />
+        </ErrorBoundary>
       )}
+
+      {activeTab === 'calendar' && (
+        <LearnerCalendarHub initialSubTab="timetable" />
+      )}
+
+      {activeTab === 'profile' && (
+        <LearnerProfile />
+      )}
+
+      {activeTab === 'discover' && (
+        <LearnerDiscoverHub
+          onNavigateTab={handleSelectTab}
+          tutorContext={tutorContext}
+        />
+      )}
+
+      {activeTab === 'messages' && (
+        <LearnerMessages />
+      )}
+
+      {activeTab === 'more' && (
+        <LearnerMoreHub onNavigateTab={handleSelectTab} />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2. SUB-MODULE VIEWS (Zero data loss, directly accessible from More/Links)  */}
+      {/* ========================================================================= */}
       {activeTab === 'subjects' && (
         <LearnerSubjects onStartAITopic={handleStartAITopic} />
       )}
@@ -141,10 +247,7 @@ export const LearnerDashboard: React.FC = () => {
       {activeTab === 'textbooks' && <TextbookAssetTracker />}
       {activeTab === 'reports' && <CapsReportCard />}
       {activeTab === 'timetable' && <LearnerTimetable />}
-      {activeTab === 'calendar' && <SchoolCalendar />}
       {activeTab === 'announcements' && <AnnouncementsFeed />}
-      {activeTab === 'messages' && <LearnerMessages />}
-      {activeTab === 'profile' && <LearnerProfile />}
       {activeTab === 'settings' && <LearnerSettings />}
     </DashboardLayout>
   );

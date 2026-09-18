@@ -68,8 +68,8 @@ export const SubjectPerformanceView: React.FC = () => {
     if (mark >= 80) return { level: 7, label: 'Outstanding Achievement', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' };
     if (mark >= 70) return { level: 6, label: 'Meritorious Achievement', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' };
     if (mark >= 60) return { level: 5, label: 'Substantial Achievement', color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' };
-    if (mark >= 50) return { level: 4, label: 'Moderate Achievement', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' };
-    if (mark >= 40) return { level: 3, label: 'Adequate Achievement', color: 'text-orange-400 bg-orange-500/10 border-orange-500/20' };
+    if (mark >= 50) return { level: 4, label: 'Moderate Achievement', color: 'text-violet-400 bg-violet-500/10 border-violet-500/20' };
+    if (mark >= 40) return { level: 3, label: 'Adequate Achievement', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' };
     if (mark >= 30) return { level: 2, label: 'Elementary Achievement', color: 'text-rose-400 bg-rose-500/10 border-rose-500/20' };
     return { level: 1, label: 'Not Achieved', color: 'text-red-500 bg-red-500/10 border-red-500/20' };
   };

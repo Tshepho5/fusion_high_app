@@ -8,21 +8,18 @@ import { ContactUsModal } from './ContactUsModal';
 import { HelpSupportModal } from '../common/HelpSupportModal';
 import { FusionAppIcon } from '../common/FusionAppIcon';
 import {
+  Home,
   User,
-  Info,
-  Phone,
+  Settings,
+  HelpCircle,
   LogOut,
   X,
-  Sparkles,
-  LayoutGrid,
-  ShieldCheck,
   ChevronRight,
-  Headphones,
-  HelpCircle,
-  Bot,
+  Menu,
   GraduationCap,
-  Gamepad2,
-  Settings
+  Calendar,
+  MessageSquare,
+  Headphones,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -31,6 +28,8 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenMainMenu?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -38,7 +37,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   isOpen,
   onClose,
-  onOpenMainMenu,
+  isCollapsed = false,
+  onToggleCollapse,
 }) => {
   const { user, role, logout } = useAuth();
   const { theme } = useTheme();
@@ -47,12 +47,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const [aboutUsOpen, setAboutUsOpen] = useState(false);
   const [contactUsOpen, setContactUsOpen] = useState(false);
+  const [helpSupportOpen, setHelpSupportOpen] = useState(false);
+
+  // Active check for Home
+  const isHomeActive = ['overview', 'home', 'subjects', 'calendar', 'timetable', 'messages', 'announcements'].includes(activeTab);
+  const isProfileActive = activeTab === 'profile';
+  const isSettingsActive = activeTab === 'settings';
 
   return (
     <>
-      {/* Modals for About Us & Contact Us */}
+      {/* Modals */}
       <AboutUsModal isOpen={aboutUsOpen} onClose={() => setAboutUsOpen(false)} />
       <ContactUsModal isOpen={contactUsOpen} onClose={() => setContactUsOpen(false)} />
+      <HelpSupportModal isOpen={helpSupportOpen} onClose={() => setHelpSupportOpen(false)} />
 
       {/* Mobile Backdrop */}
       {isOpen && (
@@ -62,205 +69,507 @@ export const Sidebar: React.FC<SidebarProps> = ({
         />
       )}
 
-      {/* Streamlined Sidebar */}
+      {/* Modern Improved Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 h-full min-h-screen md:h-screen md:sticky md:top-0 flex-col border-r border-white/10 bg-surface-darker/95 backdrop-blur-2xl transition-[transform,background-color,border-color] duration-300 ease-in-out md:translate-x-0 select-none shadow-xl ${
-          isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+        className={`fixed inset-y-0 left-0 z-50 flex h-full min-h-screen md:h-screen md:sticky md:top-0 flex-col border-r transition-all duration-300 ease-in-out select-none shadow-xl ${
+          // Background & Border Tokens from design: #080D18, #202B3D
+          isLight
+            ? 'bg-white border-slate-200/90 text-slate-900'
+            : 'bg-[#080D18] border-[#202B3D] text-slate-100'
+        } ${
+          isCollapsed ? 'md:w-20' : 'md:w-72'
+        } ${
+          isOpen ? 'translate-x-0 w-72 shadow-2xl' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        {/* Brand Header */}
-        <div className="flex h-20 items-center justify-between px-5 border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div
-              className="flex h-11 w-11 items-center justify-center rounded-2xl p-0.5 border border-brand-500/30 shadow-sm shrink-0 overflow-hidden"
-              style={{
-                backgroundColor: `${currentSchool?.primary_color || '#4f46e5'}20`,
-                borderColor: `${currentSchool?.primary_color || '#4f46e5'}40`
-              }}
+        {/* ================= HEADER SECTION ================= */}
+        <div
+          className={`flex h-20 items-center shrink-0 px-4 border-b ${
+            isLight ? 'border-slate-200/80' : 'border-[#202B3D]'
+          } ${isCollapsed ? 'justify-center' : 'justify-between'}`}
+        >
+          {isCollapsed ? (
+            // Collapsed Header: Expand Hamburger Button
+            <button
+              onClick={onToggleCollapse}
+              className={`p-2.5 rounded-xl transition-all cursor-pointer ${
+                isLight
+                  ? 'text-slate-600 hover:text-slate-950 hover:bg-slate-100'
+                  : 'text-slate-300 hover:text-white hover:bg-[#111827]'
+              }`}
+              title="Expand Sidebar"
+              aria-label="Expand Sidebar"
             >
-              <FusionAppIcon className="w-9 h-9" />
-            </div>
-            <div className="min-w-0">
-              <span className="font-display text-sm font-extrabold tracking-tight text-white block truncate leading-tight uppercase">
-                {currentSchool?.name || 'FUSION HIGH'}
-              </span>
-              <span className="text-[8.5px] font-mono uppercase tracking-wider text-cyan-400 font-bold block truncate">
-                {currentSchool?.motto || 'ONE SCHOOL • ONE CONNECTION'}
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 md:hidden"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* User Profile Card */}
-        <div className="mx-4 my-3 p-3 rounded-2xl bg-surface-dark/90 border border-white/10 hover:border-brand-500/40 transition-all duration-300 hover:shadow-glow-indigo flex items-center gap-3 group shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600/40 to-cyan-500/40 border border-brand-500/30 flex items-center justify-center text-white font-bold text-sm overflow-hidden shrink-0 group-hover:scale-105 transition-transform relative">
-            <span className="select-none">
-              {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
-            </span>
-            {(user?.profile_picture || user?.profile_picture_path) && (
-              <img
-                src={getProfilePictureUrl(user.profile_picture || user.profile_picture_path)}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover"
-                onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
-              />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-white truncate group-hover:text-cyan-300 transition-colors">
-              {user?.full_name || user?.name || user?.email || 'User'}
-            </p>
-            <p className="text-[10px] text-brand-400 capitalize font-medium flex items-center gap-1 mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              {role} Account
-            </p>
-          </div>
-        </div>
-
-        {/* Quick Launch Button to Open Main Menu Grid */}
-        <div className="px-4 mb-2">
-          <button
-            onClick={() => {
-              if (onOpenMainMenu) onOpenMainMenu();
-              onClose();
-            }}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-brand-600/40 via-indigo-600/30 to-cyan-600/30 border border-brand-500/40 hover:border-cyan-400 hover:shadow-glow-cyan transition-all text-white font-bold text-xs group"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-6 h-6 rounded-lg bg-cyan-400/20 text-cyan-300 flex items-center justify-center group-hover:rotate-45 transition-transform">
-                <LayoutGrid className="w-3.5 h-3.5" />
+              <Menu className="w-5 h-5 text-cyan-400" />
+            </button>
+          ) : (
+            // Expanded Header: Logo + Title + Collapse Chevron
+            <>
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl p-0.5 border shadow-sm shrink-0 overflow-hidden"
+                  style={{
+                    backgroundColor: isLight ? '#EBF5FF' : '#111827',
+                    borderColor: isLight ? '#BFDBFE' : '#202B3D',
+                  }}
+                >
+                  <FusionAppIcon className="w-9 h-9" />
+                </div>
+                <div className="min-w-0">
+                  <span
+                    className={`font-display text-sm font-extrabold tracking-tight block truncate leading-tight uppercase ${
+                      isLight ? 'text-slate-900' : 'text-white'
+                    }`}
+                  >
+                    {currentSchool?.name || 'FUSION HIGH SCHOOL'}
+                  </span>
+                  <span className="text-[8.5px] font-mono uppercase tracking-wider text-cyan-400 font-bold block truncate">
+                    {currentSchool?.motto || 'INNOVATE, LEAD, TRANSFORM'}
+                  </span>
+                </div>
               </div>
-              <span className="font-display tracking-wide">Explore Main Menu</span>
-            </div>
-            <Sparkles className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
-          </button>
+
+              {/* Desktop Collapse Button / Mobile Close Button */}
+              <div className="flex items-center">
+                {onToggleCollapse && (
+                  <button
+                    onClick={onToggleCollapse}
+                    className={`hidden md:flex p-1.5 rounded-xl border transition-all cursor-pointer ${
+                      isLight
+                        ? 'text-slate-500 hover:text-slate-900 border-slate-200 hover:bg-slate-100'
+                        : 'text-slate-400 hover:text-white border-[#202B3D] hover:bg-[#111827]'
+                    }`}
+                    title="Collapse Sidebar"
+                    aria-label="Collapse Sidebar"
+                  >
+                    <ChevronRight className="w-4 h-4 transition-transform group-hover:scale-110" />
+                  </button>
+                )}
+                <button
+                  onClick={onClose}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 md:hidden"
+                  aria-label="Close Sidebar"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Navigation Area with FUSION SUPPORT HUB */}
-        <nav className="flex-1 px-4 py-2 space-y-3 overflow-y-auto custom-scrollbar">
-          
-          {/* Section 1: Account Navigation */}
-          <div className="space-y-1">
-            <p className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-extrabold px-3 py-0.5">
-              My Workspace
-            </p>
-
+        {/* ================= USER PROFILE CARD ================= */}
+        {isCollapsed ? (
+          // Collapsed Profile: Centered Avatar
+          <div className="py-4 flex flex-col items-center shrink-0">
             <button
               onClick={() => {
                 onSelectTab('profile');
                 onClose();
               }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
-                activeTab === 'profile'
-                  ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-glow-indigo border border-brand-400/40'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5 border border-transparent'
+              className="relative group p-1 rounded-2xl hover:scale-105 transition-transform cursor-pointer"
+              title={`${user?.full_name || 'Learner'} (Profile)`}
+            >
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-500 to-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-md overflow-hidden relative">
+                <span className="select-none">
+                  {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'L'}
+                </span>
+                {(user?.profile_picture || user?.profile_picture_path) && (
+                  <img
+                    src={getProfilePictureUrl(user.profile_picture || user.profile_picture_path)}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                )}
+              </div>
+              <span className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-[#22C55E] ring-2 ring-[#080D18]" />
+            </button>
+          </div>
+        ) : (
+          // Expanded Profile Card matching Image 1
+          <div className="mx-4 my-3">
+            <div
+              onClick={() => {
+                onSelectTab('profile');
+                onClose();
+              }}
+              className={`p-3 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center justify-between group shadow-sm ${
+                isLight
+                  ? 'bg-slate-50 hover:bg-slate-100/90 border-slate-200'
+                  : 'bg-[#111827] hover:bg-[#162032] border-[#202B3D] hover:border-cyan-500/40'
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Avatar */}
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-500 to-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-md overflow-hidden shrink-0 relative">
+                  <span className="select-none">
+                    {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'L'}
+                  </span>
+                  {(user?.profile_picture || user?.profile_picture_path) && (
+                    <img
+                      src={getProfilePictureUrl(user.profile_picture || user.profile_picture_path)}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <p
+                    className={`text-xs font-bold truncate transition-colors ${
+                      isLight ? 'text-slate-900 group-hover:text-blue-600' : 'text-white group-hover:text-cyan-300'
+                    }`}
+                  >
+                    {user?.full_name || 'Learner'}
+                  </p>
+                  <p className="text-[10px] text-slate-400 capitalize font-medium flex items-center gap-1.5 mt-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
+                    {role === 'learner' ? `Grade ${user?.grade || user?.academic?.grade || '12'}` : 'Learner Account'}
+                  </p>
+                </div>
+              </div>
+
+              <ChevronRight
+                className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${
+                  isLight ? 'text-slate-400' : 'text-slate-500'
+                }`}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ================= NAVIGATION ITEMS ================= */}
+        <nav className={`flex-1 overflow-y-auto custom-scrollbar py-2 ${isCollapsed ? 'px-2 space-y-3' : 'px-4 space-y-1.5'}`}>
+          {/* 1. HOME */}
+          {isCollapsed ? (
+            <div className="flex justify-center">
+              <button
+                onClick={() => {
+                  onSelectTab('overview');
+                  onClose();
+                }}
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer ${
+                  activeTab === 'home'
+                    ? 'bg-[#1e50e2] text-white shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                title="Home"
+                aria-label="Home"
+              >
+                <Home className="w-5 h-5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                onSelectTab('overview');
+                onClose();
+              }}
+              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group ${
+                activeTab === 'home'
+                  ? 'bg-[#1e50e2] text-white shadow-md'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
             >
               <div className="flex items-center gap-3">
-                <User className="w-4 h-4 text-brand-400" />
-                <span>My Profile</span>
+                <Home className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                <span>Home</span>
               </div>
-              <ChevronRight className="w-3.5 h-3.5 opacity-50" />
             </button>
+          )}
 
+          {/* 2. MY SUBJECTS (Matches Reference Picture Active Pill) */}
+          {isCollapsed ? (
+            <div className="flex justify-center">
+              <button
+                onClick={() => {
+                  onSelectTab('overview');
+                  onClose();
+                }}
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer ${
+                  isHomeActive
+                    ? 'bg-[#0284c7] text-white shadow-lg shadow-sky-500/30'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                title="My Subjects"
+                aria-label="My Subjects"
+              >
+                <GraduationCap className="w-5 h-5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                onSelectTab('overview');
+                onClose();
+              }}
+              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group ${
+                isHomeActive
+                  ? 'bg-[#0284c7] text-white shadow-lg shadow-sky-500/25 border border-sky-400/40'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <GraduationCap className={`w-4 h-4 ${isHomeActive ? 'text-white' : 'text-slate-400'}`} />
+                <span>My Subjects</span>
+              </div>
+            </button>
+          )}
+
+          {/* 3. CALENDAR */}
+          {isCollapsed ? (
+            <div className="flex justify-center">
+              <button
+                onClick={() => {
+                  onSelectTab('calendar');
+                  onClose();
+                }}
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer ${
+                  activeTab === 'calendar' || activeTab === 'timetable'
+                    ? 'bg-[#0284c7] text-white shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                title="Calendar & Timetable"
+                aria-label="Calendar"
+              >
+                <Calendar className="w-5 h-5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                onSelectTab('calendar');
+                onClose();
+              }}
+              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group ${
+                activeTab === 'calendar' || activeTab === 'timetable'
+                  ? 'bg-[#0284c7] text-white shadow-md'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Calendar className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                <span>Calendar</span>
+              </div>
+            </button>
+          )}
+
+          {/* 4. MESSAGES (With Badge 3) */}
+          {isCollapsed ? (
+            <div className="flex justify-center relative">
+              <button
+                onClick={() => {
+                  onSelectTab('messages');
+                  onClose();
+                }}
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer relative ${
+                  activeTab === 'messages'
+                    ? 'bg-[#0284c7] text-white shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                title="Messages"
+                aria-label="Messages"
+              >
+                <MessageSquare className="w-5 h-5" />
+                <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
+                  3
+                </span>
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                onSelectTab('messages');
+                onClose();
+              }}
+              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group ${
+                activeTab === 'messages'
+                  ? 'bg-[#0284c7] text-white shadow-md'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <MessageSquare className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                <span>Messages</span>
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold shadow-xs">
+                3
+              </span>
+            </button>
+          )}
+
+          {/* 5. PROFILE */}
+          {isCollapsed ? (
+            <div className="flex justify-center">
+              <button
+                onClick={() => {
+                  onSelectTab('profile');
+                  onClose();
+                }}
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer ${
+                  isProfileActive
+                    ? 'bg-[#0284c7] text-white shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                title="Profile"
+                aria-label="Profile"
+              >
+                <User className="w-5 h-5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                onSelectTab('profile');
+                onClose();
+              }}
+              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group ${
+                isProfileActive
+                  ? 'bg-[#0284c7] text-white shadow-md'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <User className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                <span>Profile</span>
+              </div>
+            </button>
+          )}
+
+          {/* 6. SETTINGS */}
+          {isCollapsed ? (
+            <div className="flex justify-center">
+              <button
+                onClick={() => {
+                  onSelectTab('settings');
+                  onClose();
+                }}
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer ${
+                  isSettingsActive
+                    ? 'bg-[#0284c7] text-white shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                title="Settings"
+                aria-label="Settings"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+            </div>
+          ) : (
             <button
               onClick={() => {
                 onSelectTab('settings');
                 onClose();
               }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
-                activeTab === 'settings'
-                  ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-glow-indigo border border-brand-400/40'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5 border border-transparent'
+              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group ${
+                isSettingsActive
+                  ? 'bg-[#0284c7] text-white shadow-md'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
             >
               <div className="flex items-center gap-3">
-                <Settings className="w-4 h-4 text-cyan-400" />
-                <span>Technical Settings</span>
+                <Settings className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                <span>Settings</span>
               </div>
-              <ChevronRight className="w-3.5 h-3.5 opacity-50" />
             </button>
+          )}
 
-            {role === 'learner' && (
+          {/* 7. HELP & SUPPORT */}
+          {isCollapsed ? (
+            <div className="flex justify-center">
               <button
                 onClick={() => {
-                  onSelectTab('arcade');
+                  setHelpSupportOpen(true);
                   onClose();
                 }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
-                  activeTab === 'arcade'
-                    ? 'bg-gradient-to-r from-amber-600 to-brand-600 text-white shadow-glow-indigo border border-amber-400/40'
-                    : 'text-slate-300 hover:text-white hover:bg-white/5 border border-transparent'
-                }`}
+                className="w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer text-slate-400 hover:text-white hover:bg-white/5"
+                title="Help & Support"
+                aria-label="Help & Support"
               >
-                <div className="flex items-center gap-3">
-                  <Gamepad2 className="w-4 h-4 text-amber-400" />
-                  <span>Fusion Arcade (Games)</span>
-                </div>
-                <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[8px] font-bold">XP</span>
+                <HelpCircle className="w-5 h-5" />
               </button>
-            )}
-          </div>
-
-          {/* School Info & Contact Links */}
-          <div className="space-y-1 pt-2">
-            <p className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-extrabold px-3 py-0.5">
-              Institutional Info
-            </p>
-
+            </div>
+          ) : (
             <button
               onClick={() => {
-                setAboutUsOpen(true);
+                setHelpSupportOpen(true);
                 onClose();
               }}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-all cursor-pointer border border-transparent"
+              className="w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group text-slate-300 hover:text-white hover:bg-white/5"
             >
-              <div className="flex items-center gap-2.5">
-                <Info className="w-3.5 h-3.5 text-cyan-400" />
-                <span>About Fusion High</span>
+              <div className="flex items-center gap-3">
+                <HelpCircle className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                <span>Help & Support</span>
               </div>
-              <span className="text-[9px] font-mono text-cyan-400/80 uppercase font-bold">Info</span>
             </button>
+          )}
 
+          {/* 8. LOGOUT */}
+          {isCollapsed ? (
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={logout}
+                className="w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer text-slate-400 hover:text-rose-400 hover:bg-white/5"
+                title="Logout"
+                aria-label="Logout"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
+          ) : (
             <button
-              onClick={() => {
-                setContactUsOpen(true);
-                onClose();
-              }}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-all cursor-pointer border border-transparent"
+              onClick={logout}
+              className="w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer group mt-1 text-slate-300 hover:text-rose-400 hover:bg-white/5"
             >
-              <div className="flex items-center gap-2.5">
-                <Phone className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Contact Us & Admin</span>
+              <div className="flex items-center gap-3">
+                <LogOut className="w-4 h-4 text-slate-400 group-hover:text-rose-400" />
+                <span>Logout</span>
               </div>
-              <span className="text-[9px] font-mono text-emerald-400/80 uppercase font-bold">Help</span>
             </button>
-          </div>
-
+          )}
         </nav>
 
-        {/* Clean Footer with Slogan & Logout that transitions seamlessly with theme */}
-        <div className="p-4 pt-3 pb-6 border-t border-white/10 space-y-2 shrink-0 bg-surface-darker/95 mt-auto transition-colors duration-300">
-          <div data-sidebar-slogan="true" className="p-2 rounded-xl bg-surface-dark/80 border border-white/10 text-center shadow-xs transition-colors duration-300">
-            <p className="text-[9.5px] font-mono text-cyan-300 font-extrabold tracking-tight">
-              "Connecting Today, Empowering Tomorrow."
-            </p>
+        {/* ================= BOTTOM FOOTER WAVE ================= */}
+        <div className="relative mt-auto pt-6 pb-5 px-4 overflow-hidden shrink-0">
+          {/* Ambient Wave Graphic Graphic matching Image 1 */}
+          <div className="absolute inset-0 pointer-events-none opacity-40">
+            <svg
+              viewBox="0 0 288 80"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-full h-full object-cover"
+              preserveAspectRatio="none"
+            >
+              <path
+                d="M0 45C50 25 110 65 170 40C230 15 260 50 288 35V80H0V45Z"
+                fill="url(#sidebarWaveGrad)"
+              />
+              <defs>
+                <linearGradient id="sidebarWaveGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#0284C7" stopOpacity="0.8" />
+                  <stop offset="50%" stopColor="#00B2FE" stopOpacity="0.6" />
+                  <stop offset="100%" stopColor="#22D3EE" stopOpacity="0.9" />
+                </linearGradient>
+              </defs>
+            </svg>
           </div>
 
-          <button
-            onClick={logout}
-            data-logout-button="true"
-            className="flex w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-xs font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white border border-rose-500/20 hover:border-rose-500/40 hover:shadow-glow-rose transition-all duration-200 group/logout cursor-pointer"
-          >
-            <LogOut className="w-4 h-4 text-rose-400 group-hover/logout:text-white transition-colors shrink-0" />
-            <span className="text-rose-400 group-hover/logout:text-white font-bold transition-colors">Sign Out</span>
-          </button>
+          {!isCollapsed ? (
+            <div className="relative z-10 text-center py-1">
+              <span className="slogan-script-text text-xl font-bold tracking-wide text-white drop-shadow-[0_2px_8px_rgba(2,132,199,0.5)] block">
+                Learn • Grow • Achieve
+              </span>
+            </div>
+          ) : (
+            <div className="relative z-10 flex justify-center py-1">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+            </div>
+          )}
         </div>
       </aside>
     </>

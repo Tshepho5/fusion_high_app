@@ -325,8 +325,8 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
     if (pct >= 80) return { level: 7, label: 'Outstanding', color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' };
     if (pct >= 70) return { level: 6, label: 'Meritorious', color: 'text-cyan-400 border-cyan-500/30 bg-cyan-500/10' };
     if (pct >= 60) return { level: 5, label: 'Substantial', color: 'text-blue-400 border-blue-500/30 bg-blue-500/10' };
-    if (pct >= 50) return { level: 4, label: 'Adequate', color: 'text-amber-400 border-amber-500/30 bg-amber-500/10' };
-    if (pct >= 40) return { level: 3, label: 'Moderate', color: 'text-orange-400 border-orange-500/30 bg-orange-500/10' };
+    if (pct >= 50) return { level: 4, label: 'Adequate', color: 'text-violet-400 border-violet-500/30 bg-violet-500/10' };
+    if (pct >= 40) return { level: 3, label: 'Moderate', color: 'text-purple-400 border-purple-500/30 bg-purple-500/10' };
     if (pct >= 30) return { level: 2, label: 'Elementary', color: 'text-rose-400 border-rose-500/30 bg-rose-500/10' };
     return { level: 1, label: 'Not Achieved', color: 'text-red-500 border-red-500/30 bg-red-500/10' };
   };
