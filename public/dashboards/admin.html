@@ -752,75 +752,75 @@
 
       <!-- Settings Section -->
       <section id="settings" class="section">
-        <h2 class="card-title" style="margin-bottom:1.5rem; color:#ffffff; font-size:1.5rem;"><i class="fas fa-cog" style="color:#6366f1; margin-right:0.5rem;"></i> System & School Settings</h2>
+        <h2 class="card-title" style="margin-bottom:1.5rem; color:var(--text-main); font-size:1.5rem;"><i class="fas fa-cog me-2"></i> System & School Settings</h2>
 
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:1.5rem;">
           
           <!-- 1. School Information Card -->
-          <div class="card" style="background:#1e293b; border:1px solid #334155; padding:1.5rem; border-radius:12px;">
-            <h3 style="color:#f8fafc; font-size:1.1rem; margin-bottom:1rem; border-bottom:1px solid #334155; padding-bottom:0.75rem;"><i class="fas fa-school" style="color:#38bdf8; margin-right:0.5rem;"></i> School Information</h3>
+          <div class="card" style="background:var(--wave-card-bg); border:1px solid var(--wave-border); padding:1.5rem; border-radius:14px;">
+            <h3 style="color:var(--text-main); font-size:1.1rem; margin-bottom:1rem; border-bottom:1px solid var(--wave-border); padding-bottom:0.75rem;"><i class="fas fa-school me-2"></i> School Information</h3>
             <form id="school-settings-form" onsubmit="event.preventDefault(); alert('School information settings updated successfully!');">
               <div class="form-group mb-3">
-                <label style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">School Name</label>
-                <input type="text" class="form-control" value="Fusion High School" style="background:#0f172a; color:#fff; border:1px solid #334155; padding:0.6rem; border-radius:8px;">
+                <label style="color:var(--text-muted); font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">School Name</label>
+                <input type="text" class="form-control" value="Fusion High School" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:0.6rem; border-radius:8px;">
               </div>
               <div class="form-group mb-3">
-                <label style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Academic Year / CAPS Term</label>
-                <input type="text" class="form-control" value="2026 Academic Year - Term 3" style="background:#0f172a; color:#fff; border:1px solid #334155; padding:0.6rem; border-radius:8px;">
+                <label style="color:var(--text-muted); font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Academic Year / CAPS Term</label>
+                <input type="text" class="form-control" value="2026 Academic Year - Term 3" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:0.6rem; border-radius:8px;">
               </div>
               <div class="form-group mb-3">
-                <label style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Admin Support Email</label>
-                <input type="email" class="form-control" value="admin@fusionhigh.ac.za" style="background:#0f172a; color:#fff; border:1px solid #334155; padding:0.6rem; border-radius:8px;">
+                <label style="color:var(--text-muted); font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Admin Support Email</label>
+                <input type="email" class="form-control" value="admin@fusionhigh.ac.za" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:0.6rem; border-radius:8px;">
               </div>
-              <button type="submit" class="btn btn-primary" style="background:#6366f1; border:none; color:#fff; padding:8px 16px; border-radius:8px; font-weight:600;"><i class="fas fa-save me-1"></i> Save School Details</button>
+              <button type="submit" class="btn btn-primary" style="background:var(--btn-cta-bg); border:none; color:var(--btn-cta-text); padding:8px 18px; border-radius:9999px; font-weight:600;"><i class="fas fa-save me-1"></i> Save School Details</button>
             </form>
           </div>
 
           <!-- 2. Security & Password Card -->
-          <div class="card" style="background:#1e293b; border:1px solid #334155; padding:1.5rem; border-radius:12px;">
-            <h3 style="color:#f8fafc; font-size:1.1rem; margin-bottom:1rem; border-bottom:1px solid #334155; padding-bottom:0.75rem;"><i class="fas fa-lock" style="color:#f59e0b; margin-right:0.5rem;"></i> Admin Security & Password</h3>
+          <div class="card" style="background:var(--wave-card-bg); border:1px solid var(--wave-border); padding:1.5rem; border-radius:14px;">
+            <h3 style="color:var(--text-main); font-size:1.1rem; margin-bottom:1rem; border-bottom:1px solid var(--wave-border); padding-bottom:0.75rem;"><i class="fas fa-lock me-2"></i> Admin Security & Password</h3>
             <form id="adminPasswordForm" onsubmit="event.preventDefault(); alert('Admin password updated successfully!');">
               <div class="form-group mb-3">
-                <label style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Current Password</label>
-                <input type="password" id="admin-curr-pass" class="form-control" placeholder="Enter current password..." required style="background:#0f172a; color:#fff; border:1px solid #334155; padding:0.6rem; border-radius:8px;">
+                <label style="color:var(--text-muted); font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Current Password</label>
+                <input type="password" id="admin-curr-pass" class="form-control" placeholder="Enter current password..." required style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:0.6rem; border-radius:8px;">
               </div>
               <div class="form-group mb-3">
-                <label style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">New Password</label>
-                <input type="password" id="admin-new-pass" class="form-control" placeholder="Enter new password..." required style="background:#0f172a; color:#fff; border:1px solid #334155; padding:0.6rem; border-radius:8px;">
+                <label style="color:var(--text-muted); font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">New Password</label>
+                <input type="password" id="admin-new-pass" class="form-control" placeholder="Enter new password..." required style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:0.6rem; border-radius:8px;">
               </div>
               <div class="form-group mb-3">
-                <label style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Confirm New Password</label>
-                <input type="password" id="admin-conf-pass" class="form-control" placeholder="Confirm new password..." required style="background:#0f172a; color:#fff; border:1px solid #334155; padding:0.6rem; border-radius:8px;">
+                <label style="color:var(--text-muted); font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Confirm New Password</label>
+                <input type="password" id="admin-conf-pass" class="form-control" placeholder="Confirm new password..." required style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:0.6rem; border-radius:8px;">
               </div>
-              <button type="submit" class="btn btn-primary" style="background:#10b981; border:none; color:#fff; padding:8px 16px; border-radius:8px; font-weight:600;"><i class="fas fa-key me-1"></i> Update Security Credentials</button>
+              <button type="submit" class="btn btn-primary" style="background:var(--btn-cta-bg); border:none; color:var(--btn-cta-text); padding:8px 18px; border-radius:9999px; font-weight:600;"><i class="fas fa-key me-1"></i> Update Security Credentials</button>
             </form>
           </div>
 
           <!-- 3. System Backups & Maintenance Card -->
-          <div class="card" style="background:#1e293b; border:1px solid #334155; padding:1.5rem; border-radius:12px;">
-            <h3 style="color:#f8fafc; font-size:1.1rem; margin-bottom:1rem; border-bottom:1px solid #334155; padding-bottom:0.75rem;"><i class="fas fa-database" style="color:#a855f7; margin-right:0.5rem;"></i> Database Backups & Maintenance</h3>
-            <p style="color:#94a3b8; font-size:0.88rem; margin-bottom:1.25rem;">Perform PostgreSQL database snapshots, export audit logs, or manage system maintenance mode.</p>
+          <div class="card" style="background:var(--wave-card-bg); border:1px solid var(--wave-border); padding:1.5rem; border-radius:14px;">
+            <h3 style="color:var(--text-main); font-size:1.1rem; margin-bottom:1rem; border-bottom:1px solid var(--wave-border); padding-bottom:0.75rem;"><i class="fas fa-database me-2"></i> Database Backups & Maintenance</h3>
+            <p style="color:var(--text-muted); font-size:0.88rem; margin-bottom:1.25rem;">Perform PostgreSQL database snapshots, export audit logs, or manage system maintenance mode.</p>
             <div style="display:flex; flex-direction:column; gap:0.75rem;">
-              <button type="button" class="btn" onclick="alert('PostgreSQL database backup snapshot generated successfully!');" style="background:#3b82f6; color:#fff; border:none; padding:10px 16px; border-radius:8px; font-weight:600; text-align:left;"><i class="fas fa-download me-2"></i> Create Database Snapshot</button>
-              <button type="button" class="btn" onclick="alert('System audit logs exported to CSV!');" style="background:#334155; color:#cbd5e1; border:none; padding:10px 16px; border-radius:8px; font-weight:600; text-align:left;"><i class="fas fa-file-export me-2"></i> Export Audit Logs</button>
+              <button type="button" class="btn" onclick="alert('PostgreSQL database backup snapshot generated successfully!');" style="background:var(--btn-cta-bg); color:var(--btn-cta-text); border:none; padding:10px 18px; border-radius:9999px; font-weight:600; text-align:left;"><i class="fas fa-download me-2"></i> Create Database Snapshot</button>
+              <button type="button" class="btn" onclick="alert('System audit logs exported to CSV!');" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:10px 18px; border-radius:9999px; font-weight:600; text-align:left;"><i class="fas fa-file-export me-2"></i> Export Audit Logs</button>
             </div>
           </div>
 
           <!-- 4. Notification Preferences Card -->
-          <div class="card" style="background:#1e293b; border:1px solid #334155; padding:1.5rem; border-radius:12px;">
-            <h3 style="color:#f8fafc; font-size:1.1rem; margin-bottom:1rem; border-bottom:1px solid #334155; padding-bottom:0.75rem;"><i class="fas fa-bell" style="color:#ec4899; margin-right:0.5rem;"></i> Platform Preferences</h3>
+          <div class="card" style="background:var(--wave-card-bg); border:1px solid var(--wave-border); padding:1.5rem; border-radius:14px;">
+            <h3 style="color:var(--text-main); font-size:1.1rem; margin-bottom:1rem; border-bottom:1px solid var(--wave-border); padding-bottom:0.75rem;"><i class="fas fa-bell me-2"></i> Platform Preferences</h3>
             <div style="display:flex; flex-direction:column; gap:1rem;">
-              <label style="display:flex; align-items:center; gap:10px; color:#cbd5e1; font-size:0.9rem; cursor:pointer;">
-                <input type="checkbox" checked style="width:18px; height:18px; accent-color:#6366f1;"> Send automatic SMS/Email alerts to parents for absent learners
+              <label style="display:flex; align-items:center; gap:10px; color:var(--text-muted); font-size:0.9rem; cursor:pointer;">
+                <input type="checkbox" checked style="width:18px; height:18px; accent-color:var(--text-main);"> Send automatic SMS/Email alerts to parents for absent learners
               </label>
-              <label style="display:flex; align-items:center; gap:10px; color:#cbd5e1; font-size:0.9rem; cursor:pointer;">
-                <input type="checkbox" checked style="width:18px; height:18px; accent-color:#6366f1;"> Notify administrators when new teachers register
+              <label style="display:flex; align-items:center; gap:10px; color:var(--text-muted); font-size:0.9rem; cursor:pointer;">
+                <input type="checkbox" checked style="width:18px; height:18px; accent-color:var(--text-main);"> Notify administrators when new teachers register
               </label>
-              <label style="display:flex; align-items:center; gap:10px; color:#cbd5e1; font-size:0.9rem; cursor:pointer;">
-                <input type="checkbox" checked style="width:18px; height:18px; accent-color:#6366f1;"> Enable CAPS AI quiz & lesson paper generator for teachers
+              <label style="display:flex; align-items:center; gap:10px; color:var(--text-muted); font-size:0.9rem; cursor:pointer;">
+                <input type="checkbox" checked style="width:18px; height:18px; accent-color:var(--text-main);"> Enable CAPS AI quiz & lesson paper generator for teachers
               </label>
-              <label style="display:flex; align-items:center; gap:10px; color:#cbd5e1; font-size:0.9rem; cursor:pointer;">
-                <input type="checkbox" checked style="width:18px; height:18px; accent-color:#6366f1;"> Enforce dark mode design theme across all portals
+              <label style="display:flex; align-items:center; gap:10px; color:var(--text-muted); font-size:0.9rem; cursor:pointer;">
+                <input type="checkbox" checked style="width:18px; height:18px; accent-color:var(--text-main);"> Enforce theme mode across all portals
               </label>
             </div>
           </div>
@@ -1017,31 +1017,31 @@
       <!-- Report Card Studio & Mark Transfer Section -->
       <section id="report-cards" class="section">
         <!-- Header & Quick Actions -->
-        <div class="card mb-1rem" style="background:#1e293b; border:1px solid #334155; padding:1.5rem; border-radius:14px; margin-bottom:1.5rem;">
+        <div class="card mb-1rem" style="background:var(--wave-card-bg); border:1px solid var(--wave-border); padding:1.5rem; border-radius:14px; margin-bottom:1.5rem;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
             <div>
-              <h2 class="card-title" style="color:#ffffff; font-size:1.4rem; margin:0 0 0.4rem 0;">
-                <i class="fas fa-award" style="color:#f59e0b; margin-right:0.5rem;"></i> South African CAPS Report Card Studio & Transfer
+              <h2 class="card-title" style="color:var(--text-main); font-size:1.4rem; margin:0 0 0.4rem 0;">
+                <i class="fas fa-award me-2"></i> South African CAPS Report Card Studio & Transfer
               </h2>
-              <p style="color:#94a3b8; font-size:0.88rem; margin:0;">
+              <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">
                 Review teacher-submitted marks, transfer calculated assessments and weighted contributions to the official CAPS template, edit inline, and publish verified report cards to parents & teachers.
               </p>
             </div>
             <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-              <button class="btn btn-secondary" onclick="window.loadSchoolSubjectsSummary()" style="background:#334155; border:1px solid #475569; color:#f8fafc; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer;">
+              <button class="btn btn-secondary" onclick="window.loadSchoolSubjectsSummary()" style="background:var(--wave-inset); border:1px solid var(--wave-border); color:var(--text-main); padding:8px 16px; border-radius:9999px; font-weight:600; cursor:pointer;">
                 <i class="fas fa-sync-alt me-1"></i> Refresh Data
               </button>
-              <button class="btn btn-primary" onclick="window.transferMarksToReportCardTemplate()" style="background:linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border:none; color:#fff; padding:8px 18px; border-radius:8px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(99,102,241,0.3);">
+              <button class="btn btn-primary" onclick="window.transferMarksToReportCardTemplate()" style="background:var(--btn-cta-bg); border:none; color:var(--btn-cta-text); padding:8px 18px; border-radius:9999px; font-weight:600; cursor:pointer;">
                 <i class="fas fa-file-import me-1"></i> Transfer Marks to Template
               </button>
             </div>
           </div>
 
           <!-- Selection & Filter Bar -->
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) 120px; gap:1rem; align-items:flex-end; margin-top:1.5rem; padding-top:1.25rem; border-top:1px solid #334155;">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) 120px; gap:1rem; align-items:flex-end; margin-top:1.5rem; padding-top:1.25rem; border-top:1px solid var(--wave-border);">
             <div>
-              <label style="color:#cbd5e1; font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Grade</label>
-              <select id="rc-filter-grade" class="form-control" style="background:#0f172a; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;" onchange="window.loadGradeTemplateGrid()">
+              <label style="color:var(--text-muted); font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Grade</label>
+              <select id="rc-filter-grade" class="form-control" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); width:100%; padding:0.6rem; border-radius:8px;" onchange="window.loadGradeTemplateGrid()">
                 <option value="10" selected>Grade 10</option>
                 <option value="11">Grade 11</option>
                 <option value="12">Grade 12</option>
@@ -1051,8 +1051,8 @@
             </div>
 
             <div>
-              <label style="color:#cbd5e1; font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Academic Stream</label>
-              <select id="rc-filter-stream" class="form-control" style="background:#0f172a; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;" onchange="window.loadGradeTemplateGrid()">
+              <label style="color:var(--text-muted); font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Academic Stream</label>
+              <select id="rc-filter-stream" class="form-control" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); width:100%; padding:0.6rem; border-radius:8px;" onchange="window.loadGradeTemplateGrid()">
                 <option value="Science" selected>Science</option>
                 <option value="Commerce">Commerce</option>
                 <option value="Tourism">Tourism</option>
@@ -1062,8 +1062,8 @@
             </div>
 
             <div>
-              <label style="color:#cbd5e1; font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Class Section</label>
-              <select id="rc-filter-class" class="form-control" style="background:#0f172a; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;" onchange="window.loadGradeTemplateGrid()">
+              <label style="color:var(--text-muted); font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Class Section</label>
+              <select id="rc-filter-class" class="form-control" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); width:100%; padding:0.6rem; border-radius:8px;" onchange="window.loadGradeTemplateGrid()">
                 <option value="All" selected>All Classes</option>
                 <option value="10A">10A</option>
                 <option value="10B">10B</option>
@@ -1075,8 +1075,8 @@
             </div>
 
             <div>
-              <label style="color:#cbd5e1; font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Academic Term</label>
-              <select id="rc-filter-term" class="form-control" style="background:#0f172a; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;" onchange="window.loadGradeTemplateGrid()">
+              <label style="color:var(--text-muted); font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Academic Term</label>
+              <select id="rc-filter-term" class="form-control" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); width:100%; padding:0.6rem; border-radius:8px;" onchange="window.loadGradeTemplateGrid()">
                 <option value="Term 3" selected>Term 3</option>
                 <option value="Term 1">Term 1</option>
                 <option value="Term 2">Term 2</option>
@@ -1085,7 +1085,7 @@
             </div>
 
             <div>
-              <button type="button" class="btn btn-primary" onclick="window.loadGradeTemplateGrid()" style="width:100%; height:42px; background:#38bdf8; border:none; color:#0f172a; font-weight:700; border-radius:8px; cursor:pointer;">
+              <button type="button" class="btn btn-primary" onclick="window.loadGradeTemplateGrid()" style="width:100%; height:42px; background:var(--btn-cta-bg); border:none; color:var(--btn-cta-text); font-weight:600; border-radius:9999px; cursor:pointer;">
                 <i class="fas fa-search me-1"></i> Load
               </button>
             </div>
@@ -1093,15 +1093,15 @@
         </div>
 
         <!-- School Subjects Command Center (Live cards with Teacher Marks status & View Learners button) -->
-        <div class="card mb-1rem" style="background:#1e293b; border:1px solid #334155; padding:1.5rem; border-radius:14px; margin-bottom:1.5rem;">
+        <div class="card mb-1rem" style="background:var(--wave-card-bg); border:1px solid var(--wave-border); padding:1.5rem; border-radius:14px; margin-bottom:1.5rem;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
             <div>
-              <h3 style="color:#ffffff; font-size:1.15rem; margin:0 0 0.25rem 0;">
-                <i class="fas fa-layer-group" style="color:#38bdf8; margin-right:0.5rem;"></i> School Subjects & Teacher Submission Status
+              <h3 style="color:var(--text-main); font-size:1.15rem; margin:0 0 0.25rem 0;">
+                <i class="fas fa-layer-group me-2"></i> School Subjects & Teacher Submission Status
               </h3>
-              <p style="color:#94a3b8; font-size:0.82rem; margin:0;">Real-time overview of teacher marks published into the admin dashboard.</p>
+              <p style="color:var(--text-muted); font-size:0.82rem; margin:0;">Real-time overview of teacher marks published into the admin dashboard.</p>
             </div>
-            <span id="subjects-summary-count-badge" style="background:#0f172a; color:#38bdf8; padding:4px 10px; border-radius:20px; font-size:0.8rem; font-weight:700; border:1px solid #334155;">
+            <span id="subjects-summary-count-badge" style="background:var(--accent-lavender); color:var(--text-main); padding:4px 12px; border-radius:9999px; font-size:0.8rem; font-weight:600; border:1px solid var(--wave-border);">
               Loading subjects...
             </span>
           </div>
@@ -1112,41 +1112,41 @@
         </div>
 
         <!-- Interactive South African Report Card Template Grid (The Waiting Template) -->
-        <div class="card" style="background:#1e293b; border:1px solid #334155; padding:1.5rem; border-radius:14px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem; border-bottom:1px solid #334155; padding-bottom:1rem;">
+        <div class="card" style="background:var(--wave-card-bg); border:1px solid var(--wave-border); padding:1.5rem; border-radius:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem; border-bottom:1px solid var(--wave-border); padding-bottom:1rem;">
             <div>
-              <h3 id="rc-template-header-title" style="color:#ffffff; font-size:1.2rem; margin:0 0 0.35rem 0;">
-                <i class="fas fa-table" style="color:#10b981; margin-right:0.5rem;"></i> Report Card Master Template Grid
+              <h3 id="rc-template-header-title" style="color:var(--text-main); font-size:1.2rem; margin:0 0 0.35rem 0;">
+                <i class="fas fa-table me-2"></i> Report Card Master Template Grid
               </h3>
-              <p id="rc-template-header-sub" style="color:#94a3b8; font-size:0.82rem; margin:0;">
+              <p id="rc-template-header-sub" style="color:var(--text-muted); font-size:0.82rem; margin:0;">
                 Template waiting to be populated. Click "Transfer Marks to Template" above to calculate and display assessment holdings.
               </p>
             </div>
             <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
-              <button class="btn" onclick="window.saveGradeReportCardTemplate()" style="background:#10b981; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer;">
+              <button class="btn btn-secondary" onclick="window.saveGradeReportCardTemplate()" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:8px 16px; border-radius:9999px; font-weight:600; cursor:pointer;">
                 <i class="fas fa-save me-1"></i> Save Verified Template
               </button>
-              <button class="btn" onclick="window.publishGradeReportCards()" style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color:#fff; border:none; padding:8px 18px; border-radius:8px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(245,158,11,0.3);">
+              <button class="btn btn-primary" onclick="window.publishGradeReportCards()" style="background:var(--btn-cta-bg); color:var(--btn-cta-text); border:none; padding:8px 18px; border-radius:9999px; font-weight:600; cursor:pointer;">
                 <i class="fas fa-paper-plane me-1"></i> Publish to Parents & Teachers
               </button>
             </div>
           </div>
 
           <!-- Assessment Weight & Contribution Notification Banner -->
-          <div id="rc-holding-calc-banner" style="display:none; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); border-radius:10px; padding:0.85rem 1.25rem; margin-bottom:1rem; color:#cbd5e1; font-size:0.83rem;">
-            <i class="fas fa-calculator" style="color:#818cf8; margin-right:0.5rem; font-size:1rem;"></i>
+          <div id="rc-holding-calc-banner" style="display:none; background:var(--accent-lavender); border:1px solid var(--wave-border); border-radius:10px; padding:0.85rem 1.25rem; margin-bottom:1rem; color:var(--text-main); font-size:0.83rem;">
+            <i class="fas fa-calculator me-2"></i>
             <strong>Assessment Weights Calculated:</strong> Each assessment raw mark has been weighted and holding percentages computed per subject outcome. You may edit any mark inline; average percentages and CAPS levels update in real time.
           </div>
 
-          <div class="table-responsive" style="max-height:600px; overflow-y:auto; border:1px solid #334155; border-radius:8px;">
+          <div class="table-responsive" style="max-height:600px; overflow-y:auto; border:1px solid var(--wave-border); border-radius:8px;">
             <table class="table" id="rc-master-template-table" style="width:100%; border-collapse:collapse; text-align:left; font-size:0.85rem;">
-              <thead id="rc-master-template-thead" style="position:sticky; top:0; background:#0f172a; z-index:5;">
+              <thead id="rc-master-template-thead" style="position:sticky; top:0; background:var(--wave-inset); z-index:5;">
                 <!-- Dynamically generated headers with Learner Info, Subjects, Average, Status, and Actions -->
               </thead>
               <tbody id="rc-master-template-tbody">
                 <tr>
-                  <td colspan="10" style="text-align:center; padding:3rem 1rem; color:#94a3b8;">
-                    <i class="fas fa-file-invoice" style="font-size:2.5rem; color:#475569; margin-bottom:1rem; display:block;"></i>
+                  <td colspan="10" style="text-align:center; padding:3rem 1rem; color:var(--text-muted);">
+                    <i class="fas fa-file-invoice" style="font-size:2.5rem; color:var(--text-muted); margin-bottom:1rem; display:block;"></i>
                     Template is ready and waiting to be filled.<br>
                     Select your Grade and Stream above, then click <strong>"Transfer Marks to Template"</strong> to calculate and preview outcomes.
                   </td>
@@ -1163,16 +1163,15 @@
       <section id="timetables" class="section">
         <!-- Generate & Auto-Schedule Control Card -->
         <div class="card mb-1rem"
-          style="background:#1e293b; border:1px solid #334155; padding:1.5rem; border-radius:12px; margin-bottom:1.5rem;">
-          <h2 class="card-title" style="color:#ffffff; font-size:1.3rem; margin-bottom:0.5rem;"><i class="fas fa-magic"
-              style="color:#6366f1;"></i> AI Timetable Auto-Scheduling & Publishing</h2>
-          <p style="color:#94a3b8; font-size:0.88rem; margin-bottom:1.25rem;">Generate multi-subject weekly schedules
+          style="background:var(--wave-card-bg); border:1px solid var(--wave-border); padding:1.5rem; border-radius:14px; margin-bottom:1.5rem;">
+          <h2 class="card-title" style="color:var(--text-main); font-size:1.3rem; margin-bottom:0.5rem;"><i class="fas fa-magic me-2"></i> AI Timetable Auto-Scheduling & Publishing</h2>
+          <p style="color:var(--text-muted); font-size:0.88rem; margin-bottom:1.25rem;">Generate multi-subject weekly schedules
             for classes with collision-free teacher assignment. Automatically publish and dispatch notifications to
             teachers, parents, and learners.</p>
 
           <div style="display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap;">
             <div style="flex:1; min-width:180px;">
-              <label style="color:#94a3b8; font-size:0.85rem; display:block; margin-bottom:0.35rem;">Select
+              <label style="color:var(--text-muted); font-size:0.85rem; display:block; margin-bottom:0.35rem;">Select
                 Grade</label>
               <select id="timetable-gen-grade" class="form-control"
                 style="background:#0f172a; color:#fff; border:1px solid #334155;">
@@ -1270,14 +1269,14 @@
         </div>
 
         <!-- Filter & Search Controls -->
-        <div class="card mb-1-5" style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.5rem;">
+        <div class="card mb-1-5" style="background:var(--wave-card-bg); border:1px solid var(--wave-border); border-radius:14px; padding:1rem 1.25rem; margin-bottom:1.5rem;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
             <div style="position:relative; flex:1; min-width:240px;">
-              <i class="fas fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#64748b;"></i>
-              <input type="text" id="admin-ann-search-box" placeholder="Search announcements by title or content..." oninput="window.filterAdminAnnouncements(this.value)" style="width:100%; padding:0.55rem 1rem 0.55rem 2.4rem; background:#1e293b; border:1px solid #334155; border-radius:8px; color:#fff; font-size:0.88rem;">
+              <i class="fas fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
+              <input type="text" id="admin-ann-search-box" placeholder="Search announcements by title or content..." oninput="window.filterAdminAnnouncements(this.value)" style="width:100%; padding:0.55rem 1rem 0.55rem 2.4rem; background:var(--wave-inset); border:1px solid var(--wave-border); border-radius:9999px; color:var(--text-main); font-size:0.88rem;">
             </div>
             <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-              <select id="admin-ann-role-filter" onchange="window.filterAdminAnnouncementsRole(this.value)" style="background:#1e293b; border:1px solid #334155; color:#cbd5e1; padding:0.55rem 0.9rem; border-radius:8px; font-size:0.88rem;">
+              <select id="admin-ann-role-filter" onchange="window.filterAdminAnnouncementsRole(this.value)" style="background:var(--wave-inset); border:1px solid var(--wave-border); color:var(--text-main); padding:0.55rem 0.9rem; border-radius:9999px; font-size:0.88rem;">
                 <option value="all">Target: All Roles</option>
                 <option value="learner">Target: Learners</option>
                 <option value="teacher">Target: Teachers</option>
@@ -1288,7 +1287,7 @@
         </div>
 
         <!-- Published Announcements Management Table Card -->
-        <div class="card" style="background:#0f172a; border:1px solid #334155; border-radius:14px; padding:1.5rem;">
+        <div class="card" style="background:var(--wave-card-bg); border:1px solid var(--wave-border); border-radius:14px; padding:1.5rem;">
           <h3 class="card-title" style="color:#f8fafc; margin-bottom:1rem; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem;">
             <i class="fas fa-list-alt" style="color:#6366f1;"></i> Published Announcements & Notices History
           </h3>
@@ -1567,19 +1566,19 @@
   </div>
 
   <!-- Edit User Profile & Teacher Subjects Modal -->
-  <div id="editUserModal" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow-y:auto; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); align-items:center; justify-content:center;">
-    <div class="modal-content" style="background:#0f172a; border:1px solid #334155; color:#fff; border-radius:16px; max-width:650px; width:92%; margin:2rem auto; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5); overflow:hidden;">
-      <div class="modal-header" style="border-bottom:1px solid #334155; padding:1.25rem 1.5rem; display:flex; justify-content:space-between; align-items:center; background:#1e293b;">
+  <div id="editUserModal" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow-y:auto; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); align-items:center; justify-content:center;">
+    <div class="modal-content" style="background:var(--wave-card-bg); border:1px solid var(--wave-border); color:var(--text-main); border-radius:16px; max-width:650px; width:92%; margin:2rem auto; box-shadow:0 20px 40px rgba(0,0,0,0.15); overflow:hidden;">
+      <div class="modal-header" style="border-bottom:1px solid var(--wave-border); padding:1.25rem 1.5rem; display:flex; justify-content:space-between; align-items:center; background:var(--wave-card-bg);">
         <div style="display:flex; align-items:center; gap:0.75rem;">
-          <div style="width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg, #6366f1, #06b6d4); display:flex; align-items:center; justify-content:center; color:#fff;">
+          <div style="width:38px; height:38px; border-radius:9999px; background:var(--accent-lavender); border:1px solid var(--wave-border); display:flex; align-items:center; justify-content:center; color:var(--text-main);">
             <i class="fas fa-user-edit"></i>
           </div>
           <div>
-            <h3 style="color:#ffffff; margin:0; font-size:1.15rem; font-weight:700;" id="editUserModalTitle">Edit User Profile</h3>
-            <span id="editUserRoleBadge" style="display:inline-block; font-size:0.75rem; color:#38bdf8; text-transform:uppercase; font-weight:700; letter-spacing:0.5px;">User Role</span>
+            <h3 style="color:var(--text-main); margin:0; font-size:1.15rem; font-weight:700;" id="editUserModalTitle">Edit User Profile</h3>
+            <span id="editUserRoleBadge" style="display:inline-block; font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; letter-spacing:0.5px;">User Role</span>
           </div>
         </div>
-        <span class="close-btn" onclick="document.getElementById('editUserModal').style.display='none'" style="color:#94a3b8; font-size:1.75rem; cursor:pointer; line-height:1;">&times;</span>
+        <span class="close-btn" onclick="document.getElementById('editUserModal').style.display='none'" style="color:var(--text-muted); font-size:1.75rem; cursor:pointer; line-height:1;">&times;</span>
       </div>
 
       <div class="modal-body" style="padding:1.5rem; max-height:75vh; overflow-y:auto;">
@@ -1590,71 +1589,72 @@
           <!-- Core Personal Info Grid -->
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
             <div class="form-group">
-              <label style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">First Name</label>
-              <input type="text" id="edit-user-fullname" required class="form-control" style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.65rem 0.85rem; border-radius:8px;">
+              <label style="color:var(--text-main); font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">First Name</label>
+              <input type="text" id="edit-user-fullname" required class="form-control" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); width:100%; padding:0.65rem 0.85rem; border-radius:8px;">
             </div>
             <div class="form-group">
-              <label style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Surname</label>
-              <input type="text" id="edit-user-surname" required class="form-control" style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.65rem 0.85rem; border-radius:8px;">
+              <label style="color:var(--text-main); font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Surname</label>
+              <input type="text" id="edit-user-surname" required class="form-control" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); width:100%; padding:0.65rem 0.85rem; border-radius:8px;">
             </div>
           </div>
 
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
             <div class="form-group">
-              <label style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Email Address</label>
-              <input type="email" id="edit-user-email" required class="form-control" style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.65rem 0.85rem; border-radius:8px;">
+              <label style="color:var(--text-main); font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Email Address</label>
+              <input type="email" id="edit-user-email" required class="form-control" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); width:100%; padding:0.65rem 0.85rem; border-radius:8px;">
             </div>
             <div class="form-group">
-              <label style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Phone Number</label>
-              <input type="text" id="edit-user-phone" class="form-control" placeholder="+27..." style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.65rem 0.85rem; border-radius:8px;">
+              <label style="color:var(--text-main); font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.4rem;">Phone Number</label>
+              <input type="text" id="edit-user-phone" class="form-control" placeholder="+27..." style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); width:100%; padding:0.65rem 0.85rem; border-radius:8px;">
             </div>
           </div>
 
           <!-- Educator / Teacher Specific Section -->
-          <div id="edit-user-teacher-section" style="display:none; background:#0b1329; border:1px solid #312e81; border-radius:12px; padding:1.25rem; margin-top:1rem; margin-bottom:1rem;">
+          <!-- Educator / Teacher Specific Section -->
+          <div id="edit-user-teacher-section" style="display:none; background:var(--wave-surface-subtle, #f4f4f6); border:1px solid var(--wave-border, #e4e4e7); border-radius:12px; padding:1.25rem; margin-top:1rem; margin-bottom:1rem;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-              <h4 style="color:#a5b4fc; margin:0; font-size:0.95rem; font-weight:700;">
+              <h4 style="color:var(--wave-accent-purple, #9333ea); margin:0; font-size:0.95rem; font-weight:700;">
                 <i class="fas fa-book me-1"></i> Educator Subject Specializations
               </h4>
-              <span style="font-size:0.75rem; color:#34d399; font-weight:600;"><i class="fas fa-envelope me-1"></i> Automatic Email on Add</span>
+              <span style="font-size:0.75rem; color:#10b981; font-weight:600;"><i class="fas fa-envelope me-1"></i> Automatic Email on Add</span>
             </div>
-            <p style="color:#94a3b8; font-size:0.8rem; margin:0 0 1rem 0;">
+            <p style="color:var(--wave-text-muted, #71717a); font-size:0.8rem; margin:0 0 1rem 0;">
               Select the subjects this educator teaches. If you assign a new subject, the teacher will automatically receive an official email confirmation and the subject functions (mark sheets, attendance, lesson plans) will immediately appear on their Teacher Dashboard.
             </p>
 
             <!-- Subject Checkboxes Grid -->
-            <label style="color:#cbd5e1; font-size:0.82rem; font-weight:600; display:block; margin-bottom:0.5rem;">Academic Subjects (CAPS Curriculum):</label>
-            <div id="teacher-subjects-checkboxes" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:0.5rem; max-height:180px; overflow-y:auto; padding:0.75rem; background:#1e293b; border-radius:8px; border:1px solid #334155; margin-bottom:1rem;">
+            <label style="color:var(--wave-text-secondary, #52525b); font-size:0.82rem; font-weight:600; display:block; margin-bottom:0.5rem;">Academic Subjects (CAPS Curriculum):</label>
+            <div id="teacher-subjects-checkboxes" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:0.5rem; max-height:180px; overflow-y:auto; padding:0.75rem; background:var(--wave-card-bg, #ffffff); border-radius:8px; border:1px solid var(--wave-border, #e4e4e7); margin-bottom:1rem;">
               <!-- Generated dynamically via JS -->
             </div>
 
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
               <div>
-                <label style="color:#cbd5e1; font-size:0.82rem; font-weight:600; display:block; margin-bottom:0.4rem;">Grades Taught</label>
+                <label style="color:var(--wave-text-secondary, #52525b); font-size:0.82rem; font-weight:600; display:block; margin-bottom:0.4rem;">Grades Taught</label>
                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                  <label style="color:#cbd5e1; font-size:0.8rem; display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="teacher_grades" value="8"> Gr 8</label>
-                  <label style="color:#cbd5e1; font-size:0.8rem; display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="teacher_grades" value="9"> Gr 9</label>
-                  <label style="color:#cbd5e1; font-size:0.8rem; display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="teacher_grades" value="10"> Gr 10</label>
-                  <label style="color:#cbd5e1; font-size:0.8rem; display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="teacher_grades" value="11"> Gr 11</label>
-                  <label style="color:#cbd5e1; font-size:0.8rem; display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="teacher_grades" value="12"> Gr 12</label>
+                  <label style="color:var(--wave-text-secondary, #52525b); font-size:0.8rem; display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="teacher_grades" value="8"> Gr 8</label>
+                  <label style="color:var(--wave-text-secondary, #52525b); font-size:0.8rem; display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="teacher_grades" value="9"> Gr 9</label>
+                  <label style="color:var(--wave-text-secondary, #52525b); font-size:0.8rem; display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="teacher_grades" value="10"> Gr 10</label>
+                  <label style="color:var(--wave-text-secondary, #52525b); font-size:0.8rem; display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="teacher_grades" value="11"> Gr 11</label>
+                  <label style="color:var(--wave-text-secondary, #52525b); font-size:0.8rem; display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" name="teacher_grades" value="12"> Gr 12</label>
                 </div>
               </div>
               <div>
-                <label style="color:#cbd5e1; font-size:0.82rem; font-weight:600; display:block; margin-bottom:0.4rem;">Classes Taught (comma-separated)</label>
-                <input type="text" id="edit-teacher-classes" placeholder="e.g. 10A, 10B, 11A" class="form-control" style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.5rem 0.75rem; border-radius:8px; font-size:0.85rem;">
+                <label style="color:var(--wave-text-secondary, #52525b); font-size:0.82rem; font-weight:600; display:block; margin-bottom:0.4rem;">Classes Taught (comma-separated)</label>
+                <input type="text" id="edit-teacher-classes" placeholder="e.g. 10A, 10B, 11A" class="form-control" style="background:var(--wave-card-bg, #ffffff); color:var(--wave-text-primary, #111111); border:1px solid var(--wave-border, #e4e4e7); width:100%; padding:0.5rem 0.75rem; border-radius:8px; font-size:0.85rem;">
               </div>
             </div>
           </div>
 
           <!-- Learner Specific Section -->
-          <div id="edit-user-learner-section" style="display:none; background:#0b1329; border:1px solid #0369a1; border-radius:12px; padding:1.25rem; margin-top:1rem; margin-bottom:1rem;">
-            <h4 style="color:#38bdf8; margin:0 0 0.75rem 0; font-size:0.95rem; font-weight:700;">
+          <div id="edit-user-learner-section" style="display:none; background:var(--wave-surface-subtle, #f4f4f6); border:1px solid var(--wave-border, #e4e4e7); border-radius:12px; padding:1.25rem; margin-top:1rem; margin-bottom:1rem;">
+            <h4 style="color:var(--wave-accent-purple, #9333ea); margin:0 0 0.75rem 0; font-size:0.95rem; font-weight:700;">
               <i class="fas fa-user-graduate me-1"></i> Learner Academic Record
             </h4>
             <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.75rem;">
               <div>
-                <label style="color:#cbd5e1; font-size:0.82rem; font-weight:600; display:block; margin-bottom:0.35rem;">Grade</label>
-                <select id="edit-learner-grade" class="form-control" style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.55rem; border-radius:8px;">
+                <label style="color:var(--wave-text-secondary, #52525b); font-size:0.82rem; font-weight:600; display:block; margin-bottom:0.35rem;">Grade</label>
+                <select id="edit-learner-grade" class="form-control" style="background:var(--wave-card-bg, #ffffff); color:var(--wave-text-primary, #111111); border:1px solid var(--wave-border, #e4e4e7); width:100%; padding:0.55rem; border-radius:8px;">
                   <option value="8">Grade 8</option>
                   <option value="9">Grade 9</option>
                   <option value="10">Grade 10</option>
@@ -1663,8 +1663,8 @@
                 </select>
               </div>
               <div>
-                <label style="color:#cbd5e1; font-size:0.82rem; font-weight:600; display:block; margin-bottom:0.35rem;">Stream</label>
-                <select id="edit-learner-stream" class="form-control" style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.55rem; border-radius:8px;">
+                <label style="color:var(--wave-text-secondary, #52525b); font-size:0.82rem; font-weight:600; display:block; margin-bottom:0.35rem;">Stream</label>
+                <select id="edit-learner-stream" class="form-control" style="background:var(--wave-card-bg, #ffffff); color:var(--wave-text-primary, #111111); border:1px solid var(--wave-border, #e4e4e7); width:100%; padding:0.55rem; border-radius:8px;">
                   <option value="Science">Science Stream</option>
                   <option value="Commerce">Commerce Stream</option>
                   <option value="Humanities">Humanities Stream</option>
@@ -1673,15 +1673,15 @@
                 </select>
               </div>
               <div>
-                <label style="color:#cbd5e1; font-size:0.82rem; font-weight:600; display:block; margin-bottom:0.35rem;">Learner Number</label>
-                <input type="text" id="edit-learner-number" placeholder="2026xxxx" class="form-control" style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.55rem; border-radius:8px;">
+                <label style="color:var(--wave-text-secondary, #52525b); font-size:0.82rem; font-weight:600; display:block; margin-bottom:0.35rem;">Learner Number</label>
+                <input type="text" id="edit-learner-number" placeholder="2026xxxx" class="form-control" style="background:var(--wave-card-bg, #ffffff); color:var(--wave-text-primary, #111111); border:1px solid var(--wave-border, #e4e4e7); width:100%; padding:0.55rem; border-radius:8px;">
               </div>
             </div>
           </div>
 
-          <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem; padding-top:1rem; border-top:1px solid #334155;">
-            <button type="button" class="btn btn-secondary" onclick="document.getElementById('editUserModal').style.display='none'" style="background:#334155; border:none; color:#cbd5e1; padding:9px 18px; border-radius:8px; font-weight:600; cursor:pointer;">Cancel</button>
-            <button type="submit" id="save-user-profile-btn" class="btn btn-primary" style="background:#6366f1; border:none; color:#fff; padding:9px 22px; border-radius:8px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:0.5rem;">
+          <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--wave-border, #e4e4e7);">
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('editUserModal').style.display='none'">Cancel</button>
+            <button type="submit" id="save-user-profile-btn" class="btn btn-primary-cta" style="display:flex; align-items:center; gap:0.5rem;">
               <i class="fas fa-save"></i> Save Profile Changes
             </button>
           </div>
@@ -1692,22 +1692,22 @@
 
   <!-- Create Announcement Modal -->
   <div id="createAnnouncementModal" class="modal">
-    <div class="modal-content" style="background:#0f172a; border:1px solid #334155; color:#fff; border-radius:14px; max-width:550px;">
-      <div class="modal-header" style="border-bottom:1px solid #334155; padding-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="color:#ffffff; margin:0; font-size:1.15rem;"><i class="fas fa-bullhorn" style="color:#6366f1;"></i> Create School Announcement</h3>
-        <span class="close-btn" onclick="document.getElementById('createAnnouncementModal').style.display='none'" style="color:#94a3b8; font-size:1.5rem; cursor:pointer;">&times;</span>
+    <div class="modal-content" style="background:var(--wave-card-bg); border:1px solid var(--wave-border); color:var(--text-main); border-radius:14px; max-width:550px; box-shadow:0 20px 40px -10px rgba(0,0,0,0.1);">
+      <div class="modal-header" style="border-bottom:1px solid var(--wave-border); padding-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="color:var(--text-main); margin:0; font-size:1.15rem; font-weight:700;"><i class="fas fa-bullhorn" style="color:var(--accent-lavender); margin-right:6px;"></i> Create School Announcement</h3>
+        <span class="close-btn" onclick="document.getElementById('createAnnouncementModal').style.display='none'" style="color:var(--text-muted); font-size:1.5rem; cursor:pointer;">&times;</span>
       </div>
       <div class="modal-body" style="padding-top:1rem;">
         <form id="createAnnouncementForm" onsubmit="window.handleCreateAnnouncement(event)">
           <div class="form-group mb-3">
-            <label for="ann-title" style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Announcement Title</label>
-            <input type="text" id="ann-title" class="form-control" placeholder="e.g. End of Term Examination Schedule 2026" required style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;">
+            <label for="ann-title" style="color:var(--text-muted); font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Announcement Title</label>
+            <input type="text" id="ann-title" class="form-control" placeholder="e.g. End of Term Examination Schedule 2026" required style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); width:100%; padding:0.6rem; border-radius:8px;">
           </div>
           
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;" class="mb-3">
             <div>
-              <label for="ann-role-target" style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Target Audience</label>
-              <select id="ann-role-target" class="form-control" style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;">
+              <label for="ann-role-target" style="color:var(--text-muted); font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Target Audience</label>
+              <select id="ann-role-target" class="form-control" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); width:100%; padding:0.6rem; border-radius:8px;">
                 <option value="all">All Roles (School Wide)</option>
                 <option value="learner">Learners Only</option>
                 <option value="teacher">Teachers Only</option>
@@ -1715,8 +1715,8 @@
               </select>
             </div>
             <div>
-              <label for="ann-grade-target" style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Grade Target (Optional)</label>
-              <select id="ann-grade-target" class="form-control" style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;">
+              <label for="ann-grade-target" style="color:var(--text-muted); font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Grade Target (Optional)</label>
+              <select id="ann-grade-target" class="form-control" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); width:100%; padding:0.6rem; border-radius:8px;">
                 <option value="">All Grades</option>
                 <option value="8">Grade 8</option>
                 <option value="9">Grade 9</option>
@@ -1729,8 +1729,8 @@
 
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;" class="mb-3">
             <div>
-              <label for="ann-stream-target" style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Stream Target (Optional)</label>
-              <select id="ann-stream-target" class="form-control" style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;">
+              <label for="ann-stream-target" style="color:var(--text-muted); font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Stream Target (Optional)</label>
+              <select id="ann-stream-target" class="form-control" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); width:100%; padding:0.6rem; border-radius:8px;">
                 <option value="">All Streams</option>
                 <option value="Science">Science Stream</option>
                 <option value="Commerce">Commerce Stream</option>
@@ -1739,8 +1739,8 @@
               </select>
             </div>
             <div>
-              <label for="ann-category" style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Category</label>
-              <select id="ann-category" class="form-control" style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;">
+              <label for="ann-category" style="color:var(--text-muted); font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Category</label>
+              <select id="ann-category" class="form-control" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); width:100%; padding:0.6rem; border-radius:8px;">
                 <option value="General">General Notice</option>
                 <option value="Important">Important / Urgent</option>
                 <option value="Event">School Event</option>
@@ -1750,13 +1750,13 @@
           </div>
 
           <div class="form-group mb-3">
-            <label for="ann-content" style="color:#cbd5e1; font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Notice Content & Details</label>
-            <textarea id="ann-content" class="form-control" rows="4" placeholder="Write full announcement content..." required style="background:#1e293b; color:#fff; border:1px solid #334155; width:100%; padding:0.6rem; border-radius:8px;"></textarea>
+            <label for="ann-content" style="color:var(--text-muted); font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Notice Content & Details</label>
+            <textarea id="ann-content" class="form-control" rows="4" placeholder="Write full announcement content..." required style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); width:100%; padding:0.6rem; border-radius:8px;"></textarea>
           </div>
 
           <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.25rem;">
-            <button type="button" class="btn btn-secondary" onclick="document.getElementById('createAnnouncementModal').style.display='none'" style="background:#334155; border:none; color:#cbd5e1; padding:8px 16px; border-radius:8px; font-weight:600;">Cancel</button>
-            <button type="submit" class="btn btn-primary" style="background:#6366f1; border:none; color:#fff; padding:8px 18px; border-radius:8px; font-weight:600;"><i class="fas fa-paper-plane me-1"></i> Publish Announcement</button>
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('createAnnouncementModal').style.display='none'" style="background:var(--wave-inset); border:1px solid var(--wave-border); color:var(--text-main); padding:8px 16px; border-radius:9999px; font-weight:600;">Cancel</button>
+            <button type="submit" class="btn btn-primary" style="background:var(--btn-cta-bg); border:none; color:var(--btn-cta-text); padding:8px 18px; border-radius:9999px; font-weight:600;"><i class="fas fa-paper-plane me-1"></i> Publish Announcement</button>
           </div>
         </form>
       </div>
@@ -1764,34 +1764,34 @@
   </div>
 
   <!-- Subject Learners Register & Flags Modal -->
-  <div id="subjectLearnersModal" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px);">
-    <div class="modal-content" style="background:#0f172a; border:1px solid #334155; color:#fff; border-radius:14px; max-width:980px; margin:40px auto; padding:1.75rem; box-shadow:0 25px 50px -12px rgba(0,0,0,0.8);">
-      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid #334155; padding-bottom:1rem; margin-bottom:1.25rem;">
+  <div id="subjectLearnersModal" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px);">
+    <div class="modal-content" style="background:var(--wave-card-bg); border:1px solid var(--wave-border); color:var(--text-main); border-radius:14px; max-width:980px; margin:40px auto; padding:1.75rem; box-shadow:0 25px 50px -12px rgba(0,0,0,0.15);">
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid var(--wave-border); padding-bottom:1rem; margin-bottom:1.25rem;">
         <div>
           <div style="display:flex; align-items:center; gap:0.5rem;">
-            <span class="badge" style="background:#4f46e5; color:#fff; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.75rem;" id="modal-subject-grade-badge">Grade 10</span>
-            <span class="badge" style="background:#0284c7; color:#fff; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.75rem;" id="modal-subject-stream-badge">Science</span>
+            <span class="badge" style="background:var(--btn-cta-bg); color:var(--btn-cta-text); padding:4px 10px; border-radius:9999px; font-weight:700; font-size:0.75rem;" id="modal-subject-grade-badge">Grade 10</span>
+            <span class="badge" style="background:var(--accent-lavender); color:#18181b; padding:4px 10px; border-radius:9999px; font-weight:700; font-size:0.75rem;" id="modal-subject-stream-badge">Science</span>
           </div>
-          <h3 id="modal-subject-title" style="color:#ffffff; margin:0.4rem 0 0.2rem 0; font-size:1.35rem; font-weight:700;">Subject Learners Register</h3>
-          <p id="modal-subject-meta" style="color:#94a3b8; font-size:0.83rem; margin:0;">Real-time attendance register, assessment scores, and academic/attendance risk flags.</p>
+          <h3 id="modal-subject-title" style="color:var(--text-main); margin:0.4rem 0 0.2rem 0; font-size:1.35rem; font-weight:700;">Subject Learners Register</h3>
+          <p id="modal-subject-meta" style="color:var(--text-muted); font-size:0.83rem; margin:0;">Real-time attendance register, assessment scores, and academic/attendance risk flags.</p>
         </div>
-        <span class="close-btn" onclick="document.getElementById('subjectLearnersModal').style.display='none'" style="color:#94a3b8; font-size:1.8rem; cursor:pointer; line-height:1;">&times;</span>
+        <span class="close-btn" onclick="document.getElementById('subjectLearnersModal').style.display='none'" style="color:var(--text-muted); font-size:1.8rem; cursor:pointer; line-height:1;">&times;</span>
       </div>
 
       <div class="modal-body">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem;">
-          <input type="text" id="modal-subject-search-input" placeholder="Search learner by name, number, or class..." style="background:#1e293b; color:#fff; border:1px solid #334155; border-radius:8px; padding:0.55rem 1rem; width:280px; font-size:0.85rem;" onkeyup="window.filterSubjectLearnersModal(this.value)">
+          <input type="text" id="modal-subject-search-input" placeholder="Search learner by name, number, or class..." style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); border-radius:9999px; padding:0.55rem 1rem; width:280px; font-size:0.85rem;" onkeyup="window.filterSubjectLearnersModal(this.value)">
           <div style="display:flex; gap:0.5rem; font-size:0.78rem;">
             <span style="display:inline-flex; align-items:center; gap:4px; color:#ef4444;"><i class="fas fa-circle" style="font-size:8px;"></i> Critical Risk (&lt;40%)</span>
             <span style="display:inline-flex; align-items:center; gap:4px; color:#f59e0b;"><i class="fas fa-circle" style="font-size:8px;"></i> At Risk (40-49%)</span>
             <span style="display:inline-flex; align-items:center; gap:4px; color:#10b981;"><i class="fas fa-circle" style="font-size:8px;"></i> On Track (50-69%)</span>
-            <span style="display:inline-flex; align-items:center; gap:4px; color:#eab308;"><i class="fas fa-crown" style="font-size:10px;"></i> Distinction (70%+)</span>
+            <span style="display:inline-flex; align-items:center; gap:4px; color:var(--text-main);"><i class="fas fa-crown" style="font-size:10px; color:var(--accent-lavender);"></i> Distinction (70%+)</span>
           </div>
         </div>
 
-        <div class="table-responsive" style="max-height:480px; overflow-y:auto; border:1px solid #334155; border-radius:8px;">
+        <div class="table-responsive" style="max-height:480px; overflow-y:auto; border:1px solid var(--wave-border); border-radius:8px;">
           <table class="table" style="width:100%; border-collapse:collapse; font-size:0.84rem; text-align:left;">
-            <thead style="position:sticky; top:0; background:#1e293b; color:#cbd5e1; z-index:3;">
+            <thead style="position:sticky; top:0; background:var(--wave-inset); color:var(--text-main); z-index:3; border-bottom:1px solid var(--wave-border);">
               <tr>
                 <th style="padding:10px 12px;">Learner</th>
                 <th style="padding:10px 12px;">Class</th>
@@ -1808,8 +1808,8 @@
           </table>
         </div>
       </div>
-      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.25rem; border-top:1px solid #334155; padding-top:1rem;">
-        <button type="button" class="btn btn-secondary" onclick="document.getElementById('subjectLearnersModal').style.display='none'" style="background:#334155; color:#cbd5e1; border:none; padding:8px 16px; border-radius:8px; font-weight:600; cursor:pointer;">Close</button>
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.25rem; border-top:1px solid var(--wave-border); padding-top:1rem;">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('subjectLearnersModal').style.display='none'" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:8px 16px; border-radius:9999px; font-weight:600; cursor:pointer;">Close</button>
       </div>
     </div>
   </div>

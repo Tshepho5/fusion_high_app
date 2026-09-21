@@ -43,7 +43,7 @@ export const AdminOverviewSkeleton: React.FC = () => {
       </div>
 
       {/* 3. School Subjects Intelligence Hub Skeleton */}
-      <div className="space-y-4 rounded-3xl bg-slate-100/90 dark:bg-surface-darker/80 border border-slate-300/80 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden shimmer-wave">
+      <div className="space-y-4 rounded-3xl bg-slate-100 dark:bg-surface-darker border border-slate-300 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden shimmer-wave">
         {/* Hub Header Skeleton */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2">

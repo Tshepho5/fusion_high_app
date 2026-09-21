@@ -101,12 +101,12 @@
   margin: 0;
   font-size: 2rem;
   font-weight: 700;
-  color: #333;
+  color: var(--wave-text-primary, #111111);
 }
 
 .stat-card .info p {
   margin: 0;
-  color: #666;
+  color: var(--wave-text-muted, #71717a);
   font-size: 0.9rem;
 }
 
@@ -131,14 +131,16 @@
 }
 
 .modal-content {
-  background-color: #fefefe;
+  background-color: var(--wave-surface, #ffffff);
+  color: var(--wave-text-primary, #111111);
   margin: 10% auto;
   padding: 2rem;
-  border: 1px solid #888;
+  border: 1px solid var(--wave-border, #e4e4e7);
   width: 80%;
   max-width: 500px;
-  border-radius: 12px;
+  border-radius: 16px;
   position: relative;
+  box-shadow: var(--wave-card-hover-shadow);
 }
 
 .modal-content .close-btn {
@@ -837,24 +839,24 @@
 }
 
 .summary-tile.dark-tile {
-  background: #0f172a;
-  border: 1px solid #334155;
+  background: var(--wave-surface-subtle, #f4f4f6);
+  border: 1px solid var(--wave-border, #e4e4e7);
 }
 
 .summary-tile.red-tile {
-  background: #dc2626;
-  border: 1px solid #ef4444;
+  background: var(--wave-accent-badge-bg, #f3e8ff);
+  border: 1px solid var(--wave-accent-badge-border, #e9d5ff);
 }
 
 .summary-tile .tile-number {
-  color: #ffffff;
+  color: var(--wave-text-primary, #111111);
   font-size: 2.2rem;
   font-weight: 800;
   margin: 0 0 0.25rem 0;
 }
 
 .summary-tile .tile-label {
-  color: #e2e8f0;
+  color: var(--wave-text-muted, #71717a);
   font-size: 0.85rem;
   font-weight: 500;
   margin: 0;
@@ -868,9 +870,9 @@
 }
 
 .action-tile-btn {
-  background: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 10px;
+  background: var(--wave-surface-subtle, #f4f4f6);
+  border: 1px solid var(--wave-border, #e4e4e7);
+  border-radius: 12px;
   padding: 1.25rem 0.75rem;
   display: flex;
   flex-direction: column;
@@ -882,20 +884,22 @@
 }
 
 .action-tile-btn:hover {
-  background: #1e293b;
-  border-color: #6366f1;
+  background: var(--wave-card-bg, #ffffff);
+  border-color: var(--wave-accent-purple, #9333ea);
   transform: translateY(-2px);
 }
 
 .action-tile-btn .tile-icon {
   font-size: 1.5rem;
+  color: var(--wave-accent-purple, #9333ea);
 }
 
 .action-tile-btn span {
-  color: #f1f5f9;
+  color: var(--wave-text-primary, #111111);
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 600;
   text-align: center;
+}
 }
 
 /* ==========================================================================
@@ -1497,79 +1501,14 @@
   }
 }
 
-/* Animated Border Shadow on Hover (Rounding Border Shape) */
-@property --border-angle {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
-}
-
-@keyframes rotateBorderGlow {
-  0% { --border-angle: 0deg; }
-  100% { --border-angle: 360deg; }
-}
-
-@keyframes borderGlowPulse {
-  0%, 100% {
-    box-shadow: 0 10px 24px -4px rgba(0, 0, 0, 0.25), 0 0 18px -2px rgba(99, 102, 241, 0.35);
-  }
-  50% {
-    box-shadow: 0 14px 28px -4px rgba(0, 0, 0, 0.3), 0 0 24px 1px rgba(6, 182, 212, 0.45);
-  }
-}
-
+/* Clean, Minimalist Card Hover Feedback */
 .stat-card,
 .overview-stat-card,
 .card,
 .admin-card,
 .overview-card,
 .module-card {
-  position: relative;
-  isolation: isolate;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.stat-card::before,
-.overview-stat-card::before,
-.card::before,
-.admin-card::before,
-.overview-card::before,
-.module-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1.75px;
-  background: conic-gradient(
-    from var(--border-angle),
-    transparent 0deg,
-    transparent 110deg,
-    rgba(99, 102, 241, 0.15) 140deg,
-    #6366f1 180deg,
-    #06b6d4 200deg,
-    #818cf8 220deg,
-    transparent 260deg,
-    transparent 360deg
-  );
-  -webkit-mask: 
-    linear-gradient(#fff 0 0) content-box, 
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 2;
-}
-
-.stat-card:hover::before,
-.overview-stat-card:hover::before,
-.card:hover::before,
-.admin-card:hover::before,
-.overview-card:hover::before,
-.module-card:hover::before {
-  opacity: 1;
-  animation: rotateBorderGlow 2.5s linear infinite;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .stat-card:hover,
@@ -1578,8 +1517,7 @@
 .admin-card:hover,
 .overview-card:hover,
 .module-card:hover {
-  transform: translateY(-2.5px);
-  animation: borderGlowPulse 2.5s ease-in-out infinite;
-  border-color: transparent !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
 }
 

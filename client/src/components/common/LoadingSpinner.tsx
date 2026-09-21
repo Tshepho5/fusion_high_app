@@ -98,7 +98,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Column (2 Cols): Cards / Content Grid Skeleton */}
-        <div className="lg:col-span-2 space-y-4 rounded-3xl bg-slate-100/90 dark:bg-surface-darker/80 border border-slate-300/80 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden shimmer-wave">
+        <div className="lg:col-span-2 space-y-4 rounded-3xl bg-slate-100 dark:bg-surface-darker border border-slate-300 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden shimmer-wave">
           <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-white/5">
             <div className="space-y-1.5">
               <div className="w-32 h-4 rounded-full bg-slate-200 dark:bg-white/10 animate-pulse" />

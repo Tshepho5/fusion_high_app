@@ -394,23 +394,23 @@
             <i class="fas fa-arrow-left"></i> Back to All Subjects
           </button>
 
-          <div class="card" style="background: #1e293b; border: 1px solid #334155;">
+          <div class="card" style="background: var(--wave-card-bg); border: 1px solid var(--wave-border);">
             <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
-              <span><i class="fas fa-robot" style="color:#6366f1;"></i> AI CAPS Assistant: <span id="active-subject-display"></span></span>
+              <span style="color:var(--text-main); font-weight:700;"><i class="fas fa-robot me-1" style="color:var(--text-main);"></i> AI CAPS Assistant: <span id="active-subject-display"></span></span>
             </div>
 
             <!-- Mode Selector Pills -->
-            <div style="display:flex; gap:0.5rem; margin:1rem 0 1.25rem 0; flex-wrap:wrap; background:#0f172a; padding:0.5rem; border-radius:8px; border:1px solid #334155;">
-              <button type="button" class="ai-mode-btn active" id="ai-mode-quiz" onclick="window.setAIMode('quiz')" style="padding:8px 16px; border-radius:6px; border:none; background:#6366f1; color:#fff; font-weight:600; cursor:pointer;">
+            <div style="display:flex; gap:0.5rem; margin:1rem 0 1.25rem 0; flex-wrap:wrap; background:var(--wave-inset); padding:0.5rem; border-radius:9999px; border:1px solid var(--wave-border);">
+              <button type="button" class="ai-mode-btn active" id="ai-mode-quiz" onclick="window.setAIMode('quiz')" style="padding:8px 18px; border-radius:9999px; border:none; background:var(--btn-cta-bg); color:var(--btn-cta-text); font-weight:600; cursor:pointer;">
                 <i class="fas fa-file-signature me-1"></i> Interactive Quiz
               </button>
-              <button type="button" class="ai-mode-btn" id="ai-mode-mcq" onclick="window.setAIMode('mcq')" style="padding:8px 16px; border-radius:6px; border:none; background:transparent; color:#94a3b8; font-weight:600; cursor:pointer;">
+              <button type="button" class="ai-mode-btn" id="ai-mode-mcq" onclick="window.setAIMode('mcq')" style="padding:8px 18px; border-radius:9999px; border:none; background:transparent; color:var(--text-muted); font-weight:600; cursor:pointer;">
                 <i class="fas fa-list-check me-1"></i> Multiple Choice Quiz
               </button>
-              <button type="button" class="ai-mode-btn" id="ai-mode-lesson" onclick="window.setAIMode('lesson')" style="padding:8px 16px; border-radius:6px; border:none; background:transparent; color:#94a3b8; font-weight:600; cursor:pointer;">
+              <button type="button" class="ai-mode-btn" id="ai-mode-lesson" onclick="window.setAIMode('lesson')" style="padding:8px 18px; border-radius:9999px; border:none; background:transparent; color:var(--text-muted); font-weight:600; cursor:pointer;">
                 <i class="fas fa-book-reader me-1"></i> CAPS Lesson Plan
               </button>
-              <button type="button" class="ai-mode-btn" id="ai-mode-test" onclick="window.setAIMode('test')" style="padding:8px 16px; border-radius:6px; border:none; background:transparent; color:#94a3b8; font-weight:600; cursor:pointer;">
+              <button type="button" class="ai-mode-btn" id="ai-mode-test" onclick="window.setAIMode('test')" style="padding:8px 18px; border-radius:9999px; border:none; background:transparent; color:var(--text-muted); font-weight:600; cursor:pointer;">
                 <i class="fas fa-print me-1"></i> Test Paper & Memo
               </button>
             </div>
@@ -419,28 +419,28 @@
               <input type="hidden" id="asSubject">
               <input type="hidden" id="asGrade">
               <div class="form-group">
-                <label style="color:#f8fafc; font-weight:600;"><i class="fas fa-list-ul me-1" style="color:#6366f1;"></i> Select CAPS Syllabus Topic</label>
-                <select id="asTopicSelect" class="form-control" onchange="window.selectCAPSTopic(this.value)" style="background:#0f172a; color:#fff; font-weight:600; border:1px solid #334155; margin-bottom:0.75rem; padding:8px 12px;">
+                <label style="color:var(--text-main); font-weight:600;"><i class="fas fa-list-ul me-1"></i> Select CAPS Syllabus Topic</label>
+                <select id="asTopicSelect" class="form-control" onchange="window.selectCAPSTopic(this.value)" style="background:var(--wave-inset); color:var(--text-main); font-weight:600; border:1px solid var(--wave-border); margin-bottom:0.75rem; padding:8px 12px; border-radius:8px;">
                   <option value="">-- Loading CAPS Syllabus Topics --</option>
                 </select>
 
-                <label style="color:#94a3b8; font-size:0.85rem; font-weight:600;">Or Enter Custom Topic</label>
+                <label style="color:var(--text-muted); font-size:0.85rem; font-weight:600;">Or Enter Custom Topic</label>
                 <div class="flex-gap-10 mb-10" style="display:flex; gap:0.5rem;">
-                  <input type="text" id="asTopic" class="form-control" placeholder="Select from dropdown above or type custom topic..." style="background:#0f172a; color:#fff;">
+                  <input type="text" id="asTopic" class="form-control" placeholder="Select from dropdown above or type custom topic..." style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); border-radius:8px;">
                 </div>
 
                 <div id="discoveredTopics" class="discovered-topics-box" style="margin-top:0.75rem;">
-                  <p style="font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 8px;"><i class="fas fa-layer-group me-1" style="color:#6366f1;"></i> CAPS Syllabus Topics (Click to Select):</p>
+                  <p style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;"><i class="fas fa-layer-group me-1"></i> CAPS Syllabus Topics (Click to Select):</p>
                   <div id="topicsList" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
                 </div>
-                <small style="color:#94a3b8;">Pre-loaded CAPS South African curriculum topics & indexed PDF textbook topics.</small>
+                <small style="color:var(--text-muted);">Pre-loaded CAPS South African curriculum topics & indexed PDF textbook topics.</small>
               </div>
 
               <!-- Quiz/Assessment Custom Controls -->
-              <div id="quiz-config-controls" style="display:flex; gap:1rem; flex-wrap:wrap; margin:1rem 0; background:#0f172a; padding:1rem; border-radius:8px; border:1px solid #334155;">
+              <div id="quiz-config-controls" style="display:flex; gap:1rem; flex-wrap:wrap; margin:1rem 0; background:var(--wave-inset); padding:1rem; border-radius:12px; border:1px solid var(--wave-border);">
                 <div style="flex:1; min-width:180px;">
-                  <label style="color:#cbd5e1; font-weight:600; font-size:0.85rem;"><i class="fas fa-list-ol me-1" style="color:#6366f1;"></i> Number of Questions</label>
-                  <select id="asQuestionCount" class="form-control" style="background:#1e293b; color:#fff; font-weight:600; border:1px solid #475569; margin-top:4px;">
+                  <label style="color:var(--text-main); font-weight:600; font-size:0.85rem;"><i class="fas fa-list-ol me-1"></i> Number of Questions</label>
+                  <select id="asQuestionCount" class="form-control" style="background:var(--wave-card-bg); color:var(--text-main); font-weight:600; border:1px solid var(--wave-border); margin-top:4px; border-radius:8px;">
                     <option value="3">3 Questions</option>
                     <option value="5" selected>5 Questions</option>
                     <option value="10">10 Questions</option>
@@ -449,12 +449,12 @@
                   </select>
                 </div>
                 <div style="flex:1; min-width:180px;">
-                  <label style="color:#cbd5e1; font-weight:600; font-size:0.85rem;"><i class="fas fa-award me-1" style="color:#f59e0b;"></i> Marks per Question</label>
-                  <input type="number" id="asMarksPerQuestion" class="form-control" value="2" min="1" max="20" style="background:#1e293b; color:#fff; font-weight:600; border:1px solid #475569; margin-top:4px;">
+                  <label style="color:var(--text-main); font-weight:600; font-size:0.85rem;"><i class="fas fa-award me-1" style="color:#f59e0b;"></i> Marks per Question</label>
+                  <input type="number" id="asMarksPerQuestion" class="form-control" value="2" min="1" max="20" style="background:var(--wave-card-bg); color:var(--text-main); font-weight:600; border:1px solid var(--wave-border); margin-top:4px; border-radius:8px;">
                 </div>
               </div>
 
-              <button type="button" class="btn btn-primary" id="btn-generate-ai-action" onclick="window.executeAIGeneration()" style="background:#6366f1; border:none; padding:10px 24px; font-weight:700;">
+              <button type="button" class="btn btn-primary" id="btn-generate-ai-action" onclick="window.executeAIGeneration()" style="background:var(--btn-cta-bg); color:var(--btn-cta-text); border:none; padding:10px 24px; font-weight:600; border-radius:9999px;">
                 <i class="fas fa-magic me-1"></i> Generate AI Content
               </button>
             </div>
@@ -566,46 +566,46 @@
 
       <!-- Performance Section -->
       <div id="performance" class="section">
-        <div class="card" style="margin-bottom: 1.5rem; background: #1e293b; border: 1px solid #334155;">
+        <div class="card" style="margin-bottom: 1.5rem; background: var(--wave-card-bg); border: 1px solid var(--wave-border);">
           <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
-            <span><i class="fas fa-chart-line" style="color:#6366f1;"></i> Class Performance Analytics & Subject Insights</span>
+            <span style="color:var(--text-main); font-weight:700;"><i class="fas fa-chart-line me-1"></i> Class Performance Analytics & Subject Insights</span>
             <div style="display:flex; align-items:center; gap:0.5rem;">
-              <label style="font-size:0.85rem; color:#cbd5e1; font-weight:600;">Active Subject:</label>
-              <select id="perfSubject" class="form-control w-auto" style="background:#0f172a; color:#fff;" onchange="window.loadPerformanceOverview()"></select>
+              <label style="font-size:0.85rem; color:var(--text-muted); font-weight:600;">Active Subject:</label>
+              <select id="perfSubject" class="form-control w-auto" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); border-radius:8px;" onchange="window.loadPerformanceOverview()"></select>
             </div>
           </div>
 
           <!-- 4 KPI Metrics Header Cards -->
           <div class="stats-row-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.25rem 0 1.5rem 0;">
-            <div class="card" style="background: #0f172a; border-left: 4px solid #6366f1; border-color: #334155; padding: 1.2rem;">
-              <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Class Average</div>
-              <div style="font-size: 1.8rem; font-weight: 700; color: #f8fafc; margin-top: 4px;" id="perf-stat-class-avg">0%</div>
+            <div class="card" style="background: var(--wave-inset); border: 1px solid var(--wave-border); padding: 1.2rem; border-radius: 12px;">
+              <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Class Average</div>
+              <div style="font-size: 1.8rem; font-weight: 700; color: var(--text-main); margin-top: 4px;" id="perf-stat-class-avg">0%</div>
             </div>
-            <div class="card" style="background: #0f172a; border-left: 4px solid #22c55e; border-color: #334155; padding: 1.2rem;">
-              <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Highest Mark</div>
-              <div style="font-size: 1.8rem; font-weight: 700; color: #34d399; margin-top: 4px;" id="perf-stat-highest">0%</div>
+            <div class="card" style="background: var(--wave-inset); border: 1px solid var(--wave-border); padding: 1.2rem; border-radius: 12px;">
+              <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Highest Mark</div>
+              <div style="font-size: 1.8rem; font-weight: 700; color: #16a34a; margin-top: 4px;" id="perf-stat-highest">0%</div>
             </div>
-            <div class="card" style="background: #0f172a; border-left: 4px solid #ef4444; border-color: #334155; padding: 1.2rem;">
-              <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Lowest Mark</div>
-              <div style="font-size: 1.8rem; font-weight: 700; color: #f87171; margin-top: 4px;" id="perf-stat-lowest">0%</div>
+            <div class="card" style="background: var(--wave-inset); border: 1px solid var(--wave-border); padding: 1.2rem; border-radius: 12px;">
+              <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Lowest Mark</div>
+              <div style="font-size: 1.8rem; font-weight: 700; color: #dc2626; margin-top: 4px;" id="perf-stat-lowest">0%</div>
             </div>
-            <div class="card" style="background: #0f172a; border-left: 4px solid #3b82f6; border-color: #334155; padding: 1.2rem;">
-              <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Pass Rate (>=50%)</div>
-              <div style="font-size: 1.8rem; font-weight: 700; color: #60a5fa; margin-top: 4px;" id="perf-stat-pass-rate">0%</div>
+            <div class="card" style="background: var(--wave-inset); border: 1px solid var(--wave-border); padding: 1.2rem; border-radius: 12px;">
+              <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Pass Rate (>=50%)</div>
+              <div style="font-size: 1.8rem; font-weight: 700; color: var(--text-main); margin-top: 4px;" id="perf-stat-pass-rate">0%</div>
             </div>
           </div>
 
           <!-- Subject Comparison & Grade Distribution Grid -->
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem; margin-bottom: 1rem;">
-            <div style="background: #0f172a; padding: 1.25rem; border-radius: 10px; border: 1px solid #334155;">
-              <h4 style="color: #f8fafc; font-size: 0.95rem; font-weight: 700; margin: 0 0 1rem 0;"><i class="fas fa-chart-bar" style="color: #6366f1;"></i> Subject Performance Comparison</h4>
+            <div style="background: var(--wave-inset); padding: 1.25rem; border-radius: 12px; border: 1px solid var(--wave-border);">
+              <h4 style="color: var(--text-main); font-size: 0.95rem; font-weight: 700; margin: 0 0 1rem 0;"><i class="fas fa-chart-bar me-1"></i> Subject Performance Comparison</h4>
               <div id="perf-subject-comparison-bars" style="display:flex; flex-direction:column; gap:0.85rem;">
                 <!-- Populated dynamically with visual progress bars -->
               </div>
             </div>
 
-            <div style="background: #0f172a; padding: 1.25rem; border-radius: 10px; border: 1px solid #334155;">
-              <h4 style="color: #f8fafc; font-size: 0.95rem; font-weight: 700; margin: 0 0 1rem 0;"><i class="fas fa-layer-group" style="color: #38bdf8;"></i> CAPS Grade Symbol Distribution</h4>
+            <div style="background: var(--wave-inset); padding: 1.25rem; border-radius: 12px; border: 1px solid var(--wave-border);">
+              <h4 style="color: var(--text-main); font-size: 0.95rem; font-weight: 700; margin: 0 0 1rem 0;"><i class="fas fa-layer-group me-1"></i> CAPS Grade Symbol Distribution</h4>
               <div id="perf-grade-symbol-distribution" style="display:flex; flex-direction:column; gap:0.75rem;">
                 <!-- Populated dynamically with grade symbol breakdown -->
               </div>
@@ -614,13 +614,13 @@
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
-          <div class="card" style="background: #1e293b; border: 1px solid #334155;">
-            <div class="card-title" style="color: #4ade80;"><i class="fas fa-trophy"></i> Top Performing Learners</div>
+          <div class="card" style="background: var(--wave-card-bg); border: 1px solid var(--wave-border);">
+            <div class="card-title" style="color: #16a34a; font-weight: 700;"><i class="fas fa-trophy me-1"></i> Top Performing Learners</div>
             <div id="teacherLeaderboard">Loading leaderboard...</div>
           </div>
 
-          <div class="card" style="background: #1e293b; border: 1px solid #334155;">
-            <div class="card-title" style="color: #f87171;"><i class="fas fa-exclamation-triangle"></i> Learners At Risk (<50%)</div>
+          <div class="card" style="background: var(--wave-card-bg); border: 1px solid var(--wave-border);">
+            <div class="card-title" style="color: #dc2626; font-weight: 700;"><i class="fas fa-exclamation-triangle me-1"></i> Learners At Risk (&lt;50%)</div>
             <div id="perf-at-risk-list">Loading at-risk learners...</div>
           </div>
         </div>
@@ -852,10 +852,10 @@
             View your assigned teaching periods, classroom allocations, and scheduled CAPS assessment dates.
           </p>
 
-          <div class="table-responsive" style="border-radius: 12px; border: 1px solid #334155; overflow-x:auto;">
+          <div class="table-responsive" style="border-radius: 12px; border: 1px solid var(--wave-border); overflow-x:auto;">
             <table style="width:100%; border-collapse:collapse; min-width:650px;">
               <thead>
-                <tr style="background:#1e293b; color:#f8fafc; border-bottom:1px solid #334155; font-size:0.85rem;">
+                <tr style="background:var(--wave-inset); color:var(--text-main); border-bottom:1px solid var(--wave-border); font-size:0.85rem;">
                   <th style="padding:12px 14px; text-align:left;">Period &amp; Time</th>
                   <th style="padding:12px 14px; text-align:center;">Monday</th>
                   <th style="padding:12px 14px; text-align:center;">Tuesday</th>
@@ -865,34 +865,34 @@
                 </tr>
               </thead>
               <tbody id="teacher-timetable-tbody">
-                <tr style="border-bottom: 1px solid #1e293b;">
-                  <td style="padding: 10px 14px; font-weight: 600; color: #38bdf8;">Period 1<br><span style="font-size: 0.75rem; color: #94a3b8;">08:00 - 08:50</span></td>
-                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #38bdf8; font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 12A • Room 14</span></div></td>
-                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #34d399; font-size: 0.85rem;">Physical Sciences</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 11B • Lab 2</span></div></td>
-                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #38bdf8; font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 12A • Room 14</span></div></td>
-                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #c084fc; font-size: 0.85rem;">Free Period</strong><br><span style="font-size: 0.75rem; color: #94a3b8;">Prep &amp; Marking</span></div></td>
-                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #38bdf8; font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 10C • Room 12</span></div></td>
+                <tr style="border-bottom: 1px solid var(--wave-border);">
+                  <td style="padding: 10px 14px; font-weight: 600; color: var(--text-main);">Period 1<br><span style="font-size: 0.75rem; color: var(--text-muted);">08:00 - 08:50</span></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: var(--wave-inset); border: 1px solid var(--wave-border); border-radius: 8px; padding: 6px;"><strong style="color: var(--text-main); font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">Grade 12A • Room 14</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: var(--wave-inset); border: 1px solid var(--wave-border); border-radius: 8px; padding: 6px;"><strong style="color: var(--text-main); font-size: 0.85rem;">Physical Sciences</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">Grade 11B • Lab 2</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: var(--wave-inset); border: 1px solid var(--wave-border); border-radius: 8px; padding: 6px;"><strong style="color: var(--text-main); font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">Grade 12A • Room 14</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: var(--accent-lavender); border: 1px solid var(--wave-border); border-radius: 8px; padding: 6px;"><strong style="color: var(--text-main); font-size: 0.85rem;">Free Period</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">Prep &amp; Marking</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: var(--wave-inset); border: 1px solid var(--wave-border); border-radius: 8px; padding: 6px;"><strong style="color: var(--text-main); font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">Grade 10C • Room 12</span></div></td>
                 </tr>
-                <tr style="border-bottom: 1px solid #1e293b;">
-                  <td style="padding: 10px 14px; font-weight: 600; color: #38bdf8;">Period 2<br><span style="font-size: 0.75rem; color: #94a3b8;">08:50 - 09:40</span></td>
-                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #34d399; font-size: 0.85rem;">Physical Sciences</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 12A • Lab 1</span></div></td>
-                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #38bdf8; font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 10C • Room 12</span></div></td>
-                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #34d399; font-size: 0.85rem;">Physical Sciences</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 12A • Lab 1</span></div></td>
-                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #38bdf8; font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 12A • Room 14</span></div></td>
-                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #34d399; font-size: 0.85rem;">Physical Sciences</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 11B • Lab 2</span></div></td>
+                <tr style="border-bottom: 1px solid var(--wave-border);">
+                  <td style="padding: 10px 14px; font-weight: 600; color: var(--text-main);">Period 2<br><span style="font-size: 0.75rem; color: var(--text-muted);">08:50 - 09:40</span></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: var(--wave-inset); border: 1px solid var(--wave-border); border-radius: 8px; padding: 6px;"><strong style="color: var(--text-main); font-size: 0.85rem;">Physical Sciences</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">Grade 12A • Lab 1</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: var(--wave-inset); border: 1px solid var(--wave-border); border-radius: 8px; padding: 6px;"><strong style="color: var(--text-main); font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">Grade 10C • Room 12</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: var(--wave-inset); border: 1px solid var(--wave-border); border-radius: 8px; padding: 6px;"><strong style="color: var(--text-main); font-size: 0.85rem;">Physical Sciences</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">Grade 12A • Lab 1</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: var(--wave-inset); border: 1px solid var(--wave-border); border-radius: 8px; padding: 6px;"><strong style="color: var(--text-main); font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">Grade 12A • Room 14</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: var(--wave-inset); border: 1px solid var(--wave-border); border-radius: 8px; padding: 6px;"><strong style="color: var(--text-main); font-size: 0.85rem;">Physical Sciences</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">Grade 11B • Lab 2</span></div></td>
                 </tr>
-                <tr style="border-bottom: 1px solid #1e293b; background: rgba(0,0,0,0.2);">
-                  <td style="padding: 8px 14px; font-weight: 700; color: #f59e0b; text-transform: uppercase; font-size: 0.75rem;" colspan="6">
+                <tr style="border-bottom: 1px solid var(--wave-border); background: var(--wave-inset);">
+                  <td style="padding: 8px 14px; font-weight: 700; color: var(--text-main); text-transform: uppercase; font-size: 0.75rem;" colspan="6">
                     <i class="fas fa-coffee me-1"></i> Morning Break (09:40 - 10:10)
                   </td>
                 </tr>
-                <tr style="border-bottom: 1px solid #1e293b;">
-                  <td style="padding: 10px 14px; font-weight: 600; color: #38bdf8;">Period 3<br><span style="font-size: 0.75rem; color: #94a3b8;">10:10 - 11:00</span></td>
-                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #38bdf8; font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 11A • Room 14</span></div></td>
-                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #c084fc; font-size: 0.85rem;">Department Meeting</strong><br><span style="font-size: 0.75rem; color: #94a3b8;">Staffroom</span></div></td>
-                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #38bdf8; font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 11A • Room 14</span></div></td>
-                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #38bdf8; font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 10C • Room 12</span></div></td>
-                  <td style="padding: 10px; text-align: center;"><div style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 6px;"><strong style="color: #fbbf24; font-size: 0.85rem;">Assessment Slot</strong><br><span style="font-size: 0.75rem; color: #cbd5e1;">Grade 12 Test</span></div></td>
+                <tr style="border-bottom: 1px solid var(--wave-border);">
+                  <td style="padding: 10px 14px; font-weight: 600; color: var(--text-main);">Period 3<br><span style="font-size: 0.75rem; color: var(--text-muted);">10:10 - 11:00</span></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: var(--wave-inset); border: 1px solid var(--wave-border); border-radius: 8px; padding: 6px;"><strong style="color: var(--text-main); font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">Grade 11A • Room 14</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: var(--accent-lavender); border: 1px solid var(--wave-border); border-radius: 8px; padding: 6px;"><strong style="color: var(--text-main); font-size: 0.85rem;">Department Meeting</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">Staffroom</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: var(--wave-inset); border: 1px solid var(--wave-border); border-radius: 8px; padding: 6px;"><strong style="color: var(--text-main); font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">Grade 11A • Room 14</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: var(--wave-inset); border: 1px solid var(--wave-border); border-radius: 8px; padding: 6px;"><strong style="color: var(--text-main); font-size: 0.85rem;">Mathematics</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">Grade 10C • Room 12</span></div></td>
+                  <td style="padding: 10px; text-align: center;"><div style="background: var(--wave-inset); border: 1px solid var(--wave-border); border-radius: 8px; padding: 6px;"><strong style="color: var(--text-main); font-size: 0.85rem;">Assessment Slot</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">Grade 12 Test</span></div></td>
                 </tr>
               </tbody>
             </table>
@@ -902,22 +902,22 @@
 
       <!-- Settings Section -->
       <div id="settings" class="section">
-        <div class="card" style="margin-bottom:1.5rem;">
-          <div class="card-title"><i class="fas fa-lock"></i> Security & Password</div>
+        <div class="card" style="margin-bottom:1.5rem; background:var(--wave-card-bg); border:1px solid var(--wave-border); border-radius:14px;">
+          <div class="card-title" style="color:var(--text-main);"><i class="fas fa-lock me-2"></i> Security & Password</div>
           <form id="changePasswordForm" class="form-padding" onsubmit="window.handlePasswordChangeSubmit(event)">
             <div class="form-group">
-              <label style="color:#cbd5e1;">Current Password</label>
-              <input type="password" id="sett-curr-pass" class="form-control" required style="background:#0f172a; color:#fff;">
+              <label style="color:var(--text-muted);">Current Password</label>
+              <input type="password" id="sett-curr-pass" class="form-control" required style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); border-radius:8px;">
             </div>
             <div class="form-group">
-              <label style="color:#cbd5e1;">New Password</label>
-              <input type="password" id="sett-new-pass" class="form-control" required style="background:#0f172a; color:#fff;">
+              <label style="color:var(--text-muted);">New Password</label>
+              <input type="password" id="sett-new-pass" class="form-control" required style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); border-radius:8px;">
             </div>
             <div class="form-group">
-              <label style="color:#cbd5e1;">Confirm New Password</label>
-              <input type="password" id="sett-conf-pass" class="form-control" required style="background:#0f172a; color:#fff;">
+              <label style="color:var(--text-muted);">Confirm New Password</label>
+              <input type="password" id="sett-conf-pass" class="form-control" required style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); border-radius:8px;">
             </div>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-key"></i> Update Password</button>
+            <button type="submit" class="btn btn-primary" style="background:var(--btn-cta-bg); color:var(--btn-cta-text); border-radius:9999px; border:none; padding:8px 20px; font-weight:600;"><i class="fas fa-key me-1"></i> Update Password</button>
           </form>
         </div>
 
@@ -1090,36 +1090,35 @@
       <p id="marksheet-modal-subtitle" style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 1rem;">Record, edit, and export term assessment marks for all enrolled learners in this class.</p>
       
       <!-- Mark Register Controls & Summary Stats Bar -->
-      <div style="display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; background: #1e293b; padding: 1rem; border-radius: 10px; border: 1px solid #334155; margin-bottom: 1.25rem;">
+      <div style="display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; background: var(--wave-inset); padding: 1rem; border-radius: 12px; border: 1px solid var(--wave-border); margin-bottom: 1.25rem;">
         <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; flex: 1;">
           <div>
-            <label style="font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 2px;">Academic Term</label>
-            <select id="marksheet-term-select" class="form-control w-auto" style="background: #0f172a; color: #fff; font-size: 0.85rem;">
+            <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Academic Term</label>
+            <select id="marksheet-term-select" class="form-control w-auto" style="background: var(--wave-card-bg); color: var(--text-main); font-size: 0.85rem; border: 1px solid var(--wave-border); border-radius: 8px;">
               <option value="Term 4 2026">Term 4 2026</option>
               <option value="Term 3 2026">Term 3 2026</option>
               <option value="Term 2 2026">Term 2 2026</option>
               <option value="Term 1 2026">Term 1 2026</option>
-              
             </select>
           </div>
           <div style="flex: 1; min-width: 180px;">
-            <label style="font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 2px;">Assessment Name / Title</label>
-            <input type="text" id="marksheet-name-input" class="form-control" placeholder="e.g., Test 1: Organic Chemistry" style="background: #0f172a; color: #fff; font-size: 0.85rem;">
+            <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Assessment Name / Title</label>
+            <input type="text" id="marksheet-name-input" class="form-control" placeholder="e.g., Test 1: Organic Chemistry" style="background: var(--wave-card-bg); color: var(--text-main); font-size: 0.85rem; border: 1px solid var(--wave-border); border-radius: 8px;">
           </div>
           <div style="width: 110px;">
-            <label style="font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 2px;">Total Mark</label>
-            <input type="number" id="marksheet-total-mark" class="form-control" value="100" min="1" max="500" style="background: #0f172a; color: #fff; font-size: 0.85rem; text-align: center; font-weight: 700;" oninput="window.updateMarkSheetStats()">
+            <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Total Mark</label>
+            <input type="number" id="marksheet-total-mark" class="form-control" value="100" min="1" max="500" style="background: var(--wave-card-bg); color: var(--text-main); font-size: 0.85rem; text-align: center; font-weight: 700; border: 1px solid var(--wave-border); border-radius: 8px;" oninput="window.updateMarkSheetStats()">
           </div>
         </div>
 
         <div style="display: flex; gap: 1rem; align-items: center;">
           <div style="text-align: right;">
-            <span style="font-size: 0.75rem; color: #94a3b8; display: block;">CLASS AVERAGE</span>
-            <strong id="marksheet-stat-avg" style="font-size: 1.3rem; color: #34d399;">--%</strong>
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">CLASS AVERAGE</span>
+            <strong id="marksheet-stat-avg" style="font-size: 1.3rem; color: #16a34a;">--%</strong>
           </div>
-          <div style="text-align: right; border-left: 1px solid #334155; padding-left: 1rem;">
-            <span style="font-size: 0.75rem; color: #94a3b8; display: block;">PASS RATE</span>
-            <strong id="marksheet-stat-pass" style="font-size: 1.3rem; color: #60a5fa;">--%</strong>
+          <div style="text-align: right; border-left: 1px solid var(--wave-border); padding-left: 1rem;">
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">PASS RATE</span>
+            <strong id="marksheet-stat-pass" style="font-size: 1.3rem; color: var(--text-main);">--%</strong>
           </div>
         </div>
       </div>
@@ -1127,7 +1126,7 @@
       <div class="table-responsive" style="max-height: 55vh; overflow-y: auto;">
         <table style="width:100%; border-collapse: collapse;">
           <thead>
-            <tr style="border-bottom: 1px solid #334155; color: #cbd5e1; font-size: 0.85rem; background: #1e293b;">
+            <tr style="border-bottom: 1px solid var(--wave-border); color: var(--text-muted); font-size: 0.85rem; background: var(--wave-inset);">
               <th style="padding: 10px; text-align: left;">Learner Name</th>
               <th style="padding: 10px; text-align: left;">Admission Number</th>
               <th style="padding: 10px; text-align: center;">Grade & Class</th>
@@ -1145,14 +1144,14 @@
 
       <div style="display:flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">
         <div style="display:flex; gap:0.5rem; align-items:center;">
-          <button type="button" class="btn btn-outline" onclick="window.exportClassMarkSheetCSV()"><i class="fas fa-file-csv me-1" style="color: #34d399;"></i> Export CSV</button>
-          <button type="button" class="btn btn-outline" onclick="document.getElementById('csv-import-file-input').click()"><i class="fas fa-file-upload me-1" style="color: #60a5fa;"></i> Bulk Import CSV</button>
+          <button type="button" class="btn btn-outline" style="border-radius:9999px;" onclick="window.exportClassMarkSheetCSV()"><i class="fas fa-file-csv me-1"></i> Export CSV</button>
+          <button type="button" class="btn btn-outline" style="border-radius:9999px;" onclick="document.getElementById('csv-import-file-input').click()"><i class="fas fa-file-upload me-1"></i> Bulk Import CSV</button>
           <input type="file" id="csv-import-file-input" accept=".csv" style="display:none;" onchange="window.importClassMarkSheetCSV(event)">
         </div>
         <div style="display: flex; gap: 0.75rem; align-items: center;">
-          <button type="button" class="btn btn-secondary" onclick="document.getElementById('classMarkSheetModal').style.display='none'">Cancel</button>
-          <button type="button" class="btn btn-outline" style="border: 1px solid #64748b; color: #cbd5e1;" onclick="window.saveClassMarkSheet(false)"><i class="fas fa-file-alt me-1"></i> Save as Draft</button>
-          <button type="button" class="btn btn-primary-cta" style="background: linear-gradient(135deg, #4f46e5, #06b6d4); font-weight: 700;" onclick="window.saveClassMarkSheet(true)"><i class="fas fa-paper-plane me-1"></i> Publish Marks to Admin Dashboard</button>
+          <button type="button" class="btn btn-secondary" style="border-radius:9999px;" onclick="document.getElementById('classMarkSheetModal').style.display='none'">Cancel</button>
+          <button type="button" class="btn btn-outline" style="border-radius:9999px;" onclick="window.saveClassMarkSheet(false)"><i class="fas fa-file-alt me-1"></i> Save as Draft</button>
+          <button type="button" class="btn btn-primary" style="background: var(--btn-cta-bg); color: var(--btn-cta-text); border-radius:9999px; font-weight: 600;" onclick="window.saveClassMarkSheet(true)"><i class="fas fa-paper-plane me-1"></i> Publish Marks to Admin Dashboard</button>
         </div>
       </div>
     </div>
@@ -1160,23 +1159,23 @@
 
   <!-- Modal for Manage Textbooks -->
   <div id="textbookManagerModal" class="modal" style="display:none;">
-    <div class="modal-content" style="max-width: 700px; background: #0f172a; color: #fff;">
-      <span class="close-btn" onclick="document.getElementById('textbookManagerModal').style.display='none'">&times;</span>
-      <h3 class="card-title" id="textbook-modal-title" style="color: #ffffff;"><i class="fas fa-book-open"></i> Manage CAPS Textbooks</h3>
+    <div class="modal-content" style="max-width: 700px; background: var(--wave-card-bg); color: var(--text-main); border: 1px solid var(--wave-border); border-radius: 16px;">
+      <span class="close-btn" style="color: var(--text-muted);" onclick="document.getElementById('textbookManagerModal').style.display='none'">&times;</span>
+      <h3 class="card-title" id="textbook-modal-title" style="color: var(--text-main);"><i class="fas fa-book-open me-1"></i> Manage CAPS Textbooks</h3>
       
       <div style="margin-top: 1rem;">
         <form id="textbookModalUploadForm" onsubmit="window.handleTextbookModalUpload(event)">
           <input type="hidden" id="tb-modal-subject">
           <input type="hidden" id="tb-modal-grade">
           <div class="form-group">
-            <label style="color:#cbd5e1;">Select CAPS PDF Textbook</label>
-            <input type="file" id="tb-modal-file" class="form-control" accept="application/pdf" required style="background:#1e293b; color:#fff;">
+            <label style="color:var(--text-main);">Select CAPS PDF Textbook</label>
+            <input type="file" id="tb-modal-file" class="form-control" accept="application/pdf" required style="background:var(--wave-inset); color:var(--text-main); border: 1px solid var(--wave-border); border-radius: 8px;">
           </div>
-          <button type="submit" class="btn btn-primary" style="margin-top:0.5rem;"><i class="fas fa-upload"></i> Upload & Index Textbook</button>
+          <button type="submit" class="btn btn-primary" style="margin-top:0.5rem; background: var(--btn-cta-bg); color: var(--btn-cta-text); border-radius: 9999px;"><i class="fas fa-upload me-1"></i> Upload & Index Textbook</button>
         </form>
       </div>
 
-      <h4 style="color:#ffffff; margin-top: 1.5rem; font-size: 0.95rem;">Current Uploaded Textbooks</h4>
+      <h4 style="color:var(--text-main); margin-top: 1.5rem; font-size: 0.95rem;">Current Uploaded Textbooks</h4>
       <div id="tb-modal-list" style="margin-top: 0.5rem; max-height: 200px; overflow-y: auto;">
         <!-- Populated dynamically -->
       </div>
@@ -1185,17 +1184,17 @@
 
   <!-- Modal for Viewing Class Learners inside My Subjects -->
   <div id="subjectLearnersModal" class="modal" style="display:none;">
-    <div class="modal-content" style="max-width: 950px; background: #0f172a; color: #fff;">
-      <span class="close-btn" onclick="document.getElementById('subjectLearnersModal').style.display='none'">&times;</span>
-      <h3 class="card-title" id="subject-learners-modal-title" style="color: #ffffff;"><i class="fas fa-users" style="color: #6366f1;"></i> Enrolled Class Learners</h3>
-      <p id="subject-learners-modal-subtitle" style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 1rem;">Browsing learner cards for this subject and grade class roster.</p>
+    <div class="modal-content" style="max-width: 950px; background: var(--wave-card-bg); color: var(--text-main); border: 1px solid var(--wave-border); border-radius: 16px;">
+      <span class="close-btn" style="color: var(--text-muted);" onclick="document.getElementById('subjectLearnersModal').style.display='none'">&times;</span>
+      <h3 class="card-title" id="subject-learners-modal-title" style="color: var(--text-main);"><i class="fas fa-users me-1"></i> Enrolled Class Learners</h3>
+      <p id="subject-learners-modal-subtitle" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">Browsing learner cards for this subject and grade class roster.</p>
       
       <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap;">
         <div style="flex: 1; position: relative; min-width: 240px;">
-          <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-          <input type="text" id="subj-learner-search" class="form-control" placeholder="Search learner name or admission #..." style="padding-left: 36px; background: #1e293b; color: #fff;" oninput="window.filterSubjectLearnerCards(this.value)">
+          <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+          <input type="text" id="subj-learner-search" class="form-control" placeholder="Search learner name or admission #..." style="padding-left: 36px; background: var(--wave-inset); color: var(--text-main); border: 1px solid var(--wave-border); border-radius: 9999px;" oninput="window.filterSubjectLearnerCards(this.value)">
         </div>
-        <button type="button" class="btn btn-outline btn-sm" id="btn-open-full-roster" onclick="window.openFullLearnersTab()"><i class="fas fa-external-link-alt"></i> Open in My Learners Tab</button>
+        <button type="button" class="btn btn-outline btn-sm" style="border-radius: 9999px;" id="btn-open-full-roster" onclick="window.openFullLearnersTab()"><i class="fas fa-external-link-alt me-1"></i> Open in My Learners Tab</button>
       </div>
 
       <div id="subject-learners-modal-cards" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; max-height: 65vh; overflow-y: auto; padding-right: 4px;">
@@ -1206,30 +1205,30 @@
 
   <!-- Modal for Marking Attendance inside My Subjects -->
   <div id="subjectAttendanceModal" class="modal" style="display:none;">
-    <div class="modal-content" style="max-width: 950px; background: #0f172a; color: #fff;">
-      <span class="close-btn" onclick="document.getElementById('subjectAttendanceModal').style.display='none'">&times;</span>
-      <h3 class="card-title" id="subj-attendance-modal-title" style="color: #ffffff;"><i class="fas fa-user-check" style="color: #22c55e;"></i> Daily Attendance Register</h3>
-      <p id="subj-attendance-modal-subtitle" style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 1rem;">Record attendance status for learners in this class.</p>
+    <div class="modal-content" style="max-width: 950px; background: var(--wave-card-bg); color: var(--text-main); border: 1px solid var(--wave-border); border-radius: 16px;">
+      <span class="close-btn" style="color: var(--text-muted);" onclick="document.getElementById('subjectAttendanceModal').style.display='none'">&times;</span>
+      <h3 class="card-title" id="subj-attendance-modal-title" style="color: var(--text-main);"><i class="fas fa-user-check me-1" style="color: #16a34a;"></i> Daily Attendance Register</h3>
+      <p id="subj-attendance-modal-subtitle" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">Record attendance status for learners in this class.</p>
       
       <!-- Date Selector and Attendance Summary Pill Bar -->
-      <div style="display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; background: #1e293b; padding: 0.85rem 1rem; border-radius: 10px; border: 1px solid #334155; margin-bottom: 1.25rem;">
+      <div style="display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; background: var(--wave-inset); padding: 0.85rem 1rem; border-radius: 12px; border: 1px solid var(--wave-border); margin-bottom: 1.25rem;">
         <div style="display: flex; gap: 0.75rem; align-items: center;">
-          <label style="font-size: 0.85rem; color: #cbd5e1; font-weight: 600;">Date:</label>
-          <input type="date" id="subj-att-date" class="form-control w-auto" style="background: #0f172a; color: #fff;" onchange="window.loadSubjectAttendanceData(document.getElementById('subjectAttendanceModal').getAttribute('data-subject'), document.getElementById('subjectAttendanceModal').getAttribute('data-grade'), this.value)">
+          <label style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Date:</label>
+          <input type="date" id="subj-att-date" class="form-control w-auto" style="background: var(--wave-card-bg); color: var(--text-main); border: 1px solid var(--wave-border); border-radius: 8px;" onchange="window.loadSubjectAttendanceData(document.getElementById('subjectAttendanceModal').getAttribute('data-subject'), document.getElementById('subjectAttendanceModal').getAttribute('data-grade'), this.value)">
         </div>
 
         <div style="display: flex; gap: 1rem; font-size: 0.82rem; flex-wrap: wrap;">
-          <span style="color: #4ade80;">Present: <strong id="subj-att-count-present" style="font-size: 1.1rem; color: #fff;">0</strong></span>
-          <span style="color: #f87171;">Absent: <strong id="subj-att-count-absent" style="font-size: 1.1rem; color: #fff;">0</strong></span>
-          <span style="color: #fbbf24;">Late: <strong id="subj-att-count-late" style="font-size: 1.1rem; color: #fff;">0</strong></span>
-          <span style="color: #60a5fa;">Excused: <strong id="subj-att-count-excused" style="font-size: 1.1rem; color: #fff;">0</strong></span>
+          <span style="color: #16a34a;">Present: <strong id="subj-att-count-present" style="font-size: 1.1rem; color: var(--text-main);">0</strong></span>
+          <span style="color: #dc2626;">Absent: <strong id="subj-att-count-absent" style="font-size: 1.1rem; color: var(--text-main);">0</strong></span>
+          <span style="color: #d97706;">Late: <strong id="subj-att-count-late" style="font-size: 1.1rem; color: var(--text-main);">0</strong></span>
+          <span style="color: var(--text-main);">Excused: <strong id="subj-att-count-excused" style="font-size: 1.1rem; color: var(--text-main);">0</strong></span>
         </div>
       </div>
 
       <div class="table-responsive" style="max-height: 55vh; overflow-y: auto;">
         <table style="width:100%; border-collapse: collapse;">
           <thead>
-            <tr style="border-bottom: 1px solid #334155; color: #cbd5e1; font-size: 0.85rem; background: #1e293b;">
+            <tr style="border-bottom: 1px solid var(--wave-border); color: var(--text-muted); font-size: 0.85rem; background: var(--wave-inset);">
               <th style="padding: 10px; text-align: left;">Learner Name</th>
               <th style="padding: 10px; text-align: left;">Admission Number</th>
               <th style="padding: 10px; text-align: center;">Grade</th>
@@ -1244,8 +1243,8 @@
       </div>
 
       <div style="display:flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
-        <button type="button" class="btn btn-secondary" onclick="document.getElementById('subjectAttendanceModal').style.display='none'">Cancel</button>
-        <button type="button" class="btn btn-primary-cta" onclick="window.submitSubjectAttendanceModal()"><i class="fas fa-check-circle me-1"></i> Submit Attendance</button>
+        <button type="button" class="btn btn-secondary" style="border-radius: 9999px;" onclick="document.getElementById('subjectAttendanceModal').style.display='none'">Cancel</button>
+        <button type="button" class="btn btn-primary" style="background: var(--btn-cta-bg); color: var(--btn-cta-text); border-radius: 9999px; font-weight: 600;" onclick="window.submitSubjectAttendanceModal()"><i class="fas fa-check-circle me-1"></i> Submit Attendance</button>
       </div>
     </div>
   </div>

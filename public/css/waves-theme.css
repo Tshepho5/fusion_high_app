@@ -6,90 +6,116 @@
 @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Dancing+Script:wght@600;700&family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Canvas & Layout (Light Mode - matches reference picture) */
-  --wave-bg: #eaf4fd;
-  --wave-canvas: #f2f8fe;
-  --wave-surface: #ffffff;
-  --wave-surface-translucent: rgba(255, 255, 255, 0.88);
-  --wave-border: rgba(14, 165, 233, 0.16);
-  --wave-border-subtle: rgba(226, 232, 240, 0.8);
+  /* Canvas & Layout (Light Mode - matches reference picture left) */
+  --wave-bg: #F5F5F7;
+  --wave-canvas: #F5F5F7;
+  --wave-surface: #FFFFFF;
+  --wave-surface-translucent: rgba(255, 255, 255, 0.92);
+  --wave-surface-subtle: #F4F4F6;
+  --wave-surface-elevated: #FFFFFF;
+  --wave-border: #E4E4E7;
+  --wave-border-subtle: #EBECEF;
   
   /* Text */
-  --wave-text-primary: #0b172a;
-  --wave-text-secondary: #334155;
-  --wave-text-muted: #64748b;
-  --wave-text-inverse: #ffffff;
+  --wave-text-primary: #111111;
+  --wave-text-secondary: #52525B;
+  --wave-text-muted: #71717A;
+  --wave-text-inverse: #FFFFFF;
   
-  /* Accents */
-  --wave-accent-blue: #0284c7;
-  --wave-accent-sky: #38bdf8;
-  --wave-accent-navy: #071328;
-  --wave-accent-cyan: #06b6d4;
+  /* Accent & Badges (Matches top-right icon badge from reference picture) */
+  --wave-accent-purple: #9333EA;
+  --wave-accent-badge-bg: #F3E8FF;
+  --wave-accent-badge-border: #E9D5FF;
+  --wave-accent-blue: #111111;
+  --wave-accent-sky: #71717A;
+  --wave-accent-navy: #111111;
+  --wave-accent-cyan: #9333EA;
   
-  /* Sidebar */
-  --wave-sidebar-bg: linear-gradient(180deg, #08152e 0%, #050d1e 100%);
-  --wave-sidebar-border: rgba(255, 255, 255, 0.06);
-  --wave-sidebar-item-active: #1d4ed8;
-  --wave-sidebar-item-text: #94a3b8;
-  --wave-sidebar-item-text-active: #ffffff;
+  /* Buttons (Solid Black CTA in Light Mode) */
+  --wave-btn-primary-bg: #111111;
+  --wave-btn-primary-text: #FFFFFF;
+  --wave-btn-primary-border: #111111;
+  --wave-btn-secondary-bg: #FFFFFF;
+  --wave-btn-secondary-text: #111111;
+  --wave-btn-secondary-border: #E4E4E7;
+  
+  /* Sidebar (Crisp White with Black Active Pill in Light Mode) */
+  --wave-sidebar-bg: #FFFFFF;
+  --wave-sidebar-border: #E4E4E7;
+  --wave-sidebar-item-active: #111111;
+  --wave-sidebar-item-text: #71717A;
+  --wave-sidebar-item-text-active: #FFFFFF;
   
   /* Cards */
-  --wave-card-bg: #ffffff;
-  --wave-card-border: rgba(226, 232, 240, 0.85);
-  --wave-card-shadow: 0 10px 25px -4px rgba(14, 165, 233, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
-  --wave-card-hover-shadow: 0 18px 36px -6px rgba(14, 165, 233, 0.16), 0 6px 16px rgba(0, 0, 0, 0.06);
+  --wave-card-bg: #FFFFFF;
+  --wave-card-border: #E4E4E7;
+  --wave-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --wave-card-hover-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
   
-  /* Fluid Wave Layers (Light) */
-  --wave-color-1: rgba(186, 230, 253, 0.55);
-  --wave-color-2: rgba(56, 189, 248, 0.28);
-  --wave-color-3: rgba(14, 165, 233, 0.14);
-  --wave-color-deep: #071328;
+  /* Fluid Wave Backdrop (Subtle Ambient Light) */
+  --wave-color-1: rgba(243, 232, 255, 0.35);
+  --wave-color-2: rgba(228, 228, 231, 0.25);
+  --wave-color-3: rgba(244, 244, 246, 0.2);
+  --wave-color-deep: #F5F5F7;
 
   /* Dock */
-  --wave-dock-bg: rgba(255, 255, 255, 0.88);
-  --wave-dock-border: rgba(203, 213, 225, 0.8);
+  --wave-dock-bg: rgba(255, 255, 255, 0.94);
+  --wave-dock-border: #E4E4E7;
 }
 
 /* ==========================================================================
-   Dark Mode Calibration (Deep Midnight + Luminous Glowing Neon Waves)
+   Dark Mode Calibration (Pitch Black Canvas + Charcoal Cards + White CTA)
    ========================================================================== */
 [data-theme="dark"] {
-  --wave-bg: #050a14;
-  --wave-canvas: #070d1a;
-  --wave-surface: rgba(15, 23, 42, 0.82);
-  --wave-surface-translucent: rgba(15, 23, 42, 0.8);
-  --wave-border: rgba(56, 189, 248, 0.22);
-  --wave-border-subtle: rgba(255, 255, 255, 0.08);
+  --wave-bg: #0A0A0C;
+  --wave-canvas: #0A0A0C;
+  --wave-surface: #16161A;
+  --wave-surface-translucent: rgba(22, 22, 26, 0.92);
+  --wave-surface-subtle: #1E1E24;
+  --wave-surface-elevated: #22222A;
+  --wave-border: #27272E;
+  --wave-border-subtle: #202026;
   
-  --wave-text-primary: #f8fafc;
-  --wave-text-secondary: #cbd5e1;
-  --wave-text-muted: #94a3b8;
-  --wave-text-inverse: #ffffff;
+  --wave-text-primary: #FFFFFF;
+  --wave-text-secondary: #A1A1AA;
+  --wave-text-muted: #71717A;
+  --wave-text-inverse: #000000;
   
-  --wave-accent-blue: #38bdf8;
-  --wave-accent-sky: #67e8f9;
-  --wave-accent-navy: #030712;
-  --wave-accent-cyan: #22d3ee;
+  --wave-accent-purple: #C084FC;
+  --wave-accent-badge-bg: #261B35;
+  --wave-accent-badge-border: #3B2852;
+  --wave-accent-blue: #FFFFFF;
+  --wave-accent-sky: #A1A1AA;
+  --wave-accent-navy: #0A0A0C;
+  --wave-accent-cyan: #C084FC;
   
-  --wave-sidebar-bg: linear-gradient(180deg, #040914 0%, #02050b 100%);
-  --wave-sidebar-border: rgba(56, 189, 248, 0.12);
-  --wave-sidebar-item-active: #2563eb;
-  --wave-sidebar-item-text: #94a3b8;
-  --wave-sidebar-item-text-active: #ffffff;
+  /* Buttons (Solid White CTA in Dark Mode) */
+  --wave-btn-primary-bg: #FFFFFF;
+  --wave-btn-primary-text: #000000;
+  --wave-btn-primary-border: #FFFFFF;
+  --wave-btn-secondary-bg: #16161A;
+  --wave-btn-secondary-text: #FFFFFF;
+  --wave-btn-secondary-border: #27272E;
   
-  --wave-card-bg: rgba(15, 23, 42, 0.82);
-  --wave-card-border: rgba(56, 189, 248, 0.18);
-  --wave-card-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.65), 0 0 20px rgba(6, 182, 212, 0.07);
-  --wave-card-hover-shadow: 0 18px 40px -4px rgba(0, 0, 0, 0.85), 0 0 28px rgba(56, 189, 248, 0.2);
+  --wave-sidebar-bg: #16161A;
+  --wave-sidebar-border: #27272E;
+  --wave-sidebar-item-active: #FFFFFF;
+  --wave-sidebar-item-text: #A1A1AA;
+  --wave-sidebar-item-text-active: #000000;
+  
+  --wave-card-bg: #16161A;
+  --wave-card-border: #27272E;
+  --wave-card-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --wave-card-hover-shadow: 0 8px 28px rgba(0, 0, 0, 0.65);
   
   /* Luminous Wave Ribbons (Dark) */
-  --wave-color-1: rgba(6, 182, 212, 0.16);
-  --wave-color-2: rgba(37, 99, 235, 0.22);
-  --wave-color-3: rgba(99, 102, 241, 0.18);
-  --wave-color-deep: #020611;
+  --wave-color-1: rgba(38, 27, 53, 0.28);
+  --wave-color-2: rgba(22, 22, 26, 0.25);
+  --wave-color-3: rgba(10, 10, 12, 0.18);
+  --wave-color-deep: #0A0A0C;
 
-  --wave-dock-bg: rgba(11, 19, 38, 0.88);
-  --wave-dock-border: rgba(56, 189, 248, 0.22);
+  --wave-dock-bg: rgba(22, 22, 26, 0.94);
+  --wave-dock-border: #27272E;
 }
 
 /* ==========================================================================
@@ -107,53 +133,35 @@ body.wave-dashboard-layout {
   position: relative;
 }
 
-/* Fluid Waves Canvas Layer behind content */
+/* Fluid Waves Canvas Layer - Hidden to keep UI clean and serene */
 .wave-canvas-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-  opacity: 0.95;
-  transition: opacity 0.3s ease;
-}
-
-.wave-svg-stream {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  display: none !important;
 }
 
 /* ==========================================================================
-   Sidebar Navigation (Navy Curve & Active Pills)
+   Sidebar Navigation (Clean Monochrome & Active Pills)
    ========================================================================== */
 .sidebar {
   width: 260px;
   min-width: 260px;
   background: var(--wave-sidebar-bg) !important;
-  color: #ffffff;
+  color: var(--wave-text-primary);
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--wave-sidebar-border);
   position: relative;
   z-index: 900;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 4px 0 25px rgba(0, 0, 0, 0.15);
+  box-shadow: none;
 }
 
 /* Sidebar Brand Area */
 .sidebar-brand {
-  padding: 1.5rem 1.25rem;
+  padding: 1.25rem 1.25rem;
   font-size: 1.15rem;
   font-weight: 800;
-  letter-spacing: 0.8px;
-  color: #ffffff !important;
+  letter-spacing: 0.5px;
+  color: var(--wave-text-primary) !important;
   border-bottom: 1px solid var(--wave-sidebar-border);
   display: flex;
   align-items: center;
@@ -161,121 +169,120 @@ body.wave-dashboard-layout {
 }
 
 .sidebar-brand-icon {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #0284c7, #2563eb);
+  background: var(--wave-accent-badge-bg);
+  color: var(--wave-accent-badge-text);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
-  font-size: 1.2rem;
-  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+  font-size: 1.1rem;
   flex-shrink: 0;
 }
 
 /* Navigation Item List */
 .sidebar .nav-list {
   flex: 1;
-  padding: 1.25rem 0.85rem;
+  padding: 1rem 0.5rem;
   list-style: none;
   margin: 0;
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.25rem;
 }
 
 .sidebar .nav-item {
-  padding: 0.75rem 1rem;
+  padding: 0.65rem 1rem;
   display: flex;
   align-items: center;
   color: var(--wave-sidebar-item-text) !important;
   cursor: pointer;
-  border-radius: 14px;
+  border-radius: 12px;
   font-size: 0.9rem;
   font-weight: 500;
-  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background 0.15s ease, color 0.15s ease;
   position: relative;
 }
 
 .sidebar .nav-item i {
   margin-right: 0.85rem;
-  width: 22px;
+  width: 20px;
   text-align: center;
-  font-size: 1.15rem;
-  color: #64748b;
-  transition: all 0.2s ease;
+  font-size: 1.05rem;
+  color: var(--wave-sidebar-item-text);
+  transition: color 0.15s ease;
 }
 
 .sidebar .nav-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff !important;
-  transform: translateX(3px);
+  background: var(--wave-inset);
+  color: var(--wave-text-primary) !important;
 }
 
 .sidebar .nav-item:hover i {
-  color: var(--wave-accent-sky);
+  color: var(--wave-text-primary);
 }
 
-/* Active State - Vibrant Pill Button as in Screenshot */
+/* Active State - Solid Pill Button matching reference image */
 .sidebar .nav-item.active {
   background: var(--wave-sidebar-item-active) !important;
-  color: #ffffff !important;
-  font-weight: 700;
-  box-shadow: 0 6px 18px rgba(29, 78, 216, 0.45);
+  color: var(--wave-sidebar-item-text-active) !important;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .sidebar .nav-item.active i {
-  color: #ffffff !important;
+  color: var(--wave-sidebar-item-text-active) !important;
 }
 
 .sidebar .nav-item .badge {
   margin-left: auto;
-  background: #ef4444;
-  color: #ffffff;
+  background: var(--wave-accent-badge-bg);
+  color: var(--wave-accent-badge-text);
   font-size: 0.72rem;
-  font-weight: 800;
-  padding: 2px 7px;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
 }
 
 .sidebar .nav-item.logout-item {
   margin-top: auto;
-  color: #f87171 !important;
+  color: var(--wave-text-muted) !important;
   border-top: 1px solid var(--wave-sidebar-border);
   border-radius: 10px;
   padding-top: 0.85rem;
 }
 
 .sidebar .nav-item.logout-item i {
-  color: #f87171;
+  color: var(--wave-text-muted);
 }
 
 .sidebar .nav-item.logout-item:hover {
-  background: rgba(239, 68, 68, 0.15);
-  color: #fca5a5 !important;
+  background: var(--wave-inset);
+  color: #ef4444 !important;
 }
 
-/* Sidebar Bottom Cursive Tagline - "Learn • Grow • Achieve" */
+.sidebar .nav-item.logout-item:hover i {
+  color: #ef4444;
+}
+
+/* Sidebar Bottom Tagline - Clean & Quiet */
 .sidebar-wave-brandmark {
-  padding: 1.25rem 1rem;
+  padding: 0.85rem 1rem;
   text-align: center;
   border-top: 1px solid var(--wave-sidebar-border);
-  background: rgba(0, 0, 0, 0.18);
+  background: transparent;
   position: relative;
   overflow: hidden;
 }
 
 .slogan-script-text {
-  font-family: 'Caveat', 'Dancing Script', cursive;
-  font-size: 1.45rem;
-  font-weight: 700;
-  color: #ffffff;
-  letter-spacing: 0.5px;
-  text-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--wave-text-muted);
+  letter-spacing: 0.3px;
   display: block;
 }
 
@@ -327,38 +334,36 @@ body.sidebar-collapsed .sidebar .nav-item .badge {
 
 /* Top Header Bar - School Emblem + Profile + Actions */
 .top-nav {
-  height: 76px;
-  padding: 0 1.75rem;
+  height: 64px;
+  padding: 0 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--wave-surface-translucent);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: var(--wave-card-bg);
   border-bottom: 1px solid var(--wave-border);
   position: relative;
   z-index: 200;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
 }
 
 /* Header Left: Hamburger + School Brand & Tagline */
 .top-nav-left {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 1rem;
 }
 
 .header-hamburger-btn {
   background: transparent;
   border: 1px solid var(--wave-border);
-  border-radius: 10px;
-  width: 40px;
-  height: 40px;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   cursor: pointer;
   padding: 0;
   transition: all 0.2s ease;
@@ -366,45 +371,41 @@ body.sidebar-collapsed .sidebar .nav-item .badge {
 }
 
 .header-hamburger-btn:hover {
-  background: rgba(14, 165, 233, 0.12);
-  border-color: var(--wave-accent-sky);
-  transform: scale(1.04);
+  background: var(--wave-inset);
 }
 
 .header-hamburger-btn span {
-  width: 20px;
-  height: 2.5px;
-  background-color: var(--wave-accent-blue);
-  border-radius: 3px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 18px;
+  height: 2px;
+  background-color: var(--wave-text-primary);
+  border-radius: 2px;
+  transition: all 0.2s ease;
 }
 
 .header-hamburger-btn.is-active span:nth-child(1) {
-  transform: translateY(7.5px) rotate(45deg);
+  transform: translateY(6px) rotate(45deg);
 }
 
 .header-hamburger-btn.is-active span:nth-child(2) {
   opacity: 0;
-  transform: scale(0);
 }
 
 .header-hamburger-btn.is-active span:nth-child(3) {
-  transform: translateY(-7.5px) rotate(-45deg);
+  transform: translateY(-6px) rotate(-45deg);
 }
 
 /* School Crest Brand Display */
 .school-brand-header {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.75rem;
   text-decoration: none;
 }
 
 .school-crest-img {
-  width: 46px;
-  height: 46px;
+  width: 38px;
+  height: 38px;
   object-fit: contain;
-  filter: drop-shadow(0 4px 8px rgba(2, 132, 199, 0.25));
 }
 
 .school-brand-text {
@@ -414,100 +415,92 @@ body.sidebar-collapsed .sidebar .nav-item .badge {
 
 .school-brand-name {
   font-family: 'Outfit', 'Inter', sans-serif;
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   font-weight: 800;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   color: var(--wave-text-primary);
   line-height: 1.15;
 }
 
 .school-brand-motto {
-  font-size: 0.76rem;
-  font-weight: 600;
-  font-style: italic;
-  color: var(--wave-accent-blue);
-  letter-spacing: 0.3px;
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--wave-text-muted);
+  letter-spacing: 0.2px;
 }
 
 /* Header Right: Controls & Learner Profile */
 .top-nav-right {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.65rem;
 }
 
 .header-action-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
   border: 1px solid var(--wave-border);
-  background: var(--wave-surface);
+  background: var(--wave-card-bg);
   color: var(--wave-text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   position: relative;
-  font-size: 1.05rem;
-  transition: all 0.2s ease;
+  font-size: 0.95rem;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .header-action-btn:hover {
-  background: rgba(14, 165, 233, 0.1);
-  color: var(--wave-accent-blue);
-  border-color: var(--wave-accent-sky);
-  transform: translateY(-1px);
+  background: var(--wave-inset);
+  color: var(--wave-text-primary);
 }
 
 .header-action-btn .notification-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -2px;
+  right: -2px;
   background: #ef4444;
   color: #ffffff;
-  font-size: 0.65rem;
-  font-weight: 800;
-  width: 18px;
-  height: 18px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid var(--wave-surface);
-  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
 }
 
-/* Learner Profile Chip (as in screenshot: blue avatar "L", Learner, Grade 12 ⌵) */
+/* Learner Profile Chip */
 .learner-profile-chip {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  padding: 4px 12px 4px 4px;
-  border-radius: 24px;
-  background: var(--wave-surface);
+  gap: 0.5rem;
+  padding: 3px 10px 3px 4px;
+  border-radius: 9999px;
+  background: var(--wave-card-bg);
   border: 1px solid var(--wave-border);
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: background 0.15s ease;
 }
 
 .learner-profile-chip:hover {
-  border-color: var(--wave-accent-sky);
-  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.15);
+  background: var(--wave-inset);
 }
 
 .learner-avatar-round {
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #0284c7, #2563eb);
-  color: #ffffff;
-  font-weight: 800;
-  font-size: 1rem;
+  background: var(--wave-accent-badge-bg);
+  color: var(--wave-accent-badge-text);
+  font-weight: 700;
+  font-size: 0.82rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
   flex-shrink: 0;
 }
 

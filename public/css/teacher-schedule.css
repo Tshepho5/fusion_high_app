@@ -5,14 +5,12 @@
 .timeline {
     position: relative;
     padding-left: 30px;
-    border-left: 2px solid #e5e7eb;
-    /* gray-200 */
+    border-left: 2px solid var(--wave-border, #e4e4e7);
 }
 
 .timeline-item {
     position: relative;
     margin-bottom: 1.5rem;
-    /* 24px */
 }
 
 .timeline-item:last-child {
@@ -29,7 +27,6 @@
     align-items: center;
     justify-content: center;
     font-size: 1.5rem;
-    /* 24px */
     line-height: 1;
 }
 
@@ -50,79 +47,76 @@
     gap: 0.5rem;
     font-size: 0.75rem;
     font-weight: 600;
-    background-color: #f3f4f6;
-    /* gray-100 */
-    padding: 0.25rem 0.75rem;
+    background-color: var(--wave-surface-subtle, #f4f4f6);
+    color: var(--wave-text-primary, #111111);
+    border: 1px solid var(--wave-border, #e4e4e7);
+    padding: 0.35rem 0.85rem;
     border-radius: 9999px;
-    transition: background-color 0.2s;
-    border: none;
+    transition: all 0.2s;
     cursor: pointer;
 }
 
 .action-buttons button:hover {
-    background-color: #ebe9e5;
-    /* gray-200 */
+    background-color: var(--wave-card-bg, #ffffff);
+    color: var(--wave-text-primary, #111111);
+    border-color: var(--wave-border, #e4e4e7);
 }
 
 .action-buttons .ai-button {
-    background-color: #ede9fe;
-    /* purple-100 */
-    color: #5b21b6;
-    /* purple-700 */
+    background-color: var(--wave-accent-badge-bg, #f3e8ff);
+    color: var(--wave-accent-purple, #9333ea);
+    border: 1px solid var(--wave-accent-badge-border, #e9d5ff);
 }
 
 .action-buttons .ai-button:hover {
-    background-color: #ddd6fe;
-    /* purple-200 */
+    filter: brightness(1.05);
 }
 
-/* Utility classes used in JS (if not using a framework like Tailwind) */
+/* Utility classes used in JS */
 .opacity-60 {
     opacity: 0.6;
 }
 
 .text-gray-500 {
-    color: #6b7280;
+    color: var(--wave-text-muted, #71717a);
 }
 
 .text-green-500 {
-    color: #22c55e; /* Corrected from purple to green */
+    color: #10b981;
 }
 
 .text-blue-500 {
-    color: #3b82f6;
+    color: var(--wave-accent-purple, #9333ea);
 }
 
 .text-yellow-400 {
-    color: #facc15;
+    color: #f59e0b;
 }
 
 .bg-blue-50 {
-    background-color: #1e293b;
+    background-color: var(--wave-surface-subtle, #f4f4f6);
+    border: 1px solid var(--wave-border, #e4e4e7);
 }
 
-/* Darker background for the 'Up Next' box */
 .border-blue-200 {
-    border-color: #475569;
+    border-color: var(--wave-border, #e4e4e7);
 }
 
 .text-blue-800 {
-    color: #93c5fd;
+    color: var(--wave-text-primary, #111111);
 }
 
-/* Lighter blue text */
 .text-blue-600 {
-    color: #60a5fa;
+    color: var(--wave-text-secondary, #52525b);
 }
 
-/* Lighter blue text */
 .bg-green-50 {
-    background-color: #080808;
+    background-color: var(--wave-surface-subtle, #f4f4f6);
+    border: 1px solid var(--wave-border, #e4e4e7);
 }
 
-/* Darker green for the 'no more classes' box */
 .text-gray-600 {
-    color: #4b5563;
+    color: var(--wave-text-muted, #71717a);
 }
 
 .space-y-2>*+* {

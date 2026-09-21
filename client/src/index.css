@@ -19,13 +19,13 @@
 .cta-humanities { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%) !important; color: #ffffff !important; }
 
 :root {
-  /* Oceanic Midnight (Default Dark) */
-  --color-canvas: #030712;
-  --color-surface: #07152A;
-  --color-surface-darker: #050E1B;
-  --color-surface-elevated: #0B1E38;
-  --color-primary: #FF385C;
-  --color-accent: #EF4444;
+  /* Pitch Black Canvas & Elevated Charcoal Surfaces from Image */
+  --color-canvas: #0A0A0C;
+  --color-surface: #16161A;
+  --color-surface-darker: #101014;
+  --color-surface-elevated: #1E1E24;
+  --color-primary: #FFFFFF;
+  --color-accent: #C084FC;
 
   --app-font-body: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
   --app-font-heading: 'Outfit', 'Plus Jakarta Sans', sans-serif;
@@ -77,33 +77,37 @@ body, html {
   font-family: var(--app-font-body) !important;
 }
 
-/* Oceanic Midnight Dark Theme (Matches user screenshot) */
+/* Minimalist Pitch Black Dark Theme (Right phone) */
 .theme-dark, html[data-theme="dark"], .dark {
-  --color-canvas: #030712;
-  --color-surface: #07152A;
-  --color-surface-darker: #050E1B;
-  --color-surface-elevated: #0B1E38;
+  --color-canvas: #0A0A0C;
+  --color-surface: #16161A;
+  --color-surface-darker: #101014;
+  --color-surface-elevated: #1E1E24;
+  --color-primary: #FFFFFF;
+  --color-accent: #C084FC;
 }
 
-/* Restrained Slate Navy Theme */
+/* Restrained Dark Theme */
 .theme-navy, html[data-theme="navy"] {
-  --color-canvas: #060E1A;
-  --color-surface: #0A192F;
-  --color-surface-darker: #071324;
-  --color-surface-elevated: #112340;
+  --color-canvas: #0A0A0C;
+  --color-surface: #16161A;
+  --color-surface-darker: #101014;
+  --color-surface-elevated: #1E1E24;
 }
 
-/* Crisp Minimalist Light Theme (Fresh Sky-Tinted Canvas & Pure White Surfaces from user screenshot) */
+/* Crisp Minimalist Light Theme (Left phone) */
 .theme-light, html[data-theme="light"], .light {
-  --color-canvas: #EFF6FF;
+  --color-canvas: #F5F5F7;
   --color-surface: #FFFFFF;
-  --color-surface-darker: #F8FAFC;
+  --color-surface-darker: #F4F4F6;
   --color-surface-elevated: #FFFFFF;
+  --color-primary: #111111;
+  --color-accent: #9333EA;
 }
 
 .theme-light body, html[data-theme="light"] body, .light body {
-  background-color: #EFF6FF;
-  color: #0F172A;
+  background-color: #F5F5F7;
+  color: #111111;
 }
 
 /* Explicit Glow Lighting Utilities */

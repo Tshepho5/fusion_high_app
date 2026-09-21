@@ -1,6 +1,30 @@
 /* Styles for authentication pages (login, registration) */
+:root {
+    --auth-bg: #F5F5F7;
+    --auth-card-bg: #FFFFFF;
+    --auth-border: #E4E4E7;
+    --auth-input-bg: #F4F4F6;
+    --auth-text-primary: #111111;
+    --auth-text-secondary: #52525B;
+    --auth-btn-bg: #111111;
+    --auth-btn-text: #FFFFFF;
+    --auth-accent: #9333EA;
+}
+
+[data-theme="dark"] {
+    --auth-bg: #0A0A0C;
+    --auth-card-bg: #16161A;
+    --auth-border: #27272E;
+    --auth-input-bg: #1E1E24;
+    --auth-text-primary: #FFFFFF;
+    --auth-text-secondary: #A1A1AA;
+    --auth-btn-bg: #FFFFFF;
+    --auth-btn-text: #000000;
+    --auth-accent: #C084FC;
+}
+
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
     display: flex;
     justify-content: center;
     align-items: flex-start;
@@ -8,38 +32,45 @@ body {
     max-width: 500px;
     width: 100%;
     margin: 0 auto;
-    background-image: url('/assets/Landing page.png');
-    background-size: cover;
+    background-color: var(--wave-canvas, var(--auth-bg));
+    color: var(--wave-text-primary, var(--auth-text-primary));
 }
 
 a {
-    color: #ef4444 !important;
+    color: var(--wave-accent-badge-text, var(--auth-accent)) !important;
     text-decoration: none;
-    font-weight: bold;
+    font-weight: 600;
+    transition: opacity 0.2s ease;
+}
+
+a:hover {
+    opacity: 0.8;
 }
 
 /* Card styles for auth pages */
 .card,
 .form-container {
-    background: rgba(51, 65, 85, 0.8);
-    padding: 2rem;
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    background: var(--wave-card-bg, var(--auth-card-bg));
+    border: 1px solid var(--wave-border, var(--auth-border));
+    padding: 2.2rem;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
 /* Header styles for auth pages */
 h1,
 h2 {
     text-align: center;
-    color: #ffffff;
-    font-weight: 600;
+    color: var(--wave-text-primary, var(--auth-text-primary));
+    font-weight: 700;
     margin-bottom: 1.5rem;
+    letter-spacing: -0.02em;
 }
 
 /* registration form labels and text */
 p,
 label {
-    color: #ffffff;
+    color: var(--wave-text-secondary, var(--auth-text-secondary));
     font-size: 0.9rem;
     margin-bottom: 8px;
     display: block;
@@ -51,46 +82,54 @@ input,
 select,
 textarea {
     width: 100%;
-    padding: 12px;
+    padding: 12px 14px;
     margin: 8px 0;
-    border: 1px solid #475569;
-    background: #1e293b;
-    color: #f1f5f9;
-    border-radius: 6px;
+    border: 1px solid var(--wave-border, var(--auth-border));
+    background: var(--wave-inset, var(--auth-input-bg));
+    color: var(--wave-text-primary, var(--auth-text-primary));
+    border-radius: 10px;
     box-sizing: border-box;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 500;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--wave-accent-badge-text, var(--auth-accent));
 }
 
 /* Add padding to the right of the password input to make space for the icon */
 .password-wrapper input[type="password"],
 .password-wrapper input[type="text"] {
     padding-right: 40px;
-    /* Space for the icon */
 }
 
 /* Button styles from the form for small screens */
 button {
     width: 100%;
-    padding: 12px;
-    background: #dc2626;
-    color: white;
+    padding: 13px;
+    background: var(--wave-btn-primary-bg, var(--auth-btn-bg));
+    color: var(--wave-btn-primary-text, var(--auth-btn-text));
     border: none;
-    border-radius: 6px;
+    border-radius: 9999px;
     cursor: pointer;
-    font-size: 1rem;
-    font-weight: bold;
-    transition: background 0.3s;
-    margin-top: 10px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: opacity 0.2s, transform 0.1s;
+    margin-top: 14px;
 }
 
 /* Hover effect for buttons on small screens */
 button:hover {
-    background: #991b1b;
+    opacity: 0.9;
+    transform: translateY(-1px);
 }
 
 .error {
-    color: #e74c3c;
+    color: #ef4444;
     font-size: 0.85rem;
     margin-top: 10px;
     text-align: center;
@@ -111,10 +150,10 @@ button:hover {
     text-align: center;
     padding: 12px;
     margin-top: 20px;
-    color: #ef4444 !important;
+    color: var(--wave-accent-badge-text, var(--auth-accent)) !important;
     text-decoration: none;
     font-size: 0.85rem;
-    font-weight: bold;
+    font-weight: 600;
 }
 
 /* Layout for parent fields on small screens for the form */
@@ -143,7 +182,7 @@ button:hover {
     transform: translateY(-50%);
     cursor: pointer;
     user-select: none;
-    color: #999;
+    color: var(--wave-text-muted, #71717A);
 }
 
 /* Header branding */
@@ -155,11 +194,11 @@ header {
 header h1 {
     margin: 0;
     font-size: 2rem;
-    color: #ef4444;
+    color: var(--wave-text-primary, var(--auth-text-primary));
 }
 
 header p {
     margin: 5px 0 0;
-    color: #7f8c8d;
+    color: var(--wave-text-secondary, var(--auth-text-secondary));
     font-weight: 500;
 }

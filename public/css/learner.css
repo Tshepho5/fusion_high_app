@@ -6,45 +6,49 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-    /* Base Serene Slate Dark Theme (Default) */
-    --bg: #0b1120;
-    --bg-secondary: #0f172a;
-    --card-bg: #151e32;
-    --card-bg-subtle: #1e293b;
-    --card-border: rgba(255, 255, 255, 0.08);
-    --card-hover-border: rgba(255, 255, 255, 0.16);
-    --sidebar-bg: #0b1120;
-    --top-nav-bg: rgba(11, 17, 32, 0.95);
-    --bottom-nav-bg: rgba(11, 17, 32, 0.95);
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --text-muted: #94a3b8;
+    /* Pitch Black Canvas & Charcoal Cards (Dark Default matching right phone) */
+    --bg: #0A0A0C;
+    --bg-secondary: #16161A;
+    --card-bg: #16161A;
+    --card-bg-subtle: #1E1E24;
+    --card-border: #27272E;
+    --card-hover-border: #3F3F46;
+    --sidebar-bg: #16161A;
+    --top-nav-bg: rgba(22, 22, 26, 0.94);
+    --bottom-nav-bg: rgba(22, 22, 26, 0.96);
+    --text-primary: #FFFFFF;
+    --text-secondary: #A1A1AA;
+    --text-muted: #71717A;
     
-    /* Primary Accent */
-    --accent: #4f46e5;
-    --accent-hover: #4338ca;
-    --accent-soft: rgba(79, 70, 229, 0.15);
-    --accent-text: #818cf8;
+    /* Lavender Accent */
+    --accent: #C084FC;
+    --accent-hover: #D8B4FE;
+    --accent-soft: #261B35;
+    --accent-text: #C084FC;
     
     /* Semantic Colors */
-    --success: #10b981;
-    --success-soft: rgba(16, 185, 129, 0.15);
-    --warning: #f59e0b;
-    --warning-soft: rgba(245, 158, 11, 0.15);
-    --danger: #ef4444;
-    --danger-soft: rgba(239, 68, 68, 0.15);
-    --info: #38bdf8;
-    --info-soft: rgba(56, 189, 248, 0.15);
+    --success: #34D399;
+    --success-soft: rgba(16, 185, 129, 0.18);
+    --warning: #FBBF24;
+    --warning-soft: rgba(245, 158, 11, 0.18);
+    --danger: #F87171;
+    --danger-soft: rgba(239, 68, 68, 0.18);
+    --info: #C084FC;
+    --info-soft: rgba(192, 132, 252, 0.18);
     
     /* Inputs & Controls */
-    --input-bg: #0f172a;
-    --input-border: #334155;
-    --input-focus-border: #6366f1;
+    --input-bg: #1E1E24;
+    --input-border: #27272E;
+    --input-focus-border: #C084FC;
+    
+    /* Buttons */
+    --btn-cta-bg: #FFFFFF;
+    --btn-cta-text: #000000;
     
     /* Shadows */
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.25);
-    --shadow-md: 0 4px 14px rgba(0,0,0,0.3);
-    --shadow-lg: 0 10px 28px rgba(0,0,0,0.4);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+    --shadow-md: 0 4px 14px rgba(0,0,0,0.5);
+    --shadow-lg: 0 10px 28px rgba(0,0,0,0.6);
     
     /* Legacy aliases for backward compatibility */
     --primary: var(--text-primary);
@@ -56,40 +60,43 @@
 
 /* Light Theme Variables */
 [data-theme="light"] {
-    --bg: #f1f5f9;
-    --bg-secondary: #e2e8f0;
-    --card-bg: #ffffff;
-    --card-bg-subtle: #f8fafc;
-    --card-border: #e2e8f0;
-    --card-hover-border: #cbd5e1;
-    --sidebar-bg: #ffffff;
+    --bg: #F5F5F7;
+    --bg-secondary: #F0F1F4;
+    --card-bg: #FFFFFF;
+    --card-bg-subtle: #F4F4F6;
+    --card-border: #E4E4E7;
+    --card-hover-border: #D4D4D8;
+    --sidebar-bg: #FFFFFF;
     --top-nav-bg: rgba(255, 255, 255, 0.94);
     --bottom-nav-bg: rgba(255, 255, 255, 0.96);
-    --text-primary: #0f172a;
-    --text-secondary: #334155;
-    --text-muted: #64748b;
+    --text-primary: #111111;
+    --text-secondary: #52525B;
+    --text-muted: #71717A;
     
-    --accent: #4f46e5;
-    --accent-hover: #4338ca;
-    --accent-soft: rgba(79, 70, 229, 0.12);
-    --accent-text: #4338ca;
+    --accent: #9333EA;
+    --accent-hover: #7E22CE;
+    --accent-soft: #F3E8FF;
+    --accent-text: #9333EA;
     
-    --success: #059669;
-    --success-soft: rgba(5, 150, 105, 0.12);
-    --warning: #d97706;
-    --warning-soft: rgba(217, 119, 6, 0.12);
-    --danger: #dc2626;
-    --danger-soft: rgba(220, 38, 38, 0.12);
-    --info: #0284c7;
-    --info-soft: rgba(2, 132, 199, 0.12);
+    --success: #10B981;
+    --success-soft: #ECFDF5;
+    --warning: #F59E0B;
+    --warning-soft: #FFFBEB;
+    --danger: #EF4444;
+    --danger-soft: #FEF2F2;
+    --info: #9333EA;
+    --info-soft: #F3E8FF;
     
-    --input-bg: #ffffff;
-    --input-border: #cbd5e1;
-    --input-focus-border: #4f46e5;
+    --input-bg: #FFFFFF;
+    --input-border: #E4E4E7;
+    --input-focus-border: #9333EA;
     
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
-    --shadow-md: 0 4px 14px rgba(0,0,0,0.08);
-    --shadow-lg: 0 10px 28px rgba(0,0,0,0.12);
+    --btn-cta-bg: #111111;
+    --btn-cta-text: #FFFFFF;
+    
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 14px rgba(0,0,0,0.06);
+    --shadow-lg: 0 10px 28px rgba(0,0,0,0.08);
     
     --primary: var(--text-primary);
     --secondary: var(--accent);
@@ -1251,79 +1258,14 @@ input:checked + .slider:before {
     }
 }
 
-/* Animated Border Shadow on Hover (Rounding Border Shape) */
-@property --border-angle {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
-}
-
-@keyframes rotateBorderGlow {
-  0% { --border-angle: 0deg; }
-  100% { --border-angle: 360deg; }
-}
-
-@keyframes borderGlowPulse {
-  0%, 100% {
-    box-shadow: 0 10px 24px -4px rgba(0, 0, 0, 0.25), 0 0 18px -2px rgba(99, 102, 241, 0.35);
-  }
-  50% {
-    box-shadow: 0 14px 28px -4px rgba(0, 0, 0, 0.3), 0 0 24px 1px rgba(6, 182, 212, 0.45);
-  }
-}
-
+/* Clean, Minimalist Card Hover Feedback */
 .stat-card,
 .card,
 .subject-card,
 .overview-card,
 .workspace-card,
 .module-card {
-  position: relative;
-  isolation: isolate;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.stat-card::before,
-.card::before,
-.subject-card::before,
-.overview-card::before,
-.workspace-card::before,
-.module-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1.75px;
-  background: conic-gradient(
-    from var(--border-angle),
-    transparent 0deg,
-    transparent 110deg,
-    rgba(99, 102, 241, 0.15) 140deg,
-    #6366f1 180deg,
-    #06b6d4 200deg,
-    #818cf8 220deg,
-    transparent 260deg,
-    transparent 360deg
-  );
-  -webkit-mask: 
-    linear-gradient(#fff 0 0) content-box, 
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 2;
-}
-
-.stat-card:hover::before,
-.card:hover::before,
-.subject-card:hover::before,
-.overview-card:hover::before,
-.workspace-card:hover::before,
-.module-card:hover::before {
-  opacity: 1;
-  animation: rotateBorderGlow 2.5s linear infinite;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .stat-card:hover,
@@ -1332,7 +1274,6 @@ input:checked + .slider:before {
 .overview-card:hover,
 .workspace-card:hover,
 .module-card:hover {
-  transform: translateY(-2.5px);
-  animation: borderGlowPulse 2.5s ease-in-out infinite;
-  border-color: transparent !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
 }

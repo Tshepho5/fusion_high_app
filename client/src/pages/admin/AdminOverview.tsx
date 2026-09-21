@@ -522,7 +522,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
       {/* ========================================================================= */}
       {/* 2. SCHOOL CURRICULUM SUBJECTS & GRADE EXPLORATION (NEW ADMIN FEATURE)     */}
       {/* ========================================================================= */}
-      <section className="space-y-4 rounded-3xl bg-slate-100/90 dark:bg-surface-darker/80 border border-slate-300/80 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden transition-colors">
+      <section className="space-y-4 rounded-3xl bg-slate-100 dark:bg-surface-darker border border-slate-300 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden transition-colors">
         
         {/* Section Top Header with Title and View Mode Switcher */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

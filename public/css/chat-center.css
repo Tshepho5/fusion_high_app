@@ -1,5 +1,5 @@
 /* ==========================================================================
-   FUSION HIGH APP - Glassmorphic Message Center CSS (Matching Reference Screenshot)
+   FUSION HIGH APP - Message Center CSS (Theme-Adapted Reference Design)
    ========================================================================== */
 
 /* Message Center Section Padding */
@@ -18,19 +18,18 @@ div#messages {
   height: calc(100vh - 190px);
   max-height: 740px;
   min-height: 500px;
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--wave-card-bg, #ffffff);
+  border: 1px solid var(--wave-card-border, #e4e4e7);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--wave-card-shadow);
   margin: 0 auto;
 }
 
 /* Left Conversations Panel */
 .conversations-panel {
-  background: rgba(30, 41, 59, 0.85);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--wave-surface-subtle, #f4f4f6);
+  border-right: 1px solid var(--wave-border, #e4e4e7);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -39,7 +38,7 @@ div#messages {
 
 .conversations-header {
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--wave-border, #e4e4e7);
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
@@ -47,7 +46,7 @@ div#messages {
 }
 
 .conversations-header h3 {
-  color: #ffffff;
+  color: var(--wave-text-primary, #111111);
   font-size: 1.15rem;
   font-weight: 700;
   margin: 0;
@@ -58,17 +57,17 @@ div#messages {
 
 .chat-search-input {
   width: 100%;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--wave-card-bg, #ffffff);
+  border: 1px solid var(--wave-border, #e4e4e7);
   border-radius: 8px;
   padding: 0.55rem 0.85rem;
-  color: #ffffff;
+  color: var(--wave-text-primary, #111111);
   font-size: 0.85rem;
   outline: none;
 }
 
 .chat-search-input::placeholder {
-  color: #64748b;
+  color: var(--wave-text-muted, #71717a);
 }
 
 .contacts-list-scroll {
@@ -90,16 +89,16 @@ div#messages {
   transition: all 0.2s ease;
   position: relative;
   border-left: 3px solid transparent;
-  background: rgba(15, 23, 42, 0.3);
+  background: var(--wave-card-bg, #ffffff);
 }
 
 .contact-item-card:hover {
-  background: rgba(51, 65, 85, 0.6);
+  background: var(--wave-surface-elevated, #ebecef);
 }
 
 .contact-item-card.active {
-  background: rgba(51, 65, 85, 0.9);
-  border-left-color: #ef4444; /* Red accent highlight from screenshot */
+  background: var(--wave-surface-elevated, #ebecef);
+  border-left-color: var(--wave-accent-purple, #9333ea);
 }
 
 .contact-avatar {
@@ -107,13 +106,13 @@ div#messages {
   height: 42px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  background: #334155;
+  border: 1px solid var(--wave-accent-badge-border, #e9d5ff);
+  background: var(--wave-accent-badge-bg, #f3e8ff);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--wave-accent-purple, #9333ea);
   font-size: 0.95rem;
   flex-shrink: 0;
 }
@@ -130,7 +129,7 @@ div#messages {
 }
 
 .contact-name {
-  color: #ffffff;
+  color: var(--wave-text-primary, #111111);
   font-size: 0.9rem;
   font-weight: 600;
   white-space: nowrap;
@@ -140,7 +139,7 @@ div#messages {
 }
 
 .contact-tag {
-  color: #94a3b8;
+  color: var(--wave-text-muted, #71717a);
   font-size: 0.75rem;
   white-space: nowrap;
   overflow: hidden;
@@ -149,7 +148,7 @@ div#messages {
 }
 
 .contact-preview {
-  color: #64748b;
+  color: var(--wave-text-muted, #71717a);
   font-size: 0.75rem;
   white-space: nowrap;
   overflow: hidden;
@@ -159,7 +158,7 @@ div#messages {
 
 .contact-time {
   font-size: 0.7rem;
-  color: #64748b;
+  color: var(--wave-text-muted, #71717a);
   white-space: nowrap;
 }
 
@@ -168,27 +167,27 @@ div#messages {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--wave-card-bg, #ffffff);
 }
 
 .chat-header-bar {
   padding: 1.15rem 1.75rem;
-  background: rgba(30, 41, 59, 0.9);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--wave-surface-subtle, #f4f4f6);
+  border-bottom: 1px solid var(--wave-border, #e4e4e7);
   display: flex;
   align-items: center;
   gap: 1rem;
 }
 
 .chat-header-title h4 {
-  color: #ffffff;
+  color: var(--wave-text-primary, #111111);
   font-size: 1.05rem;
   font-weight: 700;
   margin: 0;
 }
 
 .chat-header-title p {
-  color: #94a3b8;
+  color: var(--wave-text-muted, #71717a);
   font-size: 0.8rem;
   margin: 0.15rem 0 0 0;
 }
@@ -219,7 +218,7 @@ div#messages {
 }
 
 .chat-bubble {
-  padding: 1.15rem 1.45rem;
+  padding: 1rem 1.35rem;
   border-radius: 16px;
   font-size: 0.93rem;
   line-height: 1.55;
@@ -227,21 +226,21 @@ div#messages {
 }
 
 .chat-bubble-wrapper.incoming .chat-bubble {
-  background: #1e293b;
-  color: #f1f5f9;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--wave-surface-subtle, #f4f4f6);
+  color: var(--wave-text-primary, #111111);
+  border: 1px solid var(--wave-border, #e4e4e7);
   border-bottom-left-radius: 2px;
 }
 
 .chat-bubble-wrapper.outgoing .chat-bubble {
-  background: #2563eb;
-  color: #ffffff;
+  background: var(--wave-btn-primary-bg, #111111);
+  color: var(--wave-btn-primary-text, #ffffff);
   border-bottom-right-radius: 2px;
 }
 
 .chat-timestamp {
   font-size: 0.72rem;
-  color: #64748b;
+  color: var(--wave-text-muted, #71717a);
   margin-top: 0.35rem;
 }
 
@@ -256,8 +255,8 @@ div#messages {
 /* Bottom Composition Input Bar */
 .composition-bar-container {
   padding: 1.25rem 1.75rem;
-  background: rgba(30, 41, 59, 0.95);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--wave-surface-subtle, #f4f4f6);
+  border-top: 1px solid var(--wave-border, #e4e4e7);
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -265,23 +264,23 @@ div#messages {
 
 .composition-input-box {
   flex: 1;
-  background: #0f172a;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--wave-card-bg, #ffffff);
+  border: 1px solid var(--wave-border, #e4e4e7);
   border-radius: 10px;
   padding: 0.75rem 1rem;
-  color: #ffffff;
+  color: var(--wave-text-primary, #111111);
   font-size: 0.9rem;
   outline: none;
 }
 
 .composition-input-box::placeholder {
-  color: #64748b;
+  color: var(--wave-text-muted, #71717a);
 }
 
 .chat-action-btn {
   background: transparent;
   border: none;
-  color: #94a3b8;
+  color: var(--wave-text-muted, #71717a);
   font-size: 1.2rem;
   cursor: pointer;
   padding: 0.5rem;
@@ -289,12 +288,12 @@ div#messages {
 }
 
 .chat-action-btn:hover {
-  color: #ffffff;
+  color: var(--wave-text-primary, #111111);
 }
 
 .chat-send-btn {
-  background: #ef4444;
-  color: #ffffff;
+  background: var(--wave-btn-primary-bg, #111111);
+  color: var(--wave-btn-primary-text, #ffffff);
   border: none;
   width: 44px;
   height: 44px;
@@ -304,11 +303,11 @@ div#messages {
   justify-content: center;
   font-size: 1.1rem;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: opacity 0.2s ease;
 }
 
 .chat-send-btn:hover {
-  background: #dc2626;
+  opacity: 0.88;
 }
 
 /* Mobile Responsiveness */

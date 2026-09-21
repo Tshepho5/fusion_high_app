@@ -426,38 +426,38 @@
                 </div>
 
                 <!-- Subject Workspace View (Located directly at the bottom inside My Subjects) -->
-                <div id="subject-workspace" style="display: none; margin-top: 2rem; border-top: 2px solid #334155; padding-top: 1.5rem;">
+                <div id="subject-workspace" style="display: none; margin-top: 2rem; border-top: 1px solid var(--wave-border); padding-top: 1.5rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
-                        <button type="button" class="btn btn-neutral" onclick="closeSubjectWorkspace()" style="background: #1e293b; color: #94a3b8; border: 1px solid #334155; font-weight: 600;">
+                        <button type="button" class="btn btn-neutral" onclick="closeSubjectWorkspace()" style="background: var(--wave-inset); color: var(--text-main); border: 1px solid var(--wave-border); border-radius: 9999px; font-weight: 600;">
                             <i class="fas fa-arrow-left me-1"></i> Back to Subjects
                         </button>
                         
-                        <div class="subject-subtabs-bar" style="display: flex; gap: 0.5rem; background: #0f172a; padding: 4px; border-radius: 8px; border: 1px solid #334155;">
-                            <button type="button" class="btn btn-sm subtab-btn active" id="ws-tab-btn-chapters" onclick="switchSubjectSubTab('chapters')" style="background: #6366f1; color: #fff; font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.85rem; border-radius: 6px; border: none; cursor: pointer;"><i class="fas fa-book-open me-1"></i> Chapters & Lessons</button>
-                            <button type="button" class="btn btn-sm subtab-btn" id="ws-tab-btn-assessments" onclick="switchSubjectSubTab('assessments')" style="background: transparent; color: #94a3b8; font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.85rem; border-radius: 6px; border: none; cursor: pointer;"><i class="fas fa-clipboard-list me-1"></i> Subject Assessments</button>
-                            <button type="button" class="btn btn-sm subtab-btn" id="ws-tab-btn-resources" onclick="switchSubjectSubTab('resources')" style="background: transparent; color: #94a3b8; font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.85rem; border-radius: 6px; border: none; cursor: pointer;"><i class="fas fa-file-pdf me-1"></i> Study Resources</button>
-                            <button type="button" class="btn btn-sm subtab-btn" id="ws-tab-btn-grades" onclick="switchSubjectSubTab('grades')" style="background: transparent; color: #94a3b8; font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.85rem; border-radius: 6px; border: none; cursor: pointer;"><i class="fas fa-chart-line me-1"></i> Subject Grades & History</button>
+                        <div class="subject-subtabs-bar" style="display: flex; gap: 0.5rem; background: var(--wave-inset); padding: 4px; border-radius: 9999px; border: 1px solid var(--wave-border);">
+                            <button type="button" class="btn btn-sm subtab-btn active" id="ws-tab-btn-chapters" onclick="switchSubjectSubTab('chapters')" style="background: var(--btn-cta-bg); color: var(--btn-cta-text); font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.85rem; border-radius: 9999px; border: none; cursor: pointer;"><i class="fas fa-book-open me-1"></i> Chapters & Lessons</button>
+                            <button type="button" class="btn btn-sm subtab-btn" id="ws-tab-btn-assessments" onclick="switchSubjectSubTab('assessments')" style="background: transparent; color: var(--text-muted); font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.85rem; border-radius: 9999px; border: none; cursor: pointer;"><i class="fas fa-clipboard-list me-1"></i> Subject Assessments</button>
+                            <button type="button" class="btn btn-sm subtab-btn" id="ws-tab-btn-resources" onclick="switchSubjectSubTab('resources')" style="background: transparent; color: var(--text-muted); font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.85rem; border-radius: 9999px; border: none; cursor: pointer;"><i class="fas fa-file-pdf me-1"></i> Study Resources</button>
+                            <button type="button" class="btn btn-sm subtab-btn" id="ws-tab-btn-grades" onclick="switchSubjectSubTab('grades')" style="background: transparent; color: var(--text-muted); font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.85rem; border-radius: 9999px; border: none; cursor: pointer;"><i class="fas fa-chart-line me-1"></i> Subject Grades & History</button>
                         </div>
                     </div>
 
                     <!-- Subject Workspace Top Stats Header -->
                     <div class="ws-header-banner">
                         <div class="ws-header-info">
-                            <h2><i class="fas fa-graduation-cap" style="color: #818cf8;"></i> <span id="ws-subject-title">Subject</span> Workspace</h2>
+                            <h2><i class="fas fa-graduation-cap me-1"></i> <span id="ws-subject-title">Subject</span> Workspace</h2>
                             <p>CAPS Aligned Self-Study, Interactive AI Tutoring & Progress Tracking</p>
                         </div>
                         <div class="ws-header-stats">
                             <div class="ws-stat-item">
                                 <span class="ws-stat-label">CAPS Progress</span>
-                                <span class="ws-stat-val" id="ws-stat-caps-pace" style="color: #c084fc;">85%</span>
+                                <span class="ws-stat-val" id="ws-stat-caps-pace">85%</span>
                             </div>
                             <div class="ws-stat-item">
                                 <span class="ws-stat-label">Enrolled Peers</span>
-                                <span class="ws-stat-val" id="ws-stat-peers" style="color: #38bdf8;">-</span>
+                                <span class="ws-stat-val" id="ws-stat-peers">-</span>
                             </div>
                             <div class="ws-stat-item">
                                 <span class="ws-stat-label">Subject Grade</span>
-                                <span class="ws-stat-val" id="ws-stat-grade" style="color: #4ade80;">-</span>
+                                <span class="ws-stat-val" id="ws-stat-grade">-</span>
                             </div>
                         </div>
                     </div>
@@ -468,15 +468,15 @@
                             <div class="column">
                                 <div class="card" id="workspace-ai-intro">
                                     <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-                                        <span><i class="fas fa-book-reader" style="color: #6366f1;"></i> Interactive Chapters & Curriculum</span>
-                                        <span class="badge" style="background: #312e81; color: #a5b4fc; font-size: 0.75rem;">CAPS Aligned</span>
+                                        <span><i class="fas fa-book-reader me-1"></i> Interactive Chapters & Curriculum</span>
+                                        <span class="badge" style="background: var(--accent-lavender); color: var(--text-main); font-size: 0.75rem; border: 1px solid var(--wave-border);">CAPS Aligned</span>
                                     </div>
-                                    <p style="color: #94a3b8; font-size: 0.88rem;">Select a chapter from your textbook or curriculum to start a self-paced tutorial, revision, or quiz task.</p>
+                                    <p style="color: var(--text-muted); font-size: 0.88rem;">Select a chapter from your textbook or curriculum to start a self-paced tutorial, revision, or quiz task.</p>
                                     
                                     <!-- Search input for workspace topics -->
                                     <div class="ws-topic-search-wrapper" style="position: relative; margin: 0.75rem 0 1rem 0;">
-                                        <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748b;"></i>
-                                        <input type="text" id="ws-topic-search-input" placeholder="Search chapters or topics in this subject..." oninput="window.filterWorkspaceTopics(this.value)" style="width: 100%; padding: 0.55rem 1rem 0.55rem 2.4rem; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff; font-size: 0.88rem;">
+                                        <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                                        <input type="text" id="ws-topic-search-input" placeholder="Search chapters or topics in this subject..." oninput="window.filterWorkspaceTopics(this.value)" style="width: 100%; padding: 0.55rem 1rem 0.55rem 2.4rem; background: var(--wave-inset); border: 1px solid var(--wave-border); border-radius: 9999px; color: var(--text-main); font-size: 0.88rem;">
                                     </div>
 
                                     <div id="ws-topics-list" class="grid-layout gap-10 mt-1rem">Loading topics...</div>
@@ -484,9 +484,9 @@
 
                                 <!-- Tutoring Content (Hidden by default) -->
                                 <div class="card" id="ws-tutoring-container" style="display: none;">
-                                    <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 0.75rem; margin-bottom: 1rem;">
-                                        <span><i class="fas fa-brain" style="color: #a855f7;"></i> Lesson: <span id="ws-tutoring-topic"></span></span>
-                                        <button type="button" class="btn btn-neutral" onclick="openSubjectWorkspace(currentAISubject)" style="padding: 4px 10px; font-size: 0.78rem; background: #1e293b; color: #cbd5e1; border: 1px solid #334155;"><i class="fas fa-arrow-left me-1"></i> Chapters</button>
+                                    <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--wave-border); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+                                        <span><i class="fas fa-brain me-1"></i> Lesson: <span id="ws-tutoring-topic"></span></span>
+                                        <button type="button" class="btn btn-neutral" onclick="openSubjectWorkspace(currentAISubject)" style="padding: 4px 10px; font-size: 0.78rem; background: var(--wave-inset); color: var(--text-main); border: 1px solid var(--wave-border); border-radius: 9999px;"><i class="fas fa-arrow-left me-1"></i> Chapters</button>
                                     </div>
 
                                     <!-- AI Quick Tools Toolbar -->
@@ -494,7 +494,7 @@
                                         <button type="button" class="lesson-ai-tool-btn btn-indigo" onclick="window.summarizeActiveLesson()"><i class="fas fa-compress-alt"></i> Summarize Lesson</button>
                                         <button type="button" class="lesson-ai-tool-btn btn-purple" onclick="window.generateLessonFlashcards()"><i class="fas fa-clone"></i> Key Flashcards</button>
                                         <button type="button" class="lesson-ai-tool-btn btn-emerald" onclick="window.toggleAskAIPrompt()"><i class="fas fa-comment-dots"></i> Ask AI Question</button>
-                                        <button type="button" class="lesson-ai-tool-btn" onclick="proceedToQuiz()" style="margin-left: auto; background: #6366f1; color: #fff; border: none;"><i class="fas fa-tasks"></i> Start Quiz Task</button>
+                                        <button type="button" class="lesson-ai-tool-btn" onclick="proceedToQuiz()" style="margin-left: auto; background: var(--btn-cta-bg); color: var(--btn-cta-text); border: none; border-radius: 9999px;"><i class="fas fa-tasks"></i> Start Quiz Task</button>
                                     </div>
 
                                     <!-- Interactive AI Output Panel (Dynamic summaries / Q&A responses) -->
@@ -502,9 +502,9 @@
 
                                     <div id="ws-tutoring-content" class="tutoring-content" style="margin-top: 1rem;"></div>
 
-                                    <div class="flex-layout gap-1rem" style="margin-top: 1.5rem; border-top: 1px solid #1e293b; padding-top: 1rem;">
-                                        <button type="button" class="btn btn-primary" onclick="proceedToQuiz()" style="background: #6366f1; border: none; font-weight: 600;"><i class="fas fa-tasks me-1"></i> Start Assessment Task</button>
-                                        <button type="button" class="btn btn-neutral" onclick="openSubjectWorkspace(currentAISubject)" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155;"><i class="fas fa-book me-1"></i> Back to Chapters</button>
+                                    <div class="flex-layout gap-1rem" style="margin-top: 1.5rem; border-top: 1px solid var(--wave-border); padding-top: 1rem;">
+                                        <button type="button" class="btn btn-primary" onclick="proceedToQuiz()" style="background: var(--btn-cta-bg); color: var(--btn-cta-text); border: none; font-weight: 600; border-radius: 9999px;"><i class="fas fa-tasks me-1"></i> Start Assessment Task</button>
+                                        <button type="button" class="btn btn-neutral" onclick="openSubjectWorkspace(currentAISubject)" style="background: var(--wave-inset); color: var(--text-main); border: 1px solid var(--wave-border); border-radius: 9999px;"><i class="fas fa-book me-1"></i> Back to Chapters</button>
                                     </div>
                                 </div>
                             </div>
@@ -795,36 +795,36 @@
                 <!-- Subject Workspace View -->
                 <div id="subject-workspace" style="display: none;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
-                        <button type="button" class="btn btn-neutral" onclick="closeSubjectWorkspace()" style="background: #1e293b; color: #94a3b8; border: 1px solid #334155; font-weight: 600;">
+                        <button type="button" class="btn btn-neutral" onclick="closeSubjectWorkspace()" style="background: var(--wave-inset); color: var(--text-main); border: 1px solid var(--wave-border); border-radius: 9999px; font-weight: 600;">
                             <i class="fas fa-arrow-left me-1"></i> Back to All Subjects
                         </button>
                         
-                        <div class="subject-subtabs-bar" style="display: flex; gap: 0.5rem; background: #0f172a; padding: 4px; border-radius: 8px; border: 1px solid #334155;">
-                            <button type="button" class="btn btn-sm subtab-btn active" id="ws-tab-btn-chapters" onclick="switchSubjectSubTab('chapters')" style="background: #6366f1; color: #fff; font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.85rem; border-radius: 6px; border: none; cursor: pointer;"><i class="fas fa-book-open me-1"></i> Chapters & Lessons</button>
-                            <button type="button" class="btn btn-sm subtab-btn" id="ws-tab-btn-assessments" onclick="switchSubjectSubTab('assessments')" style="background: transparent; color: #94a3b8; font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.85rem; border-radius: 6px; border: none; cursor: pointer;"><i class="fas fa-clipboard-list me-1"></i> Subject Assessments</button>
-                            <button type="button" class="btn btn-sm subtab-btn" id="ws-tab-btn-resources" onclick="switchSubjectSubTab('resources')" style="background: transparent; color: #94a3b8; font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.85rem; border-radius: 6px; border: none; cursor: pointer;"><i class="fas fa-file-pdf me-1"></i> Study Resources</button>
-                            <button type="button" class="btn btn-sm subtab-btn" id="ws-tab-btn-grades" onclick="switchSubjectSubTab('grades')" style="background: transparent; color: #94a3b8; font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.85rem; border-radius: 6px; border: none; cursor: pointer;"><i class="fas fa-chart-line me-1"></i> Subject Grades & History</button>
+                        <div class="subject-subtabs-bar" style="display: flex; gap: 0.5rem; background: var(--wave-inset); padding: 4px; border-radius: 9999px; border: 1px solid var(--wave-border);">
+                            <button type="button" class="btn btn-sm subtab-btn active" id="ws-tab-btn-chapters" onclick="switchSubjectSubTab('chapters')" style="background: var(--btn-cta-bg); color: var(--btn-cta-text); font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.85rem; border-radius: 9999px; border: none; cursor: pointer;"><i class="fas fa-book-open me-1"></i> Chapters & Lessons</button>
+                            <button type="button" class="btn btn-sm subtab-btn" id="ws-tab-btn-assessments" onclick="switchSubjectSubTab('assessments')" style="background: transparent; color: var(--text-muted); font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.85rem; border-radius: 9999px; border: none; cursor: pointer;"><i class="fas fa-clipboard-list me-1"></i> Subject Assessments</button>
+                            <button type="button" class="btn btn-sm subtab-btn" id="ws-tab-btn-resources" onclick="switchSubjectSubTab('resources')" style="background: transparent; color: var(--text-muted); font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.85rem; border-radius: 9999px; border: none; cursor: pointer;"><i class="fas fa-file-pdf me-1"></i> Study Resources</button>
+                            <button type="button" class="btn btn-sm subtab-btn" id="ws-tab-btn-grades" onclick="switchSubjectSubTab('grades')" style="background: transparent; color: var(--text-muted); font-size: 0.82rem; font-weight: 600; padding: 0.4rem 0.85rem; border-radius: 9999px; border: none; cursor: pointer;"><i class="fas fa-chart-line me-1"></i> Subject Grades & History</button>
                         </div>
                     </div>
 
                     <!-- Subject Workspace Top Stats Header -->
                     <div class="ws-header-banner">
                         <div class="ws-header-info">
-                            <h2><i class="fas fa-graduation-cap" style="color: #818cf8;"></i> <span id="ws-subject-title">Subject</span> Workspace</h2>
+                            <h2><i class="fas fa-graduation-cap me-1"></i> <span id="ws-subject-title">Subject</span> Workspace</h2>
                             <p>CAPS Aligned Self-Study, Interactive AI Tutoring & Progress Tracking</p>
                         </div>
                         <div class="ws-header-stats">
                             <div class="ws-stat-item">
                                 <span class="ws-stat-label">CAPS Progress</span>
-                                <span class="ws-stat-val" id="ws-stat-caps-pace" style="color: #c084fc;">85%</span>
+                                <span class="ws-stat-val" id="ws-stat-caps-pace">85%</span>
                             </div>
                             <div class="ws-stat-item">
                                 <span class="ws-stat-label">Enrolled Peers</span>
-                                <span class="ws-stat-val" id="ws-stat-peers" style="color: #38bdf8;">-</span>
+                                <span class="ws-stat-val" id="ws-stat-peers">-</span>
                             </div>
                             <div class="ws-stat-item">
                                 <span class="ws-stat-label">Subject Grade</span>
-                                <span class="ws-stat-val" id="ws-stat-grade" style="color: #4ade80;">-</span>
+                                <span class="ws-stat-val" id="ws-stat-grade">-</span>
                             </div>
                         </div>
                     </div>
@@ -835,15 +835,15 @@
                             <div class="column">
                                 <div class="card" id="workspace-ai-intro">
                                     <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-                                        <span><i class="fas fa-book-reader" style="color: #6366f1;"></i> Interactive Chapters & Curriculum</span>
-                                        <span class="badge" style="background: #312e81; color: #a5b4fc; font-size: 0.75rem;">CAPS Aligned</span>
+                                        <span><i class="fas fa-book-reader me-1"></i> Interactive Chapters & Curriculum</span>
+                                        <span class="badge" style="background: var(--accent-lavender); color: var(--text-main); font-size: 0.75rem; border: 1px solid var(--wave-border);">CAPS Aligned</span>
                                     </div>
-                                    <p style="color: #94a3b8; font-size: 0.88rem;">Select a chapter from your textbook or curriculum to start a self-paced tutorial, revision, or quiz task.</p>
+                                    <p style="color: var(--text-muted); font-size: 0.88rem;">Select a chapter from your textbook or curriculum to start a self-paced tutorial, revision, or quiz task.</p>
                                     
                                     <!-- Search input for workspace topics -->
                                     <div class="ws-topic-search-wrapper" style="position: relative; margin: 0.75rem 0 1rem 0;">
-                                        <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748b;"></i>
-                                        <input type="text" id="ws-topic-search-input" placeholder="Search chapters or topics in this subject..." oninput="window.filterWorkspaceTopics(this.value)" style="width: 100%; padding: 0.55rem 1rem 0.55rem 2.4rem; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff; font-size: 0.88rem;">
+                                        <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                                        <input type="text" id="ws-topic-search-input" placeholder="Search chapters or topics in this subject..." oninput="window.filterWorkspaceTopics(this.value)" style="width: 100%; padding: 0.55rem 1rem 0.55rem 2.4rem; background: var(--wave-inset); border: 1px solid var(--wave-border); border-radius: 9999px; color: var(--text-main); font-size: 0.88rem;">
                                     </div>
 
                                     <div id="ws-topics-list" class="grid-layout gap-10 mt-1rem">Loading topics...</div>
@@ -851,9 +851,9 @@
 
                                 <!-- Tutoring Content (Hidden by default) -->
                                 <div class="card" id="ws-tutoring-container" style="display: none;">
-                                    <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 0.75rem; margin-bottom: 1rem;">
-                                        <span><i class="fas fa-brain" style="color: #a855f7;"></i> Lesson: <span id="ws-tutoring-topic"></span></span>
-                                        <button type="button" class="btn btn-neutral" onclick="openSubjectWorkspace(currentAISubject)" style="padding: 4px 10px; font-size: 0.78rem; background: #1e293b; color: #cbd5e1; border: 1px solid #334155;"><i class="fas fa-arrow-left me-1"></i> Chapters</button>
+                                    <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--wave-border); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+                                        <span><i class="fas fa-brain me-1"></i> Lesson: <span id="ws-tutoring-topic"></span></span>
+                                        <button type="button" class="btn btn-neutral" onclick="openSubjectWorkspace(currentAISubject)" style="padding: 4px 10px; font-size: 0.78rem; background: var(--wave-inset); color: var(--text-main); border: 1px solid var(--wave-border); border-radius: 9999px;"><i class="fas fa-arrow-left me-1"></i> Chapters</button>
                                     </div>
 
                                     <!-- AI Quick Tools Toolbar -->
@@ -861,7 +861,7 @@
                                         <button type="button" class="lesson-ai-tool-btn btn-indigo" onclick="window.summarizeActiveLesson()"><i class="fas fa-compress-alt"></i> Summarize Lesson</button>
                                         <button type="button" class="lesson-ai-tool-btn btn-purple" onclick="window.generateLessonFlashcards()"><i class="fas fa-clone"></i> Key Flashcards</button>
                                         <button type="button" class="lesson-ai-tool-btn btn-emerald" onclick="window.toggleAskAIPrompt()"><i class="fas fa-comment-dots"></i> Ask AI Question</button>
-                                        <button type="button" class="lesson-ai-tool-btn" onclick="proceedToQuiz()" style="margin-left: auto; background: #6366f1; color: #fff; border: none;"><i class="fas fa-tasks"></i> Start Quiz Task</button>
+                                        <button type="button" class="lesson-ai-tool-btn" onclick="proceedToQuiz()" style="margin-left: auto; background: var(--btn-cta-bg); color: var(--btn-cta-text); border: none; border-radius: 9999px;"><i class="fas fa-tasks"></i> Start Quiz Task</button>
                                     </div>
 
                                     <!-- Interactive AI Output Panel (Dynamic summaries / Q&A responses) -->
@@ -869,9 +869,9 @@
 
                                     <div id="ws-tutoring-content" class="tutoring-content" style="margin-top: 1rem;"></div>
 
-                                    <div class="flex-layout gap-1rem" style="margin-top: 1.5rem; border-top: 1px solid #1e293b; padding-top: 1rem;">
-                                        <button type="button" class="btn btn-primary" onclick="proceedToQuiz()" style="background: #6366f1; border: none; font-weight: 600;"><i class="fas fa-tasks me-1"></i> Start Assessment Task</button>
-                                        <button type="button" class="btn btn-neutral" onclick="openSubjectWorkspace(currentAISubject)" style="background: #1e293b; color: #cbd5e1; border: 1px solid #334155;"><i class="fas fa-book me-1"></i> Back to Chapters</button>
+                                    <div class="flex-layout gap-1rem" style="margin-top: 1.5rem; border-top: 1px solid var(--wave-border); padding-top: 1rem;">
+                                        <button type="button" class="btn btn-primary" onclick="proceedToQuiz()" style="background: var(--btn-cta-bg); color: var(--btn-cta-text); border: none; font-weight: 600; border-radius: 9999px;"><i class="fas fa-tasks me-1"></i> Start Assessment Task</button>
+                                        <button type="button" class="btn btn-neutral" onclick="openSubjectWorkspace(currentAISubject)" style="background: var(--wave-inset); color: var(--text-main); border: 1px solid var(--wave-border); border-radius: 9999px;"><i class="fas fa-book me-1"></i> Back to Chapters</button>
                                     </div>
                                 </div>
                             </div>
@@ -1647,8 +1647,8 @@
                 if (data.success && data.answer) {
                     const safeAnswer = data.answer.replace(/\n/g, '<br>');
                     respDiv.innerHTML = `
-                        <div style="background: #1e293b; padding: 0.85rem 1rem; border-radius: 8px; border: 1px solid #334155; color: #f8fafc; font-size: 0.88rem; line-height: 1.5;">
-                            <strong style="color: #34d399; display: block; margin-bottom: 0.3rem;"><i class="fas fa-user-graduate me-1"></i> AI Tutor Answer:</strong>
+                        <div style="background: var(--wave-inset); padding: 0.85rem 1rem; border-radius: 10px; border: 1px solid var(--wave-border); color: var(--text-main); font-size: 0.88rem; line-height: 1.5;">
+                            <strong style="color: var(--text-main); display: block; margin-bottom: 0.3rem;"><i class="fas fa-user-graduate me-1"></i> AI Tutor Answer:</strong>
                             ${safeAnswer}
                         </div>
                     `;
@@ -1739,10 +1739,10 @@
 
                 if (!resources || resources.length === 0) {
                     list.innerHTML = `
-                        <div style="text-align: center; padding: 2rem; color: #94a3b8; background: #1e293b; border-radius: 10px; border: 1px dashed #334155;">
-                            <i class="fas fa-file-pdf fa-2x" style="color: #a855f7; margin-bottom: 0.5rem;"></i>
-                            <p style="margin: 0; font-weight: 600; color: #f8fafc;">No uploaded study resources found for ${subject}</p>
-                            <small style="color: #64748b;">Textbooks and PDF study materials uploaded by your teacher will appear here.</small>
+                        <div style="text-align: center; padding: 2rem; color: var(--text-muted); background: var(--wave-inset); border-radius: 12px; border: 1px dashed var(--wave-border);">
+                            <i class="fas fa-file-pdf fa-2x" style="color: var(--text-muted); margin-bottom: 0.5rem;"></i>
+                            <p style="margin: 0; font-weight: 600; color: var(--text-main);">No uploaded study resources found for ${subject}</p>
+                            <small style="color: var(--text-muted);">Textbooks and PDF study materials uploaded by your teacher will appear here.</small>
                         </div>
                     `;
                     return;
@@ -1754,17 +1754,17 @@
                     const dateStr = new Date(r.upload_date).toLocaleDateString();
 
                     return `
-                        <div class="resource-item" style="background: #1e293b; padding: 1rem 1.25rem; border-radius: 10px; border: 1px solid #334155; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                        <div class="resource-item" style="background: var(--wave-card-bg); padding: 1rem 1.25rem; border-radius: 12px; border: 1px solid var(--wave-border); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
                             <div style="display: flex; align-items: center; gap: 1rem;">
-                                <div style="width: 42px; height: 42px; border-radius: 8px; background: rgba(168, 85, 247, 0.2); color: #c084fc; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
+                                <div style="width: 42px; height: 42px; border-radius: 9999px; background: var(--accent-lavender); color: var(--text-main); border: 1px solid var(--wave-border); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0;">
                                     <i class="fas fa-file-pdf"></i>
                                 </div>
                                 <div>
-                                    <div style="font-weight: 700; color: #f8fafc; font-size: 0.95rem;">${fileName}</div>
-                                    <div style="font-size: 0.8rem; color: #94a3b8;"><i class="fas fa-user-tie me-1" style="color: #a855f7;"></i> Uploaded by ${teacher} • ${dateStr}</div>
+                                    <div style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${fileName}</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-muted);"><i class="fas fa-user-tie me-1"></i> Uploaded by ${teacher} • ${dateStr}</div>
                                 </div>
                             </div>
-                            <a href="/${r.file_path.replace(/\\/g, '/')}" target="_blank" download class="btn btn-primary" style="padding: 6px 14px; font-size: 0.82rem; background: #8b5cf6; border: none; font-weight: 600; text-decoration: none; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
+                            <a href="/${r.file_path.replace(/\\/g, '/')}" target="_blank" download class="btn btn-primary" style="padding: 7px 16px; font-size: 0.82rem; background: var(--btn-cta-bg); color: var(--btn-cta-text); border: none; font-weight: 600; text-decoration: none; border-radius: 9999px; display: inline-flex; align-items: center; gap: 6px;">
                                 <i class="fas fa-download"></i> Open / Download PDF
                             </a>
                         </div>
@@ -1791,12 +1791,12 @@
                 }
 
                 list.innerHTML = filtered.map(a => `
-                    <div class="task-item" style="cursor: pointer; background: #1e293b; padding: 12px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;" onclick="openAssignment(${a.id})">
+                    <div class="task-item" style="cursor: pointer; background: var(--wave-card-bg); border: 1px solid var(--wave-border); padding: 12px; border-radius: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;" onclick="openAssignment(${a.id})">
                         <div class="task-details">
-                            <div class="task-name" style="color: #f8fafc; font-weight: 600;">${a.title}</div>
-                            <div class="task-due" style="font-size: 0.8rem; color: #94a3b8;">${a.subject_target} • ${a.teacher_name || 'Teacher Task'}</div>
+                            <div class="task-name" style="color: var(--text-main); font-weight: 600;">${a.title}</div>
+                            <div class="task-due" style="font-size: 0.8rem; color: var(--text-muted);">${a.subject_target} • ${a.teacher_name || 'Teacher Task'}</div>
                         </div>
-                        <button type="button" class="btn btn-primary" style="padding: 4px 12px; font-size: 0.8rem;">Start Task</button>
+                        <button type="button" class="btn btn-primary" style="padding: 6px 14px; font-size: 0.8rem; background: var(--btn-cta-bg); color: var(--btn-cta-text); border-radius: 9999px; border: none; font-weight: 600;">Start Task</button>
                     </div>
                 `).join('');
             } catch (e) {
@@ -1808,14 +1808,14 @@
             const tbody = document.getElementById('ws-subject-grades-tbody');
             document.querySelectorAll('.ws-subject-name-span').forEach(s => s.innerText = subject || 'Subject');
             if (!tbody) return;
-            tbody.innerHTML = '<tr><td colspan="5" style="padding: 1rem; color: #94a3b8; text-align: center;"><i class="fas fa-spinner fa-spin"></i> Fetching quiz results & history...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="padding: 1rem; color: var(--text-muted); text-align: center;"><i class="fas fa-spinner fa-spin"></i> Fetching quiz results & history...</td></tr>';
 
             try {
                 const progress = await fetchData('/api/learner/progress').catch(() => []);
                 const filtered = (progress || []).filter(p => (p.subject || '').toLowerCase() === (subject || '').toLowerCase() || (subject || '').toLowerCase().includes((p.subject || '').toLowerCase()));
 
                 if (filtered.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="5" style="padding: 1.5rem; color: #94a3b8; text-align: center;">No quiz or assessment records found for ${subject} yet. Complete an interactive lesson or multiple-choice quiz to record your score!</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="5" style="padding: 1.5rem; color: var(--text-muted); text-align: center;">No quiz or assessment records found for ${subject} yet. Complete an interactive lesson or multiple-choice quiz to record your score!</td></tr>`;
                     return;
                 }
 
@@ -1825,32 +1825,30 @@
                     const isTeacher = notesLower.includes('teacher');
                     
                     const typeLabel = isTeacher ? 'Teacher Assignment' : isMCQ ? 'Multiple Choice Quiz' : 'Interactive Lesson Quiz';
-                    const typeBadgeBg = isTeacher ? '#312e81' : isMCQ ? '#581c87' : '#065f46';
-                    const typeBadgeColor = isTeacher ? '#a5b4fc' : isMCQ ? '#c084fc' : '#34d399';
                     const iconClass = isTeacher ? 'fa-file-alt' : isMCQ ? 'fa-list-check' : 'fa-brain';
 
                     const cleanTitle = p.notes ? p.notes.split('-')[0].replace(/^AI (Auto-)?Assessment:\s*/i, '').replace(/^Teacher MCQ Assignment:\s*/i, '').trim() : `${subject} Quiz`;
                     const score = parseFloat(p.grade || 0);
 
                     return `
-                        <tr style="border-bottom: 1px solid #1e293b; color: #f8fafc; font-size: 0.9rem;">
+                        <tr style="border-bottom: 1px solid var(--wave-border); color: var(--text-main); font-size: 0.9rem;">
                             <td style="padding: 10px; font-weight: 600;">
-                                <i class="fas ${iconClass} me-2" style="color: ${typeBadgeColor};"></i> ${cleanTitle}
+                                <i class="fas ${iconClass} me-2" style="color: var(--text-muted);"></i> ${cleanTitle}
                             </td>
                             <td style="padding: 10px;">
-                                <span class="badge" style="background: ${typeBadgeBg}; color: ${typeBadgeColor}; padding: 3px 8px; font-weight: 600; font-size: 0.75rem; border-radius: 4px;">
+                                <span class="badge" style="background: var(--accent-lavender); color: var(--text-main); border: 1px solid var(--wave-border); padding: 3px 8px; font-weight: 600; font-size: 0.75rem; border-radius: 9999px;">
                                     ${typeLabel}
                                 </span>
                             </td>
                             <td style="padding: 10px;">
-                                <span class="badge" style="background: ${score >= 80 ? '#166534' : score >= 50 ? '#854d0e' : '#991b1b'}; color: ${score >= 80 ? '#4ade80' : score >= 50 ? '#facc15' : '#f87171'}; padding: 4px 10px; font-weight: 800; font-size: 0.85rem; border-radius: 6px;">
+                                <span class="badge" style="background: var(--wave-inset); color: var(--text-main); border: 1px solid var(--wave-border); padding: 4px 10px; font-weight: 800; font-size: 0.85rem; border-radius: 9999px;">
                                     ${score}%
                                 </span>
                             </td>
-                            <td style="padding: 10px; font-size: 0.82rem; color: #cbd5e1; max-width: 300px;">
+                            <td style="padding: 10px; font-size: 0.82rem; color: var(--text-muted); max-width: 300px;">
                                 ${p.feedback || p.notes || 'Task completed.'}
                             </td>
-                            <td style="padding: 10px; font-size: 0.8rem; color: #94a3b8;">
+                            <td style="padding: 10px; font-size: 0.8rem; color: var(--text-muted);">
                                 ${new Date(p.date || p.created_at || Date.now()).toLocaleDateString()}
                             </td>
                         </tr>
@@ -1983,15 +1981,15 @@
                     : [`A) ${q.answer || 'Option A'}`, `B) Alternative Option 1`, `C) Alternative Option 2`, `D) Alternative Option 3`].slice(0, 4);
 
                 return `
-                    <div class="form-group" style="margin-top: 1.5rem; padding: 1.25rem; background: #1e293b; border-radius: 10px; border: 1px solid #334155;">
+                    <div class="form-group" style="margin-top: 1.5rem; padding: 1.25rem; background: var(--wave-card-bg); border-radius: 12px; border: 1px solid var(--wave-border);">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-                            <label style="font-weight:700; color:#f8fafc; font-size:1rem; margin:0;">Q${idx + 1}: ${qText}</label>
-                            <span style="background:#312e81; color:#a5b4fc; padding:3px 10px; border-radius:12px; font-weight:700; font-size:0.8rem;">[${qMarks} Marks]</span>
+                            <label style="font-weight:700; color:var(--text-main); font-size:1rem; margin:0;">Q${idx + 1}: ${qText}</label>
+                            <span style="background:var(--accent-lavender); color:var(--text-main); border:1px solid var(--wave-border); padding:3px 10px; border-radius:9999px; font-weight:700; font-size:0.8rem;">[${qMarks} Marks]</span>
                         </div>
                         <div style="display:flex; flex-direction:column; gap:0.6rem; margin-top:0.5rem;">
                             ${options.map((opt) => `
-                                <label class="mcq-option-label" style="display:flex; align-items:center; gap:10px; background:#0f172a; padding:10px 14px; border-radius:8px; border:1px solid #334155; cursor:pointer; color:#e2e8f0; transition:border-color 0.2s;">
-                                    <input type="radio" name="mcq_q_${qId}" class="quiz-ans quiz-mcq-radio" data-id="${qId}" value="${opt}" style="width:18px; height:18px; accent-color:#6366f1;">
+                                <label class="mcq-option-label" style="display:flex; align-items:center; gap:10px; background:var(--wave-inset); padding:10px 14px; border-radius:8px; border:1px solid var(--wave-border); cursor:pointer; color:var(--text-main); transition:border-color 0.2s;">
+                                    <input type="radio" name="mcq_q_${qId}" class="quiz-ans quiz-mcq-radio" data-id="${qId}" value="${opt}" style="width:18px; height:18px; accent-color:var(--text-main);">
                                     <span style="font-weight:600;">${opt}</span>
                                 </label>
                             `).join('')}

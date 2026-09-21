@@ -203,11 +203,11 @@
             <div id="overview" class="section active">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">
                     <div>
-                        <h2 style="font-size:1.35rem; font-weight:700; color:#f8fafc; margin:0;">Learner Academic Overview</h2>
-                        <p style="color:#94a3b8; font-size:0.85rem; margin:0.25rem 0 0 0;">View at-a-glance performance, attendance, and recent activity for your enrolled children.</p>
+                        <h2 style="font-size:1.35rem; font-weight:700; color:var(--text-main); margin:0;">Learner Academic Overview</h2>
+                        <p style="color:var(--text-muted); font-size:0.85rem; margin:0.25rem 0 0 0;">View at-a-glance performance, attendance, and recent activity for your enrolled children.</p>
                     </div>
-                    <button type="button" class="btn btn-primary" onclick="window.openAddChildModal()" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.65rem 1.25rem; font-weight:600; border-radius:8px; box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25);">
-                        <i class="fas fa-user-plus"></i> + Link / Enroll Child
+                    <button type="button" class="btn btn-primary" onclick="window.openAddChildModal()" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.6rem 1.25rem; font-weight:600; border-radius:9999px;">
+                        <i class="fas fa-user-plus"></i> Link Child
                     </button>
                 </div>
                 <div id="parent-overview-children-cards" class="multi-child-cards-container">
@@ -219,11 +219,11 @@
             <div id="children" class="section">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">
                     <div>
-                        <h2 style="font-size:1.35rem; font-weight:700; color:#f8fafc; margin:0;">Enrolled Children</h2>
-                        <p style="color:#94a3b8; font-size:0.85rem; margin:0.25rem 0 0 0;">Manage your linked children, academic details, and track real-time school progress.</p>
+                        <h2 style="font-size:1.35rem; font-weight:700; color:var(--text-main); margin:0;">Enrolled Children</h2>
+                        <p style="color:var(--text-muted); font-size:0.85rem; margin:0.25rem 0 0 0;">Manage your linked children, academic details, and track real-time school progress.</p>
                     </div>
-                    <button type="button" class="btn btn-primary" onclick="window.openAddChildModal()" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.65rem 1.25rem; font-weight:600; border-radius:8px; box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25);">
-                        <i class="fas fa-user-plus"></i> + Link / Enroll Child
+                    <button type="button" class="btn btn-primary" onclick="window.openAddChildModal()" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.6rem 1.25rem; font-weight:600; border-radius:9999px;">
+                        <i class="fas fa-user-plus"></i> Link Child
                     </button>
                 </div>
                 <div id="children-list" class="child-grid">
@@ -256,7 +256,7 @@
                         <div class="parent-stat-val">
                             <p>Total Subjects</p>
                             <h2 id="parent-perf-subjects">8</h2>
-                            <span class="parent-stat-subtext" style="color:#94a3b8;">Active Subjects</span>
+                            <span class="parent-stat-subtext" style="color:var(--text-muted);">Active Subjects</span>
                         </div>
                     </div>
                     <div class="parent-stat-card">
@@ -264,7 +264,7 @@
                         <div class="parent-stat-val">
                             <p>Assessments</p>
                             <h2 id="parent-perf-assessments">12</h2>
-                            <span class="parent-stat-subtext" style="color:#94a3b8;">Completed</span>
+                            <span class="parent-stat-subtext" style="color:var(--text-muted);">Completed</span>
                         </div>
                     </div>
                 </div>
@@ -275,7 +275,7 @@
                     </div>
                     <table style="width:100%; border-collapse:collapse;">
                         <thead>
-                            <tr style="border-bottom:1px solid #334155; text-align:left; color:#94a3b8; font-size:0.85rem;">
+                            <tr style="border-bottom:1px solid var(--card-border); text-align:left; color:var(--text-muted); font-size:0.85rem;">
                                 <th style="padding:0.75rem 1rem;">Subject</th>
                                 <th style="padding:0.75rem 1rem;">Average %</th>
                                 <th style="padding:0.75rem 1rem;">Grade</th>
@@ -290,17 +290,17 @@
 
             <!-- Official Report Cards View -->
             <div id="reports" class="section">
-                <div class="parent-card" style="margin-bottom:1.5rem; background:#1E293B; border:1px solid #334155; border-radius:12px; padding:1.5rem;">
+                <div class="parent-card" style="margin-bottom:1.5rem; background:var(--white); border:1px solid var(--card-border); border-radius:16px; padding:1.5rem;">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
                         <div>
-                            <h2 style="color:#F8FAFC; margin:0 0 0.3rem 0; font-size:1.3rem; display:flex; align-items:center; gap:0.5rem;">
-                                <i class="fas fa-award" style="color:#f59e0b;"></i> Official CAPS Learner Report Cards
+                            <h2 style="color:var(--text-main); margin:0 0 0.3rem 0; font-size:1.3rem; display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fas fa-award" style="color:var(--accent);"></i> Official CAPS Learner Report Cards
                             </h2>
-                            <p style="color:#94a3b8; font-size:0.85rem; margin:0;">Download and inspect official South African DBE-formatted report cards certified by the School Examination Board.</p>
+                            <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">Download and inspect official South African DBE-formatted report cards certified by the School Examination Board.</p>
                         </div>
                         <div style="display:flex; gap:0.75rem; align-items:center;">
-                            <label style="color:#cbd5e1; font-size:0.82rem; font-weight:600;">Select Child:</label>
-                            <select id="parent-report-card-child-select" style="background:#0F172A; color:#F8FAFC; border:1px solid #334155; border-radius:6px; padding:0.45rem 0.75rem; font-size:0.85rem; cursor:pointer;" onchange="window.loadParentChildReportCards(this.value)">
+                            <label style="color:var(--text-muted); font-size:0.82rem; font-weight:600;">Select Child:</label>
+                            <select id="parent-report-card-child-select" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--card-border); border-radius:20px; padding:0.45rem 0.85rem; font-size:0.85rem; cursor:pointer;" onchange="window.loadParentChildReportCards(this.value)">
                                 <!-- Injected dynamically by JS -->
                             </select>
                         </div>
@@ -308,7 +308,7 @@
                 </div>
 
                 <div id="parent-report-cards-container">
-                    <div style="text-align:center; padding:3rem; color:#94a3b8;">
+                    <div style="text-align:center; padding:3rem; color:var(--text-muted);">
                         <i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>
                         Loading official report cards for your child...
                     </div>
@@ -332,7 +332,7 @@
                         <div class="parent-stat-val">
                             <p>Days Present</p>
                             <h2 id="parent-att-present">46</h2>
-                            <span class="parent-stat-subtext" style="color:#94a3b8;">out of 50 days</span>
+                            <span class="parent-stat-subtext" style="color:var(--text-muted);">out of 50 days</span>
                         </div>
                     </div>
                     <div class="parent-stat-card">
@@ -340,7 +340,7 @@
                         <div class="parent-stat-val">
                             <p>Days Absent</p>
                             <h2 id="parent-att-absent">4</h2>
-                            <span class="parent-stat-subtext" style="color:#94a3b8;">out of 50 days</span>
+                            <span class="parent-stat-subtext" style="color:var(--text-muted);">out of 50 days</span>
                         </div>
                     </div>
                     <div class="parent-stat-card">
@@ -359,7 +359,7 @@
                     </div>
                     <table style="width:100%; border-collapse:collapse;">
                         <thead>
-                            <tr style="border-bottom:1px solid #334155; text-align:left; color:#94a3b8; font-size:0.85rem;">
+                            <tr style="border-bottom:1px solid var(--card-border); text-align:left; color:var(--text-muted); font-size:0.85rem;">
                                 <th style="padding:0.75rem 1rem;">Date</th>
                                 <th style="padding:0.75rem 1rem;">Day</th>
                                 <th style="padding:0.75rem 1rem;">Status</th>
@@ -381,37 +381,37 @@
                     <div class="parent-card-header">
                         <h3 class="parent-card-title"><i class="fas fa-clock"></i> Weekly Class Timetable</h3>
                     </div>
-                    <div id="parent-timetable-schedule" style="color:#f8fafc; padding: 1rem 0;">
+                    <div id="parent-timetable-schedule" style="color:var(--text-main); padding: 1rem 0;">
                         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
-                            <div style="background:#1E293B; border-radius:8px; padding:1rem;">
-                                <h4 style="margin:0 0 0.5rem 0; color:#38BDF8;">Monday</h4>
-                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">08:00 AM – 09:00 AM: Mathematics</p>
-                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">09:15 AM – 10:15 AM: Physical Sciences</p>
-                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">10:30 AM – 11:30 AM: Life Sciences</p>
+                            <div style="background:var(--wave-inset); border:1px solid var(--card-border); border-radius:12px; padding:1rem;">
+                                <h4 style="margin:0 0 0.5rem 0; color:var(--text-main); font-weight:700;">Monday</h4>
+                                <p style="margin:4px 0; font-size:0.85rem; color:var(--text-muted);">08:00 AM – 09:00 AM: Mathematics</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:var(--text-muted);">09:15 AM – 10:15 AM: Physical Sciences</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:var(--text-muted);">10:30 AM – 11:30 AM: Life Sciences</p>
                             </div>
-                            <div style="background:#1E293B; border-radius:8px; padding:1rem;">
-                                <h4 style="margin:0 0 0.5rem 0; color:#38BDF8;">Tuesday</h4>
-                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">08:00 AM – 09:00 AM: English FAL</p>
-                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">09:15 AM – 10:15 AM: Home Language</p>
-                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">10:30 AM – 11:30 AM: Life Orientation</p>
+                            <div style="background:var(--wave-inset); border:1px solid var(--card-border); border-radius:12px; padding:1rem;">
+                                <h4 style="margin:0 0 0.5rem 0; color:var(--text-main); font-weight:700;">Tuesday</h4>
+                                <p style="margin:4px 0; font-size:0.85rem; color:var(--text-muted);">08:00 AM – 09:00 AM: English FAL</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:var(--text-muted);">09:15 AM – 10:15 AM: Home Language</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:var(--text-muted);">10:30 AM – 11:30 AM: Life Orientation</p>
                             </div>
-                            <div style="background:#1E293B; border-radius:8px; padding:1rem;">
-                                <h4 style="margin:0 0 0.5rem 0; color:#38BDF8;">Wednesday</h4>
-                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">08:00 AM – 09:00 AM: Mathematics</p>
-                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">09:15 AM – 10:15 AM: Physical Sciences Lab</p>
-                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">10:30 AM – 11:30 AM: Geography</p>
+                            <div style="background:var(--wave-inset); border:1px solid var(--card-border); border-radius:12px; padding:1rem;">
+                                <h4 style="margin:0 0 0.5rem 0; color:var(--text-main); font-weight:700;">Wednesday</h4>
+                                <p style="margin:4px 0; font-size:0.85rem; color:var(--text-muted);">08:00 AM – 09:00 AM: Mathematics</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:var(--text-muted);">09:15 AM – 10:15 AM: Physical Sciences Lab</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:var(--text-muted);">10:30 AM – 11:30 AM: Geography</p>
                             </div>
-                            <div style="background:#1E293B; border-radius:8px; padding:1rem;">
-                                <h4 style="margin:0 0 0.5rem 0; color:#38BDF8;">Thursday</h4>
-                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">08:00 AM – 09:00 AM: Life Sciences</p>
-                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">09:15 AM – 10:15 AM: English FAL</p>
-                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">10:30 AM – 11:30 AM: Mathematics Tutorial</p>
+                            <div style="background:var(--wave-inset); border:1px solid var(--card-border); border-radius:12px; padding:1rem;">
+                                <h4 style="margin:0 0 0.5rem 0; color:var(--text-main); font-weight:700;">Thursday</h4>
+                                <p style="margin:4px 0; font-size:0.85rem; color:var(--text-muted);">08:00 AM – 09:00 AM: Life Sciences</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:var(--text-muted);">09:15 AM – 10:15 AM: English FAL</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:var(--text-muted);">10:30 AM – 11:30 AM: Mathematics Tutorial</p>
                             </div>
-                            <div style="background:#1E293B; border-radius:8px; padding:1rem;">
-                                <h4 style="margin:0 0 0.5rem 0; color:#38BDF8;">Friday</h4>
-                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">08:00 AM – 09:00 AM: Physical Sciences</p>
-                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">09:15 AM – 10:15 AM: Life Orientation</p>
-                                <p style="margin:4px 0; font-size:0.85rem; color:#F8FAFC;">10:30 AM – 11:30 AM: Assembly & Sports</p>
+                            <div style="background:var(--wave-inset); border:1px solid var(--card-border); border-radius:12px; padding:1rem;">
+                                <h4 style="margin:0 0 0.5rem 0; color:var(--text-main); font-weight:700;">Friday</h4>
+                                <p style="margin:4px 0; font-size:0.85rem; color:var(--text-muted);">08:00 AM – 09:00 AM: Physical Sciences</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:var(--text-muted);">09:15 AM – 10:15 AM: Life Orientation</p>
+                                <p style="margin:4px 0; font-size:0.85rem; color:var(--text-muted);">10:30 AM – 11:30 AM: Assembly & Sports</p>
                             </div>
                         </div>
                     </div>
@@ -474,8 +474,8 @@
                             </div>
                             <div style="display:flex; gap:0.4rem; margin-bottom:0.75rem;">
                                 <button class="btn btn-sm msg-filter-btn active" style="padding:0.25rem 0.6rem; font-size:0.75rem; background:#334155; color:#fff; border:none; border-radius:4px; cursor:pointer;" onclick="window.filterParentMessages('all', this)">All</button>
-                                <button class="btn btn-sm msg-filter-btn" style="padding:0.25rem 0.6rem; font-size:0.75rem; background:#1e293b; color:#94a3b8; border:1px solid #334155; border-radius:4px; cursor:pointer;" onclick="window.filterParentMessages('unread', this)">Unread</button>
-                                <button class="btn btn-sm msg-filter-btn" style="padding:0.25rem 0.6rem; font-size:0.75rem; background:#1e293b; color:#94a3b8; border:1px solid #334155; border-radius:4px; cursor:pointer;" onclick="window.filterParentMessages('read', this)">Viewed</button>
+                                <button class="btn btn-sm msg-filter-btn" style="padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--wave-inset); color:var(--text-muted); border:1px solid var(--wave-border); border-radius:9999px; cursor:pointer;" onclick="window.filterParentMessages('unread', this)">Unread</button>
+                                <button class="btn btn-sm msg-filter-btn" style="padding:0.25rem 0.6rem; font-size:0.75rem; background:var(--wave-inset); color:var(--text-muted); border:1px solid var(--wave-border); border-radius:9999px; cursor:pointer;" onclick="window.filterParentMessages('read', this)">Viewed</button>
                             </div>
                             <input type="text" class="chat-search-input" placeholder="Search contact or role..." oninput="window.filterChatContacts(this.value)">
                         </div>
@@ -512,10 +512,10 @@
 
             <!-- Resources View (Academic Report Cards) -->
             <div id="resources" class="section">
-                <div class="data-card" style="background:#1E293B; border:1px solid #334155; border-radius:12px; padding:1.25rem;">
-                    <div class="card-header" style="background:#0F172A; color:#F8FAFC; padding:1rem 1.25rem; font-weight:700; font-size:1.05rem; display:flex; justify-content:space-between; align-items:center;">
-                        <span><i class="fas fa-file-invoice style-color:#38bdf8 me-2"></i> Academic Report Cards & Resources</span>
-                        <small style="color:#94a3b8; font-weight:500;">Official CAPS Quarterly Report Cards</small>
+                <div class="data-card" style="background:var(--white); border:1px solid var(--card-border); border-radius:16px; padding:1.25rem;">
+                    <div class="card-header" style="background:var(--white); color:var(--text-main); padding:1rem 1.25rem; font-weight:700; font-size:1.05rem; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--card-border);">
+                        <span><i class="fas fa-file-invoice me-2" style="color:var(--accent);"></i> Academic Report Cards & Resources</span>
+                        <small style="color:var(--text-muted); font-weight:500;">Official CAPS Quarterly Report Cards</small>
                     </div>
                     <div id="parent-resources-list" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:1.25rem; margin-top:1.25rem;">
                         <!-- Rendered dynamically by window.loadParentResources() -->
@@ -574,14 +574,14 @@
                 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap:1.5rem;">
                     
                     <!-- 1. Profile Information & Picture Upload Card -->
-                    <div class="data-card" style="background:#1E293B; border:1px solid #334155; border-radius:12px;">
-                        <div class="card-header" style="background:#0F172A; color:#F8FAFC; padding:1rem 1.25rem; font-weight:700; font-size:1.05rem;">
-                            <i class="fas fa-user-edit style-color:#38bdf8 me-2"></i> Edit Personal Profile
+                    <div class="data-card" style="background:var(--white); border:1px solid var(--card-border); border-radius:16px;">
+                        <div class="card-header" style="background:var(--white); color:var(--text-main); padding:1rem 1.25rem; font-weight:700; font-size:1.05rem; border-bottom:1px solid var(--card-border);">
+                            <i class="fas fa-user-edit me-2" style="color:var(--accent);"></i> Edit Personal Profile
                         </div>
                         <div style="padding:1.25rem;">
                             <!-- Profile Picture Form -->
-                            <form id="pfpUploadForm" style="margin-bottom:1.5rem; text-align:center; padding:1rem; background:#0F172A; border-radius:10px; border:1px solid #334155;">
-                                <img id="pfp-preview" src="/assets/default-pfp.png" alt="Profile Picture Preview" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid #38bdf8; margin-bottom:0.75rem;">
+                            <form id="pfpUploadForm" style="margin-bottom:1.5rem; text-align:center; padding:1rem; background:var(--wave-inset); border-radius:12px; border:1px solid var(--card-border);">
+                                <img id="pfp-preview" src="/assets/default-pfp.png" alt="Profile Picture Preview" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--card-border); margin-bottom:0.75rem;">
                                 <div>
                                     <label for="pfp-input" class="btn btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.8rem; cursor:pointer;"><i class="fas fa-camera me-1"></i> Choose Image</label>
                                     <input type="file" id="pfp-input" accept="image/*" class="hidden">
@@ -593,24 +593,24 @@
                             <!-- Profile Details Form -->
                             <form id="settingsProfileForm" onsubmit="handleUpdateProfile(event)">
                                 <div class="form-group" style="margin-bottom:0.75rem;">
-                                    <label style="color:#CBD5E1; font-size:0.85rem; font-weight:600;">Full Name</label>
-                                    <input type="text" id="prof-name" class="form-control" required style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.55rem;">
+                                    <label style="color:var(--text-main); font-size:0.85rem; font-weight:600;">Full Name</label>
+                                    <input type="text" id="prof-name" class="form-control" required style="padding:0.55rem;">
                                 </div>
                                 <div class="form-group" style="margin-bottom:0.75rem;">
-                                    <label style="color:#CBD5E1; font-size:0.85rem; font-weight:600;">Surname</label>
-                                    <input type="text" id="prof-surname" class="form-control" required style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.55rem;">
+                                    <label style="color:var(--text-main); font-size:0.85rem; font-weight:600;">Surname</label>
+                                    <input type="text" id="prof-surname" class="form-control" required style="padding:0.55rem;">
                                 </div>
                                 <div class="form-group" style="margin-bottom:0.75rem;">
-                                    <label style="color:#CBD5E1; font-size:0.85rem; font-weight:600;">Email Address</label>
-                                    <input type="email" id="prof-email" class="form-control" required style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.55rem;">
+                                    <label style="color:var(--text-main); font-size:0.85rem; font-weight:600;">Email Address</label>
+                                    <input type="email" id="prof-email" class="form-control" required style="padding:0.55rem;">
                                 </div>
                                 <div class="form-group" style="margin-bottom:0.75rem;">
-                                    <label style="color:#CBD5E1; font-size:0.85rem; font-weight:600;">Phone Number</label>
-                                    <input type="text" id="prof-phone" class="form-control" placeholder="+27..." style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.55rem;">
+                                    <label style="color:var(--text-main); font-size:0.85rem; font-weight:600;">Phone Number</label>
+                                    <input type="text" id="prof-phone" class="form-control" placeholder="+27..." style="padding:0.55rem;">
                                 </div>
                                 <div class="form-group" style="margin-bottom:1rem;">
-                                    <label style="color:#CBD5E1; font-size:0.85rem; font-weight:600;">Physical Address</label>
-                                    <textarea id="prof-address" class="form-control" rows="2" style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.55rem;"></textarea>
+                                    <label style="color:var(--text-main); font-size:0.85rem; font-weight:600;">Physical Address</label>
+                                    <textarea id="prof-address" class="form-control" rows="2" style="padding:0.55rem;"></textarea>
                                 </div>
                                 <button type="submit" class="btn btn-primary" style="width:100%; padding:0.65rem; font-weight:700;"><i class="fas fa-save me-1"></i> Save Profile Details</button>
                             </form>
@@ -618,86 +618,86 @@
                     </div>
 
                     <!-- 2. Activate & Deactivate Child Account Card -->
-                    <div class="data-card" style="background:#1E293B; border:1px solid #334155; border-radius:12px;">
-                        <div class="card-header" style="background:#0F172A; color:#F8FAFC; padding:1rem 1.25rem; font-weight:700; font-size:1.05rem;">
-                            <i class="fas fa-user-plus style-color:#4ade80 me-2"></i> Manage Child Accounts
+                    <div class="data-card" style="background:var(--white); border:1px solid var(--card-border); border-radius:16px;">
+                        <div class="card-header" style="background:var(--white); color:var(--text-main); padding:1rem 1.25rem; font-weight:700; font-size:1.05rem; border-bottom:1px solid var(--card-border);">
+                            <i class="fas fa-user-plus me-2" style="color:var(--accent);"></i> Manage Child Accounts
                         </div>
                         <div style="padding:1.25rem;">
                             <!-- Activate Child Form -->
-                            <div style="background:#0F172A; padding:1rem; border-radius:10px; border:1px solid #334155; margin-bottom:1.5rem;">
-                                <h4 style="margin:0 0 0.5rem 0; color:#38BDF8; font-size:0.95rem;"><i class="fas fa-link me-1"></i> Activate & Link Child</h4>
-                                <p style="color:#94A3B8; font-size:0.8rem; margin-bottom:1rem;">Link your child's profile by entering their details provided by the school.</p>
+                            <div style="background:var(--wave-inset); padding:1rem; border-radius:12px; border:1px solid var(--card-border); margin-bottom:1.5rem;">
+                                <h4 style="margin:0 0 0.5rem 0; color:var(--text-main); font-size:0.95rem;"><i class="fas fa-link me-1"></i> Activate & Link Child</h4>
+                                <p style="color:var(--text-muted); font-size:0.8rem; margin-bottom:1rem;">Link your child's profile by entering their details provided by the school.</p>
                                 <form id="activationForm">
                                     <div class="form-group" style="margin-bottom:0.75rem;">
-                                        <label style="color:#CBD5E1; font-size:0.8rem;">Learner ID / Number</label>
-                                        <input type="text" id="learnerIDNumber" name="learnerIDNumber" class="form-control" placeholder="e.g. 0504125890088 or 20250001" required style="background:#1E293B; color:#FFF; border:1px solid #475569; padding:0.5rem;">
+                                        <label style="color:var(--text-main); font-size:0.8rem;">Learner ID / Number</label>
+                                        <input type="text" id="learnerIDNumber" name="learnerIDNumber" class="form-control" placeholder="e.g. 0504125890088 or 20250001" required style="padding:0.5rem;">
                                     </div>
                                     <div class="form-group" style="margin-bottom:0.75rem;">
-                                        <label style="color:#CBD5E1; font-size:0.8rem;">Learner First Name</label>
-                                        <input type="text" id="learnerFirstName" name="learnerFirstName" class="form-control" placeholder="e.g. Sipho" required style="background:#1E293B; color:#FFF; border:1px solid #475569; padding:0.5rem;">
+                                        <label style="color:var(--text-main); font-size:0.8rem;">Learner First Name</label>
+                                        <input type="text" id="learnerFirstName" name="learnerFirstName" class="form-control" placeholder="e.g. Sipho" required style="padding:0.5rem;">
                                     </div>
                                     <div class="form-group" style="margin-bottom:1rem;">
-                                        <label style="color:#CBD5E1; font-size:0.8rem;">Learner Surname</label>
-                                        <input type="text" id="learnerSurname" name="learnerSurname" class="form-control" placeholder="e.g. Nkosi" required style="background:#1E293B; color:#FFF; border:1px solid #475569; padding:0.5rem;">
+                                        <label style="color:var(--text-main); font-size:0.8rem;">Learner Surname</label>
+                                        <input type="text" id="learnerSurname" name="learnerSurname" class="form-control" placeholder="e.g. Nkosi" required style="padding:0.5rem;">
                                     </div>
-                                    <div id="activation-error" class="hidden" style="padding:0.5rem; background:rgba(239,68,68,0.2); border:1px solid #ef4444; color:#ef4444; border-radius:6px; margin-bottom:0.75rem; font-size:0.8rem;"></div>
-                                    <div id="activation-success" class="hidden" style="padding:0.5rem; background:rgba(34,197,94,0.2); border:1px solid #22c55e; color:#4ade80; border-radius:6px; margin-bottom:0.75rem; font-size:0.8rem;"></div>
+                                    <div id="activation-error" class="hidden" style="padding:0.5rem; background:rgba(239,68,68,0.15); border:1px solid #ef4444; color:#ef4444; border-radius:6px; margin-bottom:0.75rem; font-size:0.8rem;"></div>
+                                    <div id="activation-success" class="hidden" style="padding:0.5rem; background:rgba(34,197,94,0.15); border:1px solid #22c55e; color:#10b981; border-radius:6px; margin-bottom:0.75rem; font-size:0.8rem;"></div>
                                     <button id="activateLearnerBtn" type="submit" class="btn btn-primary" style="width:100%; padding:0.6rem; font-size:0.85rem; font-weight:700;"><i class="fas fa-check-circle me-1"></i> Activate & Link Child Account</button>
                                 </form>
                             </div>
 
                             <!-- Deactivate Child Form -->
-                            <div style="background:#0F172A; padding:1rem; border-radius:10px; border:1px solid #334155;">
-                                <h4 style="margin:0 0 0.5rem 0; color:#EF4444; font-size:0.95rem;"><i class="fas fa-unlink me-1"></i> Deactivate / Unlink Child</h4>
-                                <p style="color:#94A3B8; font-size:0.8rem; margin-bottom:1rem;">Select an active child account to unlink from your parent portal.</p>
+                            <div style="background:var(--wave-inset); padding:1rem; border-radius:12px; border:1px solid var(--card-border);">
+                                <h4 style="margin:0 0 0.5rem 0; color:var(--text-main); font-size:0.95rem;"><i class="fas fa-unlink me-1"></i> Deactivate / Unlink Child</h4>
+                                <p style="color:var(--text-muted); font-size:0.8rem; margin-bottom:1rem;">Select an active child account to unlink from your parent portal.</p>
                                 <div id="deactivate-child-container">
                                     <div class="form-group" style="margin-bottom:1rem;">
-                                        <label style="color:#CBD5E1; font-size:0.8rem;">Select Active Child</label>
-                                        <select id="deactivate-child-select" class="form-control" style="background:#1E293B; color:#FFF; border:1px solid #475569; padding:0.5rem;">
+                                        <label style="color:var(--text-main); font-size:0.8rem;">Select Active Child</label>
+                                        <select id="deactivate-child-select" class="form-control" style="padding:0.5rem;">
                                             <option value="">Loading linked children...</option>
                                         </select>
                                     </div>
-                                    <button type="button" class="btn btn-secondary" style="width:100%; padding:0.6rem; font-size:0.85rem; background:#7f1d1d; color:#fca5a5; border:1px solid #ef4444; font-weight:700; cursor:pointer;" onclick="window.handleDeactivateChildFromSettings()"><i class="fas fa-user-minus me-1"></i> Deactivate Selected Child</button>
+                                    <button type="button" class="btn btn-secondary" style="width:100%; padding:0.6rem; font-size:0.85rem; color:#ef4444; border:1px solid #ef4444; font-weight:700; cursor:pointer;" onclick="window.handleDeactivateChildFromSettings()"><i class="fas fa-user-minus me-1"></i> Deactivate Selected Child</button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- 3. Account Security & Preferences Card -->
-                    <div class="data-card" style="background:#1E293B; border:1px solid #334155; border-radius:12px;">
-                        <div class="card-header" style="background:#0F172A; color:#F8FAFC; padding:1rem 1.25rem; font-weight:700; font-size:1.05rem;">
-                            <i class="fas fa-lock style-color:#a855f7 me-2"></i> Security & Preferences
+                    <div class="data-card" style="background:var(--white); border:1px solid var(--card-border); border-radius:16px;">
+                        <div class="card-header" style="background:var(--white); color:var(--text-main); padding:1rem 1.25rem; font-weight:700; font-size:1.05rem; border-bottom:1px solid var(--card-border);">
+                            <i class="fas fa-lock me-2" style="color:var(--accent);"></i> Security & Preferences
                         </div>
                         <div style="padding:1.25rem;">
                             <!-- Account Security Form -->
                             <form onsubmit="handleChangePassword(event)" style="margin-bottom:1.5rem;">
-                                <h4 style="margin:0 0 0.75rem 0; color:#F8FAFC; font-size:0.95rem;">Change Password</h4>
+                                <h4 style="margin:0 0 0.75rem 0; color:var(--text-main); font-size:0.95rem;">Change Password</h4>
                                 <div class="form-group" style="margin-bottom:0.75rem;">
-                                    <label style="color:#CBD5E1; font-size:0.8rem;">Current Password</label>
-                                    <input type="password" id="sett-curr-pass" class="form-control" required autocomplete="current-password" style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.5rem;">
+                                    <label style="color:var(--text-main); font-size:0.8rem;">Current Password</label>
+                                    <input type="password" id="sett-curr-pass" class="form-control" required autocomplete="current-password" style="padding:0.5rem;">
                                 </div>
                                 <div class="form-group" style="margin-bottom:0.75rem;">
-                                    <label style="color:#CBD5E1; font-size:0.8rem;">New Password</label>
-                                    <input type="password" id="sett-new-pass" class="form-control" required autocomplete="new-password" style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.5rem;">
+                                    <label style="color:var(--text-main); font-size:0.8rem;">New Password</label>
+                                    <input type="password" id="sett-new-pass" class="form-control" required autocomplete="new-password" style="padding:0.5rem;">
                                 </div>
                                 <div class="form-group" style="margin-bottom:1rem;">
-                                    <label style="color:#CBD5E1; font-size:0.8rem;">Confirm New Password</label>
-                                    <input type="password" id="sett-conf-pass" class="form-control" required autocomplete="new-password" style="background:#0F172A; color:#FFF; border:1px solid #475569; padding:0.5rem;">
+                                    <label style="color:var(--text-main); font-size:0.8rem;">Confirm New Password</label>
+                                    <input type="password" id="sett-conf-pass" class="form-control" required autocomplete="new-password" style="padding:0.5rem;">
                                 </div>
                                 <button type="submit" class="btn btn-primary" style="width:100%; padding:0.6rem; font-weight:700;"><i class="fas fa-key me-1"></i> Update Password</button>
                             </form>
 
                             <!-- Preferences Card -->
-                            <div style="background:#0F172A; padding:1rem; border-radius:10px; border:1px solid #334155;">
-                                <h4 style="margin:0 0 0.75rem 0; color:#F8FAFC; font-size:0.95rem;">Notification Alerts</h4>
+                            <div style="background:var(--wave-inset); padding:1rem; border-radius:12px; border:1px solid var(--card-border);">
+                                <h4 style="margin:0 0 0.75rem 0; color:var(--text-main); font-size:0.95rem;">Notification Alerts</h4>
                                 <div style="display:flex; flex-direction:column; gap:0.75rem;">
-                                    <label class="flex-label" style="display:flex; align-items:center; gap:0.5rem; color:#cbd5e1; font-size:0.8rem;">
+                                    <label class="flex-label" style="display:flex; align-items:center; gap:0.5rem; color:var(--text-muted); font-size:0.8rem;">
                                         <input type="checkbox" id="email-reports-toggle" checked> Automated learner progress & CAPS report card alerts
                                     </label>
-                                    <label class="flex-label" style="display:flex; align-items:center; gap:0.5rem; color:#cbd5e1; font-size:0.8rem;">
+                                    <label class="flex-label" style="display:flex; align-items:center; gap:0.5rem; color:var(--text-muted); font-size:0.8rem;">
                                         <input type="checkbox" id="email-att-toggle" checked> Real-time attendance check-in & check-out alerts
                                     </label>
-                                    <label class="flex-label" style="display:flex; align-items:center; gap:0.5rem; color:#cbd5e1; font-size:0.8rem;">
+                                    <label class="flex-label" style="display:flex; align-items:center; gap:0.5rem; color:var(--text-muted); font-size:0.8rem;">
                                         <input type="checkbox" id="email-ann-toggle" checked> School news & principal announcement digests
                                     </label>
                                 </div>
@@ -833,23 +833,23 @@
     </div>
 
     <!-- Official South African DBE/CAPS Report Card Parent View Modal -->
-    <div id="parentOfficialReportCardModal" class="modal-container hidden" style="position:fixed; z-index:99999; left:0; top:0; width:100%; height:100%; overflow:auto; background:rgba(0,0,0,0.85); backdrop-filter:blur(5px);">
-        <div class="modal-content" style="background:#ffffff; color:#0f172a; border-radius:12px; max-width:880px; margin:30px auto; padding:2rem; box-shadow:0 25px 50px -12px rgba(0,0,0,0.9); position:relative;">
+    <div id="parentOfficialReportCardModal" class="modal-container hidden" style="position:fixed; z-index:99999; left:0; top:0; width:100%; height:100%; overflow:auto; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px);">
+        <div class="modal-content" style="background:#ffffff; color:#111111; border-radius:14px; max-width:880px; margin:30px auto; padding:2rem; box-shadow:0 20px 40px rgba(0,0,0,0.15); border:1px solid var(--wave-border); position:relative;">
             <!-- Action Toolbar (Hidden in print) -->
-            <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:1rem; margin-bottom:1.5rem;">
-                <span style="font-weight:700; color:#475569; font-size:0.9rem;"><i class="fas fa-certificate text-warning me-1"></i> Official CAPS Document - Fusion High School</span>
+            <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e5e7eb; padding-bottom:1rem; margin-bottom:1.5rem;">
+                <span style="font-weight:700; color:#374151; font-size:0.9rem;"><i class="fas fa-certificate text-warning me-1"></i> Official CAPS Document - Fusion High School</span>
                 <div style="display:flex; gap:0.6rem;">
-                    <button class="btn btn-primary btn-sm" onclick="window.print()" style="background:#0284c7; border:none; color:#fff; padding:6px 14px; border-radius:6px; font-weight:600; cursor:pointer;">
+                    <button class="btn btn-primary btn-sm" onclick="window.print()" style="background:var(--btn-cta-bg); border:none; color:var(--btn-cta-text); padding:7px 16px; border-radius:9999px; font-weight:600; cursor:pointer;">
                         <i class="fas fa-print me-1"></i> Print / Download PDF
                     </button>
-                    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('parentOfficialReportCardModal').classList.add('hidden')" style="background:#e2e8f0; border:none; color:#334155; padding:6px 14px; border-radius:6px; font-weight:600; cursor:pointer;">
+                    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('parentOfficialReportCardModal').classList.add('hidden')" style="background:var(--wave-inset); border:1px solid var(--wave-border); color:var(--text-main); padding:7px 16px; border-radius:9999px; font-weight:600; cursor:pointer;">
                         Close
                     </button>
                 </div>
             </div>
 
             <!-- Printable Area with Watermark -->
-            <div id="parent-report-card-printable-area" style="position:relative; background:#ffffff; color:#0f172a; padding:1.5rem; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+            <div id="parent-report-card-printable-area" style="position:relative; background:#ffffff; color:#111111; padding:1.5rem; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
                 <div style="position:absolute; top:45%; left:50%; transform:translate(-50%, -50%); opacity:0.06; pointer-events:none; z-index:1; text-align:center;">
                     <img src="/assets/FH.png" onerror="this.src='/assets/fusion-app-icon.png'" alt="Fusion High Watermark" style="width:360px; height:auto;">
                 </div>
@@ -862,64 +862,64 @@
 
     <!-- Link / Enroll Child Modal -->
     <div id="addChildModal" class="modal-container hidden">
-        <div class="modal-content" style="max-width:680px; max-height:92vh; overflow-y:auto; padding:1.75rem; background:#111827; border:1px solid #334155; border-radius:14px; box-shadow:0 20px 40px rgba(0,0,0,0.6);">
-            <div class="modal-header" style="border-bottom:1px solid #1e293b; padding-bottom:1rem; margin-bottom:1.25rem;">
+        <div class="modal-content" style="max-width:680px; max-height:92vh; overflow-y:auto; padding:1.75rem; background:var(--wave-card-bg); border:1px solid var(--wave-border); border-radius:14px; box-shadow:0 20px 40px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="border-bottom:1px solid var(--wave-border); padding-bottom:1rem; margin-bottom:1.25rem;">
                 <div style="display:flex; align-items:center; gap:0.75rem;">
-                    <div style="width:42px; height:42px; border-radius:10px; background:rgba(56,189,248,0.15); display:flex; align-items:center; justify-content:center; color:#38bdf8; font-size:1.25rem;">
+                    <div style="width:40px; height:40px; border-radius:9999px; background:var(--wave-inset); border:1px solid var(--wave-border); display:flex; align-items:center; justify-content:center; color:var(--text-main); font-size:1.1rem;">
                         <i class="fas fa-user-plus"></i>
                     </div>
                     <div>
-                        <h3 style="margin:0; font-size:1.15rem; color:#f8fafc; font-weight:700;">Link & Enroll Child</h3>
-                        <p style="margin:2px 0 0 0; color:#94a3b8; font-size:0.78rem;">Register learner, generate official credentials, and link to your parent portal.</p>
+                        <h3 style="margin:0; font-size:1.15rem; color:var(--text-main); font-weight:700;">Link & Enroll Child</h3>
+                        <p style="margin:2px 0 0 0; color:var(--text-muted); font-size:0.78rem;">Register learner, generate official credentials, and link to your parent portal.</p>
                     </div>
                 </div>
-                <button type="button" onclick="window.closeAddChildModal()" class="modal-close-btn" style="color:#94a3b8; font-size:1.4rem; background:none; border:none; cursor:pointer;">&times;</button>
+                <button type="button" onclick="window.closeAddChildModal()" class="modal-close-btn" style="color:var(--text-muted); font-size:1.4rem; background:none; border:none; cursor:pointer;">&times;</button>
             </div>
 
             <div class="modal-body" style="padding:0;">
-                <div style="background:rgba(56, 189, 248, 0.08); border:1px solid rgba(56, 189, 248, 0.25); border-radius:8px; padding:0.75rem 1rem; margin-bottom:1.25rem; font-size:0.8rem; color:#cbd5e1; line-height:1.4;">
-                    <i class="fas fa-info-circle" style="color:#38bdf8; margin-right:0.4rem;"></i>
+                <div style="background:var(--wave-inset); border:1px solid var(--wave-border); border-radius:10px; padding:0.85rem 1rem; margin-bottom:1.25rem; font-size:0.82rem; color:var(--text-main); line-height:1.4;">
+                    <i class="fas fa-info-circle" style="color:var(--text-muted); margin-right:0.4rem;"></i>
                     The system will automatically allocate standard <strong>CAPS curriculum subjects</strong>, generate a <strong>unique official Learner Number</strong>, compute an initial password from their ID Number, and dispatch login details to your registered parent email address.
                 </div>
 
                 <form id="linkChildForm">
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
                         <div class="form-group">
-                            <label style="color:#cbd5e1; font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">First Name <span style="color:#ef4444;">*</span></label>
-                            <input type="text" id="link-child-first-name" class="form-control" placeholder="e.g. Sipho" required style="background:#0f172a; color:#f8fafc; border:1px solid #334155; padding:0.6rem 0.8rem; border-radius:6px; width:100%; font-size:0.85rem;">
+                            <label style="color:var(--text-main); font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">First Name <span style="color:#ef4444;">*</span></label>
+                            <input type="text" id="link-child-first-name" class="form-control" placeholder="e.g. Sipho" required style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:0.6rem 0.8rem; border-radius:8px; width:100%; font-size:0.85rem;">
                         </div>
                         <div class="form-group">
-                            <label style="color:#cbd5e1; font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Surname <span style="color:#ef4444;">*</span></label>
-                            <input type="text" id="link-child-surname" class="form-control" placeholder="e.g. Nkosi" required style="background:#0f172a; color:#f8fafc; border:1px solid #334155; padding:0.6rem 0.8rem; border-radius:6px; width:100%; font-size:0.85rem;">
+                            <label style="color:var(--text-main); font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Surname <span style="color:#ef4444;">*</span></label>
+                            <input type="text" id="link-child-surname" class="form-control" placeholder="e.g. Nkosi" required style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:0.6rem 0.8rem; border-radius:8px; width:100%; font-size:0.85rem;">
                         </div>
                     </div>
 
                     <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:1rem; margin-bottom:1rem;">
                         <div class="form-group">
-                            <label style="color:#cbd5e1; font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">
+                            <label style="color:var(--text-main); font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">
                                 South African ID / Birth Certificate / Passport <span style="color:#ef4444;">*</span>
                             </label>
-                            <input type="text" id="link-child-id-number" class="form-control" placeholder="13-digit SA ID number" required style="background:#0f172a; color:#f8fafc; border:1px solid #334155; padding:0.6rem 0.8rem; border-radius:6px; width:100%; font-size:0.85rem;">
-                            <span style="font-size:0.72rem; color:#94a3b8; display:block; margin-top:3px;">Used for official DBE records and derivation of initial login password.</span>
+                            <input type="text" id="link-child-id-number" class="form-control" placeholder="13-digit SA ID number" required style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:0.6rem 0.8rem; border-radius:8px; width:100%; font-size:0.85rem;">
+                            <span style="font-size:0.72rem; color:var(--text-muted); display:block; margin-top:3px;">Used for official DBE records and derivation of initial login password.</span>
                         </div>
                         <div class="form-group">
-                            <label style="color:#cbd5e1; font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Date of Birth <span style="color:#ef4444;">*</span></label>
-                            <input type="date" id="link-child-dob" class="form-control" required style="background:#0f172a; color:#f8fafc; border:1px solid #334155; padding:0.6rem 0.8rem; border-radius:6px; width:100%; font-size:0.85rem;">
+                            <label style="color:var(--text-main); font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Date of Birth <span style="color:#ef4444;">*</span></label>
+                            <input type="date" id="link-child-dob" class="form-control" required style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:0.6rem 0.8rem; border-radius:8px; width:100%; font-size:0.85rem;">
                         </div>
                     </div>
 
                     <div style="display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:1rem; margin-bottom:1rem;">
                         <div class="form-group">
-                            <label style="color:#cbd5e1; font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Gender <span style="color:#ef4444;">*</span></label>
-                            <select id="link-child-gender" class="form-control" style="background:#0f172a; color:#f8fafc; border:1px solid #334155; padding:0.6rem 0.8rem; border-radius:6px; width:100%; font-size:0.85rem;">
+                            <label style="color:var(--text-main); font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Gender <span style="color:#ef4444;">*</span></label>
+                            <select id="link-child-gender" class="form-control" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:0.6rem 0.8rem; border-radius:8px; width:100%; font-size:0.85rem;">
                                 <option value="Male">Male</option>
                                 <option value="Female">Female</option>
                                 <option value="Other">Other</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label style="color:#cbd5e1; font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Grade <span style="color:#ef4444;">*</span></label>
-                            <select id="link-child-grade" class="form-control" onchange="window.onLinkChildGradeChanged(this.value)" style="background:#0f172a; color:#f8fafc; border:1px solid #334155; padding:0.6rem 0.8rem; border-radius:6px; width:100%; font-size:0.85rem;">
+                            <label style="color:var(--text-main); font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Grade <span style="color:#ef4444;">*</span></label>
+                            <select id="link-child-grade" class="form-control" onchange="window.onLinkChildGradeChanged(this.value)" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:0.6rem 0.8rem; border-radius:8px; width:100%; font-size:0.85rem;">
                                 <option value="8">Grade 8</option>
                                 <option value="9">Grade 9</option>
                                 <option value="10">Grade 10</option>
@@ -928,8 +928,8 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label style="color:#cbd5e1; font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Curriculum Stream</label>
-                            <select id="link-child-stream" class="form-control" style="background:#0f172a; color:#f8fafc; border:1px solid #334155; padding:0.6rem 0.8rem; border-radius:6px; width:100%; font-size:0.85rem;">
+                            <label style="color:var(--text-main); font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Curriculum Stream</label>
+                            <select id="link-child-stream" class="form-control" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:0.6rem 0.8rem; border-radius:8px; width:100%; font-size:0.85rem;">
                                 <option value="General">General (Grades 8-9)</option>
                                 <option value="Science">Science & STEM (Grades 10-12)</option>
                                 <option value="Commerce">Commerce & Accounting (Grades 10-12)</option>
@@ -940,8 +940,8 @@
 
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.25rem;">
                         <div class="form-group">
-                            <label style="color:#cbd5e1; font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Home Language <span style="color:#ef4444;">*</span></label>
-                            <select id="link-child-home-language" class="form-control" style="background:#0f172a; color:#f8fafc; border:1px solid #334155; padding:0.6rem 0.8rem; border-radius:6px; width:100%; font-size:0.85rem;">
+                            <label style="color:var(--text-main); font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Home Language <span style="color:#ef4444;">*</span></label>
+                            <select id="link-child-home-language" class="form-control" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:0.6rem 0.8rem; border-radius:8px; width:100%; font-size:0.85rem;">
                                 <option value="English" selected>English</option>
                                 <option value="Sepedi">Sepedi (Northern Sotho)</option>
                                 <option value="isiZulu">isiZulu</option>
@@ -956,8 +956,8 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label style="color:#cbd5e1; font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Previous School <span style="color:#94a3b8; font-weight:normal;">(Optional)</span></label>
-                            <input type="text" id="link-child-prev-school" class="form-control" placeholder="e.g. Polokwane Primary School" style="background:#0f172a; color:#f8fafc; border:1px solid #334155; padding:0.6rem 0.8rem; border-radius:6px; width:100%; font-size:0.85rem;">
+                            <label style="color:var(--text-main); font-size:0.8rem; font-weight:600; display:block; margin-bottom:0.35rem;">Previous School <span style="color:var(--text-muted); font-weight:normal;">(Optional)</span></label>
+                            <input type="text" id="link-child-prev-school" class="form-control" placeholder="e.g. Polokwane Primary School" style="background:var(--wave-inset); color:var(--text-main); border:1px solid var(--wave-border); padding:0.6rem 0.8rem; border-radius:8px; width:100%; font-size:0.85rem;">
                         </div>
                     </div>
 
@@ -966,12 +966,12 @@
                     <input type="hidden" id="modalLearnerFirstName">
                     <input type="hidden" id="modalLearnerSurname">
 
-                    <div id="modal-link-child-error" class="hidden" style="padding:0.75rem; background:rgba(239,68,68,0.15); border:1px solid #ef4444; color:#fca5a5; border-radius:8px; margin-bottom:1rem; font-size:0.85rem;"></div>
-                    <div id="modal-link-child-success" class="hidden" style="padding:0.75rem; background:rgba(34,197,94,0.15); border:1px solid #22c55e; color:#86efac; border-radius:8px; margin-bottom:1rem; font-size:0.85rem;"></div>
+                    <div id="modal-link-child-error" class="hidden" style="padding:0.75rem; background:rgba(239,68,68,0.1); border:1px solid #ef4444; color:#ef4444; border-radius:8px; margin-bottom:1rem; font-size:0.85rem;"></div>
+                    <div id="modal-link-child-success" class="hidden" style="padding:0.75rem; background:rgba(34,197,94,0.1); border:1px solid #22c55e; color:#16a34a; border-radius:8px; margin-bottom:1rem; font-size:0.85rem;"></div>
 
-                    <div style="display:flex; justify-content:flex-end; gap:0.75rem; border-top:1px solid #1e293b; padding-top:1rem;">
-                        <button type="button" onclick="window.closeAddChildModal()" class="btn btn-secondary" style="padding:0.65rem 1.25rem; font-size:0.85rem; border-radius:8px; background:#1e293b; border:1px solid #334155; color:#cbd5e1; cursor:pointer;">Cancel</button>
-                        <button type="submit" id="btn-submit-link-child" class="btn btn-primary" style="padding:0.65rem 1.5rem; font-size:0.85rem; font-weight:700; border-radius:8px; display:inline-flex; align-items:center; gap:0.5rem; box-shadow:0 4px 12px rgba(56,189,248,0.3);">
+                    <div style="display:flex; justify-content:flex-end; gap:0.75rem; border-top:1px solid var(--wave-border); padding-top:1rem;">
+                        <button type="button" onclick="window.closeAddChildModal()" class="btn btn-secondary" style="padding:0.65rem 1.25rem; font-size:0.85rem; border-radius:9999px; background:var(--wave-inset); border:1px solid var(--wave-border); color:var(--text-main); cursor:pointer;">Cancel</button>
+                        <button type="submit" id="btn-submit-link-child" class="btn btn-primary" style="padding:0.65rem 1.5rem; font-size:0.85rem; font-weight:600; border-radius:9999px; background:var(--btn-cta-bg); color:var(--btn-cta-text); border:none; display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer;">
                             <i class="fas fa-id-card"></i> Link Child & Generate Credentials
                         </button>
                     </div>
@@ -982,46 +982,46 @@
 
     <!-- Child Linkage & Credentials Success Modal -->
     <div id="childCredentialsSuccessModal" class="modal-container hidden">
-        <div class="modal-content" style="max-width:540px; background:#0f172a; border:1px solid #38bdf8; border-radius:16px; box-shadow:0 25px 50px -12px rgba(56,189,248,0.25); padding:2rem; text-align:center;">
-            <div style="width:60px; height:60px; border-radius:50%; background:rgba(34,197,94,0.15); border:2px solid #22c55e; display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem auto; color:#4ade80; font-size:1.75rem;">
+        <div class="modal-content" style="max-width:540px; background:var(--wave-card-bg); border:1px solid var(--wave-border); border-radius:16px; box-shadow:0 20px 40px rgba(0,0,0,0.15); padding:2rem; text-align:center;">
+            <div style="width:56px; height:56px; border-radius:50%; background:var(--accent-lavender); border:1px solid var(--wave-border); display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem auto; color:var(--text-main); font-size:1.5rem;">
                 <i class="fas fa-check"></i>
             </div>
-            <h3 style="color:#f8fafc; font-size:1.3rem; margin:0 0 0.5rem 0; font-weight:700;">Child Successfully Linked!</h3>
-            <p style="color:#cbd5e1; font-size:0.85rem; margin-bottom:1.5rem; line-height:1.5;">
+            <h3 style="color:var(--text-main); font-size:1.3rem; margin:0 0 0.5rem 0; font-weight:700;">Child Successfully Linked!</h3>
+            <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1.5rem; line-height:1.5;">
                 An official confirmation email with complete CAPS curriculum details and login credentials has been sent to your registered parent address.
             </p>
 
-            <div style="background:#1e293b; border:1px solid #334155; border-radius:12px; padding:1.25rem; text-align:left; margin-bottom:1.5rem;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid #334155; padding-bottom:0.5rem;">
-                    <span style="color:#94a3b8; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.5px;">Learner Name</span>
-                    <strong id="cred-child-name" style="color:#f8fafc; font-size:0.95rem;">-</strong>
+            <div style="background:var(--wave-inset); border:1px solid var(--wave-border); border-radius:12px; padding:1.25rem; text-align:left; margin-bottom:1.5rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid var(--wave-border); padding-bottom:0.5rem;">
+                    <span style="color:var(--text-muted); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.5px;">Learner Name</span>
+                    <strong id="cred-child-name" style="color:var(--text-main); font-size:0.95rem;">-</strong>
                 </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid #334155; padding-bottom:0.5rem;">
-                    <span style="color:#94a3b8; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.5px;">Official Learner Number</span>
-                    <span id="cred-learner-number" style="background:#0369a1; color:#e0f2fe; padding:0.25rem 0.6rem; border-radius:6px; font-family:monospace; font-weight:700; font-size:0.9rem;">-</span>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid var(--wave-border); padding-bottom:0.5rem;">
+                    <span style="color:var(--text-muted); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.5px;">Official Learner Number</span>
+                    <span id="cred-learner-number" style="background:var(--accent-lavender); color:var(--text-main); padding:0.25rem 0.6rem; border-radius:6px; font-family:monospace; font-weight:700; font-size:0.9rem; border:1px solid var(--wave-border);">-</span>
                 </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid #334155; padding-bottom:0.5rem;">
-                    <span style="color:#94a3b8; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.5px;">Login Email</span>
-                    <code id="cred-learner-email" style="color:#38bdf8; font-size:0.85rem;">-</code>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid var(--wave-border); padding-bottom:0.5rem;">
+                    <span style="color:var(--text-muted); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.5px;">Login Email</span>
+                    <code id="cred-learner-email" style="color:var(--text-main); font-weight:600; font-size:0.85rem;">-</code>
                 </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid #334155; padding-bottom:0.5rem;">
-                    <span style="color:#94a3b8; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.5px;">Initial Password</span>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid var(--wave-border); padding-bottom:0.5rem;">
+                    <span style="color:var(--text-muted); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.5px;">Initial Password</span>
                     <div style="display:flex; align-items:center; gap:0.5rem;">
-                        <code id="cred-password" style="background:#0f172a; padding:0.2rem 0.5rem; border-radius:4px; color:#4ade80; font-weight:700; font-size:0.95rem;">-</code>
-                        <button type="button" onclick="window.copyGeneratedPassword()" title="Copy Password" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:0.85rem;"><i class="fas fa-copy"></i></button>
+                        <code id="cred-password" style="background:var(--wave-card-bg); padding:0.2rem 0.5rem; border-radius:4px; color:var(--text-main); font-weight:700; font-size:0.95rem; border:1px solid var(--wave-border);">-</code>
+                        <button type="button" onclick="window.copyGeneratedPassword()" title="Copy Password" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem;"><i class="fas fa-copy"></i></button>
                     </div>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="color:#94a3b8; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.5px;">Grade & Stream</span>
-                    <span id="cred-grade-stream" style="color:#cbd5e1; font-size:0.85rem;">-</span>
+                    <span style="color:var(--text-muted); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.5px;">Grade & Stream</span>
+                    <span id="cred-grade-stream" style="color:var(--text-main); font-size:0.85rem;">-</span>
                 </div>
             </div>
 
             <div style="display:flex; gap:0.75rem; justify-content:center;">
-                <button type="button" onclick="window.copyAllCredentials()" class="btn btn-secondary" style="padding:0.65rem 1.25rem; font-size:0.85rem; border-radius:8px; display:inline-flex; align-items:center; gap:0.4rem; background:#1e293b; border:1px solid #334155; color:#38bdf8; cursor:pointer;">
+                <button type="button" onclick="window.copyAllCredentials()" class="btn btn-secondary" style="padding:0.65rem 1.25rem; font-size:0.85rem; border-radius:9999px; display:inline-flex; align-items:center; gap:0.4rem; background:var(--wave-inset); border:1px solid var(--wave-border); color:var(--text-main); cursor:pointer;">
                     <i class="fas fa-clipboard"></i> Copy Credentials
                 </button>
-                <button type="button" onclick="window.closeCredentialsModal()" class="btn btn-primary" style="padding:0.65rem 1.5rem; font-size:0.85rem; font-weight:700; border-radius:8px; display:inline-flex; align-items:center; gap:0.4rem;">
+                <button type="button" onclick="window.closeCredentialsModal()" class="btn btn-primary" style="padding:0.65rem 1.5rem; font-size:0.85rem; font-weight:600; border-radius:9999px; background:var(--btn-cta-bg); color:var(--btn-cta-text); border:none; display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;">
                     <i class="fas fa-check-circle"></i> Done & View Child
                 </button>
             </div>

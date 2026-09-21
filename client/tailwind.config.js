@@ -10,7 +10,7 @@ export default {
       colors: {
         canvas: {
           dark: 'var(--color-canvas)',
-          light: '#F8FAFC',
+          light: '#F5F5F7',
           DEFAULT: 'var(--color-canvas)',
         },
         surface: {
@@ -18,23 +18,23 @@ export default {
           darker: 'var(--color-surface-darker)',
           elevated: 'var(--color-surface-elevated)',
           light: '#FFFFFF',
-          lightElevated: '#F1F5F9',
+          lightElevated: '#F4F4F6',
           DEFAULT: 'var(--color-surface)',
         },
         brand: {
-          50: '#FFF1F2',
-          100: '#FFE4E6',
-          200: '#FECDD3',
-          300: '#FDA4AF',
-          400: '#FB7185',
-          500: '#FF385C', // Electric Neon Crimson / Coral-Red
-          600: '#E11D48',
-          700: '#BE123C',
-          800: '#9F1239',
-          900: '#881337',
-          neon: '#FF385C',
-          cyan: '#FF385C',
-          DEFAULT: '#FF385C',
+          50: '#FAF5FF',
+          100: '#F3E8FF',
+          200: '#E9D5FF',
+          300: '#D8B4FE',
+          400: '#C084FC',
+          500: '#9333EA', // Soft Purple / Lavender Accent
+          600: '#7E22CE',
+          700: '#6B21A8',
+          800: '#581C87',
+          900: '#3B0764',
+          neon: '#9333EA',
+          cyan: '#9333EA',
+          DEFAULT: '#9333EA',
         }
       },
       fontFamily: {

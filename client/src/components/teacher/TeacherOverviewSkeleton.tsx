@@ -43,7 +43,7 @@ export const TeacherOverviewSkeleton: React.FC = () => {
       </div>
 
       {/* 3. Teaching Subjects Section Skeleton */}
-      <div className="space-y-4 rounded-3xl bg-slate-100/90 dark:bg-surface-darker/80 border border-slate-300/80 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden shimmer-wave">
+      <div className="space-y-4 rounded-3xl bg-slate-100 dark:bg-surface-darker border border-slate-300 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden shimmer-wave">
         <div className="flex items-center justify-between">
           <div className="space-y-1.5">
             <div className="w-36 h-4 rounded-full bg-slate-200 dark:bg-white/10 animate-pulse" />

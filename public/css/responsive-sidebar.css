@@ -7,17 +7,23 @@
     top: 15px;
     left: 15px;
     z-index: 10000; /* Above everything */
-    background: #1e293b; 
+    background: var(--wave-card-bg, #ffffff); 
+    border: 1px solid var(--wave-border, #e4e4e7);
     border-radius: 8px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     flex-direction: column;
     gap: 4px;
 }
 
+[data-theme="dark"] .hamburger {
+    background: var(--wave-card-bg, #16161a);
+    border-color: var(--wave-border, #27272e);
+}
+
 .hamburger div {
     width: 22px;
     height: 3px;
-    background-color: #8b5cf6;
+    background-color: var(--wave-text-primary, #111111);
     transition: 0.3s;
     border-radius: 2px;
 }

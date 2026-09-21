@@ -1,19 +1,37 @@
 /* Application Portal - Fusion High School */
 :root {
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --secondary: #06b6d4;
+  --primary: #111111;
+  --primary-hover: #27272e;
+  --primary-text: #ffffff;
+  --secondary: #9333ea;
+  --secondary-bg: #f3e8ff;
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
-  --bg-dark: #0f172a;
-  --card-bg: #1e293b;
-  --card-border: #334155;
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --input-bg: #0f172a;
-  --input-border: #334155;
-  --input-focus: #6366f1;
+  --bg-dark: #f5f5f7;
+  --card-bg: #ffffff;
+  --card-border: #e4e4e7;
+  --text-main: #111111;
+  --text-muted: #71717a;
+  --input-bg: #f4f4f6;
+  --input-border: #e4e4e7;
+  --input-focus: #9333ea;
+}
+
+[data-theme="dark"] {
+  --primary: #ffffff;
+  --primary-hover: #f4f4f6;
+  --primary-text: #000000;
+  --secondary: #c084fc;
+  --secondary-bg: #261b35;
+  --bg-dark: #0a0a0c;
+  --card-bg: #16161a;
+  --card-border: #27272e;
+  --text-main: #ffffff;
+  --text-muted: #a1a1aa;
+  --input-bg: #1e1e24;
+  --input-border: #27272e;
+  --input-focus: #c084fc;
 }
 
 * {
@@ -25,9 +43,6 @@
 body {
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
   background-color: var(--bg-dark);
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.12) 0px, transparent 50%);
   color: var(--text-main);
   min-height: 100vh;
   padding: 24px 16px 60px 16px;
@@ -49,11 +64,11 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  color: #818cf8;
+  background: var(--secondary-bg);
+  border: 1px solid var(--card-border);
+  color: var(--secondary);
   padding: 6px 14px;
-  border-radius: 20px;
+  border-radius: 9999px;
   font-size: 0.85rem;
   font-weight: 700;
   margin-bottom: 12px;
@@ -66,9 +81,7 @@ body {
   font-weight: 800;
   letter-spacing: -0.5px;
   margin-bottom: 8px;
-  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-main);
 }
 
 .portal-header p {
@@ -80,7 +93,7 @@ body {
 
 /* Capacity Notice Bar */
 .capacity-banner {
-  background: rgba(30, 41, 59, 0.8);
+  background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 12px;
   padding: 12px 18px;
@@ -90,7 +103,6 @@ body {
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
-  backdrop-filter: blur(8px);
 }
 
 .capacity-item {
@@ -113,10 +125,10 @@ body {
   font-weight: 700;
 }
 
-.badge-success { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
-.badge-warning { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
-.badge-danger  { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
-.badge-info    { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); }
+.badge-success { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+.badge-warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+.badge-danger  { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+.badge-info    { background: var(--secondary-bg); color: var(--secondary); border: 1px solid var(--card-border); }
 
 /* Stepper Progress Bar */
 .stepper-nav {
@@ -173,15 +185,15 @@ body {
 
 .step-item.active .step-circle {
   background: var(--primary);
-  border-color: #818cf8;
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+  border-color: var(--secondary);
+  color: var(--primary-text);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .step-item.completed .step-circle {
-  background: var(--success);
-  border-color: #34d399;
-  color: #ffffff;
+  background: var(--secondary-bg);
+  border-color: var(--secondary);
+  color: var(--secondary);
 }
 
 .step-label {
@@ -191,7 +203,7 @@ body {
 }
 
 .step-item.active .step-label {
-  color: #ffffff;
+  color: var(--text-main);
 }
 
 /* Card Step Container */
@@ -200,7 +212,7 @@ body {
   border: 1px solid var(--card-border);
   border-radius: 16px;
   padding: 32px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   display: none;
   animation: fadeIn 0.3s ease;
 }
@@ -223,7 +235,7 @@ body {
 .step-header h2 {
   font-size: 1.4rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-main);
   margin-bottom: 4px;
 }
 
@@ -259,7 +271,7 @@ body {
   display: block;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #e2e8f0;
+  color: var(--text-main);
   margin-bottom: 6px;
 }
 
@@ -286,7 +298,7 @@ body {
 .form-group textarea:focus {
   outline: none;
   border-color: var(--input-focus);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.15);
 }
 
 .form-group .hint {
@@ -326,13 +338,13 @@ body {
 .id-status-box.valid {
   background: rgba(16, 185, 129, 0.12);
   border: 1px solid rgba(16, 185, 129, 0.3);
-  color: #34d399;
+  color: #10b981;
 }
 
 .id-status-box.invalid {
   background: rgba(239, 68, 68, 0.12);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #f87171;
+  color: #ef4444;
 }
 
 /* Checkbox Toggle Container */
@@ -340,7 +352,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--input-bg);
   border: 1px solid var(--card-border);
   padding: 12px 16px;
   border-radius: 8px;
@@ -358,14 +370,14 @@ body {
 
 .checkbox-container span {
   font-size: 0.9rem;
-  color: #ffffff;
+  color: var(--text-main);
   font-weight: 500;
 }
 
 /* Document Upload Dropzones */
 .upload-card {
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px dashed #475569;
+  background: var(--input-bg);
+  border: 1px dashed var(--card-border);
   border-radius: 10px;
   padding: 18px;
   text-align: center;
@@ -377,7 +389,7 @@ body {
 .upload-card:hover,
 .upload-card.drag-over {
   border-color: var(--secondary);
-  background: rgba(6, 182, 212, 0.05);
+  background: var(--secondary-bg);
 }
 
 .upload-card input[type="file"] {
@@ -399,7 +411,7 @@ body {
 .upload-title {
   font-size: 0.92rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-main);
 }
 
 .upload-desc {
@@ -449,7 +461,7 @@ body {
 
 .btn {
   padding: 12px 24px;
-  border-radius: 8px;
+  border-radius: 9999px;
   font-size: 0.92rem;
   font-weight: 700;
   cursor: pointer;
@@ -461,27 +473,28 @@ body {
 }
 
 .btn-secondary {
-  background: #334155;
-  color: #f8fafc;
+  background: var(--input-bg);
+  color: var(--text-main);
+  border: 1px solid var(--card-border);
 }
 
 .btn-secondary:hover {
-  background: #475569;
+  background: var(--card-border);
 }
 
 .btn-primary {
-  background: #4f46e5;
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+  background: var(--primary);
+  color: var(--primary-text);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .btn-primary:hover {
-  filter: brightness(1.1);
+  opacity: 0.9;
   transform: translateY(-1px);
 }
 
 .btn-success {
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: #10b981;
   color: #ffffff;
 }
 
@@ -498,7 +511,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(6px);
   display: none;
   align-items: center;
@@ -519,7 +532,7 @@ body {
   width: 100%;
   padding: 32px;
   text-align: center;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
   animation: modalPop 0.3s ease;
 }
 
@@ -536,7 +549,7 @@ body {
 .modal-title {
   font-size: 1.5rem;
   font-weight: 800;
-  color: #ffffff;
+  color: var(--text-main);
   margin-bottom: 8px;
 }
 
