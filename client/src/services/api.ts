@@ -6,6 +6,10 @@ const getApiBaseUrl = (): string => {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       return '';
     }
+    // If running on Firebase Hosting (web.app or firebaseapp.com), automatically route API calls to the Vercel backend
+    if (window.location.hostname.includes('web.app') || window.location.hostname.includes('firebaseapp.com')) {
+      return 'https://fusion-high-app-tshepho5.vercel.app';
+    }
   }
   return (import.meta as any).env?.VITE_API_URL || '';
 };
