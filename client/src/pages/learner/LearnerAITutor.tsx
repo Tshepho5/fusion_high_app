@@ -1113,7 +1113,7 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
             {speechError && (
               <div className="px-4 py-1.5 bg-amber-500/10 border-t border-amber-500/20 text-amber-300 text-[11px] flex items-center gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                <span>{speechError}</span>
+                <span>{typeof speechError === 'string' ? speechError : (speechError as any)?.message || String(speechError)}</span>
               </div>
             )}
 

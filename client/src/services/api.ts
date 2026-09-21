@@ -34,10 +34,25 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
-// Handle unauthorized responses
+// Handle response normalization and unauthorized responses
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Sanitize any nested error objects (e.g. { error: { code, message } } from Vercel edge/serverless)
+    if (error?.response?.data) {
+      const data = error.response.data;
+      if (typeof data === 'object' && data !== null) {
+        if (typeof data.error === 'object' && data.error !== null) {
+          data.error = data.error.message || data.error.code || JSON.stringify(data.error);
+        }
+        if (!data.error && data.message && typeof data.message === 'string') {
+          data.error = data.message;
+        } else if (!data.error && data.code && typeof data.code === 'string') {
+          data.error = `${data.code}${data.message ? ': ' + data.message : ''}`;
+        }
+      }
+    }
+
     if (error.response && error.response.status === 401) {
       if (!window.location.pathname.startsWith('/login') && 
           !window.location.pathname.startsWith('/register') &&
@@ -51,6 +66,22 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export const formatErrorMessage = (err: any, fallback = 'An unexpected error occurred.'): string => {
+  if (!err) return fallback;
+  if (typeof err === 'string') return err;
+  if (typeof err.message === 'string') return err.message;
+  if (typeof err.error === 'string') return err.error;
+  if (err.error && typeof err.error.message === 'string') return err.error.message;
+  if (err.response?.data) {
+    const data = err.response.data;
+    if (typeof data === 'string') return data;
+    if (typeof data.error === 'string') return data.error;
+    if (data.error && typeof data.error.message === 'string') return data.error.message;
+    if (typeof data.message === 'string') return data.message;
+  }
+  return fallback;
+};
 
 export default api;
 

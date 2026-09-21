@@ -746,7 +746,7 @@ export const LearnerMessages: React.FC = () => {
         <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
+            <span>{typeof error === 'string' ? error : (error as any)?.message || String(error)}</span>
           </div>
           <button onClick={() => setError(null)} className="text-rose-400 hover:text-white">
             <X className="w-4 h-4" />

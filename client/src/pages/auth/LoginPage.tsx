@@ -200,7 +200,9 @@ export const LoginPage: React.FC = () => {
             {error && (
               <div className="mt-4 p-3 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-700 dark:text-rose-200 text-xs flex items-center gap-2.5 backdrop-blur-md shadow-sm animate-fade-in">
                 <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" />
-                <span className="font-bold leading-snug">{error}</span>
+                <span className="font-bold leading-snug">
+                  {typeof error === 'string' ? error : (error as any)?.message || String(error)}
+                </span>
               </div>
             )}
 

@@ -375,6 +375,21 @@ app.get('/dashboard/:role', (req, res) => {
 app.get('/healthz', (req, res) => res.status(200).send('OK'));
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'healthy', uptime: process.uptime() }));
 
+// Global Express error handler to ensure JSON errors always return a clean string message
+app.use((err, req, res, next) => {
+  console.error('[EXPRESS GLOBAL ERROR HANDLER]:', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  const status = err.status || err.statusCode || 500;
+  const message = typeof err === 'string' ? err : (err.message || 'An internal server error occurred.');
+  res.status(status).json({
+    success: false,
+    error: message,
+    message: message
+  });
+});
+
 // SPA Catch-all route (supports React Router client-side routes)
 app.use((req, res) => {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');

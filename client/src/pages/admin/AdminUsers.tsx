@@ -741,7 +741,7 @@ export const AdminUsers: React.FC = () => {
       {error && (
         <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{error}</span>
+          <span>{typeof error === 'string' ? error : (error as any)?.message || String(error)}</span>
         </div>
       )}
 
@@ -2065,7 +2065,7 @@ export const AdminUsers: React.FC = () => {
             {subAdminModalError && (
               <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2.5 animate-fade-in">
                 <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>{subAdminModalError}</span>
+                <span>{typeof subAdminModalError === 'string' ? subAdminModalError : (subAdminModalError as any)?.message || String(subAdminModalError)}</span>
               </div>
             )}
 

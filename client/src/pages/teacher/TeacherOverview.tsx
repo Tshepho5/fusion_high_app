@@ -1113,7 +1113,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
             {attendanceError && (
               <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-                <span>{attendanceError}</span>
+                <span>{typeof attendanceError === 'string' ? attendanceError : (attendanceError as any)?.message || String(attendanceError)}</span>
               </div>
             )}
 

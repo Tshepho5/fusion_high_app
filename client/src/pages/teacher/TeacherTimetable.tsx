@@ -272,7 +272,7 @@ export const TeacherTimetable: React.FC = () => {
       {error && (
         <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2 animate-fade-in">
           <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{error}</span>
+          <span>{typeof error === 'string' ? error : (error as any)?.message || String(error)}</span>
         </div>
       )}
 

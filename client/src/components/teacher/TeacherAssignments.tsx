@@ -544,7 +544,7 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
         <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between animate-fade-in">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-            <span>{error}</span>
+            <span>{typeof error === 'string' ? error : (error as any)?.message || String(error)}</span>
           </div>
           <button onClick={() => setError(null)} className="text-slate-400 hover:text-white">
             <X className="w-4 h-4" />
