@@ -373,7 +373,29 @@ app.get('/dashboard/:role', (req, res) => {
 
 // Health check endpoint for Render/Cloud load balancers
 app.get('/healthz', (req, res) => res.status(200).send('OK'));
-app.get('/api/health', (req, res) => res.status(200).json({ status: 'healthy', uptime: process.uptime() }));
+app.get('/api/health', async (req, res) => {
+  let dbStatus = 'disconnected';
+  try {
+    const testRes = await db.query('SELECT 1 as connected');
+    if (testRes.rows.length > 0) dbStatus = 'connected';
+  } catch (e) {
+    dbStatus = 'error: ' + e.message;
+  }
+  res.status(200).json({ status: 'healthy', database: dbStatus, uptime: process.uptime() });
+});
+
+// Database schema auto-bootstrap endpoint (safe & idempotent)
+app.all('/api/init-db', async (req, res) => {
+  try {
+    await initializeAllDatabaseTables();
+    await initApplicationTables();
+    await fixAllUserPasswords();
+    res.json({ success: true, message: 'Database schema, default schools, and users initialized successfully.' });
+  } catch (err) {
+    console.error('[INIT-DB ERROR]:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // Global Express error handler to ensure JSON errors always return a clean string message
 app.use((err, req, res, next) => {

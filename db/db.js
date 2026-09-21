@@ -4,7 +4,13 @@ require('dotenv').config();
 // Ensure PostgreSQL DATE columns (OID 1082) return exact 'YYYY-MM-DD' strings to prevent timezone shifting
 types.setTypeParser(1082, (val) => val);
 
-let connectionString = process.env.DATABASE_URL;
+let connectionString = 
+  process.env.DATABASE_URL || 
+  process.env.POSTGRES_URL || 
+  process.env.POSTGRES_PRISMA_URL || 
+  process.env.SUPABASE_DATABASE_URL || 
+  process.env.POSTGRES_URL_NON_POOLING;
+
 let ssl = false;
 
 if (connectionString) {
@@ -19,7 +25,7 @@ const poolConfig = connectionString
   ? {
       connectionString,
       ssl,
-      max: 20,
+      max: process.env.VERCEL ? 5 : 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
     }
