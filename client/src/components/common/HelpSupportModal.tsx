@@ -93,22 +93,6 @@ export const AnimatedSupportMascot: React.FC<{
       handBg: 'from-indigo-500 to-cyan-400 border-cyan-300',
       statusText: 'text-cyan-300 bg-cyan-500/20 border-cyan-500/30'
     },
-    navy: {
-      aura: 'from-blue-600/30 via-sky-500/20 to-amber-500/20',
-      helmetBg: 'from-[#14234b] via-[#0e1a38] to-[#0a1226]',
-      helmetBorder: 'border-amber-400/70 shadow-[0_0_20px_rgba(251,191,36,0.25)]',
-      visorBg: 'from-[#081020]/95 via-[#0f2042]/90 to-[#081020]/95',
-      visorBorder: 'border-sky-400/50 shadow-[0_0_12px_rgba(56,189,248,0.3)]',
-      eyeColor: '#38bdf8',
-      eyeGlow: '0 0 10px #38bdf8, 0 0 18px #0284c7',
-      badgeBg: 'from-amber-500 to-amber-600',
-      badgeBorder: 'border-amber-300',
-      antennaColor: 'bg-amber-400 shadow-[0_0_8px_#fbbf24]',
-      cheeksColor: 'bg-amber-400/60',
-      mouthColor: 'border-sky-300 bg-sky-400/20',
-      handBg: 'from-blue-600 to-amber-400 border-amber-300',
-      statusText: 'text-amber-300 bg-amber-500/20 border-amber-500/30'
-    },
     light: {
       aura: 'from-brand-500/20 via-sky-400/20 to-indigo-500/20',
       helmetBg: 'from-slate-100 via-white to-slate-200',
@@ -301,12 +285,12 @@ const FAQ_CATEGORIES = [
     icon: LifeBuoy,
     faqs: [
       {
-        q: 'What is Fusion High School Portal?',
-        a: 'Fusion High School Portal is the official digital school management platform. It manages South African CAPS curriculum delivery, SBA marksheet auditing, daily attendance roll-call, term report cards, digital assignments, and 24/7 AI tutoring tools.'
+        q: 'What is Geleza SA Portal?',
+        a: 'Geleza SA (G~SA) Portal is the official digital school management platform. It manages South African CAPS curriculum delivery, SBA marksheet auditing, daily attendance roll-call, term report cards, digital assignments, and 24/7 AI tutoring tools.'
       },
       {
-        q: 'How do I change between Dark, Navy, and Light themes?',
-        a: 'Navigate to Technical Settings in your bottom dock or navigation menu to select your theme (Dark, Navy, Light), color palette accent, and font family (Inter, Outfit, Playfair, Mono).'
+        q: 'How do I change between Dark and Light themes?',
+        a: 'Click your profile picture in the top-right corner to toggle between Dark Mode and Light Mode.'
       },
       {
         q: 'How do I switch the module view (Standard Grid, Compact App Tiles, List View)?',

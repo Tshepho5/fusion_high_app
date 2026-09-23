@@ -366,16 +366,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         iconColor: 'text-yellow-400',
         action: () => toggleTheme(),
         keywords: ['theme', 'dark', 'light', 'mode', 'color']
-      },
-      {
-        id: 'act-navy',
-        title: 'Apply Slate Navy Theme',
-        subtitle: 'Classic school slate navy blue theme',
-        category: 'Quick Actions',
-        icon: Palette,
-        iconColor: 'text-blue-400',
-        action: () => setTheme('navy'),
-        keywords: ['navy', 'blue', 'slate', 'theme']
       }
     );
 

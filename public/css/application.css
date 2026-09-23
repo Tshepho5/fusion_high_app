@@ -1,37 +1,19 @@
 /* Application Portal - Fusion High School */
 :root {
-  --primary: #111111;
-  --primary-hover: #27272e;
-  --primary-text: #ffffff;
-  --secondary: #9333ea;
-  --secondary-bg: #f3e8ff;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --secondary: #06b6d4;
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
-  --bg-dark: #f5f5f7;
-  --card-bg: #ffffff;
-  --card-border: #e4e4e7;
-  --text-main: #111111;
-  --text-muted: #71717a;
-  --input-bg: #f4f4f6;
-  --input-border: #e4e4e7;
-  --input-focus: #9333ea;
-}
-
-[data-theme="dark"] {
-  --primary: #ffffff;
-  --primary-hover: #f4f4f6;
-  --primary-text: #000000;
-  --secondary: #c084fc;
-  --secondary-bg: #261b35;
-  --bg-dark: #0a0a0c;
-  --card-bg: #16161a;
-  --card-border: #27272e;
-  --text-main: #ffffff;
-  --text-muted: #a1a1aa;
-  --input-bg: #1e1e24;
-  --input-border: #27272e;
-  --input-focus: #c084fc;
+  --bg-dark: #0f172a;
+  --card-bg: #1e293b;
+  --card-border: #334155;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --input-bg: #0f172a;
+  --input-border: #334155;
+  --input-focus: #6366f1;
 }
 
 * {
@@ -43,6 +25,9 @@
 body {
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
   background-color: var(--bg-dark);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.12) 0px, transparent 50%);
   color: var(--text-main);
   min-height: 100vh;
   padding: 24px 16px 60px 16px;
@@ -64,11 +49,11 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--secondary-bg);
-  border: 1px solid var(--card-border);
-  color: var(--secondary);
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #818cf8;
   padding: 6px 14px;
-  border-radius: 9999px;
+  border-radius: 20px;
   font-size: 0.85rem;
   font-weight: 700;
   margin-bottom: 12px;
@@ -81,7 +66,9 @@ body {
   font-weight: 800;
   letter-spacing: -0.5px;
   margin-bottom: 8px;
-  color: var(--text-main);
+  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .portal-header p {
@@ -93,7 +80,7 @@ body {
 
 /* Capacity Notice Bar */
 .capacity-banner {
-  background: var(--card-bg);
+  background: rgba(30, 41, 59, 0.8);
   border: 1px solid var(--card-border);
   border-radius: 12px;
   padding: 12px 18px;
@@ -103,6 +90,7 @@ body {
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
+  backdrop-filter: blur(8px);
 }
 
 .capacity-item {
@@ -125,10 +113,10 @@ body {
   font-weight: 700;
 }
 
-.badge-success { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
-.badge-warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
-.badge-danger  { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
-.badge-info    { background: var(--secondary-bg); color: var(--secondary); border: 1px solid var(--card-border); }
+.badge-success { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+.badge-warning { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+.badge-danger  { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+.badge-info    { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); }
 
 /* Stepper Progress Bar */
 .stepper-nav {
@@ -185,15 +173,15 @@ body {
 
 .step-item.active .step-circle {
   background: var(--primary);
-  border-color: var(--secondary);
-  color: var(--primary-text);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border-color: #818cf8;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
 }
 
 .step-item.completed .step-circle {
-  background: var(--secondary-bg);
-  border-color: var(--secondary);
-  color: var(--secondary);
+  background: var(--success);
+  border-color: #34d399;
+  color: #ffffff;
 }
 
 .step-label {
@@ -203,7 +191,7 @@ body {
 }
 
 .step-item.active .step-label {
-  color: var(--text-main);
+  color: #ffffff;
 }
 
 /* Card Step Container */
@@ -212,7 +200,7 @@ body {
   border: 1px solid var(--card-border);
   border-radius: 16px;
   padding: 32px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
   display: none;
   animation: fadeIn 0.3s ease;
 }
@@ -235,7 +223,7 @@ body {
 .step-header h2 {
   font-size: 1.4rem;
   font-weight: 700;
-  color: var(--text-main);
+  color: #ffffff;
   margin-bottom: 4px;
 }
 
@@ -271,7 +259,7 @@ body {
   display: block;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--text-main);
+  color: #e2e8f0;
   margin-bottom: 6px;
 }
 
@@ -298,7 +286,7 @@ body {
 .form-group textarea:focus {
   outline: none;
   border-color: var(--input-focus);
-  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.15);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
 .form-group .hint {
@@ -338,13 +326,13 @@ body {
 .id-status-box.valid {
   background: rgba(16, 185, 129, 0.12);
   border: 1px solid rgba(16, 185, 129, 0.3);
-  color: #10b981;
+  color: #34d399;
 }
 
 .id-status-box.invalid {
   background: rgba(239, 68, 68, 0.12);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #ef4444;
+  color: #f87171;
 }
 
 /* Checkbox Toggle Container */
@@ -352,7 +340,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: var(--input-bg);
+  background: rgba(15, 23, 42, 0.6);
   border: 1px solid var(--card-border);
   padding: 12px 16px;
   border-radius: 8px;
@@ -370,14 +358,14 @@ body {
 
 .checkbox-container span {
   font-size: 0.9rem;
-  color: var(--text-main);
+  color: #ffffff;
   font-weight: 500;
 }
 
 /* Document Upload Dropzones */
 .upload-card {
-  background: var(--input-bg);
-  border: 1px dashed var(--card-border);
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px dashed #475569;
   border-radius: 10px;
   padding: 18px;
   text-align: center;
@@ -389,7 +377,7 @@ body {
 .upload-card:hover,
 .upload-card.drag-over {
   border-color: var(--secondary);
-  background: var(--secondary-bg);
+  background: rgba(6, 182, 212, 0.05);
 }
 
 .upload-card input[type="file"] {
@@ -411,7 +399,7 @@ body {
 .upload-title {
   font-size: 0.92rem;
   font-weight: 700;
-  color: var(--text-main);
+  color: #ffffff;
 }
 
 .upload-desc {
@@ -461,7 +449,7 @@ body {
 
 .btn {
   padding: 12px 24px;
-  border-radius: 9999px;
+  border-radius: 8px;
   font-size: 0.92rem;
   font-weight: 700;
   cursor: pointer;
@@ -473,28 +461,27 @@ body {
 }
 
 .btn-secondary {
-  background: var(--input-bg);
-  color: var(--text-main);
-  border: 1px solid var(--card-border);
+  background: #334155;
+  color: #f8fafc;
 }
 
 .btn-secondary:hover {
-  background: var(--card-border);
+  background: #475569;
 }
 
 .btn-primary {
-  background: var(--primary);
-  color: var(--primary-text);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  background: #4f46e5;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
 }
 
 .btn-primary:hover {
-  opacity: 0.9;
+  filter: brightness(1.1);
   transform: translateY(-1px);
 }
 
 .btn-success {
-  background: #10b981;
+  background: linear-gradient(135deg, #10b981, #059669);
   color: #ffffff;
 }
 
@@ -511,7 +498,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(6px);
   display: none;
   align-items: center;
@@ -532,7 +519,7 @@ body {
   width: 100%;
   padding: 32px;
   text-align: center;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
   animation: modalPop 0.3s ease;
 }
 
@@ -549,7 +536,7 @@ body {
 .modal-title {
   font-size: 1.5rem;
   font-weight: 800;
-  color: var(--text-main);
+  color: #ffffff;
   margin-bottom: 8px;
 }
 

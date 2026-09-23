@@ -19,13 +19,13 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose }) =
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/10 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 p-1.5 border border-white/20 shadow-glow-indigo flex items-center justify-center">
-              <img src="/assets/FH.png" alt="Fusion High Logo" className="w-full h-full object-contain" />
+            <div className="w-12 h-12 rounded-2xl bg-white/10 p-1 border border-white/20 shadow-glow-indigo flex items-center justify-center overflow-hidden">
+              <img src="/assets/geleza-logo.png" alt="Geleza SA Logo" className="w-full h-full object-contain" />
             </div>
             <div>
-              <h3 className="text-lg font-black font-display text-white">About Fusion High</h3>
+              <h3 className="text-lg font-black font-display text-white">About Geleza SA</h3>
               <p className="text-[11px] font-mono text-cyan-300 font-bold uppercase tracking-wider">
-                ONE SCHOOL • ONE CONNECTION
+                GELEZA SMART, THE FUTURE IS THINE
               </p>
             </div>
           </div>
@@ -40,7 +40,7 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose }) =
         {/* Content */}
         <div className="mt-5 space-y-4 text-xs text-slate-300 leading-relaxed max-h-[60vh] overflow-y-auto custom-scrollbar pr-1">
           <p className="text-sm font-medium text-slate-200">
-            Welcome to <strong className="text-white font-black font-display">Fusion High School Portal</strong> — a world-class, cloud-connected digital ecosystem designed to empower educators, inspire learners, and bridge seamless collaboration with parents.
+            Welcome to <strong className="text-white font-black font-display">Geleza SA Portal</strong> (Geleza South Africa) — a world-class, cloud-connected digital ecosystem designed to empower educators, inspire learners, and bridge seamless collaboration with parents.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
@@ -88,14 +88,14 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose }) =
           <div className="p-4 rounded-2xl bg-gradient-to-r from-brand-900/40 via-indigo-900/30 to-cyan-900/30 border border-brand-500/20 flex items-center gap-3">
             <Heart className="w-6 h-6 text-rose-400 shrink-0" />
             <p className="text-[11px] text-slate-300">
-              <strong className="text-white">Our Motto:</strong> "Limitless Potential Through Digital Innovation & Disciplined Academic Excellence."
+              <strong className="text-white">Our Slogan:</strong> "Geleza Smart, The Future Is Thine"
             </p>
           </div>
         </div>
 
         {/* Footer */}
         <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
-          <span className="text-[10px] font-mono text-slate-400">Fusion High App v2.1 • 2026</span>
+          <span className="text-[10px] font-mono text-slate-400">Geleza SA App v2.1 • 2026</span>
           <button
             onClick={onClose}
             className="px-5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors"

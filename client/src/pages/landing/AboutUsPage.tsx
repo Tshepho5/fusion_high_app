@@ -28,15 +28,15 @@ export const AboutUsPage: React.FC = () => {
       <header className="sticky top-0 z-30 px-4 md:px-8 py-4 bg-surface-darker/95 border-b border-white/10 backdrop-blur-md">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3.5 group">
-            <div className="w-10 h-10 rounded-xl bg-white/5 p-1 border border-white/15 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <img src="/assets/FH.png" alt="Fusion High Emblem" className="w-full h-full object-contain" />
+            <div className="w-10 h-10 rounded-xl bg-white/5 p-1 border border-white/15 flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden">
+              <img src="/assets/geleza-logo.png" alt="Geleza SA Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="font-display text-lg font-extrabold tracking-tight text-white block leading-tight">
-                FUSION HIGH
+                GELEZA SA
               </span>
               <span className="text-[10px] font-mono tracking-wider text-cyan-400 uppercase font-bold block">
-                ABOUT OUR SCHOOL
+                ABOUT GELEZA SOUTH AFRICA
               </span>
             </div>
           </Link>
@@ -61,11 +61,11 @@ export const AboutUsPage: React.FC = () => {
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-extrabold font-display text-white tracking-tight">
-            "One School • Limitless Potential"
+            "Geleza Smart, The Future Is Thine"
           </h1>
 
           <p className="text-slate-300 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
-            Fusion High School is a premier South African educational institution dedicated to delivering academic excellence, character development, and technological empowerment across Grades 8 through 12.
+            Geleza SA (G~SA: Geleza South Africa) is a premier South African educational institution dedicated to delivering academic excellence, character development, and technological empowerment across Grades 8 through 12.
           </p>
         </div>
 
@@ -167,8 +167,8 @@ export const AboutUsPage: React.FC = () => {
         {/* Contact Footer */}
         <div className="p-6 rounded-3xl bg-surface-darker border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
           <div>
-            <h4 className="font-bold text-white">Fusion High School Administration</h4>
-            <p className="text-slate-400">Johannesburg, Gauteng, South Africa • POPIA Compliant & DBE Registered</p>
+            <h4 className="font-bold text-white">Geleza SA Administration</h4>
+            <p className="text-slate-400">Johannesburg & Limpopo, South Africa • POPIA Compliant & DBE Registered</p>
           </div>
           <Link
             to="/register"
@@ -181,7 +181,7 @@ export const AboutUsPage: React.FC = () => {
 
       {/* Footer */}
       <footer className="py-6 px-4 border-t border-white/10 bg-surface-darker text-xs text-slate-500 text-center">
-        &copy; {new Date().getFullYear()} Fusion High School. All Rights Reserved. DBE CAPS Accredited.
+        &copy; {new Date().getFullYear()} Geleza SA. All Rights Reserved. DBE CAPS Accredited.
       </footer>
     </div>
   );

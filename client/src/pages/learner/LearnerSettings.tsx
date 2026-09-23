@@ -160,7 +160,6 @@ export const LearnerSettings: React.FC = () => {
 
   const THEMES: { id: AppTheme; label: string; desc: string; icon: any }[] = [
     { id: 'dark', label: 'Dark Theme', desc: 'Neutral slate & high-contrast deep mode', icon: Moon },
-    { id: 'navy', label: 'Slate Navy', desc: 'Deep academic blue with modern contrast', icon: Shield },
     { id: 'light', label: 'Light Theme', desc: 'Clean white surfaces with crisp typography', icon: Sun },
   ];
 
@@ -230,11 +229,6 @@ export const LearnerSettings: React.FC = () => {
                   <Sun className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-45 transition-transform" />
                   <span>Light Mode</span>
                 </>
-              ) : theme === 'navy' ? (
-                <>
-                  <Shield className="w-3.5 h-3.5 text-blue-400 group-hover:scale-110 transition-transform" />
-                  <span>Slate Navy</span>
-                </>
               ) : (
                 <>
                   <Moon className="w-3.5 h-3.5 text-indigo-400 group-hover:-rotate-12 transition-transform" />
@@ -244,7 +238,7 @@ export const LearnerSettings: React.FC = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {THEMES.map((t) => {
               const IconComp = t.icon;
               return (

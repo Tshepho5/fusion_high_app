@@ -67,76 +67,76 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
     switch (role) {
       case 'teacher':
         return [
-          { id: 'overview', label: 'Educator Analytics', desc: 'Class performance metrics, daily pass rates & learner overview', category: 'academic', icon: LayoutDashboard, gradient: 'from-blue-600 to-indigo-600' },
-          { id: 'subjects', label: 'My Subjects', desc: 'Subject curricula, CAPS past papers & learning resources', category: 'academic', icon: BookOpen, gradient: 'from-cyan-600 to-blue-600' },
-          { id: 'assignments', label: 'Homework & Submissions', desc: 'Publish homework briefs, review learner uploads & sign off marks', category: 'academic', icon: BookOpen, gradient: 'from-brand-600 to-indigo-600', badge: 'AI Live' },
-          { id: 'classes', label: 'Class Registers & Marks', desc: '60fps continuous Camera QR scanner & mark entry registers', category: 'operations', icon: Users, gradient: 'from-emerald-600 to-teal-600', badge: 'QR LIVE' },
-          { id: 'ai-tools', label: 'AI Lesson & Test Builder', desc: 'CAPS lesson plans & instant exam test papers with memorandums', category: 'academic', icon: FusionAIIcon, gradient: 'from-purple-600 to-pink-600', badge: 'AI' },
-          { id: 'ptc', label: 'Parent Conferences (PTC)', desc: '15-minute educator consultation calendar & appointment slots', category: 'chat', icon: Users, gradient: 'from-amber-600 to-orange-600' },
-          { id: 'conduct', label: 'Merits & Conduct Logs', desc: 'Badge awards, XP points & disciplinary records', category: 'operations', icon: Award, gradient: 'from-yellow-600 to-amber-600' },
-          { id: 'my-leave', label: 'Leave & Relief Duty', desc: 'Staff relief allocations & educator leave management', category: 'operations', icon: UserCheck, gradient: 'from-rose-600 to-red-600' },
-          { id: 'exam-seating', label: 'Exam Seating Planner', desc: 'Hall seating grids & learner admission tickets', category: 'operations', icon: Grid, gradient: 'from-indigo-600 to-purple-600' },
-          { id: 'sports', label: 'Sports & Extracurriculars', desc: 'Athletics, match fixtures, team rosters & tournaments', category: 'campus', icon: Trophy, gradient: 'from-green-600 to-emerald-600' },
-          { id: 'textbooks', label: 'Textbook Inventory', desc: 'Asset barcode scanning & classroom textbook distribution', category: 'operations', icon: BookMarked, gradient: 'from-teal-600 to-cyan-600' },
-          { id: 'timetable', label: 'Teacher Timetable', desc: 'Weekly teaching periods & room allocations', category: 'operations', icon: Clock, gradient: 'from-sky-600 to-blue-600' },
-          { id: 'calendar', label: 'School Calendar', desc: 'Term dates, exams & official school events', category: 'campus', icon: Calendar, gradient: 'from-violet-600 to-indigo-600' },
-          { id: 'announcements', label: 'Broadcast Notices', desc: 'Publish announcements to learners and parents', category: 'campus', icon: Megaphone, gradient: 'from-fuchsia-600 to-purple-600' },
-          { id: 'messages', label: 'Communication Hub', desc: 'Direct messages with parents, learners & colleagues', category: 'chat', icon: MessageSquare, gradient: 'from-brand-600 to-cyan-600', badge: 'CHAT' },
-          { id: 'settings', label: 'Technical Settings', desc: 'Theme colors, dark/light mode, typography fonts & preferences', category: 'operations', icon: Settings, gradient: 'from-slate-600 to-indigo-600' },
+          { id: 'overview', label: 'Educator Analytics', desc: 'Class performance metrics, daily pass rates & learner overview', category: 'academic', icon: LayoutDashboard, gradient: 'from-[#0284c7] to-[#2563eb]' },
+          { id: 'subjects', label: 'My Subjects', desc: 'Subject curricula, CAPS past papers & learning resources', category: 'academic', icon: BookOpen, gradient: 'from-[#0ea5e9] to-[#0284c7]' },
+          { id: 'assignments', label: 'Homework & Submissions', desc: 'Publish homework briefs, review learner uploads & sign off marks', category: 'academic', icon: BookOpen, gradient: 'from-[#2563eb] to-[#4338ca]', badge: 'AI Live' },
+          { id: 'classes', label: 'Class Registers & Marks', desc: '60fps continuous Camera QR scanner & mark entry registers', category: 'operations', icon: Users, gradient: 'from-[#0f766e] to-[#0284c7]', badge: 'QR LIVE' },
+          { id: 'ai-tools', label: 'AI Lesson & Test Builder', desc: 'CAPS lesson plans & instant exam test papers with memorandums', category: 'academic', icon: FusionAIIcon, gradient: 'from-[#4f46e5] to-[#2563eb]', badge: 'AI' },
+          { id: 'ptc', label: 'Parent Conferences (PTC)', desc: '15-minute educator consultation calendar & appointment slots', category: 'chat', icon: Users, gradient: 'from-[#0284c7] to-[#1e40af]' },
+          { id: 'conduct', label: 'Merits & Conduct Logs', desc: 'Badge awards, XP points & disciplinary records', category: 'operations', icon: Award, gradient: 'from-[#1e40af] to-[#3b82f6]' },
+          { id: 'my-leave', label: 'Leave & Relief Duty', desc: 'Staff relief allocations & educator leave management', category: 'operations', icon: UserCheck, gradient: 'from-[#334155] to-[#1e293b]' },
+          { id: 'exam-seating', label: 'Exam Seating Planner', desc: 'Hall seating grids & learner admission tickets', category: 'operations', icon: Grid, gradient: 'from-[#1d4ed8] to-[#4338ca]' },
+          { id: 'sports', label: 'Sports & Extracurriculars', desc: 'Athletics, match fixtures, team rosters & tournaments', category: 'campus', icon: Trophy, gradient: 'from-[#0f766e] to-[#0284c7]' },
+          { id: 'textbooks', label: 'Textbook Inventory', desc: 'Asset barcode scanning & classroom textbook distribution', category: 'operations', icon: BookMarked, gradient: 'from-[#0284c7] to-[#0369a1]' },
+          { id: 'timetable', label: 'Teacher Timetable', desc: 'Weekly teaching periods & room allocations', category: 'operations', icon: Clock, gradient: 'from-[#0ea5e9] to-[#2563eb]' },
+          { id: 'calendar', label: 'School Calendar', desc: 'Term dates, exams & official school events', category: 'campus', icon: Calendar, gradient: 'from-[#2563eb] to-[#4f46e5]' },
+          { id: 'announcements', label: 'Broadcast Notices', desc: 'Publish announcements to learners and parents', category: 'campus', icon: Megaphone, gradient: 'from-[#0284c7] to-[#3b82f6]' },
+          { id: 'messages', label: 'Communication Hub', desc: 'Direct messages with parents, learners & colleagues', category: 'chat', icon: MessageSquare, gradient: 'from-[#0284c7] to-[#2563eb]', badge: 'CHAT' },
+          { id: 'settings', label: 'Technical Settings', desc: 'Theme colors, dark/light mode, typography fonts & preferences', category: 'operations', icon: Settings, gradient: 'from-[#334155] to-[#475569]' },
         ];
       case 'admin':
         return [
-          { id: 'overview', label: 'School Analytics Hub', desc: 'Overall school enrollment, attendance & pass rates', category: 'academic', icon: LayoutDashboard, gradient: 'from-blue-600 to-indigo-600' },
-          { id: 'subjects', label: 'School Curriculum & Subjects', desc: 'All curriculum subjects across Grades 8-12, registers & flags', category: 'academic', icon: BookOpen, gradient: 'from-blue-600 to-indigo-600', badge: 'Gr 8-12' },
-          { id: 'marks', label: 'CAPS Mark Audits & Report Cards', desc: 'SBA continuous assessment weightings & official report cards', category: 'academic', icon: FileSpreadsheet, gradient: 'from-emerald-600 to-teal-600', badge: 'CAPS' },
-          { id: 'finance', label: 'School Fees & Finance', desc: 'Tuition invoicing, payment receipts & collection analytics', category: 'operations', icon: CreditCard, gradient: 'from-emerald-600 to-teal-600', badge: 'ZAR' },
-          { id: 'users', label: 'User Directory', desc: 'Manage teachers, parents, learners & staff accounts', category: 'operations', icon: Users, gradient: 'from-cyan-600 to-blue-600' },
-          { id: 'matric-projector', label: 'Matric Pass Projector', desc: 'Grade 12 Bachelor pass & distinction forecast analytics', category: 'academic', icon: GraduationCap, gradient: 'from-purple-600 to-pink-600', badge: 'Gr12' },
-          { id: 'bursaries', label: 'Bursary Opportunities', desc: 'National tertiary scholarship catalog & learner applications', category: 'academic', icon: GraduationCap, gradient: 'from-amber-600 to-orange-600' },
-          { id: 'leave-relief', label: 'Staff Leave & Relief', desc: 'Educator substitute allocations & daily duty roster', category: 'operations', icon: UserCheck, gradient: 'from-rose-600 to-red-600' },
-          { id: 'timetable', label: 'Timetable Master', desc: 'Automated clash-free AI school timetable generation', category: 'operations', icon: Clock, gradient: 'from-sky-600 to-blue-600' },
-          { id: 'exam-seating', label: 'Exam Seating Master', desc: 'Examination hall desk allocations & card printing', category: 'operations', icon: Grid, gradient: 'from-indigo-600 to-purple-600' },
-          { id: 'sports', label: 'Sports & Clubs Hub', desc: 'School athletic fixtures, scores & club rosters', category: 'campus', icon: Trophy, gradient: 'from-green-600 to-emerald-600' },
-          { id: 'textbooks', label: 'Textbook Inventory', desc: 'Comprehensive textbook catalog & return tracking', category: 'operations', icon: BookMarked, gradient: 'from-teal-600 to-cyan-600' },
-          { id: 'calendar', label: 'School Calendar', desc: 'Official school calendar dates & academic terms', category: 'campus', icon: Calendar, gradient: 'from-violet-600 to-indigo-600' },
-          { id: 'announcements', label: 'Broadcast Notices', desc: 'Broadcast notices to all grades, streams & parents', category: 'campus', icon: Megaphone, gradient: 'from-fuchsia-600 to-purple-600' },
-          { id: 'messages', label: 'School Chat Hub', desc: 'Institution-wide communication management', category: 'chat', icon: MessageSquare, gradient: 'from-brand-600 to-cyan-600' },
-          { id: 'settings', label: 'Technical Settings', desc: 'Theme colors, dark/light mode, typography fonts & preferences', category: 'operations', icon: Settings, gradient: 'from-slate-600 to-indigo-600' },
+          { id: 'overview', label: 'School Analytics Hub', desc: 'Overall school enrollment, attendance & pass rates', category: 'academic', icon: LayoutDashboard, gradient: 'from-[#0284c7] to-[#2563eb]' },
+          { id: 'subjects', label: 'School Curriculum & Subjects', desc: 'All curriculum subjects across Grades 8-12, registers & flags', category: 'academic', icon: BookOpen, gradient: 'from-[#0ea5e9] to-[#0284c7]', badge: 'Gr 8-12' },
+          { id: 'marks', label: 'CAPS Mark Audits & Report Cards', desc: 'SBA continuous assessment weightings & official report cards', category: 'academic', icon: FileSpreadsheet, gradient: 'from-[#0f766e] to-[#0284c7]', badge: 'CAPS' },
+          { id: 'finance', label: 'School Fees & Finance', desc: 'Tuition invoicing, payment receipts & collection analytics', category: 'operations', icon: CreditCard, gradient: 'from-[#0f766e] to-[#2563eb]', badge: 'ZAR' },
+          { id: 'users', label: 'User Directory', desc: 'Manage teachers, parents, learners & staff accounts', category: 'operations', icon: Users, gradient: 'from-[#0284c7] to-[#1d4ed8]' },
+          { id: 'matric-projector', label: 'Matric Pass Projector', desc: 'Grade 12 Bachelor pass & distinction forecast analytics', category: 'academic', icon: GraduationCap, gradient: 'from-[#4f46e5] to-[#2563eb]', badge: 'Gr12' },
+          { id: 'bursaries', label: 'Bursary Opportunities', desc: 'National tertiary scholarship catalog & learner applications', category: 'academic', icon: GraduationCap, gradient: 'from-[#2563eb] to-[#4338ca]' },
+          { id: 'leave-relief', label: 'Staff Leave & Relief', desc: 'Educator substitute allocations & daily duty roster', category: 'operations', icon: UserCheck, gradient: 'from-[#334155] to-[#1e293b]' },
+          { id: 'timetable', label: 'Timetable Master', desc: 'Automated clash-free AI school timetable generation', category: 'operations', icon: Clock, gradient: 'from-[#0ea5e9] to-[#2563eb]' },
+          { id: 'exam-seating', label: 'Exam Seating Master', desc: 'Examination hall desk allocations & card printing', category: 'operations', icon: Grid, gradient: 'from-[#1d4ed8] to-[#4338ca]' },
+          { id: 'sports', label: 'Sports & Clubs Hub', desc: 'School athletic fixtures, scores & club rosters', category: 'campus', icon: Trophy, gradient: 'from-[#0f766e] to-[#0284c7]' },
+          { id: 'textbooks', label: 'Textbook Inventory', desc: 'Comprehensive textbook catalog & return tracking', category: 'operations', icon: BookMarked, gradient: 'from-[#0284c7] to-[#0369a1]' },
+          { id: 'calendar', label: 'School Calendar', desc: 'Official school calendar dates & academic terms', category: 'campus', icon: Calendar, gradient: 'from-[#2563eb] to-[#4f46e5]' },
+          { id: 'announcements', label: 'Broadcast Notices', desc: 'Broadcast notices to all grades, streams & parents', category: 'campus', icon: Megaphone, gradient: 'from-[#0284c7] to-[#3b82f6]' },
+          { id: 'messages', label: 'School Chat Hub', desc: 'Institution-wide communication management', category: 'chat', icon: MessageSquare, gradient: 'from-[#0284c7] to-[#2563eb]' },
+          { id: 'settings', label: 'Technical Settings', desc: 'Theme colors, dark/light mode, typography fonts & preferences', category: 'operations', icon: Settings, gradient: 'from-[#334155] to-[#475569]' },
         ];
       case 'parent':
         return [
-          { id: 'overview', label: 'Family Dashboard', desc: 'Child academic summary, attendance & school alerts', category: 'academic', icon: LayoutDashboard, gradient: 'from-blue-600 to-indigo-600' },
-          { id: 'children', label: 'Linked Learners', desc: 'Overview of all your enrolled children at Fusion High', category: 'academic', icon: GraduationCap, gradient: 'from-cyan-600 to-blue-600' },
-          { id: 'finance', label: 'School Fees & PayFast', desc: 'Tuition statements, itemized levies & Instant EFT settlements', category: 'operations', icon: CreditCard, gradient: 'from-emerald-600 to-teal-600', badge: 'PAY' },
-          { id: 'bursaries', label: 'NSFAS & Bursaries', desc: 'Tertiary scholarships, funding coverage & checklist tracker', category: 'academic', icon: GraduationCap, gradient: 'from-amber-600 to-orange-600', badge: 'FUND' },
-          { id: 'reports', label: 'CAPS Report Cards', desc: 'Official term report cards & educator remarks', category: 'academic', icon: Award, gradient: 'from-emerald-600 to-teal-600', badge: 'PDF' },
-          { id: 'ptc', label: 'Parent Conferences (PTC)', desc: 'Book consultations with your child’s subject teachers', category: 'chat', icon: Users, gradient: 'from-amber-600 to-orange-600' },
-          { id: 'attendance', label: 'Attendance Records', desc: 'Real-time daily presence, late & absence history', category: 'operations', icon: CalendarCheck, gradient: 'from-rose-600 to-red-600' },
-          { id: 'sports', label: 'Sports & Fixtures', desc: 'Extracurricular fixtures, match scores & teams', category: 'campus', icon: Trophy, gradient: 'from-green-600 to-emerald-600' },
-          { id: 'timetable', label: 'Child Timetable', desc: 'Weekly class schedule & classroom periods', category: 'operations', icon: Clock, gradient: 'from-sky-600 to-blue-600' },
-          { id: 'calendar', label: 'School Calendar', desc: 'School events, exam dates & term holidays', category: 'campus', icon: Calendar, gradient: 'from-violet-600 to-indigo-600' },
-          { id: 'announcements', label: 'School Notices', desc: 'Urgent notices, newsletters & circulars', category: 'campus', icon: Megaphone, gradient: 'from-fuchsia-600 to-purple-600' },
-          { id: 'messages', label: 'Teacher Chat', desc: 'Direct secure messaging with classroom educators', category: 'chat', icon: MessageSquare, gradient: 'from-brand-600 to-cyan-600', badge: 'CHAT' },
-          { id: 'settings', label: 'Technical Settings', desc: 'Theme colors, dark/light mode, typography fonts & preferences', category: 'operations', icon: Settings, gradient: 'from-slate-600 to-indigo-600' },
+          { id: 'overview', label: 'Family Dashboard', desc: 'Child academic summary, attendance & school alerts', category: 'academic', icon: LayoutDashboard, gradient: 'from-[#0284c7] to-[#2563eb]' },
+          { id: 'children', label: 'Linked Learners', desc: 'Overview of all your enrolled children at Fusion High', category: 'academic', icon: GraduationCap, gradient: 'from-[#0ea5e9] to-[#0284c7]' },
+          { id: 'finance', label: 'School Fees & PayFast', desc: 'Tuition statements, itemized levies & Instant EFT settlements', category: 'operations', icon: CreditCard, gradient: 'from-[#0f766e] to-[#0284c7]', badge: 'PAY' },
+          { id: 'bursaries', label: 'NSFAS & Bursaries', desc: 'Tertiary scholarships, funding coverage & checklist tracker', category: 'academic', icon: GraduationCap, gradient: 'from-[#2563eb] to-[#4338ca]', badge: 'FUND' },
+          { id: 'reports', label: 'CAPS Report Cards', desc: 'Official term report cards & educator remarks', category: 'academic', icon: Award, gradient: 'from-[#0f766e] to-[#2563eb]', badge: 'PDF' },
+          { id: 'ptc', label: 'Parent Conferences (PTC)', desc: 'Book consultations with your child’s subject teachers', category: 'chat', icon: Users, gradient: 'from-[#0284c7] to-[#1e40af]' },
+          { id: 'attendance', label: 'Attendance Records', desc: 'Real-time daily presence, late & absence history', category: 'operations', icon: CalendarCheck, gradient: 'from-[#1e40af] to-[#3b82f6]' },
+          { id: 'sports', label: 'Sports & Fixtures', desc: 'Extracurricular fixtures, match scores & teams', category: 'campus', icon: Trophy, gradient: 'from-[#0f766e] to-[#0284c7]' },
+          { id: 'timetable', label: 'Child Timetable', desc: 'Weekly class schedule & classroom periods', category: 'operations', icon: Clock, gradient: 'from-[#0ea5e9] to-[#2563eb]' },
+          { id: 'calendar', label: 'School Calendar', desc: 'School events, exam dates & term holidays', category: 'campus', icon: Calendar, gradient: 'from-[#2563eb] to-[#4f46e5]' },
+          { id: 'announcements', label: 'School Notices', desc: 'Urgent notices, newsletters & circulars', category: 'campus', icon: Megaphone, gradient: 'from-[#0284c7] to-[#3b82f6]' },
+          { id: 'messages', label: 'Teacher Chat', desc: 'Direct secure messaging with classroom educators', category: 'chat', icon: MessageSquare, gradient: 'from-[#0284c7] to-[#2563eb]', badge: 'CHAT' },
+          { id: 'settings', label: 'Technical Settings', desc: 'Theme colors, dark/light mode, typography fonts & preferences', category: 'operations', icon: Settings, gradient: 'from-[#334155] to-[#475569]' },
         ];
       case 'learner':
       default:
         return [
-          { id: 'overview', label: 'Learner Home', desc: 'Daily academic schedule, tasks & achievements', category: 'academic', icon: Home, gradient: 'from-blue-600 to-indigo-600' },
-          { id: 'subjects', label: 'My Subjects & AI Tutor', desc: 'Syllabus, topics, interactive AI tutor & study notes', category: 'academic', icon: BookOpen, gradient: 'from-cyan-600 to-blue-600', badge: 'AI' },
-          { id: 'assignments', label: 'Homework & Submissions', desc: 'Download worksheets, upload solutions & get AI concept pre-grading', category: 'academic', icon: BookOpen, gradient: 'from-brand-600 to-indigo-600', badge: 'AI Live' },
-          { id: 'career-advisor', label: 'Matric APS & Careers', desc: 'APS point calculator, university requirements & fields', category: 'academic', icon: Compass, gradient: 'from-purple-600 to-pink-600', badge: 'Gr12 APS' },
-          { id: 'bursaries', label: 'NSFAS & Bursaries', desc: 'AI tertiary bursary matches, document checklists & funding', category: 'academic', icon: GraduationCap, gradient: 'from-amber-600 to-orange-600', badge: 'FUND' },
-          { id: 'finance', label: 'Fee Statements', desc: 'Official school fee statements & settled payment receipts', category: 'operations', icon: CreditCard, gradient: 'from-emerald-600 to-teal-600' },
-          { id: 'reports', label: 'CAPS Report Cards', desc: 'Term mark sheets, subject levels & official transcripts', category: 'academic', icon: Award, gradient: 'from-emerald-600 to-teal-600', badge: 'PDF' },
-          { id: 'exam-seating', label: 'Exam Seating & Card', desc: 'Personal exam hall allocation & student smart ID card', category: 'operations', icon: Grid, gradient: 'from-indigo-600 to-purple-600' },
-          { id: 'sports', label: 'Sports & Clubs', desc: 'House athletics, extracurricular teams & events', category: 'campus', icon: Trophy, gradient: 'from-green-600 to-emerald-600' },
-          { id: 'textbooks', label: 'My Textbooks', desc: 'Issued textbooks, digital study e-books & guides', category: 'operations', icon: BookMarked, gradient: 'from-teal-600 to-cyan-600' },
-          { id: 'timetable', label: 'Weekly Timetable', desc: 'Classroom periods, room numbers & educator timetable', category: 'operations', icon: Clock, gradient: 'from-sky-600 to-blue-600' },
-          { id: 'calendar', label: 'School Calendar', desc: 'Academic terms, test weeks & school holidays', category: 'campus', icon: Calendar, gradient: 'from-violet-600 to-indigo-600' },
-          { id: 'announcements', label: 'Announcements', desc: 'School alerts, sports updates & event notices', category: 'campus', icon: Megaphone, gradient: 'from-fuchsia-600 to-purple-600' },
-          { id: 'messages', label: 'Teacher Messages', desc: 'Direct private chats with subject teachers', category: 'chat', icon: MessageSquare, gradient: 'from-brand-600 to-cyan-600', badge: 'CHAT' },
-          { id: 'settings', label: 'Technical Settings', desc: 'Theme colors, dark/light mode, typography fonts & preferences', category: 'operations', icon: Settings, gradient: 'from-slate-600 to-indigo-600' },
+          { id: 'overview', label: 'Learner Home', desc: 'Daily academic schedule, tasks & achievements', category: 'academic', icon: Home, gradient: 'from-[#0284c7] to-[#2563eb]' },
+          { id: 'subjects', label: 'My Subjects & AI Tutor', desc: 'Syllabus, topics, interactive AI tutor & study notes', category: 'academic', icon: BookOpen, gradient: 'from-[#0ea5e9] to-[#0284c7]', badge: 'AI' },
+          { id: 'assignments', label: 'Homework & Submissions', desc: 'Download worksheets, upload solutions & get AI concept pre-grading', category: 'academic', icon: BookOpen, gradient: 'from-[#2563eb] to-[#4338ca]', badge: 'AI Live' },
+          { id: 'career-advisor', label: 'Matric APS & Careers', desc: 'APS point calculator, university requirements & fields', category: 'academic', icon: Compass, gradient: 'from-[#4f46e5] to-[#2563eb]', badge: 'Gr12 APS' },
+          { id: 'bursaries', label: 'NSFAS & Bursaries', desc: 'AI tertiary bursary matches, document checklists & funding', category: 'academic', icon: GraduationCap, gradient: 'from-[#2563eb] to-[#4338ca]', badge: 'FUND' },
+          { id: 'finance', label: 'Fee Statements', desc: 'Official school fee statements & settled payment receipts', category: 'operations', icon: CreditCard, gradient: 'from-[#0f766e] to-[#0284c7]' },
+          { id: 'reports', label: 'CAPS Report Cards', desc: 'Term mark sheets, subject levels & official transcripts', category: 'academic', icon: Award, gradient: 'from-[#0f766e] to-[#2563eb]', badge: 'PDF' },
+          { id: 'exam-seating', label: 'Exam Seating & Card', desc: 'Personal exam hall allocation & student smart ID card', category: 'operations', icon: Grid, gradient: 'from-[#1d4ed8] to-[#4338ca]' },
+          { id: 'sports', label: 'Sports & Clubs', desc: 'House athletics, extracurricular teams & events', category: 'campus', icon: Trophy, gradient: 'from-[#0f766e] to-[#0284c7]' },
+          { id: 'textbooks', label: 'My Textbooks', desc: 'Issued textbooks, digital study e-books & guides', category: 'operations', icon: BookMarked, gradient: 'from-[#0284c7] to-[#0369a1]' },
+          { id: 'timetable', label: 'Weekly Timetable', desc: 'Classroom periods, room numbers & educator timetable', category: 'operations', icon: Clock, gradient: 'from-[#0ea5e9] to-[#2563eb]' },
+          { id: 'calendar', label: 'School Calendar', desc: 'Academic terms, test weeks & school holidays', category: 'campus', icon: Calendar, gradient: 'from-[#2563eb] to-[#4f46e5]' },
+          { id: 'announcements', label: 'Announcements', desc: 'School alerts, sports updates & event notices', category: 'campus', icon: Megaphone, gradient: 'from-[#0284c7] to-[#3b82f6]' },
+          { id: 'messages', label: 'Teacher Messages', desc: 'Direct private chats with subject teachers', category: 'chat', icon: MessageSquare, gradient: 'from-[#0284c7] to-[#2563eb]', badge: 'CHAT' },
+          { id: 'settings', label: 'Technical Settings', desc: 'Theme colors, dark/light mode, typography fonts & preferences', category: 'operations', icon: Settings, gradient: 'from-[#334155] to-[#475569]' },
         ];
     }
   };
@@ -160,7 +160,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 md:left-72 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/80 backdrop-blur-xl animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/80 backdrop-blur-xl animate-fade-in">
       <div className="relative w-full max-w-5xl max-h-[92vh] rounded-3xl bg-[#0F1A24]/95 border border-[#13C8D9]/40 p-5 md:p-7 shadow-2xl shadow-[#13C8D9]/10 flex flex-col overflow-hidden mx-auto">
         {/* Glow Auras */}
         <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-[#13C8D9]/15 blur-3xl pointer-events-none" />
@@ -467,15 +467,15 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
           )}
         </div>
 
-        {/* Modal Footer with Centered Tap to Close Button (Image 3) */}
-        <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-slate-400 shrink-0 relative">
+        {/* Modal Footer with Centered Tap to Close Button */}
+        <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-slate-400 shrink-0 relative min-h-[56px]">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-[11px] font-medium">{filteredModules.length} Modules Active</span>
           </div>
 
-          {/* Center Petal Close Button (Image 3) */}
-          <div className="relative flex items-center justify-center">
+          {/* Center Petal Close Button (Strictly centered) */}
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
             {/* Flower Petals Halo */}
             <div className="absolute inset-0 -m-3 pointer-events-none flex items-center justify-center animate-pulse">
               {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
@@ -491,22 +491,23 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
             </div>
 
             <button
+              type="button"
               onClick={() => {
                 onClose();
                 onSelectTab('overview');
               }}
-              className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-[#E11D48] via-[#A855F7] to-[#06B6D4] p-[2px] shadow-[0_0_20px_rgba(6,182,212,0.85)] hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+              className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-[#0284c7] via-[#2563eb] to-[#06B6D4] p-[2px] shadow-[0_0_20px_rgba(6,182,212,0.85)] hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center z-10"
               title="Tap to close and return to Home"
             >
               <div className="w-full h-full rounded-full bg-[#080E16] flex flex-col items-center justify-center p-1 text-center">
-                <span className="text-[9px] sm:text-[10px] font-black leading-tight text-white drop-shadow-[0_0_6px_rgba(24,226,236,0.95)]">
+                <span className="text-[9px] sm:text-[10px] font-black leading-tight text-[#18E2EC] drop-shadow-[0_0_6px_rgba(24,226,236,0.95)]">
                   Tap to<br />close
                 </span>
               </div>
             </button>
           </div>
 
-          <span className="font-mono text-[10px] text-slate-500 hidden sm:inline">
+          <span className="font-mono text-[10px] text-slate-500 hidden sm:inline ml-auto">
             Press ESC or tap close to return Home
           </span>
         </div>

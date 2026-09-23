@@ -16,6 +16,7 @@ import { InterSchoolCompetitions } from '../../components/common/InterSchoolComp
 import { SportsExtracurriculars } from '../../components/common/SportsExtracurriculars';
 import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
 import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
+import { ParentMoreHub } from './ParentMoreHub';
 import { ArrowLeft, ChevronRight, Home } from 'lucide-react';
 
 export const ParentDashboard: React.FC = () => {
@@ -53,6 +54,7 @@ export const ParentDashboard: React.FC = () => {
       case 'messages': return 'Teacher Communications';
       case 'settings': return 'App & Technical Settings';
       case 'profile': return 'Parent Profile';
+      case 'more': return 'Main Navigation Menu';
       case 'overview':
       default: return 'Family Learning Hub';
     }
@@ -90,8 +92,11 @@ export const ParentDashboard: React.FC = () => {
         </div>
       )}
 
-      {(activeTab === 'overview' || activeTab === 'more') && (
+      {activeTab === 'overview' && (
         <ParentOverview onNavigateTab={handleSelectTab} />
+      )}
+      {activeTab === 'more' && (
+        <ParentMoreHub onNavigateTab={handleSelectTab} />
       )}
       {(activeTab === 'children' || activeTab === 'marks') && <ParentChildren />}
       {activeTab === 'finance' && <SchoolFeesManager userRole="parent" />}

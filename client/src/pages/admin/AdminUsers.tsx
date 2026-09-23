@@ -1356,7 +1356,7 @@ export const AdminUsers: React.FC = () => {
                       </Badge>
                     </td>
                     <td className="py-3.5 px-3">
-                      <span className="font-bold text-cyan-400">{adm.school_name || 'Fusion Educational Institution'}</span>
+                      <span className="font-bold text-cyan-400">{adm.school_name || 'Geleza SA'}</span>
                     </td>
                     <td className="py-3.5 px-3 text-slate-300">
                       <span>{adm.school_circuit || 'Mankweng Circuit'}</span>
@@ -1504,7 +1504,7 @@ export const AdminUsers: React.FC = () => {
                 required
                 value={employeeForm.email}
                 onChange={(e) => setEmployeeForm(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="e.g. s.ndlovu@fusionhigh.co.za"
+                placeholder="e.g. s.ndlovu@geleza-sa.co.za"
                 className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-brand-500 font-mono"
               />
             </div>
@@ -1890,7 +1890,7 @@ export const AdminUsers: React.FC = () => {
                 type="email"
                 value={learnerForm.email}
                 onChange={(e) => setLearnerForm(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="e.g. t.molefe@fusionhigh.co.za"
+                placeholder="e.g. t.molefe@geleza-sa.co.za"
                 className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-cyan-500 font-mono"
               />
             </div>
@@ -2085,7 +2085,7 @@ export const AdminUsers: React.FC = () => {
                     </option>
                   ))
                 ) : (
-                  <option value="1">Fusion High School</option>
+                  <option value="1">Geleza SA</option>
                 )}
               </select>
             </div>

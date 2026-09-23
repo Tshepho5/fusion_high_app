@@ -10,12 +10,12 @@ export const TermsPage: React.FC = () => {
       <header className="sticky top-0 z-30 px-4 md:px-8 py-4 bg-surface-darker/95 border-b border-white/10 backdrop-blur-md">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3.5 group">
-            <div className="w-10 h-10 rounded-xl bg-white/5 p-1 border border-white/15 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <img src="/assets/FH.png" alt="Fusion High Emblem" className="w-full h-full object-contain" />
+            <div className="w-10 h-10 rounded-xl bg-white/5 p-1 border border-white/15 flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden">
+              <img src="/assets/geleza-logo.png" alt="Geleza SA Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="font-display text-lg font-extrabold tracking-tight text-white block leading-tight">
-                FUSION HIGH
+                GELEZA SA
               </span>
               <span className="text-[10px] font-mono tracking-wider text-cyan-400 uppercase font-bold block">
                 TERMS & CONDITIONS
@@ -59,7 +59,7 @@ export const TermsPage: React.FC = () => {
               <span>1. Overview & Scope of Service</span>
             </h2>
             <p>
-              Fusion High School Management System provides a centralized digital gateway for academic learning, CAPS mark reporting, period attendance, homework management, AI Voice Tutoring, and school administration. Access to this platform requires strict compliance with the South African Schools Act (No. 84 of 1996) and institutional codes of conduct.
+              Geleza SA (Geleza South Africa) School Management System provides a centralized digital gateway for academic learning, CAPS mark reporting, period attendance, homework management, AI Voice Tutoring, and school administration. Access to this platform requires strict compliance with the South African Schools Act (No. 84 of 1996) and institutional codes of conduct.
             </p>
           </section>
 
@@ -107,7 +107,7 @@ export const TermsPage: React.FC = () => {
 
       {/* Footer */}
       <footer className="py-6 px-4 border-t border-white/10 bg-surface-darker text-xs text-slate-500 text-center">
-        &copy; {new Date().getFullYear()} Fusion High School. POPIA Compliant & DBE CAPS Accredited.
+        &copy; {new Date().getFullYear()} Geleza SA. POPIA Compliant & DBE CAPS Accredited.
       </footer>
     </div>
   );

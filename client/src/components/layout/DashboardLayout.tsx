@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
 import { CommandPalette } from '../common/CommandPalette';
 import { BottomNavigationDock } from './BottomNavigationDock';
-import { MainMenuLauncherModal } from './MainMenuLauncherModal';
 import { FloatingAIChatModule } from '../common/FloatingAIChatModule';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { ErrorBoundary } from '../common/ErrorBoundary';
@@ -25,26 +23,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   customBottomDock,
   hideBottomDock = false,
 }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const [mainMenuOpen, setMainMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('fusion_sidebar_collapsed') === 'true';
-    } catch {
-      return false;
-    }
-  });
-
-  const toggleSidebarCollapse = () => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('fusion_sidebar_collapsed', String(next));
-      } catch {}
-      return next;
-    });
-  };
 
   // Tab transition state to display the shimmer skeleton whenever user switches tabs
   const [isTabTransitioning, setIsTabTransitioning] = useState(false);
@@ -70,13 +49,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
         e.preventDefault();
-        setMainMenuOpen((prev) => !prev);
+        onSelectTab(activeTab === 'more' ? 'overview' : 'more');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [activeTab, onSelectTab]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-[#CBDDE3] via-[#DBE7EC] to-[#EBF2F5] dark:from-[#060D14] dark:via-[#09131F] dark:to-[#0B1520] text-slate-900 dark:text-slate-100 selection:bg-cyan-500 selection:text-white relative transition-colors duration-300">
@@ -114,25 +93,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         onNavigateTab={onSelectTab}
       />
 
-      {/* Full-Screen Main Menu Launcher Modal */}
-      <MainMenuLauncherModal
-        isOpen={mainMenuOpen}
-        onClose={() => setMainMenuOpen(false)}
-        activeTab={activeTab}
-        onSelectTab={onSelectTab}
-      />
-
-      {/* Streamlined Minimalist Sidebar */}
-      <Sidebar
-        activeTab={activeTab}
-        onSelectTab={onSelectTab}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onOpenMainMenu={() => setMainMenuOpen(true)}
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={toggleSidebarCollapse}
-      />
-
       {/* Main Content Column with Fixed Top Header and Isolated Scroll Container */}
       <div className="flex flex-1 flex-col h-screen overflow-hidden min-w-0 z-10 relative">
         {/* Laser Shimmer Top Progress Bar when switching tabs */}
@@ -141,15 +101,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         )}
 
         <Navbar
-          onToggleSidebar={() => {
-            if (window.innerWidth <= 768) {
-              setSidebarOpen(!sidebarOpen);
-            } else {
-              toggleSidebarCollapse();
-            }
-          }}
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
           title={title}
+          onNavigateHome={() => onSelectTab('overview')}
+          onSelectTab={onSelectTab}
         />
 
         <main
@@ -174,8 +129,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <BottomNavigationDock
               activeTab={activeTab}
               onSelectTab={onSelectTab}
-              onOpenMainMenu={() => setMainMenuOpen((prev) => !prev)}
-              isMainMenuOpen={mainMenuOpen}
             />
           )
         )}

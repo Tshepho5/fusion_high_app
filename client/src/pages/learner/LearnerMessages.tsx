@@ -262,15 +262,14 @@ export const LearnerMessages: React.FC = () => {
   const docInputRef = useRef<HTMLInputElement | null>(null);
 
   const [chatTheme, setChatTheme] = useState<string>(() => {
-    return localStorage.getItem('fusion_chat_theme') || (appTheme === 'navy' ? 'indigo' : appTheme === 'light' ? 'teal' : 'emerald');
+    return localStorage.getItem('fusion_chat_theme') || (appTheme === 'light' ? 'teal' : 'emerald');
   });
 
   // Keep chat theme in sync if parent changes dashboard theme
   useEffect(() => {
     const savedChatTheme = localStorage.getItem('fusion_chat_theme');
     if (!savedChatTheme) {
-      if (appTheme === 'navy') setChatTheme('indigo');
-      else if (appTheme === 'light') setChatTheme('teal');
+      if (appTheme === 'light') setChatTheme('teal');
       else setChatTheme('emerald');
     }
   }, [appTheme]);
@@ -686,17 +685,16 @@ export const LearnerMessages: React.FC = () => {
   };
 
   const isLight = appTheme === 'light';
-  const isNavy = appTheme === 'navy';
 
-  const cardBg = isLight ? 'bg-white border-slate-200 shadow-xl' : isNavy ? 'bg-[#0a1936] border-blue-500/20' : 'bg-[#111b21] border-white/10';
-  const sidebarBg = isLight ? 'bg-slate-50 border-slate-200' : isNavy ? 'bg-[#0c1e40] border-blue-500/20' : 'bg-[#111b21] border-white/5';
-  const headerBg = isLight ? 'bg-slate-100 border-slate-200 text-slate-900' : isNavy ? 'bg-[#11244d] border-blue-500/20 text-white' : 'bg-[#202c33] border-white/5 text-white';
-  const searchInputBg = isLight ? 'bg-white border-slate-300 text-slate-900 placeholder-slate-400' : isNavy ? 'bg-[#0a1936] border-blue-500/30 text-white placeholder-blue-300' : 'bg-[#202c33] border-transparent text-white placeholder-slate-400';
+  const cardBg = isLight ? 'bg-white border-slate-200 shadow-xl' : 'bg-[#111b21] border-white/10';
+  const sidebarBg = isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#111b21] border-white/5';
+  const headerBg = isLight ? 'bg-slate-100 border-slate-200 text-slate-900' : 'bg-[#202c33] border-white/5 text-white';
+  const searchInputBg = isLight ? 'bg-white border-slate-300 text-slate-900 placeholder-slate-400' : 'bg-[#202c33] border-transparent text-white placeholder-slate-400';
   const chatBgColor = isLight ? '#f8fafc' : activeThemeObj.chatBg;
   const theirBubbleStyle = isLight ? 'bg-white text-slate-900 border border-slate-200 shadow-sm' : activeThemeObj.theirBubble;
   const myBubbleStyle = activeThemeObj.myBubble;
-  const composerBg = isLight ? 'bg-slate-100 border-slate-200' : isNavy ? 'bg-[#11244d] border-blue-500/20' : 'bg-[#202c33] border-white/5';
-  const composerInputBg = isLight ? 'bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:border-brand-500' : isNavy ? 'bg-[#0a1936] border border-blue-500/30 text-white placeholder-blue-300' : 'bg-[#2a3942] border-transparent text-white placeholder-slate-400';
+  const composerBg = isLight ? 'bg-slate-100 border-slate-200' : 'bg-[#202c33] border-white/5';
+  const composerInputBg = isLight ? 'bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:border-brand-500' : 'bg-[#2a3942] border-transparent text-white placeholder-slate-400';
 
   return (
     <div className="space-y-4">

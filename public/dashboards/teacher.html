@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Teacher Portal - Fusion High School</title>
+  <title>Teacher Portal - Geleza SA</title>
   
   <!-- Fonts: Google Outfit, Inter, Caveat -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,6 +34,27 @@
         localStorage.removeItem('token');
         window.location.href = '/';
       }
+    })();
+
+    /* Inactivity Auto-Logout: 1 minute and 30 seconds (90,000ms) */
+    (function setupInactivityLogout() {
+      let timeoutId;
+      const INACTIVITY_LIMIT = 90 * 1000;
+      function handleInactivity() {
+        try { sessionStorage.setItem('logout_reason', 'inactivity'); } catch (_) {}
+        localStorage.removeItem('token');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
+      function resetTimer() {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(handleInactivity, INACTIVITY_LIMIT);
+      }
+      resetTimer();
+      ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'].forEach(evt => {
+        window.addEventListener(evt, resetTimer, { passive: true });
+      });
     })();
 
     function switchTab(tabId, el) {
@@ -124,11 +145,17 @@
 
     window.toggleTeacherMoreLauncher = function(show) {
       const modal = document.getElementById('teacherMoreLauncherModal');
+      const wrapper = document.getElementById('teacher-menu-hero-wrapper');
       if (!modal) return;
+      let shouldOpen;
       if (show === undefined) {
-        modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+        shouldOpen = modal.style.display !== 'flex';
       } else {
-        modal.style.display = show ? 'flex' : 'none';
+        shouldOpen = Boolean(show);
+      }
+      modal.style.display = shouldOpen ? 'flex' : 'none';
+      if (wrapper) {
+        wrapper.classList.toggle('is-open', shouldOpen);
       }
     };
 
@@ -174,46 +201,14 @@
     </svg>
   </div>
 
-  <!-- Mobile Drawer Overlay -->
-  <div class="sidebar-overlay" onclick="window.toggleTeacherSidebar()"></div>
-
-  <!-- Unified Waves Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <div class="sidebar-brand-icon"><i class="fas fa-chalkboard-teacher"></i></div>
-      <span>FUSION TEACHER</span>
-    </div>
-    <ul class="nav-list">
-      <li class="nav-item active" data-tab="overview" onclick="switchTab('overview', this)"><i class="fas fa-home"></i> <span>Home Overview</span></li>
-      <li class="nav-item" data-tab="my-subjects" onclick="switchTab('my-subjects', this)"><i class="fas fa-book-open"></i> <span>My Subjects</span></li>
-      <li class="nav-item" data-tab="performance" onclick="switchTab('performance', this)"><i class="fas fa-chart-line"></i> <span>Performance</span></li>
-      <li class="nav-item" data-tab="my-learners" onclick="switchTab('my-learners', this)"><i class="fas fa-user-graduate"></i> <span>My Learners</span></li>
-      <li class="nav-item" data-tab="attendance" onclick="switchTab('attendance', this)"><i class="fas fa-calendar-check"></i> <span>Attendance</span></li>
-      <li class="nav-item" data-tab="calendar" onclick="switchTab('calendar', this)"><i class="fas fa-calendar-alt"></i> <span>Calendar &amp; Timetable</span></li>
-      <li class="nav-item" data-tab="announcements" onclick="switchTab('announcements', this)"><i class="fas fa-bullhorn"></i> <span>Announcements</span></li>
-      <li class="nav-item" data-tab="messages" onclick="switchTab('messages', this)"><i class="fas fa-envelope"></i> <span>Message Center</span> <span id="unread-messages-badge" class="badge" style="display:none; background:#ef4444; color:#fff; margin-left:auto;">0</span></li>
-      <li class="nav-item" data-tab="profile" onclick="switchTab('profile', this)"><i class="fas fa-user-circle"></i> <span>My Profile</span></li>
-      <li class="nav-item" data-tab="settings" onclick="switchTab('settings', this)"><i class="fas fa-cog"></i> <span>Settings</span></li>
-      <li class="nav-item logout-item" onclick="logout()"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></li>
-    </ul>
-    <div class="sidebar-wave-brandmark">
-      <span class="slogan-script-text">Learn &bull; Grow &bull; Achieve</span>
-    </div>
-  </aside>
-
   <main class="main-content main-content-flex">
     <nav class="top-nav">
       <div class="top-nav-left">
-        <button type="button" class="header-hamburger-btn" onclick="window.toggleTeacherSidebar()" title="Toggle Sidebar">
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-        <div class="school-brand-header">
-          <img src="/assets/schools/fusion-high.svg" alt="Fusion High Crest" class="school-crest-img">
+        <div class="school-brand-header" onclick="switchTab('overview', null)" style="cursor:pointer;" title="Return to Home Dashboard">
+          <img src="/assets/schools/geleza-sa.svg" onerror="this.src='/assets/geleza-logo.png'" alt="Geleza SA Logo" class="school-crest-img">
           <div class="school-brand-text">
-            <span class="school-brand-name">FUSION HIGH SCHOOL</span>
-            <span class="school-brand-motto">Educate, Inspire, Empower</span>
+            <span class="school-brand-name">GELEZA SA</span>
+            <span class="school-brand-motto">Geleza Smart, The Future Is Thine</span>
           </div>
         </div>
       </div>
@@ -230,20 +225,51 @@
           <span class="notification-badge" id="top-notif-badge" style="display:none;">0</span>
         </button>
 
-        <!-- Teacher Profile Chip -->
-        <div class="learner-profile-chip" onclick="switchTab('profile', null)" title="View Profile">
-          <div class="learner-avatar-round" id="top-nav-avatar-circle" style="background: linear-gradient(135deg, #059669, #0284c7);">T</div>
-          <div class="learner-meta-text">
-            <span class="learner-meta-name" id="top-teacher-name">Educator</span>
-            <span class="learner-meta-grade">Teacher Portal</span>
+        <!-- Teacher Profile Dropdown -->
+        <div class="profile-dropdown-wrapper" id="teacher-profile-wrapper">
+          <div class="learner-profile-chip" onclick="window.toggleDashboardProfileDropdown(event)" title="Account Menu">
+            <div class="learner-avatar-round" id="top-nav-avatar-circle" style="background: linear-gradient(135deg, #059669, #0284c7);">T</div>
+            <div class="learner-meta-text">
+              <span class="learner-meta-name" id="top-teacher-name">Educator</span>
+              <span class="learner-meta-grade">Teacher Portal</span>
+            </div>
+            <i class="fas fa-chevron-down learner-chip-chevron" id="top-profile-chevron"></i>
           </div>
-          <i class="fas fa-chevron-down learner-chip-chevron"></i>
-        </div>
 
-        <!-- Quick Logout -->
-        <button type="button" class="header-action-btn" title="Sign Out" onclick="logout()" style="color:var(--danger);">
-          <i class="fas fa-sign-out-alt"></i>
-        </button>
+          <div class="profile-dropdown-menu" id="dashboard-profile-menu">
+            <div class="profile-dropdown-header">
+              <div class="profile-dropdown-header-name" id="dropdown-teacher-name">Educator</div>
+              <div class="profile-dropdown-header-role">Teacher Portal</div>
+            </div>
+            <button type="button" class="profile-dropdown-item" onclick="switchTab('profile', null); window.closeDashboardProfileDropdown();">
+              <i class="fas fa-user-circle"></i>
+              <span>View Profile</span>
+            </button>
+
+            <!-- Only Dark Mode & Light Mode Theme Selector (No Navy) -->
+            <div class="profile-dropdown-theme-box">
+              <div class="profile-dropdown-theme-header">
+                <span class="profile-dropdown-theme-title">Theme Mode</span>
+                <span class="profile-dropdown-theme-current" id="dropdown-theme-badge">Dark</span>
+              </div>
+              <div class="profile-dropdown-theme-options">
+                <button type="button" class="profile-theme-btn" id="btn-theme-light" onclick="window.setThemeModeDirect('light')" title="Light Mode">
+                  <i class="fas fa-sun text-warning"></i>
+                  <span>Light</span>
+                </button>
+                <button type="button" class="profile-theme-btn" id="btn-theme-dark" onclick="window.setThemeModeDirect('dark')" title="Dark Mode">
+                  <i class="fas fa-moon text-info"></i>
+                  <span>Dark</span>
+                </button>
+              </div>
+            </div>
+
+            <button type="button" class="profile-dropdown-item logout" onclick="window.closeDashboardProfileDropdown(); logout();">
+              <i class="fas fa-sign-out-alt"></i>
+              <span>Logout</span>
+            </button>
+          </div>
+        </div>
       </div>
     </nav>
 
@@ -938,35 +964,31 @@
       </div>
 
       <footer class="dashboard-footer" style="margin-top: 2rem; text-align: center; color: var(--wave-text-muted); font-size: 0.8rem; padding-bottom: 2rem;">
-        &copy; 2026 FUSION HIGH SCHOOL. All rights reserved. | Educator Teaching Portal
+        &copy; 2026 GELEZA SA. All rights reserved. | Educator Teaching Portal
       </footer>
     </div>
 
-    <!-- Bottom Navigation Dock (Strict 5 Tabs: Home, Calendar, More (+), Messages, Profile) -->
-    <nav class="bottom-nav-dock" id="teacher-bottom-nav">
-      <a href="javascript:void(0)" class="bottom-nav-item active" data-tab="overview" onclick="switchTab('overview', null)">
-        <i class="fas fa-home"></i>
-        <span>Home</span>
-      </a>
-      <a href="javascript:void(0)" class="bottom-nav-item" data-tab="calendar" onclick="switchTab('calendar', null)">
-        <i class="fas fa-calendar-alt"></i>
-        <span>Calendar</span>
-      </a>
-      <a href="javascript:void(0)" class="bottom-nav-item bottom-nav-more-btn" onclick="window.toggleTeacherMoreLauncher(true)" title="All Modules">
-        <div class="bottom-nav-plus-circle">
-          <i class="fas fa-plus"></i>
+    <!-- Floating Circular Menu Navigation Dock -->
+    <nav class="fusion-nav-dock" id="teacher-bottom-nav">
+      <div class="fusion-menu-hero-wrapper" id="teacher-menu-hero-wrapper">
+        <div class="fusion-menu-petals">
+          <div class="petal" style="--rot: 0deg;"></div>
+          <div class="petal" style="--rot: 45deg;"></div>
+          <div class="petal" style="--rot: 90deg;"></div>
+          <div class="petal" style="--rot: 135deg;"></div>
+          <div class="petal" style="--rot: 180deg;"></div>
+          <div class="petal" style="--rot: 225deg;"></div>
+          <div class="petal" style="--rot: 270deg;"></div>
+          <div class="petal" style="--rot: 315deg;"></div>
         </div>
-        <span>More</span>
-      </a>
-      <a href="javascript:void(0)" class="bottom-nav-item" data-tab="messages" onclick="switchTab('messages', null)">
-        <i class="fas fa-envelope"></i>
-        <span>Messages</span>
-        <span class="bottom-nav-badge" id="teacher-bottom-unread-badge" style="display:none;"></span>
-      </a>
-      <a href="javascript:void(0)" class="bottom-nav-item" data-tab="profile" onclick="switchTab('profile', null)">
-        <i class="fas fa-user-circle"></i>
-        <span>Profile</span>
-      </a>
+        <div class="fusion-menu-pedestal-bloom"></div>
+        <button type="button" class="fusion-menu-hero-btn" onclick="window.toggleTeacherMoreLauncher()" title="Navigation Menu">
+          <div class="fusion-menu-hero-inner">
+            <span class="menu-label-closed">Menu</span>
+            <span class="menu-label-open">Tap to<br>close</span>
+          </div>
+        </button>
+      </div>
     </nav>
   </main>
 
@@ -982,47 +1004,69 @@
       </div>
       <div class="wave-launcher-grid">
         <div class="wave-launcher-tile" onclick="switchTab('my-subjects', null); window.toggleTeacherMoreLauncher(false);">
-          <div class="wave-launcher-tile-icon" style="background:rgba(14, 165, 233, 0.15); color:#0ea5e9;">
+          <div class="wave-launcher-tile-icon">
             <i class="fas fa-book-open"></i>
           </div>
           <span class="wave-launcher-tile-name">My Subjects</span>
           <span class="wave-launcher-tile-sub">CAPS Curriculum</span>
         </div>
         <div class="wave-launcher-tile" onclick="switchTab('my-learners', null); window.toggleTeacherMoreLauncher(false);">
-          <div class="wave-launcher-tile-icon" style="background:rgba(59, 130, 246, 0.15); color:#3b82f6;">
+          <div class="wave-launcher-tile-icon">
             <i class="fas fa-user-graduate"></i>
           </div>
           <span class="wave-launcher-tile-name">My Learners</span>
           <span class="wave-launcher-tile-sub">Class Rosters</span>
         </div>
         <div class="wave-launcher-tile" onclick="switchTab('performance', null); window.toggleTeacherMoreLauncher(false);">
-          <div class="wave-launcher-tile-icon" style="background:rgba(16, 185, 129, 0.15); color:#10b981;">
+          <div class="wave-launcher-tile-icon">
             <i class="fas fa-chart-line"></i>
           </div>
           <span class="wave-launcher-tile-name">Performance</span>
           <span class="wave-launcher-tile-sub">Marks &amp; Analysis</span>
         </div>
         <div class="wave-launcher-tile" onclick="switchTab('attendance', null); window.toggleTeacherMoreLauncher(false);">
-          <div class="wave-launcher-tile-icon" style="background:rgba(245, 158, 11, 0.15); color:#f59e0b;">
+          <div class="wave-launcher-tile-icon">
             <i class="fas fa-calendar-check"></i>
           </div>
           <span class="wave-launcher-tile-name">Attendance</span>
           <span class="wave-launcher-tile-sub">Mark Registers</span>
         </div>
+        <div class="wave-launcher-tile" onclick="switchTab('calendar', null); window.toggleTeacherMoreLauncher(false);">
+          <div class="wave-launcher-tile-icon">
+            <i class="fas fa-calendar-alt"></i>
+          </div>
+          <span class="wave-launcher-tile-name">Calendar</span>
+          <span class="wave-launcher-tile-sub">Timetable &amp; Events</span>
+        </div>
+        <div class="wave-launcher-tile" onclick="switchTab('messages', null); window.toggleTeacherMoreLauncher(false);">
+          <div class="wave-launcher-tile-icon">
+            <i class="fas fa-envelope"></i>
+          </div>
+          <span class="wave-launcher-tile-name">Messages</span>
+          <span class="wave-launcher-tile-sub">Message Center</span>
+        </div>
         <div class="wave-launcher-tile" onclick="switchTab('announcements', null); window.toggleTeacherMoreLauncher(false);">
-          <div class="wave-launcher-tile-icon" style="background:rgba(239, 68, 68, 0.15); color:#ef4444;">
+          <div class="wave-launcher-tile-icon">
             <i class="fas fa-bullhorn"></i>
           </div>
           <span class="wave-launcher-tile-name">Announcements</span>
           <span class="wave-launcher-tile-sub">Notices &amp; Alerts</span>
         </div>
         <div class="wave-launcher-tile" onclick="switchTab('settings', null); window.toggleTeacherMoreLauncher(false);">
-          <div class="wave-launcher-tile-icon" style="background:rgba(100, 116, 139, 0.15); color:#94a3b8;">
+          <div class="wave-launcher-tile-icon">
             <i class="fas fa-cog"></i>
           </div>
           <span class="wave-launcher-tile-name">Settings</span>
           <span class="wave-launcher-tile-sub">Preferences</span>
         </div>
+      </div>
+
+      <!-- Centered Tap To Close Button -->
+      <div class="wave-launcher-footer-center">
+        <button type="button" class="wave-launcher-tap-close-btn" onclick="window.toggleTeacherMoreLauncher(false)">
+          <i class="fas fa-times-circle"></i>
+          <span>Tap To Close</span>
+        </button>
       </div>
     </div>
   </div>
@@ -1251,17 +1295,26 @@
 
   <script>
     window.initThemeSystem = function() {
-      const savedTheme = localStorage.getItem('teacher_theme_mode') || 'dark';
-      document.documentElement.setAttribute('data-theme', savedTheme);
-      updateThemeToggleIcon(savedTheme);
+      const savedTheme = localStorage.getItem('teacher_theme_mode') || localStorage.getItem('app_theme') || 'dark';
+      const cleanTheme = savedTheme === 'light' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', cleanTheme);
+      updateThemeToggleIcon(cleanTheme);
+      updateProfileThemeButtons(cleanTheme);
     };
 
     window.toggleThemeMode = function() {
       const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
       const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', newTheme);
-      localStorage.setItem('teacher_theme_mode', newTheme);
-      updateThemeToggleIcon(newTheme);
+      window.setThemeModeDirect(newTheme);
+    };
+
+    window.setThemeModeDirect = function(theme) {
+      const cleanTheme = theme === 'light' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', cleanTheme);
+      localStorage.setItem('teacher_theme_mode', cleanTheme);
+      localStorage.setItem('app_theme', cleanTheme);
+      updateThemeToggleIcon(cleanTheme);
+      updateProfileThemeButtons(cleanTheme);
     };
 
     function updateThemeToggleIcon(theme) {
@@ -1271,6 +1324,51 @@
         btn.title = theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
       }
     }
+
+    function updateProfileThemeButtons(theme) {
+      const lightBtn = document.getElementById('btn-theme-light');
+      const darkBtn = document.getElementById('btn-theme-dark');
+      const badge = document.getElementById('dropdown-theme-badge');
+      if (lightBtn) lightBtn.classList.toggle('active', theme === 'light');
+      if (darkBtn) darkBtn.classList.toggle('active', theme === 'dark');
+      if (badge) badge.textContent = theme === 'light' ? 'Light' : 'Dark';
+    }
+
+    window.toggleDashboardProfileDropdown = function(e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById('dashboard-profile-menu');
+      const chevron = document.getElementById('top-profile-chevron');
+      if (!menu) return;
+      const isOpen = menu.classList.contains('active');
+      if (isOpen) {
+        menu.classList.remove('active');
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+      } else {
+        menu.classList.add('active');
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+      }
+    };
+
+    window.closeDashboardProfileDropdown = function() {
+      const menu = document.getElementById('dashboard-profile-menu');
+      const chevron = document.getElementById('top-profile-chevron');
+      if (menu) menu.classList.remove('active');
+      if (chevron) chevron.style.transform = 'rotate(0deg)';
+    };
+
+    document.addEventListener('click', (e) => {
+      const wrapper = document.getElementById('teacher-profile-wrapper');
+      if (wrapper && !wrapper.contains(e.target)) {
+        window.closeDashboardProfileDropdown();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        window.closeDashboardProfileDropdown();
+        if (window.toggleTeacherMoreLauncher) window.toggleTeacherMoreLauncher(false);
+      }
+    });
 
     window.addEventListener('load', () => {
       if (window.initThemeSystem) window.initThemeSystem();

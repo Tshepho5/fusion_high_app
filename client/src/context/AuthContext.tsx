@@ -68,6 +68,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [token]);
 
+  // Inactivity Auto-Logout Timer: 1 minute and 30 seconds (90,000 ms) of inactivity
+  useEffect(() => {
+    if (!token) return;
+
+    const INACTIVITY_TIMEOUT_MS = 90 * 1000; // 1 minute 30 seconds
+    let timeoutId: any;
+
+    const handleInactivityLogout = () => {
+      try {
+        sessionStorage.setItem('logout_reason', 'inactivity');
+      } catch (_) {}
+      logout();
+    };
+
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(handleInactivityLogout, INACTIVITY_TIMEOUT_MS);
+    };
+
+    // Initialize timer
+    resetTimer();
+
+    // Activity events to detect user interaction
+    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    activityEvents.forEach((event) => {
+      window.addEventListener(event, resetTimer, { passive: true });
+    });
+
+    return () => {
+      clearTimeout(timeoutId);
+      activityEvents.forEach((event) => {
+        window.removeEventListener(event, resetTimer);
+      });
+    };
+  }, [token]);
+
   const login = async (credentials: { email?: string; learnerNumber?: string; password: string }) => {
     setIsLoading(true);
     try {

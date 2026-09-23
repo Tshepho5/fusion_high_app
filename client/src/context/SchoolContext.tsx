@@ -34,23 +34,23 @@ export const DEFAULT_SCHOOLS: SchoolProfile[] = [
   // 1. Limpopo (Polokwane & Mankweng - Capricorn South District)
   {
     id: 1,
-    name: 'Fusion High School',
+    name: 'Geleza SA',
     slug: 'fusion-high',
-    domain: 'fusion-high.co.za',
+    domain: 'geleza-sa.co.za',
     emis_number: '911220001',
     circuit: 'Polokwane Central Circuit',
     district: 'Capricorn South',
     province: 'Limpopo',
     physical_address: 'Polokwane Central, Limpopo, 0700',
-    contact_email: 'admin@fusionhigh.co.za',
+    contact_email: 'admin@geleza-sa.co.za',
     contact_phone: '+27 15 291 0000',
     principal_name: 'Dr. T. Makola',
-    logo_url: '/assets/schools/fusion-high.svg',
-    badge_url: '/assets/schools/fusion-high.svg',
-    primary_color: '#4f46e5',
+    logo_url: '/assets/schools/geleza-sa.svg',
+    badge_url: '/assets/schools/geleza-sa.svg',
+    primary_color: '#0284c7',
     secondary_color: '#06b6d4',
     accent_color: '#f59e0b',
-    motto: 'Innovate, Lead, Transform',
+    motto: 'Geleza Smart, The Future Is Thine',
     curriculum_type: 'CAPS (DBE Limpopo)',
     grade_range: '8-12',
     is_active: true
@@ -330,7 +330,19 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const saved = localStorage.getItem('active_school_profile');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed.id === 1 || parsed.slug === 'fusion-high' || parsed.slug === 'geleza-sa') {
+          return {
+            ...parsed,
+            name: 'Geleza SA',
+            motto: 'Geleza Smart, The Future Is Thine',
+            domain: 'geleza-sa.co.za',
+            contact_email: 'admin@geleza-sa.co.za',
+            logo_url: '/assets/schools/geleza-sa.svg',
+            badge_url: '/assets/schools/geleza-sa.svg'
+          };
+        }
+        return parsed;
       } catch (_) {}
     }
     return DEFAULT_SCHOOL;
@@ -342,11 +354,25 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setLoading(true);
       const res = await axios.get('/api/schools');
       if (Array.isArray(res.data) && res.data.length > 0) {
-        setSchoolsList(res.data);
+        const sanitized = res.data.map(s => {
+          if (s.id === 1 || s.slug === 'fusion-high' || s.name === 'Fusion High School') {
+            return {
+              ...s,
+              name: 'Geleza SA',
+              motto: 'Geleza Smart, The Future Is Thine',
+              domain: 'geleza-sa.co.za',
+              contact_email: 'admin@geleza-sa.co.za',
+              logo_url: '/assets/schools/geleza-sa.svg',
+              badge_url: '/assets/schools/geleza-sa.svg'
+            };
+          }
+          return s;
+        });
+        setSchoolsList(sanitized);
         
         // Match active school in list or update it
         const savedId = localStorage.getItem('active_school_id');
-        const matched = res.data.find(s => String(s.id) === savedId || s.slug === savedId) || res.data[0];
+        const matched = sanitized.find(s => String(s.id) === savedId || s.slug === savedId) || sanitized[0];
         if (matched) {
           setCurrentSchoolState(matched);
           localStorage.setItem('active_school_profile', JSON.stringify(matched));

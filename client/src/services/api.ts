@@ -18,6 +18,7 @@ const API_URL = getApiBaseUrl();
 
 const api = axios.create({
   baseURL: API_URL, // Handled by dynamic base URL, Vite proxy in dev, or Express in production
+  timeout: 15000, // 15-second timeout to prevent indefinite hangs
   headers: {
     'Content-Type': 'application/json',
   },

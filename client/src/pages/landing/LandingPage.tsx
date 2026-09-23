@@ -148,7 +148,7 @@ export const LandingPage: React.FC = () => {
             </div>
             <div>
               <span className="font-display text-base md:text-lg font-black tracking-tight text-white block leading-tight uppercase group-hover:text-blue-300 transition-colors drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">
-                FUSION HIGH SCHOOLS
+                GELEZA SA
               </span>
             </div>
           </Link>
@@ -248,7 +248,7 @@ export const LandingPage: React.FC = () => {
           >
             <div className="inline-block px-4 py-1.5 rounded-full bg-slate-950/65 border border-white/10 backdrop-blur-md shadow-md">
               <p className="text-xs sm:text-sm text-slate-200 font-mono tracking-wide drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
-                Connecting Today, Empowering Tomorrow.
+                Geleza Smart, The Future Is Thine
               </p>
             </div>
           </div>
@@ -283,7 +283,7 @@ export const LandingPage: React.FC = () => {
       <footer className="py-4 px-4 border-t border-white/10 bg-[#060912] text-xs text-slate-400 w-full relative z-20">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-center sm:text-left text-slate-400">
-            &copy; {new Date().getFullYear()} Fusion High Schools Academic Network.
+            &copy; {new Date().getFullYear()} Geleza SA Academic Network.
           </div>
           <div className="flex items-center gap-4 text-xs font-semibold">
             <button onClick={() => setIsAboutOpen(true)} className="hover:text-blue-300 transition-colors text-slate-400">

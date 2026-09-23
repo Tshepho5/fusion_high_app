@@ -117,10 +117,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       isLight ? 'text-slate-900' : 'text-white'
                     }`}
                   >
-                    {currentSchool?.name || 'FUSION HIGH SCHOOL'}
+                    {currentSchool?.name || 'GELEZA SA'}
                   </span>
                   <span className="text-[8.5px] font-mono uppercase tracking-wider text-cyan-400 font-bold block truncate">
-                    {currentSchool?.motto || 'INNOVATE, LEAD, TRANSFORM'}
+                    {currentSchool?.motto || 'GELEZA SMART, THE FUTURE IS THINE'}
                   </span>
                 </div>
               </div>

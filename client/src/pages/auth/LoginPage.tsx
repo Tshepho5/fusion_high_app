@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useSchool } from '../../context/SchoolContext';
 import { FusionAppIcon } from '../../components/common/FusionAppIcon';
 import {
   Lock,
@@ -20,6 +21,7 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { currentSchool } = useSchool();
 
   const isLight = theme === 'light';
 
@@ -29,6 +31,17 @@ export const LoginPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [inactivityNotice, setInactivityNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const reason = sessionStorage.getItem('logout_reason');
+      if (reason === 'inactivity') {
+        sessionStorage.removeItem('logout_reason');
+        setInactivityNotice('You were automatically logged out due to 1 minute and 30 seconds of inactivity. Please sign in to resume your session.');
+      }
+    } catch (_) {}
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,7 +125,7 @@ export const LoginPage: React.FC = () => {
             <FusionAppIcon className="w-5 h-5" />
           </div>
           <span className="text-xs font-extrabold tracking-wider uppercase">
-            FUSION HIGH SCHOOL
+            GELEZA SA
           </span>
         </div>
 
@@ -179,22 +192,32 @@ export const LoginPage: React.FC = () => {
                   isLight ? 'text-slate-900' : 'text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)]'
                 }`}
               >
-                Fusion High School
+                {currentSchool?.name || 'Geleza SA'}
               </h1>
 
               {/* Subtitle with Flanking Lines */}
-              <div className="flex items-center justify-center gap-3 w-full pt-0.5">
-                <div className={`h-[1.5px] w-12 ${isLight ? 'bg-sky-500/60' : 'bg-cyan-400/60'}`} />
+              <div className="flex items-center justify-center gap-2 w-full pt-0.5">
+                <div className={`h-[1.5px] w-8 ${isLight ? 'bg-sky-500/60' : 'bg-cyan-400/60'}`} />
                 <span
-                  className={`text-xs font-black uppercase tracking-widest ${
+                  className={`text-[10px] sm:text-xs font-bold tracking-normal italic ${
                     isLight ? 'text-sky-700' : 'text-cyan-300 drop-shadow-md'
                   }`}
                 >
-                  Learner Portal
+                  "{currentSchool?.motto || 'Geleza Smart, The Future Is Thine'}"
                 </span>
-                <div className={`h-[1.5px] w-12 ${isLight ? 'bg-sky-500/60' : 'bg-cyan-400/60'}`} />
+                <div className={`h-[1.5px] w-8 ${isLight ? 'bg-sky-500/60' : 'bg-cyan-400/60'}`} />
               </div>
             </div>
+
+            {/* Inactivity Notice Banner */}
+            {inactivityNotice && (
+              <div className="mt-4 p-3 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-700 dark:text-amber-200 text-xs flex items-center gap-2.5 backdrop-blur-md shadow-sm animate-fade-in">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                <span className="font-bold leading-snug">
+                  {inactivityNotice}
+                </span>
+              </div>
+            )}
 
             {/* Error Message */}
             {error && (
@@ -381,7 +404,7 @@ export const LoginPage: React.FC = () => {
 
       {/* ================= 4. SUBTLE FOOTER ================= */}
       <footer className="relative z-20 py-3.5 text-center text-[11px] font-bold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-        &copy; {new Date().getFullYear()} Fusion High School. All rights reserved.
+        &copy; {new Date().getFullYear()} Geleza SA. All rights reserved.
       </footer>
     </div>
   );

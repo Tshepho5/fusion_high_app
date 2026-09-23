@@ -23,6 +23,8 @@ import {
   Grid3X3,
   List,
   Compass,
+  MessageSquare,
+  Star,
 } from 'lucide-react';
 
 type MoreViewMode = 'grid' | 'compact' | 'list';
@@ -47,6 +49,27 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
   const [viewMode, setViewMode] = useState<MoreViewMode>(() => {
     return (localStorage.getItem('teacher_more_view_mode') as MoreViewMode) || 'grid';
   });
+
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('geleza_favorites_teacher');
+      return saved ? JSON.parse(saved) : ['messages', 'attendance', 'assessments', 'ai-tools'];
+    } catch (_) {
+      return ['messages', 'attendance', 'assessments', 'ai-tools'];
+    }
+  });
+
+  const toggleFavorite = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const updated = favoriteIds.includes(id)
+      ? favoriteIds.filter(f => f !== id)
+      : [...favoriteIds, id];
+    setFavoriteIds(updated);
+    try {
+      localStorage.setItem('geleza_favorites_teacher', JSON.stringify(updated));
+      window.dispatchEvent(new Event('geleza_favorites_updated'));
+    } catch (_) {}
+  };
 
   const handleSetViewMode = (mode: MoreViewMode) => {
     setViewMode(mode);
@@ -94,6 +117,15 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     },
 
     // 2. Classroom & Learner Management
+    {
+      id: 'messages',
+      title: 'Message Hub',
+      category: 'classroom',
+      icon: MessageSquare,
+      badge: 'Message Hub',
+      color: 'text-sky-400',
+      iconBg: 'bg-sky-500/15 border-sky-500/30',
+    },
     {
       id: 'attendance',
       title: 'Class Attendance Register',
@@ -243,14 +275,22 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
   return (
     <div className="space-y-6 animate-fade-in text-slate-800 dark:text-slate-100 pb-20">
       {/* Header Banner with View Mode Switcher & Search */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] shadow-sm relative overflow-hidden">
+      <div className="p-5 sm:p-6 rounded-3xl bg-white/80 dark:bg-[#0F1A24]/90 backdrop-blur-xl border border-slate-200/90 dark:border-[#1B2E3D] shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-xl sm:text-2xl font-black font-display text-[#1C252C] dark:text-white tracking-tight">
-              More Modules
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-black font-display text-slate-900 dark:text-white tracking-tight">
+                Main Navigation Menu
+              </h1>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-600 dark:text-[#18E2EC] border border-cyan-500/20 uppercase tracking-wider">
+                Educator Portal
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400">
+              Quick access to curriculum plans, classroom registers, SBA assessments and teacher tools
+            </p>
           </div>
 
           {/* Search Input & Grid View Switcher */}
@@ -262,40 +302,43 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search modules..."
-                className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#EDF4F7] dark:bg-[#0A121A] border border-slate-200/80 dark:border-[#1B2E3D] text-xs text-[#1C252C] dark:text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
+                className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-100 dark:bg-[#0A121A] border border-slate-200/90 dark:border-[#1B2E3D] text-xs text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/60 transition-all"
               />
             </div>
 
             {/* View Mode Switcher Buttons */}
-            <div className="flex items-center gap-1 p-1 bg-[#EDF4F7] dark:bg-[#0A121A] rounded-xl border border-slate-200/80 dark:border-[#1B2E3D] shrink-0">
+            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-[#0A121A] rounded-xl border border-slate-200/90 dark:border-[#1B2E3D] shrink-0">
               <button
+                type="button"
                 onClick={() => handleSetViewMode('grid')}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   viewMode === 'grid'
-                    ? 'bg-[#13C8D9] text-white shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    ? 'bg-cyan-500 text-slate-950 font-bold shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
-                title="Standard Grid"
+                title="Detailed Cards"
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
               <button
+                type="button"
                 onClick={() => handleSetViewMode('compact')}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   viewMode === 'compact'
-                    ? 'bg-[#13C8D9] text-white shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    ? 'bg-cyan-500 text-slate-950 font-bold shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
                 title="Compact App Tiles"
               >
                 <Grid3X3 className="w-4 h-4" />
               </button>
               <button
+                type="button"
                 onClick={() => handleSetViewMode('list')}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   viewMode === 'list'
-                    ? 'bg-[#13C8D9] text-white shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    ? 'bg-cyan-500 text-slate-950 font-bold shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
                 title="List View"
               >
@@ -309,12 +352,13 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
         <div className="flex items-center gap-1.5 pt-4 overflow-x-auto custom-scrollbar">
           {categories.map((cat) => (
             <button
+              type="button"
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 selectedCategory === cat.id
-                  ? 'bg-[#13C8D9] text-[#071018] border border-[#13C8D9] shadow-xs'
-                  : 'bg-[#EDF4F7] dark:bg-[#121F2C] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5 border border-slate-200/60 dark:border-[#1A2C3D]'
+                  ? 'bg-cyan-500 text-slate-950 shadow-xs'
+                  : 'bg-slate-100 dark:bg-[#121F2C] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5 border border-slate-200/80 dark:border-[#1A2C3D]'
               }`}
             >
               {cat.label}
@@ -335,25 +379,38 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {filteredModules.map((item) => {
             const IconComp = item.icon;
+            const isFav = favoriteIds.includes(item.id);
             return (
               <div
                 key={item.id}
                 onClick={() => onNavigateTab(item.id)}
-                className="card-interactive p-4 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-cyan-500/50 dark:hover:border-cyan-400/50 hover:bg-slate-50/50 dark:hover:bg-[#132230] transition-all duration-300 cursor-pointer flex items-center gap-3.5 shadow-sm group hover:-translate-y-0.5"
+                className="card-interactive relative p-4 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-cyan-500/50 dark:hover:border-cyan-400/50 hover:bg-slate-50/50 dark:hover:bg-[#132230] transition-all duration-300 cursor-pointer flex items-center gap-3.5 shadow-sm group hover:-translate-y-0.5"
               >
-                <div className="w-12 h-12 rounded-2xl bg-[#E1ECF0] dark:bg-[#152535] border border-slate-200/60 dark:border-[#1B2E3D] flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs shrink-0">
-                  <IconComp className="w-6 h-6 text-[#232B32] dark:text-[#18E2EC]" />
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-[#152535] border border-slate-200/70 dark:border-[#1B2E3D] flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs shrink-0">
+                  <IconComp className="w-6 h-6 text-slate-800 dark:text-[#18E2EC]" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-xs sm:text-sm font-bold text-[#1C252C] dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors leading-snug">
+                <div className="flex-1 min-w-0 pr-6">
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors leading-snug">
                     {item.title}
                   </h3>
                   {item.badge && (
-                    <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-[#EDF4F7] dark:bg-[#142230] border border-slate-200/60 dark:border-[#1B2E3D] text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                    <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-[#142230] border border-slate-200/80 dark:border-[#1B2E3D] text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">
                       {item.badge}
                     </span>
                   )}
                 </div>
+                <button
+                  type="button"
+                  onClick={(e) => toggleFavorite(e, item.id)}
+                  title={isFav ? 'Remove from Home Favorites' : 'Add to Home Favorites'}
+                  className={`absolute top-2.5 right-2.5 p-1 rounded-lg transition-colors cursor-pointer ${
+                    isFav
+                      ? 'text-amber-400 hover:text-amber-500'
+                      : 'text-slate-300 dark:text-slate-600 hover:text-amber-400 dark:hover:text-amber-400'
+                  }`}
+                >
+                  <Star className={`w-3.5 h-3.5 ${isFav ? 'fill-amber-400' : ''}`} />
+                </button>
               </div>
             );
           })}
@@ -364,23 +421,33 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
       {/* VIEW MODE 2: Compact App Tiles (Icon + Title Centered, Launchpad Style)   */}
       {/* ========================================================================= */}
       {viewMode === 'compact' && (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
           {filteredModules.map((item) => {
             const IconComp = item.icon;
+            const isFav = favoriteIds.includes(item.id);
             return (
               <div
                 key={item.id}
                 onClick={() => onNavigateTab(item.id)}
-                className="card-interactive p-3.5 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-cyan-500/50 dark:hover:border-cyan-400/50 hover:bg-slate-50/50 dark:hover:bg-[#132230] transition-all duration-300 cursor-pointer flex flex-col items-center justify-center text-center gap-2.5 shadow-sm group hover:-translate-y-1 relative"
+                className="card-interactive p-3.5 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-cyan-500/50 dark:hover:border-cyan-400/50 hover:bg-slate-50/50 dark:hover:bg-[#132230] transition-all duration-300 cursor-pointer flex flex-col items-center justify-center text-center gap-2 group shadow-sm hover:-translate-y-1 relative"
                 title={item.title}
               >
-                <div className="w-12 h-12 rounded-2xl bg-[#E1ECF0] dark:bg-[#152535] border border-slate-200/60 dark:border-[#1B2E3D] flex items-center justify-center group-hover:scale-115 transition-transform shadow-xs">
-                  <IconComp className="w-6 h-6 text-[#232B32] dark:text-[#18E2EC]" />
+                <button
+                  type="button"
+                  onClick={(e) => toggleFavorite(e, item.id)}
+                  title={isFav ? 'Remove from Home Favorites' : 'Add to Home Favorites'}
+                  className={`absolute top-1.5 right-1.5 p-1 rounded-lg transition-colors cursor-pointer ${
+                    isFav ? 'text-amber-400' : 'text-slate-300 dark:text-slate-600 hover:text-amber-400'
+                  }`}
+                >
+                  <Star className={`w-3 h-3 ${isFav ? 'fill-amber-400' : ''}`} />
+                </button>
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-[#152535] border border-slate-200/70 dark:border-[#1B2E3D] flex items-center justify-center group-hover:scale-115 transition-transform shadow-xs">
+                  <IconComp className="w-6 h-6 text-slate-800 dark:text-[#18E2EC]" />
                 </div>
-                <span className="text-[11px] font-bold text-[#1C252C] dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors line-clamp-2 leading-tight">
+                <span className="text-[11px] font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2 leading-tight">
                   {item.title}
                 </span>
-                <ChevronRight className="w-3 h-3 text-slate-400 dark:text-slate-500 absolute right-1.5 top-1/2 -translate-y-1/2 hidden dark:block pointer-events-none opacity-60 group-hover:opacity-100 group-hover:text-cyan-400" />
               </div>
             );
           })}
@@ -394,21 +461,41 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {filteredModules.map((item) => {
             const IconComp = item.icon;
+            const isFav = favoriteIds.includes(item.id);
             return (
               <div
                 key={item.id}
                 onClick={() => onNavigateTab(item.id)}
-                className="card-interactive p-3 px-4 rounded-xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-cyan-500/50 dark:hover:border-cyan-400/50 hover:bg-slate-50/50 dark:hover:bg-[#132230] transition-all duration-300 cursor-pointer flex items-center justify-between shadow-sm group hover:-translate-y-0.5"
+                className="card-interactive p-3 px-4 rounded-xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-cyan-500/50 dark:hover:border-cyan-400/50 hover:bg-slate-50/50 dark:hover:bg-[#132230] transition-all cursor-pointer flex items-center justify-between shadow-xs group"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#E1ECF0] dark:bg-[#152535] border border-slate-200/60 dark:border-[#1B2E3D] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <IconComp className="w-5 h-5 text-[#232B32] dark:text-[#18E2EC]" />
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-[#152535] border border-slate-200/60 dark:border-[#1B2E3D] flex items-center justify-center shrink-0 shadow-xs">
+                    <IconComp className="w-4.5 h-4.5 text-slate-800 dark:text-[#18E2EC]" />
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-[#1C252C] dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
-                    {item.title}
-                  </span>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors truncate block">
+                      {item.title}
+                    </span>
+                    {item.badge && (
+                      <span className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500 block">
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <ArrowRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => toggleFavorite(e, item.id)}
+                    title={isFav ? 'Remove from Home Favorites' : 'Add to Home Favorites'}
+                    className={`p-1 rounded-lg transition-colors cursor-pointer ${
+                      isFav ? 'text-amber-400' : 'text-slate-300 dark:text-slate-600 hover:text-amber-400'
+                    }`}
+                  >
+                    <Star className={`w-3.5 h-3.5 ${isFav ? 'fill-amber-400' : ''}`} />
+                  </button>
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] group-hover:translate-x-1 transition-all" />
+                </div>
               </div>
             );
           })}

@@ -4,6 +4,7 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { LearnerOverviewSkeleton } from '../../components/learner/LearnerOverviewSkeleton';
 import { FusionAIIcon } from '../../components/common/FusionAIIcon';
 import { FusionAppIcon } from '../../components/common/FusionAppIcon';
+import { FavoriteModulesSection } from '../../components/common/FavoriteModulesSection';
 import {
   GraduationCap,
   BookOpen,
@@ -732,30 +733,8 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
         </div>
       </div>
 
-      {/* 2. MORE MODULES QUICK LAUNCH BANNER */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-surface-dark via-surface-darker to-surface-dark border border-white/10 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shrink-0">
-            <LayoutGrid className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-white">
-              Looking for Marks, Report Cards, Bursaries, or Sports?
-            </h3>
-            <p className="text-xs text-slate-400">
-              All 18 student life and administrative modules have moved to the dedicated &ldquo;More&rdquo; hub.
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={() => onNavigateTab('more')}
-          className="px-4 py-2 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-[#0A121A] text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 shrink-0 cursor-pointer"
-        >
-          <span>Explore More Modules</span>
-          <ArrowRight className="w-4 h-4 text-[#0A121A]" />
-        </button>
-      </div>
+      {/* 2. FAVORITE MODULES SECTION */}
+      <FavoriteModulesSection role="learner" onNavigateTab={onNavigateTab} />
 
 
       {/* 3. TWO-COLUMN DASHBOARD GRID */}
