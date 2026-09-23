@@ -236,7 +236,7 @@ export const aiTutorService = {
 // Official Academic Report Card Service
 export const reportService = {
   getCapsReportCard: (params?: { child_id?: string | number; term?: string }) =>
-    api.get(`/api/reports/caps-report-card?child_id=${params?.child_id || ''}&term=${encodeURIComponent(params?.term || 'Term 3 2026')}`).then(res => res.data),
+    api.get(`/api/report-cards/view-card?childId=${params?.child_id || ''}&term=${encodeURIComponent(params?.term || 'Term 3 2026')}`).then(res => res.data),
 };
 
 // Teacher Workspace APIs (employees, classes, attendance, marks, ai lesson planner)
@@ -245,8 +245,8 @@ export const teacherService = {
   getWorkload: () => api.get('/api/teacher/workload').then(res => res.data),
   getMySubjectsOverview: () => api.get('/api/teacher/my-subjects-overview').then(res => res.data),
   getClassList: () => api.get('/api/teacher/classlist').then(res => res.data),
-  getClassRoster: (params?: { grade?: number; class?: string; subject?: string }) => 
-    api.get(`/api/teacher/class-roster?grade=${params?.grade || ''}&class=${params?.class || ''}&subject=${encodeURIComponent(params?.subject || '')}`).then(res => res.data),
+  getClassRoster: (params?: { grade?: number; class?: string; subject?: string; term?: string }) => 
+    api.get(`/api/teacher/class-roster?grade=${params?.grade || ''}&class=${params?.class || ''}&subject=${encodeURIComponent(params?.subject || '')}&term=${encodeURIComponent(params?.term || '')}`).then(res => res.data),
   getMyLearners: () => api.get('/api/teacher/my-learners').then(res => res.data),
   getAttendanceRoster: (params?: { grade?: number; class?: string; date?: string; subject?: string }) => 
     api.get(`/api/teacher/attendance-roster?grade=${params?.grade || ''}&class=${params?.class || ''}&date=${params?.date || ''}&subject=${params?.subject || ''}`).then(res => res.data),
@@ -329,6 +329,10 @@ export const adminService = {
     api.get('/api/admin/academics/subject-learners', { params }).then(res => res.data),
   getGradeTemplateMarks: (params: { grade: string | number; stream?: string; className?: string; term?: string; academicYear?: string | number }) => 
     api.get('/api/report-cards/grade-template', { params }).then(res => res.data),
+  getTeacherSubmissions: (params: { grade: string | number; className?: string; term?: string; stream?: string }) =>
+    api.get('/api/report-cards/teacher-submissions', { params }).then(res => res.data),
+  transferTeacherMarks: (payload: { grade: string | number; className?: string; stream?: string; term?: string; academicYear?: string | number }) =>
+    api.post('/api/report-cards/transfer-marks', payload).then(res => res.data),
   saveGradeTemplate: (payload: any) => 
     api.post('/api/report-cards/save-grade-template', payload).then(res => res.data),
   publishGradeReports: (payload: any) => 

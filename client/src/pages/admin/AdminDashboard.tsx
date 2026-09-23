@@ -136,7 +136,7 @@ export const AdminDashboard: React.FC = () => {
     if (activeTab === 'timetable') {
       return { target: 'calendar', label: 'Back to Calendar', parentLabel: 'Calendar', icon: Calendar };
     }
-    return { target: 'more', label: 'Back to More Modules', parentLabel: 'More Modules', icon: LayoutGrid };
+    return { target: 'more', label: 'Back to Menu', parentLabel: 'Menu', icon: LayoutGrid };
   };
 
   const backtrack = getBacktrackConfig();
@@ -146,15 +146,18 @@ export const AdminDashboard: React.FC = () => {
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
+      hideBottomDock={isSubModule}
       customBottomDock={
-        <div className="fixed bottom-3 inset-x-0 md:left-72 z-40 flex justify-center items-center pointer-events-none select-none animate-bounce-in px-2 sm:px-4">
-          <div className="pointer-events-auto">
-            <AdminNavigationBar
-              activeTab={activeTab}
-              onSelectTab={handleSelectTab}
-            />
+        !isSubModule ? (
+          <div className="fixed bottom-3 inset-x-0 md:left-72 z-40 flex justify-center items-center pointer-events-none select-none animate-bounce-in px-2 sm:px-4">
+            <div className="pointer-events-auto">
+              <AdminNavigationBar
+                activeTab={activeTab}
+                onSelectTab={handleSelectTab}
+              />
+            </div>
           </div>
-        </div>
+        ) : null
       }
     >
       {/* Universal Breadcrumb & Backtrack Bar for Sub-Modules */}

@@ -1020,12 +1020,12 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
           </div>
 
           {/* Optional Grid View Selectors */}
-          <div className="flex items-center gap-1 p-1 bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-white/10 shadow-sm">
+          <div className="flex items-center gap-1 p-1 bg-[#EDF4F7] dark:bg-[#0A121A] rounded-xl border border-slate-200/90 dark:border-[#1B2E3D] shadow-xs">
             <button
               onClick={() => handleSetModulesViewMode('grid')}
               className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                 modulesViewMode === 'grid'
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-[#13C8D9] text-[#0A121A] font-bold shadow-xs'
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
               }`}
               title="Standard Grid"
@@ -1036,7 +1036,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
               onClick={() => handleSetModulesViewMode('compact')}
               className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                 modulesViewMode === 'compact'
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-[#13C8D9] text-[#0A121A] font-bold shadow-xs'
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
               }`}
               title="Compact App Tiles"
@@ -1047,7 +1047,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
               onClick={() => handleSetModulesViewMode('list')}
               className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                 modulesViewMode === 'list'
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-[#13C8D9] text-[#0A121A] font-bold shadow-xs'
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
               }`}
               title="List View"
@@ -1066,12 +1066,12 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 <div
                   key={func.id}
                   onClick={() => onNavigateTab(func.id)}
-                  className="p-3.5 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-surface-darker transition-all cursor-pointer flex items-center gap-3 shadow-sm group animated-border-card"
+                  className="p-3.5 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#13C8D9]/50 hover:bg-slate-50 dark:hover:bg-[#132230] transition-all cursor-pointer flex items-center gap-3.5 shadow-sm group card-interactive"
                 >
-                  <div className={`w-10 h-10 rounded-xl ${func.color} border flex items-center justify-center group-hover:scale-105 transition-transform shrink-0`}>
-                    <IconComp className="w-5 h-5" />
+                  <div className="w-11 h-11 rounded-2xl bg-[#E1ECF0] dark:bg-[#152535] border border-slate-200/60 dark:border-[#1B2E3D] flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 shadow-xs">
+                    <IconComp className="w-5 h-5 text-[#232B32] dark:text-[#18E2EC]" />
                   </div>
-                  <span className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors leading-tight">
+                  <span className="text-xs font-bold text-[#1C252C] dark:text-white group-hover:text-[#13C8D9] dark:group-hover:text-[#18E2EC] transition-colors leading-tight truncate">
                     {func.label}
                   </span>
                 </div>
@@ -1089,12 +1089,12 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 <div
                   key={func.id}
                   onClick={() => onNavigateTab(func.id)}
-                  className="p-3 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-surface-darker transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-2 shadow-sm group animated-border-card"
+                  className="p-3 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#13C8D9]/50 hover:bg-slate-50 dark:hover:bg-[#132230] transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-2 shadow-sm group card-interactive"
                 >
-                  <div className={`w-11 h-11 rounded-2xl ${func.color} border flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                    <IconComp className="w-5 h-5" />
+                  <div className="w-11 h-11 rounded-2xl bg-[#E1ECF0] dark:bg-[#152535] border border-slate-200/60 dark:border-[#1B2E3D] flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
+                    <IconComp className="w-5 h-5 text-[#232B32] dark:text-[#18E2EC]" />
                   </div>
-                  <span className="text-[11px] font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors line-clamp-2 leading-tight">
+                  <span className="text-[11px] font-bold text-[#1C252C] dark:text-white group-hover:text-[#13C8D9] dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2 leading-tight">
                     {func.label}
                   </span>
                 </div>
@@ -1112,17 +1112,17 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 <div
                   key={func.id}
                   onClick={() => onNavigateTab(func.id)}
-                  className="p-3 px-4 rounded-xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-surface-darker transition-all cursor-pointer flex items-center justify-between shadow-sm group animated-border-card"
+                  className="p-3 px-4 rounded-xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#13C8D9]/50 hover:bg-slate-50 dark:hover:bg-[#132230] transition-all cursor-pointer flex items-center justify-between shadow-sm group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg ${func.color} border flex items-center justify-center shrink-0`}>
-                      <IconComp className="w-4 h-4" />
+                    <div className="w-9 h-9 rounded-xl bg-[#E1ECF0] dark:bg-[#152535] border border-slate-200/60 dark:border-[#1B2E3D] flex items-center justify-center shrink-0 shadow-xs">
+                      <IconComp className="w-4 h-4 text-[#232B32] dark:text-[#18E2EC]" />
                     </div>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
+                    <span className="text-xs font-bold text-[#1C252C] dark:text-white group-hover:text-[#13C8D9] dark:group-hover:text-[#18E2EC] transition-colors">
                       {func.label}
                     </span>
                   </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#13C8D9] dark:group-hover:text-[#18E2EC] transition-colors" />
                 </div>
               );
             })}

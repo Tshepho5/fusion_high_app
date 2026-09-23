@@ -149,16 +149,6 @@ export const LearnerDashboard: React.FC = () => {
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
-      customBottomDock={
-        <div className="fixed bottom-3 inset-x-0 md:left-72 z-40 flex justify-center items-center pointer-events-none select-none animate-bounce-in px-2 sm:px-4">
-          <div className="pointer-events-auto">
-            <LearnerNavigationBar
-              activeTab={activeTab}
-              onSelectTab={handleSelectTab}
-            />
-          </div>
-        </div>
-      }
     >
       {/* Universal Breadcrumb & Backtrack Bar for Sub-Modules */}
       {isSubModule && (

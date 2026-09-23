@@ -3069,37 +3069,43 @@ exports.getSchoolSubjectsSummary = async (req, res) => {
             );
             const teacherName = educator ? `${educator.full_name} ${educator.surname}` : 'Department Educator';
 
-            // Count learners enrolled in this grade/stream from database
+            // Count learners actually enrolled in this specific subject
             let countQuery = `
                 SELECT COUNT(DISTINCT c.id) as count
                 FROM children c
-                WHERE c.school_id = $1 AND c.grade = $2
+                WHERE (c.school_id = $1 OR $1 IS NULL) AND c.grade = $2
+                  AND (
+                    c.subjects && ARRAY[$3]::text[]
+                    OR $3 = ANY(c.subjects)
+                    OR (c.subjects IS NULL AND (
+                      (c.stream = 'Science' AND $3 = ANY(ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation'])) OR
+                      (c.stream = 'Commerce' AND $3 = ANY(ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Home Language', 'Life Orientation'])) OR
+                      (c.stream = 'Tourism' AND $3 = ANY(ARRAY['Tourism', 'Geography', 'Mathematical Literacy', 'English FAL', 'Home Language', 'Life Orientation'])) OR
+                      (c.stream = 'General')
+                    ))
+                  )
             `;
-            const countParams = [schoolId, sub.grade];
-            if (sub.grade >= 10 && sub.stream && sub.stream !== 'General') {
-                countParams.push(sub.stream);
-                countQuery += ` AND (c.stream = $${countParams.length} OR c.stream IS NULL)`;
-            }
+            const countParams = [schoolId, sub.grade, sub.name];
             const learnerCountRes = await db.query(countQuery, countParams);
             const learnerCount = parseInt(learnerCountRes.rows[0]?.count || '0', 10);
 
-            // Compute assessment statistics & marks
+            // Compute assessment statistics & marks from formal submissions only
             const marksStatsRes = await db.query(`
                 SELECT 
                     COUNT(id) as total_marks_recorded,
                     COUNT(DISTINCT assessment_name) as assessments_count,
-                    COALESCE(ROUND(AVG(percentage)), 0) as avg_mark,
+                    ROUND(AVG(percentage)) as avg_mark,
                     COUNT(CASE WHEN percentage >= 50 THEN 1 END) as passed_count,
                     COUNT(CASE WHEN published_to_admin = TRUE OR is_published = TRUE THEN 1 END) as published_count
                 FROM marks
-                WHERE grade = $1 AND LOWER(subject) = LOWER($2);
+                WHERE grade = $1 AND LOWER(subject) = LOWER($2) AND (is_formal = TRUE OR is_formal IS NULL);
             `, [sub.grade, sub.name]);
 
             const stats = marksStatsRes.rows[0];
             const recordedCount = parseInt(stats?.total_marks_recorded || '0', 10);
-            const avgMark = recordedCount > 0 ? Number(stats.avg_mark) : 0;
+            const avgMark = recordedCount > 0 && stats?.avg_mark !== null ? Number(stats.avg_mark) : null;
             const passCount = parseInt(stats?.passed_count || '0', 10);
-            const passRate = recordedCount > 0 ? Math.round((passCount / recordedCount) * 100) : 0;
+            const passRate = recordedCount > 0 ? Math.round((passCount / recordedCount) * 100) : null;
             const isPublished = parseInt(stats?.published_count || '0', 10) > 0;
 
             subjectsSummary.push({

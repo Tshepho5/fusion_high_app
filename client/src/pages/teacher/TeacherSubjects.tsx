@@ -47,7 +47,78 @@ interface GradingLearner {
   grade: number;
   class_name?: string;
   mark: number | '';
+  test1?: any;
+  test2?: any;
+  assignment?: any;
+  project?: any;
+  exam?: any;
+  sba_mark?: number | null;
+  exam_mark?: number | null;
+  final_calculated_mark?: number | null;
 }
+
+const SUBJECT_ASSESSMENT_COMPONENTS = [
+  {
+    key: 'test1',
+    label: 'Controlled Test 1',
+    shortLabel: 'Test 1',
+    nature: 'Formal SBA Test',
+    defaultName: (t: string) => `${t} Controlled Test 1`,
+    defaultTotal: 50,
+    defaultWeight: 50,
+    isFormal: true,
+  },
+  {
+    key: 'test2',
+    label: 'Controlled Test 2',
+    shortLabel: 'Test 2',
+    nature: 'Formal SBA Test',
+    defaultName: (t: string) => `${t} Controlled Test 2`,
+    defaultTotal: 50,
+    defaultWeight: 50,
+    isFormal: true,
+  },
+  {
+    key: 'assignment',
+    label: 'Term Assignment',
+    shortLabel: 'Assignment',
+    nature: 'Term Assignment',
+    defaultName: (t: string) => `${t} Assignment`,
+    defaultTotal: 50,
+    defaultWeight: 30,
+    isFormal: true,
+  },
+  {
+    key: 'project',
+    label: 'Project / Investigation',
+    shortLabel: 'Project',
+    nature: 'Practical Project',
+    defaultName: (t: string) => `${t} Practical Project`,
+    defaultTotal: 50,
+    defaultWeight: 40,
+    isFormal: true,
+  },
+  {
+    key: 'exam',
+    label: 'Controlled Examination',
+    shortLabel: 'Exam',
+    nature: 'Controlled Examination',
+    defaultName: (t: string) => `${t} Controlled Examination`,
+    defaultTotal: 100,
+    defaultWeight: 100,
+    isFormal: true,
+  },
+  {
+    key: 'quiz',
+    label: 'Class Practice Quiz',
+    shortLabel: 'Practice Quiz',
+    nature: 'Class Quiz',
+    defaultName: (t: string) => `${t} Class Practice Quiz`,
+    defaultTotal: 20,
+    defaultWeight: 10,
+    isFormal: false,
+  }
+];
 
 export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab }) => {
   const [subjectCards, setSubjectCards] = useState<any[]>([]);
@@ -79,8 +150,12 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
   const [gradingModal, setGradingModal] = useState<{ open: boolean; subject: string; grade: number; className: string } | null>(null);
   const [gradingLearners, setGradingLearners] = useState<GradingLearner[]>([]);
   const [loadingGradingLearners, setLoadingGradingLearners] = useState(false);
-  const [assessmentName, setAssessmentName] = useState('Term 3 Control Test');
+  const [selectedComponent, setSelectedComponent] = useState<string>('test1');
+  const [assessmentName, setAssessmentName] = useState('Term 3 Controlled Test 1');
+  const [isFormal, setIsFormal] = useState<boolean>(true);
+  const [assessmentType, setAssessmentType] = useState<string>('Formal SBA Test');
   const [totalMarks, setTotalMarks] = useState<number>(50);
+  const [weight, setWeight] = useState<number>(50);
   const [term, setTerm] = useState('Term 3');
   const [savingMarks, setSavingMarks] = useState(false);
   const [marksSuccessMsg, setMarksSuccessMsg] = useState<string | null>(null);
@@ -167,45 +242,104 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
   };
 
   // Open Marks Grading Modal for this subject
-  const handleOpenMarkRegister = async (subject: string, grade: number, className: string) => {
+  const handleOpenMarkRegister = async (subject: string, grade: number, className: string, currentTerm = term, compKey = selectedComponent) => {
     setGradingModal({ open: true, subject, grade, className });
+    setSelectedComponent(compKey);
     setLoadingGradingLearners(true);
     setMarksSuccessMsg(null);
     setMarksErrorMsg(null);
 
+    const comp = SUBJECT_ASSESSMENT_COMPONENTS.find(c => c.key === compKey) || SUBJECT_ASSESSMENT_COMPONENTS[0];
+    setAssessmentName(comp.defaultName(currentTerm));
+    setAssessmentType(comp.nature);
+    setTotalMarks(comp.defaultTotal);
+    setWeight(comp.defaultWeight);
+    setIsFormal(comp.isFormal);
+
     try {
-      const res = await teacherService.getMyLearners();
-      const allLearners = Array.isArray(res) ? res : [];
-      const filtered = allLearners.filter((l: any) => {
-        const isSameGrade = parseInt(l.grade, 10) === parseInt(grade.toString(), 10);
-        if (!isSameGrade) return false;
-        if (!l.subjects || l.subjects.length === 0) return true;
-        const subLow = subject.toLowerCase();
-        return l.subjects.some((s: string) => {
-          const sLow = s.toLowerCase();
-          return sLow === subLow || sLow.includes(subLow) || subLow.includes(sLow) ||
-            (subLow.includes('math') && sLow.includes('math')) ||
-            (subLow.includes('physic') && sLow.includes('physic')) ||
-            (subLow.includes('life') && sLow.includes('life'));
-        });
+      const res = await teacherService.getClassRoster({
+        class: className || `${grade}A`,
+        grade: grade,
+        subject: subject,
+        term: currentTerm
       });
+      const roster = Array.isArray(res) ? res : (res?.roster || res?.learners || []);
 
-      const finalLearners = filtered.length > 0 ? filtered : allLearners.filter((l: any) => parseInt(l.grade, 10) === parseInt(grade.toString(), 10));
+      if (roster.length > 0) {
+        setGradingLearners(roster.map((l: any) => {
+          let initialMark: number | '' = '';
+          if (compKey === 'test1' && l.test1?.score !== undefined) initialMark = l.test1.score;
+          else if (compKey === 'test2' && l.test2?.score !== undefined) initialMark = l.test2.score;
+          else if (compKey === 'assignment' && l.assignment?.score !== undefined) initialMark = l.assignment.score;
+          else if (compKey === 'project' && l.project?.score !== undefined) initialMark = l.project.score;
+          else if (compKey === 'exam' && l.exam?.score !== undefined) initialMark = l.exam.score;
 
-      setGradingLearners(finalLearners.map((l: any) => ({
-        id: l.id || l.child_id,
-        full_name: l.full_name || l.name || 'Learner',
-        surname: l.surname || '',
-        learner_number: l.learner_number || (l.id ? `2026-FHS-${String(l.id).padStart(3, '0')}` : '2026-001'),
-        grade: l.grade || grade,
-        class_name: l.class_name || className || `${grade}A`,
-        mark: l.current_mark !== null && l.current_mark !== undefined ? l.current_mark : '',
-      })));
+          return {
+            id: l.id || l.child_id,
+            full_name: l.full_name || l.name || l.learner_name || 'Learner',
+            surname: l.surname || l.learner_surname || '',
+            learner_number: l.learner_number || (l.id ? `2026-FHS-${String(l.id).padStart(3, '0')}` : '2026-001'),
+            grade: l.grade || grade,
+            class_name: l.class_name || className || `${grade}A`,
+            mark: initialMark,
+            test1: l.test1 || null,
+            test2: l.test2 || null,
+            assignment: l.assignment || null,
+            project: l.project || null,
+            exam: l.exam || null,
+            sba_mark: l.sba_mark,
+            exam_mark: l.exam_mark,
+            final_calculated_mark: l.final_calculated_mark
+          };
+        }));
+      } else {
+        // Fallback to getMyLearners if roster is empty
+        const fallbackRes = await teacherService.getMyLearners();
+        const allLearners = Array.isArray(fallbackRes) ? fallbackRes : [];
+        const filtered = allLearners.filter((l: any) => parseInt(l.grade, 10) === parseInt(grade.toString(), 10));
+        setGradingLearners(filtered.map((l: any) => ({
+          id: l.id || l.child_id,
+          full_name: l.full_name || l.name || 'Learner',
+          surname: l.surname || '',
+          learner_number: l.learner_number || (l.id ? `2026-FHS-${String(l.id).padStart(3, '0')}` : '2026-001'),
+          grade: l.grade || grade,
+          class_name: l.class_name || className || `${grade}A`,
+          mark: '',
+        })));
+      }
     } catch (err: any) {
       console.error('Error fetching learners for grading modal:', err);
       setMarksErrorMsg('Could not load learner list from database.');
     } finally {
       setLoadingGradingLearners(false);
+    }
+  };
+
+  const handleSelectGradingComponent = (compKey: string, customTerm?: string) => {
+    setSelectedComponent(compKey);
+    const activeTerm = customTerm || term;
+    const comp = SUBJECT_ASSESSMENT_COMPONENTS.find(c => c.key === compKey) || SUBJECT_ASSESSMENT_COMPONENTS[0];
+    setAssessmentName(comp.defaultName(activeTerm));
+    setAssessmentType(comp.nature);
+    setTotalMarks(comp.defaultTotal);
+    setWeight(comp.defaultWeight);
+    setIsFormal(comp.isFormal);
+
+    setGradingLearners(prev => prev.map(l => {
+      let mark: number | '' = '';
+      if (compKey === 'test1' && l.test1?.score !== undefined) mark = l.test1.score;
+      else if (compKey === 'test2' && l.test2?.score !== undefined) mark = l.test2.score;
+      else if (compKey === 'assignment' && l.assignment?.score !== undefined) mark = l.assignment.score;
+      else if (compKey === 'project' && l.project?.score !== undefined) mark = l.project.score;
+      else if (compKey === 'exam' && l.exam?.score !== undefined) mark = l.exam.score;
+      return { ...l, mark };
+    }));
+  };
+
+  const handleSelectGradingTerm = (newTerm: string) => {
+    setTerm(newTerm);
+    if (gradingModal) {
+      handleOpenMarkRegister(gradingModal.subject, gradingModal.grade, gradingModal.className, newTerm, selectedComponent);
     }
   };
 
@@ -230,6 +364,10 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
     try {
       await teacherService.saveClassMarks({
         assessment_name: assessmentName.trim(),
+        assessment_type: assessmentType,
+        is_formal: isFormal,
+        weight: weight,
+        customWeight: weight,
         subject: gradingModal.subject,
         class: gradingModal.className || `${gradingModal.grade}A`,
         grade: gradingModal.grade,
@@ -238,11 +376,40 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
         marks: gradingLearners.map(l => ({
           child_id: l.id,
           grade: l.mark === '' ? 0 : (totalMarks === 100 ? Number(l.mark) : Math.round((Number(l.mark) / totalMarks) * 100)),
+          mark_obtained: l.mark === '' ? 0 : l.mark,
         }))
       });
 
-      setMarksSuccessMsg(`Marks published and recorded for ${gradingLearners.length} learners.`);
+      setMarksSuccessMsg(`${isFormal ? 'Formal' : 'Practice'} marks saved & published for ${gradingLearners.length} learners.`);
       setTimeout(() => setMarksSuccessMsg(null), 4000);
+
+      // Silently refresh to update sba_mark, final_calculated_mark
+      try {
+        const refreshed = await teacherService.getClassRoster({
+          class: gradingModal.className || `${gradingModal.grade}A`,
+          grade: gradingModal.grade,
+          subject: gradingModal.subject,
+          term
+        });
+        const rList = Array.isArray(refreshed) ? refreshed : (refreshed?.roster || refreshed?.learners || []);
+        if (rList.length > 0) {
+          setGradingLearners(prev => prev.map(oldL => {
+            const found = rList.find((r: any) => (r.id || r.child_id) === oldL.id);
+            if (!found) return oldL;
+            return {
+              ...oldL,
+              test1: found.test1 || oldL.test1,
+              test2: found.test2 || oldL.test2,
+              assignment: found.assignment || oldL.assignment,
+              project: found.project || oldL.project,
+              exam: found.exam || oldL.exam,
+              sba_mark: found.sba_mark,
+              exam_mark: found.exam_mark,
+              final_calculated_mark: found.final_calculated_mark
+            };
+          }));
+        }
+      } catch (e) {}
     } catch (err: any) {
       console.error('Error saving marks from grading modal:', err);
       setMarksErrorMsg(err?.response?.data?.error || 'Failed to save marks.');
@@ -695,24 +862,112 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
           maxWidth="2xl"
         >
           <div className="space-y-5">
+            {/* Step 1: Term & Assessment Component Selection */}
+            <div className="p-4 rounded-2xl bg-surface-darker border border-white/10 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-2.5">
+                <div>
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <FileCheck className="w-3.5 h-3.5 text-brand-400" />
+                    Select Allocation Target
+                  </h4>
+                  <p className="text-[11px] text-slate-400">
+                    Choose the academic term and specific CAPS assessment task to allocate marks for
+                  </p>
+                </div>
+                {/* Term Selector */}
+                <div className="flex items-center gap-1 bg-surface-dark p-1 rounded-xl border border-white/10 shrink-0">
+                  {['Term 1', 'Term 2', 'Term 3', 'Term 4'].map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => handleSelectGradingTerm(t)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                        term === t
+                          ? 'bg-brand-500 text-white shadow-sm'
+                          : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Assessment Tasks Selector */}
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                  Assessment Tasks:
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5">
+                  {SUBJECT_ASSESSMENT_COMPONENTS.map((comp) => {
+                    const isSelected = selectedComponent === comp.key;
+                    return (
+                      <button
+                        key={comp.key}
+                        type="button"
+                        onClick={() => handleSelectGradingComponent(comp.key)}
+                        className={`p-2 rounded-xl text-left border transition-all ${
+                          isSelected
+                            ? 'bg-brand-500/20 border-brand-500 text-white shadow-sm ring-1 ring-brand-500/50'
+                            : 'bg-surface-dark/60 border-white/5 hover:border-white/20 text-slate-300 hover:text-white'
+                        }`}
+                      >
+                        <p className="text-xs font-bold truncate">{comp.shortLabel}</p>
+                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                          {comp.defaultTotal} pts • {comp.isFormal ? 'Formal' : 'Quiz'}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
             {/* Assessment Meta Config Header */}
-            <div className="p-4 rounded-2xl bg-surface-darker border border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-4 rounded-2xl bg-surface-darker border border-white/10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Assessment Name</label>
                 <input
                   type="text"
                   value={assessmentName}
                   onChange={(e) => setAssessmentName(e.target.value)}
-                  placeholder="e.g. Term 3 Control Test"
+                  placeholder="e.g. Term 3 Controlled Test 1"
                   className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500 font-semibold"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Category</label>
+                <select
+                  value={isFormal ? 'formal' : 'informal'}
+                  onChange={(e) => setIsFormal(e.target.value === 'formal')}
+                  className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:border-brand-500"
+                >
+                  <option value="formal">Formal Assessment (Official Report)</option>
+                  <option value="informal">Informal (Practice / Quiz / Drill)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Assessment Nature</label>
+                <select
+                  value={assessmentType}
+                  onChange={(e) => setAssessmentType(e.target.value)}
+                  className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:border-brand-500"
+                >
+                  <option value="Formal SBA Test">Formal SBA Test</option>
+                  <option value="Term Assignment">Term Assignment</option>
+                  <option value="Practical Project">Practical Project / Investigation</option>
+                  <option value="Controlled Examination">Controlled Examination</option>
+                  <option value="Class Quiz">Class Quiz / Drill</option>
+                </select>
               </div>
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Academic Term</label>
                 <select
                   value={term}
-                  onChange={(e) => setTerm(e.target.value)}
+                  onChange={(e) => handleSelectGradingTerm(e.target.value)}
                   className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500"
                 >
                   <option value="Term 1">Term 1</option>
@@ -726,11 +981,24 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Total Marks</label>
                 <input
                   type="number"
-                  min="10"
+                  min="1"
                   max="300"
                   value={totalMarks}
                   onChange={(e) => setTotalMarks(Math.max(1, parseInt(e.target.value) || 50))}
                   className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500 font-mono font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Weight (Contribution)</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="500"
+                  value={weight}
+                  onChange={(e) => setWeight(Math.max(1, parseInt(e.target.value) || totalMarks))}
+                  className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-cyan-300 focus:outline-none focus:border-brand-500 font-mono font-bold"
+                  title="Contribution weighting (e.g. Exam: 100, Test: 50, Assignment: 30)"
                 />
               </div>
             </div>
@@ -773,7 +1041,7 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                   Learner Grading Roster
                 </span>
                 <span className="text-[11px] font-mono text-slate-400">
-                  Max: {totalMarks} pts
+                  Target: <strong className="text-cyan-400">{assessmentName}</strong> (Max: {totalMarks} pts)
                 </span>
               </div>
 
@@ -790,7 +1058,9 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                         <th className="py-2.5 px-3">Learner ID</th>
                         <th className="py-2.5 px-3">Full Name</th>
                         <th className="py-2.5 px-3 w-32">Score (/ {totalMarks})</th>
-                        <th className="py-2.5 px-3 text-right">CAPS Rating</th>
+                        <th className="py-2.5 px-3 text-center">Task CAPS</th>
+                        <th className="py-2.5 px-3 text-center">SBA (%)</th>
+                        <th className="py-2.5 px-3 text-right">Final Mark (%)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -816,13 +1086,27 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                                 className="w-24 rounded-lg bg-surface-dark border border-white/15 px-2.5 py-1 text-xs text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 text-center"
                               />
                             </td>
-                            <td className="py-2.5 px-3 text-right">
+                            <td className="py-2.5 px-3 text-center">
                               {typeof learner.mark === 'number' ? (
                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${levelInfo.color}`}>
                                   L{levelInfo.level} • {pct}%
                                 </span>
                               ) : (
                                 <span className="text-[10px] text-slate-500 italic">Ungraded</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-center font-mono">
+                              {learner.sba_mark !== null && learner.sba_mark !== undefined ? (
+                                <span className="text-amber-400 font-bold">{learner.sba_mark}%</span>
+                              ) : (
+                                <span className="text-slate-500">—</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono">
+                              {learner.final_calculated_mark !== null && learner.final_calculated_mark !== undefined ? (
+                                <span className="text-emerald-400 font-bold">{learner.final_calculated_mark}%</span>
+                              ) : (
+                                <span className="text-slate-500">—</span>
                               )}
                             </td>
                           </tr>

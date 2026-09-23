@@ -248,15 +248,115 @@ exports.getClassList = async (req, res) => {
             `);
         }
 
+        // 3. Query marks table for all learners in this class for the selected subject and term
+        const childIds = result.rows.map(r => r.id);
+        const termNum = parseInt(String(termParam || '3').replace(/[^0-9]/g, ''), 10) || 3;
+        let marksByChild = new Map();
+
+        if (childIds.length > 0) {
+            try {
+                const marksQuery = await db.query(
+                    `SELECT child_id, learner_id, subject, assessment_name, assessment_type, score, max_score, percentage, weight, is_formal
+                     FROM marks
+                     WHERE (child_id = ANY($1::int[]) OR learner_id = ANY($1::int[]))
+                       AND ($2 = '' OR LOWER(subject) = LOWER($2) OR LOWER(subject_name) = LOWER($2))
+                       AND (term = $3 OR term IS NULL)
+                       AND (is_formal = TRUE OR is_formal IS NULL)
+                     ORDER BY id ASC`,
+                    [childIds, subjectParam, termNum]
+                );
+
+                marksQuery.rows.forEach(m => {
+                    const cid = m.child_id || m.learner_id;
+                    if (!marksByChild.has(cid)) marksByChild.set(cid, []);
+                    marksByChild.get(cid).push(m);
+                });
+            } catch (errMarks) {
+                console.warn('[MARKS BREAKDOWN QUERY ERROR]', errMarks.message);
+            }
+        }
+
         const enrichedRows = result.rows.map(learner => {
+            const studentMarks = marksByChild.get(learner.id) || [];
+            let test1 = null;
+            let test2 = null;
+            let assignment = null;
+            let project = null;
+            let exam = null;
+            let sbaWeightedSum = 0;
+            let sbaWeightTotal = 0;
+            let examWeightedSum = 0;
+            let examWeightTotal = 0;
+
+            studentMarks.forEach(m => {
+                const nameLow = (m.assessment_name || '').toLowerCase();
+                const typeLow = (m.assessment_type || '').toLowerCase();
+                const rawScore = Number(m.score);
+                const maxScore = Number(m.max_score) || 100;
+                const pct = m.percentage !== null && m.percentage !== undefined ? Number(m.percentage) : Math.round((rawScore / maxScore) * 100);
+                const weight = Number(m.weight) || maxScore;
+                const assessmentObj = {
+                    name: m.assessment_name,
+                    type: m.assessment_type,
+                    score: rawScore,
+                    max_score: maxScore,
+                    percentage: pct,
+                    weight: weight
+                };
+
+                if (typeLow.includes('test 1') || nameLow.includes('test 1') || typeLow === 'controlled test 1') {
+                    test1 = assessmentObj;
+                    sbaWeightedSum += pct * weight;
+                    sbaWeightTotal += weight;
+                } else if (typeLow.includes('test 2') || nameLow.includes('test 2') || typeLow === 'controlled test 2') {
+                    test2 = assessmentObj;
+                    sbaWeightedSum += pct * weight;
+                    sbaWeightTotal += weight;
+                } else if (typeLow.includes('assign') || nameLow.includes('assign')) {
+                    assignment = assessmentObj;
+                    sbaWeightedSum += pct * weight;
+                    sbaWeightTotal += weight;
+                } else if (typeLow.includes('project') || nameLow.includes('project') || typeLow.includes('investig') || nameLow.includes('investig')) {
+                    project = assessmentObj;
+                    sbaWeightedSum += pct * weight;
+                    sbaWeightTotal += weight;
+                } else if (typeLow.includes('exam') || nameLow.includes('exam')) {
+                    exam = assessmentObj;
+                    examWeightedSum += pct * weight;
+                    examWeightTotal += weight;
+                } else {
+                    // Default to formal SBA
+                    sbaWeightedSum += pct * weight;
+                    sbaWeightTotal += weight;
+                }
+            });
+
+            const sbaMark = sbaWeightTotal > 0 ? Math.round(sbaWeightedSum / sbaWeightTotal) : null;
+            const examMark = exam ? exam.percentage : null;
+
+            // Dynamic CAPS Final Mark Calculation:
+            let finalCalculatedMark = null;
+            let calculationMethod = 'Pending Teacher Submissions';
+
+            if (sbaMark !== null && examMark !== null) {
+                finalCalculatedMark = Math.round((sbaMark * 0.4) + (examMark * 0.6));
+                calculationMethod = `SBA (40%): ${sbaMark}% + Exam (60%): ${examMark}% = ${finalCalculatedMark}%`;
+            } else if (sbaMark !== null) {
+                finalCalculatedMark = sbaMark;
+                calculationMethod = `SBA Weighted Composite (100%): ${sbaMark}%`;
+            } else if (examMark !== null) {
+                finalCalculatedMark = examMark;
+                calculationMethod = `Controlled Examination: ${examMark}%`;
+            }
+
             const age = (parseInt(learner.grade, 10) || 10) + 6;
-            const perfAvg = parseFloat(learner.current_mark) || 50;
+            const perfAvg = finalCalculatedMark !== null ? finalCalculatedMark : (parseFloat(learner.current_mark) || null);
             const studentData = {
                 student_id: learner.learner_number || `STU-${learner.id}`,
                 age: age,
                 study_hours_per_week: 15,
                 attendance_rate: 85,
-                previous_score: perfAvg,
+                previous_score: perfAvg || 65,
                 gender: 'Female',
                 parent_education: 'High School',
                 internet_access: 'Yes',
@@ -270,8 +370,18 @@ exports.getClassList = async (req, res) => {
 
             return {
                 ...learner,
+                test1,
+                test2,
+                assignment,
+                project,
+                exam,
+                sba_mark: sbaMark,
+                exam_mark: examMark,
+                final_calculated_mark: finalCalculatedMark,
+                calculation_method: calculationMethod,
+                assessments_count: studentMarks.length,
                 ml_prediction: ml,
-                risk_tier: ml ? (ml.risk_tier === 'Medium' ? 'Moderate' : ml.risk_tier) : (perfAvg < 50 ? 'High' : 'Low'),
+                risk_tier: ml ? (ml.risk_tier === 'Medium' ? 'Moderate' : ml.risk_tier) : (perfAvg !== null && perfAvg < 50 ? 'High' : 'Low'),
                 predicted_score: ml ? ml.projected_final_score : perfAvg,
                 pass_probability: ml ? ml.pass_probability : perfAvg,
                 interventions: ml ? ml.interventions : []
@@ -296,6 +406,9 @@ exports.saveClassMarks = async (req, res) => {
     const assessmentTitle = (req.body.assessment_name || req.body.assessmentName || '').trim() || 'Class Assessment';
     const total_mark = req.body.total_mark || req.body.totalMarks || 100;
     const isPublished = req.body.is_published !== undefined ? Boolean(req.body.is_published) : (req.body.isDraft ? false : true);
+    const isFormal = req.body.is_formal !== undefined ? Boolean(req.body.is_formal) : true;
+    const assessmentType = (req.body.assessment_type || req.body.assessmentType || (isFormal ? 'Formal Assessment' : 'Informal Practice')).trim();
+    const customWeight = parseFloat(req.body.weight) || parseFloat(total_mark) || 100;
     let marks = req.body.marks || [];
     const teacherId = req.user ? req.user.id : null;
 
@@ -392,40 +505,45 @@ exports.saveClassMarks = async (req, res) => {
                     await db.query(
                         `UPDATE progress 
                          SET grade = $1, score = $2, total_marks = $3, notes = $4, employee_id = COALESCE($5, employee_id),
-                             is_published = $6, assessment_name = $7, updated_at = NOW(), date = NOW()
-                         WHERE id = $8`,
-                        [pctScore, rawScore, maxMark, remarkNote, employeeId, isPublished, assessmentTitle, existingProgressRes.rows[0].id]
+                             is_published = $6, assessment_name = $7, is_formal = $8, updated_at = NOW(), date = NOW()
+                         WHERE id = $9`,
+                        [pctScore, rawScore, maxMark, remarkNote, employeeId, isPublished, assessmentTitle, isFormal, existingProgressRes.rows[0].id]
                     );
                 } else {
                     await db.query(
-                        `INSERT INTO progress (child_id, subject, term, grade, score, total_marks, notes, employee_id, is_published, assessment_name, date, updated_at)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
-                        [childId, subject, term || 'Term 3 2026', pctScore, rawScore, maxMark, remarkNote, employeeId, isPublished, assessmentTitle]
+                        `INSERT INTO progress (child_id, subject, term, grade, score, total_marks, notes, employee_id, is_published, assessment_name, is_formal, date, updated_at)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())`,
+                        [childId, subject, term || 'Term 3 2026', pctScore, rawScore, maxMark, remarkNote, employeeId, isPublished, assessmentTitle, isFormal]
                     );
                 }
 
-                // 2. UPSERT into marks table
+                // 2. UPSERT into marks table (distinguish Controlled Test 1, Controlled Test 2, Assignment, Project, Exam)
                 const existingMarksRes = await db.query(
                     `SELECT id FROM marks
                      WHERE (child_id = $1 OR learner_id = $1) AND (LOWER(subject) = LOWER($2) OR LOWER(subject_name) = LOWER($2))
-                       AND (term = $3 OR term IS NULL) AND (assessment_name = $4 OR assessment_name IS NULL)
+                       AND term = $3
+                       AND (
+                         LOWER(assessment_name) = LOWER($4)
+                         OR (COALESCE($4, '') = '' AND LOWER(assessment_type) = LOWER($5))
+                       )
                      LIMIT 1`,
-                    [childId, subject, termNum, assessmentTitle]
+                    [childId, subject, termNum, assessmentTitle, assessmentType]
                 );
 
                 if (existingMarksRes.rows.length > 0) {
                     await db.query(
                         `UPDATE marks
                          SET score = $1, max_score = $2, percentage = $3, grade = $4, is_published = $5,
-                             published_to_admin = $5, status = $6, assessment_name = $7, weight = $8, updated_at = NOW()
-                         WHERE id = $9`,
-                        [rawScore, maxMark, pctScore, childGrade, isPublished, isPublished ? 'published' : 'draft', assessmentTitle, maxMark, existingMarksRes.rows[0].id]
+                             published_to_admin = $5, status = $6, assessment_name = $7, weight = $8,
+                             is_formal = $9, assessment_type = $10, updated_at = NOW()
+                         WHERE id = $11`,
+                        [rawScore, maxMark, pctScore, childGrade, isPublished, isPublished ? 'published' : 'draft', assessmentTitle, customWeight, isFormal, assessmentType, existingMarksRes.rows[0].id]
                     );
                 } else {
                     await db.query(
-                        `INSERT INTO marks (learner_id, child_id, subject, subject_name, term, mark_type, score, max_score, percentage, grade, is_published, published_to_admin, status, assessment_name, weight, recorded_by, recorded_at, updated_at)
-                         VALUES ($1, $1, $2, $2, $3, 'Assessment', $4, $5, $6, $7, $8, $8, $9, $10, $11, $12, NOW(), NOW())`,
-                        [childId, subject, termNum, rawScore, maxMark, pctScore, childGrade, isPublished, isPublished ? 'published' : 'draft', assessmentTitle, maxMark, teacherId]
+                        `INSERT INTO marks (learner_id, child_id, subject, subject_name, term, mark_type, score, max_score, percentage, grade, is_published, published_to_admin, status, assessment_name, weight, is_formal, assessment_type, recorded_by, recorded_at, updated_at)
+                         VALUES ($1, $1, $2, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10, $11, $12, $13, $14, $15, NOW(), NOW())`,
+                        [childId, subject, termNum, assessmentType, rawScore, maxMark, pctScore, childGrade, isPublished, isPublished ? 'published' : 'draft', assessmentTitle, customWeight, isFormal, assessmentType, teacherId]
                     );
                 }
 

@@ -132,21 +132,23 @@ export const FloatingAIChatModule: React.FC<FloatingAIChatModuleProps> = ({ onSe
         title="Fusion AI Mascot • Click to Chat • Drag to Move"
       >
         {/* Ambient Halo Glow */}
-        <div className="absolute -inset-1.5 rounded-full bg-gradient-to-r from-red-500 via-rose-500 to-indigo-600 opacity-60 blur-md group-hover:opacity-100 group-hover:blur-lg transition-all animate-pulse pointer-events-none" />
+        <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-[#EC4899]/60 via-[#F43F5E]/40 to-[#18E2EC]/60 opacity-80 blur-md group-hover:opacity-100 group-hover:blur-lg transition-all animate-pulse pointer-events-none" />
 
-        {/* Circular Action Button with Mascot */}
-        <div className="relative rounded-full shadow-2xl flex items-center justify-center ring-2 ring-white/20 group-hover:ring-cyan-400/80 transition-all bg-[#0B0F19]">
-          
-          <FusionChatbotMascot
-            size={68}
-            isHovered={isHovered}
-          />
+        {/* Outer Split Gradient Ring: Hot Magenta/Pink (Top-Left) to Cyan/Teal (Bottom-Right) */}
+        <div className="relative p-[3px] rounded-full bg-gradient-to-br from-[#EC4899] via-[#F43F5E] to-[#18E2EC] shadow-2xl">
+          {/* Inner Circle: Deep charcoal black (#181E24) */}
+          <div className="relative rounded-full flex items-center justify-center bg-[#181E24]">
+            <FusionChatbotMascot
+              size={66}
+              isHovered={isHovered}
+            />
 
-          {/* 24/7 Live Pulse Dot */}
-          <span className="absolute top-1 right-1 flex h-3 w-3 pointer-events-none">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-80" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-[#0B0F19]" />
-          </span>
+            {/* 24/7 Live Pulse Dot */}
+            <span className="absolute top-1 right-1 flex h-3 w-3 pointer-events-none">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-80" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-[#18E2EC] border-2 border-[#181E24]" />
+            </span>
+          </div>
         </div>
 
         {/* Hover Pill Tooltip (Only visible if not dragging) */}

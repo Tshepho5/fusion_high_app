@@ -549,10 +549,10 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       </button>
                       <button
                         onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                        className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-[#0A121A] font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
                         title={`Enter SBA Marks for ${card.subject_name}`}
                       >
-                        <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
+                        <FileSpreadsheet className="w-3.5 h-3.5 text-[#0A121A] shrink-0" />
                         <span>Marks</span>
                       </button>
                     </div>
@@ -677,10 +677,10 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       </button>
                       <button
                         onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                        className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-[#0A121A] font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
                         title={`Enter SBA Marks for ${card.subject_name}`}
                       >
-                        <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
+                        <FileSpreadsheet className="w-3.5 h-3.5 text-[#0A121A] shrink-0" />
                         <span>Marks</span>
                       </button>
                     </div>

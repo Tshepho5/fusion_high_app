@@ -25,19 +25,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
   const [showSchoolMenu, setShowSchoolMenu] = useState(false);
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/90 dark:border-white/10 bg-white/95 dark:bg-[#0F172A]/95 px-4 md:px-8 backdrop-blur-md transition-colors">
-      {/* Left: Sidebar Collapse Toggle */}
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/80 dark:border-[#1B2E3D] bg-white/95 dark:bg-[#09131F]/95 px-4 md:px-8 backdrop-blur-md transition-colors">
+      {/* Left: Branding & Spacing (Extra hamburger removed) */}
       <div className="flex items-center gap-3">
-        {onToggleSidebar && (
-          <button
-            onClick={onToggleSidebar}
-            className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/5 transition-colors cursor-pointer"
-            aria-label="Toggle navigation"
-            title="Toggle Sidebar"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <FusionAppIcon className="w-8 h-8 rounded-xl shadow-xs" />
+          <span className="hidden sm:inline font-display font-extrabold text-sm tracking-tight text-slate-800 dark:text-white">
+            FUSION HIGH
+          </span>
+        </div>
       </div>
 
       {/* Middle: Dynamic Multi-School Header & Switcher */}
@@ -86,8 +82,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
               onClick={() => {
                 if (canSwitch) setShowSchoolMenu(!showSchoolMenu);
               }}
-              className={`flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white dark:bg-[#081528] border border-slate-200/90 dark:border-sky-500/30 transition-all text-left shadow-xs group ${
-                canSwitch ? 'hover:bg-slate-50 dark:hover:bg-[#0B1E38] hover:border-sky-400 cursor-pointer' : 'cursor-default opacity-95'
+              className={`flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] transition-all text-left shadow-xs group ${
+                canSwitch ? 'hover:bg-slate-50 dark:hover:bg-[#132230] hover:border-cyan-500/40 cursor-pointer' : 'cursor-default opacity-95'
               }`}
               title={switcherTooltip}
             >

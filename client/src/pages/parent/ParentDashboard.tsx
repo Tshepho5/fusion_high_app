@@ -90,7 +90,7 @@ export const ParentDashboard: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'overview' && (
+      {(activeTab === 'overview' || activeTab === 'more') && (
         <ParentOverview onNavigateTab={handleSelectTab} />
       )}
       {(activeTab === 'children' || activeTab === 'marks') && <ParentChildren />}

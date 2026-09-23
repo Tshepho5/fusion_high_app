@@ -6,107 +6,130 @@
 @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Dancing+Script:wght@600;700&family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Canvas & Layout (Light Mode - matches reference picture left) */
-  --wave-bg: #F5F5F7;
-  --wave-canvas: #F5F5F7;
+  /* Canvas & Layout (Light Mode - soft ice blue / pale cyan gradient) */
+  --wave-bg: #CBDDE3;
+  --wave-canvas: #CBDDE3;
   --wave-surface: #FFFFFF;
-  --wave-surface-translucent: rgba(255, 255, 255, 0.92);
-  --wave-surface-subtle: #F4F4F6;
+  --wave-surface-translucent: rgba(255, 255, 255, 0.94);
+  --wave-surface-subtle: #EDF4F7;
   --wave-surface-elevated: #FFFFFF;
-  --wave-border: #E4E4E7;
-  --wave-border-subtle: #EBECEF;
+  --wave-border: rgba(180, 205, 218, 0.5);
+  --wave-border-subtle: #E1ECF0;
   
   /* Text */
-  --wave-text-primary: #111111;
+  --wave-text-primary: #1C252C;
   --wave-text-secondary: #52525B;
   --wave-text-muted: #71717A;
   --wave-text-inverse: #FFFFFF;
   
-  /* Accent & Badges (Matches top-right icon badge from reference picture) */
-  --wave-accent-purple: #9333EA;
-  --wave-accent-badge-bg: #F3E8FF;
-  --wave-accent-badge-border: #E9D5FF;
-  --wave-accent-blue: #111111;
-  --wave-accent-sky: #71717A;
-  --wave-accent-navy: #111111;
-  --wave-accent-cyan: #9333EA;
+  /* Accent & Badges */
+  --wave-accent-purple: #13C8D9;
+  --wave-accent-badge-bg: #E1ECF0;
+  --wave-accent-badge-border: #CBDDE3;
+  --wave-accent-blue: #13C8D9;
+  --wave-accent-sky: #52525B;
+  --wave-accent-navy: #1C252C;
+  --wave-accent-cyan: #13C8D9;
+  --wave-accent-neon: #18E2EC;
   
-  /* Buttons (Solid Black CTA in Light Mode) */
-  --wave-btn-primary-bg: #111111;
-  --wave-btn-primary-text: #FFFFFF;
-  --wave-btn-primary-border: #111111;
+  /* Buttons (Dark Charcoal Action Circles with Bright Cyan Glyphs) */
+  --wave-btn-primary-bg: #1C252C;
+  --wave-btn-primary-text: #13C8D9;
+  --wave-btn-primary-border: #1C252C;
   --wave-btn-secondary-bg: #FFFFFF;
-  --wave-btn-secondary-text: #111111;
-  --wave-btn-secondary-border: #E4E4E7;
+  --wave-btn-secondary-text: #1C252C;
+  --wave-btn-secondary-border: rgba(180, 205, 218, 0.6);
+
+  /* Module Chips */
+  --wave-chip-bg: #E1ECF0;
+  --wave-chip-text: #232B32;
   
-  /* Sidebar (Crisp White with Black Active Pill in Light Mode) */
+  /* Sidebar */
   --wave-sidebar-bg: #FFFFFF;
-  --wave-sidebar-border: #E4E4E7;
-  --wave-sidebar-item-active: #111111;
-  --wave-sidebar-item-text: #71717A;
-  --wave-sidebar-item-text-active: #FFFFFF;
+  --wave-sidebar-border: rgba(180, 205, 218, 0.5);
+  --wave-sidebar-item-active: #13C8D9;
+  --wave-sidebar-item-text: #52525B;
+  --wave-sidebar-item-text-active: #1C252C;
   
   /* Cards */
   --wave-card-bg: #FFFFFF;
-  --wave-card-border: #E4E4E7;
-  --wave-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --wave-card-hover-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --wave-card-border: rgba(180, 205, 218, 0.45);
+  --wave-card-shadow: 0 2px 10px rgba(18, 38, 58, 0.05), 0 1px 3px rgba(18, 38, 58, 0.08);
+  --wave-card-hover-shadow: 0 12px 28px rgba(18, 38, 58, 0.12);
   
-  /* Fluid Wave Backdrop (Subtle Ambient Light) */
-  --wave-color-1: rgba(243, 232, 255, 0.35);
-  --wave-color-2: rgba(228, 228, 231, 0.25);
-  --wave-color-3: rgba(244, 244, 246, 0.2);
-  --wave-color-deep: #F5F5F7;
+  /* Fluid Wave Backdrop (Soft Pale Cyan Ambient Light) */
+  --wave-color-1: rgba(19, 200, 217, 0.15);
+  --wave-color-2: rgba(203, 221, 227, 0.45);
+  --wave-color-3: rgba(235, 242, 245, 0.5);
+  --wave-color-deep: #CBDDE3;
 
-  /* Dock */
-  --wave-dock-bg: rgba(255, 255, 255, 0.94);
-  --wave-dock-border: #E4E4E7;
+  /* Floating Bottom Dock */
+  --wave-dock-bg: #0D1620;
+  --wave-dock-border: rgba(255, 255, 255, 0.1);
+  --wave-dock-item-active: #13C8D9;
 }
 
 /* ==========================================================================
-   Dark Mode Calibration (Pitch Black Canvas + Charcoal Cards + White CTA)
+   Dark Mode Calibration (Midnight Navy-Black Canvas + Slate Cards + Glowing Cyan)
    ========================================================================== */
 [data-theme="dark"] {
-  --wave-bg: #0A0A0C;
-  --wave-canvas: #0A0A0C;
-  --wave-surface: #16161A;
-  --wave-surface-translucent: rgba(22, 22, 26, 0.92);
-  --wave-surface-subtle: #1E1E24;
-  --wave-surface-elevated: #22222A;
-  --wave-border: #27272E;
-  --wave-border-subtle: #202026;
+  --wave-bg: #060D14;
+  --wave-canvas: #060D14;
+  --wave-surface: #0F1A24;
+  --wave-surface-translucent: rgba(15, 26, 36, 0.94);
+  --wave-surface-subtle: #0A121A;
+  --wave-surface-elevated: #13202E;
+  --wave-border: #1B2E3D;
+  --wave-border-subtle: #142230;
   
   --wave-text-primary: #FFFFFF;
-  --wave-text-secondary: #A1A1AA;
-  --wave-text-muted: #71717A;
-  --wave-text-inverse: #000000;
+  --wave-text-secondary: #94A3B8;
+  --wave-text-muted: #64748B;
+  --wave-text-inverse: #060D14;
   
-  --wave-accent-purple: #C084FC;
-  --wave-accent-badge-bg: #261B35;
-  --wave-accent-badge-border: #3B2852;
-  --wave-accent-blue: #FFFFFF;
-  --wave-accent-sky: #A1A1AA;
-  --wave-accent-navy: #0A0A0C;
-  --wave-accent-cyan: #C084FC;
+  --wave-accent-purple: #18E2EC;
+  --wave-accent-badge-bg: #152535;
+  --wave-accent-badge-border: #1B2E3D;
+  --wave-accent-blue: #13C8D9;
+  --wave-accent-sky: #94A3B8;
+  --wave-accent-navy: #060D14;
+  --wave-accent-cyan: #13C8D9;
+  --wave-accent-neon: #18E2EC;
   
-  /* Buttons (Solid White CTA in Dark Mode) */
-  --wave-btn-primary-bg: #FFFFFF;
-  --wave-btn-primary-text: #000000;
-  --wave-btn-primary-border: #FFFFFF;
-  --wave-btn-secondary-bg: #16161A;
+  /* Buttons (Dark Charcoal Action Circles with Glowing Cyan Glyphs) */
+  --wave-btn-primary-bg: #1C252C;
+  --wave-btn-primary-text: #18E2EC;
+  --wave-btn-primary-border: #1B2E3D;
+  --wave-btn-secondary-bg: #0F1A24;
   --wave-btn-secondary-text: #FFFFFF;
-  --wave-btn-secondary-border: #27272E;
+  --wave-btn-secondary-border: #1B2E3D;
+
+  /* Module Chips */
+  --wave-chip-bg: #152535;
+  --wave-chip-text: #18E2EC;
   
-  --wave-sidebar-bg: #16161A;
-  --wave-sidebar-border: #27272E;
-  --wave-sidebar-item-active: #FFFFFF;
-  --wave-sidebar-item-text: #A1A1AA;
-  --wave-sidebar-item-text-active: #000000;
+  --wave-sidebar-bg: #0F1A24;
+  --wave-sidebar-border: #1B2E3D;
+  --wave-sidebar-item-active: #13C8D9;
+  --wave-sidebar-item-text: #94A3B8;
+  --wave-sidebar-item-text-active: #060D14;
   
-  --wave-card-bg: #16161A;
-  --wave-card-border: #27272E;
-  --wave-card-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
-  --wave-card-hover-shadow: 0 8px 28px rgba(0, 0, 0, 0.65);
+  --wave-card-bg: #0F1A24;
+  --wave-card-border: #1B2E3D;
+  --wave-card-shadow: 0 4px 20px rgba(0, 0, 0, 0.55);
+  --wave-card-hover-shadow: 0 10px 32px rgba(0, 0, 0, 0.75);
+
+  /* Fluid Wave Backdrop */
+  --wave-color-1: rgba(19, 200, 217, 0.12);
+  --wave-color-2: rgba(11, 21, 32, 0.7);
+  --wave-color-3: rgba(6, 13, 20, 0.9);
+  --wave-color-deep: #060D14;
+
+  /* Floating Bottom Dock */
+  --wave-dock-bg: #070E16;
+  --wave-dock-border: rgba(255, 255, 255, 0.08);
+  --wave-dock-item-active: #18E2EC;
+}
   
   /* Luminous Wave Ribbons (Dark) */
   --wave-color-1: rgba(38, 27, 53, 0.28);

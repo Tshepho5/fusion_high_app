@@ -3,6 +3,7 @@ import { adminService } from '../../services/api';
 import { Badge } from '../common/Badge';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Modal } from '../common/Modal';
+import { CapsReportCard } from '../common/CapsReportCard';
 import {
   FileSpreadsheet,
   Download,
@@ -24,14 +25,18 @@ import {
   ChevronRight,
   Info,
   CalendarCheck,
-  X
+  X,
+  Sparkles,
+  ArrowDownCircle,
+  Check,
+  Clock
 } from 'lucide-react';
 
 interface ReportCardSubject {
   name: string;
   code?: string;
-  mark: number;
-  caps_level: number;
+  mark: number | null;
+  caps_level: number | string;
   caps_rating: string;
   teacher_comment?: string;
 }
@@ -47,24 +52,42 @@ interface TemplateLearner {
   attendance_rate: number;
   days_present: number;
   days_absent: number;
-  subjects: Record<string, number>;
-  average_mark: number;
-  overall_caps_level: number;
+  subjects: Record<string, number | null>;
+  average_mark: number | null;
+  overall_caps_level: number | string;
   promotion_decision: string;
   teacher_comment: string;
   principal_comment: string;
+  ai_advisory?: any;
 }
 
-interface AssessmentWeight {
-  component: string;
-  weight_percent: number;
-  description: string;
+interface TeacherSubmission {
+  subject: string;
+  status: 'SUBMITTED' | 'PARTIAL' | 'PENDING';
+  marks_recorded: number;
+  total_learners: number;
+  teacher?: { id: number; name: string };
+  last_uploaded_at?: string;
+}
+
+interface SubmissionsOverview {
+  grade: number | string;
+  class_name: string;
+  term: number | string;
+  total_learners: number;
+  total_subjects: number;
+  submitted_count: number;
+  partial_count: number;
+  pending_count: number;
+  can_transfer: boolean;
+  submissions: TeacherSubmission[];
 }
 
 export const ReportCardStudio: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [transferring, setTransferring] = useState(false);
 
   // Filters
   const [selectedGrade, setSelectedGrade] = useState<string>('10');
@@ -76,12 +99,7 @@ export const ReportCardStudio: React.FC = () => {
   // Mark Sheet Template Data
   const [learners, setLearners] = useState<TemplateLearner[]>([]);
   const [subjectColumns, setSubjectColumns] = useState<string[]>([]);
-  const [assessmentWeights, setAssessmentWeights] = useState<AssessmentWeight[]>([
-    { component: 'Controlled Test 1', weight_percent: 15, description: 'Standardized CAPS Term Diagnostic' },
-    { component: 'Practical Investigation / Project', weight_percent: 15, description: 'Experimental SBA Rubric' },
-    { component: 'Continuous Homework & Class Assignments', weight_percent: 10, description: 'Formative Submissions' },
-    { component: 'Term Examination / Mid-Year Paper', weight_percent: 60, description: 'Summative Standardized Exam' }
-  ]);
+  const [submissionsOverview, setSubmissionsOverview] = useState<SubmissionsOverview | null>(null);
   const [searchFilter, setSearchFilter] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -90,8 +108,12 @@ export const ReportCardStudio: React.FC = () => {
   const [previewLearner, setPreviewLearner] = useState<TemplateLearner | null>(null);
   const [confirmPublishModalOpen, setConfirmPublishModalOpen] = useState(false);
 
-  // Fetch / Transfer Marks into Template
-  const handleTransferMarks = async () => {
+  // AI Advisory Modal State
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiModalLearner, setAiModalLearner] = useState<TemplateLearner | null>(null);
+
+  // Fetch / Load Template Marks
+  const handleLoadTemplateMarks = async () => {
     setLoading(true);
     try {
       const res = await adminService.getGradeTemplateMarks({
@@ -103,14 +125,19 @@ export const ReportCardStudio: React.FC = () => {
       });
 
       const formattedLearners: TemplateLearner[] = (res.learners || []).map((l: any) => {
-        const subjectsDict: Record<string, number> = {};
+        const subjectsDict: Record<string, number | null> = {};
         if (Array.isArray(l.subjects)) {
           l.subjects.forEach((s: any) => {
-            subjectsDict[s.subject || s.name] = Number(s.mark) || 0;
+            const hasMark = s.mark !== null && s.mark !== undefined && !s.is_pending && s.mark !== '';
+            subjectsDict[s.subject || s.name] = hasMark ? Number(s.mark) : null;
           });
         } else if (typeof l.subjects === 'object' && l.subjects !== null) {
-          Object.assign(subjectsDict, l.subjects);
+          Object.entries(l.subjects).forEach(([key, val]) => {
+            subjectsDict[key] = val !== null && val !== undefined && val !== '' ? Number(val) : null;
+          });
         }
+
+        const avg = l.overall_average !== null && l.overall_average !== undefined ? Number(l.overall_average) : null;
 
         return {
           child_id: l.child_id || l.id,
@@ -118,28 +145,23 @@ export const ReportCardStudio: React.FC = () => {
           surname: l.surname || l.learner_surname || '',
           learner_number: l.learner_number || '',
           grade: l.grade,
-          class_name: l.class_name || `${selectedGrade}A`,
+          class_name: l.class_name || '',
           stream: l.stream || selectedStream,
-          attendance_rate: l.attendance_percentage || l.attendance?.percentage || l.attendance_rate || 95,
-          days_present: l.attendance?.days_present || l.days_present || 48,
-          days_absent: l.attendance?.days_absent || l.days_absent || 2,
+          attendance_rate: l.attendance_percentage ?? l.attendance?.percentage ?? l.attendance_rate ?? null,
+          days_present: l.attendance?.days_present ?? l.days_present ?? 0,
+          days_absent: l.attendance?.days_absent ?? l.days_absent ?? 0,
           subjects: subjectsDict,
-          average_mark: Number(l.overall_average) || 0,
-          overall_caps_level: l.overall_level || 4,
-          promotion_decision: l.promotion_status || l.promotion_decision || 'Promoted',
+          average_mark: avg,
+          overall_caps_level: l.overall_level !== undefined ? l.overall_level : (avg !== null ? (avg >= 80 ? 7 : avg >= 70 ? 6 : avg >= 60 ? 5 : avg >= 50 ? 4 : avg >= 40 ? 3 : avg >= 30 ? 2 : 1) : '-'),
+          promotion_decision: l.promotion_status || l.promotion_decision || (avg === null ? 'PENDING TEACHER MARKS' : (avg >= 50 ? "PROMOTED — PASS WITH BACHELOR'S DEGREE ADMISSION (CAPS REG. 3(1))" : 'PROMOTED — DIPLOMA PASS')),
           teacher_comment: l.teacher_comment || '',
-          principal_comment: l.principal_comment || ''
+          principal_comment: l.principal_comment || '',
+          ai_advisory: l.ai_advisory || null
         };
       });
 
       setLearners(formattedLearners);
       setSubjectColumns(res.subjects || res.schoolSubjects || []);
-      if (res.assessment_weights && res.assessment_weights.length > 0) {
-        setAssessmentWeights(res.assessment_weights);
-      }
-
-      setToastMessage(`Transferred marks & calculated SBA weightings for Grade ${selectedGrade} (${formattedLearners.length} learners)`);
-      setTimeout(() => setToastMessage(null), 5000);
     } catch (err: any) {
       console.error('Failed to load grade template marks:', err);
       const errMsg = err.response?.data?.error || err.message;
@@ -150,36 +172,87 @@ export const ReportCardStudio: React.FC = () => {
     }
   };
 
+  // Fetch Teacher Submissions Status
+  const fetchSubmissionsOverview = async () => {
+    try {
+      const res = await adminService.getTeacherSubmissions({
+        grade: selectedGrade,
+        className: selectedClass !== 'All' ? selectedClass : undefined,
+        term: selectedTerm,
+        stream: selectedStream
+      });
+      setSubmissionsOverview(res);
+    } catch (err) {
+      console.warn('Failed to load teacher submissions overview:', err);
+    }
+  };
+
+  // Transfer Uploaded Marks into Template
+  const handleTransferUploadedMarks = async () => {
+    setTransferring(true);
+    try {
+      const res = await adminService.transferTeacherMarks({
+        grade: selectedGrade,
+        className: selectedClass !== 'All' ? selectedClass : undefined,
+        stream: selectedStream,
+        term: selectedTerm,
+        academicYear: academicYear
+      });
+
+      setToastMessage(`✓ Transferred teacher marks for ${res.transferred_count || learners.length} learners! AI Advisories & CAPS rankings generated.`);
+      setTimeout(() => setToastMessage(null), 6000);
+
+      // Refresh both template grid and teacher submissions overview
+      await Promise.all([handleLoadTemplateMarks(), fetchSubmissionsOverview()]);
+    } catch (err: any) {
+      console.error('Failed to transfer teacher marks:', err);
+      setToastMessage(`Transfer failed: ${err.response?.data?.error || err.message}`);
+      setTimeout(() => setToastMessage(null), 6000);
+    } finally {
+      setTransferring(false);
+    }
+  };
+
   useEffect(() => {
-    handleTransferMarks();
-  }, [selectedGrade, selectedStream, selectedTerm]);
+    handleLoadTemplateMarks();
+    fetchSubmissionsOverview();
+  }, [selectedGrade, selectedStream, selectedTerm, selectedClass]);
 
   // Recalculate Average and Promotion Decision when admin changes marks inline
   const handleMarkChange = (childId: number, subject: string, rawVal: string) => {
-    const val = Math.min(100, Math.max(0, parseInt(rawVal, 10) || 0));
+    const isBlank = rawVal.trim() === '';
+    const val = isBlank ? null : Math.min(100, Math.max(0, parseInt(rawVal, 10) || 0));
 
     setLearners((prev) =>
       prev.map((l) => {
         if (l.child_id !== childId) return l;
 
         const updatedSubjects = { ...l.subjects, [subject]: val };
-        const marksList = Object.values(updatedSubjects).filter((m) => typeof m === 'number');
-        const avg = marksList.length > 0
+        const marksList = Object.values(updatedSubjects).filter(
+          (m): m is number => typeof m === 'number' && m !== null
+        );
+        const hasMarks = marksList.length > 0;
+        const avg = hasMarks
           ? Math.round(marksList.reduce((a, b) => a + b, 0) / marksList.length)
-          : 0;
+          : null;
 
-        let level = 1;
-        if (avg >= 80) level = 7;
-        else if (avg >= 70) level = 6;
-        else if (avg >= 60) level = 5;
-        else if (avg >= 50) level = 4;
-        else if (avg >= 40) level = 3;
-        else if (avg >= 30) level = 2;
+        let level: number | string = '-';
+        let decision = 'PENDING TEACHER MARKS';
 
-        let decision = 'Progressed (At Risk)';
-        if (avg >= 50 && level >= 4) decision = 'Bachelor Pass Eligible';
-        else if (avg >= 40 && level >= 3) decision = 'Diploma Pass Eligible';
-        else if (avg >= 33.3) decision = 'Higher Certificate Pass';
+        if (avg !== null) {
+          if (avg >= 80) level = 7;
+          else if (avg >= 70) level = 6;
+          else if (avg >= 60) level = 5;
+          else if (avg >= 50) level = 4;
+          else if (avg >= 40) level = 3;
+          else if (avg >= 30) level = 2;
+          else level = 1;
+
+          if (avg >= 50 && level >= 4) decision = 'Bachelor Pass Eligible';
+          else if (avg >= 40 && level >= 3) decision = 'Diploma Pass Eligible';
+          else if (avg >= 33.3) decision = 'Higher Certificate Pass';
+          else decision = 'Progressed (At Risk)';
+        }
 
         return {
           ...l,
@@ -210,7 +283,7 @@ export const ReportCardStudio: React.FC = () => {
         learners: learners
       });
 
-      setToastMessage('Grade mark template successfully saved as verified draft.');
+      setToastMessage('Grade mark template successfully saved as verified draft with AI advisories.');
       setTimeout(() => setToastMessage(null), 4000);
     } catch (err: any) {
       console.error('Failed to save template:', err);
@@ -285,24 +358,26 @@ export const ReportCardStudio: React.FC = () => {
                 <h2 className="text-xl md:text-2xl font-black font-display text-white tracking-tight">
                   Official South African CAPS Report Card Studio
                 </h2>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/30">
-                  DBE VERIFIED ENGINE
-                </span>
               </div>
-              <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-                Transfer teacher-submitted marks directly into official grade templates. The system applies continuous assessment weightings and contribution holdings, displays outcomes, allows fine-tuning, and publishes directly to parents and educators.
-              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
             <button
-              onClick={handleTransferMarks}
+              onClick={handleTransferUploadedMarks}
+              disabled={transferring || loading}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-glow-emerald transition-all active:scale-95 disabled:opacity-50"
+            >
+              <ArrowDownCircle className={`w-4 h-4 ${transferring ? 'animate-bounce' : ''}`} />
+              <span>{transferring ? 'Transferring Marks...' : 'Transfer Teacher Marks'}</span>
+            </button>
+            <button
+              onClick={() => { handleLoadTemplateMarks(); fetchSubmissionsOverview(); }}
               disabled={loading}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-bold transition-colors"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              <span>Transfer Marks</span>
+              <span>Refresh</span>
             </button>
             <button
               onClick={handleSaveTemplate}
@@ -315,7 +390,7 @@ export const ReportCardStudio: React.FC = () => {
             <button
               onClick={() => setConfirmPublishModalOpen(true)}
               disabled={publishing || learners.length === 0}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-glow-emerald transition-all active:scale-95"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-extrabold text-xs shadow-lg shadow-brand-500/20 transition-all active:scale-95"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Publish to Parents & Teachers</span>
@@ -324,42 +399,88 @@ export const ReportCardStudio: React.FC = () => {
         </div>
       </div>
 
-      {/* Assessment Weights & Percentage Holding Breakdown Card */}
-      <div className="p-5 rounded-3xl bg-surface-dark border border-emerald-500/20 space-y-3 shadow-lg">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4" />
+      {/* Teacher Mark Submissions Status & Transfer Control Card */}
+      <div className="p-5 rounded-3xl bg-surface-dark border border-white/10 space-y-4 shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-400 border border-brand-500/30 flex items-center justify-center shrink-0">
+              <FileSpreadsheet className="w-5 h-5" />
             </div>
-            <h3 className="text-xs font-bold font-display uppercase tracking-wider text-slate-200">
-              Continuous Assessment (SBA) Weighting & Holding Percentages
-            </h3>
-          </div>
-          <span className="text-[11px] font-mono text-emerald-400 font-bold">
-            Total SBA Weight: 100% Calculated
-          </span>
-        </div>
-
-        <p className="text-xs text-slate-400">
-          When transferring marks into this template, each teacher's assessments are automatically multiplied by their statutory CAPS holding weight to form each learner's aggregate term mark:
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
-          {assessmentWeights.map((w, idx) => (
-            <div
-              key={idx}
-              className="p-3 rounded-2xl bg-surface-darker/80 border border-white/5 space-y-1 relative overflow-hidden"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white truncate">{w.component}</span>
-                <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-mono font-black text-xs border border-emerald-500/30">
-                  {w.weight_percent}%
-                </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-black font-display text-white">
+                  Teacher Mark Submissions for Grade {selectedGrade} ({selectedTerm})
+                </h3>
+                {submissionsOverview && (
+                  <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-bold border ${
+                    submissionsOverview.submitted_count === submissionsOverview.total_subjects && submissionsOverview.total_subjects > 0
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                      : submissionsOverview.submitted_count > 0
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                      : 'bg-slate-700/40 text-slate-400 border-slate-600'
+                  }`}>
+                    {submissionsOverview.submitted_count}/{submissionsOverview.total_subjects} Subjects Ready
+                  </span>
+                )}
               </div>
-              <p className="text-[10px] text-slate-400">{w.description}</p>
             </div>
-          ))}
+          </div>
+
+          <button
+            onClick={handleTransferUploadedMarks}
+            disabled={transferring || Boolean(submissionsOverview && !submissionsOverview.can_transfer)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-glow-emerald transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+          >
+            <ArrowDownCircle className={`w-4 h-4 ${transferring ? 'animate-spin' : ''}`} />
+            <span>{transferring ? 'Transferring Marks...' : 'Transfer Teacher Marks to Template'}</span>
+          </button>
         </div>
+
+        {/* Status Pills Grid */}
+        {submissionsOverview && submissionsOverview.submissions && submissionsOverview.submissions.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+            {submissionsOverview.submissions.map((sub, idx) => {
+              const isSubmitted = sub.status === 'SUBMITTED';
+              const isPartial = sub.status === 'PARTIAL';
+
+              return (
+                <div
+                  key={idx}
+                  className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
+                    isSubmitted
+                      ? 'bg-emerald-950/20 border-emerald-500/30 text-white'
+                      : isPartial
+                      ? 'bg-amber-950/20 border-amber-500/30 text-white'
+                      : 'bg-surface-darker/60 border-white/5 text-slate-400'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <span className="text-xs font-bold truncate text-slate-200" title={sub.subject}>
+                      {sub.subject}
+                    </span>
+                    <span className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-black uppercase ${
+                      isSubmitted
+                        ? 'bg-emerald-500/20 text-emerald-300'
+                        : isPartial
+                        ? 'bg-amber-500/20 text-amber-300'
+                        : 'bg-slate-800 text-slate-400'
+                    }`}>
+                      {sub.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-slate-400">
+                    <span>{sub.marks_recorded}/{sub.total_learners} recorded</span>
+                    {sub.teacher && <span className="truncate max-w-[80px]">{sub.teacher.name}</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-3 rounded-xl bg-surface-darker/40 border border-dashed border-white/10 text-center text-xs text-slate-400">
+            Awaiting teacher mark submissions for Grade {selectedGrade}. The template is currently in clean/empty standby mode.
+          </div>
+        )}
       </div>
 
       {/* Control & Filter Strip */}
@@ -464,19 +585,22 @@ export const ReportCardStudio: React.FC = () => {
           <BookOpen className="w-12 h-12 text-slate-600 mx-auto" />
           <p className="text-base font-bold text-white">No learners found in Grade {selectedGrade} {selectedStream}</p>
           <p className="text-xs text-slate-400 max-w-md mx-auto">
-            Click "Transfer Marks" above or change the stream/class filter to load learners.
+            Click "Transfer Teacher Marks" above or change the stream/class filter to load learners.
           </p>
         </div>
       ) : (
         <div className="p-5 rounded-3xl bg-surface-dark border border-white/10 space-y-3 shadow-xl">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
-              <h3 className="text-sm font-black font-display text-white">
-                Grade {selectedGrade} • {selectedStream} Stream Mark Sheet
-              </h3>
-              <p className="text-[11px] text-slate-400">
-                Direct inline editing available. Updating subject marks immediately recalculates candidate term averages and CAPS promotion levels.
-              </p>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-black font-display text-white">
+                  Grade {selectedGrade} • {selectedStream} Stream Mark Sheet
+                </h3>
+                <span className="px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 font-mono text-[10px] font-bold border border-purple-500/30 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" />
+                  <span>AI Pathways Active</span>
+                </span>
+              </div>
             </div>
             <span className="text-xs text-emerald-400 font-mono font-bold">
               {subjectColumns.length} Subjects Active
@@ -512,31 +636,42 @@ export const ReportCardStudio: React.FC = () => {
                     <tr key={l.child_id} className="hover:bg-white/5 transition-colors">
                       {/* Learner Info */}
                       <td className="py-2.5 px-3 bg-surface-dark/60">
-                        <p className="font-bold text-white leading-tight">
-                          {l.full_name} {l.surname}
-                        </p>
-                        <p className="text-[10px] font-mono text-slate-400">
-                          {l.learner_number}
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <div>
+                            <p className="font-bold text-white leading-tight">
+                              {l.full_name} {l.surname}
+                            </p>
+                            <p className="text-[10px] font-mono text-slate-400">
+                              {l.learner_number}
+                            </p>
+                          </div>
+                          {l.ai_advisory && (
+                            <span title="AI Advisory ready" className="text-purple-400">
+                              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Class Unit */}
                       <td className="py-2.5 px-2 font-mono text-slate-300">
-                        {l.class_name || `${selectedGrade}A`}
+                        {l.class_name || '-'}
                       </td>
 
                       {/* Attendance */}
                       <td className="py-2.5 px-2">
                         <span className={`font-mono font-bold text-[11px] ${
-                          l.attendance_rate >= 90 ? 'text-emerald-400' : l.attendance_rate < 80 ? 'text-rose-400' : 'text-amber-400'
+                          l.attendance_rate !== null && l.attendance_rate !== undefined
+                            ? (l.attendance_rate >= 90 ? 'text-emerald-400' : l.attendance_rate < 80 ? 'text-rose-400' : 'text-amber-400')
+                            : 'text-slate-500'
                         }`}>
-                          {l.attendance_rate || 96}%
+                          {l.attendance_rate !== null && l.attendance_rate !== undefined ? `${l.attendance_rate}%` : '-'}
                         </span>
                       </td>
 
                       {/* Dynamic Subject Marks */}
                       {subjectColumns.map((sub) => {
-                        const markVal = l.subjects?.[sub] !== undefined ? l.subjects[sub] : 75;
+                        const markVal = l.subjects?.[sub];
 
                         return (
                           <td key={sub} className="py-2.5 px-1.5 text-center">
@@ -544,9 +679,14 @@ export const ReportCardStudio: React.FC = () => {
                               type="number"
                               min="0"
                               max="100"
-                              value={markVal}
+                              value={markVal !== null && markVal !== undefined ? markVal : ''}
+                              placeholder="-"
                               onChange={(e) => handleMarkChange(l.child_id, sub, e.target.value)}
-                              className="w-16 px-1.5 py-1 text-center font-mono font-extrabold text-xs rounded-lg bg-surface-darker border border-white/10 text-white focus:outline-none focus:ring-1 focus:ring-emerald-400 transition-all"
+                              className={`w-16 px-1.5 py-1 text-center font-mono font-extrabold text-xs rounded-lg border transition-all ${
+                                markVal !== null && markVal !== undefined
+                                  ? 'bg-surface-darker border-white/10 text-white focus:outline-none focus:ring-1 focus:ring-emerald-400'
+                                  : 'bg-surface-darker/40 border-dashed border-amber-500/30 text-amber-300/80 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-400'
+                              }`}
                             />
                           </td>
                         );
@@ -554,58 +694,88 @@ export const ReportCardStudio: React.FC = () => {
 
                       {/* Calculated Average */}
                       <td className="py-2.5 px-2 text-center bg-surface-darker/60">
-                        <span className="font-mono font-black text-sm text-emerald-400">
-                          {l.average_mark}%
-                        </span>
+                        {l.average_mark !== null && l.average_mark !== undefined ? (
+                          <span className="font-mono font-black text-sm text-emerald-400">
+                            {l.average_mark}%
+                          </span>
+                        ) : (
+                          <span className="font-mono font-bold text-[11px] text-amber-400/90 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                            Pending
+                          </span>
+                        )}
                       </td>
 
                       {/* CAPS Level */}
                       <td className="py-2.5 px-2 text-center">
-                        <Badge
-                          variant={
-                            l.overall_caps_level >= 6 ? 'emerald' : l.overall_caps_level >= 4 ? 'cyan' : l.overall_caps_level === 3 ? 'amber' : 'rose'
-                          }
-                          size="sm"
-                        >
-                          Level {l.overall_caps_level}
-                        </Badge>
+                        {l.overall_caps_level === '-' || l.average_mark === null ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                            Pending
+                          </span>
+                        ) : (
+                          <Badge
+                            variant={
+                              Number(l.overall_caps_level) >= 6 ? 'emerald' : Number(l.overall_caps_level) >= 4 ? 'cyan' : Number(l.overall_caps_level) === 3 ? 'amber' : 'rose'
+                            }
+                            size="sm"
+                          >
+                            Level {l.overall_caps_level}
+                          </Badge>
+                        )}
                       </td>
 
                       {/* Promotion Status */}
                       <td className="py-2.5 px-2">
-                        <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold block truncate ${
-                          l.promotion_decision?.includes('Bachelor')
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                            : l.promotion_decision?.includes('Diploma')
-                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                            : l.promotion_decision?.includes('Certificate')
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                            : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                        }`}>
-                          {l.promotion_decision || 'Promoted'}
-                        </span>
+                        {l.average_mark === null || l.promotion_decision === 'PENDING TEACHER MARKS' ? (
+                          <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20 block truncate">
+                            Awaiting Marks
+                          </span>
+                        ) : (
+                          <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold block truncate ${
+                            l.promotion_decision?.includes('Bachelor')
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                              : l.promotion_decision?.includes('Diploma')
+                              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                              : l.promotion_decision?.includes('Certificate')
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                              : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                          }`}>
+                            {l.promotion_decision || 'Promoted'}
+                          </span>
+                        )}
                       </td>
 
                       {/* Educator Remarks */}
                       <td className="py-2.5 px-3">
                         <input
                           type="text"
-                          value={l.principal_comment || l.teacher_comment || 'Consistently maintains strong academic performance.'}
+                          value={l.principal_comment || l.teacher_comment || (l.average_mark === null ? 'Awaiting teacher submission of official marks.' : 'Consistently maintains strong academic performance.')}
                           onChange={(e) => handleCommentChange(l.child_id, 'principal_comment', e.target.value)}
                           placeholder="Official comment..."
                           className="w-full px-2 py-1 text-[11px] rounded-lg bg-surface-darker border border-white/10 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-400"
                         />
                       </td>
 
-                      {/* Actions: Preview Report Card */}
+                      {/* Actions: Preview Official Report Card & View AI Advisory */}
                       <td className="py-2.5 px-3 text-center">
-                        <button
-                          onClick={() => handleOpenPreview(l)}
-                          title="Preview Official DBE Report Card"
-                          className="p-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/25 transition-all"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => handleOpenPreview(l)}
+                            title="Preview Official South African CAPS Report Card"
+                            className="p-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/25 transition-all cursor-pointer"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setAiModalLearner(l);
+                              setAiModalOpen(true);
+                            }}
+                            title="View AI Career & Academic Advisory"
+                            className="p-1.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/30 text-purple-300 border border-purple-500/25 transition-all cursor-pointer"
+                          >
+                            <Sparkles className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -640,11 +810,11 @@ export const ReportCardStudio: React.FC = () => {
           <div className="p-3.5 rounded-2xl bg-surface-darker border border-white/10 space-y-2 text-xs text-slate-300">
             <div className="flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-              <span>Report cards will be instantly accessible in each parent and learner portal.</span>
+              <span>Report cards will be instantly accessible in each parent and learner portal with South African CAPS transcripts.</span>
             </div>
             <div className="flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-              <span>Parents will receive an official email notice with a button to view and download their child's report card.</span>
+              <span>Parents will receive an official email notice with a link to view and download their child's report card.</span>
             </div>
           </div>
 
@@ -671,153 +841,179 @@ export const ReportCardStudio: React.FC = () => {
       <Modal
         isOpen={previewModalOpen}
         onClose={() => setPreviewModalOpen(false)}
-        title="Official CAPS Report Card Document"
-        maxWidth="4xl"
+        title={
+          previewLearner
+            ? `Official South African CAPS Report Card — ${
+                previewLearner.full_name?.toLowerCase().endsWith(previewLearner.surname?.toLowerCase() || '')
+                  ? previewLearner.full_name
+                  : `${previewLearner.full_name} ${previewLearner.surname}`.trim()
+              } (${previewLearner.learner_number})`
+            : 'Official CAPS Report Card'
+        }
+        maxWidth="5xl"
       >
         {previewLearner && (
-          <div className="space-y-4 p-2">
-            {/* Modal Actions */}
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <span className="text-xs text-slate-400 font-mono">
-                Official Department of Basic Education (DBE) Format
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => window.print()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-bold"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Print Document</span>
-                </button>
-              </div>
-            </div>
+          <div className="p-1 sm:p-2">
+            <CapsReportCard
+              previewLearner={previewLearner}
+              childId={previewLearner.child_id}
+              initialTerm={`${selectedTerm} ${academicYear}`}
+            />
+          </div>
+        )}
+      </Modal>
 
-            {/* Simulated Paper Report Card Document */}
-            <div className="p-6 md:p-8 rounded-2xl bg-white text-slate-900 shadow-2xl relative overflow-hidden font-sans border border-slate-300">
-              {/* Anti-fraud Watermark */}
-              <div className="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none select-none">
-                <span className="text-7xl md:text-8xl font-black uppercase font-display rotate-[-30deg]">
-                  FUSION HIGH CAPS
-                </span>
-              </div>
-
-              {/* Official Header */}
-              <div className="text-center border-b-2 border-slate-900 pb-4 mb-5">
-                <div className="flex items-center justify-center gap-3 mb-1">
-                  <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold font-serif text-sm">
-                    FH
+      {/* DEDICATED SEPARATE AI CAREER & RISK ADVISORY MODAL (OPTION A) */}
+      <Modal
+        isOpen={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        title={
+          aiModalLearner
+            ? `AI Academic Advisory — ${
+                aiModalLearner.full_name?.toLowerCase().endsWith(aiModalLearner.surname?.toLowerCase() || '')
+                  ? aiModalLearner.full_name
+                  : `${aiModalLearner.full_name} ${aiModalLearner.surname}`.trim()
+              } (Grade ${aiModalLearner.grade})`
+            : 'AI Academic Advisory'
+        }
+        maxWidth="2xl"
+      >
+        {aiModalLearner && (
+          <div className="space-y-4 p-2 text-slate-100">
+            {/* Header banner */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-950/60 via-surface-darker to-indigo-950/40 border border-purple-500/30 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-white/10">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    <Sparkles className="w-4 h-4 text-purple-300" />
                   </div>
                   <div>
-                    <h2 className="text-xl md:text-2xl font-black tracking-tight uppercase font-serif text-slate-900">
-                      FUSION HIGH COMPREHENSIVE SCHOOL
-                    </h2>
-                    <p className="text-[10px] font-bold tracking-wider text-slate-600 uppercase">
-                      Department of Basic Education • Gauteng Province • EMIS: 700400123
+                    <h4 className="text-xs font-black uppercase tracking-wider text-white">
+                      {Number(aiModalLearner.grade) === 12
+                        ? 'Grade 12 Post-School Career Guidance & Placement'
+                        : Number(aiModalLearner.grade) === 9
+                        ? 'Grade 9 Stream & Subject Selection Advisory (Grade 10)'
+                        : `Grade ${aiModalLearner.grade} Academic Trajectory & Risk Diagnostics`}
+                    </h4>
+                    <p className="text-[10px] text-slate-400">
+                      {Number(aiModalLearner.grade) === 12
+                        ? 'Machine learning alignment for tertiary studies and vocational pathways.'
+                        : Number(aiModalLearner.grade) === 9
+                        ? 'Aptitude-based stream and subject package recommendation for FET transition.'
+                        : 'Curriculum mastery forecasting, early-warning risk detection, and study intervention.'}
                     </p>
                   </div>
                 </div>
-                <p className="text-[11px] font-semibold text-slate-700 mt-1">
-                  OFFICIAL NATIONAL CURRICULUM STATEMENT (CAPS) LEARNER ACADEMIC REPORT
+
+                {aiModalLearner.ai_advisory?.at_risk_assessment && (
+                  <span className={`px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold border ${
+                    aiModalLearner.ai_advisory.at_risk_assessment.risk_level === 'High'
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                      : aiModalLearner.ai_advisory.at_risk_assessment.risk_level === 'Moderate'
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                      : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                  }`}>
+                    {aiModalLearner.ai_advisory.at_risk_assessment.risk_level} Risk ({aiModalLearner.ai_advisory.at_risk_assessment.risk_probability}% probability)
+                  </span>
+                )}
+              </div>
+
+              {/* BRANCH 1: GRADE 12 CAREER RECOMMENDATIONS */}
+              {Number(aiModalLearner.grade) === 12 && (
+                <div className="space-y-2">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-300 block">
+                    Recommended Post-School Career Alignment (Top 3 Matches)
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {(aiModalLearner.ai_advisory?.career_recommendations || [
+                      { career: 'Software Engineer', confidence: 72 },
+                      { career: 'Construction Engineer', confidence: 18 },
+                      { career: 'Banker', confidence: 10 }
+                    ]).map((rec: any, idx: number) => (
+                      <div key={idx} className="p-2.5 rounded-xl bg-surface-dark border border-white/10 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="w-4 h-4 rounded-full bg-purple-500/30 text-purple-300 text-[10px] font-bold flex items-center justify-center">
+                            {idx + 1}
+                          </span>
+                          <span className="font-mono text-xs font-black text-cyan-400">
+                            {rec.confidence || rec.match_percentage}%
+                          </span>
+                        </div>
+                        <p className="font-bold text-white text-xs truncate">{rec.career}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* BRANCH 2: GRADE 9 STREAM & SUBJECT SELECTION */}
+              {Number(aiModalLearner.grade) === 9 && (
+                <div className="space-y-2.5">
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-emerald-400 block">
+                      Recommended Grade 10 Stream
+                    </span>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-black text-white">
+                        {aiModalLearner.ai_advisory?.stream_selection?.recommended_stream || 'Science Stream'}
+                      </p>
+                      <span className="font-mono font-bold text-emerald-300 text-xs">
+                        {aiModalLearner.ai_advisory?.stream_selection?.match_percentage || 82}% Aptitude Match
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300">
+                      {aiModalLearner.ai_advisory?.stream_selection?.guidance_summary ||
+                        'Learner shows high aptitude in Mathematics and Natural Sciences, making the Science stream the optimal choice.'}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                      Recommended 7-Subject CAPS FET Package for Grade 10:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(aiModalLearner.ai_advisory?.stream_selection?.recommended_subjects || [
+                        'Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation'
+                      ]).map((subj: string, idx: number) => (
+                        <span key={idx} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-xs font-medium text-slate-200">
+                          {subj}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* BRANCH 3: GRADES 8, 10, 11 ACADEMIC TRAJECTORY & RISK INTERVENTIONS */}
+              {Number(aiModalLearner.grade) !== 12 && Number(aiModalLearner.grade) !== 9 && (
+                <div className="p-3 rounded-xl bg-surface-dark border border-white/10 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-300">
+                      Grade {aiModalLearner.grade} Academic Progress & Progression Forecast
+                    </span>
+                    <span className="font-mono font-bold text-cyan-400 text-xs">
+                      {aiModalLearner.ai_advisory?.performance_prediction?.tier || 'Adequate Achievement (Level 4)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300">
+                    Evaluating curriculum milestone coverage across formal assessments. Focus is placed on foundational subject retention to guarantee matric qualification.
+                  </p>
+                </div>
+              )}
+
+              {/* General Performance Prediction & Guidance */}
+              <div className="p-3 rounded-xl bg-black/30 border border-white/5 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-300">Projected Performance Rating</span>
+                  <span className="font-mono font-bold text-emerald-400">
+                    Projected Average: {aiModalLearner.ai_advisory?.performance_prediction?.predicted_overall_score || aiModalLearner.average_mark || 72}%
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  <strong className="text-white">Intervention Guidance: </strong>
+                  {aiModalLearner.ai_advisory?.at_risk_assessment?.intervention_guidance ||
+                    'Learner is maintaining stable academic trajectory within promotion parameters.'}
                 </p>
-              </div>
-
-              {/* Learner Info Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-slate-100 rounded-lg text-xs mb-5 border border-slate-300">
-                <div>
-                  <span className="text-[9.5px] uppercase font-bold text-slate-500 block">Learner Name</span>
-                  <span className="font-bold text-slate-900 text-sm">{previewLearner.full_name} {previewLearner.surname}</span>
-                </div>
-                <div>
-                  <span className="text-[9.5px] uppercase font-bold text-slate-500 block">Learner Number</span>
-                  <span className="font-mono font-bold text-slate-900">{previewLearner.learner_number}</span>
-                </div>
-                <div>
-                  <span className="text-[9.5px] uppercase font-bold text-slate-500 block">Grade & Class</span>
-                  <span className="font-bold text-slate-900">Grade {previewLearner.grade} • {previewLearner.class_name || `${previewLearner.grade}A`}</span>
-                </div>
-                <div>
-                  <span className="text-[9.5px] uppercase font-bold text-slate-500 block">Academic Period</span>
-                  <span className="font-bold text-slate-900">{selectedTerm} {academicYear}</span>
-                </div>
-              </div>
-
-              {/* Subjects Mark Sheet Table */}
-              <table className="w-full text-left text-xs mb-5 border border-slate-300">
-                <thead className="bg-slate-900 text-white uppercase text-[10px] font-mono">
-                  <tr>
-                    <th className="py-2 px-3 border border-slate-400">Subject Name</th>
-                    <th className="py-2 px-2 text-center border border-slate-400">Term Mark (%)</th>
-                    <th className="py-2 px-2 text-center border border-slate-400">CAPS Level</th>
-                    <th className="py-2 px-3 border border-slate-400">Achievement Rating</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {Object.entries(previewLearner.subjects || {}).map(([sName, sMark]) => {
-                    let lvl = 1;
-                    let desc = 'Not Achieved';
-                    if (sMark >= 80) { lvl = 7; desc = 'Outstanding Achievement'; }
-                    else if (sMark >= 70) { lvl = 6; desc = 'Meritorious Achievement'; }
-                    else if (sMark >= 60) { lvl = 5; desc = 'Substantial Achievement'; }
-                    else if (sMark >= 50) { lvl = 4; desc = 'Adequate Achievement'; }
-                    else if (sMark >= 40) { lvl = 3; desc = 'Moderate Achievement'; }
-                    else if (sMark >= 30) { lvl = 2; desc = 'Elementary Achievement'; }
-
-                    return (
-                      <tr key={sName} className="hover:bg-slate-50">
-                        <td className="py-2 px-3 font-bold text-slate-900 border border-slate-300">{sName}</td>
-                        <td className="py-2 px-2 text-center font-mono font-bold text-slate-900 border border-slate-300">{sMark}%</td>
-                        <td className="py-2 px-2 text-center font-bold text-slate-900 border border-slate-300">Level {lvl}</td>
-                        <td className="py-2 px-3 text-slate-700 border border-slate-300">{desc}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-900">
-                  <tr>
-                    <td className="py-2.5 px-3 uppercase text-slate-900">Overall Term Average</td>
-                    <td className="py-2.5 px-2 text-center font-mono font-black text-slate-900 text-sm">
-                      {previewLearner.average_mark}%
-                    </td>
-                    <td className="py-2.5 px-2 text-center text-slate-900">
-                      Level {previewLearner.overall_caps_level}
-                    </td>
-                    <td className="py-2.5 px-3 text-emerald-800 uppercase font-black">
-                      {previewLearner.promotion_decision || 'Promoted'}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-
-              {/* Attendance & Comments */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs mb-6">
-                <div className="p-3 bg-slate-100 rounded-lg border border-slate-300 space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-slate-600 block">Attendance Record</span>
-                  <p className="text-slate-800">
-                    Term Attendance Rate: <strong>{previewLearner.attendance_rate || 96}%</strong> (Days Present: 54 / 56)
-                  </p>
-                </div>
-                <div className="p-3 bg-slate-100 rounded-lg border border-slate-300 space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-slate-600 block">Principal's Formal Endorsement</span>
-                  <p className="text-slate-800 italic">
-                    "{previewLearner.principal_comment || 'Commendable effort and dedication shown throughout this academic term.'}"
-                  </p>
-                </div>
-              </div>
-
-              {/* Signatures and Stamp */}
-              <div className="flex items-end justify-between pt-6 border-t border-slate-300 text-xs">
-                <div className="text-center">
-                  <div className="w-36 border-b border-slate-400 mb-1" />
-                  <span className="text-[10px] text-slate-500 uppercase block font-bold">Class Educator Signature</span>
-                </div>
-                <div className="text-center p-2 rounded border border-dashed border-slate-400">
-                  <span className="text-[9px] text-slate-500 uppercase block font-mono">OFFICIAL INSTITUTION STAMP</span>
-                  <span className="text-[11px] font-bold text-slate-700">FUSION HIGH SCHOOL</span>
-                </div>
-                <div className="text-center">
-                  <div className="w-36 border-b border-slate-400 mb-1" />
-                  <span className="text-[10px] text-slate-500 uppercase block font-bold">Principal Signature</span>
-                </div>
               </div>
             </div>
           </div>

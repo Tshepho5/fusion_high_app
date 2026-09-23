@@ -1,5 +1,6 @@
 const db = require('../../../db/db');
 const emailService = require('../services/emailService');
+const aiAdvisorService = require('../services/aiAdvisorService');
 
 /**
  * Maps percentage mark to South African CAPS official 7-Point Achievement Rating Level
@@ -49,17 +50,17 @@ const calculateSouthAfricanPromotion = (subjects, overallAverage) => {
 
   // Senior / FET Phase CAPS criteria
   if (overallAverage >= 65 && passedAbove50Count >= 4) {
-    return "PROMOTED — PASS WITH BACHELOR'S DEGREE ENDORSEMENT";
+    return 'PROMOTED';
   } else if (overallAverage >= 50 && passedAbove50Count >= 3) {
-    return 'PROMOTED — PASS WITH DIPLOMA ENDORSEMENT';
+    return 'PROMOTED';
   } else if (overallAverage >= 40 && passedCount >= 4) {
-    return 'PROMOTED — PASS WITH HIGHER CERTIFICATE ENDORSEMENT';
+    return 'PROMOTED';
   } else if (overallAverage >= 50) {
-    return 'PROMOTED TO NEXT GRADE';
-  } else if (overallAverage >= 40) {
-    return 'PROGRESSION (SPECIAL CONDONATION RECOMMENDED)';
+    return 'PROMOTED';
+  } else if (overallAverage >= 40) { 
+    return 'PROGRESSION';
   } else {
-    return 'NOT PROMOTED — DID NOT MEET MINIMUM CAPS REQUIREMENTS';
+    return 'NOT PROMOTED';
   }
 };
 
@@ -137,7 +138,7 @@ exports.getGradeTemplateMarks = async (req, res) => {
       } else if (stream === 'Commerce') {
         schoolSubjects = ['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Life Orientation', 'Home Language'];
       } else if (stream === 'Tourism') {
-        schoolSubjects = ['Tourism', 'Hospitality Studies', 'Business Studies', 'Mathematical Literacy', 'English FAL', 'Life Orientation'];
+        schoolSubjects = ['Tourism', 'History', 'Geography', 'Mathematical Literacy', 'English FAL', 'Life Orientation', 'Home Language']; 
       } else {
         schoolSubjects = ['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Life Orientation'];
       }
@@ -217,9 +218,16 @@ exports.getGradeTemplateMarks = async (req, res) => {
       const existingCard = existingCardsMap.get(l.id);
 
       // Determine subjects for this learner
-      const studentSubjects = Array.isArray(l.subjects) && l.subjects.length > 0
-        ? l.subjects
-        : schoolSubjects;
+      let studentSubjects = Array.isArray(l.subjects) && l.subjects.length > 0
+        ? [...l.subjects]
+        : [...schoolSubjects];
+
+      // Guarantee Geography is always included for Science stream FET learners
+      if (grade >= 10 && (l.stream === 'Science' || stream === 'Science')) {
+        if (!studentSubjects.some(s => s.toLowerCase() === 'geography')) {
+          studentSubjects.push('Geography');
+        }
+      }
 
       // Fetch attendance register records for this student
       const attRes = await db.query(
@@ -231,28 +239,20 @@ exports.getGradeTemplateMarks = async (req, res) => {
          WHERE child_id = $1`,
         [l.id]
       );
-      const totalDays = parseInt(attRes.rows[0]?.total_days || '50', 10) || 50;
-      const daysPresent = parseInt(attRes.rows[0]?.days_present || '46', 10);
-      const daysAbsent = parseInt(attRes.rows[0]?.days_absent || (totalDays - daysPresent), 10);
-      const attRate = totalDays > 0 ? Math.round((daysPresent / totalDays) * 100) : 92;
+      const totalDays = parseInt(attRes.rows[0]?.total_days || '0', 10);
+      const daysPresent = parseInt(attRes.rows[0]?.days_present || '0', 10);
+      const daysAbsent = parseInt(attRes.rows[0]?.days_absent || (totalDays > 0 ? totalDays - daysPresent : '0'), 10);
+      const attRate = totalDays > 0 ? Math.round((daysPresent / totalDays) * 100) : null;
 
-      // Fetch all recorded assessment marks for this learner
+      // Fetch ONLY recorded formal assessment marks (Strictly exclude informal quizzes / drills)
       const marksRes = await db.query(
-        `SELECT subject, assessment_name, score, max_score, percentage, weight, recorded_at
+        `SELECT subject, assessment_name, score, max_score, percentage, weight, is_formal, assessment_type, recorded_at
          FROM marks
          WHERE (child_id = $1 OR learner_id = $1)
            AND (term = $2 OR term IS NULL)
+           AND (is_formal = TRUE OR is_formal IS NULL)
          ORDER BY recorded_at ASC`,
         [l.id, termNum]
-      );
-
-      // Fetch progress records as secondary assessment source
-      const progRes = await db.query(
-        `SELECT subject, assessment_name, notes, score, total_marks, grade as percentage, date
-         FROM progress
-         WHERE child_id = $1 AND (term ILIKE $2 OR term IS NULL)
-         ORDER BY date ASC`,
-        [l.id, `%${termNum}%`]
       );
 
       // Calculate marks & assessment percentage weighting for each subject
@@ -260,27 +260,47 @@ exports.getGradeTemplateMarks = async (req, res) => {
 
       for (const subj of studentSubjects) {
         const matchingMarks = marksRes.rows.filter(m => (m.subject || '').toLowerCase() === subj.toLowerCase());
-        const matchingProg = progRes.rows.filter(p => (p.subject || '').toLowerCase() === subj.toLowerCase());
 
         let assessments = [];
-        let finalSubjectPct = 0;
+        let finalSubjectPct = null;
+        let sbaMark = null;
+        let examMark = null;
+        let rawScoreSum = 0;
+        let maxScoreSum = 0;
 
         if (matchingMarks.length > 0) {
-          // Calculate marks and percentage contribution of each assessment
+          // Dynamic calculation: weight contributions are strictly based on what formal assessments exist
           let totalWeight = 0;
           let weightedSum = 0;
+          let sbaWeightSum = 0;
+          let sbaTotalWeight = 0;
+          let examWeightSum = 0;
+          let examTotalWeight = 0;
 
           assessments = matchingMarks.map(m => {
             const rawScore = Number(m.score) || 0;
             const maxScore = Number(m.max_score) || 100;
             const pct = m.percentage ? Number(m.percentage) : Math.round((rawScore / (maxScore || 100)) * 100);
             const w = Number(m.weight) || maxScore || 100;
+            const aType = (m.assessment_type || m.assessment_name || '').toLowerCase();
+            const isExam = aType.includes('exam') || aType.includes('examination');
 
             totalWeight += w;
             weightedSum += pct * w;
+            rawScoreSum += rawScore;
+            maxScoreSum += maxScore;
+
+            if (isExam) {
+              examWeightSum += pct * w;
+              examTotalWeight += w;
+            } else {
+              sbaWeightSum += pct * w;
+              sbaTotalWeight += w;
+            }
 
             return {
               name: m.assessment_name || 'Class Assessment',
+              type: m.assessment_type || (isExam ? 'Examination' : 'Formal Assessment'),
               score: rawScore,
               max_score: maxScore,
               weight: w,
@@ -288,70 +308,122 @@ exports.getGradeTemplateMarks = async (req, res) => {
             };
           });
 
-          finalSubjectPct = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : Math.round(assessments[0].percentage);
-        } else if (matchingProg.length > 0) {
-          assessments = matchingProg.map(p => ({
-            name: p.assessment_name || p.notes || 'Assessment Task',
-            score: Number(p.score) || Number(p.percentage),
-            max_score: Number(p.total_marks) || 100,
-            weight: Number(p.total_marks) || 100,
-            percentage: Number(p.percentage)
-          }));
-          const sum = assessments.reduce((acc, a) => acc + a.percentage, 0);
-          finalSubjectPct = Math.round(sum / assessments.length);
+          sbaMark = sbaTotalWeight > 0 ? Math.round(sbaWeightSum / sbaTotalWeight) : null;
+          examMark = examTotalWeight > 0 ? Math.round(examWeightSum / examTotalWeight) : null;
+
+          if (sbaMark !== null && examMark !== null) {
+            finalSubjectPct = Math.round((sbaMark * 0.4) + (examMark * 0.6));
+          } else if (sbaMark !== null) {
+            finalSubjectPct = sbaMark;
+          } else if (examMark !== null) {
+            finalSubjectPct = examMark;
+          } else {
+            finalSubjectPct = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : Math.round(assessments[0].percentage);
+          }
         } else if (existingCard && Array.isArray(existingCard.marks_breakdown)) {
-          // Fallback to previously saved card breakdown if exists
+          // Fallback to previously saved card breakdown if admin already verified & saved
           const prev = existingCard.marks_breakdown.find(b => (b.subject || '').toLowerCase() === subj.toLowerCase());
-          finalSubjectPct = prev ? Number(prev.mark) : 65;
-          assessments = [{ name: 'Term Cumulative SBA', score: finalSubjectPct, max_score: 100, weight: 100, percentage: finalSubjectPct }];
+          if (prev && prev.mark !== null && prev.mark !== undefined && !prev.is_pending) {
+            finalSubjectPct = Number(prev.mark);
+            rawScoreSum = prev.raw_score || finalSubjectPct;
+            maxScoreSum = prev.max_score || 100;
+            sbaMark = prev.sba_mark ?? finalSubjectPct;
+            examMark = prev.exam_mark ?? null;
+            assessments = prev.assessments || [{ name: 'Transferred Formal Mark', score: finalSubjectPct, max_score: 100, weight: 100, percentage: finalSubjectPct }];
+          } else {
+            finalSubjectPct = null;
+            assessments = [];
+          }
         } else {
-          // Default standard baseline mark for template initialization
-          finalSubjectPct = 65;
-          assessments = [{ name: 'Class Assessment SBA', score: 65, max_score: 100, weight: 100, percentage: 65 }];
+          // Strictly remains clean/empty with NO fake placeholder or quiz marks!
+          finalSubjectPct = null;
+          assessments = [];
         }
 
-        // Ensure within 0 - 100
-        finalSubjectPct = Math.min(100, Math.max(0, finalSubjectPct));
-        const caps = getCapsLevel(finalSubjectPct);
+        const markDisplay = maxScoreSum > 0 ? `${rawScoreSum} / ${maxScoreSum}` : (finalSubjectPct !== null ? `${finalSubjectPct}%` : '-');
 
-        // Calculate each assessment's percentage holding of the total subject outcome
-        const totalAssessmentsWeight = assessments.reduce((acc, a) => acc + (a.weight || 100), 0) || 100;
-        assessments = assessments.map(a => ({
-          ...a,
-          holding_pct: Math.round(((a.weight || 100) / totalAssessmentsWeight) * 100)
-        }));
+        if (finalSubjectPct !== null && !isNaN(finalSubjectPct)) {
+          finalSubjectPct = Math.min(100, Math.max(0, finalSubjectPct));
+          const caps = getCapsLevel(finalSubjectPct);
 
-        subjectOutcomes.push({
-          subject: subj,
-          mark: finalSubjectPct,
-          level: caps.level,
-          rating: caps.rating,
-          descriptor: caps.descriptor,
-          badge: caps.badge,
-          assessments_count: assessments.length,
-          assessments: assessments
-        });
+          const totalAssessmentsWeight = assessments.reduce((acc, a) => acc + (a.weight || 100), 0) || 100;
+          assessments = assessments.map(a => ({
+            ...a,
+            holding_pct: Math.round(((a.weight || 100) / totalAssessmentsWeight) * 100)
+          }));
+
+          subjectOutcomes.push({
+            subject: subj,
+            code: subj.substring(0, 4).toUpperCase(),
+            mark_display: markDisplay,
+            raw_score: rawScoreSum,
+            max_score: maxScoreSum,
+            mark: finalSubjectPct,
+            percentage: finalSubjectPct,
+            sba_mark: sbaMark,
+            exam_mark: examMark,
+            level: caps.level,
+            rating: caps.rating,
+            descriptor: caps.descriptor,
+            badge: caps.badge,
+            is_pending: false,
+            assessments_count: assessments.length,
+            assessments: assessments
+          });
+        } else {
+          // Clean empty subject slot on standby
+          subjectOutcomes.push({
+            subject: subj,
+            code: subj.substring(0, 4).toUpperCase(),
+            mark_display: '-',
+            raw_score: null,
+            max_score: null,
+            mark: null,
+            percentage: null,
+            sba_mark: null,
+            exam_mark: null,
+            level: '-',
+            rating: 'Pending Upload',
+            descriptor: 'Teacher Marks Not Uploaded',
+            badge: 'amber',
+            is_pending: true,
+            assessments_count: 0,
+            assessments: []
+          });
+        }
       }
 
-      // Compute total, average, and promotion status
-      const totalMarksSum = subjectOutcomes.reduce((sum, s) => sum + s.mark, 0);
-      const overallAvg = subjectOutcomes.length > 0 ? Math.round(totalMarksSum / subjectOutcomes.length) : 0;
-      const overallCaps = getCapsLevel(overallAvg);
-      const promotionDecision = calculateSouthAfricanPromotion(subjectOutcomes, overallAvg);
+      // Compute total, average, and promotion status only from subjects with uploaded formal marks
+      const gradedSubjects = subjectOutcomes.filter(s => s.mark !== null && !s.is_pending);
+      const hasMarks = gradedSubjects.length > 0;
+      const totalMarksSum = gradedSubjects.reduce((sum, s) => sum + s.mark, 0);
+      const overallAvg = hasMarks ? Math.round(totalMarksSum / gradedSubjects.length) : null;
+      const overallCaps = hasMarks ? getCapsLevel(overallAvg) : { level: '-', rating: 'Pending', descriptor: 'Pending Teacher Upload', badge: 'amber' };
+      const promotionDecision = hasMarks ? calculateSouthAfricanPromotion(gradedSubjects, overallAvg) : 'PENDING TEACHER MARKS';
 
-      const defaultTeacherComment = overallAvg >= 75
-        ? 'Exemplary academic focus, diligent task completion, and analytical thinking shown throughout the term.'
-        : (overallAvg >= 50 ? 'Consistent effort and positive progress demonstrated. Dedicated revision in complex topics recommended.' : 'Requires structured academic intervention and daily revision of foundational principles.');
+      const defaultTeacherComment = hasMarks
+        ? (overallAvg >= 75
+          ? 'Exemplary academic focus, diligent task completion, and analytical thinking shown throughout the term.'
+          : (overallAvg >= 50 ? 'Consistent effort and positive progress demonstrated. Dedicated revision in complex topics recommended.' : 'Requires structured academic intervention and daily revision of foundational principles.'))
+        : 'Awaiting teacher submission of official term marks.';
 
-      const defaultPrincipalComment = overallAvg >= 60
-        ? 'Promoted with congratulations. Commendable discipline and dedication to academic excellence.'
-        : (overallAvg >= 50 ? 'Satisfactory achievement. Encouraged to aim for distinction in the upcoming term.' : 'Parent consultation recommended to coordinate targeted academic remediation.');
+      const defaultPrincipalComment = hasMarks
+        ? (overallAvg >= 60
+          ? 'Promoted with congratulations. Commendable discipline and dedication to academic excellence.'
+          : (overallAvg >= 50 ? 'Satisfactory achievement. Encouraged to aim for distinction in the upcoming term.' : 'Parent consultation recommended to coordinate targeted academic remediation.'))
+        : 'Official term marks pending educator submission.';
+
+      const rawFirst = (l.full_name || '').trim();
+      const rawSur = (l.surname || '').trim();
+      const cleanLearnerName = rawFirst.toLowerCase().endsWith(rawSur.toLowerCase())
+        ? rawFirst
+        : `${rawFirst} ${rawSur}`.trim();
 
       compiledLearners.push({
         child_id: l.id,
-        learner_name: l.full_name,
-        learner_surname: l.surname,
-        full_name: `${l.full_name} ${l.surname}`,
+        learner_name: rawFirst,
+        learner_surname: rawSur,
+        full_name: cleanLearnerName,
         learner_number: l.learner_number || `2026-FHS-${String(l.id).padStart(3, '0')}`,
         grade: l.grade,
         class_name: l.class_name,
@@ -376,9 +448,34 @@ exports.getGradeTemplateMarks = async (req, res) => {
         teacher_comment: existingCard?.teacher_comment || defaultTeacherComment,
         principal_comment: existingCard?.principal_comment || defaultPrincipalComment,
         principal_signature: existingCard?.principal_signature || 'Dr. T. Makola (Signed)',
+        ai_advisory: existingCard?.ai_advisory || null,
         is_published: existingCard ? !!existingCard.is_published : false
       });
     }
+
+    // Calculate real dynamic class averages and pass rates per subject
+    const subjectStatsMap = {};
+    schoolSubjects.forEach(sName => {
+      const marksForSubj = [];
+      compiledLearners.forEach(learner => {
+        const subOutcome = (learner.subjects || []).find(s => (s.subject || '').toLowerCase() === sName.toLowerCase());
+        if (subOutcome && subOutcome.mark !== null && !subOutcome.is_pending) {
+          marksForSubj.push(Number(subOutcome.mark));
+        }
+      });
+      const count = marksForSubj.length;
+      const avg = count > 0 ? Math.round(marksForSubj.reduce((a, b) => a + b, 0) / count) : null;
+      const passCount = marksForSubj.filter(m => m >= 50).length;
+      const passRate = count > 0 ? Math.round((passCount / count) * 100) : null;
+      subjectStatsMap[sName.toLowerCase()] = { average: avg, pass_rate: passRate, recorded_count: count };
+    });
+
+    compiledLearners.forEach(learner => {
+      (learner.subjects || []).forEach(s => {
+        const stats = subjectStatsMap[(s.subject || '').toLowerCase()];
+        s.average = stats?.average ?? null;
+      });
+    });
 
     res.json({
       success: true,
@@ -438,10 +535,32 @@ exports.saveGradeReportCardTemplate = async (req, res) => {
       const caps = getCapsLevel(avg);
       const promotionDecision = item.promotion_status || calculateSouthAfricanPromotion(subjects, avg);
 
-      const daysPresent = parseInt(item.attendance?.days_present ?? item.days_present ?? 46, 10);
-      const daysAbsent = parseInt(item.attendance?.days_absent ?? item.days_absent ?? 4, 10);
+      const daysPresent = parseInt(item.attendance?.days_present ?? item.days_present ?? 0, 10);
+      const daysAbsent = parseInt(item.attendance?.days_absent ?? item.days_absent ?? 0, 10);
       const totalDays = parseInt(item.attendance?.total_days ?? item.total_days ?? (daysPresent + daysAbsent), 10);
-      const attRate = totalDays > 0 ? Math.round((daysPresent / totalDays) * 100) : 92;
+      const attRate = totalDays > 0 ? Math.round((daysPresent / totalDays) * 100) : null;
+
+      // Compute or preserve AI Advisory (Option A)
+      let aiAdvisory = item.ai_advisory || null;
+      if (!aiAdvisory && subjects.length > 0) {
+        const scoresMap = {};
+        subjects.forEach(s => { scoresMap[(s.subject || '').toLowerCase()] = s.mark; });
+        const aiPayload = {
+          math_score: scoresMap['mathematics'] || scoresMap['maths'] || scoresMap['math'] || avg || 75,
+          physics_score: scoresMap['physical sciences'] || scoresMap['physics'] || avg || 70,
+          chemistry_score: scoresMap['chemistry'] || scoresMap['physical sciences'] || avg || 70,
+          biology_score: scoresMap['life sciences'] || scoresMap['biology'] || avg || 72,
+          english_score: scoresMap['english fal'] || scoresMap['english'] || scoresMap['home language'] || avg || 75,
+          history_score: scoresMap['history'] || scoresMap['social sciences'] || avg || 70,
+          geography_score: scoresMap['geography'] || avg || 70,
+          absence_days: daysAbsent,
+          weekly_self_study_hours: 18,
+          extracurricular_activities: 1
+        };
+        try {
+          aiAdvisory = await aiAdvisorService.predictStudent(aiPayload);
+        } catch (_) {}
+      }
 
       // Check if existing
       const existRes = await db.query(
@@ -467,8 +586,9 @@ exports.saveGradeReportCardTemplate = async (req, res) => {
                teacher_comment = $11,
                principal_comment = $12,
                principal_signature = $13,
+               ai_advisory = $14,
                updated_at = NOW()
-           WHERE id = $14`,
+           WHERE id = $15`,
           [
             JSON.stringify(subjects),
             avg,
@@ -483,6 +603,7 @@ exports.saveGradeReportCardTemplate = async (req, res) => {
             item.teacher_comment || 'Satisfactory academic progress demonstrated.',
             item.principal_comment || 'Promoted with commendation.',
             item.principal_signature || 'Dr. T. Makola (Signed)',
+            aiAdvisory ? JSON.stringify(aiAdvisory) : null,
             existRes.rows[0].id
           ]
         );
@@ -493,9 +614,9 @@ exports.saveGradeReportCardTemplate = async (req, res) => {
              marks_breakdown, overall_average, overall_level, promotion_status,
              days_present, days_absent, total_days, attendance_percentage,
              teacher_comment, principal_comment, principal_signature,
-             is_published, created_at, updated_at
+             ai_advisory, is_published, created_at, updated_at
            )
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, FALSE, NOW(), NOW())`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, FALSE, NOW(), NOW())`,
           [
             targetSchoolId,
             childId,
@@ -514,7 +635,8 @@ exports.saveGradeReportCardTemplate = async (req, res) => {
             attRate,
             item.teacher_comment || 'Satisfactory academic progress demonstrated.',
             item.principal_comment || 'Promoted with commendation.',
-            item.principal_signature || 'Dr. T. Makola (Signed)'
+            item.principal_signature || 'Dr. T. Makola (Signed)',
+            aiAdvisory ? JSON.stringify(aiAdvisory) : null
           ]
         );
       }
@@ -721,7 +843,26 @@ exports.getOfficialReportCardView = async (req, res) => {
       [childId, termNum]
     );
 
+    const userRole = (req.user?.role || '').toLowerCase();
     let reportCard = cardRes.rows[0];
+
+    // If requester is a parent or learner and the card is not published:
+    if ((userRole === 'parent' || userRole === 'learner') && (!reportCard || !reportCard.is_published)) {
+      return res.json({
+        success: true,
+        is_published: false,
+        not_published: true,
+        message: 'Report Card for this term has not yet been published by the school administration.',
+        learner: {
+          full_name: `${child.full_name} ${child.surname}`.trim(),
+          learner_number: child.learner_number || '',
+          grade: child.grade,
+          stream: child.stream || 'Science',
+          class_name: child.class_name || `${child.grade}A`
+        }
+      });
+    }
+
     let subjects = [];
 
     if (reportCard && Array.isArray(reportCard.marks_breakdown)) {
@@ -733,32 +874,54 @@ exports.getOfficialReportCardView = async (req, res) => {
          FROM marks WHERE child_id = $1 AND (term = $2 OR term IS NULL)`,
         [childId, termNum]
       );
-      const studentSubs = child.subjects || ['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Life Orientation'];
+      let studentSubs = Array.isArray(child.subjects) && child.subjects.length > 0
+        ? [...child.subjects]
+        : (child.stream === 'Commerce'
+          ? ['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Home Language', 'Life Orientation']
+          : ['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation']);
+
+      if (child.grade >= 10 && child.stream === 'Science' && !studentSubs.some(s => s.toLowerCase() === 'geography')) {
+        studentSubs.push('Geography');
+      }
+
       subjects = studentSubs.map(s => {
         const m = marksRes.rows.find(row => (row.subject || '').toLowerCase() === s.toLowerCase());
-        const pct = m ? (Number(m.percentage) || Math.round((m.score / (m.max_score || 100)) * 100)) : 68;
-        const caps = getCapsLevel(pct);
+        const rawScore = m ? Number(m.score) : null;
+        const maxScore = m ? (Number(m.max_score) || 100) : null;
+        const pct = m ? (m.percentage !== null && m.percentage !== undefined ? Number(m.percentage) : (rawScore !== null ? Math.round((rawScore / maxScore) * 100) : null)) : null;
+        const caps = pct !== null ? getCapsLevel(pct) : { level: '-', rating: 'Pending', descriptor: 'Pending Teacher Mark' };
         return {
           subject: s,
+          code: s.substring(0, 4).toUpperCase(),
+          mark_display: rawScore !== null && maxScore !== null ? `${rawScore} / ${maxScore}` : (pct !== null ? `${pct}%` : '-'),
+          raw_score: rawScore,
+          max_score: maxScore,
           mark: pct,
+          percentage: pct,
+          average: null,
+          sba_mark: pct,
+          exam_mark: null,
           level: caps.level,
           rating: caps.rating,
           descriptor: caps.descriptor,
-          comment: 'Consistent academic performance shown.'
+          comment: pct !== null ? 'Diligent academic performance shown.' : 'Awaiting marks upload.'
         };
       });
     }
 
-    const totalMarks = subjects.reduce((sum, s) => sum + Number(s.mark), 0);
-    const avg = reportCard?.overall_average ? Number(reportCard.overall_average) : Math.round(totalMarks / subjects.length);
-    const overallCaps = getCapsLevel(avg);
-    const promotionStatus = reportCard?.promotion_status || calculateSouthAfricanPromotion(subjects, avg);
+    const gradedSubs = subjects.filter(s => s.mark !== null && s.mark !== undefined);
+    const totalMarks = gradedSubs.reduce((sum, s) => sum + Number(s.mark), 0);
+    const avg = reportCard?.overall_average !== null && reportCard?.overall_average !== undefined
+      ? Number(reportCard.overall_average)
+      : (gradedSubs.length > 0 ? Math.round(totalMarks / gradedSubs.length) : null);
+    const overallCaps = avg !== null ? getCapsLevel(avg) : { level: '-', rating: 'Pending', descriptor: 'Pending Teacher Mark' };
+    const promotionStatus = reportCard?.promotion_status || (avg !== null ? calculateSouthAfricanPromotion(subjects, avg) : 'PENDING TEACHER MARKS');
 
     // Attendance
-    const daysPresent = reportCard?.days_present || 46;
-    const daysAbsent = reportCard?.days_absent || 4;
-    const totalDays = reportCard?.total_days || 50;
-    const attRate = reportCard?.attendance_percentage || Math.round((daysPresent / totalDays) * 100);
+    const daysPresent = reportCard?.days_present ?? 0;
+    const daysAbsent = reportCard?.days_absent ?? 0;
+    const totalDays = reportCard?.total_days ?? (daysPresent + daysAbsent);
+    const attRate = reportCard?.attendance_percentage ?? (totalDays > 0 ? Math.round((daysPresent / totalDays) * 100) : null);
 
     const schoolData = {
       name: child.school_name || 'Fusion High School',
@@ -775,10 +938,16 @@ exports.getOfficialReportCardView = async (req, res) => {
       logo_url: child.logo_url || '/assets/fusion-app-icon.png'
     };
 
+    const rawChildName = (child.full_name || '').trim();
+    const rawChildSur = (child.surname || '').trim();
+    const cleanChildName = rawChildName.toLowerCase().endsWith(rawChildSur.toLowerCase())
+      ? rawChildName
+      : `${rawChildName} ${rawChildSur}`.trim();
+
     const learnerData = {
-      full_name: `${child.full_name} ${child.surname}`.trim(),
-      first_name: child.full_name,
-      surname: child.surname,
+      full_name: cleanChildName,
+      first_name: rawChildName,
+      surname: rawChildSur,
       learner_number: child.learner_number || `2026-FHS-${String(child.id).padStart(3, '0')}`,
       grade: child.grade,
       class_name: child.class_name || `${child.grade}A`,
@@ -788,15 +957,24 @@ exports.getOfficialReportCardView = async (req, res) => {
     };
 
     const formattedSubjects = subjects.map(s => {
-      const caps = getCapsLevel(s.mark);
+      const hasMark = s.mark !== null && s.mark !== undefined && !s.is_pending;
+      const numMark = hasMark ? Number(s.mark) : null;
+      const caps = numMark !== null ? getCapsLevel(numMark) : { level: '-', rating: 'Pending', descriptor: 'Pending Teacher Mark' };
       return {
         subject: s.subject,
         code: s.code || s.subject.substring(0, 4).toUpperCase(),
-        mark: Number(s.mark),
+        mark_display: s.mark_display || (hasMark ? `${numMark}%` : '-'),
+        raw_score: s.raw_score ?? numMark,
+        max_score: s.max_score ?? (hasMark ? 100 : null),
+        mark: numMark,
+        percentage: numMark,
+        average: s.average ?? null,
+        sba_mark: s.sba_mark ?? numMark,
+        exam_mark: s.exam_mark ?? null,
         level: caps.level,
         rating: caps.rating,
         descriptor: caps.descriptor,
-        comment: s.comment || 'Satisfactory conceptual grasp.'
+        comment: s.comment || (hasMark ? 'Diligent academic performance shown.' : 'Awaiting marks upload.')
       };
     });
 
@@ -806,6 +984,28 @@ exports.getOfficialReportCardView = async (req, res) => {
       total_days: totalDays,
       attendance_percentage: attRate
     };
+
+    // Fetch or compute AI Advisory (Option A)
+    let aiAdvisory = reportCard?.ai_advisory || null;
+    if (!aiAdvisory && formattedSubjects.length > 0) {
+      const scoresMap = {};
+      formattedSubjects.forEach(s => { scoresMap[(s.subject || '').toLowerCase()] = s.mark; });
+      const aiPayload = {
+        math_score: scoresMap['mathematics'] || scoresMap['maths'] || scoresMap['math'] || avg || 75,
+        physics_score: scoresMap['physical sciences'] || scoresMap['physics'] || avg || 70,
+        chemistry_score: scoresMap['chemistry'] || scoresMap['physical sciences'] || avg || 70,
+        biology_score: scoresMap['life sciences'] || scoresMap['biology'] || avg || 72,
+        english_score: scoresMap['english fal'] || scoresMap['english'] || scoresMap['home language'] || avg || 75,
+        history_score: scoresMap['history'] || scoresMap['social sciences'] || avg || 70,
+        geography_score: scoresMap['geography'] || avg || 70,
+        absence_days: daysAbsent,
+        weekly_self_study_hours: 18,
+        extracurricular_activities: 1
+      };
+      try {
+        aiAdvisory = await aiAdvisorService.predictStudent(aiPayload);
+      } catch (_) {}
+    }
 
     res.json({
       success: true,
@@ -819,9 +1019,11 @@ exports.getOfficialReportCardView = async (req, res) => {
       promotion_status: promotionStatus,
       term: `Term ${termNum}`,
       academic_year: academicYear,
+      ai_advisory: aiAdvisory,
       report_card: {
         school: schoolData,
         learner: learnerData,
+        ai_advisory: aiAdvisory,
         academic: {
           term: termNum,
           term_name: `Term ${termNum} ${academicYear}`,
@@ -913,3 +1115,395 @@ exports.getLearnerReportCards = async (req, res) => {
 
 exports.compileReportCard = exports.saveGradeReportCardTemplate;
 exports.batchCompileAndEmailReportCards = exports.publishGradeReportCards;
+
+/**
+ * Admin Overview: Checks which teachers have submitted marks per Grade, Stream, and Class.
+ */
+exports.getTeacherSubmissionsOverview = async (req, res) => {
+  try {
+    const grade = parseInt(req.query.grade || '10', 10);
+    const termNum = parseInt(String(req.query.term || '3').replace(/[^0-9]/g, ''), 10) || 3;
+    const className = (req.query.class_name || req.query.class || '').trim();
+    const stream = (req.query.stream || '').trim();
+    const rawSchoolId = req.query.school_id || req.headers['x-school-id'] || req.user?.school_id || 1;
+    const schoolId = parseInt(rawSchoolId, 10) || 1;
+
+    // 1. Fetch total enrolled learners for this grade and class
+    let learnersQ = `SELECT id, subjects FROM children WHERE grade = $1 AND (school_id = $2 OR $2 IS NULL)`;
+    const params = [grade, schoolId];
+    if (className && className !== 'All') {
+      params.push(className);
+      learnersQ += ` AND (class_name = $${params.length} OR class_id::text = $${params.length})`;
+    }
+    const { rows: learners } = await db.query(learnersQ, params);
+    const totalLearners = learners.length;
+
+    // 2. Fetch distinct subjects for this grade
+    let subQuery = `SELECT DISTINCT name FROM subjects WHERE grade = $1 ORDER BY name ASC;`;
+    let { rows: subRows } = await db.query(subQuery, [grade]);
+    let subjects = subRows.map(s => s.name);
+    if (subjects.length === 0) {
+      if (stream.toLowerCase().includes('commerce')) {
+        subjects = ['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Life Orientation', 'Home Language'];
+      } else {
+        subjects = ['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation', 'Geography'];
+      }
+    }
+
+    // 3. For each subject, query marks table for submissions
+    const learnerIds = learners.map(l => l.id);
+    const submissions = [];
+
+    for (const sub of subjects) {
+      let markCount = 0;
+      let lastUploadedAt = null;
+      let teacherInfo = 'Assigned Subject Teacher';
+
+      if (learnerIds.length > 0) {
+        const mRes = await db.query(
+          `SELECT m.created_at, m.recorded_at, u.full_name, u.surname
+           FROM marks m
+           LEFT JOIN users u ON m.teacher_id = u.id
+           WHERE (m.child_id = ANY($1) OR m.learner_id = ANY($1))
+             AND (m.term = $2 OR m.term IS NULL)
+             AND LOWER(m.subject) = LOWER($3)
+           ORDER BY m.recorded_at DESC, m.created_at DESC`,
+          [learnerIds, termNum, sub]
+        );
+
+        markCount = mRes.rows.length;
+        if (mRes.rows[0]) {
+          lastUploadedAt = mRes.rows[0].recorded_at || mRes.rows[0].created_at;
+          if (mRes.rows[0].full_name) {
+            teacherInfo = `${mRes.rows[0].full_name} ${mRes.rows[0].surname || ''}`.trim();
+          }
+        }
+      }
+
+      let status = 'PENDING';
+      if (markCount >= totalLearners && totalLearners > 0) {
+        status = 'SUBMITTED';
+      } else if (markCount > 0) {
+        status = 'PARTIAL';
+      }
+
+      submissions.push({
+        subject: sub,
+        status: status,
+        marks_recorded: markCount,
+        total_learners: totalLearners,
+        teacher: teacherInfo,
+        last_uploaded_at: lastUploadedAt
+      });
+    }
+
+    const submittedCount = submissions.filter(s => s.status === 'SUBMITTED').length;
+    const partialCount = submissions.filter(s => s.status === 'PARTIAL').length;
+    const pendingCount = submissions.filter(s => s.status === 'PENDING').length;
+
+    res.json({
+      success: true,
+      grade,
+      class_name: className || 'All',
+      term: termNum,
+      total_learners: totalLearners,
+      total_subjects: subjects.length,
+      submitted_count: submittedCount,
+      partial_count: partialCount,
+      pending_count: pendingCount,
+      can_transfer: (submittedCount + partialCount) > 0,
+      submissions
+    });
+  } catch (err) {
+    console.error('Error fetching teacher submissions overview:', err);
+    res.status(500).json({ success: false, error: 'Failed to retrieve teacher mark submissions overview.' });
+  }
+};
+
+/**
+ * Admin Action: Transfers uploaded teacher marks to report card templates
+ * and runs Option A AI prediction for each learner.
+ */
+exports.transferTeacherMarksToTemplate = async (req, res) => {
+  try {
+    const grade = parseInt(req.body.grade || '10', 10);
+    const termNum = parseInt(String(req.body.term || '3').replace(/[^0-9]/g, ''), 10) || 3;
+    const className = (req.body.class_name || req.body.class || req.body.className || '').trim();
+    const stream = (req.body.stream || '').trim();
+    const academicYear = parseInt(req.body.academic_year || req.body.academicYear || '2026', 10);
+    const rawSchoolId = req.body.school_id || req.headers['x-school-id'] || req.user?.school_id || 1;
+    const schoolId = parseInt(rawSchoolId, 10) || 1;
+
+    // 1. Fetch learners
+    const params = [schoolId, grade];
+    let classClause = '';
+    if (className && className !== 'All') {
+      params.push(className);
+      classClause = `AND (cl.name = $${params.length} OR c.class_id::text = $${params.length})`;
+    }
+
+    const { rows: learners } = await db.query(
+      `SELECT c.id, c.learner_user_id, c.full_name, c.surname, c.learner_number, c.grade, c.stream, c.subjects,
+              COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name
+       FROM children c
+       LEFT JOIN classes cl ON c.class_id = cl.id
+       WHERE (c.school_id = $1 OR $1 IS NULL) AND c.grade = $2
+       ${classClause}
+       ORDER BY c.surname ASC, c.full_name ASC`,
+      params
+    );
+
+    if (learners.length === 0) {
+      return res.status(404).json({ success: false, error: 'No enrolled learners found for this grade and class.' });
+    }
+
+    let transferredCount = 0;
+
+    for (const l of learners) {
+      // Fetch ONLY recorded formal assessment marks (Strictly exclude informal practice/quizzes)
+      const marksRes = await db.query(
+        `SELECT subject, assessment_name, score, max_score, percentage, weight, is_formal, assessment_type
+         FROM marks 
+         WHERE (child_id = $1 OR learner_id = $1)
+           AND (term = $2 OR term IS NULL)
+           AND (is_formal = TRUE OR is_formal IS NULL)
+         ORDER BY recorded_at ASC`,
+        [l.id, termNum]
+      );
+
+      // Real Attendance from attendance register
+      const attRes = await db.query(
+        `SELECT 
+           COUNT(*) as total_days,
+           COUNT(CASE WHEN status IN ('present', 'late') THEN 1 END) as days_present,
+           COUNT(CASE WHEN status = 'absent' THEN 1 END) as days_absent
+         FROM attendance WHERE child_id = $1`,
+        [l.id]
+      );
+      const totalDays = parseInt(attRes.rows[0]?.total_days || '0', 10);
+      const daysPresent = parseInt(attRes.rows[0]?.days_present || '0', 10);
+      const daysAbsent = parseInt(attRes.rows[0]?.days_absent || (totalDays > 0 ? totalDays - daysPresent : '0'), 10);
+      const attPct = totalDays > 0 ? Math.round((daysPresent / totalDays) * 100) : null;
+
+      // Group formal marks by subject with dynamic weighting
+      const subjectMarksMap = {};
+      marksRes.rows.forEach(m => {
+        const sub = m.subject;
+        if (!subjectMarksMap[sub]) subjectMarksMap[sub] = [];
+        subjectMarksMap[sub].push(m);
+      });
+
+      // Student subject list — guarantee Geography is included for Science stream FET
+      let subList = Array.isArray(l.subjects) && l.subjects.length > 0
+        ? [...l.subjects]
+        : ['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation'];
+
+      if (grade >= 10 && (l.stream === 'Science' || stream === 'Science')) {
+        if (!subList.some(s => s.toLowerCase() === 'geography')) {
+          subList.push('Geography');
+        }
+      }
+
+      const subjectBreakdown = [];
+      const scoresForAi = {};
+
+      for (const sName of subList) {
+        const matching = subjectMarksMap[sName] || [];
+        if (matching.length > 0) {
+          let totalWeight = 0;
+          let weightedSum = 0;
+          let sbaWeightSum = 0;
+          let sbaTotalWeight = 0;
+          let examWeightSum = 0;
+          let examTotalWeight = 0;
+          let rawScoreSum = 0;
+          let maxScoreSum = 0;
+
+          const detailedAssessments = matching.map(m => {
+            const rawScore = Number(m.score) || 0;
+            const maxScore = Number(m.max_score) || 100;
+            const pct = m.percentage ? Number(m.percentage) : Math.round((rawScore / (maxScore || 100)) * 100);
+            const w = Number(m.weight) || maxScore || 100;
+            const aType = (m.assessment_type || m.assessment_name || '').toLowerCase();
+            const isExam = aType.includes('exam') || aType.includes('examination');
+
+            totalWeight += w;
+            weightedSum += pct * w;
+            rawScoreSum += rawScore;
+            maxScoreSum += maxScore;
+
+            if (isExam) {
+              examWeightSum += pct * w;
+              examTotalWeight += w;
+            } else {
+              sbaWeightSum += pct * w;
+              sbaTotalWeight += w;
+            }
+
+            return {
+              name: m.assessment_name || 'Formal Task',
+              type: m.assessment_type || (isExam ? 'Examination' : 'Formal Assessment'),
+              score: rawScore,
+              max_score: maxScore,
+              weight: w,
+              percentage: pct
+            };
+          });
+
+          const finalSubjectPct = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : Math.round(detailedAssessments[0].percentage);
+          const sbaMark = sbaTotalWeight > 0 ? Math.round(sbaWeightSum / sbaTotalWeight) : finalSubjectPct;
+          const examMark = examTotalWeight > 0 ? Math.round(examWeightSum / examTotalWeight) : null;
+          const markDisplay = maxScoreSum > 0 ? `${rawScoreSum} / ${maxScoreSum}` : `${finalSubjectPct}%`;
+          const caps = getCapsLevel(finalSubjectPct);
+
+          subjectBreakdown.push({
+            subject: sName,
+            code: sName.substring(0, 4).toUpperCase(),
+            mark_display: markDisplay,
+            raw_score: rawScoreSum,
+            max_score: maxScoreSum,
+            mark: finalSubjectPct,
+            percentage: finalSubjectPct,
+            sba_mark: sbaMark,
+            exam_mark: examMark,
+            level: caps.level,
+            rating: caps.rating,
+            descriptor: caps.descriptor,
+            badge: caps.badge,
+            is_pending: false,
+            assessments: detailedAssessments
+          });
+          scoresForAi[sName.toLowerCase()] = finalSubjectPct;
+        } else {
+          subjectBreakdown.push({
+            subject: sName,
+            code: sName.substring(0, 4).toUpperCase(),
+            mark_display: '-',
+            raw_score: null,
+            max_score: null,
+            mark: null,
+            percentage: null,
+            sba_mark: null,
+            exam_mark: null,
+            level: '-',
+            rating: 'Pending Upload',
+            descriptor: 'Teacher Marks Not Uploaded',
+            badge: 'amber',
+            is_pending: true,
+            assessments: []
+          });
+        }
+      }
+
+      const gradedSubs = subjectBreakdown.filter(s => s.mark !== null && !s.is_pending);
+      const hasAnyMarks = gradedSubs.length > 0;
+      const overallAvg = hasAnyMarks ? Math.round(gradedSubs.reduce((sum, s) => sum + s.mark, 0) / gradedSubs.length) : null;
+      const overallCaps = hasAnyMarks ? getCapsLevel(overallAvg) : { level: '-', rating: 'Pending' };
+      const promotionDecision = hasAnyMarks ? calculateSouthAfricanPromotion(gradedSubs, overallAvg) : 'PENDING TEACHER MARKS';
+
+      // 3. Run AI Advisor if learner has verified marks
+      let aiAdvisory = null;
+      if (hasAnyMarks) {
+        const aiPayload = {
+          grade: l.grade || grade,
+          math_score: scoresForAi['mathematics'] || scoresForAi['maths'] || scoresForAi['math'] || overallAvg,
+          physics_score: scoresForAi['physical sciences'] || scoresForAi['physics'] || scoresForAi['natural sciences'] || overallAvg,
+          chemistry_score: scoresForAi['chemistry'] || scoresForAi['physical sciences'] || overallAvg,
+          biology_score: scoresForAi['life sciences'] || scoresForAi['biology'] || overallAvg,
+          english_score: scoresForAi['english fal'] || scoresForAi['english'] || scoresForAi['home language'] || overallAvg,
+          history_score: scoresForAi['history'] || scoresForAi['social sciences'] || overallAvg,
+          geography_score: scoresForAi['geography'] || overallAvg,
+          ems_score: scoresForAi['ems'] || scoresForAi['economic and management sciences'] || scoresForAi['accounting'] || overallAvg,
+          absence_days: daysAbsent,
+          weekly_self_study_hours: 15,
+          extracurricular_activities: 1
+        };
+
+        try {
+          aiAdvisory = await aiAdvisorService.predictStudent(aiPayload);
+        } catch (_) {}
+      }
+
+      // Upsert into report_cards table
+      const existRes = await db.query(
+        `SELECT id FROM report_cards WHERE child_id = $1 AND term = $2 AND academic_year = $3 LIMIT 1`,
+        [l.id, termNum, academicYear]
+      );
+
+      if (existRes.rows.length > 0) {
+        await db.query(
+          `UPDATE report_cards
+           SET marks_breakdown = $1,
+               overall_average = $2,
+               overall_level = $3,
+               promotion_status = $4,
+               days_present = $5,
+               days_absent = $6,
+               total_days = $7,
+               attendance_percentage = $8,
+               class_name = $9,
+               stream = $10,
+               ai_advisory = $11,
+               updated_at = NOW()
+           WHERE id = $12`,
+          [
+            JSON.stringify(subjectBreakdown),
+            overallAvg,
+            overallCaps.level,
+            promotionDecision,
+            daysPresent,
+            daysAbsent,
+            totalDays,
+            attPct,
+            l.class_name,
+            l.stream || stream,
+            aiAdvisory ? JSON.stringify(aiAdvisory) : null,
+            existRes.rows[0].id
+          ]
+        );
+      } else {
+        await db.query(
+          `INSERT INTO report_cards (
+             school_id, child_id, grade, class_name, stream, term, academic_year,
+             marks_breakdown, overall_average, overall_level, promotion_status,
+             days_present, days_absent, total_days, attendance_percentage,
+             teacher_comment, principal_comment, principal_signature,
+             ai_advisory, is_published, created_at, updated_at
+           )
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, FALSE, NOW(), NOW())`,
+          [
+            schoolId,
+            l.id,
+            grade,
+            l.class_name,
+            l.stream || stream,
+            termNum,
+            academicYear,
+            JSON.stringify(subjectBreakdown),
+            overallAvg,
+            overallCaps.level,
+            promotionDecision,
+            daysPresent,
+            daysAbsent,
+            totalDays,
+            attPct,
+            'Teacher marks transferred to official template.',
+            'Awaiting final end-of-term certification.',
+            'Dr. T. Makola (Signed)',
+            aiAdvisory ? JSON.stringify(aiAdvisory) : null
+          ]
+        );
+      }
+      transferredCount++;
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully transferred uploaded marks for ${transferredCount} learners in Grade ${grade} (${className || 'All'}) into official report card templates! AI pathways and risk analysis calculated.`,
+      transferred_count: transferredCount
+    });
+  } catch (err) {
+    console.error('Error transferring teacher marks to template:', err);
+    res.status(500).json({ success: false, error: 'Failed to transfer teacher marks: ' + err.message });
+  }
+};

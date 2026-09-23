@@ -15,6 +15,12 @@ router.get('/view/:childId', reportCardController.getOfficialReportCardView);
 // Fetch Report Card Template Data populated with calculated teacher marks and assessment percentages (Admin)
 router.get('/grade-template', requireRole(['admin']), reportCardController.getGradeTemplateMarks);
 
+// Check Teacher Submissions Status per Grade and Class (Admin)
+router.get('/teacher-submissions', requireRole(['admin', 'teacher']), reportCardController.getTeacherSubmissionsOverview);
+
+// Transfer uploaded teacher marks into the official Report Card Template (Admin)
+router.post('/transfer-marks', requireRole(['admin']), reportCardController.transferTeacherMarksToTemplate);
+
 // Save and compile verified Grade Report Cards into database (Admin)
 router.post('/save-grade-template', requireRole(['admin']), reportCardController.saveGradeReportCardTemplate);
 router.post('/compile', requireRole(['admin', 'teacher']), reportCardController.saveGradeReportCardTemplate);

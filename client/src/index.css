@@ -19,13 +19,18 @@
 .cta-humanities { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%) !important; color: #ffffff !important; }
 
 :root {
-  /* Pitch Black Canvas & Elevated Charcoal Surfaces from Image */
-  --color-canvas: #0A0A0C;
-  --color-surface: #16161A;
-  --color-surface-darker: #101014;
-  --color-surface-elevated: #1E1E24;
+  /* Midnight Navy-Black Canvas & Elevated Slate Surfaces */
+  --color-canvas: #060D14;
+  --color-surface: #0F1A24;
+  --color-surface-darker: #0A121A;
+  --color-surface-elevated: #13202E;
   --color-primary: #FFFFFF;
-  --color-accent: #C084FC;
+  --color-accent: #13C8D9;
+  --color-accent-neon: #18E2EC;
+  --color-chip-bg: #152535;
+  --color-chip-glyph: #18E2EC;
+  --color-action-circle: #1C252C;
+  --color-action-icon: #13C8D9;
 
   --app-font-body: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
   --app-font-heading: 'Outfit', 'Plus Jakarta Sans', sans-serif;
@@ -77,37 +82,82 @@ body, html {
   font-family: var(--app-font-body) !important;
 }
 
-/* Minimalist Pitch Black Dark Theme (Right phone) */
+/* Midnight Navy-Black Dark Theme (Reference Dark Screenshot) */
 .theme-dark, html[data-theme="dark"], .dark {
-  --color-canvas: #0A0A0C;
-  --color-surface: #16161A;
-  --color-surface-darker: #101014;
-  --color-surface-elevated: #1E1E24;
+  --color-canvas: #060D14;
+  --color-surface: #0F1A24;
+  --color-surface-darker: #0A121A;
+  --color-surface-elevated: #13202E;
   --color-primary: #FFFFFF;
-  --color-accent: #C084FC;
+  --color-accent: #13C8D9;
+  --color-accent-neon: #18E2EC;
+  --color-chip-bg: #152535;
+  --color-chip-glyph: #18E2EC;
+  --color-action-circle: #1C252C;
+  --color-action-icon: #13C8D9;
 }
 
-/* Restrained Dark Theme */
+.theme-dark body, html[data-theme="dark"] body, .dark body {
+  background: linear-gradient(135deg, #060D14 0%, #09131F 50%, #0B1520 100%);
+  background-attachment: fixed;
+  color: #FFFFFF;
+}
+
+/* Deep Restrained Navy Theme */
 .theme-navy, html[data-theme="navy"] {
-  --color-canvas: #0A0A0C;
-  --color-surface: #16161A;
-  --color-surface-darker: #101014;
-  --color-surface-elevated: #1E1E24;
+  --color-canvas: #060D14;
+  --color-surface: #0F1A24;
+  --color-surface-darker: #0A121A;
+  --color-surface-elevated: #13202E;
+  --color-accent: #13C8D9;
+  --color-chip-bg: #152535;
+  --color-chip-glyph: #18E2EC;
 }
 
-/* Crisp Minimalist Light Theme (Left phone) */
+/* Crisp Ice Blue & Desaturated Cyan Light Theme (Reference Light Screenshot) */
 .theme-light, html[data-theme="light"], .light {
-  --color-canvas: #F5F5F7;
+  --color-canvas: #CBDDE3;
   --color-surface: #FFFFFF;
-  --color-surface-darker: #F4F4F6;
+  --color-surface-darker: #EDF4F7;
   --color-surface-elevated: #FFFFFF;
-  --color-primary: #111111;
-  --color-accent: #9333EA;
+  --color-primary: #1C252C;
+  --color-accent: #13C8D9;
+  --color-accent-neon: #18E2EC;
+  --color-chip-bg: #E1ECF0;
+  --color-chip-glyph: #232B32;
+  --color-action-circle: #1C252C;
+  --color-action-icon: #13C8D9;
 }
 
 .theme-light body, html[data-theme="light"] body, .light body {
-  background-color: #F5F5F7;
-  color: #111111;
+  background: linear-gradient(135deg, #CBDDE3 0%, #DBE7EC 40%, #EBF2F5 100%);
+  background-attachment: fixed;
+  color: #1C252C;
+}
+
+/* Reference Action Circles & Icon Chips */
+.action-circle-btn {
+  background-color: #1C252C !important;
+  color: #13C8D9 !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.action-circle-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 14px rgba(19, 200, 217, 0.4);
+}
+
+.module-chip-squircle {
+  background-color: var(--color-chip-bg) !important;
+  color: var(--color-chip-glyph) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.split-gradient-ring {
+  background: linear-gradient(135deg, #EC4899 0%, #F43F5E 30%, #06B6D4 70%, #18E2EC 100%);
+}
+
+.split-gradient-border {
+  border-image: linear-gradient(135deg, #EC4899 0%, #F43F5E 30%, #06B6D4 70%, #18E2EC 100%) 1;
 }
 
 /* Explicit Glow Lighting Utilities */

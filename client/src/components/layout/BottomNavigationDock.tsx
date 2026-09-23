@@ -6,17 +6,12 @@ import {
   MessageSquare,
   Calendar,
   User,
-  Settings,
-  Compass,
-  Plus,
-  MoreHorizontal,
 } from 'lucide-react';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
-import { getPrimaryTabFromActive } from '../teacher/TeacherNavigationBar';
 
 interface BottomNavigationDockProps {
   activeTab: string;
-  onSelectTab: (tabId: string) => void;
+  onSelectTab: (tabId: string, params?: any) => void;
   onOpenMainMenu?: () => void;
   isMainMenuOpen?: boolean;
 }
@@ -24,6 +19,8 @@ interface BottomNavigationDockProps {
 export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
   activeTab,
   onSelectTab,
+  onOpenMainMenu,
+  isMainMenuOpen = false,
 }) => {
   const { user } = useAuth();
   const [unreadMessages, setUnreadMessages] = useState<number>(0);
@@ -48,232 +45,189 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
     };
   }, []);
 
-  const isTeacher = user?.role === 'teacher';
-  const primaryTeacherTab = isTeacher ? getPrimaryTabFromActive(activeTab) : null;
+  const isHomeActive = activeTab === 'overview' || activeTab === 'home';
+  const isCalendarActive = activeTab === 'calendar' || activeTab === 'timetable';
+  const isMessagesActive = activeTab === 'messages' || activeTab === 'announcements';
+  const isProfileActive = activeTab === 'profile';
+  const isMenuOpenOrActive = isMainMenuOpen || activeTab === 'more';
 
-  // Reusable Clean Active Glow (No muddy obscuring trapezoid beam)
+  // Handler for center hero button
+  const handleCenterButtonClick = () => {
+    if (isMenuOpenOrActive) {
+      // If menu is open or on more tab, close it and return to Home page
+      if (onOpenMainMenu && isMainMenuOpen) {
+        onOpenMainMenu();
+      }
+      onSelectTab('overview');
+    } else {
+      // Open the Main Menu
+      if (onOpenMainMenu) {
+        onOpenMainMenu();
+      } else {
+        onSelectTab('more');
+      }
+    }
+  };
+
+  // Reusable Top Glow Indicator for standard tabs
   const renderSpotlightGlow = (isActive: boolean) => {
     if (!isActive) return null;
     return (
       <>
-        {/* 1. Top Glowing Horizontal Light Indicator */}
-        <div className="absolute top-1 left-1/2 -translate-x-1/2 w-6 sm:w-8 h-[2.5px] rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e,0_0_14px_rgba(244,63,94,0.6)] z-10" />
-
-        {/* 2. Soft, Transparent Luminous Backdrop */}
-        <div className="absolute inset-0 rounded-2xl bg-rose-500/15 border border-rose-500/25 pointer-events-none -z-10" />
+        {/* Top Glowing Horizontal Light Indicator */}
+        <div className="absolute top-1 left-1/2 -translate-x-1/2 w-6 sm:w-8 h-[2.5px] rounded-full bg-[#13C8D9] shadow-[0_0_8px_#13c8d9,0_0_14px_rgba(24,226,236,0.6)] z-10" />
+        {/* Soft, Transparent Luminous Backdrop */}
+        <div className="absolute inset-0 rounded-2xl bg-cyan-500/15 border border-cyan-500/25 pointer-events-none -z-10" />
       </>
     );
   };
 
   return (
     <div className="fixed bottom-3 inset-x-0 md:left-72 z-40 flex justify-center items-center pointer-events-none select-none animate-bounce-in px-2 sm:px-4">
-      <div 
-        className="pointer-events-auto relative flex items-center justify-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#131418]/95 backdrop-blur-2xl border border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.65)] ring-1 ring-white/5 max-w-full transition-all duration-300"
-      >
-        {/* Subtle ambient underlay */}
-        <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-rose-500/15 via-red-500/15 to-rose-500/15 blur-lg -z-10 pointer-events-none" />
+      <div className="pointer-events-auto relative flex items-center justify-between sm:justify-center gap-1 sm:gap-3 px-3 sm:px-6 py-2 rounded-full bg-[#0D1620]/95 backdrop-blur-2xl border border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.65)] ring-1 ring-white/5 max-w-full transition-all duration-300">
+        {/* Ambient Subtle Cyan Underlay Glow */}
+        <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-cyan-500/15 via-teal-500/15 to-cyan-500/15 blur-lg -z-10 pointer-events-none" />
 
-        {isTeacher ? (
-          /* ================================================================= */
-          /* 🎓 TEACHER NAVIGATION BAR (Home, Calendar, Profile, Discover, Messages, More) */
-          /* ================================================================= */
-          <>
-            {/* 1. Home (Subjects) */}
-            <button
-              onClick={() => onSelectTab('overview')}
-              className={`group relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                primaryTeacherTab === 'home'
-                  ? 'text-[#FF385C] font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
-              title="Home (Teaching Subjects)"
-            >
-              {renderSpotlightGlow(primaryTeacherTab === 'home')}
-              <Home className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 ${primaryTeacherTab === 'home' ? 'text-[#FF385C] scale-110 drop-shadow-[0_0_10px_rgba(255,56,92,0.85)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`} />
-              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'home' ? 'text-[#FF385C] font-black drop-shadow-[0_0_6px_rgba(255,56,92,0.5)]' : 'font-semibold'}`}>Home</span>
-            </button>
+        {/* 1. Home Button */}
+        <button
+          onClick={() => {
+            if (isMainMenuOpen && onOpenMainMenu) onOpenMainMenu();
+            onSelectTab('overview');
+          }}
+          className={`group relative flex flex-col items-center justify-center min-w-[52px] sm:min-w-[68px] py-1.5 px-2 rounded-full transition-all duration-300 cursor-pointer ${
+            isHomeActive && !isMenuOpenOrActive
+              ? 'text-[#18E2EC] font-bold'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+          }`}
+          title="Home Dashboard"
+        >
+          {renderSpotlightGlow(isHomeActive && !isMenuOpenOrActive)}
+          <Home className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 ${isHomeActive && !isMenuOpenOrActive ? 'text-[#18E2EC] scale-110 drop-shadow-[0_0_10px_rgba(24,226,236,0.85)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`} />
+          <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${isHomeActive && !isMenuOpenOrActive ? 'text-[#18E2EC] font-black drop-shadow-[0_0_6px_rgba(24,226,236,0.5)]' : 'font-semibold'}`}>Home</span>
+        </button>
 
-            {/* 2. Calendar */}
-            <button
-              onClick={() => onSelectTab('calendar')}
-              className={`group relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                primaryTeacherTab === 'calendar'
-                  ? 'text-[#FF385C] font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
-              title="Educator Calendar & Timetable"
-            >
-              {renderSpotlightGlow(primaryTeacherTab === 'calendar')}
-              <Calendar className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 ${primaryTeacherTab === 'calendar' ? 'text-[#FF385C] scale-110 drop-shadow-[0_0_10px_rgba(255,56,92,0.85)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`} />
-              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'calendar' ? 'text-[#FF385C] font-black drop-shadow-[0_0_6px_rgba(255,56,92,0.5)]' : 'font-semibold'}`}>Calendar</span>
-            </button>
+        {/* 2. Calendar Button */}
+        <button
+          onClick={() => {
+            if (isMainMenuOpen && onOpenMainMenu) onOpenMainMenu();
+            onSelectTab('calendar');
+          }}
+          className={`group relative flex flex-col items-center justify-center min-w-[52px] sm:min-w-[68px] py-1.5 px-2 rounded-full transition-all duration-300 cursor-pointer ${
+            isCalendarActive && !isMenuOpenOrActive
+              ? 'text-[#18E2EC] font-bold'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+          }`}
+          title="Calendar & Timetable"
+        >
+          {renderSpotlightGlow(isCalendarActive && !isMenuOpenOrActive)}
+          <Calendar className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 ${isCalendarActive && !isMenuOpenOrActive ? 'text-[#18E2EC] scale-110 drop-shadow-[0_0_10px_rgba(24,226,236,0.85)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`} />
+          <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${isCalendarActive && !isMenuOpenOrActive ? 'text-[#18E2EC] font-black drop-shadow-[0_0_6px_rgba(24,226,236,0.5)]' : 'font-semibold'}`}>Calendar</span>
+        </button>
 
-            {/* 🌟 3. More (+) Center Button */}
-            <button
-              onClick={() => onSelectTab('more')}
-              className={`group relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                primaryTeacherTab === 'more'
-                  ? 'text-[#FF385C] font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
-              title="More Modules & Functions"
-            >
-              {renderSpotlightGlow(primaryTeacherTab === 'more')}
-              <Plus className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 ${primaryTeacherTab === 'more' ? 'text-[#FF385C] scale-110 drop-shadow-[0_0_10px_rgba(255,56,92,0.85)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`} />
-              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'more' ? 'text-[#FF385C] font-black drop-shadow-[0_0_6px_rgba(255,56,92,0.5)]' : 'font-semibold'}`}>More</span>
-            </button>
+        {/* 🌟 3. CENTER HERO MENU / CLOSE BUTTON (Exact match of Images 1, 2, and 3) */}
+        <div className="relative mx-1 sm:mx-2 flex items-center justify-center">
+          {/* Petals Halo when Open (Image 3) */}
+          {isMenuOpenOrActive && (
+            <div className="absolute inset-0 -m-4 sm:-m-5 pointer-events-none flex items-center justify-center animate-pulse">
+              {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+                <div
+                  key={deg}
+                  className="absolute w-8 h-16 sm:w-9 sm:h-18 rounded-full bg-gradient-to-t from-cyan-400/40 via-teal-400/20 to-transparent blur-[0.5px] border border-cyan-300/40 shadow-[0_0_12px_rgba(6,182,212,0.4)]"
+                  style={{
+                    transform: `rotate(${deg}deg) translateY(-14px)`,
+                    transformOrigin: 'center center',
+                  }}
+                />
+              ))}
+            </div>
+          )}
 
-            {/* 4. Messages */}
-            <button
-              onClick={() => onSelectTab('messages')}
-              className={`group relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                primaryTeacherTab === 'messages'
-                  ? 'text-[#FF385C] font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
-              title="Communication Hub"
-            >
-              {renderSpotlightGlow(primaryTeacherTab === 'messages')}
-              <div className="relative">
-                <MessageSquare className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 ${primaryTeacherTab === 'messages' ? 'text-[#FF385C] scale-110 drop-shadow-[0_0_10px_rgba(255,56,92,0.85)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`} />
-                {unreadMessages > 0 && (
-                  <span className="absolute -top-1 -right-2 px-1 min-w-[14px] h-3.5 rounded-full bg-[#FF385C] text-white text-[8px] font-black flex items-center justify-center ring-2 ring-[#131418] animate-pulse shadow-sm">
-                    {unreadMessages > 9 ? '9+' : unreadMessages}
-                  </span>
-                )}
-              </div>
-              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'messages' ? 'text-[#FF385C] font-black drop-shadow-[0_0_6px_rgba(255,56,92,0.5)]' : 'font-semibold'}`}>Messages</span>
-            </button>
+          {/* Cyan Floor Pedestal Bloom (Image 1) */}
+          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-14 sm:w-16 h-4 bg-cyan-400/40 blur-md rounded-full pointer-events-none" />
 
-            {/* 5. Profile */}
-            <button
-              onClick={() => onSelectTab('profile')}
-              className={`group relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                primaryTeacherTab === 'profile'
-                  ? 'text-[#FF385C] font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
-              title="Teacher Profile"
-            >
-              {renderSpotlightGlow(primaryTeacherTab === 'profile')}
-              <div className={`w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden transition-transform duration-300 ${primaryTeacherTab === 'profile' ? 'ring-2 ring-[#FF385C] shadow-[0_0_8px_rgba(255,56,92,0.6)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`}>
-                {(user?.profile_picture || user?.profile_picture_path) ? (
-                  <img
-                    src={getProfilePictureUrl(user.profile_picture || user.profile_picture_path)}
-                    alt=""
-                    className="w-full h-full object-cover"
-                    onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
-                  />
-                ) : (
-                  <User className="w-3.5 h-3.5 text-slate-300" />
-                )}
-              </div>
-              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${primaryTeacherTab === 'profile' ? 'text-[#FF385C] font-black drop-shadow-[0_0_6px_rgba(255,56,92,0.5)]' : 'font-semibold'}`}>Profile</span>
-            </button>
-          </>
-        ) : (
-          /* ================================================================= */
-          /* DEFAULT NON-TEACHER NAVIGATION DOCK (Learners, Parents, etc.)     */
-          /* ================================================================= */
-          <>
-            {/* 1. Home / Overview Shortcut */}
-            <button
-              onClick={() => onSelectTab('overview')}
-              className={`group relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-2xl transition-all duration-200 cursor-pointer ${
-                activeTab === 'overview'
-                  ? 'text-white'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
-              title="Home Dashboard"
-            >
-              {renderSpotlightGlow(activeTab === 'overview')}
-              <Home className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-200 ${activeTab === 'overview' ? 'text-rose-400 scale-110' : 'group-hover:scale-110'}`} />
-              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${activeTab === 'overview' ? 'text-white font-bold' : 'font-semibold'}`}>Home</span>
-            </button>
+          {/* Elevated Circular Button */}
+          <button
+            onClick={handleCenterButtonClick}
+            className={`group relative -mt-4 sm:-mt-5 w-14 h-14 sm:w-16 sm:h-16 rounded-full transition-all duration-300 cursor-pointer active:scale-90 flex items-center justify-center ${
+              isMenuOpenOrActive
+                ? 'bg-gradient-to-tr from-[#E11D48] via-[#A855F7] to-[#06B6D4] p-[2.5px] shadow-[0_0_24px_rgba(6,182,212,0.9)] scale-105 ring-2 ring-cyan-400/80'
+                : 'bg-gradient-to-tr from-[#E11D48] via-[#8B5CF6] to-[#06B6D4] p-[2.5px] shadow-[0_0_18px_rgba(6,182,212,0.65)] hover:scale-105'
+            }`}
+            title={isMenuOpenOrActive ? 'Click to close and return to Home' : 'Open All Modules Menu'}
+          >
+            {/* Inner Dark Circular Face */}
+            <div className="w-full h-full rounded-full bg-[#080E16] flex flex-col items-center justify-center p-1 relative overflow-hidden transition-all duration-300">
+              {/* Subtle radial sheen */}
+              <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
 
-            {/* 2. Calendar / Timetable Shortcut */}
-            <button
-              onClick={() => onSelectTab('calendar')}
-              className={`group relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-2xl transition-all duration-200 cursor-pointer ${
-                activeTab === 'calendar' || activeTab === 'timetable'
-                  ? 'text-white'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
-              title="Calendar & Timetable"
-            >
-              {renderSpotlightGlow(activeTab === 'calendar' || activeTab === 'timetable')}
-              <Calendar className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-200 ${activeTab === 'calendar' || activeTab === 'timetable' ? 'text-rose-400 scale-110' : 'group-hover:scale-110'}`} />
-              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${activeTab === 'calendar' || activeTab === 'timetable' ? 'text-white font-bold' : 'font-semibold'}`}>Calendar</span>
-            </button>
+              {isMenuOpenOrActive ? (
+                /* STATE B: "Tap to close" / "Close" (Image 3) */
+                <span className="text-[10px] sm:text-[11px] font-black leading-tight text-white drop-shadow-[0_0_8px_rgba(24,226,236,0.95)] text-center tracking-tight animate-fade-in">
+                  Tap to<br />close
+                </span>
+              ) : (
+                /* STATE A: "Menu" (Image 2) */
+                <span className="text-sm sm:text-base font-black text-[#18E2EC] tracking-tight drop-shadow-[0_0_10px_rgba(24,226,236,0.95)] group-hover:text-cyan-200 transition-colors animate-fade-in">
+                  Menu
+                </span>
+              )}
+            </div>
+          </button>
+        </div>
 
-            {/* 🌟 3. CENTER MORE / MODULES BUTTON */}
-            <button
-              onClick={() => onSelectTab('more')}
-              className={`group relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-2xl transition-all duration-200 cursor-pointer ${
-                activeTab === 'more'
-                  ? 'text-white'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
-              title="More Modules & Functions"
-            >
-              {renderSpotlightGlow(activeTab === 'more')}
-              <Plus className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-200 ${activeTab === 'more' ? 'text-rose-400 scale-110' : 'group-hover:scale-110'}`} />
-              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${activeTab === 'more' ? 'text-white font-bold' : 'font-semibold'}`}>More</span>
-            </button>
+        {/* 4. Messages Button */}
+        <button
+          onClick={() => {
+            if (isMainMenuOpen && onOpenMainMenu) onOpenMainMenu();
+            onSelectTab('messages');
+          }}
+          className={`group relative flex flex-col items-center justify-center min-w-[52px] sm:min-w-[68px] py-1.5 px-2 rounded-full transition-all duration-300 cursor-pointer ${
+            isMessagesActive && !isMenuOpenOrActive
+              ? 'text-[#18E2EC] font-bold'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+          }`}
+          title="Communication Hub"
+        >
+          {renderSpotlightGlow(isMessagesActive && !isMenuOpenOrActive)}
+          <div className="relative">
+            <MessageSquare className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-300 ${isMessagesActive && !isMenuOpenOrActive ? 'text-[#18E2EC] scale-110 drop-shadow-[0_0_10px_rgba(24,226,236,0.85)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`} />
+            {unreadMessages > 0 && (
+              <span className="absolute -top-1 -right-2 px-1 min-w-[14px] h-3.5 rounded-full bg-rose-500 text-white text-[8px] font-black flex items-center justify-center ring-2 ring-[#0D1620] animate-pulse shadow-sm">
+                {unreadMessages > 9 ? '9+' : unreadMessages}
+              </span>
+            )}
+          </div>
+          <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${isMessagesActive && !isMenuOpenOrActive ? 'text-[#18E2EC] font-black drop-shadow-[0_0_6px_rgba(24,226,236,0.5)]' : 'font-semibold'}`}>Messages</span>
+        </button>
 
-            {/* 4. Messages / Chat Shortcut */}
-            <button
-              onClick={() => onSelectTab('messages')}
-              className={`group relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-2xl transition-all duration-200 cursor-pointer ${
-                activeTab === 'messages'
-                  ? 'text-white'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
-              title="Messages & Chat"
-            >
-              {renderSpotlightGlow(activeTab === 'messages')}
-              <div className="relative">
-                <MessageSquare className={`w-4.5 h-4.5 sm:w-5 sm:h-5 transition-transform duration-200 ${activeTab === 'messages' ? 'text-rose-400 scale-110' : 'group-hover:scale-110'}`} />
-                {unreadMessages > 0 && (
-                  <span className="absolute -top-1 -right-2 px-1 min-w-[14px] h-3.5 rounded-full bg-rose-500 text-white text-[8px] font-black flex items-center justify-center ring-2 ring-[#131418] animate-pulse shadow-sm">
-                    {unreadMessages > 9 ? '9+' : unreadMessages}
-                  </span>
-                )}
-              </div>
-              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${activeTab === 'messages' ? 'text-white font-bold' : 'font-semibold'}`}>Messages</span>
-            </button>
-
-            {/* 🌟 5. FAR RIGHT PROFILE BUTTON */}
-            <button
-              onClick={() => onSelectTab('profile')}
-              className={`group relative flex flex-col items-center justify-center px-2.5 py-1.5 rounded-2xl transition-all duration-200 cursor-pointer ${
-                activeTab === 'profile'
-                  ? 'text-white'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
-              title="My Profile & Account"
-            >
-              {renderSpotlightGlow(activeTab === 'profile')}
-              <div className={`w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full overflow-hidden border transition-transform duration-200 flex items-center justify-center relative ${
-                activeTab === 'profile'
-                  ? 'border-rose-400 scale-110 ring-2 ring-rose-500/50'
-                  : 'border-slate-700 group-hover:scale-110'
-              }`}>
-                {(user?.profile_picture || user?.profile_picture_path) ? (
-                  <img
-                    src={getProfilePictureUrl(user.profile_picture || user.profile_picture_path)}
-                    alt=""
-                    className="w-full h-full object-cover"
-                    onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
-                  />
-                ) : (
-                  <User className="w-3.5 h-3.5 text-slate-300" />
-                )}
-              </div>
-              <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${activeTab === 'profile' ? 'text-white font-bold' : 'font-semibold'}`}>Profile</span>
-            </button>
-          </>
-        )}
+        {/* 5. Profile Button */}
+        <button
+          onClick={() => {
+            if (isMainMenuOpen && onOpenMainMenu) onOpenMainMenu();
+            onSelectTab('profile');
+          }}
+          className={`group relative flex flex-col items-center justify-center min-w-[52px] sm:min-w-[68px] py-1.5 px-2 rounded-full transition-all duration-300 cursor-pointer ${
+            isProfileActive && !isMenuOpenOrActive
+              ? 'text-[#18E2EC] font-bold'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+          }`}
+          title="My Profile"
+        >
+          {renderSpotlightGlow(isProfileActive && !isMenuOpenOrActive)}
+          <div className={`w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden transition-transform duration-300 ${isProfileActive && !isMenuOpenOrActive ? 'ring-2 ring-[#18E2EC] shadow-[0_0_8px_rgba(24,226,236,0.6)]' : 'group-hover:scale-115 group-hover:-translate-y-0.5'}`}>
+            {(user?.profile_picture || user?.profile_picture_path) ? (
+              <img
+                src={getProfilePictureUrl(user.profile_picture || user.profile_picture_path)}
+                alt=""
+                className="w-full h-full object-cover"
+                onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+              />
+            ) : (
+              <User className="w-3.5 h-3.5 text-slate-300" />
+            )}
+          </div>
+          <span className={`text-[9px] sm:text-[10px] tracking-tight mt-0.5 ${isProfileActive && !isMenuOpenOrActive ? 'text-[#18E2EC] font-black drop-shadow-[0_0_6px_rgba(24,226,236,0.5)]' : 'font-semibold'}`}>Profile</span>
+        </button>
       </div>
     </div>
   );

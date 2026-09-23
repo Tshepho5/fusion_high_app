@@ -1,0 +1,224 @@
+id,student_name,top_career_1,confidence_1,top_career_2,confidence_2,top_career_3,confidence_3,predicted_score,is_at_risk,risk_probability,risk_level
+5,Anthony Campos,Government Officer,39.0%,Teacher,14.0%,Stock Investor,13.2%,79.0,False,6.1%,Low
+6,Kelly Wade,Lawyer,28.5%,Software Engineer,27.4%,Banker,17.0%,81.8,False,1.1%,Low
+9,Stanley Gutierrez,Software Engineer,36.4%,Construction Engineer,18.6%,Doctor,11.8%,80.9,False,2.4%,Low
+12,Clinton Randolph,Real Estate Developer,31.7%,Government Officer,13.2%,Designer,11.1%,75.4,False,5.9%,Low
+35,Lisa Burns,Software Engineer,32.8%,Scientist,20.1%,Construction Engineer,14.5%,80.6,False,1.1%,Low
+36,Kelly Farley,Designer,36.3%,Accountant,12.1%,Writer,10.1%,75.9,False,8.3%,Low
+49,Kimberly Kelly,Software Engineer,21.1%,Accountant,20.7%,Banker,14.5%,80.6,False,1.5%,Low
+57,Melissa Lee,Software Engineer,41.3%,Doctor,12.8%,Banker,11.8%,81.8,False,1.7%,Low
+78,Rhonda Davenport,Artist,40.6%,Real Estate Developer,23.2%,Government Officer,12.7%,81.4,False,4.9%,Low
+79,Chelsea Craig,Software Engineer,33.6%,Banker,19.4%,Lawyer,12.5%,84.2,False,0.6%,Low
+85,James Dawson,Lawyer,20.5%,Banker,18.4%,Accountant,16.0%,75.8,False,14.0%,Low
+95,Natalie Robinson,Artist,32.6%,Real Estate Developer,22.2%,Business Owner,17.0%,79.5,False,4.9%,Low
+109,Alexandra Gibson,Artist,32.7%,Business Owner,29.6%,Real Estate Developer,18.8%,82.1,False,5.6%,Low
+116,Robert Hill,Software Engineer,39.3%,Banker,25.0%,Stock Investor,12.9%,82.5,False,1.3%,Low
+118,Beth Bell,Accountant,17.0%,Teacher,15.5%,Lawyer,12.1%,74.9,False,36.8%,Low
+125,Jennifer Miller,Teacher,35.9%,Government Officer,21.0%,Real Estate Developer,13.5%,77.4,False,3.6%,Low
+126,Lisa Ware,Government Officer,22.9%,Teacher,22.6%,Real Estate Developer,17.8%,80.9,False,2.3%,Low
+129,Amanda Williamson,Stock Investor,17.1%,Software Engineer,16.1%,Banker,15.2%,79.2,False,1.4%,Low
+130,Michael Miller,Software Engineer,32.0%,Stock Investor,17.3%,Lawyer,15.6%,82.0,False,2.2%,Low
+149,Tanya Nichols,Writer,20.9%,Designer,15.4%,Accountant,13.7%,79.4,False,0.9%,Low
+151,Courtney Perry,Artist,26.0%,Business Owner,22.4%,Real Estate Developer,19.9%,78.3,False,18.0%,Low
+153,Elizabeth Robinson,Construction Engineer,23.8%,Software Engineer,18.6%,Banker,18.4%,83.2,False,0.7%,Low
+156,Matthew Newman,Construction Engineer,24.2%,Software Engineer,16.6%,Banker,15.7%,83.1,False,1.9%,Low
+157,Anita Moore,Teacher,28.4%,Designer,22.1%,Writer,12.3%,77.3,False,4.8%,Low
+160,Michael Rivas,Software Engineer,23.6%,Construction Engineer,17.2%,Scientist,15.2%,81.3,False,1.3%,Low
+161,Ryan Smith,Designer,26.9%,Teacher,15.2%,Government Officer,11.6%,79.2,False,1.3%,Low
+168,Amy Peterson,Banker,37.7%,Software Engineer,23.9%,Lawyer,10.5%,82.5,False,0.7%,Low
+169,Fernando Sexton,Government Officer,21.7%,Banker,17.8%,Real Estate Developer,16.3%,84.6,False,2.3%,Low
+176,Jeremy Barnes,Teacher,18.9%,Designer,15.4%,Writer,14.9%,77.7,False,1.0%,Low
+181,Christopher Wolfe,Artist,32.7%,Real Estate Developer,21.5%,Business Owner,19.7%,77.6,False,9.8%,Low
+183,Victoria Donaldson,Lawyer,40.1%,Writer,28.6%,Designer,14.3%,81.8,False,0.5%,Low
+189,Steven Walker,Lawyer,24.4%,Designer,17.9%,Writer,10.7%,80.5,False,2.9%,Low
+207,Matthew Guzman,Artist,44.3%,Real Estate Developer,18.1%,Designer,9.4%,85.0,False,5.4%,Low
+219,Theresa Tucker,Designer,34.9%,Accountant,11.4%,Writer,8.7%,77.1,False,7.8%,Low
+230,Christopher Perez,Government Officer,38.3%,Teacher,26.8%,Real Estate Developer,11.8%,78.1,True,42.1%,Moderate
+239,John Conley,Software Engineer,21.3%,Scientist,15.1%,Banker,14.2%,81.6,False,0.8%,Low
+255,Nathan Riley,Accountant,19.6%,Lawyer,15.6%,Software Engineer,15.4%,90.0,False,0.8%,Low
+263,Nicholas Sanders,Accountant,31.7%,Banker,21.2%,Software Engineer,14.5%,76.1,True,67.8%,Moderate
+266,Adam Kane,Software Engineer,32.6%,Banker,14.9%,Stock Investor,10.8%,83.5,False,0.7%,Low
+273,Kevin Camacho,Software Engineer,26.3%,Stock Investor,18.4%,Accountant,17.6%,81.8,False,2.0%,Low
+288,Anthony Cox,Lawyer,32.3%,Banker,29.6%,Writer,12.9%,82.8,False,2.2%,Low
+299,Sarah Oconnor,Game Developer,67.1%,Real Estate Developer,8.9%,Artist,7.5%,76.3,False,5.7%,Low
+315,Joel Hicks,Doctor,20.4%,Scientist,18.7%,Lawyer,18.3%,90.6,False,0.7%,Low
+317,Nancy Jones,Designer,26.0%,Writer,19.1%,Accountant,12.3%,77.4,False,3.5%,Low
+323,Andrea Walters,Software Engineer,35.0%,Stock Investor,17.0%,Construction Engineer,12.3%,81.6,False,1.0%,Low
+324,David Wright,Real Estate Developer,21.8%,Government Officer,19.5%,Designer,18.1%,81.0,False,1.5%,Low
+325,Anthony Oconnor,Artist,28.4%,Business Owner,22.4%,Real Estate Developer,16.7%,79.4,False,5.1%,Low
+330,Kenneth Flores,Software Engineer,26.2%,Lawyer,20.3%,Banker,16.7%,80.0,False,4.3%,Low
+353,Ryan Hull,Construction Engineer,21.6%,Banker,18.6%,Writer,16.3%,83.1,False,0.7%,Low
+357,Christopher Rios,Designer,33.1%,Lawyer,14.3%,Banker,11.2%,77.4,False,10.9%,Low
+366,Francis Nelson,Banker,33.7%,Lawyer,18.3%,Software Engineer,12.0%,81.9,True,89.2%,High
+368,Sheila Sosa,Designer,26.5%,Lawyer,11.8%,Banker,11.5%,78.5,False,7.8%,Low
+375,Kristen Adams,Accountant,29.1%,Banker,24.4%,Software Engineer,10.7%,78.0,False,3.9%,Low
+377,Patrick Everett,Software Engineer,45.0%,Lawyer,16.6%,Banker,13.6%,83.8,False,0.6%,Low
+378,Carla Parker,Government Officer,17.6%,Accountant,15.9%,Designer,15.4%,76.4,False,7.6%,Low
+380,Eric Moran,Game Developer,38.9%,Real Estate Developer,17.8%,Artist,12.4%,79.8,False,9.6%,Low
+382,Lance Salazar,Teacher,28.9%,Government Officer,25.3%,Real Estate Developer,17.4%,76.8,False,8.4%,Low
+384,James Castro,Artist,34.0%,Business Owner,25.0%,Real Estate Developer,14.8%,79.8,False,7.7%,Low
+406,Autumn Hernandez,Banker,28.8%,Software Engineer,20.0%,Accountant,17.5%,79.3,False,4.6%,Low
+425,Jason Hernandez,Software Engineer,27.8%,Construction Engineer,25.3%,Accountant,11.1%,80.5,False,0.7%,Low
+451,Lori Ryan,Government Officer,31.8%,Banker,15.3%,Teacher,13.6%,81.3,False,0.4%,Low
+479,Douglas Watson,Teacher,32.2%,Designer,23.5%,Government Officer,13.1%,78.2,False,3.2%,Low
+480,Manuel Barrett,Government Officer,25.5%,Banker,16.2%,Teacher,14.2%,84.5,False,3.2%,Low
+484,Julie Zamora,Business Owner,20.8%,Real Estate Developer,20.7%,Artist,19.9%,76.9,False,14.8%,Low
+487,Whitney Miller,Doctor,31.5%,Software Engineer,22.9%,Construction Engineer,10.9%,84.1,False,0.6%,Low
+505,Tamara Olson,Banker,19.8%,Software Engineer,17.5%,Accountant,15.0%,80.1,True,82.7%,High
+512,Dawn Poole,Government Officer,34.2%,Teacher,32.3%,Designer,11.4%,78.4,False,3.7%,Low
+521,Cynthia Williams,Artist,41.3%,Business Owner,24.9%,Real Estate Developer,18.9%,75.4,False,25.8%,Low
+527,Robert Heath,Lawyer,30.5%,Designer,16.6%,Accountant,12.4%,76.1,False,0.9%,Low
+534,Phyllis Schneider,Lawyer,37.0%,Banker,14.7%,Stock Investor,10.0%,76.6,False,4.2%,Low
+539,Mark Davis,Software Engineer,34.4%,Lawyer,20.6%,Banker,17.2%,80.7,False,1.4%,Low
+556,Justin Douglas,Construction Engineer,20.5%,Doctor,20.3%,Scientist,16.4%,93.4,False,0.5%,Low
+562,Theodore Williams,Lawyer,49.2%,Software Engineer,16.0%,Stock Investor,7.8%,85.3,False,0.7%,Low
+584,Lindsay Brady,Software Engineer,27.4%,Stock Investor,25.3%,Banker,10.8%,82.0,False,7.0%,Low
+591,Meredith Reed,Software Engineer,24.0%,Lawyer,22.6%,Stock Investor,18.4%,84.7,False,2.0%,Low
+592,David Brown,Artist,43.2%,Business Owner,28.4%,Game Developer,14.9%,82.9,False,3.9%,Low
+602,Michelle Ortiz,Teacher,24.8%,Stock Investor,16.7%,Real Estate Developer,16.7%,80.5,False,2.2%,Low
+604,Tammy Hernandez,Real Estate Developer,38.3%,Artist,26.8%,Business Owner,15.6%,73.4,True,83.6%,High
+605,Jennifer Guerra,Stock Investor,21.2%,Software Engineer,17.1%,Banker,16.4%,75.6,False,16.1%,Low
+616,Joshua Parker,Construction Engineer,31.4%,Software Engineer,23.0%,Banker,10.6%,78.2,False,3.9%,Low
+622,David Madden,Banker,24.6%,Lawyer,22.9%,Software Engineer,20.5%,85.7,False,2.5%,Low
+623,William Brennan,Real Estate Developer,32.7%,Business Owner,22.0%,Artist,19.6%,77.0,False,10.1%,Low
+629,Sean Wagner,Teacher,25.8%,Government Officer,24.3%,Designer,15.1%,76.5,False,18.2%,Low
+635,Douglas Hayes,Government Officer,22.4%,Teacher,21.1%,Banker,16.7%,78.1,True,74.3%,Moderate
+642,Bethany French,Designer,26.4%,Real Estate Developer,20.0%,Government Officer,19.1%,81.4,False,5.6%,Low
+671,Lauren Morrow,Accountant,20.4%,Teacher,17.0%,Designer,10.9%,80.4,False,1.9%,Low
+677,Thomas Nelson,Software Engineer,33.9%,Banker,19.2%,Construction Engineer,15.0%,84.0,False,2.0%,Low
+684,Jeffery Kelley,Software Engineer,27.4%,Banker,25.8%,Stock Investor,15.2%,80.8,False,0.6%,Low
+686,Hayley Case,Software Engineer,29.8%,Banker,26.0%,Stock Investor,14.1%,80.6,False,0.6%,Low
+690,Phillip Nelson,Teacher,20.2%,Government Officer,19.5%,Banker,15.9%,80.4,False,6.8%,Low
+695,Richard Gibson,Software Engineer,34.9%,Accountant,17.5%,Stock Investor,11.4%,79.5,False,1.8%,Low
+701,Gregory Jones,Software Engineer,24.5%,Construction Engineer,19.9%,Banker,16.5%,83.0,False,1.9%,Low
+703,Andrea Baker,Artist,41.0%,Business Owner,32.9%,Real Estate Developer,17.0%,76.4,False,13.6%,Low
+704,Robert Holmes,Banker,23.7%,Accountant,18.8%,Software Engineer,18.5%,79.1,False,1.4%,Low
+718,Alyssa Gallagher,Teacher,29.5%,Government Officer,28.2%,Real Estate Developer,12.6%,78.5,False,4.4%,Low
+722,Mark Brown,Construction Engineer,19.8%,Scientist,16.8%,Doctor,16.0%,94.2,False,0.9%,Low
+734,Austin Dunn,Lawyer,30.4%,Banker,18.5%,Software Engineer,17.1%,80.7,False,0.5%,Low
+746,Thomas Stone,Lawyer,38.7%,Writer,18.2%,Designer,15.0%,80.0,False,1.3%,Low
+770,William Dean,Lawyer,30.9%,Software Engineer,22.2%,Stock Investor,14.9%,82.9,False,1.1%,Low
+772,Diane Spears,Teacher,27.9%,Government Officer,25.0%,Real Estate Developer,15.5%,79.5,False,2.6%,Low
+776,Betty Nash,Real Estate Developer,28.4%,Government Officer,25.8%,Teacher,21.3%,75.0,True,72.3%,Moderate
+780,Todd Howard,Construction Engineer,30.7%,Writer,13.1%,Scientist,11.4%,93.5,False,2.0%,Low
+782,Mary Mccormick,Stock Investor,25.8%,Banker,21.9%,Software Engineer,21.2%,81.7,False,3.8%,Low
+793,Kelly Rivera,Software Engineer,30.3%,Stock Investor,14.0%,Construction Engineer,13.1%,82.0,False,1.8%,Low
+794,Stacey Wilson,Designer,22.6%,Accountant,16.3%,Banker,13.9%,74.8,True,83.1%,High
+808,Anthony Gomez,Software Engineer,43.4%,Banker,13.9%,Accountant,13.4%,81.1,False,1.8%,Low
+811,John Henderson,Doctor,46.8%,Scientist,18.1%,Software Engineer,13.0%,83.6,False,3.8%,Low
+827,Thomas Hernandez,Teacher,33.4%,Government Officer,21.6%,Real Estate Developer,11.6%,80.2,False,4.4%,Low
+835,Alexander Fowler,Construction Engineer,19.9%,Software Engineer,19.7%,Lawyer,14.3%,78.1,False,1.7%,Low
+836,Andrew Wong,Software Engineer,24.1%,Stock Investor,20.2%,Lawyer,18.3%,81.4,False,1.1%,Low
+837,Bobby Valdez,Lawyer,29.1%,Software Engineer,23.3%,Banker,19.4%,84.7,False,1.8%,Low
+844,Shannon Graham,Real Estate Developer,25.8%,Government Officer,15.1%,Construction Engineer,12.8%,81.0,False,3.1%,Low
+860,Deborah Moore,Government Officer,19.9%,Real Estate Developer,10.0%,Construction Engineer,9.2%,83.8,False,1.7%,Low
+870,Justin Kelly,Software Engineer,41.2%,Banker,15.9%,Construction Engineer,13.6%,83.7,False,1.0%,Low
+872,Ashley Craig,Writer,29.4%,Lawyer,20.9%,Banker,13.7%,79.2,False,4.3%,Low
+887,Nicole Mcdonald,Teacher,37.3%,Government Officer,29.7%,Real Estate Developer,11.1%,77.4,False,4.6%,Low
+888,Christopher Ramirez,Software Engineer,44.1%,Accountant,18.1%,Stock Investor,13.4%,80.5,False,0.7%,Low
+904,Kevin Ryan,Lawyer,42.1%,Banker,18.0%,Writer,13.5%,80.6,False,0.6%,Low
+918,Noah Mcdaniel,Artist,32.9%,Business Owner,29.1%,Real Estate Developer,25.1%,79.3,False,18.5%,Low
+931,Timothy Booth,Software Engineer,36.5%,Banker,14.8%,Scientist,9.8%,81.9,False,1.9%,Low
+957,Madison Callahan,Doctor,32.0%,Software Engineer,21.2%,Stock Investor,12.8%,81.4,False,4.2%,Low
+958,Connor Olson,Banker,24.2%,Government Officer,22.7%,Teacher,10.8%,82.5,True,92.8%,High
+965,Laura Walker,Artist,38.6%,Real Estate Developer,22.0%,Government Officer,11.6%,83.6,False,3.7%,Low
+967,Beth Bonilla,Designer,27.3%,Lawyer,14.3%,Writer,10.6%,77.8,False,2.2%,Low
+969,Jennifer Cummings,Real Estate Developer,16.9%,Government Officer,15.0%,Designer,14.7%,85.8,False,2.1%,Low
+980,Annette Logan,Software Engineer,19.9%,Banker,18.2%,Accountant,11.8%,83.4,False,1.6%,Low
+986,Lance Nelson,Construction Engineer,29.2%,Writer,14.9%,Lawyer,14.5%,92.4,False,1.5%,Low
+991,Victoria Garcia,Teacher,50.4%,Government Officer,17.9%,Designer,8.7%,77.9,False,4.3%,Low
+1008,Austin Matthews,Banker,20.0%,Construction Engineer,18.5%,Accountant,16.9%,80.1,False,1.0%,Low
+1010,Joanna Dominguez,Designer,26.5%,Banker,21.9%,Software Engineer,13.5%,74.6,True,60.0%,Moderate
+1014,Brendan Rivera,Writer,31.6%,Designer,13.7%,Lawyer,12.3%,79.3,False,5.6%,Low
+1018,Sarah Tucker,Teacher,21.7%,Designer,19.6%,Writer,15.7%,77.0,False,6.2%,Low
+1029,Jill Armstrong,Designer,20.9%,Government Officer,17.7%,Real Estate Developer,16.3%,80.4,False,2.1%,Low
+1034,Joseph Petersen,Software Engineer,25.8%,Construction Engineer,15.5%,Banker,15.2%,81.0,False,1.3%,Low
+1051,Chelsea Taylor,Teacher,40.3%,Designer,16.6%,Government Officer,15.0%,81.7,False,2.8%,Low
+1055,Rebecca Carpenter,Lawyer,56.0%,Software Engineer,12.7%,Construction Engineer,10.1%,84.3,False,1.0%,Low
+1065,Richard Burke,Banker,30.4%,Software Engineer,20.6%,Accountant,17.9%,78.1,False,1.3%,Low
+1066,Donald Contreras,Lawyer,41.6%,Designer,21.8%,Writer,10.6%,80.1,False,2.4%,Low
+1070,David Mendoza,Real Estate Developer,29.8%,Artist,28.6%,Government Officer,20.5%,75.6,False,20.5%,Low
+1072,Cindy Hamilton,Designer,43.6%,Banker,16.1%,Lawyer,10.7%,76.4,False,11.3%,Low
+1078,Ross Sanchez,Lawyer,17.3%,Accountant,15.4%,Banker,14.6%,80.7,False,1.3%,Low
+1082,Regina Hernandez,Government Officer,26.6%,Teacher,23.1%,Real Estate Developer,19.3%,77.7,False,16.3%,Low
+1099,Steven Allen,Doctor,30.5%,Software Engineer,19.2%,Scientist,16.3%,84.1,False,1.1%,Low
+1116,Jillian Dominguez,Writer,16.4%,Construction Engineer,16.1%,Doctor,14.0%,93.6,False,0.8%,Low
+1119,Brittany Spencer,Artist,34.1%,Business Owner,26.6%,Real Estate Developer,15.3%,79.7,False,4.5%,Low
+1126,Andrew Hunter,Writer,37.6%,Lawyer,18.3%,Banker,12.9%,77.5,False,5.0%,Low
+1129,Brittany Simmons,Accountant,27.4%,Lawyer,25.4%,Banker,20.3%,76.9,False,8.3%,Low
+1149,Ronnie Nguyen,Banker,32.7%,Software Engineer,22.0%,Stock Investor,13.8%,83.2,False,1.6%,Low
+1151,Brandon Oliver,Software Engineer,25.2%,Accountant,22.2%,Lawyer,12.6%,78.7,False,2.9%,Low
+1152,David Vazquez,Teacher,18.1%,Designer,16.5%,Banker,14.7%,80.0,False,1.1%,Low
+1162,Jessica Ferrell,Business Owner,54.8%,Real Estate Developer,21.2%,Artist,15.2%,71.4,True,95.0%,High
+1178,Mark Stevens,Designer,23.0%,Lawyer,21.3%,Writer,15.3%,82.5,False,2.2%,Low
+1179,Scott Tate,Teacher,31.1%,Government Officer,22.4%,Real Estate Developer,15.3%,78.2,False,6.3%,Low
+1182,Brent Burton,Stock Investor,19.4%,Government Officer,17.9%,Teacher,17.7%,80.2,False,3.3%,Low
+1186,Nancy Fowler,Banker,20.4%,Government Officer,14.0%,Stock Investor,12.3%,82.4,False,2.2%,Low
+1208,Sean Erickson,Designer,20.0%,Accountant,19.7%,Teacher,16.5%,73.0,True,86.0%,High
+1216,Jessica Smith,Software Engineer,33.5%,Construction Engineer,21.0%,Stock Investor,10.6%,81.0,False,2.2%,Low
+1219,Michelle Dixon,Software Engineer,32.0%,Accountant,18.7%,Construction Engineer,15.6%,78.5,False,1.3%,Low
+1230,Justin Brooks,Game Developer,50.3%,Business Owner,15.2%,Artist,12.2%,80.0,False,5.8%,Low
+1240,Christie Lane,Scientist,24.6%,Doctor,20.7%,Lawyer,19.7%,93.3,False,1.3%,Low
+1264,Amanda Edwards,Lawyer,23.8%,Banker,18.6%,Accountant,12.3%,82.5,False,0.5%,Low
+1312,Martin Garcia,Artist,37.9%,Real Estate Developer,25.2%,Business Owner,16.1%,75.6,False,12.1%,Low
+1328,Roberto Martin,Teacher,50.6%,Writer,15.1%,Government Officer,11.3%,79.9,False,0.9%,Low
+1333,John Jensen,Accountant,35.5%,Designer,11.8%,Banker,11.2%,75.4,False,6.4%,Low
+1345,Jeremy Ward,Teacher,19.0%,Banker,17.7%,Government Officer,16.4%,80.6,False,1.5%,Low
+1349,Rachel Williams,Teacher,42.8%,Designer,9.3%,Government Officer,8.6%,78.9,True,88.4%,High
+1358,Alyssa Miller,Accountant,15.9%,Designer,13.0%,Banker,12.7%,75.8,False,3.9%,Low
+1359,Lisa Best,Writer,40.1%,Lawyer,19.7%,Banker,8.4%,78.5,False,6.0%,Low
+1368,Jorge Lee,Teacher,17.1%,Stock Investor,15.4%,Construction Engineer,14.5%,82.2,False,1.6%,Low
+1379,Hector Garcia,Lawyer,23.6%,Accountant,16.6%,Writer,13.4%,78.2,False,9.0%,Low
+1408,Kyle Rojas,Designer,25.6%,Lawyer,20.5%,Stock Investor,10.7%,75.7,True,65.6%,Moderate
+1412,John Lin,Designer,16.3%,Banker,15.7%,Lawyer,15.6%,76.5,False,4.1%,Low
+1422,Misty Stewart,Lawyer,31.3%,Software Engineer,21.5%,Banker,17.7%,83.2,False,0.5%,Low
+1439,Jessica Mathews,Banker,25.6%,Accountant,15.8%,Construction Engineer,13.2%,82.6,False,0.8%,Low
+1449,Dana Lambert,Game Developer,68.6%,Business Owner,7.4%,Government Officer,6.7%,79.9,False,2.6%,Low
+1458,James Clarke,Real Estate Developer,20.3%,Designer,19.4%,Government Officer,16.6%,76.0,False,4.4%,Low
+1469,Kimberly Dyer,Software Engineer,20.9%,Construction Engineer,16.1%,Banker,15.6%,82.0,False,0.5%,Low
+1479,Kevin Holt,Lawyer,28.5%,Banker,20.9%,Writer,14.6%,80.8,False,3.3%,Low
+1506,Samantha Hopkins,Government Officer,32.8%,Designer,10.2%,Teacher,10.2%,83.5,False,3.8%,Low
+1508,Jessica Jones,Teacher,20.6%,Banker,18.8%,Software Engineer,12.5%,84.5,False,2.0%,Low
+1516,Hayley Johnson,Lawyer,34.8%,Writer,27.4%,Designer,8.9%,83.6,False,2.8%,Low
+1525,Chad Moreno,Banker,22.8%,Lawyer,20.4%,Designer,15.2%,76.2,True,66.6%,Moderate
+1534,Michael Harrington,Designer,27.1%,Accountant,14.4%,Writer,12.7%,73.7,True,61.9%,Moderate
+1540,Kimberly Cooper,Government Officer,25.1%,Real Estate Developer,23.9%,Teacher,17.6%,74.2,True,74.0%,Moderate
+1542,Stephanie Yu,Business Owner,50.1%,Artist,29.0%,Real Estate Developer,10.5%,76.7,True,57.3%,Moderate
+1550,Heidi Ellis,Artist,30.7%,Business Owner,23.0%,Real Estate Developer,22.3%,79.8,False,6.4%,Low
+1573,Katherine Reyes,Government Officer,25.1%,Teacher,14.5%,Banker,13.6%,79.0,False,14.9%,Low
+1580,Luis Klein,Writer,37.6%,Lawyer,14.1%,Designer,8.8%,81.6,False,1.5%,Low
+1590,Donna Hoffman,Teacher,28.4%,Designer,18.9%,Government Officer,12.3%,81.6,False,1.0%,Low
+1614,Evan Francis,Construction Engineer,30.0%,Software Engineer,20.0%,Banker,10.1%,83.0,False,0.9%,Low
+1618,Kayla Krueger,Government Officer,21.8%,Real Estate Developer,21.8%,Teacher,19.8%,77.9,False,2.2%,Low
+1633,Thomas Smith,Teacher,22.6%,Government Officer,21.8%,Designer,17.7%,77.6,False,6.5%,Low
+1635,Robin Daniel,Software Engineer,34.6%,Stock Investor,23.6%,Accountant,10.9%,78.6,False,2.2%,Low
+1638,Jennifer Stewart,Designer,19.8%,Banker,15.0%,Writer,11.3%,76.3,False,9.3%,Low
+1640,David Bates,Teacher,41.8%,Government Officer,23.0%,Real Estate Developer,14.8%,79.7,False,3.8%,Low
+1659,Eric Ross,Government Officer,18.8%,Banker,14.8%,Designer,14.6%,81.1,False,0.9%,Low
+1685,Christine Rivera,Designer,19.4%,Teacher,19.4%,Writer,14.3%,76.6,True,60.0%,Moderate
+1698,Mark Gardner,Doctor,24.8%,Lawyer,18.0%,Software Engineer,15.4%,92.8,False,0.5%,Low
+1706,Deborah Miller,Lawyer,32.5%,Stock Investor,13.3%,Software Engineer,11.4%,78.2,False,1.7%,Low
+1707,David Hoffman,Banker,22.1%,Government Officer,22.0%,Teacher,15.8%,81.2,False,1.5%,Low
+1715,Samantha Anderson,Game Developer,25.6%,Business Owner,22.9%,Artist,20.4%,76.3,False,5.6%,Low
+1741,Toni Smith,Lawyer,31.9%,Accountant,13.9%,Designer,13.4%,78.0,False,1.0%,Low
+1747,Bonnie Brown,Teacher,33.8%,Government Officer,32.0%,Real Estate Developer,13.2%,82.4,False,5.2%,Low
+1750,Dana Peters,Artist,40.2%,Business Owner,24.0%,Real Estate Developer,18.7%,78.9,False,6.9%,Low
+1790,Debra Evans,Banker,26.7%,Accountant,16.5%,Lawyer,13.4%,80.0,False,0.9%,Low
+1805,Tyler Moore,Software Engineer,31.0%,Lawyer,15.1%,Banker,14.1%,83.3,False,1.3%,Low
+1809,Alan Santos,Scientist,26.2%,Doctor,20.8%,Lawyer,15.0%,91.1,False,0.9%,Low
+1815,Joshua Ayala,Software Engineer,28.4%,Stock Investor,21.0%,Banker,13.6%,78.2,False,0.8%,Low
+1839,Heather Gutierrez,Software Engineer,25.1%,Banker,24.0%,Stock Investor,14.6%,83.4,False,0.9%,Low
+1841,Danielle Kelley,Software Engineer,48.1%,Stock Investor,14.1%,Lawyer,10.7%,82.9,False,0.7%,Low
+1857,Michelle Brown,Writer,26.1%,Construction Engineer,15.1%,Doctor,13.9%,92.1,False,1.4%,Low
+1868,Gregory Lee,Software Engineer,36.6%,Banker,21.5%,Accountant,12.0%,82.0,False,0.3%,Low
+1885,Richard Davis,Teacher,30.5%,Real Estate Developer,18.7%,Government Officer,17.7%,75.5,False,29.9%,Low
+1900,Brian Chan,Writer,40.3%,Teacher,10.5%,Designer,8.7%,79.7,False,1.7%,Low
+1908,Wendy Burch,Government Officer,21.4%,Real Estate Developer,18.7%,Banker,15.5%,78.2,False,4.5%,Low
+1931,James Hudson,Artist,36.0%,Game Developer,15.6%,Real Estate Developer,15.0%,81.1,False,3.5%,Low
+1934,Christopher Montgomery,Designer,25.4%,Accountant,17.4%,Writer,11.1%,76.2,False,14.2%,Low
+1942,Lisa Palmer,Real Estate Developer,29.9%,Artist,26.7%,Government Officer,18.6%,76.9,False,22.8%,Low
+1944,Jennifer Johnson,Government Officer,27.2%,Teacher,21.1%,Stock Investor,14.3%,79.2,False,39.5%,Low
+1947,Melissa Finley,Accountant,16.0%,Construction Engineer,15.6%,Software Engineer,15.2%,80.0,False,5.4%,Low
+1962,Sabrina Perez,Business Owner,37.0%,Artist,26.0%,Real Estate Developer,15.6%,79.4,False,18.3%,Low
+1968,Tiffany Smith,Software Engineer,38.5%,Stock Investor,15.5%,Accountant,12.4%,79.8,False,0.6%,Low
+1989,Charles Miller,Real Estate Developer,25.5%,Business Owner,24.3%,Government Officer,20.0%,79.8,False,14.2%,Low

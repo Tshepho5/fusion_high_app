@@ -297,13 +297,13 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
           </div>
 
           {/* View Mode Switcher (Visual Hero Cards / Grid / Compact / List) */}
-          <div className="flex items-center gap-1 p-1 bg-surface-dark rounded-2xl border border-white/10 shrink-0 self-start md:self-center">
+          <div className="flex items-center gap-1 p-1 bg-[#EDF4F7] dark:bg-[#0A121A] rounded-2xl border border-slate-200/90 dark:border-[#1B2E3D] shrink-0 self-start md:self-center">
             <button
               onClick={() => handleSetSubjectViewMode('visual')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 subjectViewMode === 'visual'
-                  ? 'bg-brand-600 text-white shadow-glow-indigo'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
               title="Visual Showcase with Subject Pictures"
             >
@@ -314,8 +314,8 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
               onClick={() => handleSetSubjectViewMode('grid')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 subjectViewMode === 'grid'
-                  ? 'bg-brand-600 text-white shadow-glow-indigo'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
               title="Responsive Grid"
             >
@@ -326,8 +326,8 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
               onClick={() => handleSetSubjectViewMode('compact')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 subjectViewMode === 'compact'
-                  ? 'bg-brand-600 text-white shadow-glow-indigo'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
               title="Compact Tiles"
             >
@@ -338,8 +338,8 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
               onClick={() => handleSetSubjectViewMode('list')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 subjectViewMode === 'list'
-                  ? 'bg-brand-600 text-white shadow-glow-indigo'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
               title="Detailed List"
             >
@@ -359,8 +359,8 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 onClick={() => setSubjectCategoryFilter(cat.id)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
                   subjectCategoryFilter === cat.id
-                    ? 'bg-brand-600 text-white border-brand-400 shadow-glow-indigo'
-                    : 'bg-surface-dark hover:bg-white/5 text-slate-400 border-white/5'
+                    ? 'bg-[#13C8D9] text-[#0A121A] border-[#13C8D9] shadow-xs'
+                    : 'bg-[#EDF4F7] dark:bg-[#121F2C] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5 border-slate-200/60 dark:border-[#1B2E3D]'
                 }`}
               >
                 {cat.label}
@@ -376,7 +376,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
               value={subjectSearchQuery}
               onChange={(e) => setSubjectSearchQuery(e.target.value)}
               placeholder="Find subject..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-surface-dark border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all"
+              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-[#EDF4F7] dark:bg-[#0A121A] border border-slate-200/90 dark:border-[#1B2E3D] text-xs text-[#1C252C] dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#13C8D9] transition-all"
             />
           </div>
         </div>
@@ -750,10 +750,10 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
 
         <button
           onClick={() => onNavigateTab('more')}
-          className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 text-white text-xs font-bold transition-all shadow-glow-indigo flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+          className="px-4 py-2 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-[#0A121A] text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 shrink-0 cursor-pointer"
         >
           <span>Explore More Modules</span>
-          <ArrowRight className="w-4 h-4" />
+          <ArrowRight className="w-4 h-4 text-[#0A121A]" />
         </button>
       </div>
 

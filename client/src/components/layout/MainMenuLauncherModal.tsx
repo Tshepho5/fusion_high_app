@@ -161,17 +161,17 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
 
   return (
     <div className="fixed inset-0 md:left-72 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/80 backdrop-blur-xl animate-fade-in">
-      <div className="relative w-full max-w-5xl max-h-[92vh] rounded-3xl bg-surface-dark/95 border border-brand-500/30 p-5 md:p-7 shadow-2xl shadow-brand-500/10 flex flex-col overflow-hidden mx-auto">
+      <div className="relative w-full max-w-5xl max-h-[92vh] rounded-3xl bg-[#0F1A24]/95 border border-[#13C8D9]/40 p-5 md:p-7 shadow-2xl shadow-[#13C8D9]/10 flex flex-col overflow-hidden mx-auto">
         {/* Glow Auras */}
-        <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-brand-500/20 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-cyan-500/20 blur-3xl pointer-events-none" />
+        <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-[#13C8D9]/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-cyan-500/15 blur-3xl pointer-events-none" />
 
         {/* Modal Header */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/10 pb-4 shrink-0">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 via-indigo-500 to-cyan-400 p-0.5 shadow-glow-cyan flex items-center justify-center shrink-0">
-              <div className="w-full h-full rounded-[14px] bg-slate-950/80 flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-cyan-300 animate-pulse" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#13C8D9] via-cyan-500 to-teal-400 p-0.5 shadow-glow-cyan flex items-center justify-center shrink-0">
+              <div className="w-full h-full rounded-[14px] bg-[#0A121A] flex items-center justify-center">
+                <Sparkles className="w-6 h-6 text-[#18E2EC] animate-pulse" />
               </div>
             </div>
             <div>
@@ -179,7 +179,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                 <h3 className="text-lg md:text-xl font-black font-display text-white tracking-tight">
                   Main Navigation Menu
                 </h3>
-                <span className="px-2.5 py-0.5 rounded-full bg-brand-500/20 border border-brand-500/40 text-brand-300 text-[10px] font-mono font-extrabold uppercase">
+                <span className="px-2.5 py-0.5 rounded-full bg-[#13C8D9]/15 border border-[#13C8D9]/40 text-[#18E2EC] text-[10px] font-mono font-extrabold uppercase">
                   {role} Hub
                 </span>
               </div>
@@ -198,7 +198,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search modules..."
-                className="w-full pl-9 pr-3 py-1.5 bg-surface-darker/90 border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
+                className="w-full pl-9 pr-3 py-1.5 bg-[#0A121A] border border-[#1B2E3D] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#13C8D9] font-medium"
               />
               {searchQuery && (
                 <button
@@ -211,12 +211,12 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
             </div>
 
             {/* 🌟 VIEW MODE SELECTOR (Launchpad Grid / Detailed Cards / Compact List) */}
-            <div className="flex items-center p-1 rounded-xl bg-surface-darker border border-white/10 shrink-0">
+            <div className="flex items-center p-1 rounded-xl bg-[#0A121A] border border-[#1B2E3D] shrink-0">
               <button
                 onClick={() => handleSetViewMode('launchpad')}
-                className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   viewMode === 'launchpad'
-                    ? 'bg-brand-600 text-white shadow-glow-indigo'
+                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
                     : 'text-slate-400 hover:text-white'
                 }`}
                 title="Launchpad App Icon Grid"
@@ -227,9 +227,9 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
 
               <button
                 onClick={() => handleSetViewMode('cards')}
-                className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   viewMode === 'cards'
-                    ? 'bg-brand-600 text-white shadow-glow-indigo'
+                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
                     : 'text-slate-400 hover:text-white'
                 }`}
                 title="Detailed Feature Cards"
@@ -240,9 +240,9 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
 
               <button
                 onClick={() => handleSetViewMode('list')}
-                className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   viewMode === 'list'
-                    ? 'bg-brand-600 text-white shadow-glow-indigo'
+                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
                     : 'text-slate-400 hover:text-white'
                 }`}
                 title="Compact List View"
@@ -255,7 +255,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
             {/* Close Modal Button */}
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
               title="Close Menu (Esc)"
             >
               <X className="w-5 h-5" />
@@ -278,9 +278,9 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
             <button
               key={cat.id}
               onClick={() => setCategory(cat.id as CategoryFilter)}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 ${
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 category === cat.id
-                  ? 'bg-white/15 text-cyan-300 border border-cyan-400/40 shadow-glow-cyan'
+                  ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
               }`}
             >
@@ -307,14 +307,14 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                       onSelectTab(item.id);
                       onClose();
                     }}
-                    className={`group relative flex flex-col items-center justify-center p-3.5 rounded-3xl text-center border transition-all duration-300 hover:scale-105 active:scale-95 card-interactive ${
+                    className={`group relative flex flex-col items-center justify-center p-3.5 rounded-3xl text-center border transition-all duration-300 hover:scale-105 active:scale-95 card-interactive cursor-pointer ${
                       isActive
-                        ? 'bg-brand-600/20 border-cyan-400 shadow-glow-cyan'
-                        : 'bg-surface-darker/60 hover:bg-surface-darker/90 border-white/5 hover:border-white/20'
+                        ? 'bg-[#152535] border-[#13C8D9] shadow-glow-cyan'
+                        : 'bg-[#0A121A]/80 hover:bg-[#152535] border-[#1B2E3D] hover:border-[#13C8D9]/40'
                     }`}
                   >
                     {item.badge && (
-                      <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-white/20 text-white font-mono font-black text-[8px] uppercase tracking-wider">
+                      <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-[#13C8D9]/20 text-[#18E2EC] font-mono font-black text-[8px] uppercase tracking-wider border border-[#13C8D9]/30">
                         {item.badge}
                       </span>
                     )}
@@ -324,13 +324,13 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                     >
                       <Icon className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow-md" />
                       {isActive && (
-                        <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-cyan-400 ring-2 ring-slate-900 flex items-center justify-center">
-                          <CheckCircle2 className="w-3 h-3 text-slate-950" />
+                        <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#18E2EC] ring-2 ring-slate-900 flex items-center justify-center">
+                          <CheckCircle2 className="w-3 h-3 text-[#0A121A]" />
                         </span>
                       )}
                     </div>
 
-                    <span className="text-xs font-black text-white mt-2.5 line-clamp-1 group-hover:text-cyan-300 transition-colors font-display">
+                    <span className="text-xs font-black text-white mt-2.5 line-clamp-1 group-hover:text-[#18E2EC] transition-colors font-display">
                       {item.label}
                     </span>
                     <span className="text-[10px] text-slate-400 capitalize line-clamp-1 mt-0.5">
@@ -358,10 +358,10 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                       onSelectTab(item.id);
                       onClose();
                     }}
-                    className={`group relative p-4 rounded-2xl text-left border transition-all duration-200 flex flex-col justify-between overflow-hidden card-interactive ${
+                    className={`group relative p-4 rounded-2xl text-left border transition-all duration-200 flex flex-col justify-between overflow-hidden card-interactive cursor-pointer ${
                       isActive
-                        ? 'bg-gradient-to-br from-brand-600/30 via-indigo-600/20 to-cyan-600/20 border-cyan-400 shadow-glow-cyan'
-                        : 'bg-surface-darker/80 hover:bg-surface-darker border-white/10 hover:border-white/20 hover:scale-[1.02] shadow-md'
+                        ? 'bg-[#152535] border-[#13C8D9] shadow-glow-cyan'
+                        : 'bg-[#0A121A]/80 hover:bg-[#152535] border-[#1B2E3D] hover:border-[#13C8D9]/40 hover:scale-[1.02] shadow-md'
                     }`}
                   >
                     <div>
@@ -374,17 +374,17 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
 
                         <div className="flex items-center gap-1.5">
                           {item.badge && (
-                            <span className="px-2 py-0.5 rounded-md bg-white/10 text-white font-mono font-bold text-[9px] uppercase tracking-wider border border-white/15">
+                            <span className="px-2 py-0.5 rounded-md bg-[#13C8D9]/20 text-[#18E2EC] font-mono font-bold text-[9px] uppercase tracking-wider border border-[#13C8D9]/30">
                               {item.badge}
                             </span>
                           )}
                           {isActive && (
-                            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                            <span className="w-2 h-2 rounded-full bg-[#18E2EC] animate-ping" />
                           )}
                         </div>
                       </div>
 
-                      <h4 className="text-sm font-black text-white mt-3 group-hover:text-cyan-300 transition-colors font-display">
+                      <h4 className="text-sm font-black text-white mt-3 group-hover:text-[#18E2EC] transition-colors font-display">
                         {item.label}
                       </h4>
                       <p className="text-[11px] text-slate-400 mt-1 leading-snug line-clamp-2">
@@ -392,7 +392,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                       </p>
                     </div>
 
-                    <div className="mt-4 flex items-center justify-between pt-2 border-t border-white/5 text-[10px] text-slate-400 group-hover:text-cyan-300 font-bold">
+                    <div className="mt-4 flex items-center justify-between pt-2 border-t border-white/5 text-[10px] text-slate-400 group-hover:text-[#18E2EC] font-bold">
                       <span className="capitalize">{item.category} Module</span>
                       <ChevronRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
                     </div>
@@ -418,10 +418,10 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                       onSelectTab(item.id);
                       onClose();
                     }}
-                    className={`group w-full flex items-center justify-between p-3 rounded-2xl border text-left transition-all ${
+                    className={`group w-full flex items-center justify-between p-3 rounded-2xl border text-left transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-brand-600/30 border-cyan-400 text-white shadow-glow-cyan'
-                        : 'bg-surface-darker/70 hover:bg-surface-darker border-white/10 hover:border-white/20'
+                        ? 'bg-[#152535] border-[#13C8D9] text-white shadow-glow-cyan'
+                        : 'bg-[#0A121A]/80 hover:bg-[#152535] border-[#1B2E3D] hover:border-[#13C8D9]/40'
                     }`}
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
@@ -432,11 +432,11 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <h4 className="text-xs font-bold text-white truncate group-hover:text-cyan-300">
+                          <h4 className="text-xs font-bold text-white truncate group-hover:text-[#18E2EC]">
                             {item.label}
                           </h4>
                           {item.badge && (
-                            <span className="px-1.5 py-0.2 rounded bg-white/10 text-white font-mono text-[8px] font-bold">
+                            <span className="px-1.5 py-0.2 rounded bg-[#13C8D9]/20 text-[#18E2EC] font-mono text-[8px] font-bold border border-[#13C8D9]/30">
                               {item.badge}
                             </span>
                           )}
@@ -451,7 +451,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                       <span className="text-[9px] font-mono text-slate-500 uppercase font-bold hidden sm:inline">
                         {item.category}
                       </span>
-                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-cyan-300 group-hover:translate-x-1 transition-all" />
+                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#18E2EC] group-hover:translate-x-1 transition-all" />
                     </div>
                   </button>
                 );
@@ -467,14 +467,47 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
           )}
         </div>
 
-        {/* Modal Footer */}
-        <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-slate-400 shrink-0">
+        {/* Modal Footer with Centered Tap to Close Button (Image 3) */}
+        <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-slate-400 shrink-0 relative">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-[11px] font-medium">{filteredModules.length} Modules Active</span>
           </div>
+
+          {/* Center Petal Close Button (Image 3) */}
+          <div className="relative flex items-center justify-center">
+            {/* Flower Petals Halo */}
+            <div className="absolute inset-0 -m-3 pointer-events-none flex items-center justify-center animate-pulse">
+              {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+                <div
+                  key={deg}
+                  className="absolute w-6 h-12 rounded-full bg-gradient-to-t from-cyan-400/40 via-teal-400/20 to-transparent blur-[0.5px] border border-cyan-300/40"
+                  style={{
+                    transform: `rotate(${deg}deg) translateY(-10px)`,
+                    transformOrigin: 'center center',
+                  }}
+                />
+              ))}
+            </div>
+
+            <button
+              onClick={() => {
+                onClose();
+                onSelectTab('overview');
+              }}
+              className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-[#E11D48] via-[#A855F7] to-[#06B6D4] p-[2px] shadow-[0_0_20px_rgba(6,182,212,0.85)] hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+              title="Tap to close and return to Home"
+            >
+              <div className="w-full h-full rounded-full bg-[#080E16] flex flex-col items-center justify-center p-1 text-center">
+                <span className="text-[9px] sm:text-[10px] font-black leading-tight text-white drop-shadow-[0_0_6px_rgba(24,226,236,0.95)]">
+                  Tap to<br />close
+                </span>
+              </div>
+            </button>
+          </div>
+
           <span className="font-mono text-[10px] text-slate-500 hidden sm:inline">
-            Press ESC or click anywhere outside to close
+            Press ESC or tap close to return Home
           </span>
         </div>
       </div>

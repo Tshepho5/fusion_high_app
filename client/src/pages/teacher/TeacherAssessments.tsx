@@ -27,6 +27,15 @@ import {
   RefreshCw
 } from 'lucide-react';
 
+export interface AssessmentScore {
+  name: string;
+  type: string;
+  score: number;
+  max_score: number;
+  percentage: number;
+  weight: number;
+}
+
 interface LearnerMarkRecord {
   id: number;
   full_name: string;
@@ -34,6 +43,17 @@ interface LearnerMarkRecord {
   learner_number: string;
   grade: number;
   class_name: string;
+  // Specific assessment components
+  test1?: AssessmentScore | null;
+  test2?: AssessmentScore | null;
+  assignment?: AssessmentScore | null;
+  project?: AssessmentScore | null;
+  exam?: AssessmentScore | null;
+  sba_mark?: number | null;
+  exam_mark?: number | null;
+  final_calculated_mark?: number | null;
+  calculation_method?: string;
+  assessments_count?: number;
   // Performance categories
   formal_mark: number; // Teacher entered formal test/exam mark (0-100)
   formal_task_name: string;
@@ -45,6 +65,69 @@ interface LearnerMarkRecord {
   // Mark entry state
   inputMark: number | '';
 }
+
+export const ASSESSMENT_COMPONENTS = [
+  {
+    key: 'test1' as const,
+    label: 'Controlled Test 1',
+    shortLabel: 'Test 1',
+    nature: 'Formal SBA Test',
+    defaultName: (t: string) => `${t} Controlled Test 1`,
+    defaultTotal: 50,
+    defaultWeight: 50,
+    isFormal: true,
+  },
+  {
+    key: 'test2' as const,
+    label: 'Controlled Test 2',
+    shortLabel: 'Test 2',
+    nature: 'Formal SBA Test',
+    defaultName: (t: string) => `${t} Controlled Test 2`,
+    defaultTotal: 50,
+    defaultWeight: 50,
+    isFormal: true,
+  },
+  {
+    key: 'assignment' as const,
+    label: 'Term Assignment',
+    shortLabel: 'Assignment',
+    nature: 'Term Assignment',
+    defaultName: (t: string) => `${t} Assignment`,
+    defaultTotal: 50,
+    defaultWeight: 30,
+    isFormal: true,
+  },
+  {
+    key: 'project' as const,
+    label: 'Project / Investigation',
+    shortLabel: 'Project',
+    nature: 'Practical Project',
+    defaultName: (t: string) => `${t} Practical Project`,
+    defaultTotal: 50,
+    defaultWeight: 40,
+    isFormal: true,
+  },
+  {
+    key: 'exam' as const,
+    label: 'Controlled Examination',
+    shortLabel: 'Exam',
+    nature: 'Controlled Examination',
+    defaultName: (t: string) => `${t} Controlled Examination`,
+    defaultTotal: 100,
+    defaultWeight: 100,
+    isFormal: true,
+  },
+  {
+    key: 'quiz' as const,
+    label: 'Informal Practice Drill',
+    shortLabel: 'Quiz',
+    nature: 'Class Quiz',
+    defaultName: (t: string) => `${t} Class Quiz`,
+    defaultTotal: 30,
+    defaultWeight: 0,
+    isFormal: false,
+  }
+];
 
 export const TeacherAssessments: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -60,9 +143,13 @@ export const TeacherAssessments: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<'formal' | 'term' | 'ai' | 'entry' | 'history'>('formal');
 
   // Mark Entry Form State
-  const [assessmentName, setAssessmentName] = useState('Term 3 Control Test');
-  const [totalMarks, setTotalMarks] = useState<number>(50);
   const [term, setTerm] = useState('Term 3');
+  const [selectedComponent, setSelectedComponent] = useState<'test1' | 'test2' | 'assignment' | 'project' | 'exam' | 'quiz'>('test1');
+  const [assessmentName, setAssessmentName] = useState('Term 3 Controlled Test 1');
+  const [isFormal, setIsFormal] = useState<boolean>(true);
+  const [assessmentType, setAssessmentType] = useState<string>('Formal SBA Test');
+  const [totalMarks, setTotalMarks] = useState<number>(50);
+  const [weight, setWeight] = useState<number>(50);
 
   const [learners, setLearners] = useState<LearnerMarkRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,24 +211,32 @@ export const TeacherAssessments: React.FC = () => {
       });
   }, [searchParams]);
 
-  // 2. Load learners roster for selected class and subject
-  useEffect(() => {
+  // 2. Load learners roster for selected class, subject, and term
+  const fetchRoster = () => {
     if (!selectedClass) return;
     setLoading(true);
     setError(null);
 
-    teacherService.getClassRoster({ class: selectedClass, subject: selectedSubject })
-      .then((res) => {
+    teacherService.getClassRoster({ class: selectedClass, subject: selectedSubject, term })
+      .then((res: any) => {
         const roster = Array.isArray(res) ? res : res.roster || res.learners || [];
         setLearners(roster.map((s: any) => {
-          const baseMark = s.current_mark !== null && s.current_mark !== undefined 
-            ? Math.round(parseFloat(s.current_mark)) 
-            : 0;
+          const baseMark = s.final_calculated_mark !== null && s.final_calculated_mark !== undefined 
+            ? Math.round(parseFloat(s.final_calculated_mark)) 
+            : (s.current_mark !== null && s.current_mark !== undefined ? Math.round(parseFloat(s.current_mark)) : 0);
 
           const t1 = s.term1_mark !== undefined && s.term1_mark !== null ? Math.round(parseFloat(s.term1_mark)) : baseMark;
           const t2 = s.term2_mark !== undefined && s.term2_mark !== null ? Math.round(parseFloat(s.term2_mark)) : baseMark;
           const t3 = s.term3_mark !== undefined && s.term3_mark !== null ? Math.round(parseFloat(s.term3_mark)) : baseMark;
           const aiScore = s.ai_score !== undefined && s.ai_score !== null ? Math.round(parseFloat(s.ai_score)) : (baseMark > 0 ? baseMark : 0);
+
+          // Find current input mark based on selected component
+          let currentCompMark: number | '' = '';
+          if (selectedComponent === 'test1' && s.test1?.score !== undefined) currentCompMark = s.test1.score;
+          else if (selectedComponent === 'test2' && s.test2?.score !== undefined) currentCompMark = s.test2.score;
+          else if (selectedComponent === 'assignment' && s.assignment?.score !== undefined) currentCompMark = s.assignment.score;
+          else if (selectedComponent === 'project' && s.project?.score !== undefined) currentCompMark = s.project.score;
+          else if (selectedComponent === 'exam' && s.exam?.score !== undefined) currentCompMark = s.exam.score;
 
           return {
             id: s.id || s.child_id,
@@ -150,6 +245,16 @@ export const TeacherAssessments: React.FC = () => {
             learner_number: s.learner_number || `2026${String(s.id).padStart(3, '0')}`,
             grade: s.grade || parseInt(selectedClass.replace(/[^0-9]/g, ''), 10) || 10,
             class_name: s.class_name || selectedClass,
+            test1: s.test1 || null,
+            test2: s.test2 || null,
+            assignment: s.assignment || null,
+            project: s.project || null,
+            exam: s.exam || null,
+            sba_mark: s.sba_mark ?? null,
+            exam_mark: s.exam_mark ?? null,
+            final_calculated_mark: s.final_calculated_mark ?? null,
+            calculation_method: s.calculation_method || 'Pending Teacher Submissions',
+            assessments_count: s.assessments_count || 0,
             formal_mark: baseMark,
             formal_task_name: assessmentName,
             term1_mark: t1,
@@ -157,7 +262,7 @@ export const TeacherAssessments: React.FC = () => {
             term3_mark: t3,
             ai_activities_mark: aiScore,
             ai_completed_count: s.ai_completed_count || 0,
-            inputMark: baseMark <= totalMarks ? (baseMark > 0 ? baseMark : '') : Math.round((baseMark / 100) * totalMarks),
+            inputMark: currentCompMark,
           };
         }));
       })
@@ -167,11 +272,46 @@ export const TeacherAssessments: React.FC = () => {
         setLearners([]);
       })
       .finally(() => setLoading(false));
-  }, [selectedClass, selectedSubject]);
+  };
+
+  useEffect(() => {
+    fetchRoster();
+  }, [selectedClass, selectedSubject, term]);
+
+  const handleSelectComponent = (compKey: 'test1' | 'test2' | 'assignment' | 'project' | 'exam' | 'quiz') => {
+    setSelectedComponent(compKey);
+    const comp = ASSESSMENT_COMPONENTS.find(c => c.key === compKey);
+    if (!comp) return;
+
+    setAssessmentType(comp.nature);
+    setAssessmentName(comp.defaultName(term));
+    setTotalMarks(comp.defaultTotal);
+    setWeight(comp.defaultWeight);
+    setIsFormal(comp.isFormal);
+
+    // Update inputMarks for all learners based on selected component
+    setLearners(prev => prev.map(l => {
+      let mark: number | '' = '';
+      if (compKey === 'test1' && l.test1?.score !== undefined) mark = l.test1.score;
+      else if (compKey === 'test2' && l.test2?.score !== undefined) mark = l.test2.score;
+      else if (compKey === 'assignment' && l.assignment?.score !== undefined) mark = l.assignment.score;
+      else if (compKey === 'project' && l.project?.score !== undefined) mark = l.project.score;
+      else if (compKey === 'exam' && l.exam?.score !== undefined) mark = l.exam.score;
+      return { ...l, inputMark: mark };
+    }));
+  };
+
+  const handleSelectTerm = (newTerm: string) => {
+    setTerm(newTerm);
+    const comp = ASSESSMENT_COMPONENTS.find(c => c.key === selectedComponent);
+    if (comp) {
+      setAssessmentName(comp.defaultName(newTerm));
+    }
+  };
 
   const fetchHistory = () => {
     setLoadingHistory(true);
-    teacherService.getClassMarksHistory({ class: selectedClass, subject: selectedSubject })
+    teacherService.getClassMarksHistory({ class: selectedClass, subject: selectedSubject, term })
       .then((res: any) => {
         setHistoryMarks(res?.history || []);
       })
@@ -183,7 +323,7 @@ export const TeacherAssessments: React.FC = () => {
 
   useEffect(() => {
     fetchHistory();
-  }, [selectedClass, selectedSubject]);
+  }, [selectedClass, selectedSubject, term]);
 
   const handleInputChange = (id: number, val: string) => {
     const num = val === '' ? '' : Math.min(totalMarks, Math.max(0, parseInt(val) || 0));
@@ -200,7 +340,11 @@ export const TeacherAssessments: React.FC = () => {
 
     try {
       await teacherService.saveClassMarks({
-        assessment_name: assessmentName,
+        assessment_name: assessmentName.trim(),
+        assessment_type: assessmentType,
+        is_formal: isFormal,
+        weight: weight,
+        customWeight: weight,
         subject: selectedSubject,
         class: selectedClass,
         term,
@@ -212,16 +356,8 @@ export const TeacherAssessments: React.FC = () => {
         }))
       });
 
-      // Update formal marks in state immediately
-      setLearners(prev => prev.map(l => {
-        const percentage = l.inputMark === '' ? 0 : Math.round(((l.inputMark as number) / totalMarks) * 100);
-        return {
-          ...l,
-          formal_mark: percentage,
-          formal_task_name: assessmentName
-        };
-      }));
-
+      // Refresh class roster to recalculate SBA and Final marks dynamically
+      fetchRoster();
       fetchHistory();
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 4000);
@@ -238,12 +374,13 @@ export const TeacherAssessments: React.FC = () => {
   const formalAvg = useMemo(() => {
     if (learners.length === 0) return 0;
     const scores = learners.map(l => {
-      if (l.inputMark !== '') return Math.round(((l.inputMark as number) / totalMarks) * 100);
+      if (l.final_calculated_mark !== null && l.final_calculated_mark !== undefined) {
+        return l.final_calculated_mark;
+      }
       return l.formal_mark;
-    });
-    const valid = scores.filter(m => m > 0);
-    return valid.length > 0 ? Math.round(valid.reduce((acc, s) => acc + s, 0) / valid.length) : 0;
-  }, [learners, totalMarks]);
+    }).filter(m => m > 0);
+    return scores.length > 0 ? Math.round(scores.reduce((acc, s) => acc + s, 0) / scores.length) : 0;
+  }, [learners]);
 
   const termAvg = useMemo(() => {
     if (learners.length === 0) return 0;
@@ -460,21 +597,63 @@ export const TeacherAssessments: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* CATEGORY 1: FORMAL ASSESSMENTS                                            */}
+      {/* CATEGORY 1: FORMAL ASSESSMENTS & FINAL MARK CALCULATION SCHEDULE          */}
       {/* ========================================================================= */}
       {activeCategory === 'formal' && (
-        <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 shadow-xl space-y-4 animate-fade-in">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+        <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 shadow-xl space-y-5 animate-fade-in">
+          {/* Header & Term Switcher */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/10 pb-4">
             <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Award className="w-5 h-5 text-indigo-400" />
-                <span>Formal Assessment Scores — {selectedSubject} ({selectedClass})</span>
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Displays official SBA tests, controlled examinations, and teacher-entered marks recorded in the database.
-              </p>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                  <Award className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <span>CAPS Formal Assessment Schedule — {selectedSubject} ({selectedClass})</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold">
+                      {term}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Continuous School-Based Assessment (SBA) tasks, tests, assignments, projects, and controlled examinations.
+                  </p>
+                </div>
+              </div>
             </div>
-            <Badge variant="indigo" size="md">Class Average: {formalAvg}%</Badge>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Term Pills */}
+              <div className="flex items-center bg-surface-darker rounded-2xl p-1 border border-white/10">
+                {['Term 1', 'Term 2', 'Term 3', 'Term 4'].map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => handleSelectTerm(t)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      term === t
+                        ? 'bg-indigo-600 text-white shadow-glow-indigo'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+
+              <Badge variant="indigo" size="md">Class Average: {formalAvg}%</Badge>
+            </div>
+          </div>
+
+          {/* CAPS Assessment Weighting & Calculation Formula Explainer */}
+          <div className="p-3.5 rounded-2xl bg-indigo-950/30 border border-indigo-500/20 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-indigo-300 font-semibold">
+              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+              <span>CAPS Formula: Final Mark = SBA (40%) + Exam (60%) [or 100% SBA if no examination is scheduled]</span>
+            </div>
+            <div className="flex items-center gap-2 text-[11px] text-slate-300 font-mono">
+              <span className="text-slate-400">SBA Tasks:</span>
+              <span className="text-white">Controlled Test 1 • Controlled Test 2 • Assignment • Project</span>
+            </div>
           </div>
 
           {loading ? (
@@ -483,36 +662,128 @@ export const TeacherAssessments: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
-                    <th className="pb-3 px-3">#</th>
-                    <th className="pb-3 px-3">Learner ID</th>
-                    <th className="pb-3 px-3">Full Name</th>
-                    <th className="pb-3 px-3">Latest Formal Task</th>
-                    <th className="pb-3 px-3 text-center">Score (%)</th>
-                    <th className="pb-3 px-3 text-center">CAPS Level</th>
-                    <th className="pb-3 px-3 text-right">Academic Status</th>
+                  <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[10px] bg-white/[0.02]">
+                    <th className="py-3 px-2">#</th>
+                    <th className="py-3 px-2">Learner ID</th>
+                    <th className="py-3 px-3">Full Name</th>
+                    <th className="py-3 px-2 text-center text-indigo-300">Test 1</th>
+                    <th className="py-3 px-2 text-center text-indigo-300">Test 2</th>
+                    <th className="py-3 px-2 text-center text-cyan-300">Assignment</th>
+                    <th className="py-3 px-2 text-center text-purple-300">Project</th>
+                    <th className="py-3 px-2 text-center text-amber-300">Exam</th>
+                    <th className="py-3 px-2 text-center text-blue-300 font-bold">SBA (%)</th>
+                    <th className="py-3 px-2 text-center text-emerald-400 font-extrabold bg-emerald-500/10">Final Mark</th>
+                    <th className="py-3 px-2 text-center">CAPS Level</th>
+                    <th className="py-3 px-2">Calculation Breakdown</th>
+                    <th className="py-3 px-2 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {learners.map((learner, idx) => {
-                    const caps = getCapsLevel(learner.formal_mark);
+                    const finalMark = learner.final_calculated_mark !== null && learner.final_calculated_mark !== undefined
+                      ? learner.final_calculated_mark
+                      : (learner.formal_mark > 0 ? learner.formal_mark : null);
+                    const caps = finalMark !== null ? getCapsLevel(finalMark) : { level: '-', label: 'Pending', variant: 'rose' as const };
                     const displayName = `${learner.full_name} ${learner.surname}`.trim();
+
                     return (
                       <tr key={learner.id} className="hover:bg-white/5 transition-colors">
-                        <td className="py-3.5 px-3 text-slate-400 font-mono">{idx + 1}</td>
-                        <td className="py-3.5 px-3 font-mono font-bold text-cyan-400">{learner.learner_number}</td>
-                        <td className="py-3.5 px-3 font-bold text-white text-sm">{displayName}</td>
-                        <td className="py-3.5 px-3 text-slate-300 font-medium">{learner.formal_task_name}</td>
-                        <td className="py-3.5 px-3 text-center font-mono font-bold text-sm text-white">
-                          {learner.formal_mark}%
+                        <td className="py-3 px-2 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
+                        <td className="py-3 px-2 font-mono font-bold text-cyan-400 text-[11px]">{learner.learner_number}</td>
+                        <td className="py-3 px-3 font-bold text-white text-xs whitespace-nowrap">{displayName}</td>
+
+                        {/* Controlled Test 1 */}
+                        <td className="py-3 px-2 text-center font-mono">
+                          {learner.test1 ? (
+                            <span className="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold text-[11px]" title={`Score: ${learner.test1.score}/${learner.test1.max_score} (Weight: ${learner.test1.weight})`}>
+                              {learner.test1.score}/{learner.test1.max_score} <span className="text-[9.5px]">({learner.test1.percentage}%)</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 italic">—</span>
+                          )}
                         </td>
-                        <td className="py-3.5 px-3 text-center">
-                          <Badge variant={caps.variant} size="sm">Level {caps.level}</Badge>
+
+                        {/* Controlled Test 2 */}
+                        <td className="py-3 px-2 text-center font-mono">
+                          {learner.test2 ? (
+                            <span className="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold text-[11px]" title={`Score: ${learner.test2.score}/${learner.test2.max_score} (Weight: ${learner.test2.weight})`}>
+                              {learner.test2.score}/{learner.test2.max_score} <span className="text-[9.5px]">({learner.test2.percentage}%)</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 italic">—</span>
+                          )}
                         </td>
-                        <td className="py-3.5 px-3 text-right">
-                          <span className={`text-xs font-semibold ${learner.formal_mark >= 50 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {learner.formal_mark >= 50 ? 'Achieved' : 'Needs Support'}
+
+                        {/* Assignment */}
+                        <td className="py-3 px-2 text-center font-mono">
+                          {learner.assignment ? (
+                            <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold text-[11px]" title={`Score: ${learner.assignment.score}/${learner.assignment.max_score}`}>
+                              {learner.assignment.score}/{learner.assignment.max_score} <span className="text-[9.5px]">({learner.assignment.percentage}%)</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 italic">—</span>
+                          )}
+                        </td>
+
+                        {/* Project / Investigation */}
+                        <td className="py-3 px-2 text-center font-mono">
+                          {learner.project ? (
+                            <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold text-[11px]" title={`Score: ${learner.project.score}/${learner.project.max_score}`}>
+                              {learner.project.score}/{learner.project.max_score} <span className="text-[9.5px]">({learner.project.percentage}%)</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 italic">—</span>
+                          )}
+                        </td>
+
+                        {/* Controlled Examination */}
+                        <td className="py-3 px-2 text-center font-mono">
+                          {learner.exam ? (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold text-[11px]" title={`Score: ${learner.exam.score}/${learner.exam.max_score}`}>
+                              {learner.exam.score}/{learner.exam.max_score} <span className="text-[9.5px]">({learner.exam.percentage}%)</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 italic">—</span>
+                          )}
+                        </td>
+
+                        {/* Calculated SBA Mark */}
+                        <td className="py-3 px-2 text-center font-mono font-bold text-blue-300 text-xs">
+                          {learner.sba_mark !== null && learner.sba_mark !== undefined ? `${learner.sba_mark}%` : '—'}
+                        </td>
+
+                        {/* Calculated Final Mark */}
+                        <td className="py-3 px-2 text-center font-mono font-black text-sm bg-emerald-500/10 text-emerald-400">
+                          {finalMark !== null ? `${finalMark}%` : <span className="text-[10px] text-amber-400/80 font-bold">Pending</span>}
+                        </td>
+
+                        {/* CAPS Level Badge */}
+                        <td className="py-3 px-2 text-center">
+                          {finalMark !== null ? (
+                            <Badge variant={caps.variant} size="sm">Level {caps.level}</Badge>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 italic">—</span>
+                          )}
+                        </td>
+
+                        {/* Calculation Breakdown Explanation */}
+                        <td className="py-3 px-2 text-[10px] text-slate-300 font-mono">
+                          <span className="truncate block max-w-xs" title={learner.calculation_method}>
+                            {learner.calculation_method || 'Awaiting marks'}
                           </span>
+                        </td>
+
+                        {/* Action: Quick Allocate */}
+                        <td className="py-3 px-2 text-right">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveCategory('entry');
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-surface-darker hover:bg-white/10 text-brand-300 hover:text-white border border-white/10 text-[10px] font-bold transition-all"
+                          >
+                            Allocate Marks
+                          </button>
                         </td>
                       </tr>
                     );
@@ -662,60 +933,158 @@ export const TeacherAssessments: React.FC = () => {
       {/* ========================================================================= */}
       {activeCategory === 'entry' && (
         <div className="space-y-6 animate-fade-in">
-          {/* Assessment Config Controls */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-5 rounded-3xl bg-surface-dark border border-white/10 shadow-xl">
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Assessment Task Title</label>
-              <input
-                type="text"
-                value={assessmentName}
-                onChange={(e) => setAssessmentName(e.target.value)}
-                placeholder="e.g. Term 3 Control Test"
-                className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
-              />
+          {/* Assessment Component & Term Selector Strip */}
+          <div className="p-5 rounded-3xl bg-surface-dark border border-white/10 shadow-xl space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-white/10 pb-4">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-brand-400 block mb-1">
+                  Step 1: Select Academic Term & Assessment Task Component
+                </span>
+                <h3 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
+                  <span>Allocate Marks: {ASSESSMENT_COMPONENTS.find(c => c.key === selectedComponent)?.label || 'Assessment'}</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30">
+                    {term}
+                  </span>
+                </h3>
+              </div>
+
+              {/* Term Selector Pills */}
+              <div className="flex items-center gap-1.5 bg-surface-darker p-1 rounded-2xl border border-white/10 shrink-0">
+                {['Term 1', 'Term 2', 'Term 3', 'Term 4'].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => handleSelectTerm(t)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      term === t
+                        ? 'bg-brand-600 text-white shadow-glow-brand'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
             </div>
 
+            {/* Assessment Component Selection Buttons */}
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Term Cycle</label>
-              <select
-                value={term}
-                onChange={(e) => setTerm(e.target.value)}
-                className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
-              >
-                <option value="Term 1">Term 1</option>
-                <option value="Term 2">Term 2</option>
-                <option value="Term 3">Term 3</option>
-                <option value="Term 4">Term 4</option>
-              </select>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-2">
+                Select Assessment Task (System calculates final mark based on selected component):
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                {ASSESSMENT_COMPONENTS.map((comp) => {
+                  const isSelected = selectedComponent === comp.key;
+                  return (
+                    <button
+                      key={comp.key}
+                      type="button"
+                      onClick={() => handleSelectComponent(comp.key)}
+                      className={`p-3 rounded-2xl border text-left transition-all ${
+                        isSelected
+                          ? 'bg-gradient-to-br from-brand-600/30 to-indigo-600/20 border-brand-500 shadow-glow-brand'
+                          : 'bg-surface-darker border-white/10 hover:border-white/20 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                          comp.isFormal ? 'bg-emerald-500/20 text-emerald-300' : 'bg-purple-500/20 text-purple-300'
+                        }`}>
+                          {comp.isFormal ? 'Formal SBA' : 'Practice'}
+                        </span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-brand-400" />}
+                      </div>
+                      <p className="text-xs font-bold text-white truncate">{comp.label}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        Max: {comp.defaultTotal} pts • W: {comp.defaultWeight}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Total Marks Possible</label>
-              <input
-                type="number"
-                value={totalMarks}
-                onChange={(e) => setTotalMarks(Math.max(1, parseInt(e.target.value) || 50))}
-                min={1}
-                max={300}
-                className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-            </div>
+            {/* Assessment Config Controls Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 pt-3 border-t border-white/5">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Assessment Title</label>
+                <input
+                  type="text"
+                  value={assessmentName}
+                  onChange={(e) => setAssessmentName(e.target.value)}
+                  placeholder="e.g. Term 3 Controlled Test 1"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
+                />
+              </div>
 
-            <div className="flex items-end">
-              <button
-                onClick={handleSaveMarks}
-                disabled={saving || learners.length === 0}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white font-extrabold text-xs shadow-md transition-all active:scale-[0.98] disabled:opacity-50"
-              >
-                {saving ? (
-                  <LoadingSpinner size="sm" />
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    <span>Save & Publish to Formal Marks</span>
-                  </>
-                )}
-              </button>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Category</label>
+                <select
+                  value={isFormal ? 'formal' : 'informal'}
+                  onChange={(e) => setIsFormal(e.target.value === 'formal')}
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                >
+                  <option value="formal">Formal Assessment (Report Card)</option>
+                  <option value="informal">Informal (Practice / Quiz)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Assessment Nature</label>
+                <select
+                  value={assessmentType}
+                  onChange={(e) => setAssessmentType(e.target.value)}
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                >
+                  <option value="Formal SBA Test">Formal SBA Test</option>
+                  <option value="Term Assignment">Term Assignment</option>
+                  <option value="Practical Project">Practical Investigation / Project</option>
+                  <option value="Controlled Examination">Controlled Examination</option>
+                  <option value="Class Quiz">Class Quiz / Drill</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Total Marks</label>
+                <input
+                  type="number"
+                  value={totalMarks}
+                  onChange={(e) => setTotalMarks(Math.max(1, parseInt(e.target.value) || 50))}
+                  min={1}
+                  max={300}
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Weight (Contribution)</label>
+                <input
+                  type="number"
+                  value={weight}
+                  onChange={(e) => setWeight(Math.max(1, parseInt(e.target.value) || totalMarks))}
+                  min={1}
+                  max={500}
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-cyan-300 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  title="Weights control non-uniform contribution to the final report mark (e.g. Exam: 100, Test: 50, Assignment: 30)"
+                />
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  onClick={handleSaveMarks}
+                  disabled={saving || learners.length === 0}
+                  className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white font-extrabold text-xs shadow-md transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                >
+                  {saving ? (
+                    <LoadingSpinner size="sm" />
+                  ) : (
+                    <>
+                      <Save className="w-3.5 h-3.5" />
+                      <span>Save {isFormal ? 'Formal' : 'Practice'} Marks</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 

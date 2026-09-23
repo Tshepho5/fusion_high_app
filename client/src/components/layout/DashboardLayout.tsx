@@ -11,7 +11,7 @@ import { ErrorBoundary } from '../common/ErrorBoundary';
 interface DashboardLayoutProps {
   children: React.ReactNode;
   activeTab: string;
-  onSelectTab: (tabId: string) => void;
+  onSelectTab: (tabId: string, params?: any) => void;
   title?: string;
   customBottomDock?: React.ReactNode;
   hideBottomDock?: boolean;
@@ -79,21 +79,21 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   }, []);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#eaf4fd] dark:bg-[#050a14] text-slate-900 dark:text-slate-100 selection:bg-brand-600 selection:text-white relative transition-colors duration-300">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-[#CBDDE3] via-[#DBE7EC] to-[#EBF2F5] dark:from-[#060D14] dark:via-[#09131F] dark:to-[#0B1520] text-slate-900 dark:text-slate-100 selection:bg-cyan-500 selection:text-white relative transition-colors duration-300">
       {/* SVG Fluid Waves Backdrop Layer */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-90 dark:opacity-80" aria-hidden="true">
         <svg className="w-full h-full object-cover min-w-[1440px] min-h-[900px]" viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="reactWaveGradTop" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#0284c7" stopOpacity="0.10" />
+              <stop offset="0%" stopColor="#13C8D9" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#0891B2" stopOpacity="0.08" />
             </linearGradient>
             <linearGradient id="reactWaveGradMid" x1="100%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#0284c7" stopOpacity="0.16" />
-              <stop offset="100%" stopColor="#6366f1" stopOpacity="0.08" />
+              <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.15" />
+              <stop offset="100%" stopColor="#0E7490" stopOpacity="0.06" />
             </linearGradient>
             <linearGradient id="reactWaveGradBottom" x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#0369a1" stopOpacity="0.18" />
+              <stop offset="0%" stopColor="#13C8D9" stopOpacity="0.16" />
               <stop offset="100%" stopColor="transparent" />
             </linearGradient>
           </defs>
@@ -104,8 +104,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </div>
 
       {/* Background Ambient Neon Glow Orbs */}
-      <div className="fixed top-[-10%] left-[20%] w-[500px] h-[500px] rounded-full bg-brand-600/10 blur-[130px] pointer-events-none animate-orb-float" />
-      <div className="fixed bottom-[-10%] right-[10%] w-[450px] h-[450px] rounded-full bg-cyan-500/10 blur-[120px] pointer-events-none animate-orb-float" style={{ animationDelay: '-5s' }} />
+      <div className="fixed top-[-10%] left-[20%] w-[500px] h-[500px] rounded-full bg-cyan-500/10 blur-[130px] pointer-events-none animate-orb-float" />
+      <div className="fixed bottom-[-10%] right-[10%] w-[450px] h-[450px] rounded-full bg-teal-500/10 blur-[120px] pointer-events-none animate-orb-float" style={{ animationDelay: '-5s' }} />
 
       {/* Global Command Palette / Quick Search Modal */}
       <CommandPalette
@@ -167,16 +167,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </main>
 
         {/* 🌟 Centered Floating Bottom Navigation Dock */}
-        {customBottomDock !== undefined ? (
-          customBottomDock
-        ) : !hideBottomDock ? (
-          <BottomNavigationDock
-            activeTab={activeTab}
-            onSelectTab={onSelectTab}
-            onOpenMainMenu={() => setMainMenuOpen((prev) => !prev)}
-            isMainMenuOpen={mainMenuOpen}
-          />
-        ) : null}
+        {!hideBottomDock && (
+          customBottomDock !== undefined ? (
+            customBottomDock
+          ) : (
+            <BottomNavigationDock
+              activeTab={activeTab}
+              onSelectTab={onSelectTab}
+              onOpenMainMenu={() => setMainMenuOpen((prev) => !prev)}
+              isMainMenuOpen={mainMenuOpen}
+            />
+          )
+        )}
 
         {/* 🤖 Movable Circular 24/7 AI Chat Module on all Dashboards */}
         <FloatingAIChatModule onSelectTab={onSelectTab} />

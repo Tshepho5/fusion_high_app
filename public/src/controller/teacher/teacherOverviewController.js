@@ -275,12 +275,11 @@ exports.getMySubjectsOverview = async (req, res) => {
                     } catch (e) {}
                 }
 
-                let avgMark = 75;
+                let avgMark = null;
                 try {
                     const avgRes = await db.query(
-                        `SELECT AVG(p.grade) as avg_grade FROM progress p
-                         JOIN children c ON p.child_id = c.id
-                         WHERE LOWER(p.subject) = LOWER($1) AND c.grade = $2`,
+                        `SELECT AVG(m.percentage) as avg_grade FROM marks m
+                         WHERE LOWER(m.subject) = LOWER($1) AND m.grade = $2 AND (m.is_formal = TRUE OR m.is_formal IS NULL)`,
                         [subjectName, gradeNum]
                     );
                     if (avgRes.rows[0]?.avg_grade) {
@@ -449,9 +448,9 @@ exports.getTeacherPerformanceOverview = async (req, res) => {
             const passCnt = parseInt(bRes.rows[0]?.pass_cnt || 0, 10);
             subjectBreakdown.push({
                 subject: s,
-                avg_mark: parseInt(bRes.rows[0]?.avg_mark || 78, 10),
-                pass_rate: cnt > 0 ? Math.round((passCnt / cnt) * 100) : 85,
-                total_assessments: cnt || 2
+                avg_mark: cnt > 0 ? parseInt(bRes.rows[0]?.avg_mark, 10) : null,
+                pass_rate: cnt > 0 ? Math.round((passCnt / cnt) * 100) : null,
+                total_assessments: cnt
             });
         }
 
@@ -460,21 +459,13 @@ exports.getTeacherPerformanceOverview = async (req, res) => {
                 subject: selectedSubject,
                 options: subjectGradeOptions,
                 subject_breakdown: subjectBreakdown,
-                class_average: 78,
-                highest_mark: 95,
-                lowest_mark: 42,
-                pass_rate: 88,
-                distribution: { level7: 3, level6: 5, level5: 4, level4: 3, level1_3: 2 },
-                top_performers: [
-                    { id: 1, name: "Minenhle Dlungwane", grade: 10, learner_number: "2026-001", score: 95 },
-                    { id: 2, name: "Thapelo Leshabane", grade: 10, learner_number: "2026-002", score: 92 },
-                    { id: 3, name: "Thabang Maetane", grade: 11, learner_number: "2026-003", score: 89 },
-                    { id: 4, name: "Kagiso Mokoena", grade: 10, learner_number: "2026-004", score: 86 }
-                ],
-                learners_at_risk: [
-                    { id: 6, name: "Sibusiso Khumalo", grade: 10, learner_number: "2026-006", score: 42, risk_level: "High Risk" },
-                    { id: 7, name: "Naledi Zulu", grade: 11, learner_number: "2026-007", score: 48, risk_level: "Moderate Risk" }
-                ]
+                class_average: null,
+                highest_mark: null,
+                lowest_mark: null,
+                pass_rate: null,
+                distribution: { level7: 0, level6: 0, level5: 0, level4: 0, level1_3: 0 },
+                top_performers: [],
+                learners_at_risk: []
             });
         }
 
