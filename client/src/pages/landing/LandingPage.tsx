@@ -26,7 +26,7 @@ import { HelpSupportModal } from '../../components/common/HelpSupportModal';
 // 4. 'ready': Typing is done, slogan fades in, and the "Get Started" button appears
 type SequencePhase = 'icon_arrival' | 'typing_welcome' | 'typing_heading' | 'ready';
 
-const TARGET_WELCOME = 'Welcome to';
+const TARGET_WELCOME = 'Welcome to Geleza SA';
 const TARGET_HEADING = "South Africa's Unified High Schools";
 const SPLIT_INDEX = 23; // "South Africa's Unified " has 23 characters
 

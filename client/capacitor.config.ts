@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.fusionhigh.app',
-  appName: 'Fusion High',
+  appId: 'za.co.gelezasa.app',
+  appName: 'Geleza SA',
   webDir: 'dist'
 };
 

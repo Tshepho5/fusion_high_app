@@ -366,20 +366,64 @@ export const ROLE_MODULE_CATALOGS: Record<string, CatalogModule[]> = {
   ],
   admin: [
     {
-      id: 'messages',
-      title: 'Message Hub',
-      description: 'Administrative communication channels with staff and parents.',
+      id: 'command-center',
+      title: 'Multi-School Command',
+      description: 'Comparative analytics and institutional performance across schools.',
+      category: 'governance',
+      categoryLabel: 'Governance',
+      icon: Building2,
+      badge: 'SuperAdmin',
+      color: 'text-purple-400',
+      iconBg: 'bg-purple-500/15 border-purple-500/30'
+    },
+    {
+      id: 'inter-school',
+      title: 'Inter-School Derbies & League',
+      description: 'Inter-school fixtures, tournaments, athletics derbies, and olympiads.',
+      category: 'activities',
+      categoryLabel: 'Campus Life',
+      icon: Swords,
+      badge: 'Derbies',
+      color: 'text-amber-400',
+      iconBg: 'bg-amber-500/15 border-amber-500/30'
+    },
+    {
+      id: 'consultations',
+      title: 'Parent-Educator Consultations',
+      description: 'Schedule and manage appointments between educators and parents.',
       category: 'communications',
       categoryLabel: 'Communications',
-      icon: MessageSquare,
-      badge: 'Message Hub',
-      color: 'text-sky-400',
-      iconBg: 'bg-sky-500/15 border-sky-500/30'
+      icon: Users,
+      badge: 'Meetings',
+      color: 'text-cyan-400',
+      iconBg: 'bg-cyan-500/15 border-cyan-500/30'
+    },
+    {
+      id: 'subjects',
+      title: 'School Curriculum & Subjects',
+      description: 'CAPS syllabus structure, department heads, and subject allocations.',
+      category: 'academics',
+      categoryLabel: 'Academics',
+      icon: BookOpen,
+      badge: 'CAPS Matrix',
+      color: 'text-blue-400',
+      iconBg: 'bg-blue-500/15 border-blue-500/30'
+    },
+    {
+      id: 'marks',
+      title: 'CAPS Mark Audits & Report Cards',
+      description: 'Audit school-wide marks, SBA task weightings, and report cards.',
+      category: 'academics',
+      categoryLabel: 'Academics',
+      icon: FileSpreadsheet,
+      badge: 'Mark Audits',
+      color: 'text-emerald-400',
+      iconBg: 'bg-emerald-500/15 border-emerald-500/30'
     },
     {
       id: 'users',
-      title: 'User Management & Roles',
-      description: 'Manage teachers, learners, parents, credentials, and access.',
+      title: 'User Directory & Roles',
+      description: 'Manage educators, learners, parents, access credentials, and roles.',
       category: 'governance',
       categoryLabel: 'Governance',
       icon: Users,
@@ -390,66 +434,132 @@ export const ROLE_MODULE_CATALOGS: Record<string, CatalogModule[]> = {
     {
       id: 'finance',
       title: 'School Fees & Invoicing',
-      description: 'Generate term fee invoices, track receipts, and manage accounts.',
+      description: 'Generate term fee invoices, track receipts, and balance accounts.',
       category: 'finance',
       categoryLabel: 'Finances',
       icon: CreditCard,
       badge: 'Accounts',
-      color: 'text-emerald-400',
-      iconBg: 'bg-emerald-500/15 border-emerald-500/30'
-    },
-    {
-      id: 'admissions',
-      title: 'Admissions & Registrations',
-      description: 'Review online student applications, documents, and enrollments.',
-      category: 'governance',
-      categoryLabel: 'Governance',
-      icon: UserCheck,
-      badge: 'Admissions',
-      color: 'text-cyan-400',
-      iconBg: 'bg-cyan-500/15 border-cyan-500/30'
-    },
-    {
-      id: 'timetables',
-      title: 'Master Timetable Engine',
-      description: 'Automated clash-free schedule generation for classrooms.',
-      category: 'operations',
-      categoryLabel: 'Operations',
-      icon: Clock,
-      badge: 'Scheduling',
-      color: 'text-blue-400',
-      iconBg: 'bg-blue-500/15 border-blue-500/30'
-    },
-    {
-      id: 'attendance',
-      title: 'Attendance Audit Center',
-      description: 'School-wide daily absenteeism registers and SMS alerts.',
-      category: 'operations',
-      categoryLabel: 'Operations',
-      icon: CalendarCheck,
-      badge: 'Audit',
       color: 'text-teal-400',
       iconBg: 'bg-teal-500/15 border-teal-500/30'
     },
     {
+      id: 'timetable',
+      title: 'Timetable Allocations',
+      description: 'Master clash-free school timetable allocations for classes and staff.',
+      category: 'operations',
+      categoryLabel: 'Operations',
+      icon: Clock,
+      badge: 'Scheduling',
+      color: 'text-sky-400',
+      iconBg: 'bg-sky-500/15 border-sky-500/30'
+    },
+    {
+      id: 'matric-projector',
+      title: 'Matric Pass Rate Projector',
+      description: 'Grade 12 NSC projected pass rates and subject risk indicators.',
+      category: 'academics',
+      categoryLabel: 'Academics',
+      icon: TrendingUp,
+      badge: 'Grade 12 NSC',
+      color: 'text-pink-400',
+      iconBg: 'bg-pink-500/15 border-pink-500/30'
+    },
+    {
+      id: 'leave-relief',
+      title: 'Staff Leave & Relief Duty',
+      description: 'Manage educator leave requests, substitute cover, and relief timetable.',
+      category: 'governance',
+      categoryLabel: 'Governance',
+      icon: Briefcase,
+      badge: 'Relief Duty',
+      color: 'text-amber-400',
+      iconBg: 'bg-amber-500/15 border-amber-500/30'
+    },
+    {
+      id: 'exam-seating',
+      title: 'Exam Seating Master',
+      description: 'Room and candidate seat assignments for term exams and matric.',
+      category: 'operations',
+      categoryLabel: 'Operations',
+      icon: Award,
+      badge: 'Exams',
+      color: 'text-indigo-400',
+      iconBg: 'bg-indigo-500/15 border-indigo-500/30'
+    },
+    {
+      id: 'bursaries',
+      title: 'Tertiary Bursary Engine',
+      description: 'NSFAS and tertiary bursary opportunities matching database.',
+      category: 'finance',
+      categoryLabel: 'Finances',
+      icon: GraduationCap,
+      badge: 'Funding',
+      color: 'text-purple-400',
+      iconBg: 'bg-purple-500/15 border-purple-500/30'
+    },
+    {
+      id: 'textbooks',
+      title: 'Textbook Inventory',
+      description: 'Issue, track, and audit school-owned learning material assets.',
+      category: 'operations',
+      categoryLabel: 'Operations',
+      icon: HardDrive,
+      badge: 'Assets',
+      color: 'text-cyan-400',
+      iconBg: 'bg-cyan-500/15 border-cyan-500/30'
+    },
+    {
+      id: 'sports',
+      title: 'Sports & Extracurriculars',
+      description: 'Manage school sports codes, leagues, club fixtures, and results.',
+      category: 'activities',
+      categoryLabel: 'Campus Life',
+      icon: Trophy,
+      badge: 'Clubs & Teams',
+      color: 'text-green-400',
+      iconBg: 'bg-green-500/15 border-green-500/30'
+    },
+    {
       id: 'calendar',
-      title: 'Academic School Calendar',
-      description: 'Official DBE term schedule, public holidays, and events.',
+      title: 'School Calendar',
+      description: 'Official DBE term schedule, public holidays, and school calendar.',
       category: 'operations',
       categoryLabel: 'Operations',
       icon: Calendar,
       badge: 'Calendar',
-      color: 'text-blue-400',
-      iconBg: 'bg-blue-500/15 border-blue-500/30'
+      color: 'text-violet-400',
+      iconBg: 'bg-violet-500/15 border-violet-500/30'
+    },
+    {
+      id: 'announcements',
+      title: 'Official Broadcasts',
+      description: 'School-wide urgent circulars, broadcast bulletins, and notices.',
+      category: 'communications',
+      categoryLabel: 'Communications',
+      icon: Megaphone,
+      badge: 'Broadcasts',
+      color: 'text-fuchsia-400',
+      iconBg: 'bg-fuchsia-500/15 border-fuchsia-500/30'
+    },
+    {
+      id: 'messages',
+      title: 'Communication Hub',
+      description: 'Direct institutional messaging with educators, parents, and learners.',
+      category: 'communications',
+      categoryLabel: 'Communications',
+      icon: MessageSquare,
+      badge: 'Direct Chat',
+      color: 'text-sky-400',
+      iconBg: 'bg-sky-500/15 border-sky-500/30'
     },
     {
       id: 'settings',
-      title: 'School Profile & Settings',
-      description: 'Configure school contact info, term dates, and system parameters.',
+      title: 'Technical Settings',
+      description: 'Configure institutional parameters, branding, and system options.',
       category: 'governance',
       categoryLabel: 'Governance',
       icon: Settings,
-      badge: 'Config',
+      badge: 'Settings',
       color: 'text-slate-400',
       iconBg: 'bg-slate-500/15 border-slate-500/30'
     }
@@ -549,7 +659,7 @@ export const ROLE_MODULE_CATALOGS: Record<string, CatalogModule[]> = {
 const DEFAULT_FAVORITE_IDS: Record<string, string[]> = {
   teacher: ['messages', 'attendance', 'assessments', 'ai-tools'],
   learner: ['messages', 'assignments', 'ai-tutor', 'reports'],
-  admin: ['messages', 'users', 'finance', 'attendance'],
+  admin: ['command-center', 'users', 'marks', 'finance', 'timetable', 'messages'],
   parent: ['messages', 'finance', 'ptc', 'attendance']
 };
 

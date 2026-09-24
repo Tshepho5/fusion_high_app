@@ -51,7 +51,7 @@ export const PwaInstallPrompt: React.FC = () => {
           </div>
           <div>
             <h4 className="text-xs font-extrabold font-display text-white tracking-wide">
-              Install Fusion High App
+              Install Geleza SA App
             </h4>
             <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">
               Install for instant offline notes, AI tutoring, and fast access on mobile.

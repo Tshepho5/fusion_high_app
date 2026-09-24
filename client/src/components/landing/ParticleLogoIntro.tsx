@@ -186,9 +186,9 @@ export const ParticleLogoIntro: React.FC<ParticleLogoIntroProps> = ({ onComplete
           }`}
         >
           <img
-            src="/assets/FH.png"
-            alt="Fusion High School Logo"
-            className="w-full h-full object-contain drop-shadow-2xl"
+            src="/assets/gsa-logo.svg"
+            alt="Geleza SA Logo"
+            className="w-full h-full object-contain drop-shadow-2xl rounded-3xl"
           />
         </div>
 
@@ -205,10 +205,10 @@ export const ParticleLogoIntro: React.FC<ParticleLogoIntroProps> = ({ onComplete
             <span>Welcome to</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white font-display">
-            FUSION HIGH SCHOOL
+            GELEZA SA
           </h1>
           <p className="text-xs sm:text-sm text-cyan-400 font-mono font-semibold uppercase tracking-widest">
-            One School • Limitless Potential
+            Geleza Smart • The Future Is Thine
           </p>
         </div>
       </div>

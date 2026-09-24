@@ -3,6 +3,7 @@ import { adminService } from '../../services/api';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { AdminOverviewSkeleton } from '../../components/admin/AdminOverviewSkeleton';
 import { Modal } from '../../components/common/Modal';
+import { FavoriteModulesSection } from '../../components/common/FavoriteModulesSection';
 import {
   Users,
   GraduationCap,
@@ -44,7 +45,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useSchool } from '../../context/SchoolContext';
 
 export type SubjectViewMode = 'carousel' | 'grid' | 'compact' | 'list';
-export type AdminModuleViewMode = 'grid' | 'compact' | 'list';
 
 /**
  * Returns a high-definition cover image reflecting the subject's academic field.
@@ -163,24 +163,10 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
   // Selected Subject for "View More" Command Center Modal
   const [viewMoreSubject, setViewMoreSubject] = useState<SchoolSubjectItem | null>(null);
 
-  // Administrative Modules View Mode
-  const [modulesViewMode, setModulesViewMode] = useState<AdminModuleViewMode>(() => {
-    return (localStorage.getItem('admin_modules_view_mode') as AdminModuleViewMode) || 'grid';
-  });
-
   const handleSetSubjectsViewMode = (mode: SubjectViewMode) => {
     setSubjectsViewMode(mode);
     try {
       localStorage.setItem('admin_subjects_view_mode', mode);
-    } catch {
-      // ignore
-    }
-  };
-
-  const handleSetModulesViewMode = (mode: AdminModuleViewMode) => {
-    setModulesViewMode(mode);
-    try {
-      localStorage.setItem('admin_modules_view_mode', mode);
     } catch {
       // ignore
     }
@@ -425,31 +411,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
     { id: 'technical', label: 'Applied & Creative' }
   ];
 
-  // ADMIN MODULES (ICON + NAME ONLY)
-  const isSuperAdmin = !!user?.is_superadmin;
 
-  const adminModules = [
-    ...(isSuperAdmin
-      ? [{ id: 'command-center', label: 'Multi-School Command', icon: Building2, color: 'text-purple-400 bg-purple-500/20 border-purple-500/40' }]
-      : []),
-    { id: 'inter-school', label: 'Inter-School Derbies & League', icon: Swords, color: 'text-amber-400 bg-amber-500/15 border-amber-500/30' },
-    { id: 'consultations', label: 'Parent-Educator Consultations', icon: MessageSquare, color: 'text-cyan-400 bg-cyan-500/15 border-cyan-500/30' },
-    { id: 'subjects', label: 'School Curriculum & Subjects', icon: BookOpen, color: 'text-blue-400 bg-blue-500/15 border-blue-500/30' },
-    { id: 'marks', label: 'CAPS Mark Audits & Report Cards', icon: FileSpreadsheet, color: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' },
-    { id: 'users', label: 'User Directory & Roles', icon: Users, color: 'text-cyan-400 bg-cyan-500/15 border-cyan-500/30' },
-    { id: 'finance', label: 'School Fees & Invoicing', icon: CreditCard, color: 'text-teal-400 bg-teal-500/15 border-teal-500/30' },
-    { id: 'timetable', label: 'Timetable Allocations', icon: Clock, color: 'text-sky-400 bg-sky-500/15 border-sky-500/30' },
-    { id: 'matric-projector', label: 'Matric Pass Rate Projector', icon: TrendingUp, color: 'text-pink-400 bg-pink-500/15 border-pink-500/30' },
-    { id: 'leave-relief', label: 'Staff Leave & Relief Duty', icon: Briefcase, color: 'text-amber-400 bg-amber-500/15 border-amber-500/30' },
-    { id: 'exam-seating', label: 'Exam Seating Master', icon: Award, color: 'text-indigo-400 bg-indigo-500/15 border-indigo-500/30' },
-    { id: 'bursaries', label: 'Tertiary Bursary Engine', icon: GraduationCap, color: 'text-purple-400 bg-purple-500/15 border-purple-500/30' },
-    { id: 'textbooks', label: 'Textbook Inventory', icon: HardDrive, color: 'text-teal-400 bg-teal-500/15 border-teal-500/30' },
-    { id: 'sports', label: 'Sports & Extracurriculars', icon: Trophy, color: 'text-green-400 bg-green-500/15 border-green-500/30' },
-    { id: 'calendar', label: 'School Calendar', icon: Calendar, color: 'text-violet-400 bg-violet-500/15 border-violet-500/30' },
-    { id: 'announcements', label: 'Official Broadcasts', icon: Megaphone, color: 'text-fuchsia-400 bg-fuchsia-500/15 border-fuchsia-500/30' },
-    { id: 'messages', label: 'Communication Hub', icon: ShieldCheck, color: 'text-brand-400 bg-brand-500/15 border-brand-500/30' },
-    { id: 'settings', label: 'Technical Settings', icon: Settings, color: 'text-slate-300 bg-slate-700/30 border-slate-600/30' }
-  ];
 
   return (
     <div className="space-y-8 animate-fade-in text-slate-900 dark:text-slate-100 pb-16">
@@ -1006,129 +968,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
       </section>
 
       {/* ========================================================================= */}
-      {/* 3. ADMINISTRATIVE CONTROL SERVICES (MODULES DIRECTORY WITH GRID VIEWS)    */}
+      {/* 3. FAVORITE MODULES SECTION (QUICK ACCESS FOR ADMIN)                     */}
       {/* ========================================================================= */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-brand-500/15 text-brand-600 dark:text-brand-400 flex items-center justify-center">
-              <Settings className="w-4 h-4" />
-            </div>
-            <h2 className="text-base md:text-lg font-bold font-display text-slate-900 dark:text-white tracking-tight">
-              Administrative Control Services
-            </h2>
-          </div>
-
-          {/* Optional Grid View Selectors */}
-          <div className="flex items-center gap-1 p-1 bg-[#EDF4F7] dark:bg-[#0A121A] rounded-xl border border-slate-200/90 dark:border-[#1B2E3D] shadow-xs">
-            <button
-              onClick={() => handleSetModulesViewMode('grid')}
-              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                modulesViewMode === 'grid'
-                  ? 'bg-[#13C8D9] text-[#0A121A] font-bold shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-              }`}
-              title="Standard Grid"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => handleSetModulesViewMode('compact')}
-              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                modulesViewMode === 'compact'
-                  ? 'bg-[#13C8D9] text-[#0A121A] font-bold shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-              }`}
-              title="Compact App Tiles"
-            >
-              <Grid3X3 className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => handleSetModulesViewMode('list')}
-              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                modulesViewMode === 'list'
-                  ? 'bg-[#13C8D9] text-[#0A121A] font-bold shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-              }`}
-              title="List View"
-            >
-              <List className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {/* View Mode 1: Standard Grid (Icon + Name) */}
-        {modulesViewMode === 'grid' && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {adminModules.map((func) => {
-              const IconComp = func.icon;
-              return (
-                <div
-                  key={func.id}
-                  onClick={() => onNavigateTab(func.id)}
-                  className="p-3.5 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#13C8D9]/50 hover:bg-slate-50 dark:hover:bg-[#132230] transition-all cursor-pointer flex items-center gap-3.5 shadow-sm group card-interactive"
-                >
-                  <div className="w-11 h-11 rounded-2xl bg-[#E1ECF0] dark:bg-[#152535] border border-slate-200/60 dark:border-[#1B2E3D] flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 shadow-xs">
-                    <IconComp className="w-5 h-5 text-[#232B32] dark:text-[#18E2EC]" />
-                  </div>
-                  <span className="text-xs font-bold text-[#1C252C] dark:text-white group-hover:text-[#13C8D9] dark:group-hover:text-[#18E2EC] transition-colors leading-tight truncate">
-                    {func.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* View Mode 2: Compact App Tiles */}
-        {modulesViewMode === 'compact' && (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5">
-            {adminModules.map((func) => {
-              const IconComp = func.icon;
-              return (
-                <div
-                  key={func.id}
-                  onClick={() => onNavigateTab(func.id)}
-                  className="p-3 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#13C8D9]/50 hover:bg-slate-50 dark:hover:bg-[#132230] transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-2 shadow-sm group card-interactive"
-                >
-                  <div className="w-11 h-11 rounded-2xl bg-[#E1ECF0] dark:bg-[#152535] border border-slate-200/60 dark:border-[#1B2E3D] flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
-                    <IconComp className="w-5 h-5 text-[#232B32] dark:text-[#18E2EC]" />
-                  </div>
-                  <span className="text-[11px] font-bold text-[#1C252C] dark:text-white group-hover:text-[#13C8D9] dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2 leading-tight">
-                    {func.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* View Mode 3: List View */}
-        {modulesViewMode === 'list' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {adminModules.map((func) => {
-              const IconComp = func.icon;
-              return (
-                <div
-                  key={func.id}
-                  onClick={() => onNavigateTab(func.id)}
-                  className="p-3 px-4 rounded-xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#13C8D9]/50 hover:bg-slate-50 dark:hover:bg-[#132230] transition-all cursor-pointer flex items-center justify-between shadow-sm group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-[#E1ECF0] dark:bg-[#152535] border border-slate-200/60 dark:border-[#1B2E3D] flex items-center justify-center shrink-0 shadow-xs">
-                      <IconComp className="w-4 h-4 text-[#232B32] dark:text-[#18E2EC]" />
-                    </div>
-                    <span className="text-xs font-bold text-[#1C252C] dark:text-white group-hover:text-[#13C8D9] dark:group-hover:text-[#18E2EC] transition-colors">
-                      {func.label}
-                    </span>
-                  </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#13C8D9] dark:group-hover:text-[#18E2EC] transition-colors" />
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      <FavoriteModulesSection role="admin" onNavigateTab={onNavigateTab} />
 
       {/* 4. TWO-COLUMN ADMIN LOWER SECTION */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -1,10 +1,14 @@
-const CACHE_NAME = 'fusion-high-cache-v2.1';
+const CACHE_NAME = 'geleza-sa-cache-v2.2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/favicon.svg',
-  '/offline.html'
+  '/offline.html',
+  '/assets/icon-192.png',
+  '/assets/icon-512.png',
+  '/assets/apple-touch-icon.png',
+  '/assets/fusion-app-icon.png'
 ];
 
 // Install Event: Pre-cache core shell

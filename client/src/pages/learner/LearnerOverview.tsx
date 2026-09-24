@@ -42,13 +42,14 @@ import {
   Settings,
   Search,
   Filter,
+  SlidersHorizontal,
   Image as ImageIcon
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
 import { getSubjectMetadata } from '../../utils/subjectImages';
 
-type SubjectViewMode = 'visual' | 'grid' | 'compact' | 'list';
+export type SubjectViewMode = 'carousel' | 'visual' | 'grid' | 'compact' | 'list';
 
 interface LearnerOverviewProps {
   onNavigateTab: (tabId: string, subjectName?: string) => void;
@@ -80,15 +81,15 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
   const [performance, setPerformance] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Subject Presentation Mode (Visual Cards with Pictures / Grid / Compact / List)
+  // Subject Presentation Mode (Carousel / Visual Cards / Grid / Compact / List)
   const [subjectViewMode, setSubjectViewMode] = useState<SubjectViewMode>(() => {
     try {
       const saved = localStorage.getItem('learner_subject_view_mode');
-      if (saved === 'visual' || saved === 'grid' || saved === 'compact' || saved === 'list') {
+      if (saved === 'carousel' || saved === 'visual' || saved === 'grid' || saved === 'compact' || saved === 'list') {
         return saved;
       }
     } catch {}
-    return 'visual';
+    return 'carousel';
   });
   const [subjectCategoryFilter, setSubjectCategoryFilter] = useState<string>('all');
   const [subjectSearchQuery, setSubjectSearchQuery] = useState<string>('');
@@ -100,13 +101,13 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
     } catch {}
   };
 
-
   // Resource Modal state
   const [selectedResourceSubject, setSelectedResourceSubject] = useState<{ name: string; grade: number } | null>(null);
   const [resourceList, setResourceList] = useState<any[]>([]);
   const [loadingResources, setLoadingResources] = useState<boolean>(false);
 
   const carouselRef = useRef<HTMLDivElement>(null);
+  const subjectCarouselRef = useRef<HTMLDivElement>(null);
 
   // Read state persistence in localStorage
   const readStorageKey = `fusion_read_announcements_${user?.id || 'guest'}`;
@@ -135,6 +136,12 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
   const scrollCarousel = (direction: number) => {
     if (carouselRef.current) {
       carouselRef.current.scrollBy({ left: direction * 320, behavior: 'smooth' });
+    }
+  };
+
+  const scrollSubjectCarousel = (direction: number) => {
+    if (subjectCarouselRef.current) {
+      subjectCarouselRef.current.scrollBy({ left: direction * 340, behavior: 'smooth' });
     }
   };
 
@@ -297,56 +304,92 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
             </div>
           </div>
 
-          {/* View Mode Switcher (Visual Hero Cards / Grid / Compact / List) */}
-          <div className="flex items-center gap-1 p-1 bg-[#EDF4F7] dark:bg-[#0A121A] rounded-2xl border border-slate-200/90 dark:border-[#1B2E3D] shrink-0 self-start md:self-center">
-            <button
-              onClick={() => handleSetSubjectViewMode('visual')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                subjectViewMode === 'visual'
-                  ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-              title="Visual Showcase with Subject Pictures"
-            >
-              <ImageIcon className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Visual Cards</span>
-            </button>
-            <button
-              onClick={() => handleSetSubjectViewMode('grid')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                subjectViewMode === 'grid'
-                  ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-              title="Responsive Grid"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Grid</span>
-            </button>
-            <button
-              onClick={() => handleSetSubjectViewMode('compact')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                subjectViewMode === 'compact'
-                  ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-              title="Compact Tiles"
-            >
-              <Grid3X3 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Tiles</span>
-            </button>
-            <button
-              onClick={() => handleSetSubjectViewMode('list')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                subjectViewMode === 'list'
-                  ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-              title="Detailed List"
-            >
-              <List className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">List</span>
-            </button>
+          {/* View Mode Switcher (Carousel / Visual Hero Cards / Grid / Compact / List) */}
+          <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
+            <div className="flex items-center gap-1 p-1 bg-[#EDF4F7] dark:bg-[#0A121A] rounded-2xl border border-slate-200/90 dark:border-[#1B2E3D]">
+              <button
+                onClick={() => handleSetSubjectViewMode('carousel')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  subjectViewMode === 'carousel'
+                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+                title="Horizontal Carousel View"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Carousel</span>
+              </button>
+              <button
+                onClick={() => handleSetSubjectViewMode('visual')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  subjectViewMode === 'visual'
+                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+                title="Visual Showcase with Subject Pictures"
+              >
+                <ImageIcon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Visual Cards</span>
+              </button>
+              <button
+                onClick={() => handleSetSubjectViewMode('grid')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  subjectViewMode === 'grid'
+                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+                title="Responsive Grid"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Grid</span>
+              </button>
+              <button
+                onClick={() => handleSetSubjectViewMode('compact')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  subjectViewMode === 'compact'
+                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+                title="Compact Tiles"
+              >
+                <Grid3X3 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Tiles</span>
+              </button>
+              <button
+                onClick={() => handleSetSubjectViewMode('list')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  subjectViewMode === 'list'
+                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+                title="Detailed List"
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">List</span>
+              </button>
+            </div>
+
+            {/* Carousel navigation controls (visible in carousel mode) */}
+            {subjectViewMode === 'carousel' && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => scrollSubjectCarousel(-1)}
+                  className="p-2 rounded-xl bg-white dark:bg-[#0A121A] border border-slate-200/90 dark:border-[#1B2E3D] text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-[#13C8D9]/50 transition-all shadow-xs active:scale-95 cursor-pointer"
+                  title="Scroll Left"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollSubjectCarousel(1)}
+                  className="p-2 rounded-xl bg-white dark:bg-[#0A121A] border border-slate-200/90 dark:border-[#1B2E3D] text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-[#13C8D9]/50 transition-all shadow-xs active:scale-95 cursor-pointer"
+                  title="Scroll Right"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -383,9 +426,153 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
         </div>
 
         {/* ========================================================================= */}
+        {/* VIEW MODE 0: HORIZONTAL SCROLLING CAROUSEL WITH PICTURE HERO CARDS       */}
+        {/* ========================================================================= */}
+        {subjectViewMode === 'carousel' && (
+          <div
+            ref={subjectCarouselRef}
+            className="flex gap-5 overflow-x-auto pb-4 scrollbar-thin custom-scrollbar snap-x snap-mandatory scroll-smooth"
+          >
+            {filteredSubjects.map((sub, idx) => {
+              const name = safeString(sub.name, 'Subject');
+              const code = safeString(sub.code, `${name.slice(0, 4).toUpperCase()}10`);
+              const teacher = safeString(sub.teacher, 'Subject Educator');
+              const progress = safeNumber(sub.progress, 75);
+              const grade = safeNumber(sub.grade, 10);
+              const assignmentsDue = safeNumber(sub.assignmentsDue, 0);
+              const meta = getSubjectMetadata(name);
+
+              return (
+                <div
+                  key={idx}
+                  className="min-w-[310px] sm:min-w-[340px] max-w-[360px] shrink-0 snap-start rounded-3xl bg-surface-dark border border-white/10 hover:border-brand-500/50 transition-all shadow-xl overflow-hidden flex flex-col justify-between group card-interactive animated-border-card relative"
+                >
+                  {/* Subject Picture Hero Header */}
+                  <div className="relative h-44 w-full overflow-hidden">
+                    <img
+                      src={meta.imageUrl}
+                      alt={name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                    {/* Atmospheric Dark Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-surface-dark via-surface-dark/50 to-transparent" />
+
+                    {/* Wave Cut Mask over Image Bottom */}
+                    <div className="absolute -bottom-0.5 inset-x-0 pointer-events-none">
+                      <svg viewBox="0 0 500 40" preserveAspectRatio="none" className="w-full h-6 text-surface-dark fill-current">
+                        <path d="M0,15 C150,40 350,-10 500,20 L500,40 L0,40 Z" />
+                      </svg>
+                    </div>
+
+                    {/* Category & Status Badges */}
+                    <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
+                      <span className={`px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border ${meta.accent?.badge || 'bg-brand-500/20 text-brand-300 border-brand-500/30'}`}>
+                        {meta.categoryLabel || 'CAPS Subject'}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-black/60 text-white backdrop-blur-md border border-white/10">
+                          Grade {grade}
+                        </span>
+                        {assignmentsDue > 0 && (
+                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-500/80 text-white backdrop-blur-md flex items-center gap-1 shadow-sm">
+                            <FileText className="w-3 h-3" />
+                            {assignmentsDue} Due
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Subject Title Over Image */}
+                    <div className="absolute bottom-2 inset-x-4">
+                      <span className="text-[10px] font-mono text-cyan-300 tracking-wider">
+                        {code}
+                      </span>
+                      <h3
+                        onClick={() => onNavigateTab('subjects', name)}
+                        className="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors cursor-pointer leading-snug drop-shadow-md line-clamp-1"
+                        title={`Open ${name} Workspace`}
+                      >
+                        {name}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* Card Body: Teacher Info & Curriculum Progress */}
+                  <div className="p-4 pt-1 space-y-3 flex-1 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs text-slate-300">
+                        <span className="flex items-center gap-1.5 text-slate-400">
+                          <User className="w-3.5 h-3.5 text-brand-400" />
+                          <span>{teacher}</span>
+                        </span>
+                        <span className="font-bold text-emerald-400">{progress}% Mastery</span>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-brand-500 to-cyan-400 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Subject Quick Actions */}
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <button
+                          onClick={() => openResourcesModal(name, grade)}
+                          className="px-2 py-1.5 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-300 hover:text-white text-[11px] font-semibold border border-white/5 transition-colors text-center cursor-pointer"
+                          title="Textbooks & Notes"
+                        >
+                          Resources
+                        </button>
+                        <button
+                          onClick={() => onNavigateTab('ai-tutor')}
+                          className="px-2 py-1.5 rounded-xl bg-surface-darker hover:bg-cyan-500/20 text-cyan-300 hover:text-cyan-200 text-[11px] font-semibold border border-cyan-500/20 transition-colors text-center flex items-center justify-center gap-1 cursor-pointer"
+                          title="Ask AI Tutor"
+                        >
+                          <Bot className="w-3 h-3 text-cyan-400" />
+                          <span>AI Tutor</span>
+                        </button>
+                        <button
+                          onClick={() => onNavigateTab('performance')}
+                          className="px-2 py-1.5 rounded-xl bg-surface-darker hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 text-[11px] font-semibold border border-emerald-500/20 transition-colors text-center cursor-pointer"
+                          title="View Marks"
+                        >
+                          Marks
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => onNavigateTab('subjects', name)}
+                        className={`w-full py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer hover:opacity-95 text-white ${
+                          name.toLowerCase().includes('math') ? 'cta-math' :
+                          (name.toLowerCase().includes('physic') || name.toLowerCase().includes('chem')) ? 'cta-physical' :
+                          (name.toLowerCase().includes('life scien') || name.toLowerCase().includes('bio')) ? 'cta-life-sciences' :
+                          (name.toLowerCase().includes('english') || name.toLowerCase().includes('sepedi') || name.toLowerCase().includes('afrikaans') || name.toLowerCase().includes('zulu')) ? 'cta-languages' :
+                          name.toLowerCase().includes('geog') ? 'cta-geography' :
+                          name.toLowerCase().includes('orient') ? 'cta-life-orientation' :
+                          (name.toLowerCase().includes('account') || name.toLowerCase().includes('bus') || name.toLowerCase().includes('econ')) ? 'cta-commerce' :
+                          'cta-math'
+                        }`}
+                      >
+                        <span>Open {name} Workspace</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
         {/* VIEW MODE 1: VISUAL HERO CARDS WITH HIGH-RESOLUTION SUBJECT PICTURES     */}
         {/* ========================================================================= */}
-        {(subjectViewMode === 'visual' || !['grid', 'compact', 'list'].includes(subjectViewMode)) && (
+        {subjectViewMode === 'visual' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredSubjects.map((sub, idx) => {
               const name = safeString(sub.name, 'Subject');

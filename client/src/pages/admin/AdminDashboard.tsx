@@ -22,7 +22,6 @@ import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarsh
 import { MultiSchoolCommandCenter } from '../../components/admin/MultiSchoolCommandCenter';
 import { InterSchoolCompetitions } from '../../components/common/InterSchoolCompetitions';
 import { ParentTeacherConsultations } from '../../components/parent/ParentTeacherConsultations';
-import { AdminNavigationBar, getAdminPrimaryTabFromActive } from '../../components/admin/AdminNavigationBar';
 import { AdminMoreHub } from './AdminMoreHub';
 import { AdminDiscoverHub } from './AdminDiscoverHub';
 import { AdminCalendarHub } from './AdminCalendarHub';
@@ -146,19 +145,6 @@ export const AdminDashboard: React.FC = () => {
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
-      hideBottomDock={isSubModule}
-      customBottomDock={
-        !isSubModule ? (
-          <div className="fixed bottom-3 inset-x-0 md:left-72 z-40 flex justify-center items-center pointer-events-none select-none animate-bounce-in px-2 sm:px-4">
-            <div className="pointer-events-auto">
-              <AdminNavigationBar
-                activeTab={activeTab}
-                onSelectTab={handleSelectTab}
-              />
-            </div>
-          </div>
-        ) : null
-      }
     >
       {/* Universal Breadcrumb & Backtrack Bar for Sub-Modules */}
       {isSubModule && (

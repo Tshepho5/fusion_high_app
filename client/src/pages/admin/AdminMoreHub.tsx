@@ -21,9 +21,10 @@ import {
   Grid3X3,
   List,
   ChevronRight,
-  Compass,
   GraduationCap,
   Star,
+  Swords,
+  Megaphone,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -89,11 +90,11 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
   const allModules: ModuleItem[] = [
     // 1. Governance & Staff
     {
-      id: 'messages',
-      title: 'School Message Hub & Broadcasts',
+      id: 'command-center',
+      title: 'Multi-School Command',
       category: 'governance',
-      icon: MessageSquare,
-      badge: 'Communications',
+      icon: Building2,
+      badge: 'SuperAdmin',
     },
     {
       id: 'users',
@@ -104,7 +105,7 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
     },
     {
       id: 'leave-relief',
-      title: 'Educator Leave & Relief Duty',
+      title: 'Staff Leave & Relief Duty',
       category: 'governance',
       icon: Briefcase,
       badge: 'Staff Leave',
@@ -113,17 +114,38 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
       id: 'consultations',
       title: 'Parent-Educator Consultations',
       category: 'governance',
-      icon: MessageSquare,
+      icon: Users,
       badge: 'Meetings',
+    },
+    {
+      id: 'messages',
+      title: 'Communication Hub',
+      category: 'governance',
+      icon: MessageSquare,
+      badge: 'Direct Chat',
+    },
+    {
+      id: 'announcements',
+      title: 'Official Broadcasts',
+      category: 'governance',
+      icon: Megaphone,
+      badge: 'Broadcasts',
     },
 
     // 2. Curriculum & Academics
     {
       id: 'subjects',
-      title: 'Curriculum & Subject Registers',
+      title: 'School Curriculum & Subjects',
       category: 'academics',
       icon: BookOpen,
       badge: 'Grades 8-12',
+    },
+    {
+      id: 'marks',
+      title: 'CAPS Mark Audits & Report Cards',
+      category: 'academics',
+      icon: FileSpreadsheet,
+      badge: 'Mark Audits',
     },
     {
       id: 'reports',
@@ -131,13 +153,6 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
       category: 'academics',
       icon: FileText,
       badge: 'Term Reports',
-    },
-    {
-      id: 'marks',
-      title: 'SBA & Academic Mark Audits',
-      category: 'academics',
-      icon: FileSpreadsheet,
-      badge: 'Assessment Audit',
     },
     {
       id: 'matric-projector',
@@ -148,37 +163,30 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
     },
     {
       id: 'timetable',
-      title: 'Master Timetable Allocations',
+      title: 'Timetable Allocations',
       category: 'academics',
       icon: Clock,
       badge: 'Schedule',
     },
     {
-      id: 'discover',
-      title: 'Discover Innovation & Leadership Hub',
-      category: 'academics',
-      icon: Compass,
-      badge: 'Innovation',
-    },
-    {
       id: 'inter-school',
-      title: 'Inter-School Derbies & Olympiads',
+      title: 'Inter-School Derbies & League',
       category: 'academics',
-      icon: Trophy,
+      icon: Swords,
       badge: 'Competitions',
     },
 
     // 3. Operations & Logistics
     {
       id: 'exam-seating',
-      title: 'Exam Seating Master Planner',
+      title: 'Exam Seating Master',
       category: 'operations',
       icon: Award,
       badge: 'Seating Plan',
     },
     {
       id: 'textbooks',
-      title: 'Textbook & Asset Inventory',
+      title: 'Textbook Inventory',
       category: 'operations',
       icon: HardDrive,
       badge: 'Assets',
@@ -192,7 +200,7 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
     },
     {
       id: 'calendar',
-      title: 'Academic Events & School Calendar',
+      title: 'School Calendar',
       category: 'operations',
       icon: Calendar,
       badge: 'DBE Schedule',
@@ -208,25 +216,14 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
     },
     {
       id: 'bursaries',
-      title: 'National Tertiary Bursaries',
+      title: 'Tertiary Bursary Engine',
       category: 'finance',
       icon: GraduationCap,
       badge: 'Bursaries',
     },
-    ...(isSuperAdmin
-      ? [
-          {
-            id: 'command-center',
-            title: 'Multi-School Command Center',
-            category: 'finance' as const,
-            icon: Building2,
-            badge: 'SuperAdmin',
-          },
-        ]
-      : []),
     {
       id: 'settings',
-      title: 'Technical & School Settings',
+      title: 'Technical Settings',
       category: 'finance',
       icon: Settings,
       badge: 'System',
