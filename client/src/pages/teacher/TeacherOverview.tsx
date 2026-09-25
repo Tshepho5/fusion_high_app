@@ -542,18 +542,18 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => handleOpenSubjectAttendance(card)}
-                        className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600/25 to-teal-600/25 hover:from-emerald-600/40 hover:to-teal-600/40 text-emerald-300 hover:text-white text-xs font-bold border border-emerald-500/30 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 hover:text-white text-xs font-semibold border border-white/10 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
                         title={`Class Attendance Register & QR Roll-Call for ${card.subject_name}`}
                       >
-                        <CalendarCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <CalendarCheck className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                         <span>Register</span>
                       </button>
                       <button
                         onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                        className="px-2.5 py-1.5 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-[#0A121A] font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
                         title={`Enter SBA Marks for ${card.subject_name}`}
                       >
-                        <FileSpreadsheet className="w-3.5 h-3.5 text-[#0A121A] shrink-0" />
+                        <FileSpreadsheet className="w-3.5 h-3.5 text-white shrink-0" />
                         <span>Marks</span>
                       </button>
                     </div>
@@ -563,36 +563,36 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                          className="px-2 py-1 rounded-lg bg-pink-500/15 hover:bg-pink-500/30 text-pink-300 border border-pink-500/25 transition-all hover:scale-105 flex items-center gap-1 text-[11px] font-bold shadow-sm cursor-pointer"
+                          className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-all flex items-center gap-1 text-[11px] font-medium shadow-sm cursor-pointer"
                           title={`Homework for ${card.subject_name}`}
                         >
-                          <FileText className="w-3.5 h-3.5" />
+                          <FileText className="w-3.5 h-3.5 text-slate-400" />
                           <span>Homework</span>
                         </button>
                         <button
                           onClick={() => onNavigateTab('ai-tools', { subject: card.subject_name, grade: card.grade, tool: 'lesson-plan' })}
-                          className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/25 text-amber-300 border border-amber-500/20 transition-all hover:scale-105 cursor-pointer"
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-all cursor-pointer"
                           title="AI Lesson & Test Builder for this Subject"
                         >
-                          <Sparkles className="w-3.5 h-3.5" />
+                          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                         </button>
                         <button
                           onClick={() => onNavigateTab('resources', { subject: card.subject_name, grade: card.grade })}
-                          className="p-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/25 text-purple-300 border border-purple-500/20 transition-all hover:scale-105 cursor-pointer"
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-all cursor-pointer"
                           title="Past Papers & Learning Resources for this Subject"
                         >
-                          <Layers className="w-3.5 h-3.5" />
+                          <Layers className="w-3.5 h-3.5 text-slate-400" />
                         </button>
                       </div>
 
                       <button
                         onClick={() => setViewAllSubject(card)}
-                        className="text-[11px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 hover:underline pl-1 shrink-0 transition-colors cursor-pointer"
+                        className="text-[11px] font-semibold text-slate-400 hover:text-white flex items-center gap-1 hover:underline pl-1 shrink-0 transition-colors cursor-pointer"
                         title="View all modules & tools for this subject"
                       >
-                        <Eye className="w-3 h-3" />
+                        <Eye className="w-3 h-3 text-slate-400" />
                         <span>View All</span>
-                        <ChevronRight className="w-3 h-3" />
+                        <ChevronRight className="w-3 h-3 text-slate-400" />
                       </button>
                     </div>
                   </div>
@@ -670,18 +670,18 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => handleOpenSubjectAttendance(card)}
-                        className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600/25 to-teal-600/25 hover:from-emerald-600/40 hover:to-teal-600/40 text-emerald-300 hover:text-white text-xs font-bold border border-emerald-500/30 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 hover:text-white text-xs font-semibold border border-white/10 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
                         title={`Register & QR Roll-Call for ${card.subject_name}`}
                       >
-                        <CalendarCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <CalendarCheck className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                         <span>Register</span>
                       </button>
                       <button
                         onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                        className="px-2.5 py-1.5 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-[#0A121A] font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
                         title={`Enter SBA Marks for ${card.subject_name}`}
                       >
-                        <FileSpreadsheet className="w-3.5 h-3.5 text-[#0A121A] shrink-0" />
+                        <FileSpreadsheet className="w-3.5 h-3.5 text-white shrink-0" />
                         <span>Marks</span>
                       </button>
                     </div>
@@ -690,36 +690,36 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                          className="px-2 py-1 rounded-lg bg-pink-500/15 hover:bg-pink-500/30 text-pink-300 border border-pink-500/25 transition-all hover:scale-105 flex items-center gap-1 text-[11px] font-bold shadow-sm cursor-pointer"
+                          className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-all flex items-center gap-1 text-[11px] font-medium shadow-sm cursor-pointer"
                           title={`Homework for ${card.subject_name}`}
                         >
-                          <FileText className="w-3.5 h-3.5" />
+                          <FileText className="w-3.5 h-3.5 text-slate-400" />
                           <span>Homework</span>
                         </button>
                         <button
                           onClick={() => onNavigateTab('ai-tools', { subject: card.subject_name, grade: card.grade, tool: 'lesson-plan' })}
-                          className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/25 text-amber-300 border border-amber-500/20 transition-all hover:scale-105 cursor-pointer"
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-all cursor-pointer"
                           title="AI Lesson & Test Builder for this Subject"
                         >
-                          <Sparkles className="w-3.5 h-3.5" />
+                          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                         </button>
                         <button
                           onClick={() => onNavigateTab('resources', { subject: card.subject_name, grade: card.grade })}
-                          className="p-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/25 text-purple-300 border border-purple-500/20 transition-all hover:scale-105 cursor-pointer"
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-all cursor-pointer"
                           title="Past Papers for this Subject"
                         >
-                          <Layers className="w-3.5 h-3.5" />
+                          <Layers className="w-3.5 h-3.5 text-slate-400" />
                         </button>
                       </div>
 
                       <button
                         onClick={() => setViewAllSubject(card)}
-                        className="text-[11px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 hover:underline pl-1 shrink-0 transition-colors cursor-pointer"
+                        className="text-[11px] font-semibold text-slate-400 hover:text-white flex items-center gap-1 hover:underline pl-1 shrink-0 transition-colors cursor-pointer"
                         title="View all modules & tools for this subject"
                       >
-                        <Eye className="w-3 h-3" />
+                        <Eye className="w-3 h-3 text-slate-400" />
                         <span>View All</span>
-                        <ChevronRight className="w-3 h-3" />
+                        <ChevronRight className="w-3 h-3 text-slate-400" />
                       </button>
                     </div>
                   </div>
@@ -859,15 +859,15 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                   <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
                     <button
                       onClick={() => handleOpenSubjectAttendance(card)}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 hover:text-white border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                       title="Register"
                     >
-                      <CalendarCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      <CalendarCheck className="w-3.5 h-3.5 text-indigo-400" />
                       <span>Register</span>
                     </button>
                     <button
                       onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                       title="Marks"
                     >
                       <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -875,20 +875,20 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     </button>
                     <button
                       onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                      className="px-3 py-1.5 rounded-xl bg-pink-500/20 hover:bg-pink-500/35 text-pink-300 hover:text-white border border-pink-500/30 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                       title="Homework"
                     >
-                      <FileText className="w-3.5 h-3.5" />
+                      <FileText className="w-3.5 h-3.5 text-slate-400" />
                       <span>Homework</span>
                     </button>
                     <button
                       onClick={() => setViewAllSubject(card)}
-                      className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 hover:text-white border border-cyan-500/40 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                       title="View All Functions"
                     >
-                      <Eye className="w-3.5 h-3.5" />
+                      <Eye className="w-3.5 h-3.5 text-slate-400" />
                       <span>View All</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <ChevronRight className="w-3 h-3 text-slate-400" />
                     </button>
                   </div>
                 </div>

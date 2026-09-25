@@ -188,7 +188,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
               const name = safeString(rawName, 'Subject');
               const code = safeString(s.code, `${name.slice(0, 4).toUpperCase()}10`);
               const grade = safeNumber(s.grade, 10);
-              const progress = safeNumber(s.curriculum_progress ?? s.progress, 75);
+              const progress = safeNumber(s.curriculum_progress ?? s.progress, 0);
               const teacher = safeString(s.teacher || s.educator_name, 'Subject Teacher');
               const assignmentsDue = safeNumber(s.assignments_due, 0);
               return { name, code, grade, progress, teacher, assignmentsDue };
@@ -218,19 +218,19 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
   // User subjects from database or stream
   const userStream = profile?.stream || user?.academic?.stream || 'Science';
   const defaultStreamSubjects = userStream === 'Commerce' ? [
-    { name: 'Accounting', code: 'ACC10', grade: profile?.grade || 10, progress: 80, teacher: 'Commerce Educator', assignmentsDue: 0 },
-    { name: 'Business Studies', code: 'BUS10', grade: profile?.grade || 10, progress: 85, teacher: 'Business Educator', assignmentsDue: 0 },
-    { name: 'Economics', code: 'ECON10', grade: profile?.grade || 10, progress: 78, teacher: 'Economics Educator', assignmentsDue: 0 },
-    { name: 'Mathematics', code: 'MATH10', grade: profile?.grade || 10, progress: 82, teacher: 'Mathematics Educator', assignmentsDue: 0 },
-    { name: 'English First Additional Language', code: 'EFAL10', grade: profile?.grade || 10, progress: 88, teacher: 'Languages Educator', assignmentsDue: 0 },
-    { name: 'Life Orientation', code: 'LFOR10', grade: profile?.grade || 10, progress: 95, teacher: 'Life Orientation Educator', assignmentsDue: 0 }
+    { name: 'Accounting', code: 'ACC10', grade: profile?.grade || 10, progress: 0, teacher: 'Commerce Educator', assignmentsDue: 0 },
+    { name: 'Business Studies', code: 'BUS10', grade: profile?.grade || 10, progress: 0, teacher: 'Business Educator', assignmentsDue: 0 },
+    { name: 'Economics', code: 'ECON10', grade: profile?.grade || 10, progress: 0, teacher: 'Economics Educator', assignmentsDue: 0 },
+    { name: 'Mathematics', code: 'MATH10', grade: profile?.grade || 10, progress: 0, teacher: 'Mathematics Educator', assignmentsDue: 0 },
+    { name: 'English First Additional Language', code: 'EFAL10', grade: profile?.grade || 10, progress: 0, teacher: 'Languages Educator', assignmentsDue: 0 },
+    { name: 'Life Orientation', code: 'LFOR10', grade: profile?.grade || 10, progress: 0, teacher: 'Life Orientation Educator', assignmentsDue: 0 }
   ] : [
-    { name: 'Mathematics', code: 'MATH10', grade: profile?.grade || 10, progress: 82, teacher: 'Mathematics Educator', assignmentsDue: 0 },
-    { name: 'Physical Sciences', code: 'PHYS10', grade: profile?.grade || 10, progress: 75, teacher: 'Physical Sciences Educator', assignmentsDue: 0 },
-    { name: 'Life Sciences', code: 'LFSC10', grade: profile?.grade || 10, progress: 90, teacher: 'Life Sciences Educator', assignmentsDue: 0 },
-    { name: 'English First Additional Language', code: 'EFAL10', grade: profile?.grade || 10, progress: 88, teacher: 'Languages Educator', assignmentsDue: 0 },
-    { name: 'Geography', code: 'GEOG10', grade: profile?.grade || 10, progress: 70, teacher: 'Geography Educator', assignmentsDue: 0 },
-    { name: 'Life Orientation', code: 'LFOR10', grade: profile?.grade || 10, progress: 95, teacher: 'Life Orientation Educator', assignmentsDue: 0 }
+    { name: 'Mathematics', code: 'MATH10', grade: profile?.grade || 10, progress: 0, teacher: 'Mathematics Educator', assignmentsDue: 0 },
+    { name: 'Physical Sciences', code: 'PHYS10', grade: profile?.grade || 10, progress: 0, teacher: 'Physical Sciences Educator', assignmentsDue: 0 },
+    { name: 'Life Sciences', code: 'LFSC10', grade: profile?.grade || 10, progress: 0, teacher: 'Life Sciences Educator', assignmentsDue: 0 },
+    { name: 'English First Additional Language', code: 'EFAL10', grade: profile?.grade || 10, progress: 0, teacher: 'Languages Educator', assignmentsDue: 0 },
+    { name: 'Geography', code: 'GEOG10', grade: profile?.grade || 10, progress: 0, teacher: 'Geography Educator', assignmentsDue: 0 },
+    { name: 'Life Orientation', code: 'LFOR10', grade: profile?.grade || 10, progress: 0, teacher: 'Life Orientation Educator', assignmentsDue: 0 }
   ];
 
   const displaySubjects = subjects.length > 0 ? subjects : defaultStreamSubjects;
@@ -299,7 +299,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                CAPS curriculum courses with dedicated past papers, AI revision, and study resources
+                CAPS subjects, past papers, and study resources
               </p>
             </div>
           </div>
@@ -437,7 +437,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
               const name = safeString(sub.name, 'Subject');
               const code = safeString(sub.code, `${name.slice(0, 4).toUpperCase()}10`);
               const teacher = safeString(sub.teacher, 'Subject Educator');
-              const progress = safeNumber(sub.progress, 75);
+              const progress = safeNumber(sub.progress, 0);
               const grade = safeNumber(sub.grade, 10);
               const assignmentsDue = safeNumber(sub.assignmentsDue, 0);
               const meta = getSubjectMetadata(name);
@@ -506,7 +506,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                           <User className="w-3.5 h-3.5 text-brand-400" />
                           <span>{teacher}</span>
                         </span>
-                        <span className="font-bold text-emerald-400">{progress}% Mastery</span>
+                        <span className="font-bold text-emerald-400">{progress > 0 ? `${progress}% Mastery` : 'In Progress'}</span>
                       </div>
 
                       {/* Progress Bar */}
@@ -578,7 +578,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
               const name = safeString(sub.name, 'Subject');
               const code = safeString(sub.code, `${name.slice(0, 4).toUpperCase()}10`);
               const teacher = safeString(sub.teacher, 'Subject Educator');
-              const progress = safeNumber(sub.progress, 75);
+              const progress = safeNumber(sub.progress, 0);
               const grade = safeNumber(sub.grade, 10);
               const assignmentsDue = safeNumber(sub.assignmentsDue, 0);
               const meta = getSubjectMetadata(name);
@@ -647,7 +647,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                           <User className="w-3.5 h-3.5 text-brand-400" />
                           <span>{teacher}</span>
                         </span>
-                        <span className="font-bold text-emerald-400">{progress}% Mastery</span>
+                        <span className="font-bold text-emerald-400">{progress > 0 ? `${progress}% Mastery` : 'In Progress'}</span>
                       </div>
 
                       {/* Progress Bar */}
@@ -719,7 +719,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
               const name = safeString(sub.name, 'Subject');
               const code = safeString(sub.code, `${name.slice(0, 4).toUpperCase()}10`);
               const teacher = safeString(sub.teacher, 'Subject Educator');
-              const progress = safeNumber(sub.progress, 75);
+              const progress = safeNumber(sub.progress, 0);
               const meta = getSubjectMetadata(name);
 
               return (
@@ -736,7 +736,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-[10px] font-mono text-cyan-400">{code}</span>
-                      <span className="text-[10px] font-bold text-emerald-400">{progress}%</span>
+                      <span className="text-[10px] font-bold text-emerald-400">{progress > 0 ? `${progress}%` : '--'}</span>
                     </div>
                     <h3
                       onClick={() => onNavigateTab('subjects', name)}
@@ -774,7 +774,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
             {filteredSubjects.map((sub, idx) => {
               const name = safeString(sub.name, 'Subject');
-              const progress = safeNumber(sub.progress, 75);
+              const progress = safeNumber(sub.progress, 0);
               const meta = getSubjectMetadata(name);
 
               return (
@@ -796,7 +796,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                     <p className="text-xs font-bold text-white group-hover:text-cyan-300 transition-colors line-clamp-1">
                       {name}
                     </p>
-                    <span className="text-[10px] text-slate-400">{progress}% Mastery</span>
+                    <span className="text-[10px] text-slate-400">{progress > 0 ? `${progress}% Mastery` : 'In Progress'}</span>
                   </div>
                 </div>
               );
@@ -813,7 +813,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
               const name = safeString(sub.name, 'Subject');
               const code = safeString(sub.code, `${name.slice(0, 4).toUpperCase()}10`);
               const teacher = safeString(sub.teacher, 'Subject Educator');
-              const progress = safeNumber(sub.progress, 75);
+              const progress = safeNumber(sub.progress, 0);
               const grade = safeNumber(sub.grade, 10);
               const meta = getSubjectMetadata(name);
 

@@ -37,6 +37,15 @@ export const FusionAppIcon: React.FC<FusionAppIconProps> = ({
           <stop offset="50%" stopColor="#31a4f5" />
           <stop offset="100%" stopColor="#248ed8" />
         </linearGradient>
+        <linearGradient id="gsa-bg-exact" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#0c1726" />
+          <stop offset="50%" stopColor="#060c14" />
+          <stop offset="100%" stopColor="#020408" />
+        </linearGradient>
+        <radialGradient id="gsa-core-glow" cx="50%" cy="45%" r="50%">
+          <stop offset="0%" stopColor="#1e3a63" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+        </radialGradient>
       </defs>
 
       {/* Outer Squircle with Deep Navy Rim */}
@@ -47,9 +56,18 @@ export const FusionAppIcon: React.FC<FusionAppIconProps> = ({
         height="523"
         rx="112"
         ry="112"
-        fill="#000001"
+        fill="url(#gsa-bg-exact)"
         stroke="url(#gsa-rim-exact)"
         strokeWidth="18"
+      />
+      <rect
+        x="14"
+        y="14"
+        width="512"
+        height="523"
+        rx="112"
+        ry="112"
+        fill="url(#gsa-core-glow)"
       />
       <rect
         x="22"
@@ -59,8 +77,9 @@ export const FusionAppIcon: React.FC<FusionAppIconProps> = ({
         rx="104"
         ry="104"
         fill="none"
-        stroke="#081422"
-        strokeWidth="3"
+        stroke="#1a3250"
+        strokeWidth="2.5"
+        strokeOpacity="0.6"
       />
 
       {/* G ~ S A Letterforms */}

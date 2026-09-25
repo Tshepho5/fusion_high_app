@@ -1,4 +1,7 @@
 const db = require('../../../db/db');
+const bcrypt = require('bcryptjs');
+const emailService = require('../services/emailService');
+const { isControlLocked } = require('./systemController');
 
 // Fallback seed data in case table is booting
 const FALLBACK_SCHOOLS = [
@@ -180,3 +183,339 @@ exports.updateSchoolBranding = async (req, res) => {
     res.status(500).json({ error: 'Failed to update school branding.' });
   }
 };
+
+/**
+ * Handles official School Onboarding & Accreditation applications submitted by Principals.
+ */
+exports.applySchool = async (req, res) => {
+  try {
+    // 0. Executive Gatekeeper Lock Verification
+    const lockState = await isControlLocked('school_registration');
+    if (lockState && lockState.is_locked) {
+      return res.status(403).json({
+        error: lockState.locked_reason || 'School registration is currently locked by Geleza SA Executives.',
+        is_locked: true
+      });
+    }
+
+    const {
+      school_name,
+      emis_number,
+      province,
+      district,
+      circuit,
+      physical_address,
+      contact_email,
+      contact_phone,
+      curriculum_type = 'CAPS (DBE)',
+      grade_range = '8-12',
+      offered_streams = ['General', 'Science', 'Commerce', 'Tourism'],
+      offered_languages = ['English FAL', 'Sepedi Home Language'],
+      offered_subjects = [],
+      principal_first_name,
+      principal_surname,
+      principal_id_number,
+      principal_sace_number,
+      principal_email,
+      principal_phone,
+      password,
+      motto = 'Excellence in Education',
+      primary_color = '#0284c7',
+      secondary_color = '#06b6d4',
+      application_fee_paid = 450.00,
+      registration_fee_paid = 1500.00,
+      payment_reference
+    } = req.body;
+
+    // Strict input validation
+    if (!school_name || !school_name.trim()) {
+      return res.status(400).json({ error: 'Official school name is strictly required.' });
+    }
+
+    const cleanEmis = (emis_number || '').toString().replace(/\D/g, '');
+    if (cleanEmis.length !== 9) {
+      return res.status(400).json({ error: 'Invalid EMIS Number. Must be exactly 9 numeric digits.' });
+    }
+
+    if (!province || !district || !physical_address) {
+      return res.status(400).json({ error: 'School location details (Province, District, Physical Address) are mandatory.' });
+    }
+
+    let firstName = (principal_first_name || '').trim();
+    let surname = (principal_surname || '').trim();
+    if (!firstName && req.body.principal_name) {
+      const parts = req.body.principal_name.trim().split(' ');
+      firstName = parts[0] || '';
+      surname = surname || parts.slice(1).join(' ') || 'Principal';
+    }
+
+    if (!firstName || !surname) {
+      return res.status(400).json({ error: 'Principal full name and surname are required.' });
+    }
+
+    if (/\d/.test(firstName) || /\d/.test(surname)) {
+      return res.status(400).json({ error: 'Numbers are strictly prohibited in the Principal name placeholders.' });
+    }
+
+    const cleanId = (principal_id_number || '').toString().replace(/\D/g, '');
+    if (cleanId.length !== 13) {
+      return res.status(400).json({ error: 'Principal National ID number must be exactly 13 digits.' });
+    }
+
+    if (!principal_email || !principal_email.includes('@')) {
+      return res.status(400).json({ error: 'A valid Principal work email address is required.' });
+    }
+
+    // Check if school already exists
+    const existingSchool = await db.query('SELECT id, name FROM schools WHERE emis_number = $1 OR LOWER(name) = LOWER($2)', [cleanEmis, school_name.trim()]);
+    if (existingSchool.rows.length > 0) {
+      return res.status(409).json({ error: `A school with EMIS ${cleanEmis} or name "${school_name}" is already registered on Geleza SA.` });
+    }
+
+    // Check if an application is already active/pending
+    const existingApp = await db.query(
+      'SELECT id, application_number, status FROM school_applications WHERE emis_number = $1 AND status IN (\'pending_review\', \'under_review\')',
+      [cleanEmis]
+    );
+    if (existingApp.rows.length > 0) {
+      return res.status(409).json({
+        error: `An application (${existingApp.rows[0].application_number}) for this school is already under executive review.`
+      });
+    }
+
+    const appNumber = `GSA-SCH-${Date.now().toString().slice(-6)}`;
+    const payRef = payment_reference || `PAY-${Date.now().toString().slice(-8)}`;
+    const passHash = password && password.trim().length >= 6 ? await bcrypt.hash(password.trim(), 10) : null;
+
+    const insertQuery = `
+      INSERT INTO school_applications (
+        application_number, status, school_name, emis_number, province, district, circuit,
+        physical_address, contact_email, contact_phone, curriculum_type, grade_range,
+        offered_streams, offered_languages, offered_subjects,
+        principal_first_name, principal_surname, principal_id_number, principal_sace_number,
+        principal_email, principal_phone, motto, primary_color, secondary_color,
+        application_fee_paid, registration_fee_paid, payment_status, payment_reference, password_hash
+      )
+      VALUES (
+        $1, 'pending_review', $2, $3, $4, $5, $6,
+        $7, $8, $9, $10, $11,
+        $12, $13, $14,
+        $15, $16, $17, $18,
+        $19, $20, $21, $22, $23,
+        $24, $25, 'paid', $26, $27
+      )
+      RETURNING *;
+    `;
+
+    const result = await db.query(insertQuery, [
+      appNumber, school_name.trim(), cleanEmis, province.trim(), district.trim(), circuit ? circuit.trim() : null,
+      physical_address.trim(), (contact_email || principal_email || '').trim().toLowerCase(), (contact_phone || principal_phone || '').trim(), curriculum_type || 'CAPS (DBE)', grade_range || '8-12',
+      offered_streams || ['General', 'Science'], offered_languages || ['English FAL'], offered_subjects || [],
+      firstName, surname, cleanId, (principal_sace_number || req.body.principal_sace || '').toString().trim() || null,
+      principal_email.trim().toLowerCase(), principal_phone.trim(), (motto || 'Excellence in Education').trim(), primary_color || '#0284c7', secondary_color || '#06b6d4',
+      parseFloat(application_fee_paid) || 450.00, parseFloat(registration_fee_paid) || 1500.00, payRef, passHash
+    ]);
+
+    const createdApp = result.rows[0];
+
+    // Trigger instant email confirmation to Principal
+    emailService.sendSchoolApplicationReceivedNotice({
+      principalEmail: createdApp.principal_email,
+      principalName: `${createdApp.principal_first_name} ${createdApp.principal_surname}`,
+      schoolName: createdApp.school_name,
+      emisNumber: createdApp.emis_number,
+      applicationNumber: createdApp.application_number
+    }).catch(err => {
+      console.warn('[EMAIL NOTIFY] Could not send receipt email:', err.message);
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'School application submitted successfully. It has been placed in the Geleza SA Executive Accreditation Queue.',
+      application_number: appNumber,
+      application: createdApp
+    });
+  } catch (err) {
+    console.error('Error submitting school application:', err.message);
+    res.status(500).json({ error: 'Failed to process school application. Please verify details and try again.' });
+  }
+};
+
+/**
+ * Lists all School Applications for Geleza SA Executives / SuperAdmins.
+ */
+exports.getSchoolApplications = async (req, res) => {
+  try {
+    const statusFilter = req.query.status;
+    let query = 'SELECT * FROM school_applications';
+    const params = [];
+
+    if (statusFilter && statusFilter !== 'all') {
+      query += ' WHERE status = $1';
+      params.push(statusFilter);
+    }
+
+    query += ' ORDER BY created_at DESC;';
+    const result = await db.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching school applications:', err.message);
+    res.status(500).json({ error: 'Failed to retrieve school applications.' });
+  }
+};
+
+/**
+ * Reviews (Approve or Decline) a School Application by Geleza SA Executives.
+ */
+exports.reviewSchoolApplication = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { decision, reason, executive_notes } = req.body;
+
+    if (!['approve', 'decline'].includes(decision)) {
+      return res.status(400).json({ error: 'Decision must be either "approve" or "decline".' });
+    }
+
+    const appRes = await db.query('SELECT * FROM school_applications WHERE id = $1', [id]);
+    if (appRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Application not found.' });
+    }
+
+    const app = appRes.rows[0];
+
+    if (decision === 'approve') {
+      // 1. Generate unique slug for school
+      let slug = app.school_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const existingSlug = await db.query('SELECT id FROM schools WHERE slug = $1', [slug]);
+      if (existingSlug.rows.length > 0) {
+        slug = `${slug}-${app.emis_number.slice(-4)}`;
+      }
+
+      // 2. Insert into schools table
+      const schoolInsert = await db.query(`
+        INSERT INTO schools (
+          name, slug, domain, emis_number, circuit, district, province,
+          physical_address, contact_email, contact_phone, principal_name,
+          primary_color, secondary_color, motto, curriculum_type, grade_range,
+          offered_streams, offered_languages, offered_subjects, sace_number, is_active
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, TRUE)
+        RETURNING *;
+      `, [
+        app.school_name, slug, `${slug}.co.za`, app.emis_number, app.circuit, app.district, app.province,
+        app.physical_address, app.contact_email, app.contact_phone, `${app.principal_first_name} ${app.principal_surname}`,
+        app.primary_color || '#0284c7', app.secondary_color || '#06b6d4', app.motto || 'Excellence in Education',
+        app.curriculum_type || 'CAPS (DBE)', app.grade_range || '8-12',
+        app.offered_streams || ['General', 'Science', 'Commerce', 'Tourism'],
+        app.offered_languages || ['English FAL', 'Sepedi Home Language'],
+        app.offered_subjects || [], app.principal_sace_number
+      ]);
+
+      const newSchool = schoolInsert.rows[0];
+
+      // 3. Create or Update Principal user account
+      let passHash = app.password_hash;
+      if (!passHash) {
+        const tempPassword = 'password123';
+        passHash = await bcrypt.hash(tempPassword, 10);
+      }
+
+      const userInsert = await db.query(`
+        INSERT INTO users (
+          email, password_hash, role_id, school_id, is_superadmin,
+          full_name, surname, id_number, phone, country
+        )
+        VALUES ($1, $2, (SELECT id FROM roles WHERE name = 'admin'), $3, FALSE, $4, $5, $6, $7, 'South Africa')
+        ON CONFLICT (email) DO UPDATE SET
+          password_hash = EXCLUDED.password_hash,
+          role_id = EXCLUDED.role_id,
+          school_id = EXCLUDED.school_id,
+          full_name = EXCLUDED.full_name,
+          surname = EXCLUDED.surname
+        RETURNING id;
+      `, [
+        app.principal_email, passHash, newSchool.id,
+        app.principal_first_name, app.principal_surname,
+        app.principal_id_number, app.principal_phone
+      ]);
+
+      const principalUserId = userInsert.rows[0].id;
+
+      // 4. Create Employee record for Principal
+      await db.query(`
+        INSERT INTO employees (user_id, full_name, surname, department_id, school_id, phone, email)
+        VALUES ($1, $2, $3, 1, $4, $5, $6)
+        ON CONFLICT (user_id) DO UPDATE SET
+          school_id = EXCLUDED.school_id,
+          full_name = EXCLUDED.full_name,
+          surname = EXCLUDED.surname;
+      `, [
+        principalUserId, app.principal_first_name, app.principal_surname,
+        newSchool.id, app.principal_phone, app.principal_email
+      ]);
+
+      // 5. Update Application Status
+      await db.query(`
+        UPDATE school_applications
+        SET status = 'approved',
+            reviewed_by = $1,
+            reviewed_at = CURRENT_TIMESTAMP,
+            executive_notes = $2,
+            created_school_id = $3
+        WHERE id = $4;
+      `, [req.user?.id || null, executive_notes || 'Approved by Geleza SA Executive Board', newSchool.id, id]);
+
+      // 6. Send Approval Email to Principal
+      emailService.sendSchoolApplicationApprovedNotice({
+        principalEmail: app.principal_email,
+        principalName: `${app.principal_first_name} ${app.principal_surname}`,
+        schoolName: app.school_name,
+        emisNumber: app.emis_number,
+        temporaryPassword: tempPassword,
+        loginUrl: 'https://gelezasa.co.za/login'
+      }).catch(err => {
+        console.warn('[EMAIL NOTIFY] Could not send approval email:', err.message);
+      });
+
+      return res.json({
+        success: true,
+        status: 'approved',
+        message: `School "${app.school_name}" successfully provisioned and Principal notified.`,
+        school: newSchool
+      });
+    } else {
+      // Decline Application
+      await db.query(`
+        UPDATE school_applications
+        SET status = 'declined',
+            declined_reason = $1,
+            reviewed_by = $2,
+            reviewed_at = CURRENT_TIMESTAMP,
+            executive_notes = $3
+        WHERE id = $4;
+      `, [reason || 'Accreditation details could not be verified.', req.user?.id || null, executive_notes || null, id]);
+
+      // Send Decline Email with explanation
+      emailService.sendSchoolApplicationDeclinedNotice({
+        principalEmail: app.principal_email,
+        principalName: `${app.principal_first_name} ${app.principal_surname}`,
+        schoolName: app.school_name,
+        emisNumber: app.emis_number,
+        reason: reason || 'EMIS registration or Principal credentials could not be verified.',
+        appealUrl: 'https://gelezasa.co.za/register'
+      }).catch(err => {
+        console.warn('[EMAIL NOTIFY] Could not send decline email:', err.message);
+      });
+
+      return res.json({
+        success: true,
+        status: 'declined',
+        message: 'Application declined and notice dispatched to applicant.'
+      });
+    }
+  } catch (err) {
+    console.error('Error reviewing school application:', err.message);
+    res.status(500).json({ error: 'Failed to process application review.' });
+  }
+};
+

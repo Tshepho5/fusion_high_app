@@ -265,7 +265,7 @@ export const AnimatedSupportMascot: React.FC<{
             isLight ? 'text-slate-900' : 'text-white'
           }`}
         >
-          Fusion AI Support Bot
+          Geleza SA AI Assistant
         </span>
         <span
           className={`px-2 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${currentThemeStyle.statusText}`}
@@ -386,18 +386,49 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
       {
         id: 'welcome-1',
         sender: 'ai',
-        text: `Hello ${user?.full_name || 'there'}! 👋 I am your 24/7 Fusion High AI Assistant. How can I assist you with your portal, subjects, or school services today?`,
+        text: `Hello ${user?.full_name || 'there'}! 👋 I am your 24/7 Geleza SA AI Assistant. I have calibrated my tools for your ${((user as any)?.role || role || 'user').toUpperCase()} profile. How can I assist you with your tasks or modules today?`,
         timestamp: 'Just now',
-        suggestions: [
-          'Where is my weekly timetable?',
-          'How do I view CAPS report cards?',
-          'Help me with my subjects & curriculum',
-          'How do I update technical settings?'
-        ],
-        actionLinks: [
-          { label: 'Open Timetable', tab: 'timetable' },
-          { label: 'View Report Cards', tab: 'reports' }
-        ]
+        suggestions: ((user as any)?.role === 'teacher' || role === 'teacher')
+          ? [
+              'How do I enter SBA marks?',
+              'Take class attendance register',
+              'Open AI Lesson Plan Studio',
+              'View timetable & room allocations'
+            ]
+          : ((user as any)?.role === 'admin' || role === 'admin')
+          ? [
+              'System-wide attendance overview',
+              'Learner enrollment and admissions',
+              'Publish official school announcements',
+              'Open security settings'
+            ]
+          : ((user as any)?.role === 'parent' || role === 'parent')
+          ? [
+              'How do I link a child?',
+              'View my child\'s CAPS report card',
+              'Check attendance alerts',
+              'School fees and payments'
+            ]
+          : [
+              'Where is my weekly timetable?',
+              'How do I view CAPS report cards?',
+              'Open past papers & resources',
+              'Check homework & assignments'
+            ],
+        actionLinks: ((user as any)?.role === 'teacher' || role === 'teacher')
+          ? [
+              { label: 'Marksheets', tab: 'assessments' },
+              { label: 'Timetable', tab: 'timetable' }
+            ]
+          : ((user as any)?.role === 'admin' || role === 'admin')
+          ? [
+              { label: 'Marks Audit', tab: 'marks' },
+              { label: 'Admissions', tab: 'admissions' }
+            ]
+          : [
+              { label: 'Timetable', tab: 'timetable' },
+              { label: 'Report Cards', tab: 'reports' }
+            ]
       }
     ];
   });
@@ -567,10 +598,10 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-extrabold font-display tracking-wide">
-                  Fusion Support Hub & 24/7 AI Help
+                  Geleza SA Support Hub & 24/7 AI Guide
                 </h2>
                 <span className="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-[10px] font-bold text-cyan-400">
-                  Fusion High
+                  Geleza SA
                 </span>
               </div>
               <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>

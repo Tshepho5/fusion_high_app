@@ -39,12 +39,12 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose }) =
         <div className="p-5 sm:p-6 bg-gradient-to-r from-brand-950 via-surface-darker to-surface-dark border-b border-white/10 flex items-start justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/15 p-1.5 flex items-center justify-center shadow-lg shrink-0">
-              <img src="/assets/FH.png" alt="Fusion High Logo" className="w-full h-full object-contain" />
+              <img src="/assets/FH.png" alt="Geleza SA Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg sm:text-xl font-extrabold font-display tracking-tight text-white">
-                  About Fusion High School
+                  About Geleza SA
                 </h2>
                 <span className="px-2 py-0.5 rounded-full bg-brand-500/20 border border-brand-500/30 text-[10px] font-mono text-brand-300 font-bold">
                   EST. 2012
@@ -130,7 +130,7 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose }) =
                   "One School • Limitless Potential"
                 </h3>
                 <p className="text-slate-300 text-xs mt-1.5 leading-relaxed">
-                  Fusion High School was established with a singular mission: to provide world-class, accessible, and technologically empowered secondary education in South Africa that transforms high school learners into visionary leaders, scientists, entrepreneurs, and global innovators.
+                  Geleza SA was established with a singular mission: to provide world-class, accessible, and technologically empowered secondary education in South Africa that transforms high school learners into visionary leaders, scientists, entrepreneurs, and global innovators.
                 </p>
               </div>
 
@@ -227,7 +227,7 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose }) =
                   <span>Next-Generation Digital Learning Ecosystem</span>
                 </h3>
                 <p className="text-slate-400 text-xs mt-1">
-                  Fusion High combines classroom teaching with high-technology software tools:
+                  Geleza SA combines classroom teaching with high-technology software tools:
                 </p>
               </div>
 
@@ -314,7 +314,7 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose }) =
               <div className="p-4 rounded-2xl bg-surface-darker border border-white/10 space-y-2">
                 <h4 className="font-bold text-white text-xs uppercase tracking-wider text-cyan-400 font-mono">School Leadership & Governance</h4>
                 <p className="text-slate-300 text-xs leading-relaxed">
-                  Fusion High School operates under the oversight of our School Governing Body (SGB), Executive Principal, Heads of Departments (HODs), and dedicated educator team certified under the South African Council for Educators (SACE).
+                  Geleza SA operates under the oversight of our School Governing Body (SGB), Executive Principal, Heads of Departments (HODs), and dedicated educator team certified under the South African Council for Educators (SACE).
                 </p>
               </div>
 
@@ -331,7 +331,7 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose }) =
                   </div>
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span>admin@fusionhigh.co.za</span>
+                    <span>admin@gelezasa.co.za</span>
                   </div>
                 </div>
               </div>
@@ -342,7 +342,7 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose }) =
         {/* Footer */}
         <div className="p-4 sm:p-5 bg-surface-darker border-t border-white/10 flex items-center justify-between gap-3">
           <div className="text-[11px] text-slate-500 font-mono">
-            Fusion High School • POPIA & CAPS Accredited
+            Geleza SA • POPIA & CAPS Accredited
           </div>
           <button
             onClick={onClose}

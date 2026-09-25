@@ -37,6 +37,17 @@ router.post('/register-parent', auth, isAdmin, adminController.createParent);
 router.get('/learners', auth, isAdmin, adminController.getAllLearners);
 router.post('/learners', auth, isAdmin, adminController.createLearner);
 
+// Dynamic Class & Stream Management (Add/Remove/Assign Class Teachers)
+router.get('/classes', auth, isAdmin, adminController.getClasses);
+router.post('/classes', auth, isAdmin, adminController.createClass);
+router.put('/classes/:id', auth, isAdmin, adminController.updateClass);
+router.delete('/classes/:id', auth, isAdmin, adminController.deleteClass);
+
+// Colleague & Staff Invites (Principal invites teachers and sports coaches)
+router.post('/staff-invites', auth, isAdmin, adminController.createStaffInvite);
+router.get('/staff-invites', auth, isAdmin, adminController.getStaffInvites);
+router.delete('/staff-invites/:id', auth, isAdmin, adminController.deleteStaffInvite);
+
 // School Metadata (departments, classes, subjects, roles)
 router.get('/metadata', auth, isAdmin, adminController.getSchoolMetadata);
 

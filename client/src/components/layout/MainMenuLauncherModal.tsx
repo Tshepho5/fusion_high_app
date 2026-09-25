@@ -106,7 +106,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
       case 'parent':
         return [
           { id: 'overview', label: 'Family Dashboard', desc: 'Child academic summary, attendance & school alerts', category: 'academic', icon: LayoutDashboard, gradient: 'from-[#0284c7] to-[#2563eb]' },
-          { id: 'children', label: 'Linked Learners', desc: 'Overview of all your enrolled children at Fusion High', category: 'academic', icon: GraduationCap, gradient: 'from-[#0ea5e9] to-[#0284c7]' },
+          { id: 'children', label: 'Linked Learners', desc: 'Overview of all your enrolled children at Geleza SA', category: 'academic', icon: GraduationCap, gradient: 'from-[#0ea5e9] to-[#0284c7]' },
           { id: 'finance', label: 'School Fees & PayFast', desc: 'Tuition statements, itemized levies & Instant EFT settlements', category: 'operations', icon: CreditCard, gradient: 'from-[#0f766e] to-[#0284c7]', badge: 'PAY' },
           { id: 'bursaries', label: 'NSFAS & Bursaries', desc: 'Tertiary scholarships, funding coverage & checklist tracker', category: 'academic', icon: GraduationCap, gradient: 'from-[#2563eb] to-[#4338ca]', badge: 'FUND' },
           { id: 'reports', label: 'CAPS Report Cards', desc: 'Official term report cards & educator remarks', category: 'academic', icon: Award, gradient: 'from-[#0f766e] to-[#2563eb]', badge: 'PDF' },

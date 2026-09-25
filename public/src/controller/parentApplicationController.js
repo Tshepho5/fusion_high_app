@@ -2,6 +2,7 @@ const db = require('../../../db/db');
 const bcrypt = require('bcryptjs');
 const emailService = require('../services/emailService');
 const { validateSAID } = require('./saIDvalidations');
+const { isControlLocked } = require('./systemController');
 
 /**
  * Generate Unique Parent Application Reference
@@ -76,6 +77,15 @@ ensureParentAppSchema().catch(() => {});
  * 1. Submit Parent Portal Access Application (Public)
  */
 exports.submitParentApplication = async (req, res) => {
+    // 0. Geleza SA Executive & Admin Portal Lock Verification
+    const lockState = await isControlLocked('parent_application');
+    if (lockState && lockState.is_locked) {
+        return res.status(403).json({
+            error: lockState.locked_reason || 'Application submissions are currently closed by Geleza SA Administrators.',
+            is_locked: true
+        });
+    }
+
     const {
         parent_name,
         parent_surname,

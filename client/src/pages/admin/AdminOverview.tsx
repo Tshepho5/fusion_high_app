@@ -1114,12 +1114,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   <div className="w-10 h-10 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <FileSpreadsheet className="w-5 h-5" />
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors block truncate">
-                      CAPS Marks & SBA Audits
-                    </span>
-                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Grade {viewMoreSubject.grade} Marksheets</span>
-                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors block truncate">
+                    CAPS Marks & SBA Audits
+                  </span>
                 </button>
 
                 {/* 2. Official Report Card Studio */}
@@ -1135,12 +1132,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <FileText className="w-5 h-5" />
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors block truncate">
-                      Report Card Studio
-                    </span>
-                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Term 1 - 4 Termly Reports</span>
-                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors block truncate">
+                    Report Card Studio
+                  </span>
                 </button>
 
                 {/* 3. School Curriculum & Subject Registers */}
@@ -1156,12 +1150,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <BookOpen className="w-5 h-5" />
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors block truncate">
-                      Curriculum Registers & Roster
-                    </span>
-                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Class Enrollment Records</span>
-                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors block truncate">
+                    Curriculum Registers & Roster
+                  </span>
                 </button>
 
                 {/* 4. Master Timetable Allocation */}
@@ -1177,12 +1168,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   <div className="w-10 h-10 rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Clock className="w-5 h-5" />
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-300 transition-colors block truncate">
-                      Master Timetable Allocation
-                    </span>
-                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Periods & Room Scheduling</span>
-                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-300 transition-colors block truncate">
+                    Master Timetable Allocation
+                  </span>
                 </button>
 
                 {/* 5. Textbook Asset Tracker */}
@@ -1198,12 +1186,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   <div className="w-10 h-10 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <HardDrive className="w-5 h-5" />
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-300 transition-colors block truncate">
-                      Textbook Asset Inventory
-                    </span>
-                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Barcode Check-In & Tracking</span>
-                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-300 transition-colors block truncate">
+                    Textbook Asset Inventory
+                  </span>
                 </button>
 
                 {/* 6. Examination Seating Planner */}
@@ -1219,12 +1204,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Award className="w-5 h-5" />
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors block truncate">
-                      Exam Seating Planner
-                    </span>
-                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Exam Hall Seating Arranger</span>
-                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors block truncate">
+                    Exam Seating Planner
+                  </span>
                 </button>
 
                 {/* 7. Matric Candidate Pass Rate Projector (for FET grades) */}
@@ -1241,12 +1223,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     <div className="w-10 h-10 rounded-xl bg-pink-500/15 text-pink-600 dark:text-pink-400 border border-pink-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                       <TrendingUp className="w-5 h-5" />
                     </div>
-                    <div className="min-w-0">
-                      <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-pink-600 dark:group-hover:text-pink-300 transition-colors block truncate">
-                        Matric Pass Rate Projector
-                      </span>
-                      <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Grade 12 Target Forecasting</span>
-                    </div>
+                    <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-pink-600 dark:group-hover:text-pink-300 transition-colors block truncate">
+                      Matric Pass Rate Projector
+                    </span>
                   </button>
                 )}
 
@@ -1263,12 +1242,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Briefcase className="w-5 h-5" />
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors block truncate">
-                      Educator Relief Duty
-                    </span>
-                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Staff Absence Coverage</span>
-                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors block truncate">
+                    Educator Relief Duty
+                  </span>
                 </button>
 
                 {/* 9. Inter-School Academic Olympiads */}
@@ -1284,12 +1260,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Trophy className="w-5 h-5" />
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors block truncate">
-                      Academic Olympiads
-                    </span>
-                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Provincial Derbies & League</span>
-                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors block truncate">
+                    Academic Olympiads
+                  </span>
                 </button>
 
                 {/* 10. Parent Consultations Schedule */}
@@ -1305,12 +1278,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   <div className="w-10 h-10 rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400 border border-violet-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Users className="w-5 h-5" />
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-300 transition-colors block truncate">
-                      Parent Consultations
-                    </span>
-                    <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">Educator Academic Bookings</span>
-                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-300 transition-colors block truncate">
+                    Parent Consultations
+                  </span>
                 </button>
 
               </div>

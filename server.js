@@ -75,6 +75,8 @@ if (!process.env.VERCEL) {
       await fixAllUserPasswords();
       const migrateSportsCoachEvents = require('./db/migrate_sports_coach_events');
       await migrateSportsCoachEvents();
+      const { migrateSchoolOnboardingAndCleanRoster } = require('./db/migrate_school_onboarding_and_clean_roster');
+      await migrateSchoolOnboardingAndCleanRoster();
       console.log('[DB BOOTSTRAP] All database tables, schemas, and security verified successfully.');
       if (firestore) {
         console.log('[FIREBASE BOOTSTRAP] Firebase Cloud Firestore & Admin SDK initialized and active.');
@@ -336,6 +338,7 @@ app.use('/api/consultations', require('./public/src/routes/consultationRoutes'))
 app.use('/api/report-cards', require('./public/src/routes/reportCardRoutes'));
 app.use('/api/ml/behavior', require('./public/src/routes/behaviorMlRoutes'));
 app.use('/api/ai-advisor', require('./public/src/routes/aiAdvisorRoutes'));
+app.use('/api/system', require('./public/src/routes/systemRoutes'));
 
 
 

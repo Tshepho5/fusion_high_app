@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { authService, parentApplicationService } from '../../services/api';
+import { authService, parentApplicationService, systemControlService } from '../../services/api';
 import { useSchool } from '../../context/SchoolContext';
 import { FusionAIIcon } from '../../components/common/FusionAIIcon';
+import { SchoolRegistrationModal } from '../../components/landing/SchoolRegistrationModal';
 import {
   User,
   Mail,
   Lock,
+  LogIn,
   ArrowRight,
   ArrowLeft,
   ShieldCheck,
+  ShieldAlert,
   CheckCircle2,
   AlertCircle,
   Link as LinkIcon,
@@ -24,7 +27,9 @@ import {
   MapPin,
   GraduationCap,
   Building2,
-  Clock
+  Clock,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 interface ChildLinkItem {
@@ -104,6 +109,7 @@ export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const { currentSchool, schoolsList, setSchoolById } = useSchool();
   const [parentStep, setParentStep] = useState<1 | 2>(1);
+  const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false);
 
   // Form states with standard autocomplete support
   const [formData, setFormData] = useState({
@@ -152,6 +158,10 @@ export const RegisterPage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [portalLock, setPortalLock] = useState<{ is_locked: boolean; reason?: string } | null>(null);
   const [success, setSuccess] = useState(false);
   const [submittedApp, setSubmittedApp] = useState<{
     application_number: string;
@@ -159,6 +169,28 @@ export const RegisterPage: React.FC = () => {
     school_name: string;
     status: string;
   } | null>(null);
+
+  // Clear specific field error helper
+  const clearFieldError = (field: string) => {
+    setFieldErrors(prev => {
+      if (!prev[field]) return prev;
+      const copy = { ...prev };
+      delete copy[field];
+      return copy;
+    });
+  };
+
+  // Check portal lock status on mount
+  useEffect(() => {
+    systemControlService.getPortalLocks().then((controls: any[]) => {
+      const regControl = controls?.find((c: any) => c.control_id === 'user_registration');
+      if (regControl && regControl.is_locked) {
+        setPortalLock({ is_locked: true, reason: regControl.reason });
+      }
+    }).catch(err => {
+      console.warn('Could not check user registration lock status:', err);
+    });
+  }, []);
 
   // Auto-populate from URL params if redirected from Application Acceptance
   React.useEffect(() => {
@@ -200,13 +232,14 @@ export const RegisterPage: React.FC = () => {
   // Strict String Validation: Reject numbers where string placeholder is specified
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    clearFieldError(name);
     if (/\d/.test(value)) {
-      setError('Numbers are strictly not allowed in names. Letters, spaces, and hyphens only.');
+      setFieldErrors(prev => ({ ...prev, [name]: 'Numbers are strictly not allowed in names. Letters, spaces, and hyphens only.' }));
       setFormData(prev => ({ ...prev, [name]: value.replace(/\d/g, '') }));
       return;
     }
     if (/[^A-Za-z\s\-']/.test(value)) {
-      setError('Special symbols are not allowed in names. Letters, spaces, and hyphens only.');
+      setFieldErrors(prev => ({ ...prev, [name]: 'Special symbols are not allowed in names. Letters, spaces, and hyphens only.' }));
       setFormData(prev => ({ ...prev, [name]: value.replace(/[^A-Za-z\s\-']/g, '') }));
       return;
     }
@@ -217,10 +250,11 @@ export const RegisterPage: React.FC = () => {
   // Strict Numeric Validation: Reject alphabetic characters where numbers are expected
   const handleNumericChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    clearFieldError(name);
     
     if (name === 'phone') {
       if (/[a-zA-Z]/.test(value)) {
-        setError('Letters and words are strictly not allowed in phone numbers. Numbers only.');
+        setFieldErrors(prev => ({ ...prev, phone: 'Letters and words are strictly not allowed in phone numbers. Numbers only.' }));
         setFormData(prev => ({ ...prev, [name]: value.replace(/[a-zA-Z]/g, '') }));
         return;
       }
@@ -229,7 +263,7 @@ export const RegisterPage: React.FC = () => {
       setFormData(prev => ({ ...prev, [name]: cleaned }));
     } else if (name === 'idNumber') {
       if (/[^\d]/.test(value)) {
-        setError('Letters and symbols are strictly not allowed in ID numbers. Numbers only.');
+        setFieldErrors(prev => ({ ...prev, idNumber: 'Letters and symbols are strictly not allowed in ID numbers. Numbers only.' }));
         const cleaned = value.replace(/[^\d]/g, '').slice(0, 13);
         setFormData(prev => ({ ...prev, [name]: cleaned }));
         return;
@@ -242,6 +276,7 @@ export const RegisterPage: React.FC = () => {
       if (cleaned.length === 13) {
         const idResult = validateSAIDNumber(cleaned);
         if (idResult.isValid) {
+          clearFieldError('idNumber');
           setIdExtracted({
             displayDob: idResult.displayDob,
             gender: idResult.gender,
@@ -255,7 +290,7 @@ export const RegisterPage: React.FC = () => {
             parentType: idResult.gender === 'Female' ? 'Mother' : 'Father'
           }));
         } else {
-          setError(idResult.error || 'Invalid South African ID checksum.');
+          setFieldErrors(prev => ({ ...prev, idNumber: idResult.error || 'Invalid South African ID checksum.' }));
           setIdExtracted(null);
         }
       } else {
@@ -391,50 +426,67 @@ export const RegisterPage: React.FC = () => {
 
   const verifiedChildrenCount = childrenList.filter(c => c.verified).length;
 
+  const validateStep1 = () => {
+    const errs: Record<string, string> = {};
+    if (!formData.name.trim()) errs.name = 'First name is required (letters only).';
+    if (!formData.surname.trim()) errs.surname = 'Surname is required (letters only).';
+    if (!formData.email.trim()) {
+      errs.email = 'Email address is required.';
+    } else if (!formData.email.includes('@')) {
+      errs.email = 'Please enter a valid email address.';
+    }
+    if (!formData.phone.trim()) {
+      errs.phone = 'Phone number is required (digits only).';
+    }
+    if (!formData.idNumber.trim()) {
+      errs.idNumber = 'South African ID is required.';
+    } else if (formData.idNumber.length !== 13) {
+      errs.idNumber = 'South African ID must be exactly 13 digits.';
+    }
+    if (!formData.password) {
+      errs.password = 'Password is required.';
+    } else if (formData.password.length < 6) {
+      errs.password = 'Password must be at least 6 characters long.';
+    }
+    if (!formData.confirmPassword) {
+      errs.confirmPassword = 'Confirm your password.';
+    } else if (formData.password !== formData.confirmPassword) {
+      errs.confirmPassword = 'Passwords do not match.';
+    }
+
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setError('Please resolve the errors highlighted below.');
+      return false;
+    }
+    setError(null);
+    return true;
+  };
+
   // Complete Registration / Parent Portal Application Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
+    if (portalLock?.is_locked) {
+      setError(portalLock.reason || 'User registration is temporarily locked by Geleza SA Executives.');
+      return;
+    }
+
     // If on Step 1, advance to Step 2 (Link Child) instead of prematurely submitting
     if (parentStep === 1) {
-      if (!formData.name || !formData.surname || !formData.email || !formData.password || !formData.phone) {
-        setError('Please complete all required parent details before proceeding to link a child.');
-        return;
-      }
-      if (formData.password !== formData.confirmPassword) {
-        setError('Passwords do not match.');
-        return;
-      }
-      if (formData.password.length < 6) {
-        setError('Password must be at least 6 characters long.');
-        return;
-      }
-      if (formData.idNumber && formData.idNumber.length !== 13) {
-        setError('South African ID must be exactly 13 digits.');
-        return;
-      }
-      setError(null);
+      if (!validateStep1()) return;
       setParentStep(2);
       return;
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long.');
-      return;
-    }
-
-    if (formData.idNumber && formData.idNumber.length !== 13) {
-      setError('South African ID must be exactly 13 digits.');
+    if (!validateStep1()) {
+      setParentStep(1);
       return;
     }
 
     if (emailError) {
+      setFieldErrors(prev => ({ ...prev, email: emailError }));
       setError(emailError);
       return;
     }
@@ -442,18 +494,26 @@ export const RegisterPage: React.FC = () => {
     // Process Children / Twins (Optional)
     let validatedChildren: any[] = [];
     if (!skipLinkingChildren) {
+      const childErrs: Record<string, string> = {};
       const filledChildren = childrenList.filter(c => c.firstName.trim() || c.surname.trim() || c.idNumber.trim());
 
       for (let i = 0; i < filledChildren.length; i++) {
         const c = filledChildren[i];
-        if (!c.firstName.trim() || !c.surname.trim()) {
-          setError(`Please provide First Name and Surname for Child #${i + 1}.`);
-          return;
+        if (!c.firstName.trim()) {
+          childErrs[`child_${c.id}_firstName`] = `Please provide First Name for Child #${i + 1}.`;
+        }
+        if (!c.surname.trim()) {
+          childErrs[`child_${c.id}_surname`] = `Please provide Surname for Child #${i + 1}.`;
         }
         if (c.idNumber && c.idNumber.length !== 13) {
-          setError(`Child #${i + 1} South African ID must be 13 digits.`);
-          return;
+          childErrs[`child_${c.id}_idNumber`] = `Child #${i + 1} South African ID must be 13 digits.`;
         }
+      }
+
+      if (Object.keys(childErrs).length > 0) {
+        setFieldErrors(prev => ({ ...prev, ...childErrs }));
+        setError('Please complete the highlighted child details below.');
+        return;
       }
 
       validatedChildren = filledChildren.map(c => ({
@@ -498,13 +558,21 @@ export const RegisterPage: React.FC = () => {
         setSubmittedApp({
           application_number: 'PAR-2026-CONFIRMED',
           parent_email: formData.email.trim(),
-          school_name: currentSchool?.name || 'Fusion High School',
+          school_name: currentSchool?.name || 'Geleza SA High School',
           status: 'pending'
         });
         setSuccess(true);
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to submit Parent Portal application. Please check your details.');
+      if (err.response?.status === 403 || err.response?.data?.is_locked) {
+        setPortalLock({
+          is_locked: true,
+          reason: err.response?.data?.reason || err.response?.data?.error
+        });
+        setError(err.response?.data?.error || 'User registration is temporarily locked by Geleza SA Executives.');
+      } else {
+        setError(err.response?.data?.error || 'Failed to submit Parent Portal application. Please check your details.');
+      }
     } finally {
       setLoading(false);
     }
@@ -616,9 +684,23 @@ export const RegisterPage: React.FC = () => {
         <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
           Create your parent portal account and link your enrolled high school learners for <strong>{currentSchool?.name}</strong>.
         </p>
+
+        {/* Principal School Registration Callout */}
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => setIsSchoolModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/30 text-xs font-bold text-cyan-300 transition-all hover:scale-102 active:scale-98 shadow-sm cursor-pointer"
+          >
+            <Building2 className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Are you a School Principal? Register & Onboard Your School &rarr;</span>
+          </button>
+        </div>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl relative z-10">
+      <SchoolRegistrationModal isOpen={isSchoolModalOpen} onClose={() => setIsSchoolModalOpen(false)} />
+
+      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-xl relative z-10">
         <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 sm:p-8 shadow-2xl space-y-6">
           
           {/* Multi-Step Indicator */}
@@ -668,6 +750,28 @@ export const RegisterPage: React.FC = () => {
               <span className="text-xs">Link Child ({verifiedChildrenCount} Verified)</span>
             </div>
           </div>
+
+          {/* Geleza SA Executive Lock Status Banner */}
+          {portalLock?.is_locked && (
+            <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs space-y-2 animate-fade-in shadow-lg">
+              <div className="flex items-center gap-2 font-bold text-amber-300">
+                <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Parent & User Registration Locked by Geleza SA Executives</span>
+              </div>
+              <p className="text-[11.5px] text-slate-300 leading-relaxed">
+                {portalLock.reason || 'User and parent onboarding is currently locked for review by Geleza SA Executives. New registrations cannot be submitted at this time.'}
+              </p>
+              <div className="pt-2 flex items-center gap-3">
+                <Link
+                  to="/login"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-glow-indigo transition-all cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Proceed to Sign In (Always Active)</span>
+                </Link>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2 animate-fade-in">
@@ -719,9 +823,17 @@ export const RegisterPage: React.FC = () => {
                       value={formData.idNumber}
                       onChange={handleNumericChange}
                       placeholder="e.g. 8506120000085 (numbers only)"
-                      className="w-full rounded-xl bg-surface-darker border border-white/10 pl-10 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500 font-mono"
+                      className={`w-full rounded-xl bg-surface-darker border pl-10 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500 font-mono ${
+                        fieldErrors.idNumber ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-white/10'
+                      }`}
                     />
                   </div>
+                  {fieldErrors.idNumber && (
+                    <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{fieldErrors.idNumber}</span>
+                    </p>
+                  )}
 
                   {idExtracted && (
                     <div className="mt-2 p-2.5 rounded-xl bg-brand-500/10 border border-brand-500/20 text-xs text-brand-300 flex items-center justify-between animate-fade-in">
@@ -750,9 +862,17 @@ export const RegisterPage: React.FC = () => {
                         value={formData.name}
                         onChange={handleNameChange}
                         placeholder="e.g. Naledi"
-                        className="w-full rounded-xl bg-surface-darker border border-white/10 pl-10 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500"
+                        className={`w-full rounded-xl bg-surface-darker border pl-10 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500 ${
+                          fieldErrors.name ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-white/10'
+                        }`}
                       />
                     </div>
+                    {fieldErrors.name && (
+                      <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{fieldErrors.name}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -766,9 +886,17 @@ export const RegisterPage: React.FC = () => {
                         value={formData.surname}
                         onChange={handleNameChange}
                         placeholder="e.g. Mokoena"
-                        className="w-full rounded-xl bg-surface-darker border border-white/10 pl-10 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500"
+                        className={`w-full rounded-xl bg-surface-darker border pl-10 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500 ${
+                          fieldErrors.surname ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-white/10'
+                        }`}
                       />
                     </div>
+                    {fieldErrors.surname && (
+                      <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{fieldErrors.surname}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -785,12 +913,15 @@ export const RegisterPage: React.FC = () => {
                         value={formData.email}
                         onChange={(e) => {
                           setFormData(prev => ({ ...prev, email: e.target.value }));
+                          clearFieldError('email');
                           setEmailError(null);
                           setEmailAvailable(false);
                         }}
                         onBlur={handleEmailBlur}
                         placeholder="e.g. naledi@gmail.com"
-                        className="w-full rounded-xl bg-surface-darker border border-white/10 pl-10 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500"
+                        className={`w-full rounded-xl bg-surface-darker border pl-10 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500 ${
+                          fieldErrors.email ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-white/10'
+                        }`}
                       />
                     </div>
                     {emailChecking && <p className="text-[10px] text-cyan-400 mt-1">Checking duplicate profile...</p>}
@@ -800,7 +931,13 @@ export const RegisterPage: React.FC = () => {
                         <span>Email available for registration</span>
                       </p>
                     )}
-                    {emailError && <p className="text-[10px] text-rose-400 mt-1">{emailError}</p>}
+                    {fieldErrors.email && (
+                      <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{fieldErrors.email}</span>
+                      </p>
+                    )}
+                    {emailError && !fieldErrors.email && <p className="text-[10px] text-rose-400 mt-1">{emailError}</p>}
                   </div>
 
                   <div>
@@ -814,9 +951,17 @@ export const RegisterPage: React.FC = () => {
                         value={formData.phone}
                         onChange={handleNumericChange}
                         placeholder="e.g. 0821234567"
-                        className="w-full rounded-xl bg-surface-darker border border-white/10 pl-10 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500 font-mono"
+                        className={`w-full rounded-xl bg-surface-darker border pl-10 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500 font-mono ${
+                          fieldErrors.phone ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-white/10'
+                        }`}
                       />
                     </div>
+                    {fieldErrors.phone && (
+                      <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{fieldErrors.phone}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -858,15 +1003,35 @@ export const RegisterPage: React.FC = () => {
                     <div className="relative">
                       <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
                       <input
-                        type="password"
+                        type={showPassword ? 'text' : 'password'}
                         name="password"
                         required
                         value={formData.password}
-                        onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                        placeholder="••••••••"
-                        className="w-full rounded-xl bg-surface-darker border border-white/10 pl-10 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500"
+                        onChange={(e) => {
+                          setFormData(prev => ({ ...prev, password: e.target.value }));
+                          clearFieldError('password');
+                        }}
+                        placeholder="Create password (min 6 chars)"
+                        className={`w-full rounded-xl bg-surface-darker border pl-10 pr-11 py-2.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500 ${
+                          fieldErrors.password ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-white/10'
+                        }`}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-7 h-7 flex items-center justify-center p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        title={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
+                    {fieldErrors.password && (
+                      <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{fieldErrors.password}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -874,15 +1039,35 @@ export const RegisterPage: React.FC = () => {
                     <div className="relative">
                       <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
                       <input
-                        type="password"
+                        type={showConfirmPassword ? 'text' : 'password'}
                         name="confirmPassword"
                         required
                         value={formData.confirmPassword}
-                        onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                        placeholder="••••••••"
-                        className="w-full rounded-xl bg-surface-darker border border-white/10 pl-10 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500"
+                        onChange={(e) => {
+                          setFormData(prev => ({ ...prev, confirmPassword: e.target.value }));
+                          clearFieldError('confirmPassword');
+                        }}
+                        placeholder="Confirm your password"
+                        className={`w-full rounded-xl bg-surface-darker border pl-10 pr-11 py-2.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500 ${
+                          fieldErrors.confirmPassword ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-white/10'
+                        }`}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-7 h-7 flex items-center justify-center p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors"
+                        aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                        title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
+                    {fieldErrors.confirmPassword && (
+                      <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{fieldErrors.confirmPassword}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -890,22 +1075,10 @@ export const RegisterPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      if (!formData.name || !formData.surname || !formData.email || !formData.password || !formData.phone) {
-                        setError('Please complete all required fields.');
-                        return;
-                      }
-                      if (formData.password !== formData.confirmPassword) {
-                        setError('Passwords do not match.');
-                        return;
-                      }
-                      if (formData.idNumber && formData.idNumber.length !== 13) {
-                        setError('South African ID must be 13 digits.');
-                        return;
-                      }
-                      setError(null);
+                      if (!validateStep1()) return;
                       setParentStep(2);
                     }}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-xs shadow-glow-indigo transition-all flex items-center justify-center gap-2"
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-xs shadow-glow-indigo transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>Proceed to Link Enrolled Child</span>
                     <ArrowRight className="w-4 h-4" />
@@ -1021,8 +1194,16 @@ export const RegisterPage: React.FC = () => {
                                   placeholder="e.g. Thabo"
                                   value={child.firstName}
                                   onChange={(e) => updateChildField(child.id, 'firstName', e.target.value)}
-                                  className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500"
+                                  className={`w-full rounded-xl bg-surface-dark border px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500 ${
+                                    fieldErrors[`child_${child.id}_firstName`] ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-white/10'
+                                  }`}
                                 />
+                                {fieldErrors[`child_${child.id}_firstName`] && (
+                                  <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                    <span>{fieldErrors[`child_${child.id}_firstName`]}</span>
+                                  </p>
+                                )}
                               </div>
                               <div>
                                 <label className="block text-[11px] text-slate-400 mb-1">Child Surname *</label>
@@ -1031,8 +1212,16 @@ export const RegisterPage: React.FC = () => {
                                   placeholder="e.g. Mokoena"
                                   value={child.surname}
                                   onChange={(e) => updateChildField(child.id, 'surname', e.target.value)}
-                                  className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500"
+                                  className={`w-full rounded-xl bg-surface-dark border px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500 ${
+                                    fieldErrors[`child_${child.id}_surname`] ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-white/10'
+                                  }`}
                                 />
+                                {fieldErrors[`child_${child.id}_surname`] && (
+                                  <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                    <span>{fieldErrors[`child_${child.id}_surname`]}</span>
+                                  </p>
+                                )}
                               </div>
                             </div>
 
@@ -1047,8 +1236,16 @@ export const RegisterPage: React.FC = () => {
                                 placeholder="e.g. 0708155123089 (used to generate student password)"
                                 value={child.idNumber}
                                 onChange={(e) => updateChildField(child.id, 'idNumber', e.target.value)}
-                                className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500 font-mono"
+                                className={`w-full rounded-xl bg-surface-dark border px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500 font-mono ${
+                                  fieldErrors[`child_${child.id}_idNumber`] ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-white/10'
+                                }`}
                               />
+                              {fieldErrors[`child_${child.id}_idNumber`] && (
+                                <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                  <span>{fieldErrors[`child_${child.id}_idNumber`]}</span>
+                                </p>
+                              )}
                             </div>
 
                             {/* Grade, Stream & Home Language */}
@@ -1087,7 +1284,9 @@ export const RegisterPage: React.FC = () => {
                                 <select
                                   value={child.homeLanguage || ''}
                                   onChange={(e) => updateChildField(child.id, 'homeLanguage', e.target.value)}
-                                  className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500"
+                                  className={`w-full rounded-xl bg-surface-dark border px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500 ${
+                                    fieldErrors[`child_${child.id}_homeLanguage`] ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-white/10'
+                                  }`}
                                 >
                                   <option value="" disabled>Select Official Home Language</option>
                                   <option value="Sepedi">Sepedi (Sesotho sa Leboa)</option>
@@ -1102,6 +1301,12 @@ export const RegisterPage: React.FC = () => {
                                   <option value="English">English (Home Language)</option>
                                   <option value="Afrikaans">Afrikaans (Huistaal)</option>
                                 </select>
+                                {fieldErrors[`child_${child.id}_homeLanguage`] && (
+                                  <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                    <span>{fieldErrors[`child_${child.id}_homeLanguage`]}</span>
+                                  </p>
+                                )}
                               </div>
                             </div>
 
@@ -1178,27 +1383,38 @@ export const RegisterPage: React.FC = () => {
 
                   <button
                     type="submit"
-                    disabled={loading}
-                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-40"
+                    disabled={loading || !!portalLock?.is_locked}
+                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer"
                   >
-                    {loading
-                      ? 'Submitting Application...'
-                      : skipLinkingChildren
-                      ? 'Submit Parent Application (Link Later)'
-                      : `Complete Registration (${childrenList.filter(c => c.firstName.trim()).length} Child${childrenList.filter(c => c.firstName.trim()).length === 1 ? '' : 'ren'})`}
+                    {portalLock?.is_locked ? (
+                      <>
+                        <Lock className="w-4 h-4 text-amber-300" />
+                        <span>Registration Locked by Executive</span>
+                      </>
+                    ) : loading ? (
+                      'Submitting Application...'
+                    ) : skipLinkingChildren ? (
+                      'Submit Parent Application (Link Later)'
+                    ) : (
+                      `Complete Registration (${childrenList.filter(c => c.firstName.trim()).length} Child${childrenList.filter(c => c.firstName.trim()).length === 1 ? '' : 'ren'})`
+                    )}
                   </button>
                 </div>
               </div>
             )}
           </form>
 
-          <div className="pt-4 border-t border-white/10 text-center space-y-2">
-            <p className="text-xs text-slate-400">
-              Already registered?{' '}
-              <Link to="/login" className="text-brand-400 hover:text-brand-300 font-bold hover:underline">
-                Sign in to your portal
+          <div className="pt-4 border-t border-white/10 text-center space-y-3">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+              <span className="text-xs text-slate-400">Already registered?</span>
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 border border-brand-500/30 font-bold text-xs transition-all"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Sign In to Portal (Always Available)</span>
               </Link>
-            </p>
+            </div>
             <div className="pt-2 flex items-center justify-center gap-3 text-[11px] text-slate-500 border-t border-white/5">
               <Link to="/about" className="hover:text-cyan-400 transition-colors">About Us</Link>
               <span>•</span>

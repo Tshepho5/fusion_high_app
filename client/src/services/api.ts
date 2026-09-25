@@ -631,3 +631,44 @@ export const behaviorMlService = {
   getClassPrediction: (classId: string | number) => 
     api.get(`/api/ml/behavior/class/${classId}`).then(res => res.data),
 };
+
+// Official School Registration & Executive Accreditation API
+export const schoolRegistrationService = {
+  apply: (data: any) => api.post('/api/schools/apply', data).then(res => res.data),
+  getAllApplications: (status?: string) => 
+    api.get(`/api/schools/applications/all${status ? `?status=${status}` : ''}`).then(res => res.data),
+  reviewApplication: (id: number | string, decision: 'approve' | 'decline', reason?: string, executive_notes?: string) =>
+    api.post(`/api/schools/applications/${id}/decision`, { decision, reason, executive_notes }).then(res => res.data),
+};
+
+// Dynamic Class & Staff Invitation API
+export const classStaffService = {
+  getClasses: () => api.get('/api/admin/classes').then(res => res.data),
+  createClass: (data: { name: string; grade: number; stream?: string; homeroom_teacher_id?: number | null; room_number?: string }) =>
+    api.post('/api/admin/classes', data).then(res => res.data),
+  updateClass: (id: number | string, data: any) =>
+    api.put(`/api/admin/classes/${id}`, data).then(res => res.data),
+  deleteClass: (id: number | string) =>
+    api.delete(`/api/admin/classes/${id}`).then(res => res.data),
+  createStaffInvite: (data: {
+    email: string;
+    full_name?: string;
+    surname?: string;
+    role_type?: 'teacher' | 'sports_coach' | 'hod';
+    sace_number?: string;
+    subjects_offered?: string[];
+    sports_coached?: string[];
+    assigned_grades?: number[];
+    assigned_classes?: string[];
+  }) => api.post('/api/admin/staff-invites', data).then(res => res.data),
+  getStaffInvites: () => api.get('/api/admin/staff-invites').then(res => res.data),
+  deleteStaffInvite: (id: number | string) => api.delete(`/api/admin/staff-invites/${id}`).then(res => res.data),
+};
+
+// Geleza SA Executive & Admin Portal Access / Gatekeeper Controls
+export const systemControlService = {
+  getPortalLocks: () => api.get('/api/system/portal-locks').then(res => res.data),
+  updatePortalLock: (id: string, is_locked: boolean, locked_reason?: string) =>
+    api.put(`/api/system/portal-locks/${id}`, { is_locked, locked_reason }).then(res => res.data),
+};
+

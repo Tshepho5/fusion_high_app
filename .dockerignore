@@ -8,6 +8,7 @@ client/src
 .ssl
 *.log
 tests
+flutter_app/
 *.pptx
 *.pdf
 fusion-high-app-firebase-adminsdk*.json

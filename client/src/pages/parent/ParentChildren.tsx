@@ -275,7 +275,7 @@ export const ParentChildren: React.FC = () => {
         <button class="no-print" onclick="window.print()" style="padding:10px 20px; background:#4f46e5; color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer; margin-bottom:1.5rem;">Print / Save Official Report Card (PDF)</button>
         
         <div class="header">
-          <h1 class="school-title">FUSION HIGH SCHOOL</h1>
+          <h1 class="school-title">GELEZA SA</h1>
           <p class="sub-title">Republic of South Africa • Department of Basic Education Curriculum</p>
           <p class="sub-title">EMIS No: 928374821 • Official Academic Progress Report</p>
         </div>
@@ -327,7 +327,7 @@ export const ParentChildren: React.FC = () => {
             <div class="signature-img">T.L. Makula</div>
             <div style="border-top: 1px solid #0f172a; margin-top: 4px; padding-top: 4px; font-size: 0.85rem; font-weight: bold;">
               Tshepho L. Makula<br>
-              <span style="font-weight: normal; color: #64748b;">Principal, Fusion High School</span>
+              <span style="font-weight: normal; color: #64748b;">Principal, Geleza SA</span>
             </div>
           </div>
           <div class="signature-box">

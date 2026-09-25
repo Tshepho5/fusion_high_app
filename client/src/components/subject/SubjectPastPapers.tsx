@@ -865,10 +865,10 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
             <Badge variant="indigo" size="sm">Grade {grade}</Badge>
           </div>
           <h3 className="text-xl md:text-2xl font-extrabold font-display text-white">
-            {subject} Official Past Examination Papers & Question Bank
+            {subject} Past Papers & Memorandums
           </h3>
-          <p className="text-xs text-slate-300 max-w-xl">
-            Access official National Department of Basic Education examination question papers, marking guidelines, and interactive problem solutions for Grade {grade} {subject}.
+          <p className="text-xs text-slate-300">
+            Official DBE examination question papers and memorandums for Grade {grade}.
           </p>
         </div>
 

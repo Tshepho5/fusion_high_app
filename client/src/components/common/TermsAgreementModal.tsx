@@ -64,7 +64,7 @@ export const TermsAgreementModal: React.FC<TermsAgreementModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Fusion High School Management System • South African National DBE Standards
+                Geleza SA School Management System • South African National DBE Standards
               </p>
             </div>
           </div>
@@ -143,7 +143,7 @@ export const TermsAgreementModal: React.FC<TermsAgreementModalProps> = ({
                 <span>1. Purpose, Legal Scope & Authorization</span>
               </h3>
               <p>
-                Welcome to <strong>Fusion High School Management System (v2.1)</strong>. These Terms and Conditions govern the access, utilization, and interactions within the digital educational environment provided by Fusion High School for all registered <strong>Learners, Teachers, Parents/Legal Guardians, and Administrative Staff</strong>.
+                Welcome to <strong>Geleza SA School Management System (v2.1)</strong>. These Terms and Conditions govern the access, utilization, and interactions within the digital educational environment provided by Geleza SA for all registered <strong>Learners, Teachers, Parents/Legal Guardians, and Administrative Staff</strong>.
               </p>
               <p>
                 By clicking <em>"I Agree & Continue"</em>, logging into an account, or submitting an application, you enter into a legally binding agreement under the laws of the <strong>Republic of South Africa</strong>, including the <em>South African Schools Act (No. 84 of 1996)</em>, the <em>National Curriculum Statement (CAPS)</em>, and the <em>Protection of Personal Information Act (POPIA No. 4 of 2013)</em>.
@@ -187,7 +187,7 @@ export const TermsAgreementModal: React.FC<TermsAgreementModalProps> = ({
                 <span>3. POPIA Compliance & Personal Data Processing</span>
               </h3>
               <p>
-                In compliance with South Africa's <em>Protection of Personal Information Act (POPIA)</em>, Fusion High School acts as the Responsible Party for all personal information collected:
+                In compliance with South Africa's <em>Protection of Personal Information Act (POPIA)</em>, Geleza SA acts as the Responsible Party for all personal information collected:
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                 <div className="p-3 rounded-2xl bg-surface-darker border border-white/10 space-y-1">
@@ -233,7 +233,7 @@ export const TermsAgreementModal: React.FC<TermsAgreementModalProps> = ({
                 <span>5. Child Safety, Parental Consent & Rights</span>
               </h3>
               <p>
-                As an institution catering to minor learners (Grades 8 to 12), Fusion High School enforces child safeguarding standards:
+                As an institution catering to minor learners (Grades 8 to 12), Geleza SA enforces child safeguarding standards:
               </p>
               <ul className="list-disc pl-4 space-y-1 text-slate-300">
                 <li>Parents and legal guardians retain full rights to inspect their child's academic marks, attendance roster, and disciplinary logs via the <strong>Parent Portal</strong>.</li>
@@ -281,7 +281,7 @@ export const TermsAgreementModal: React.FC<TermsAgreementModalProps> = ({
                     className="mt-0.5 w-4 h-4 rounded border-white/20 text-brand-600 focus:ring-brand-500 bg-surface-dark cursor-pointer"
                   />
                   <span className="text-slate-300">
-                    I have read and agree to abide by the <strong>Fusion High Acceptable Use Policy & Disciplinary Rules</strong>.
+                    I have read and agree to abide by the <strong>Geleza SA Acceptable Use Policy & Disciplinary Rules</strong>.
                   </span>
                 </label>
               </div>
@@ -306,7 +306,7 @@ export const TermsAgreementModal: React.FC<TermsAgreementModalProps> = ({
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold font-mono">
                 <CheckCircle2 className="w-4 h-4" />
-                <span>You have accepted the Fusion High Terms & Conditions (v2.1)</span>
+                <span>You have accepted the Geleza SA Terms & Conditions (v2.1)</span>
               </div>
               {onClose && (
                 <button

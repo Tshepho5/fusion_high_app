@@ -339,9 +339,6 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
                     <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors leading-snug truncate">
                       {item.title}
                     </h3>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-1 mt-0.5">
-                      {item.description}
-                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -425,9 +422,6 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
                   <div className="min-w-0">
                     <span className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors truncate block">
                       {item.title}
-                    </span>
-                    <span className="text-[10px] text-slate-600 dark:text-slate-400 line-clamp-1">
-                      {item.description}
                     </span>
                   </div>
                 </div>

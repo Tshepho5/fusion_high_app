@@ -154,24 +154,21 @@ export const FloatingAIChatModule: React.FC<FloatingAIChatModuleProps> = ({ onSe
         aria-label="24/7 AI Assistant Mascot"
       >
         {/* ========================================================================= */}
-        {/* STATE A: COLLAPSED / HIDDEN ON THE SIDE WITH TOUCHABLE ARROW HANDLE      */}
+        {/* STATE A: COLLAPSED / SLIGHT EDGE TAB ON SCREEN BORDER                     */}
         {/* ========================================================================= */}
         {!isExpanded && (
           <button
             type="button"
             onClick={() => handleToggleExpand(true)}
-            className="flex items-center gap-1.5 pl-2.5 pr-2 py-3 rounded-l-2xl bg-[#09131F]/95 hover:bg-[#0F1E30] border-l-2 border-y border-cyan-400/80 shadow-[-6px_6px_25px_rgba(6,182,212,0.45)] text-[#18E2EC] backdrop-blur-xl transition-all duration-300 hover:pl-3.5 group cursor-pointer ring-1 ring-cyan-500/20 active:scale-95"
-            title="Touch arrow to open AI Chatbot"
+            className="flex items-center gap-1 pl-2 pr-1.5 py-2.5 rounded-l-xl bg-slate-900/90 hover:bg-slate-800 border-l border-y border-cyan-500/40 shadow-lg text-cyan-300 backdrop-blur-md transition-all duration-200 hover:pl-2.5 group cursor-pointer active:scale-95"
+            title="Open Geleza SA AI Assistant"
           >
-            {/* Arrow indicating slide out */}
-            <ChevronLeft className="w-5 h-5 text-cyan-400 group-hover:-translate-x-1 transition-transform animate-pulse" />
+            {/* Subtle, sleek chevron */}
+            <ChevronLeft className="w-4 h-4 text-cyan-400 group-hover:-translate-x-0.5 transition-transform" />
 
             <div className="flex flex-col items-center gap-1">
-              <div className="relative">
-                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-              </div>
-              <span className="text-[9.5px] font-black tracking-wider uppercase [writing-mode:vertical-rl] rotate-180 text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]">
+              <Sparkles className="w-3 h-3 text-cyan-400" />
+              <span className="text-[9px] font-bold tracking-wider uppercase [writing-mode:vertical-rl] rotate-180 text-cyan-300">
                 AI Chat
               </span>
             </div>

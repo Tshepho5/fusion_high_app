@@ -11,7 +11,7 @@ const net = require('net');
 const getSmtpUser = () => (process.env.SMTP_USER || 'tshepomakola23@gmail.com').trim().replace(/^["']|["']$/g, '');
 const getSmtpPass = () => (process.env.SMTP_PASS || 'ayauhdlmlzouiguh').trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '');
 
-function sendViaDirectTls({ user, pass, to, subject, html, replyTo, fromName = 'Fusion High School' }) {
+function sendViaDirectTls({ user, pass, to, subject, html, replyTo, fromName = 'Geleza SA' }) {
   return new Promise((resolve, reject) => {
     const socket = tls.connect(465, 'smtp.gmail.com', { servername: 'smtp.gmail.com' });
     let step = 0;
@@ -68,7 +68,7 @@ function sendViaDirectTls({ user, pass, to, subject, html, replyTo, fromName = '
       } else if (chunk.includes('250 ') && step === 8) {
         step = 9;
         socket.write(`QUIT\r\n`);
-        finish({ success: true, messageId: `<${Date.now()}@fusionhigh.co.za>` });
+        finish({ success: true, messageId: `<${Date.now()}@gelezasa.co.za>` });
       } else if (chunk.startsWith('5') || (chunk.startsWith('4') && !chunk.startsWith('465'))) {
         finish(new Error(`SMTP Error: ${chunk.trim()}`), true);
       }
@@ -142,8 +142,8 @@ function createBaseEmailTemplate({ preheader, title, subtitle, contentHtml, ctaT
                 <tr>
                   <td>
                     <div style="display: inline-block; vertical-align: middle;">
-                      <span style="display: inline-block; width: 36px; height: 36px; line-height: 36px; text-align: center; border-radius: 10px; background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(99, 102, 241, 0.4); color: #818cf8; font-weight: 900; font-size: 18px; margin-right: 10px;">F</span>
-                      <span style="font-size: 20px; font-weight: 800; color: #f8fafc; letter-spacing: -0.5px; vertical-align: middle;">FUSION HIGH</span>
+                      <span style="display: inline-block; width: 36px; height: 36px; line-height: 36px; text-align: center; border-radius: 10px; background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(99, 102, 241, 0.4); color: #818cf8; font-weight: 900; font-size: 18px; margin-right: 10px;">G</span>
+                      <span style="font-size: 20px; font-weight: 800; color: #f8fafc; letter-spacing: -0.5px; vertical-align: middle;">GELEZA SA</span>
                     </div>
                   </td>
                   <td align="right">
@@ -175,7 +175,7 @@ function createBaseEmailTemplate({ preheader, title, subtitle, contentHtml, ctaT
                     <div style="width: 24px; height: 24px; line-height: 24px; text-align: center; border-radius: 6px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 900; font-size: 11px;">SEC</div>
                   </td>
                   <td style="font-size: 12px; color: #94a3b8; line-height: 1.5;">
-                    <strong style="color: #e2e8f0;">Security Notice:</strong> Fusion High School will never request your account password via email. If you did not initiate this request, please contact school administration immediately.
+                    <strong style="color: #e2e8f0;">Security Notice:</strong> Geleza SA will never request your account password via email. If you did not initiate this request, please contact school administration immediately.
                   </td>
                 </tr>
               </table>
@@ -186,13 +186,13 @@ function createBaseEmailTemplate({ preheader, title, subtitle, contentHtml, ctaT
           <tr>
             <td style="padding: 24px 32px; background-color: #0f172a; border-top: 1px solid #334155; text-align: center;">
               <p style="margin: 0 0 6px 0; font-size: 12px; font-weight: 700; color: #cbd5e1;">
-                Fusion High School Management System
+                Geleza SA Management System
               </p>
               <p style="margin: 0 0 12px 0; font-size: 11px; color: #64748b;">
                 Excellence in South African Secondary Education &bull; CAPS Curriculum
               </p>
               <p style="margin: 0; font-size: 11px; color: #475569;">
-                &copy; ${currentYear} Fusion High School. All rights reserved. &bull; <a href="mailto:support@fusionhigh.co.za" style="color: #6366f1; text-decoration: none;">support@fusionhigh.co.za</a>
+                &copy; ${currentYear} Geleza SA. All rights reserved. &bull; <a href="mailto:support@gelezasa.co.za" style="color: #6366f1; text-decoration: none;">support@gelezasa.co.za</a>
               </p>
             </td>
           </tr>
@@ -224,7 +224,7 @@ function getTransporter() {
   });
 }
 
-function sendViaHttpsRest({ to, subject, html, replyTo, fromName = 'Fusion High School' }) {
+function sendViaHttpsRest({ to, subject, html, replyTo, fromName = 'Geleza SA' }) {
   return new Promise((resolve, reject) => {
     const resendKey = process.env.RESEND_API_KEY;
     const brevoKey = process.env.BREVO_API_KEY;
@@ -348,8 +348,8 @@ const emailService = {
 
     let targetRecipient = to.trim().toLowerCase();
 
-    // If destination is an internal learner portal username (@fusion.high or @fusionhigh.co.za), automatically resolve the linked Parent's personal email
-    if (targetRecipient.endsWith('@fusion.high') || targetRecipient.endsWith('@fusionhigh.co.za')) {
+    // If destination is an internal learner portal username (@fusion.high or @gelezasa.co.za), automatically resolve the linked Parent's personal email
+    if (targetRecipient.endsWith('@fusion.high') || targetRecipient.endsWith('@gelezasa.co.za')) {
       try {
         const db = require('../../../db/db');
         const parentRes = await db.query(`
@@ -357,7 +357,7 @@ const emailService = {
           FROM users u
           LEFT JOIN children c ON c.learner_user_id::text = u.id::text
           LEFT JOIN users pu ON c.parent_id::text = pu.id::text
-          WHERE LOWER(u.email::text) = $1 AND pu.email IS NOT NULL AND pu.email NOT LIKE '%@fusion.high%' AND pu.email NOT LIKE '%@fusionhigh.co.za%'
+          WHERE LOWER(u.email::text) = $1 AND pu.email IS NOT NULL AND pu.email NOT LIKE '%@fusion.high%' AND pu.email NOT LIKE '%@gelezasa.co.za%'
           LIMIT 1
         `, [targetRecipient]);
 
@@ -401,7 +401,7 @@ const emailService = {
           subject,
           html: body,
           replyTo: replyTo || senderUser,
-          fromName: 'Fusion High School'
+          fromName: 'Geleza SA'
         });
         console.log(`[EMAIL DISPATCH SUCCESS] Delivered via ${httpResult.provider} HTTPS API to ${targetRecipient}`);
         return { success: true, provider: httpResult.provider, recipient: targetRecipient };
@@ -414,7 +414,7 @@ const emailService = {
     try {
       const transporter = getTransporter();
       const info = await transporter.sendMail({
-        from: `"Fusion High School" <${senderUser}>`,
+        from: `"Geleza SA" <${senderUser}>`,
         to: targetRecipient,
         subject: subject,
         html: body,
@@ -435,7 +435,7 @@ const emailService = {
           subject,
           html: body,
           replyTo: replyTo || senderUser,
-          fromName: 'Fusion High School'
+          fromName: 'Geleza SA'
         });
         console.log(`[EMAIL DISPATCH SUCCESS] Direct TLS 465 delivered to ${targetRecipient}: ${result.messageId}`);
         return { success: true, messageId: result.messageId, recipient: targetRecipient };
@@ -470,11 +470,11 @@ const emailService = {
   templates: {
     // 1. User Registration Success
     registrationSuccess: (name) => {
-      const title = 'Welcome to Fusion High School';
+      const title = 'Welcome to Geleza SA';
       const contentHtml = `
         <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Hello <strong>${name || 'User'}</strong>,</p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-          Your account has been successfully created in the Fusion High School platform. You can now access your personalized dashboard, view updates, and utilize school portal tools.
+          Your account has been successfully created in the Geleza SA platform. You can now access your personalized dashboard, view updates, and utilize school portal tools.
         </p>
         <div style="background: #0f172a; border-left: 4px solid #10b981; border-radius: 8px; padding: 14px 18px; margin: 20px 0;">
           <p style="margin: 0; font-size: 13px; color: #34d399; font-weight: 700;">Account Activated</p>
@@ -483,9 +483,9 @@ const emailService = {
       `;
 
       return {
-        subject: 'Welcome to Fusion High - Registration Confirmed',
+        subject: 'Welcome to Geleza SA - Registration Confirmed',
         body: createBaseEmailTemplate({
-          preheader: 'Your Fusion High School account has been activated.',
+          preheader: 'Your Geleza SA account has been activated.',
           title,
           subtitle: 'Your account registration has been confirmed.',
           contentHtml,
@@ -565,7 +565,7 @@ const emailService = {
       `;
 
       return {
-        subject: 'Fusion High School - Parent Registration & Child Credentials Confirmed',
+        subject: 'Geleza SA - Parent Registration & Child Credentials Confirmed',
         body: createBaseEmailTemplate({
           preheader: 'Your parent account and student login credentials are ready.',
           title,
@@ -607,7 +607,7 @@ const emailService = {
         </p>
       `;
       return {
-        subject: `${schoolName || 'Fusion High School'} - Parent Portal Application Received (${appNumber})`,
+        subject: `${schoolName || 'Geleza SA'} - Parent Portal Application Received (${appNumber})`,
         body: createBaseEmailTemplate({
           preheader: `Your Parent Portal application (${appNumber}) is under admin review.`,
           title,
@@ -660,7 +660,7 @@ const emailService = {
         </p>
       `;
       return {
-        subject: `${schoolName || 'Fusion High School'} - Parent Portal Access Approved`,
+        subject: `${schoolName || 'Geleza SA'} - Parent Portal Access Approved`,
         body: createBaseEmailTemplate({
           preheader: 'Your Parent Portal application is approved. Sign in now.',
           title,
@@ -692,7 +692,7 @@ const emailService = {
         </p>
       `;
       return {
-        subject: `${schoolName || 'Fusion High School'} - Parent Portal Application Notice (${appNumber})`,
+        subject: `${schoolName || 'Geleza SA'} - Parent Portal Application Notice (${appNumber})`,
         body: createBaseEmailTemplate({
           preheader: `Update regarding your Parent Portal application ${appNumber}.`,
           title,
@@ -734,7 +734,7 @@ const emailService = {
         </p>
       `;
       return {
-        subject: `Fusion High School - Child Linked Successfully: ${learner.full_name} ${learner.surname}`,
+        subject: `Geleza SA - Child Linked Successfully: ${learner.full_name} ${learner.surname}`,
         body: createBaseEmailTemplate({
           preheader: `${learner.full_name} is now linked to your Parent Portal.`,
           title,
@@ -754,7 +754,7 @@ const emailService = {
       const contentHtml = `
         <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-          Your child <strong>${childName} ${surname}</strong> has been successfully linked and enrolled in the Fusion High School management system.
+          Your child <strong>${childName} ${surname}</strong> has been successfully linked and enrolled in the Geleza SA management system.
         </p>
 
         <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #38bdf8; border-radius: 12px; padding: 20px; margin: 20px 0;">
@@ -797,13 +797,13 @@ const emailService = {
       `;
 
       return {
-        subject: `Fusion High School - Child Enrolled & Linked: ${childName} ${surname} (Learner No: ${learnerNumber})`,
+        subject: `Geleza SA - Child Enrolled & Linked: ${childName} ${surname} (Learner No: ${learnerNumber})`,
         body: createBaseEmailTemplate({
           preheader: `Login credentials and academic details for ${childName} ${surname}.`,
           title,
           subtitle: `Grade ${grade} Academic Profile Activated`,
           contentHtml,
-          ctaText: 'Access Fusion High Portal',
+          ctaText: 'Access Geleza SA Portal',
           ctaLink: `${cleanBaseUrl}/`
         })
       };
@@ -818,7 +818,7 @@ const emailService = {
 
       const contentHtml = `
         <p style="font-size: 14px; color: #cbd5e1; margin-top: 0;">
-          We received a request to reset your password for your Fusion High account. Please use the 4-digit verification code below:
+          We received a request to reset your password for your Geleza SA account. Please use the 4-digit verification code below:
         </p>
 
         <div style="background: #0f172a; border: 1px dashed #6366f1; border-radius: 12px; padding: 22px; text-align: center; margin: 20px 0;">
@@ -860,7 +860,7 @@ const emailService = {
         <div style="background: #0f172a; border-left: 4px solid #10b981; border-radius: 8px; padding: 16px 20px; margin: 10px 0 20px 0;">
           <p style="margin: 0; font-size: 14px; color: #34d399; font-weight: 700;">Security Confirmation</p>
           <p style="margin: 6px 0 0 0; font-size: 13px; color: #94a3b8; line-height: 1.5;">
-            Your Fusion High account password was changed successfully. You can now use your new password to sign in.
+            Your Geleza SA account password was changed successfully. You can now use your new password to sign in.
           </p>
         </div>
         <p style="font-size: 13px; color: #cbd5e1;">
@@ -873,7 +873,7 @@ const emailService = {
         body: createBaseEmailTemplate({
           preheader: 'Your account password has been updated.',
           title,
-          subtitle: 'Security confirmation from Fusion High',
+          subtitle: 'Security confirmation from Geleza SA',
           contentHtml,
           ctaText: 'Sign In With New Password',
           ctaLink: 'http://localhost:5173/login'
@@ -898,7 +898,7 @@ const emailService = {
       const contentHtml = `
         <p style="font-size:15px; color:#ffffff; margin-top:0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
         <p style="color:#cbd5e1; font-size:14px; line-height:1.6;">
-          This is an official automated attendance record notification regarding your child at Fusion High School:
+          This is an official automated attendance record notification regarding your child at Geleza SA:
         </p>
         <div style="background:#0f172a; border:1px solid #334155; border-left:4px solid ${statusColor}; border-radius:10px; padding:16px 20px; margin:18px 0;">
           <p style="margin:0; color:${statusColor}; font-size:16px; font-weight:800; text-transform:uppercase;">
@@ -1122,7 +1122,7 @@ const emailService = {
       `;
 
       return {
-        subject: `[Fusion High Notice] ${title}`,
+        subject: `[Geleza SA Notice] ${title}`,
         body: createBaseEmailTemplate({
           preheader: `Official school announcement: ${title}`,
           title: emailTitle,
@@ -1311,7 +1311,7 @@ const emailService = {
       return {
         to: teacherEmail,
         replyTo: parent.email,
-        subject: `[Fusion High] Parent Inquiry: ${childFullName} - ${subject}`,
+        subject: `[Geleza SA] Parent Inquiry: ${childFullName} - ${subject}`,
         body: createBaseEmailTemplate({
           preheader: `Parent message from ${parent.full_name} regarding ${childFullName}`,
           title,
@@ -1336,7 +1336,7 @@ const emailService = {
       const contentHtml = `
         <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-          Thank you for submitting an admission application for <strong>${learnerName}</strong> (Ref: <code style="color: #38bdf8; background: #0f172a; padding: 2px 6px; border-radius: 4px;">${applicationNumber}</code>) at Fusion High School.
+          Thank you for submitting an admission application for <strong>${learnerName}</strong> (Ref: <code style="color: #38bdf8; background: #0f172a; padding: 2px 6px; border-radius: 4px;">${applicationNumber}</code>) at Geleza SA.
         </p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
           During our automated document and detail verification process, our system identified the following item(s) that require your attention:
@@ -1355,7 +1355,7 @@ const emailService = {
       `;
 
       return {
-        subject: `[Fusion High] Action Required: Application ${applicationNumber} - Document Correction`,
+        subject: `[Geleza SA] Action Required: Application ${applicationNumber} - Document Correction`,
         body: createBaseEmailTemplate({
           preheader: `Update required for ${learnerName}'s application (${applicationNumber})`,
           title,
@@ -1373,7 +1373,7 @@ const emailService = {
       const contentHtml = `
         <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-          We are thrilled to inform you that the admission application for <strong>${learnerName}</strong> has been <span style="color: #10b981; font-weight: 700;">APPROVED</span> for <strong>Grade ${grade}${stream && stream !== 'General' ? ` (${stream} Stream)` : ''}</strong> at Fusion High School!
+          We are thrilled to inform you that the admission application for <strong>${learnerName}</strong> has been <span style="color: #10b981; font-weight: 700;">APPROVED</span> for <strong>Grade ${grade}${stream && stream !== 'General' ? ` (${stream} Stream)` : ''}</strong> at Geleza SA!
         </p>
 
         <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #10b981; border-radius: 10px; padding: 20px; margin: 24px 0;">
@@ -1407,7 +1407,7 @@ const emailService = {
       `;
 
       return {
-        subject: `[Fusion High] Congratulations! Application Approved: ${learnerName} (Grade ${grade})`,
+        subject: `[Geleza SA] Congratulations! Application Approved: ${learnerName} (Grade ${grade})`,
         body: createBaseEmailTemplate({
           preheader: `Admission approved for ${learnerName} - Grade ${grade}`,
           title,
@@ -1425,7 +1425,7 @@ const emailService = {
       const contentHtml = `
         <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-          Thank you for applying to Fusion High School for <strong>${learnerName}</strong> for <strong>Grade ${grade}</strong> (Ref: <code style="color: #38bdf8; background: #0f172a; padding: 2px 6px; border-radius: 4px;">${applicationNumber}</code>).
+          Thank you for applying to Geleza SA for <strong>${learnerName}</strong> for <strong>Grade ${grade}</strong> (Ref: <code style="color: #38bdf8; background: #0f172a; padding: 2px 6px; border-radius: 4px;">${applicationNumber}</code>).
         </p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
           Our Grade ${grade} classes are currently operating at maximum capacity (< 30 learners per class limit). Your application has passed initial qualification and has been placed on our priority <strong>Waiting List</strong>.
@@ -1439,7 +1439,7 @@ const emailService = {
       `;
 
       return {
-        subject: `[Fusion High] Waiting List Notice: Application ${applicationNumber} - Grade ${grade}`,
+        subject: `[Geleza SA] Waiting List Notice: Application ${applicationNumber} - Grade ${grade}`,
         body: createBaseEmailTemplate({
           preheader: `Application ${applicationNumber} placed on Grade ${grade} Waiting List`,
           title,
@@ -1451,7 +1451,7 @@ const emailService = {
 
     // 13. Employee / Teacher Welcome with Login Credentials & Assigned Subjects
     employeeWelcome: ({ name, surname, email, temporaryPassword, roleTitle = 'Educator / Teacher', department = 'Academic Department', subjects = [], grades = [], classes = [], baseUrl = 'http://localhost:5173' }) => {
-      const title = 'Welcome to Fusion High School — Staff Account Credentials';
+      const title = 'Welcome to Geleza SA — Staff Account Credentials';
       const cleanBaseUrl = (baseUrl || 'http://localhost:5173').replace(/\/+$/, '');
       const loginUrl = `${cleanBaseUrl}/login`;
 
@@ -1470,7 +1470,7 @@ const emailService = {
       const contentHtml = `
         <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${name} ${surname}</strong>,</p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-          Welcome to Fusion High School. Your staff account has been created by the School Administration / Principal (Mr Kunene).
+          Welcome to Geleza SA. Your staff account has been created by the School Administration / Principal (Mr Kunene).
         </p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
           You can now access the staff portal to manage your assigned subjects, mark registers, classroom attendance, and parent-learner communications.
@@ -1535,9 +1535,9 @@ const emailService = {
       `;
 
       return {
-        subject: `Welcome to Fusion High School — Staff Account Credentials for ${name} ${surname}`,
+        subject: `Welcome to Geleza SA — Staff Account Credentials for ${name} ${surname}`,
         body: createBaseEmailTemplate({
-          preheader: `Welcome to Fusion High School. Staff account details and temporary password for ${name} ${surname}.`,
+          preheader: `Welcome to Geleza SA. Staff account details and temporary password for ${name} ${surname}.`,
           title,
           subtitle: `Staff Profile & Workload Assignment Notification`,
           contentHtml,
@@ -1548,7 +1548,7 @@ const emailService = {
     },
 
     parentWelcome: ({ name, surname, email, temporaryPassword, baseUrl }) => {
-      const title = `Welcome to Fusion High School Parent Portal`;
+      const title = `Welcome to Geleza SA Parent Portal`;
       const cleanBaseUrl = (baseUrl || process.env.APP_URL || process.env.BASE_URL || 'https://fusion-high-app.onrender.com').replace(/\/+$/, '');
       const loginUrl = `${cleanBaseUrl}/login`;
 
@@ -1557,7 +1557,7 @@ const emailService = {
           Dear <strong style="color: #ffffff;">${name} ${surname}</strong>,
         </p>
         <p style="color: #cbd5e1; font-size: 13px; line-height: 1.6; margin-bottom: 20px;">
-          An official parent account has been created for you on the <strong>Fusion High School Parent Portal</strong>. You can now securely monitor your children's academic reports, track live class attendance, view timetables, communicate with teachers, and pay school fees.
+          An official parent account has been created for you on the <strong>Geleza SA Parent Portal</strong>. You can now securely monitor your children's academic reports, track live class attendance, view timetables, communicate with teachers, and pay school fees.
         </p>
 
         <!-- Credentials Card -->
@@ -1602,9 +1602,9 @@ const emailService = {
       `;
 
       return {
-        subject: `Welcome to Fusion High School — Parent Portal Account Details`,
+        subject: `Welcome to Geleza SA — Parent Portal Account Details`,
         body: createBaseEmailTemplate({
-          preheader: `Your Fusion High Parent Portal account is ready. Temporary login credentials inside.`,
+          preheader: `Your Geleza SA Parent Portal account is ready. Temporary login credentials inside.`,
           title,
           subtitle: `Official Parent & Guardian Account Activation`,
           contentHtml,
@@ -1663,7 +1663,7 @@ const emailService = {
       `;
 
       return {
-        subject: `[Fusion High] Timetable Draft for Educator Review: Grade ${grade} (${stream})`,
+        subject: `[Geleza SA] Timetable Draft for Educator Review: Grade ${grade} (${stream})`,
         body: createBaseEmailTemplate({
           preheader: `Grade ${grade} timetable draft is ready for your review in the Educator Portal.`,
           title,
@@ -1717,7 +1717,7 @@ const emailService = {
       `;
 
       return {
-        subject: `[Fusion High] Official Timetable Released: Grade ${grade} (${stream})`,
+        subject: `[Geleza SA] Official Timetable Released: Grade ${grade} (${stream})`,
         body: createBaseEmailTemplate({
           preheader: `Your official Grade ${grade} weekly class timetable is now live in your portal.`,
           title,
@@ -1743,7 +1743,7 @@ const emailService = {
         <p style="color: #94a3b8; font-size: 12px;">Please arrive at the exam venue 20 minutes prior to paper commencement to oversee candidate check-in.</p>
       `;
       return {
-        subject: `[Fusion High] Exam Invigilation Duty: ${sessionTitle} (${date})`,
+        subject: `[Geleza SA] Exam Invigilation Duty: ${sessionTitle} (${date})`,
         body: createBaseEmailTemplate({
           preheader: `Invigilation assignment for ${sessionTitle} on ${date}.`,
           title: 'Exam Invigilation Duty Assignment',
@@ -1767,7 +1767,7 @@ const emailService = {
         <p style="color: #cbd5e1; font-size: 13px;">Curated CAPS past-paper revision packs and AI Tutor exercises are now active in the learner dashboard.</p>
       `;
       return {
-        subject: `[Fusion High] Matric Academic Clinic Enrollment: ${learnerName}`,
+        subject: `[Geleza SA] Matric Academic Clinic Enrollment: ${learnerName}`,
         body: createBaseEmailTemplate({
           preheader: `Remedial clinic enrollment and study pack for ${learnerName}.`,
           title: 'Matric At-Risk Intervention & Clinic Roster',
@@ -1792,7 +1792,7 @@ const emailService = {
         <p style="color: #cbd5e1; font-size: 13px;">Please ensure the textbook is returned to the school library within 3 school days to avoid replacement cost billing.</p>
       `;
       return {
-        subject: `[Fusion High] Overdue Textbook Notice: ${textbookTitle} (${learnerName})`,
+        subject: `[Geleza SA] Overdue Textbook Notice: ${textbookTitle} (${learnerName})`,
         body: createBaseEmailTemplate({
           preheader: `Overdue textbook notice for ${learnerName}.`,
           title: 'Textbook Asset Return Notice',
@@ -1817,7 +1817,7 @@ const emailService = {
         </div>
       `;
       return {
-        subject: `[Fusion High] Confirmed Consultation: ${learnerName} with ${otherPartyName}`,
+        subject: `[Geleza SA] Confirmed Consultation: ${learnerName} with ${otherPartyName}`,
         body: createBaseEmailTemplate({
           preheader: `Parent-Teacher consultation scheduled for ${date}.`,
           title: 'Parent-Educator Consultation Confirmed',
@@ -1853,11 +1853,11 @@ const emailService = {
         </div>
       `;
       return {
-        subject: `[Fusion High] Weekly Academic Digest: ${learnerName}`,
+        subject: `[Geleza SA] Weekly Academic Digest: ${learnerName}`,
         body: createBaseEmailTemplate({
           preheader: `Weekly academic and attendance overview for ${learnerName}.`,
           title: 'Weekly Parent Academic Digest',
-          subtitle: 'Fusion High Executive Summary',
+          subtitle: 'Geleza SA Executive Summary',
           contentHtml,
           ctaText: 'Sign In to Parent Portal',
           ctaLink: loginUrl
@@ -1872,7 +1872,7 @@ const emailService = {
       const audienceBadge = targetAudience ? targetAudience.toUpperCase() : 'GENERAL';
 
       const contentHtml = `
-        <p style="color: #cbd5e1; font-size: 15px; margin-top: 0;">Dear <strong>${recipientName || 'Member of Fusion High Community'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 15px; margin-top: 0;">Dear <strong>${recipientName || 'Member of Geleza SA Community'}</strong>,</p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
           An official school communique has been issued by <strong>${authorName || 'School Administration'}</strong>${authorRole ? ` (${authorRole})` : ''}:
         </p>
@@ -1894,7 +1894,7 @@ const emailService = {
       `;
 
       return {
-        subject: `[Fusion High Official Communique] ${title}`,
+        subject: `[Geleza SA Official Communique] ${title}`,
         body: createBaseEmailTemplate({
           preheader: `${title} - Official communique from ${authorName || 'School Administration'}.`,
           title: 'Official School Announcement',
@@ -1912,7 +1912,7 @@ const emailService = {
       const contentHtml = `
         <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-          We are pleased to inform you that the admission application for <strong>${learnerName}</strong> has been <strong style="color: #34d399;">OFFICIALLY APPROVED</strong> for admission to Fusion High School.
+          We are pleased to inform you that the admission application for <strong>${learnerName}</strong> has been <strong style="color: #34d399;">OFFICIALLY APPROVED</strong> for admission to Geleza SA.
         </p>
 
         <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #10b981; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
@@ -1948,9 +1948,9 @@ const emailService = {
       `;
 
       return {
-        subject: `[Fusion High] Admission Approved: Welcome ${learnerName} to Grade ${grade || '8'}!`,
+        subject: `[Geleza SA] Admission Approved: Welcome ${learnerName} to Grade ${grade || '8'}!`,
         body: createBaseEmailTemplate({
-          preheader: `Congratulations! ${learnerName} has been accepted to Fusion High School.`,
+          preheader: `Congratulations! ${learnerName} has been accepted to Geleza SA.`,
           title: 'Admission Application Approved',
           subtitle: 'Official Letter of Acceptance',
           contentHtml,
@@ -1966,7 +1966,7 @@ const emailService = {
       const contentHtml = `
         <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-          Thank you for submitting an admission application for <strong>${learnerName}</strong> for <strong>Grade ${grade || '8'}</strong> at Fusion High School.
+          Thank you for submitting an admission application for <strong>${learnerName}</strong> for <strong>Grade ${grade || '8'}</strong> at Geleza SA.
         </p>
 
         <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #f59e0b; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
@@ -1984,7 +1984,7 @@ const emailService = {
       `;
 
       return {
-        subject: `[Fusion High] Application Update: ${learnerName} Placed on Priority Waitlist (Grade ${grade})`,
+        subject: `[Geleza SA] Application Update: ${learnerName} Placed on Priority Waitlist (Grade ${grade})`,
         body: createBaseEmailTemplate({
           preheader: `Application update for ${learnerName} (Ref: ${applicationNumber}).`,
           title: 'Admission Status Update',
@@ -2042,7 +2042,7 @@ const emailService = {
       const contentHtml = `
         <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-          Thank you for considering Fusion High School for <strong>${learnerName}</strong> (Ref: <strong>${applicationNumber || 'N/A'}</strong>).
+          Thank you for considering Geleza SA for <strong>${learnerName}</strong> (Ref: <strong>${applicationNumber || 'N/A'}</strong>).
         </p>
 
         <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #64748b; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
@@ -2056,12 +2056,12 @@ const emailService = {
         </div>
 
         <p style="color: #94a3b8; font-size: 13px; line-height: 1.6;">
-          We appreciate your interest in Fusion High School and wish ${learnerName} every success in their academic journey.
+          We appreciate your interest in Geleza SA and wish ${learnerName} every success in their academic journey.
         </p>
       `;
 
       return {
-        subject: `[Fusion High] Admission Application Outcome: ${learnerName} (Ref: ${applicationNumber || 'N/A'})`,
+        subject: `[Geleza SA] Admission Application Outcome: ${learnerName} (Ref: ${applicationNumber || 'N/A'})`,
         body: createBaseEmailTemplate({
           preheader: `Admission application outcome for ${learnerName}.`,
           title: 'Admission Outcome Notification',
@@ -2085,7 +2085,7 @@ const emailService = {
       const contentHtml = `
         <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${fullName}</strong>,</p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-          You have been registered as an <strong>${roleTitle || role || 'Educator'}</strong> on the <strong>Fusion High School Management System</strong>. Below are your teaching assignment details and temporary login credentials:
+          You have been registered as an <strong>${roleTitle || role || 'Educator'}</strong> on the <strong>Geleza SA Management System</strong>. Below are your teaching assignment details and temporary login credentials:
         </p>
 
         <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #6366f1; border-radius: 12px; padding: 20px 24px; margin: 20px 0;">
@@ -2116,10 +2116,10 @@ const emailService = {
       `;
 
       return {
-        subject: `Welcome to Fusion High School — Educator Profile & Workload Assignment`,
+        subject: `Welcome to Geleza SA — Educator Profile & Workload Assignment`,
         body: createBaseEmailTemplate({
-          preheader: `Your educator portal access credentials and teaching subjects for Fusion High School.`,
-          title: 'Welcome to Fusion High Educator Portal',
+          preheader: `Your educator portal access credentials and teaching subjects for Geleza SA.`,
+          title: 'Welcome to Geleza SA Educator Portal',
           subtitle: 'Staff Onboarding & Workload Details',
           contentHtml,
           ctaText: 'Sign In to Educator Portal',
@@ -2135,7 +2135,7 @@ const emailService = {
       const contentHtml = `
         <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${fullName}</strong>,</p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-          You have been registered as a <strong>Parent / Guardian</strong> on the <strong>Fusion High School Portal</strong>. You now have full access to monitor academic progress, attendance registers, homework assignments, and term reports.
+          You have been registered as a <strong>Parent / Guardian</strong> on the <strong>Geleza SA Portal</strong>. You now have full access to monitor academic progress, attendance registers, homework assignments, and term reports.
         </p>
 
         <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #38bdf8; border-radius: 12px; padding: 20px 24px; margin: 20px 0;">
@@ -2157,9 +2157,9 @@ const emailService = {
       `;
 
       return {
-        subject: `Welcome to Fusion High School — Parent Portal Credentials`,
+        subject: `Welcome to Geleza SA — Parent Portal Credentials`,
         body: createBaseEmailTemplate({
-          preheader: `Parent Portal access credentials for Fusion High School.`,
+          preheader: `Parent Portal access credentials for Geleza SA.`,
           title: 'Welcome to Parent Portal',
           subtitle: 'Parent & Guardian Portal Access',
           contentHtml,
@@ -2237,7 +2237,7 @@ const emailService = {
     },
 
     // 21. Educator Subject Assignment / Workload Update
-    teacherSubjectAssignment: ({ name, surname, teacherName, email, addedSubjects = [], newSubjects = [], allSubjects = [], grades = [], gradesTaught = [], classes = [], classesTaught = [], baseUrl = 'http://localhost:5173', schoolName = 'Fusion High School' }) => {
+    teacherSubjectAssignment: ({ name, surname, teacherName, email, addedSubjects = [], newSubjects = [], allSubjects = [], grades = [], gradesTaught = [], classes = [], classesTaught = [], baseUrl = 'http://localhost:5173', schoolName = 'Geleza SA' }) => {
       const loginUrl = `${(baseUrl || 'http://localhost:5173').replace(/\/+$/, '')}/login`;
       const resolvedName = teacherName || `${name || ''} ${surname || ''}`.trim() || 'Educator';
       
@@ -2352,7 +2352,7 @@ const emailService = {
   sendParentRegistrationSuccessWithLearners: async (params) => {
     const parentName = params.parentName || 'Parent';
     const learners = params.learners || [];
-    const baseUrl = params.baseUrl || 'https://fusionhigh.co.za';
+    const baseUrl = params.baseUrl || 'https://gelezasa.co.za';
     const parentEmail = params.parentEmail || params.email;
     const template = emailService.templates.parentRegistrationSuccessWithLearners(parentName, learners, baseUrl);
     return await emailService.send(parentEmail, template.subject, template.body);
@@ -2391,6 +2391,137 @@ const emailService = {
   sendSundayParentDigest: async (params) => {
     const template = emailService.templates.sundayParentDigest(params);
     return await emailService.send(params.email, template.subject, template.body);
+  },
+
+  sendSchoolApplicationReceivedNotice: async ({ principalEmail, principalName, schoolName, emisNumber, applicationNumber }) => {
+    const subject = `Official School Application Received [${applicationNumber}] - ${schoolName}`;
+    const contentHtml = `
+      <p style="margin: 0 0 16px 0; font-size: 15px;">Dear Principal <strong>${principalName}</strong>,</p>
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #cbd5e1; line-height: 1.6;">
+        Thank you for submitting your official school onboarding and accreditation application to <strong>Geleza SA</strong> on behalf of <strong>${schoolName}</strong> (EMIS: <code style="color: #38bdf8; background: rgba(56, 189, 248, 0.1); padding: 2px 6px; border-radius: 4px;">${emisNumber}</code>).
+      </p>
+      <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #334155; border-radius: 10px; padding: 18px; margin: 20px 0;">
+        <h4 style="margin: 0 0 10px 0; color: #38bdf8; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Application Summary</h4>
+        <ul style="margin: 0; padding-left: 20px; color: #94a3b8; font-size: 13px; line-height: 1.7;">
+          <li><strong style="color: #f1f5f9;">Tracking Code:</strong> <span style="font-family: monospace; color: #38bdf8;">${applicationNumber}</span></li>
+          <li><strong style="color: #f1f5f9;">Institution:</strong> ${schoolName}</li>
+          <li><strong style="color: #f1f5f9;">DBE EMIS No:</strong> ${emisNumber}</li>
+          <li><strong style="color: #f1f5f9;">Status:</strong> Pending Geleza SA Executive Review</li>
+          <li><strong style="color: #f1f5f9;">Fees Verified:</strong> Application & Registration Fees Logged</li>
+        </ul>
+      </div>
+      <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;">
+        Our Executive Accreditation Team is verifying your EMIS credentials against provincial DBE registries. You will receive an immediate decision notification and temporary master access credentials once review is complete.
+      </p>
+    `;
+    const html = createBaseEmailTemplate({
+      preheader: `Application ${applicationNumber} logged for ${schoolName}`,
+      title: 'School Application Received',
+      subtitle: `Official onboarding request for ${schoolName}`,
+      contentHtml,
+      ctaText: 'Track Application Status',
+      ctaLink: 'https://gelezasa.co.za/login'
+    });
+    return await emailService.send(principalEmail, subject, html);
+  },
+
+  sendSchoolApplicationApprovedNotice: async ({ principalEmail, principalName, schoolName, emisNumber, temporaryPassword, loginUrl }) => {
+    const subject = `Accreditation Approved: Welcome to Geleza SA - ${schoolName}`;
+    const contentHtml = `
+      <p style="margin: 0 0 16px 0; font-size: 15px;">Dear Principal <strong>${principalName}</strong>,</p>
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #cbd5e1; line-height: 1.6;">
+        We are thrilled to inform you that your school accreditation application for <strong>${schoolName}</strong> (EMIS: <code style="color: #38bdf8; background: rgba(56, 189, 248, 0.1); padding: 2px 6px; border-radius: 4px;">${emisNumber}</code>) has been <strong style="color: #10b981;">OFFICIALLY APPROVED</strong> by the Geleza SA Executive Board.
+      </p>
+      <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 20px; margin: 20px 0;">
+        <h4 style="margin: 0 0 12px 0; color: #34d399; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Master Principal Credentials</h4>
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="font-size: 13px; color: #cbd5e1; line-height: 1.8;">
+          <tr>
+            <td style="padding-right: 16px; color: #94a3b8; font-weight: 600;">School Portal:</td>
+            <td><strong style="color: #ffffff;">${schoolName}</strong></td>
+          </tr>
+          <tr>
+            <td style="padding-right: 16px; color: #94a3b8; font-weight: 600;">Login Email:</td>
+            <td><code style="color: #38bdf8; font-size: 13px;">${principalEmail}</code></td>
+          </tr>
+          <tr>
+            <td style="padding-right: 16px; color: #94a3b8; font-weight: 600;">Temporary Password:</td>
+            <td><code style="color: #fbbf24; font-size: 13px; font-weight: 800; background: rgba(251, 191, 36, 0.15); padding: 2px 6px; border-radius: 4px;">${temporaryPassword || 'password123'}</code></td>
+          </tr>
+        </table>
+      </div>
+      <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;">
+        <strong>Next Steps:</strong> Please sign in to activate your master school dashboard, configure your dynamic classes and streams, and invite your teachers and coaches via the staff invitation engine.
+      </p>
+    `;
+    const html = createBaseEmailTemplate({
+      preheader: `Welcome to Geleza SA! Master portal active for ${schoolName}`,
+      title: 'School Accreditation Approved',
+      subtitle: `Master School Admin portal is ready for ${schoolName}`,
+      contentHtml,
+      ctaText: 'Access School Portal',
+      ctaLink: loginUrl || 'https://gelezasa.co.za/login'
+    });
+    return await emailService.send(principalEmail, subject, html);
+  },
+
+  sendSchoolApplicationDeclinedNotice: async ({ principalEmail, principalName, schoolName, emisNumber, reason, appealUrl }) => {
+    const subject = `School Application Status: Action Required - ${schoolName}`;
+    const contentHtml = `
+      <p style="margin: 0 0 16px 0; font-size: 15px;">Dear Principal <strong>${principalName}</strong>,</p>
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #cbd5e1; line-height: 1.6;">
+        Thank you for your interest in joining Geleza SA. Following executive verification, your onboarding application for <strong>${schoolName}</strong> (EMIS: ${emisNumber}) requires additional information and could not be provisioned at this time.
+      </p>
+      <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; padding: 18px; margin: 20px 0;">
+        <h4 style="margin: 0 0 8px 0; color: #f87171; font-size: 13px; text-transform: uppercase;">Executive Review Feedback</h4>
+        <p style="margin: 0; color: #fca5a5; font-size: 13px; line-height: 1.6;">
+          ${reason || 'The provided EMIS number or Principal SACE registration details could not be matched with current Department of Basic Education records.'}
+        </p>
+      </div>
+      <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;">
+        You may submit updated accreditation documentation or contact the Geleza SA Executive desk directly to appeal this decision.
+      </p>
+    `;
+    const html = createBaseEmailTemplate({
+      preheader: `Accreditation review update for ${schoolName}`,
+      title: 'Application Action Required',
+      subtitle: `Feedback regarding your school onboarding application`,
+      contentHtml,
+      ctaText: 'Update Application',
+      ctaLink: appealUrl || 'https://gelezasa.co.za/register'
+    });
+    return await emailService.send(principalEmail, subject, html);
+  },
+
+  sendStaffInvitationNotice: async ({ colleagueEmail, colleagueName, principalName, schoolName, roleType, subjects, sports, inviteUrl }) => {
+    const subject = `Faculty Invitation: Join ${schoolName} on Geleza SA`;
+    const roleLabel = roleType === 'sports_coach' ? 'Sports Coach' : (roleType === 'hod' ? 'Head of Department' : 'Educator');
+    const contentHtml = `
+      <p style="margin: 0 0 16px 0; font-size: 15px;">Dear <strong>${colleagueName || 'Colleague'}</strong>,</p>
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #cbd5e1; line-height: 1.6;">
+        Principal <strong>${principalName}</strong> has invited you to join the official academic and extracurricular faculty at <strong>${schoolName}</strong> on <strong>Geleza SA</strong>.
+      </p>
+      <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #334155; border-radius: 10px; padding: 18px; margin: 20px 0;">
+        <h4 style="margin: 0 0 10px 0; color: #38bdf8; font-size: 13px; text-transform: uppercase;">Faculty Appointment Details</h4>
+        <ul style="margin: 0; padding-left: 20px; color: #94a3b8; font-size: 13px; line-height: 1.7;">
+          <li><strong style="color: #f1f5f9;">Designation:</strong> ${roleLabel}</li>
+          <li><strong style="color: #f1f5f9;">Institution:</strong> ${schoolName}</li>
+          ${subjects && subjects.length ? `<li><strong style="color: #f1f5f9;">Teaching Subjects:</strong> ${subjects.join(', ')}</li>` : ''}
+          ${sports && sports.length ? `<li><strong style="color: #f1f5f9;">Sports & Coaching:</strong> ${sports.join(', ')}</li>` : ''}
+        </ul>
+      </div>
+      <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;">
+        Click below to complete your registration with your SACE credentials, set your secure password, and access your timetable and class register.
+      </p>
+    `;
+    const html = createBaseEmailTemplate({
+      preheader: `You are invited to join the faculty of ${schoolName}`,
+      title: 'Faculty Invitation',
+      subtitle: `${principalName} has invited you to join ${schoolName}`,
+      contentHtml,
+      ctaText: 'Accept Invitation & Register',
+      ctaLink: inviteUrl || 'https://gelezasa.co.za/register'
+    });
+    return await emailService.send(colleagueEmail, subject, html);
   }
 };
 

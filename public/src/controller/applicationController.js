@@ -10,6 +10,7 @@ const { validateSAID } = require('./saIDvalidations');
 const applicationService = require('../services/applicationService');
 const curriculumService = require('../services/curriculumService');
 const { generateLearnerPasswordFromID } = require('./authController');
+const { isControlLocked } = require('./systemController');
 
 // Ensure upload directory exists
 const appUploadDir = path.join(process.cwd(), 'uploads', 'applications');
@@ -172,6 +173,16 @@ const getRequestBaseUrl = (req) => {
  */
 exports.submitApplication = async (req, res) => {
   try {
+    // 0. Geleza SA Executive & Admin Portal Lock Verification
+    const lockState = await isControlLocked('parent_application');
+    if (lockState && lockState.is_locked) {
+      return res.status(403).json({
+        success: false,
+        error: lockState.locked_reason || 'Admissions application intake is currently closed by Geleza SA Administrators.',
+        is_locked: true
+      });
+    }
+
     const baseUrl = getRequestBaseUrl(req);
     const body = req.body;
 

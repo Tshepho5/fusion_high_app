@@ -1,1 +1,0 @@
-import{j as e}from"./index-BGOgT7oW.js";const a=({className:s="w-10 h-10",size:o,alt:n="Geleza SA Logo"})=>{const t=o?{width:o,height:o}:void 0;return e.jsx("img",{src:"/assets/geleza-logo.png",alt:n,className:`inline-block shrink-0 select-none object-contain rounded-2xl shadow-xs transition-transform duration-300 hover:scale-105 ${s}`,style:t})};export{a as F};

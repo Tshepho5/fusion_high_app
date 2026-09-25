@@ -131,6 +131,20 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
       icon: Megaphone,
       badge: 'Broadcasts',
     },
+    {
+      id: 'classes-streams',
+      title: 'Dynamic Classes & Homerooms',
+      category: 'governance',
+      icon: Users,
+      badge: 'Class Teachers',
+    },
+    {
+      id: 'staff-invites',
+      title: 'Faculty & Coach Invites',
+      category: 'governance',
+      icon: Briefcase,
+      badge: 'Email Dispatch',
+    },
 
     // 2. Curriculum & Academics
     {

@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const emailService = require('../services/emailService');
 const { validateSAID } = require('./saIDvalidations');
 const curriculumService = require('../services/curriculumService');
+const { isControlLocked } = require('./systemController');
 
 const validatePassword = (password) => {
     if (!password) return "Password is required.";
@@ -285,6 +286,15 @@ exports.getSchoolAcZaDomain = getSchoolAcZaDomain;
  * Registers parent user and links their child / children seamlessly.
  */
 exports.registerUser = async (req, res) => {
+    // 0. Geleza SA Executive & Admin Portal Lock Verification
+    const lockState = await isControlLocked('user_registration');
+    if (lockState && lockState.is_locked) {
+        return res.status(403).json({
+            error: lockState.locked_reason || 'User registration is currently closed by Geleza SA Administrators.',
+            is_locked: true
+        });
+    }
+
     let { 
         email, password, full_name, surname, role, id_number, dob, gender, phone, physical_address, country, race, parent_type, 
         learner_number, children_to_link, school_id 

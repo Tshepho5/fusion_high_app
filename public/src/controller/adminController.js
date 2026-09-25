@@ -3318,4 +3318,198 @@ exports.getSubjectLearnersWithFlags = async (req, res) => {
     }
 };
 
+/**
+ * Returns all dynamic classes for the current school with homeroom teacher and learner count.
+ */
+exports.getClasses = async (req, res) => {
+  try {
+    const schoolId = getTargetSchoolId(req);
+    const query = `
+      SELECT 
+        c.id, c.name, c.grade, c.stream, c.room_number, c.school_id,
+        c.homeroom_teacher_id,
+        u.full_name AS teacher_full_name,
+        u.surname AS teacher_surname,
+        u.email AS teacher_email,
+        COUNT(ch.id)::int AS learner_count
+      FROM classes c
+      LEFT JOIN users u ON u.id = c.homeroom_teacher_id
+      LEFT JOIN children ch ON ch.class_id = c.id
+      WHERE c.school_id = $1 OR c.school_id IS NULL
+      GROUP BY c.id, c.name, c.grade, c.stream, c.room_number, c.school_id, c.homeroom_teacher_id, u.full_name, u.surname, u.email
+      ORDER BY c.grade ASC, c.name ASC;
+    `;
+    const result = await db.query(query, [schoolId]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching classes:', err);
+    res.status(500).json({ error: 'Failed to fetch school classes.' });
+  }
+};
+
+/**
+ * Creates a new dynamic class for the school.
+ */
+exports.createClass = async (req, res) => {
+  try {
+    const schoolId = getTargetSchoolId(req);
+    const { name, grade, stream = 'General', homeroom_teacher_id, room_number } = req.body;
+    if (!name || !grade) {
+      return res.status(400).json({ error: 'Class name (e.g. 10A) and grade are required.' });
+    }
+    const cleanName = name.trim().toUpperCase();
+    const existing = await db.query('SELECT id FROM classes WHERE name = $1 AND (school_id = $2 OR school_id IS NULL)', [cleanName, schoolId]);
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: `Class ${cleanName} already exists in this school.` });
+    }
+    const result = await db.query(`
+      INSERT INTO classes (name, grade, stream, homeroom_teacher_id, school_id, room_number)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *;
+    `, [cleanName, parseInt(grade, 10), stream, homeroom_teacher_id ? parseInt(homeroom_teacher_id, 10) : null, schoolId, room_number || null]);
+    res.status(201).json({ success: true, class: result.rows[0], message: `Class ${cleanName} created successfully.` });
+  } catch (err) {
+    console.error('Error creating class:', err);
+    res.status(500).json({ error: 'Failed to create dynamic class.' });
+  }
+};
+
+/**
+ * Updates a dynamic class and homeroom teacher assignment.
+ */
+exports.updateClass = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, grade, stream, homeroom_teacher_id, room_number } = req.body;
+    const result = await db.query(`
+      UPDATE classes
+      SET name = COALESCE($1, name),
+          grade = COALESCE($2, grade),
+          stream = COALESCE($3, stream),
+          homeroom_teacher_id = $4,
+          room_number = COALESCE($5, room_number)
+      WHERE id = $6
+      RETURNING *;
+    `, [name ? name.trim().toUpperCase() : null, grade ? parseInt(grade, 10) : null, stream, homeroom_teacher_id !== undefined ? (homeroom_teacher_id ? parseInt(homeroom_teacher_id, 10) : null) : null, room_number, id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Class not found.' });
+    }
+    res.json({ success: true, class: result.rows[0], message: 'Class updated successfully.' });
+  } catch (err) {
+    console.error('Error updating class:', err);
+    res.status(500).json({ error: 'Failed to update class.' });
+  }
+};
+
+/**
+ * Removes a class if no learners are enrolled in it.
+ */
+exports.deleteClass = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const learnersInClass = await db.query('SELECT COUNT(*)::int as count FROM children WHERE class_id = $1', [id]);
+    if (learnersInClass.rows[0]?.count > 0) {
+      return res.status(400).json({ error: `Cannot remove class. ${learnersInClass.rows[0].count} learners are currently enrolled in this class.` });
+    }
+    await db.query('DELETE FROM classes WHERE id = $1', [id]);
+    res.json({ success: true, message: 'Class removed successfully.' });
+  } catch (err) {
+    console.error('Error deleting class:', err);
+    res.status(500).json({ error: 'Failed to remove class.' });
+  }
+};
+
+/**
+ * Creates a staff invitation for teachers and sports coaches.
+ */
+exports.createStaffInvite = async (req, res) => {
+  try {
+    const schoolId = getTargetSchoolId(req);
+    const {
+      email, full_name, surname, role_type = 'teacher',
+      sace_number, subjects_offered = [], sports_coached = [],
+      assigned_grades = [], assigned_classes = []
+    } = req.body;
+
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'A valid educator email address is required.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const token = require('crypto').randomBytes(24).toString('hex');
+
+    const result = await db.query(`
+      INSERT INTO staff_invites (
+        school_id, invited_by, email, full_name, surname, role_type,
+        sace_number, subjects_offered, sports_coached, assigned_grades, assigned_classes,
+        status, invite_token
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', $12)
+      RETURNING *;
+    `, [
+      schoolId, req.user?.id || null, cleanEmail,
+      full_name ? full_name.trim() : null, surname ? surname.trim() : null,
+      role_type, sace_number ? sace_number.trim() : null,
+      subjects_offered, sports_coached, assigned_grades, assigned_classes, token
+    ]);
+
+    const invite = result.rows[0];
+
+    const schoolRes = await db.query('SELECT name FROM schools WHERE id = $1', [schoolId]);
+    const schoolName = schoolRes.rows[0]?.name || 'Geleza SA Partner School';
+    const principalName = `${req.user?.full_name || 'The School Principal'}`;
+
+    emailService.sendStaffInvitationNotice({
+      colleagueEmail: cleanEmail,
+      colleagueName: full_name ? `${full_name} ${surname || ''}`.trim() : 'Colleague',
+      principalName,
+      schoolName,
+      roleType: role_type,
+      subjects: subjects_offered,
+      sports: sports_coached,
+      inviteUrl: `https://gelezasa.co.za/register?invite=${token}&email=${encodeURIComponent(cleanEmail)}&role=${role_type}`
+    }).catch(e => console.warn('Could not send staff invite email:', e.message));
+
+    res.status(201).json({
+      success: true,
+      invite,
+      message: `Invitation successfully dispatched to ${cleanEmail}.`
+    });
+  } catch (err) {
+    console.error('Error creating staff invite:', err);
+    res.status(500).json({ error: 'Failed to create colleague invite.' });
+  }
+};
+
+/**
+ * Returns all staff invitations for the school.
+ */
+exports.getStaffInvites = async (req, res) => {
+  try {
+    const schoolId = getTargetSchoolId(req);
+    const result = await db.query(`
+      SELECT * FROM staff_invites WHERE school_id = $1 ORDER BY created_at DESC;
+    `, [schoolId]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching staff invites:', err);
+    res.status(500).json({ error: 'Failed to retrieve staff invites.' });
+  }
+};
+
+/**
+ * Cancels a staff invitation.
+ */
+exports.deleteStaffInvite = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM staff_invites WHERE id = $1', [id]);
+    res.json({ success: true, message: 'Invitation cancelled.' });
+  } catch (err) {
+    console.error('Error cancelling staff invite:', err);
+    res.status(500).json({ error: 'Failed to cancel invitation.' });
+  }
+};
+
+
 

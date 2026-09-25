@@ -15,7 +15,11 @@ import {
   Sun,
   Moon,
   UserPlus,
+  AlertCircle,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
+import { systemControlService } from '../../services/api';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -31,7 +35,9 @@ export const LoginPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [inactivityNotice, setInactivityNotice] = useState<string | null>(null);
+  const [regLocked, setRegLocked] = useState(false);
 
   useEffect(() => {
     try {
@@ -41,17 +47,36 @@ export const LoginPage: React.FC = () => {
         setInactivityNotice('You were automatically logged out due to 1 minute and 30 seconds of inactivity. Please sign in to resume your session.');
       }
     } catch (_) {}
+
+    // Check registration lock status
+    systemControlService.getPortalLocks().then((controls: any[]) => {
+      const regControl = controls?.find((c: any) => c.control_id === 'user_registration');
+      if (regControl && regControl.is_locked) {
+        setRegLocked(true);
+      }
+    }).catch(e => console.warn('Could not check registration lock status:', e));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!identifier.trim() || !password.trim()) {
-      setError('Please enter your email or learner ID, and password.');
+    const newFieldErrors: Record<string, string> = {};
+
+    if (!identifier.trim()) {
+      newFieldErrors.identifier = 'Please enter your email or learner ID.';
+    }
+    if (!password.trim()) {
+      newFieldErrors.password = 'Please enter your password.';
+    }
+
+    if (Object.keys(newFieldErrors).length > 0) {
+      setFieldErrors(newFieldErrors);
+      setError('Please resolve the errors highlighted below.');
       return;
     }
 
     setLoading(true);
     setError(null);
+    setFieldErrors({});
 
     try {
       const trimmedId = identifier.trim();
@@ -71,6 +96,10 @@ export const LoginPage: React.FC = () => {
         err.response?.data?.message ||
         'Invalid credentials. Please verify your details.';
       setError(msg);
+      setFieldErrors({
+        identifier: 'Please verify your registered email or learner ID.',
+        password: 'Password may be incorrect or account is unauthorized.'
+      });
     } finally {
       setLoading(false);
     }
@@ -177,14 +206,26 @@ export const LoginPage: React.FC = () => {
           >
             {/* Header: Crest Icon & Portal Title */}
             <div className="text-center flex flex-col items-center space-y-1.5">
-              <div
-                className={`w-16 h-16 rounded-2xl p-1 border shadow-md flex items-center justify-center backdrop-blur-md ${
-                  isLight
-                    ? 'bg-white/80 border-slate-200/80 shadow-blue-500/10'
-                    : 'bg-white/10 border-white/25 shadow-black/20'
-                }`}
-              >
-                <FusionAppIcon className="w-13 h-13" />
+              <div className="relative group flex items-center justify-center my-1">
+                {/* Ambient glow backdrop matching Landing Page */}
+                <div
+                  className={`absolute inset-0 rounded-2xl blur-xl transition-all duration-500 pointer-events-none ${
+                    isLight
+                      ? 'bg-blue-400/25 group-hover:bg-cyan-400/40'
+                      : 'bg-cyan-500/20 group-hover:bg-cyan-400/35'
+                  }`}
+                />
+                
+                {/* Sleek Framed Icon Wrapper */}
+                <div
+                  className={`relative w-16 h-16 sm:w-18 sm:h-18 rounded-2xl p-1.5 border shadow-xl flex items-center justify-center backdrop-blur-md transition-transform duration-300 group-hover:scale-105 ${
+                    isLight
+                      ? 'bg-gradient-to-b from-white/95 to-slate-100/90 border-slate-200/90 shadow-blue-500/15'
+                      : 'bg-gradient-to-b from-slate-900/90 to-slate-950/95 border-cyan-500/30 shadow-[0_8px_25px_rgba(0,0,0,0.7)]'
+                  }`}
+                >
+                  <FusionAppIcon className="w-13 h-13 sm:w-15 sm:h-15 drop-shadow-[0_2px_8px_rgba(56,189,248,0.35)]" />
+                </div>
               </div>
 
               <h1
@@ -248,17 +289,34 @@ export const LoginPage: React.FC = () => {
                   <input
                     type="text"
                     value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
+                    onChange={(e) => {
+                      setIdentifier(e.target.value);
+                      if (fieldErrors.identifier) {
+                        setFieldErrors(prev => {
+                          const updated = { ...prev };
+                          delete updated.identifier;
+                          return updated;
+                        });
+                      }
+                    }}
                     placeholder="Enter email or learner ID (e.g. 1001)"
                     required
                     autoComplete="username"
                     className={`w-full pl-11 pr-4 py-3.5 rounded-2xl text-xs sm:text-sm font-bold backdrop-blur-md border transition-all focus:outline-none focus:ring-2 shadow-xs ${
-                      isLight
+                      fieldErrors.identifier
+                        ? 'border-rose-500 ring-2 ring-rose-500/20'
+                        : isLight
                         ? 'bg-white/80 hover:bg-white focus:bg-white border-slate-300 text-slate-950 placeholder:text-slate-500 focus:ring-blue-500/30 focus:border-blue-600'
                         : 'bg-black/35 hover:bg-black/45 focus:bg-black/55 border-white/25 text-white placeholder:text-slate-400 focus:ring-cyan-400 focus:border-cyan-300'
                     }`}
                   />
                 </div>
+                {fieldErrors.identifier && (
+                  <p className="text-[11px] text-rose-500 dark:text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{fieldErrors.identifier}</span>
+                  </p>
+                )}
               </div>
 
               {/* Password Input */}
@@ -278,21 +336,32 @@ export const LoginPage: React.FC = () => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (fieldErrors.password) {
+                        setFieldErrors(prev => {
+                          const updated = { ...prev };
+                          delete updated.password;
+                          return updated;
+                        });
+                      }
+                    }}
                     placeholder="Enter your password"
                     required
                     autoComplete="current-password"
-                    className={`w-full pl-11 pr-11 py-3.5 rounded-2xl text-xs sm:text-sm font-bold backdrop-blur-md border transition-all focus:outline-none focus:ring-2 shadow-xs ${
-                      isLight
+                    className={`w-full pl-11 pr-12 py-3.5 rounded-2xl text-xs sm:text-sm font-bold backdrop-blur-md border transition-all focus:outline-none focus:ring-2 shadow-xs ${
+                      fieldErrors.password
+                        ? 'border-rose-500 ring-2 ring-rose-500/20'
+                        : isLight
                         ? 'bg-white/80 hover:bg-white focus:bg-white border-slate-300 text-slate-950 placeholder:text-slate-500 focus:ring-blue-500/30 focus:border-blue-600'
                         : 'bg-black/35 hover:bg-black/45 focus:bg-black/55 border-white/25 text-white placeholder:text-slate-400 focus:ring-cyan-400 focus:border-cyan-300'
                     }`}
                   />
-                  {/* View Password Toggle Icon (Clearly visible in both Light and Dark modes) */}
+                  {/* View Password Toggle Icon (Fixed position inside placeholder) */}
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg cursor-pointer transition-colors ${
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer transition-colors ${
                       isLight
                         ? 'text-slate-600 hover:text-slate-950 hover:bg-slate-200/60'
                         : 'text-slate-300 hover:text-white hover:bg-white/10'
@@ -303,6 +372,12 @@ export const LoginPage: React.FC = () => {
                     {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
                   </button>
                 </div>
+                {fieldErrors.password && (
+                  <p className="text-[11px] text-rose-500 dark:text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{fieldErrors.password}</span>
+                  </p>
+                )}
               </div>
 
               {/* Remember Me & Forgot Password Row */}
@@ -314,8 +389,8 @@ export const LoginPage: React.FC = () => {
                     className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${
                       rememberMe
                         ? isLight
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                          : 'bg-cyan-500 border-cyan-400 text-slate-950 font-bold shadow-sm'
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                        : 'bg-cyan-500 border-cyan-400 text-slate-950 font-bold shadow-sm'
                         : isLight
                         ? 'bg-white/90 border-slate-300 hover:bg-white'
                         : 'bg-white/20 border-white/50 hover:bg-white/30'
@@ -344,7 +419,7 @@ export const LoginPage: React.FC = () => {
                 </Link>
               </div>
 
-              {/* Submit Button: Light Mode uses vibrant royal blue; Dark Mode uses glowing cyan */}
+              {/* Submit Button: Always present, active, and prominent */}
               <button
                 type="submit"
                 disabled={loading}
@@ -358,6 +433,7 @@ export const LoginPage: React.FC = () => {
                   <div className={`w-4 h-4 border-2 border-t-transparent rounded-full animate-spin ${isLight ? 'border-white' : 'border-slate-950'}`} />
                 ) : (
                   <>
+                    <ShieldCheck className="w-4 h-4" />
                     <span>Sign In to Portal</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
@@ -381,22 +457,35 @@ export const LoginPage: React.FC = () => {
               </span>
             </div>
 
-            {/* Secondary Register Pill Button */}
+            {/* Secondary Register Pill Button (Indicates lock state if executive locked) */}
             <Link
               to="/register"
               className={`w-full py-3 px-6 rounded-full border backdrop-blur-md font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.98] ${
-                isLight
+                regLocked
+                  ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-300'
+                  : isLight
                   ? 'bg-white/70 hover:bg-white/90 border-slate-300 text-slate-800'
                   : 'bg-black/35 hover:bg-black/50 border-white/25 text-white'
               }`}
             >
-              <UserPlus className={`w-3.5 h-3.5 ${isLight ? 'text-blue-600' : 'text-cyan-300'}`} />
-              <span>
-                Need a new account?{' '}
-                <span className={`underline font-extrabold ml-0.5 ${isLight ? 'text-blue-600' : 'text-cyan-300'}`}>
-                  Apply / Register Here
-                </span>
-              </span>
+              {regLocked ? (
+                <>
+                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>
+                    New Registration &bull; <strong className="text-amber-400">Locked by Executive</strong>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <UserPlus className={`w-3.5 h-3.5 ${isLight ? 'text-blue-600' : 'text-cyan-300'}`} />
+                  <span>
+                    Need a new account?{' '}
+                    <span className={`underline font-extrabold ml-0.5 ${isLight ? 'text-blue-600' : 'text-cyan-300'}`}>
+                      Apply / Register Here
+                    </span>
+                  </span>
+                </>
+              )}
             </Link>
           </div>
         </div>

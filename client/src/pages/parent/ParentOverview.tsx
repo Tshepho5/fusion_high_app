@@ -200,7 +200,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                         Grade {child.grade || 10} • {child.stream || 'General'}
                       </span>
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30">
-                        {child.attendance_rate || '96%'} Attendance
+                        {child.attendance_rate ? `${child.attendance_rate}% Attendance` : 'No Records Yet'}
                       </span>
                     </div>
 
@@ -222,8 +222,8 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                     </div>
 
                     <div className="p-2.5 rounded-xl bg-[#EDF4F7] dark:bg-[#0A121A] border border-slate-200/80 dark:border-[#1B2E3D] flex justify-between items-center text-xs">
-                      <span className="text-slate-500 dark:text-slate-400 font-semibold">Term 2 Average</span>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-black text-sm">{child.overall_average || 82}%</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-semibold">Term Average</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-black text-sm">{child.overall_average ? `${child.overall_average}%` : 'Pending Marks'}</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-1.5 pt-1">
@@ -277,7 +277,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                         Grade {child.grade || 10} • {child.stream || 'General'}
                       </span>
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30">
-                        {child.attendance_rate || '96%'} Attendance
+                        {child.attendance_rate ? `${child.attendance_rate}% Attendance` : 'No Records Yet'}
                       </span>
                     </div>
 
@@ -299,8 +299,8 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                     </div>
 
                     <div className="p-2.5 rounded-xl bg-[#EDF4F7] dark:bg-[#0A121A] border border-slate-200/80 dark:border-[#1B2E3D] flex justify-between items-center text-xs">
-                      <span className="text-slate-500 dark:text-slate-400 font-semibold">Term 2 Average</span>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-black text-sm">{child.overall_average || 82}%</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-semibold">Term Average</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-black text-sm">{child.overall_average ? `${child.overall_average}%` : 'Pending Marks'}</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-1.5 pt-1">
@@ -345,7 +345,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                       {fullName}
                     </h4>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Grade {child.grade || 10} • {child.overall_average || 82}%
+                      Grade {child.grade || 10} • {child.overall_average ? `${child.overall_average}%` : 'Marks Pending'}
                     </p>
                   </div>
                 </div>
@@ -388,8 +388,8 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
 
                   <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
                     <div className="text-right">
-                      <span className="text-[10px] text-slate-400 block uppercase">Term 2 Mark</span>
-                      <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{child.overall_average || 82}%</span>
+                      <span className="text-[10px] text-slate-400 block uppercase">Term Mark</span>
+                      <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{child.overall_average ? `${child.overall_average}%` : 'Pending'}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <button

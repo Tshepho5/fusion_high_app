@@ -22,6 +22,7 @@ import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarsh
 import { MultiSchoolCommandCenter } from '../../components/admin/MultiSchoolCommandCenter';
 import { InterSchoolCompetitions } from '../../components/common/InterSchoolCompetitions';
 import { ParentTeacherConsultations } from '../../components/parent/ParentTeacherConsultations';
+import { DynamicClassesManager } from '../../components/admin/DynamicClassesManager';
 import { AdminMoreHub } from './AdminMoreHub';
 import { AdminDiscoverHub } from './AdminDiscoverHub';
 import { AdminCalendarHub } from './AdminCalendarHub';
@@ -108,6 +109,10 @@ export const AdminDashboard: React.FC = () => {
         return 'Sports & Extracurriculars Management';
       case 'textbooks':
         return 'Textbook & Learning Asset Inventory';
+      case 'classes-streams':
+        return 'Dynamic Classes & Homeroom Teacher Allocations';
+      case 'staff-invites':
+        return 'Faculty & Sports Coach Invitations';
       case 'settings':
         return 'App & Technical Settings';
       default:
@@ -219,6 +224,8 @@ export const AdminDashboard: React.FC = () => {
       {activeTab === 'exam-seating' && <ExamSeatingManager />}
       {activeTab === 'sports' && <SportsExtracurriculars />}
       {activeTab === 'textbooks' && <TextbookAssetTracker forcedRole="admin" />}
+      {activeTab === 'classes-streams' && <DynamicClassesManager initialTab="classes" />}
+      {activeTab === 'staff-invites' && <DynamicClassesManager initialTab="invites" />}
       {activeTab === 'announcements' && <AnnouncementsFeed />}
       {activeTab === 'settings' && <LearnerSettings />}
     </DashboardLayout>
