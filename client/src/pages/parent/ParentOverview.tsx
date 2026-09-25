@@ -417,59 +417,6 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
       {/* 2. FAVORITE MODULES SECTION (QUICK ACCESS FOR PARENT) */}
       <FavoriteModulesSection role="parent" onNavigateTab={onNavigateTab} />
 
-      {/* 3. TWO-COLUMN PARENT LOWER SECTION */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Left Column: Fees & Statements */}
-        <div className="space-y-4">
-          <div className="rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] p-5 shadow-sm space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-[#1B2E3D]">
-              <h3 className="text-sm font-bold font-display text-[#1C252C] dark:text-white flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-[#E1ECF0] dark:bg-[#152535] flex items-center justify-center">
-                  <CreditCard className="w-4 h-4 text-[#232B32] dark:text-[#18E2EC]" />
-                </div>
-                <span>School Fee Statements & Balance</span>
-              </h3>
-              <button
-                onClick={() => onNavigateTab('finance')}
-                className="text-xs text-[#13C8D9] hover:underline font-bold"
-              >
-                View Statement
-              </button>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Instant digital fee statements, official payment receipts, and automated debit order receipts.
-            </p>
-          </div>
-        </div>
-
-        {/* Right Column: School Notices */}
-        <div className="space-y-4">
-          <div className="rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] p-5 shadow-sm space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-[#1B2E3D]">
-              <h3 className="text-sm font-bold font-display text-[#1C252C] dark:text-white flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-[#E1ECF0] dark:bg-[#152535] flex items-center justify-center">
-                  <Megaphone className="w-4 h-4 text-[#232B32] dark:text-[#18E2EC]" />
-                </div>
-                <span>School Notices & Bulletins</span>
-              </h3>
-              <button
-                onClick={() => onNavigateTab('announcements')}
-                className="text-xs text-[#13C8D9] hover:underline font-bold"
-              >
-                View All
-              </button>
-            </div>
-            <div className="p-3 rounded-xl bg-[#EDF4F7] dark:bg-[#0A121A] border border-slate-200/80 dark:border-[#1B2E3D] space-y-1">
-              <span className="text-[10px] font-bold uppercase text-[#13C8D9]">Parent Advisory</span>
-              <h4 className="text-xs font-bold text-[#1C252C] dark:text-white">Upcoming Parent-Teacher Conference Booking</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400">PTC slots for Term 2 review are now open for appointment bookings.</p>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
     </div>
   );
 };

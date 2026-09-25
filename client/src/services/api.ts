@@ -158,6 +158,8 @@ export const userService = {
     }).then(res => res.data),
   markMessagesAsRead: (payload: { sender_id: string | number }) => 
     api.post('/api/messages/read', payload).then(res => res.data),
+  heartbeat: () => api.post('/api/user/heartbeat').then(res => res.data),
+  updateLogoutStatus: () => api.post('/api/user/logout-status').then(res => res.data),
 };
 
 // Learner Portal APIs (children, subjects, attendance, progress, announcements, textbooks)
@@ -662,7 +664,14 @@ export const classStaffService = {
     assigned_classes?: string[];
   }) => api.post('/api/admin/staff-invites', data).then(res => res.data),
   getStaffInvites: () => api.get('/api/admin/staff-invites').then(res => res.data),
+  approveStaffInvite: (id: number | string) => api.post(`/api/admin/staff-invites/${id}/approve`).then(res => res.data),
+  declineStaffInvite: (id: number | string, reason?: string) => api.post(`/api/admin/staff-invites/${id}/decline`, { reason }).then(res => res.data),
   deleteStaffInvite: (id: number | string) => api.delete(`/api/admin/staff-invites/${id}`).then(res => res.data),
+
+  // Public Teacher Onboarding Lifecycle
+  verifyToken: (token: string) => api.get(`/api/staff-invites/verify?token=${encodeURIComponent(token)}`).then(res => res.data),
+  applyTeacher: (data: any) => api.post('/api/staff-invites/apply', data).then(res => res.data),
+  registerTeacher: (data: any) => api.post('/api/staff-invites/register', data).then(res => res.data),
 };
 
 // Geleza SA Executive & Admin Portal Access / Gatekeeper Controls & Tester QA Management

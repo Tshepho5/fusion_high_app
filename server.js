@@ -181,6 +181,25 @@ if (fs.existsSync(clientDistPath)) {
 app.use(express.static('public'));
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/uploads', express.static('uploads'));
+
+// Smart resolver for /uploads/messages/ when subfolder was omitted in database URL
+app.get('/uploads/messages/:filename', (req, res, next) => {
+  const filename = path.basename(req.params.filename);
+  const directPath = path.join(__dirname, 'uploads', 'messages', filename);
+  if (fs.existsSync(directPath)) return res.sendFile(directPath);
+
+  const imagePath = path.join(__dirname, 'uploads', 'messages', 'images', filename);
+  if (fs.existsSync(imagePath)) return res.sendFile(imagePath);
+
+  const voicePath = path.join(__dirname, 'uploads', 'messages', 'voice', filename);
+  if (fs.existsSync(voicePath)) return res.sendFile(voicePath);
+
+  const docPath = path.join(__dirname, 'uploads', 'messages', 'documents', filename);
+  if (fs.existsSync(docPath)) return res.sendFile(docPath);
+
+  next();
+});
+
 app.use('/downloads', express.static(path.join(__dirname, 'public', 'downloads')));
 
 // Ensure CAPS curriculum archives and textbook directories exist
@@ -295,6 +314,10 @@ app.post('/api/messages', authenticateToken, userController.sendMessage);
 app.post('/api/messages/upload', authenticateToken, uploadChatMessage.single('file'), userController.uploadMessageAttachment);
 app.post('/api/change-password', authenticateToken, userController.changePassword);
 
+// User Presence (Heartbeat & Logout Status - 90-second threshold)
+app.post('/api/user/heartbeat', authenticateToken, userController.heartbeat);
+app.post('/api/user/logout-status', authenticateToken, userController.updateLogoutStatus);
+
 // Calendar Events Endpoints
 app.get('/api/events', authenticateToken, eventController.getEvents);
 app.post('/api/events', authenticateToken, eventController.createEvent);
@@ -339,6 +362,7 @@ app.use('/api/report-cards', require('./public/src/routes/reportCardRoutes'));
 app.use('/api/ml/behavior', require('./public/src/routes/behaviorMlRoutes'));
 app.use('/api/ai-advisor', require('./public/src/routes/aiAdvisorRoutes'));
 app.use('/api/system', require('./public/src/routes/systemRoutes'));
+app.use('/api/staff-invites', require('./public/src/routes/staffInviteRoutes'));
 
 
 

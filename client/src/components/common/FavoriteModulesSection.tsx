@@ -782,9 +782,6 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
                 {favoriteModules.length} Pinned
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">
-              Quick access shortcuts pinned directly to your home page.
-            </p>
           </div>
         </div>
 
@@ -1011,9 +1008,6 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
-                            {mod.description}
-                          </p>
                         </div>
                       </div>
 

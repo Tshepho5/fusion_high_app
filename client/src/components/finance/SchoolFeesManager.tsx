@@ -174,9 +174,6 @@ export const SchoolFeesManager: React.FC<SchoolFeesManagerProps> = ({
                 Gateway Active
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Autonomous fee invoicing, instant EFT reconciliation, and automated parent payment alerts.
-            </p>
           </div>
         </div>
 
@@ -185,24 +182,24 @@ export const SchoolFeesManager: React.FC<SchoolFeesManagerProps> = ({
             <button
               onClick={handleGenerateTermFees}
               disabled={generatingTermFees}
-              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-600/20 border border-emerald-500/30 hover:bg-emerald-600/30 text-emerald-300 font-bold text-xs transition-all disabled:opacity-50"
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-200 border border-white/10 font-bold text-xs transition-colors disabled:opacity-50"
             >
-              <Zap className="w-4 h-4 text-emerald-400" />
-              <span>{generatingTermFees ? 'Generating...' : '⚡ Generate Term Invoices'}</span>
+              <Zap className="w-4 h-4 text-slate-400" />
+              <span>{generatingTermFees ? 'Generating...' : 'Generate Term Invoices'}</span>
             </button>
 
             <button
               onClick={handleSendReminders}
               disabled={sendingReminders}
-              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-amber-600/20 border border-amber-500/30 hover:bg-amber-600/30 text-amber-300 font-bold text-xs transition-all disabled:opacity-50"
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-200 border border-white/10 font-bold text-xs transition-colors disabled:opacity-50"
             >
-              <Mail className="w-4 h-4 text-amber-400" />
-              <span>{sendingReminders ? 'Sending...' : '📧 Send Due Reminders'}</span>
+              <Mail className="w-4 h-4 text-slate-400" />
+              <span>{sendingReminders ? 'Sending...' : 'Send Due Reminders'}</span>
             </button>
 
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-xs shadow-glow-indigo transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-sm transition-all"
             >
               <Plus className="w-4 h-4" />
               <span>New Single Invoice</span>
@@ -220,30 +217,25 @@ export const SchoolFeesManager: React.FC<SchoolFeesManagerProps> = ({
 
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-5 rounded-3xl bg-surface-dark border border-white/10 space-y-2 shadow-lg">
+        <div className="p-5 rounded-3xl bg-surface-dark border border-white/10 space-y-1 shadow-lg">
           <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">Total Billed</p>
           <h3 className="text-2xl font-extrabold text-white font-mono">
             R {totalBilled.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
           </h3>
-          <p className="text-[11px] text-slate-400">{invoices.length} Total Statement Records</p>
         </div>
 
-        <div className="p-5 rounded-3xl bg-surface-dark border border-emerald-500/20 space-y-2 shadow-lg">
+        <div className="p-5 rounded-3xl bg-surface-dark border border-white/10 space-y-1 shadow-lg">
           <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400">Total Settled / Paid</p>
           <h3 className="text-2xl font-extrabold text-emerald-400 font-mono">
             R {totalPaid.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
           </h3>
-          <p className="text-[11px] text-emerald-300/80">Verified Gateway Receipts</p>
         </div>
 
-        <div className="p-5 rounded-3xl bg-surface-dark border border-amber-500/20 space-y-2 shadow-lg">
+        <div className="p-5 rounded-3xl bg-surface-dark border border-white/10 space-y-1 shadow-lg">
           <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400">Outstanding Balance</p>
           <h3 className="text-2xl font-extrabold text-amber-300 font-mono">
             R {totalOutstanding.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
           </h3>
-          <p className="text-[11px] text-amber-300/80">
-            {totalOutstanding <= 0 ? '✓ Account Fully Settled' : 'Payable via PayFast / Ozow'}
-          </p>
         </div>
       </div>
 
@@ -293,7 +285,6 @@ export const SchoolFeesManager: React.FC<SchoolFeesManagerProps> = ({
             <div className="grid grid-cols-1 gap-4">
               {invoices.map((inv) => {
                 const isPaid = inv.status === 'paid' || parseFloat(inv.balance) <= 0;
-                const breakdown = Array.isArray(inv.itemized_breakdown) ? inv.itemized_breakdown : [];
 
                 return (
                   <div
@@ -347,25 +338,6 @@ export const SchoolFeesManager: React.FC<SchoolFeesManagerProps> = ({
                         )}
                       </div>
                     </div>
-
-                    {/* Itemized Breakdown Accordion/Cards */}
-                    {breakdown.length > 0 && (
-                      <div className="mt-4 pt-2">
-                        <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 mb-2">
-                          Itemized Levy Breakdown:
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                          {breakdown.map((item: any, idx: number) => (
-                            <div key={idx} className="p-2.5 rounded-xl bg-surface-darker border border-white/5 flex items-center justify-between text-xs">
-                              <span className="text-slate-300 text-[11px] truncate pr-2">{item.item}</span>
-                              <span className="font-mono font-bold text-white text-[11px]">
-                                R {parseFloat(item.amount).toFixed(2)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 );
               })}

@@ -238,29 +238,24 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
   return (
     <div className="space-y-6 mb-8 animate-fade-in">
       {/* Master Admin Header Banner */}
-      <div className="rounded-3xl p-6 bg-gradient-to-r from-slate-900 via-indigo-950/90 to-slate-900 border border-indigo-500/30 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1.5">
+      <div className="rounded-2xl p-6 bg-surface-dark border border-white/10 shadow-lg">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase font-mono tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1.5">
-                <Radio className="w-3 h-3 text-amber-400 animate-pulse" />
-                Exclusive Master Console
+              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase font-mono tracking-wider bg-white/10 text-slate-300 border border-white/10">
+                Master Administration
               </span>
-              <span className="text-xs text-indigo-300 font-mono">202247878@myturf.ul.ac.za</span>
+              <span className="text-xs text-slate-400 font-mono">202247878@myturf.ul.ac.za</span>
             </div>
-            <h2 className="text-xl md:text-2xl font-black font-display text-white tracking-tight flex items-center gap-2.5">
-              <span>Executive Portal Controls & App Testers Hub</span>
+            <h2 className="text-xl md:text-2xl font-black font-display text-white tracking-tight">
+              Executive Portal Controls & User Access
             </h2>
-            <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-              Master Executive authority to toggle public registration gates, school application lockdowns, and invite or assign beta testing users with instant credentials dispatch.
-            </p>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsAddTesterModalOpen(true)}
-              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-extrabold text-xs shadow-glow-cyan flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+              className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-md flex items-center gap-2 transition-all cursor-pointer active:scale-95"
             >
               <UserPlus className="w-4 h-4" />
               <span>Invite Testing User</span>
@@ -270,7 +265,7 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
 
         {/* Global Feedback Banner */}
         {actionSuccess && (
-          <div className="mt-4 p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center justify-between animate-fade-in">
+          <div className="mt-4 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold flex items-center justify-between animate-fade-in">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
               <span>{actionSuccess}</span>
@@ -285,15 +280,14 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
       {/* ========================================================================= */}
       {/* SECTION 1: EXECUTIVE PORTAL GATEKEEPER SWITCHES (TURN OFF / ON)           */}
       {/* ========================================================================= */}
-      <div className="rounded-3xl bg-white dark:bg-[#0E1726] border border-slate-200/90 dark:border-white/10 p-6 shadow-sm">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-white/10 mb-5">
+      <div className="rounded-2xl bg-surface-dark border border-white/10 p-6 shadow-lg space-y-5">
+        <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-              <ShieldCheck className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-300">
+              <ShieldCheck className="w-5 h-5 text-brand-400" />
             </div>
             <div>
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Portal & Application Access Gates</h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Turn OFF or Turn ON public registrations and school applications across the app</p>
+              <h3 className="text-sm font-extrabold text-white">Application & Registration Access Gates</h3>
             </div>
           </div>
           <button
@@ -307,114 +301,105 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Switch 1: School Registration */}
-          <div className={`p-4 rounded-2xl border transition-all ${
-            controls.school_registration?.is_locked
-              ? 'bg-rose-950/20 border-rose-500/40 text-rose-300'
-              : 'bg-emerald-950/20 border-emerald-500/40 text-emerald-300'
-          }`}>
-            <div className="flex items-start justify-between gap-3 mb-2">
-              <div className="space-y-0.5">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">Accreditation Gate</span>
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <Building2 className="w-4 h-4 text-cyan-400" />
+          <div className="p-5 rounded-2xl bg-surface-darker border border-white/10 flex flex-col justify-between space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">Accreditation</span>
+                <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                  <Building2 className="w-4 h-4 text-slate-300" />
                   <span>School Applications</span>
                 </h4>
               </div>
               <button
                 disabled={togglingLock === 'school_registration'}
                 onClick={() => handleToggleControl('school_registration', controls.school_registration?.is_locked, 'School registration is currently locked by Geleza SA Executives.')}
-                className="cursor-pointer transition-transform hover:scale-110 active:scale-95 disabled:opacity-50"
+                className="cursor-pointer transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
                 title={controls.school_registration?.is_locked ? 'Click to Turn ON (Unlock)' : 'Click to Turn OFF (Lock)'}
               >
                 {controls.school_registration?.is_locked ? (
-                  <ToggleLeft className="w-8 h-8 text-rose-500" />
+                  <ToggleLeft className="w-9 h-9 text-slate-500 hover:text-slate-400 transition-colors" />
                 ) : (
-                  <ToggleRight className="w-8 h-8 text-emerald-400" />
+                  <ToggleRight className="w-9 h-9 text-emerald-400" />
                 )}
               </button>
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-300 mb-2">
-              Controls the School Registration Modal and prospective Principal onboarding applications.
-            </p>
-            <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[10px] font-mono">
-              <span>Status:</span>
-              <span className={`font-bold uppercase ${controls.school_registration?.is_locked ? 'text-rose-400' : 'text-emerald-400'}`}>
+            <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs font-mono">
+              <span className="text-slate-400">Status:</span>
+              <span className={`px-2.5 py-0.5 rounded-md font-bold uppercase text-[11px] border ${
+                controls.school_registration?.is_locked 
+                  ? 'bg-white/5 border-white/10 text-slate-400' 
+                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+              }`}>
                 {controls.school_registration?.is_locked ? 'Turned OFF (Locked)' : 'Turned ON (Active)'}
               </span>
             </div>
           </div>
 
           {/* Switch 2: User Registration (Parents & Learners) */}
-          <div className={`p-4 rounded-2xl border transition-all ${
-            controls.user_registration?.is_locked
-              ? 'bg-rose-950/20 border-rose-500/40 text-rose-300'
-              : 'bg-emerald-950/20 border-emerald-500/40 text-emerald-300'
-          }`}>
-            <div className="flex items-start justify-between gap-3 mb-2">
-              <div className="space-y-0.5">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">Public Portal</span>
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-indigo-400" />
+          <div className="p-5 rounded-2xl bg-surface-darker border border-white/10 flex flex-col justify-between space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">User Portal</span>
+                <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-slate-300" />
                   <span>User Registrations</span>
                 </h4>
               </div>
               <button
                 disabled={togglingLock === 'user_registration'}
                 onClick={() => handleToggleControl('user_registration', controls.user_registration?.is_locked, 'Registration is temporarily locked for system updates by Geleza SA Executives.')}
-                className="cursor-pointer transition-transform hover:scale-110 active:scale-95 disabled:opacity-50"
+                className="cursor-pointer transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
                 title={controls.user_registration?.is_locked ? 'Click to Turn ON (Unlock)' : 'Click to Turn OFF (Lock)'}
               >
                 {controls.user_registration?.is_locked ? (
-                  <ToggleLeft className="w-8 h-8 text-rose-500" />
+                  <ToggleLeft className="w-9 h-9 text-slate-500 hover:text-slate-400 transition-colors" />
                 ) : (
-                  <ToggleRight className="w-8 h-8 text-emerald-400" />
+                  <ToggleRight className="w-9 h-9 text-emerald-400" />
                 )}
               </button>
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-300 mb-2">
-              Controls the main public user registration flow (/register) for students and parents.
-            </p>
-            <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[10px] font-mono">
-              <span>Status:</span>
-              <span className={`font-bold uppercase ${controls.user_registration?.is_locked ? 'text-rose-400' : 'text-emerald-400'}`}>
+            <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs font-mono">
+              <span className="text-slate-400">Status:</span>
+              <span className={`px-2.5 py-0.5 rounded-md font-bold uppercase text-[11px] border ${
+                controls.user_registration?.is_locked 
+                  ? 'bg-white/5 border-white/10 text-slate-400' 
+                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+              }`}>
                 {controls.user_registration?.is_locked ? 'Turned OFF (Locked)' : 'Turned ON (Active)'}
               </span>
             </div>
           </div>
 
           {/* Switch 3: Admission Applications */}
-          <div className={`p-4 rounded-2xl border transition-all ${
-            controls.parent_application?.is_locked
-              ? 'bg-rose-950/20 border-rose-500/40 text-rose-300'
-              : 'bg-emerald-950/20 border-emerald-500/40 text-emerald-300'
-          }`}>
-            <div className="flex items-start justify-between gap-3 mb-2">
-              <div className="space-y-0.5">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">Admissions Desk</span>
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <UserCheck className="w-4 h-4 text-teal-400" />
+          <div className="p-5 rounded-2xl bg-surface-darker border border-white/10 flex flex-col justify-between space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">Admissions</span>
+                <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                  <UserCheck className="w-4 h-4 text-slate-300" />
                   <span>Student Admissions</span>
                 </h4>
               </div>
               <button
                 disabled={togglingLock === 'parent_application'}
                 onClick={() => handleToggleControl('parent_application', controls.parent_application?.is_locked, 'Online admission applications are currently closed.')}
-                className="cursor-pointer transition-transform hover:scale-110 active:scale-95 disabled:opacity-50"
+                className="cursor-pointer transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
                 title={controls.parent_application?.is_locked ? 'Click to Turn ON (Unlock)' : 'Click to Turn OFF (Lock)'}
               >
                 {controls.parent_application?.is_locked ? (
-                  <ToggleLeft className="w-8 h-8 text-rose-500" />
+                  <ToggleLeft className="w-9 h-9 text-slate-500 hover:text-slate-400 transition-colors" />
                 ) : (
-                  <ToggleRight className="w-8 h-8 text-emerald-400" />
+                  <ToggleRight className="w-9 h-9 text-emerald-400" />
                 )}
               </button>
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-300 mb-2">
-              Controls high school student admission applications submitted via the admissions portal.
-            </p>
-            <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[10px] font-mono">
-              <span>Status:</span>
-              <span className={`font-bold uppercase ${controls.parent_application?.is_locked ? 'text-rose-400' : 'text-emerald-400'}`}>
+            <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs font-mono">
+              <span className="text-slate-400">Status:</span>
+              <span className={`px-2.5 py-0.5 rounded-md font-bold uppercase text-[11px] border ${
+                controls.parent_application?.is_locked 
+                  ? 'bg-white/5 border-white/10 text-slate-400' 
+                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+              }`}>
                 {controls.parent_application?.is_locked ? 'Turned OFF (Locked)' : 'Turned ON (Active)'}
               </span>
             </div>
@@ -425,26 +410,25 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
       {/* ========================================================================= */}
       {/* SECTION 2: APP TESTERS MANAGEMENT HUB (CREATE & ASSIGN TESTERS)           */}
       {/* ========================================================================= */}
-      <div className="rounded-3xl bg-white dark:bg-[#0E1726] border border-slate-200/90 dark:border-white/10 p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-white/10 mb-5">
+      <div className="rounded-2xl bg-surface-dark border border-white/10 p-6 shadow-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10 mb-5">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
-              <Users className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-300">
+              <Users className="w-5 h-5 text-brand-400" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Active App Testing Roster</h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-                  {testers.length} Testers
+                <h3 className="text-sm font-extrabold text-white">Testing Users Roster</h3>
+                <span className="px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-white/10 text-slate-300 border border-white/10">
+                  {testers.length} Users
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Assign roles to testers, send credentials, and manage testing accounts</p>
             </div>
           </div>
 
           <button
             onClick={() => setIsAddTesterModalOpen(true)}
-            className="px-3.5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs self-start sm:self-auto"
+            className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm self-start sm:self-auto"
           >
             <UserPlus className="w-3.5 h-3.5" />
             <span>Assign New Tester</span>
@@ -454,19 +438,16 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
         {/* Testers List */}
         {loadingTesters ? (
           <div className="py-12 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-            <RefreshCw className="w-4 h-4 animate-spin text-cyan-400" />
+            <RefreshCw className="w-4 h-4 animate-spin text-brand-400" />
             <span>Loading active testers...</span>
           </div>
         ) : testers.length === 0 ? (
-          <div className="py-12 text-center border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl p-6">
-            <Sparkles className="w-8 h-8 text-cyan-400 mx-auto mb-2 opacity-60" />
-            <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">No Testing Users Assigned Yet</h4>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
-              Click "Assign New Tester" to create a testing account with an email and temporary password to begin QA and feature verification.
-            </p>
+          <div className="py-12 text-center border-2 border-dashed border-white/10 rounded-2xl p-6">
+            <Sparkles className="w-8 h-8 text-slate-500 mx-auto mb-2 opacity-60" />
+            <h4 className="text-xs font-bold text-slate-300">No Testing Users Assigned Yet</h4>
             <button
               onClick={() => setIsAddTesterModalOpen(true)}
-              className="mt-3 px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs inline-flex items-center gap-1.5 transition-all cursor-pointer"
+              className="mt-3 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs inline-flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <UserPlus className="w-3.5 h-3.5" />
               <span>Create First Tester</span>
@@ -476,7 +457,7 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-white/10 text-slate-400 font-mono text-[10px] uppercase">
+                <tr className="border-b border-white/10 text-slate-400 font-mono text-[10px] uppercase">
                   <th className="pb-3 font-bold">Tester Identity</th>
                   <th className="pb-3 font-bold">Assigned Role</th>
                   <th className="pb-3 font-bold">Assigned School</th>
@@ -485,27 +466,18 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
                   <th className="pb-3 font-bold text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+              <tbody className="divide-y divide-white/5">
                 {testers.map(t => {
-                  const roleBadgeColor =
-                    t.role_name === 'admin'
-                      ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
-                      : t.role_name === 'teacher'
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                      : t.role_name === 'parent'
-                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                      : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
-
                   return (
-                    <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors group">
+                    <tr key={t.id} className="hover:bg-white/[0.02] transition-colors group">
                       <td className="py-3.5">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-600 to-indigo-600 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-surface-darker text-white font-bold flex items-center justify-center text-xs border border-white/10 shrink-0">
                             {t.full_name?.charAt(0) || 'T'}
                           </div>
                           <div>
-                            <p className="font-bold text-slate-900 dark:text-white line-clamp-1">{t.full_name} {t.surname}</p>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">{t.email}</p>
+                            <p className="font-bold text-white line-clamp-1">{t.full_name} {t.surname}</p>
+                            <p className="text-[11px] text-slate-400 font-mono">{t.email}</p>
                           </div>
                         </div>
                       </td>
@@ -516,7 +488,7 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
                             setSelectedTester(t);
                             setIsEditRoleModalOpen(true);
                           }}
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold border font-mono uppercase tracking-wide cursor-pointer hover:opacity-80 transition-opacity ${roleBadgeColor}`}
+                          className="px-2.5 py-1 rounded-md text-[10px] font-bold border border-white/10 font-mono uppercase tracking-wide cursor-pointer hover:bg-white/10 transition-colors bg-white/5 text-slate-200"
                           title="Click to change role"
                         >
                           {t.role_name || 'tester'} ▾

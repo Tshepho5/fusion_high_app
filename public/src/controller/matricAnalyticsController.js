@@ -331,12 +331,13 @@ exports.getMlCohortPredictions = async (req, res) => {
   try {
     // 1. Fetch real Grade 12 learners from the database
     const learnersRes = await db.query(`
-      SELECT c.id, c.full_name, c.surname, c.gender, c.grade, c.stream,
+      SELECT c.id, c.full_name, c.surname, COALESCE(u.gender, 'Unspecified') as gender, c.grade, c.stream,
              COALESCE(c.home_language, 'isiZulu') as home_language,
-             ROUND(COALESCE(att.rate, 75.0), 1) as attendance_rate,
-             ROUND(COALESCE(mk.avg_score, 50.0), 1) as previous_score,
+             ROUND(COALESCE(att.rate, 75.0)::numeric, 1) as attendance_rate,
+             ROUND(COALESCE(mk.avg_score, 50.0)::numeric, 1) as previous_score,
              COALESCE(hw.sub_count, 15) as study_hours_estimate
       FROM children c
+      LEFT JOIN users u ON c.learner_user_id = u.id
       LEFT JOIN (
         SELECT child_id, 
                (COUNT(CASE WHEN status = 'Present' THEN 1 END)::float / NULLIF(COUNT(*), 0)) * 100 as rate

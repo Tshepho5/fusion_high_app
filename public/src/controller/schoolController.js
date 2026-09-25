@@ -465,14 +465,16 @@ exports.reviewSchoolApplication = async (req, res) => {
         WHERE id = $4;
       `, [req.user?.id || null, executive_notes || 'Approved by Geleza SA Executive Board', newSchool.id, id]);
 
+      const baseUrl = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : null) || process.env.FRONTEND_URL || 'https://gelezasa.co.za';
+
       // 6. Send Approval Email to Principal
       emailService.sendSchoolApplicationApprovedNotice({
         principalEmail: app.principal_email,
         principalName: `${app.principal_first_name} ${app.principal_surname}`,
         schoolName: app.school_name,
         emisNumber: app.emis_number,
-        temporaryPassword: tempPassword,
-        loginUrl: 'https://gelezasa.co.za/login'
+        temporaryPassword: app.password_hash ? undefined : 'password123',
+        loginUrl: `${baseUrl}/login`
       }).catch(err => {
         console.warn('[EMAIL NOTIFY] Could not send approval email:', err.message);
       });
@@ -495,6 +497,8 @@ exports.reviewSchoolApplication = async (req, res) => {
         WHERE id = $4;
       `, [reason || 'Accreditation details could not be verified.', req.user?.id || null, executive_notes || null, id]);
 
+      const baseUrl = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : null) || process.env.FRONTEND_URL || 'https://gelezasa.co.za';
+
       // Send Decline Email with explanation
       emailService.sendSchoolApplicationDeclinedNotice({
         principalEmail: app.principal_email,
@@ -502,7 +506,7 @@ exports.reviewSchoolApplication = async (req, res) => {
         schoolName: app.school_name,
         emisNumber: app.emis_number,
         reason: reason || 'EMIS registration or Principal credentials could not be verified.',
-        appealUrl: 'https://gelezasa.co.za/register'
+        appealUrl: `${baseUrl}/register`
       }).catch(err => {
         console.warn('[EMAIL NOTIFY] Could not send decline email:', err.message);
       });

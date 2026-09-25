@@ -288,9 +288,6 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
                 Educator Portal
               </span>
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400">
-              Quick access to curriculum plans, classroom registers, SBA assessments and teacher tools
-            </p>
           </div>
 
           {/* Search Input & Grid View Switcher */}

@@ -28,6 +28,7 @@ import { AdminDiscoverHub } from './AdminDiscoverHub';
 import { AdminCalendarHub } from './AdminCalendarHub';
 import { AdminMessagesHub } from './AdminMessagesHub';
 import { MasterAdminExecutiveHub } from '../../components/admin/MasterAdminExecutiveHub';
+import { SchoolPerformanceMetricsView } from '../../components/admin/SchoolPerformanceMetricsView';
 import {
   ArrowLeft,
   ChevronRight,
@@ -117,6 +118,8 @@ export const AdminDashboard: React.FC = () => {
       case 'testers':
       case 'portal-controls':
         return 'Executive Master Controls & Beta Testers Hub';
+      case 'metrics':
+        return 'School Performance Metrics & Indicators';
       case 'settings':
         return 'App & Technical Settings';
       default:
@@ -167,7 +170,7 @@ export const AdminDashboard: React.FC = () => {
             <span>{backtrack.label}</span>
           </button>
 
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-mono">
+          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 font-semibold">
             <button
               onClick={() => handleSelectTab(backtrack.target)}
               className="hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -176,7 +179,7 @@ export const AdminDashboard: React.FC = () => {
               <span>{backtrack.parentLabel}</span>
             </button>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600" />
-            <span className="text-cyan-600 dark:text-cyan-300 font-bold">{getTabTitle()}</span>
+            <span className="text-cyan-700 dark:text-cyan-300 font-bold">{getTabTitle()}</span>
           </div>
         </div>
       )}
@@ -233,6 +236,9 @@ export const AdminDashboard: React.FC = () => {
       {activeTab === 'announcements' && <AnnouncementsFeed />}
       {(activeTab === 'testers' || activeTab === 'portal-controls') && (
         <MasterAdminExecutiveHub onNavigateTab={handleSelectTab} />
+      )}
+      {activeTab === 'metrics' && (
+        <SchoolPerformanceMetricsView onNavigateTab={handleSelectTab} />
       )}
       {activeTab === 'settings' && <LearnerSettings />}
     </DashboardLayout>

@@ -417,76 +417,8 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
   return (
     <div className="space-y-8 animate-fade-in text-slate-900 dark:text-slate-100 pb-16">
 
-      {/* MASTER EXECUTIVE HUB: System Locks & App Testers Management (Exclusively for 202247878@myturf.ul.ac.za) */}
-      <MasterAdminExecutiveHub onNavigateTab={onNavigateTab} />
-
-      {/* 1. HORIZONTAL CAROUSEL OF SCHOOL METRIC CARDS */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-            <h2 className="text-base md:text-lg font-bold font-display text-slate-900 dark:text-white tracking-tight">
-              School Performance Metrics
-            </h2>
-          </div>
-          
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => scrollMetricsCarousel(-1)}
-              className="p-2 rounded-xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm active:scale-95 cursor-pointer"
-              title="Scroll Left"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => scrollMetricsCarousel(1)}
-              className="p-2 rounded-xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm active:scale-95 cursor-pointer"
-              title="Scroll Right"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Metrics Carousel Container */}
-        <div
-          ref={metricsCarouselRef}
-          className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin custom-scrollbar snap-x snap-mandatory scroll-smooth"
-        >
-          {metricCards.map((m, idx) => {
-            const IconComp = m.icon;
-            return (
-              <div
-                key={idx}
-                onClick={() => onNavigateTab(m.tab)}
-                className="min-w-[270px] max-w-[300px] shrink-0 snap-start rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 hover:border-indigo-500/50 p-4 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group space-y-3 cursor-pointer animated-border-card"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{m.title}</span>
-                  <div className={`p-2 rounded-xl bg-slate-100 dark:bg-white/5 ${m.color}`}>
-                    <IconComp className="w-4 h-4" />
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{m.value}</p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{m.sub}</p>
-                </div>
-
-                <div className="pt-2 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-300">
-                  <span className="font-semibold">Manage in {m.title}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
       {/* ========================================================================= */}
-      {/* 2. SCHOOL CURRICULUM SUBJECTS & GRADE EXPLORATION (NEW ADMIN FEATURE)     */}
+      {/* 1. SCHOOL CURRICULUM SUBJECTS & GRADE EXPLORATION                         */}
       {/* ========================================================================= */}
       <section className="space-y-4 rounded-3xl bg-slate-100 dark:bg-surface-darker border border-slate-300 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden transition-colors">
         
@@ -976,54 +908,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
       {/* ========================================================================= */}
       <FavoriteModulesSection role="admin" onNavigateTab={onNavigateTab} />
 
-      {/* 4. TWO-COLUMN ADMIN LOWER SECTION */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Left Column: Timetables & Schedule Engine */}
-        <div className="space-y-4">
-          <div className="rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 p-5 shadow-sm space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/5">
-              <h3 className="text-sm font-bold font-display text-slate-900 dark:text-white flex items-center gap-2">
-                <Clock className="w-4 h-4 text-indigo-500" />
-                <span>Automated Timetable Generation</span>
-              </h3>
-              <button
-                onClick={() => onNavigateTab('timetable')}
-                className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold cursor-pointer"
-              >
-                Launch Builder
-              </button>
-            </div>
-            <div className="flex items-center gap-2 pt-1">
-              <span className="px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold">Weekly Schedule Engine</span>
-              <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 text-xs font-medium">Grades 8 - 12</span>
-            </div>
-          </div>
-        </div>
 
-        {/* Right Column: Fees & Financial Invoicing */}
-        <div className="space-y-4">
-          <div className="rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 p-5 shadow-sm space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/5">
-              <h3 className="text-sm font-bold font-display text-slate-900 dark:text-white flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-teal-500" />
-                <span>School Financials & Fee Invoicing</span>
-              </h3>
-              <button
-                onClick={() => onNavigateTab('finance')}
-                className="text-xs text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-semibold cursor-pointer"
-              >
-                Fee Overview
-              </button>
-            </div>
-            <div className="flex items-center gap-2 pt-1">
-              <span className="px-2.5 py-1 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-600 dark:text-teal-400 text-xs font-semibold">Tuition & Invoicing</span>
-              <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 text-xs font-medium">Audit Reconciled</span>
-            </div>
-          </div>
-        </div>
-
-      </div>
 
       {/* ========================================================================= */}
       {/* 5. ADMIN SUBJECT COMMAND CENTER ("VIEW MORE" MODAL)                       */}

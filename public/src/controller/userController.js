@@ -370,7 +370,11 @@ exports.uploadMessageAttachment = async (req, res) => {
             attachmentType = 'voice_note';
         }
 
-        const filePath = `/uploads/messages/${req.file.filename}`;
+        let subfolder = 'documents';
+        if (attachmentType === 'image') subfolder = 'images';
+        else if (attachmentType === 'voice_note') subfolder = 'voice';
+
+        const filePath = `/uploads/messages/${subfolder}/${req.file.filename}`;
         res.json({
             success: true,
             file_url: filePath,
@@ -383,6 +387,40 @@ exports.uploadMessageAttachment = async (req, res) => {
     } catch (err) {
         console.error('Error uploading message attachment:', err);
         res.status(500).json({ success: false, error: 'Failed to process attachment upload.' });
+    }
+};
+
+/**
+ * Heartbeat endpoint: updates user's last_seen_at timestamp and sets is_online to true
+ */
+exports.heartbeat = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        await db.query(
+            `UPDATE users SET last_seen_at = NOW(), is_online = TRUE WHERE id = $1`,
+            [userId]
+        );
+        res.json({ success: true, timestamp: new Date() });
+    } catch (err) {
+        console.error('Error in heartbeat:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+};
+
+/**
+ * Logout presence updater: sets is_online to false and offsets last_seen_at
+ */
+exports.updateLogoutStatus = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        await db.query(
+            `UPDATE users SET is_online = FALSE, last_seen_at = (NOW() - INTERVAL '2 minutes') WHERE id = $1`,
+            [userId]
+        );
+        res.json({ success: true, is_online: false });
+    } catch (err) {
+        console.error('Error updating logout status:', err);
+        res.status(500).json({ success: false, error: err.message });
     }
 };
 
@@ -508,9 +546,18 @@ exports.getCommunicationContacts = async (req, res) => {
         let query = '';
         let params = [userId];
 
+        const onlineSelect = `
+            CASE 
+                WHEN u.last_seen_at IS NOT NULL AND u.last_seen_at >= (NOW() - INTERVAL '90 seconds') AND COALESCE(u.is_online, TRUE) = TRUE THEN true 
+                ELSE false 
+            END AS is_online,
+            u.last_seen_at,
+        `;
+
         if (role === 'teacher') {
             query = `
                 SELECT u.id, u.full_name, u.surname, u.email, u.profile_picture_path, COALESCE(r.name, u.role_id::text, 'learner') as role_name,
+                       ${onlineSelect}
                        CASE 
                            WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'parent' THEN 'Parent' || CASE WHEN COUNT(c.id) > 0 THEN ' (' || STRING_AGG(DISTINCT c.full_name, ', ') || ')' ELSE '' END
                            WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'learner' THEN 'Learner - Grade ' || COALESCE(MAX(c.grade)::text, 'N/A')
@@ -538,7 +585,7 @@ exports.getCommunicationContacts = async (req, res) => {
                 WHERE u.id::text != $1::text AND (
                     LOWER(COALESCE(r.name, u.role_id::text, '')) IN ('admin', 'teacher', 'parent', 'learner')
                 )
-                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id
+                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id, u.last_seen_at, u.is_online
                 ORDER BY last_activity DESC NULLS LAST, u.full_name ASC;
             `;
         } else if (role === 'learner') {
@@ -547,6 +594,7 @@ exports.getCommunicationContacts = async (req, res) => {
 
             query = `
                 SELECT u.id, u.full_name, u.surname, u.email, u.profile_picture_path, COALESCE(r.name, u.role_id::text, 'learner') as role_name,
+                       ${onlineSelect}
                        CASE 
                            WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN COALESCE(MAX(e.subjects[1]), 'Teacher') || ' Teacher'
                            WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'learner' THEN 'Grade ' || COALESCE(MAX(c.grade)::text, 'N/A') || ' Learner'
@@ -575,13 +623,14 @@ exports.getCommunicationContacts = async (req, res) => {
                     OR (LOWER(COALESCE(r.name, u.role_id::text, '')) = 'learner' AND ($2::text IS NULL OR c.grade::text = $2::text))
                     OR (LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' AND ($2::int IS NULL OR $2::int = ANY(e.grades_taught) OR ARRAY_LENGTH(e.grades_taught, 1) IS NULL OR e.grades_taught = '{}'))
                 )
-                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id
+                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id, u.last_seen_at, u.is_online
                 ORDER BY last_activity DESC NULLS LAST, u.full_name ASC;
             `;
             params = [userId, learnerGrade ? String(learnerGrade) : null];
         } else if (role === 'parent') {
             query = `
                 SELECT u.id, u.full_name, u.surname, u.email, u.profile_picture_path, COALESCE(r.name, u.role_id::text, 'teacher') as role_name,
+                       ${onlineSelect}
                        CASE 
                            WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN COALESCE(MAX(e.subjects[1]), 'Teacher') || ' Teacher'
                            ELSE 'School Admin'
@@ -604,12 +653,13 @@ exports.getCommunicationContacts = async (req, res) => {
                 LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                 LEFT JOIN employees e ON e.user_id::text = u.id::text
                 WHERE u.id::text != $1::text AND (LOWER(COALESCE(r.name, u.role_id::text, '')) IN ('admin', 'teacher'))
-                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id
+                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id, u.last_seen_at, u.is_online
                 ORDER BY last_activity DESC NULLS LAST, u.full_name ASC;
             `;
         } else {
             query = `
                 SELECT u.id, u.full_name, u.surname, u.email, u.profile_picture_path, COALESCE(r.name, u.role_id::text, 'learner') as role_name,
+                       ${onlineSelect}
                        CASE 
                            WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN COALESCE(MAX(e.subjects[1]), 'Teacher') || ' Teacher'
                            WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'parent' THEN 'Parent'
@@ -634,7 +684,7 @@ exports.getCommunicationContacts = async (req, res) => {
                 LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                 LEFT JOIN employees e ON e.user_id::text = u.id::text
                 WHERE u.id::text != $1::text
-                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id
+                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id, u.last_seen_at, u.is_online
                 ORDER BY last_activity DESC NULLS LAST, u.full_name ASC;
             `;
         }

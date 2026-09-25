@@ -3077,10 +3077,11 @@ exports.getSchoolSubjectsSummary = async (req, res) => {
                   AND (
                     c.subjects && ARRAY[$3]::text[]
                     OR $3 = ANY(c.subjects)
+                    OR ($3 ILIKE '%Home Language%' AND (c.home_language IS NOT NULL AND $3 ILIKE '%' || c.home_language || '%'))
                     OR (c.subjects IS NULL AND (
-                      (c.stream = 'Science' AND $3 = ANY(ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation'])) OR
-                      (c.stream = 'Commerce' AND $3 = ANY(ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Home Language', 'Life Orientation'])) OR
-                      (c.stream = 'Tourism' AND $3 = ANY(ARRAY['Tourism', 'Geography', 'Mathematical Literacy', 'English FAL', 'Home Language', 'Life Orientation'])) OR
+                      (c.stream = 'Science' AND $3 = ANY(ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Life Orientation'])) OR
+                      (c.stream = 'Commerce' AND $3 = ANY(ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Life Orientation'])) OR
+                      (c.stream = 'Tourism' AND $3 = ANY(ARRAY['Tourism', 'Geography', 'Mathematical Literacy', 'English FAL', 'Life Orientation'])) OR
                       (c.stream = 'General')
                     ))
                   )
@@ -3424,6 +3425,15 @@ exports.deleteClass = async (req, res) => {
  */
 exports.createStaffInvite = async (req, res) => {
   try {
+    const { isControlLocked } = require('./systemController');
+    const lockState = await isControlLocked('parent_application');
+    if (lockState && lockState.is_locked) {
+      return res.status(403).json({
+        error: lockState.locked_reason || 'Staff applications are currently closed by Geleza SA Executives.',
+        is_locked: true
+      });
+    }
+
     const schoolId = getTargetSchoolId(req);
     const {
       email, full_name, surname, role_type = 'teacher',
@@ -3438,26 +3448,52 @@ exports.createStaffInvite = async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
     const token = require('crypto').randomBytes(24).toString('hex');
 
-    const result = await db.query(`
-      INSERT INTO staff_invites (
-        school_id, invited_by, email, full_name, surname, role_type,
-        sace_number, subjects_offered, sports_coached, assigned_grades, assigned_classes,
-        status, invite_token
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', $12)
-      RETURNING *;
-    `, [
-      schoolId, req.user?.id || null, cleanEmail,
-      full_name ? full_name.trim() : null, surname ? surname.trim() : null,
-      role_type, sace_number ? sace_number.trim() : null,
-      subjects_offered, sports_coached, assigned_grades, assigned_classes, token
-    ]);
-
-    const invite = result.rows[0];
+    // Check if invite already exists
+    const existing = await db.query('SELECT id, status FROM staff_invites WHERE school_id = $1 AND LOWER(email) = $2', [schoolId, cleanEmail]);
+    
+    let invite;
+    if (existing.rows.length > 0) {
+      const updateRes = await db.query(`
+        UPDATE staff_invites 
+        SET invite_token = $1, status = 'pending', role_type = $2,
+            full_name = COALESCE($3, full_name), surname = COALESCE($4, surname),
+            sace_number = COALESCE($5, sace_number),
+            subjects_offered = $6, sports_coached = $7,
+            assigned_grades = $8, assigned_classes = $9,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $10
+        RETURNING *;
+      `, [
+        token, role_type, full_name ? full_name.trim() : null, surname ? surname.trim() : null,
+        sace_number ? sace_number.trim() : null, subjects_offered, sports_coached,
+        assigned_grades, assigned_classes, existing.rows[0].id
+      ]);
+      invite = updateRes.rows[0];
+    } else {
+      const result = await db.query(`
+        INSERT INTO staff_invites (
+          school_id, invited_by, email, full_name, surname, role_type,
+          sace_number, subjects_offered, sports_coached, assigned_grades, assigned_classes,
+          status, invite_token
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', $12)
+        RETURNING *;
+      `, [
+        schoolId, req.user?.id || null, cleanEmail,
+        full_name ? full_name.trim() : null, surname ? surname.trim() : null,
+        role_type, sace_number ? sace_number.trim() : null,
+        subjects_offered, sports_coached, assigned_grades, assigned_classes, token
+      ]);
+      invite = result.rows[0];
+    }
 
     const schoolRes = await db.query('SELECT name FROM schools WHERE id = $1', [schoolId]);
     const schoolName = schoolRes.rows[0]?.name || 'Geleza SA Partner School';
     const principalName = `${req.user?.full_name || 'The School Principal'}`;
+
+    // Dynamic base URL for seamless mobile / local / production redirects
+    const baseUrl = req.headers.origin || req.headers.referer?.replace(/\/$/, '') || process.env.FRONTEND_URL || process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const inviteUrl = `${baseUrl}/register?role=teacher&invite=${token}&email=${encodeURIComponent(cleanEmail)}`;
 
     emailService.sendStaffInvitationNotice({
       colleagueEmail: cleanEmail,
@@ -3467,7 +3503,7 @@ exports.createStaffInvite = async (req, res) => {
       roleType: role_type,
       subjects: subjects_offered,
       sports: sports_coached,
-      inviteUrl: `https://gelezasa.co.za/register?invite=${token}&email=${encodeURIComponent(cleanEmail)}&role=${role_type}`
+      inviteUrl
     }).catch(e => console.warn('Could not send staff invite email:', e.message));
 
     res.status(201).json({
@@ -3494,6 +3530,99 @@ exports.getStaffInvites = async (req, res) => {
   } catch (err) {
     console.error('Error fetching staff invites:', err);
     res.status(500).json({ error: 'Failed to retrieve staff invites.' });
+  }
+};
+
+/**
+ * Approves a teacher/staff application and sends an official registration email.
+ */
+exports.approveStaffInvite = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const inviteRes = await db.query('SELECT * FROM staff_invites WHERE id = $1', [id]);
+    if (inviteRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Invitation/Application not found.' });
+    }
+
+    const invite = inviteRes.rows[0];
+    const approvalToken = require('crypto').randomBytes(24).toString('hex');
+
+    await db.query(`
+      UPDATE staff_invites 
+      SET status = 'approved',
+          approval_token = $1,
+          approved_by = $2,
+          approved_at = CURRENT_TIMESTAMP
+      WHERE id = $3;
+    `, [approvalToken, req.user?.id || null, id]);
+
+    const schoolRes = await db.query('SELECT name FROM schools WHERE id = $1', [invite.school_id]);
+    const schoolName = schoolRes.rows[0]?.name || 'Geleza SA Partner School';
+    const principalName = `${req.user?.full_name || 'The School Principal'}`;
+
+    const baseUrl = req.headers.origin || req.headers.referer?.replace(/\/$/, '') || process.env.FRONTEND_URL || process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const registerUrl = `${baseUrl}/register?role=teacher&step=register&token=${approvalToken}&email=${encodeURIComponent(invite.email)}`;
+
+    emailService.sendTeacherApplicationApprovedNotice({
+      colleagueEmail: invite.email,
+      colleagueName: invite.full_name ? `${invite.full_name} ${invite.surname || ''}`.trim() : 'Educator',
+      principalName,
+      schoolName,
+      roleType: invite.role_type,
+      registerUrl
+    }).catch(e => console.warn('Could not send teacher approval email:', e.message));
+
+    res.json({
+      success: true,
+      message: `Application for ${invite.full_name || invite.email} has been approved. Registration link dispatched.`,
+      status: 'approved'
+    });
+  } catch (err) {
+    console.error('Error approving staff application:', err);
+    res.status(500).json({ error: 'Failed to approve staff application.' });
+  }
+};
+
+/**
+ * Declines a teacher/staff application.
+ */
+exports.declineStaffInvite = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const inviteRes = await db.query('SELECT * FROM staff_invites WHERE id = $1', [id]);
+    if (inviteRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Invitation/Application not found.' });
+    }
+
+    const invite = inviteRes.rows[0];
+
+    await db.query(`
+      UPDATE staff_invites 
+      SET status = 'declined',
+          declined_reason = $1
+      WHERE id = $2;
+    `, [reason || 'Application not accepted at this time.', id]);
+
+    const schoolRes = await db.query('SELECT name FROM schools WHERE id = $1', [invite.school_id]);
+    const schoolName = schoolRes.rows[0]?.name || 'Geleza SA Partner School';
+
+    emailService.sendTeacherApplicationDeclinedNotice({
+      colleagueEmail: invite.email,
+      colleagueName: invite.full_name ? `${invite.full_name} ${invite.surname || ''}`.trim() : 'Applicant',
+      schoolName,
+      reason: reason || null
+    }).catch(e => console.warn('Could not send teacher decline email:', e.message));
+
+    res.json({
+      success: true,
+      message: 'Application marked as declined.',
+      status: 'declined'
+    });
+  } catch (err) {
+    console.error('Error declining staff application:', err);
+    res.status(500).json({ error: 'Failed to decline staff application.' });
   }
 };
 

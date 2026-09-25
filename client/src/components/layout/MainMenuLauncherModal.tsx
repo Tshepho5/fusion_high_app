@@ -30,7 +30,8 @@ import {
   CheckCircle2,
   CreditCard,
   FileSpreadsheet,
-  Settings
+  Settings,
+  ShieldCheck
 } from 'lucide-react';
 
 type ViewMode = 'launchpad' | 'cards' | 'list';
@@ -86,22 +87,23 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
         ];
       case 'admin':
         return [
-          { id: 'overview', label: 'School Analytics Hub', desc: 'Overall school enrollment, attendance & pass rates', category: 'academic', icon: LayoutDashboard, gradient: 'from-[#0284c7] to-[#2563eb]' },
-          { id: 'subjects', label: 'School Curriculum & Subjects', desc: 'All curriculum subjects across Grades 8-12, registers & flags', category: 'academic', icon: BookOpen, gradient: 'from-[#0ea5e9] to-[#0284c7]', badge: 'Gr 8-12' },
-          { id: 'marks', label: 'CAPS Mark Audits & Report Cards', desc: 'SBA continuous assessment weightings & official report cards', category: 'academic', icon: FileSpreadsheet, gradient: 'from-[#0f766e] to-[#0284c7]', badge: 'CAPS' },
-          { id: 'finance', label: 'School Fees & Finance', desc: 'Tuition invoicing, payment receipts & collection analytics', category: 'operations', icon: CreditCard, gradient: 'from-[#0f766e] to-[#2563eb]', badge: 'ZAR' },
-          { id: 'users', label: 'User Directory', desc: 'Manage teachers, parents, learners & staff accounts', category: 'operations', icon: Users, gradient: 'from-[#0284c7] to-[#1d4ed8]' },
-          { id: 'matric-projector', label: 'Matric Pass Projector', desc: 'Grade 12 Bachelor pass & distinction forecast analytics', category: 'academic', icon: GraduationCap, gradient: 'from-[#4f46e5] to-[#2563eb]', badge: 'Gr12' },
-          { id: 'bursaries', label: 'Bursary Opportunities', desc: 'National tertiary scholarship catalog & learner applications', category: 'academic', icon: GraduationCap, gradient: 'from-[#2563eb] to-[#4338ca]' },
-          { id: 'leave-relief', label: 'Staff Leave & Relief', desc: 'Educator substitute allocations & daily duty roster', category: 'operations', icon: UserCheck, gradient: 'from-[#334155] to-[#1e293b]' },
-          { id: 'timetable', label: 'Timetable Master', desc: 'Automated clash-free AI school timetable generation', category: 'operations', icon: Clock, gradient: 'from-[#0ea5e9] to-[#2563eb]' },
-          { id: 'exam-seating', label: 'Exam Seating Master', desc: 'Examination hall desk allocations & card printing', category: 'operations', icon: Grid, gradient: 'from-[#1d4ed8] to-[#4338ca]' },
-          { id: 'sports', label: 'Sports & Clubs Hub', desc: 'School athletic fixtures, scores & club rosters', category: 'campus', icon: Trophy, gradient: 'from-[#0f766e] to-[#0284c7]' },
-          { id: 'textbooks', label: 'Textbook Inventory', desc: 'Comprehensive textbook catalog & return tracking', category: 'operations', icon: BookMarked, gradient: 'from-[#0284c7] to-[#0369a1]' },
-          { id: 'calendar', label: 'School Calendar', desc: 'Official school calendar dates & academic terms', category: 'campus', icon: Calendar, gradient: 'from-[#2563eb] to-[#4f46e5]' },
-          { id: 'announcements', label: 'Broadcast Notices', desc: 'Broadcast notices to all grades, streams & parents', category: 'campus', icon: Megaphone, gradient: 'from-[#0284c7] to-[#3b82f6]' },
-          { id: 'messages', label: 'School Chat Hub', desc: 'Institution-wide communication management', category: 'chat', icon: MessageSquare, gradient: 'from-[#0284c7] to-[#2563eb]' },
-          { id: 'settings', label: 'Technical Settings', desc: 'Theme colors, dark/light mode, typography fonts & preferences', category: 'operations', icon: Settings, gradient: 'from-[#334155] to-[#475569]' },
+          { id: 'overview', label: 'School Curriculum & Subjects', desc: '', category: 'academic', icon: BookOpen, gradient: 'from-[#0ea5e9] to-[#0284c7]', badge: 'Gr 8-12' },
+          { id: 'metrics', label: 'School Performance Metrics', desc: '', category: 'academic', icon: Trophy, gradient: 'from-[#4f46e5] to-[#2563eb]', badge: 'KPI' },
+          { id: 'testers', label: 'Master Controls & Beta Testers', desc: '', category: 'operations', icon: ShieldCheck, gradient: 'from-[#0f766e] to-[#0284c7]', badge: 'Master' },
+          { id: 'marks', label: 'CAPS Mark Audits & Report Cards', desc: '', category: 'academic', icon: FileSpreadsheet, gradient: 'from-[#0f766e] to-[#0284c7]', badge: 'CAPS' },
+          { id: 'finance', label: 'School Fees & Finance', desc: '', category: 'operations', icon: CreditCard, gradient: 'from-[#0f766e] to-[#2563eb]', badge: 'ZAR' },
+          { id: 'users', label: 'User Directory', desc: '', category: 'operations', icon: Users, gradient: 'from-[#0284c7] to-[#1d4ed8]' },
+          { id: 'matric-projector', label: 'Matric Pass Projector', desc: '', category: 'academic', icon: GraduationCap, gradient: 'from-[#4f46e5] to-[#2563eb]', badge: 'Gr12' },
+          { id: 'bursaries', label: 'Bursary Opportunities', desc: '', category: 'academic', icon: GraduationCap, gradient: 'from-[#2563eb] to-[#4338ca]' },
+          { id: 'leave-relief', label: 'Staff Leave & Relief', desc: '', category: 'operations', icon: UserCheck, gradient: 'from-[#334155] to-[#1e293b]' },
+          { id: 'timetable', label: 'Timetable Master', desc: '', category: 'operations', icon: Clock, gradient: 'from-[#0ea5e9] to-[#2563eb]' },
+          { id: 'exam-seating', label: 'Exam Seating Master', desc: '', category: 'operations', icon: Grid, gradient: 'from-[#1d4ed8] to-[#4338ca]' },
+          { id: 'sports', label: 'Sports & Clubs Hub', desc: '', category: 'campus', icon: Trophy, gradient: 'from-[#0f766e] to-[#0284c7]' },
+          { id: 'textbooks', label: 'Textbook Inventory', desc: '', category: 'operations', icon: BookMarked, gradient: 'from-[#0284c7] to-[#0369a1]' },
+          { id: 'calendar', label: 'School Calendar', desc: '', category: 'campus', icon: Calendar, gradient: 'from-[#2563eb] to-[#4f46e5]' },
+          { id: 'announcements', label: 'Broadcast Notices', desc: '', category: 'campus', icon: Megaphone, gradient: 'from-[#0284c7] to-[#3b82f6]' },
+          { id: 'messages', label: 'School Chat Hub', desc: '', category: 'chat', icon: MessageSquare, gradient: 'from-[#0284c7] to-[#2563eb]' },
+          { id: 'settings', label: 'Technical Settings', desc: '', category: 'operations', icon: Settings, gradient: 'from-[#334155] to-[#475569]' },
         ];
       case 'parent':
         return [
@@ -183,9 +185,6 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                   {role} Hub
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Launch any workspace module or switch view presentation mode.
-              </p>
             </div>
           </div>
 
@@ -387,9 +386,6 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                       <h4 className="text-sm font-black text-white mt-3 group-hover:text-[#18E2EC] transition-colors font-display">
                         {item.label}
                       </h4>
-                      <p className="text-[11px] text-slate-400 mt-1 leading-snug line-clamp-2">
-                        {item.desc}
-                      </p>
                     </div>
 
                     <div className="mt-4 flex items-center justify-between pt-2 border-t border-white/5 text-[10px] text-slate-400 group-hover:text-[#18E2EC] font-bold">
@@ -441,9 +437,6 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                             </span>
                           )}
                         </div>
-                        <p className="text-[10px] text-slate-400 truncate mt-0.5">
-                          {item.desc}
-                        </p>
                       </div>
                     </div>
 

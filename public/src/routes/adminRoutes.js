@@ -46,6 +46,8 @@ router.delete('/classes/:id', auth, isAdmin, adminController.deleteClass);
 // Colleague & Staff Invites (Principal invites teachers and sports coaches)
 router.post('/staff-invites', auth, isAdmin, adminController.createStaffInvite);
 router.get('/staff-invites', auth, isAdmin, adminController.getStaffInvites);
+router.post('/staff-invites/:id/approve', auth, isAdmin, adminController.approveStaffInvite);
+router.post('/staff-invites/:id/decline', auth, isAdmin, adminController.declineStaffInvite);
 router.delete('/staff-invites/:id', auth, isAdmin, adminController.deleteStaffInvite);
 
 // School Metadata (departments, classes, subjects, roles)

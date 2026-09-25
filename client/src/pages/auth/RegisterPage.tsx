@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { authService, parentApplicationService, systemControlService } from '../../services/api';
+import { authService, parentApplicationService, systemControlService, classStaffService } from '../../services/api';
 import { useSchool } from '../../context/SchoolContext';
 import { FusionAIIcon } from '../../components/common/FusionAIIcon';
 import { SchoolRegistrationModal } from '../../components/landing/SchoolRegistrationModal';
@@ -170,6 +170,165 @@ export const RegisterPage: React.FC = () => {
     status: string;
   } | null>(null);
 
+  // Teacher Onboarding Lifecycle States
+  const searchParams = new URLSearchParams(window.location.search);
+  const roleParam = searchParams.get('role');
+  const inviteToken = searchParams.get('invite') || searchParams.get('token');
+  const stepParam = searchParams.get('step'); // 'register' or 'apply'
+  const isTeacherFlow = roleParam === 'teacher' || Boolean(searchParams.get('invite'));
+
+  const [teacherLoading, setTeacherLoading] = useState(isTeacherFlow);
+  const [teacherInvite, setTeacherInvite] = useState<any>(null);
+  const [teacherError, setTeacherError] = useState<string | null>(null);
+  const [teacherSubmitting, setTeacherSubmitting] = useState(false);
+  const [teacherAppSubmitted, setTeacherAppSubmitted] = useState(false);
+  const [teacherRegistered, setTeacherRegistered] = useState(false);
+
+  const [teacherAppForm, setTeacherAppForm] = useState({
+    full_name: '',
+    surname: '',
+    phone: '',
+    id_number: '',
+    sace_number: '',
+    qualifications: '',
+    experience_years: 1,
+    subjects_offered: '',
+    sports_coached: '',
+    application_notes: ''
+  });
+
+  const [teacherRegForm, setTeacherRegForm] = useState({
+    password: '',
+    confirmPassword: ''
+  });
+  const [showTeacherPassword, setShowTeacherPassword] = useState(false);
+  const [showTeacherConfirmPassword, setShowTeacherConfirmPassword] = useState(false);
+
+  // Verify Teacher Invite Token
+  useEffect(() => {
+    if (!isTeacherFlow) return;
+
+    if (!inviteToken) {
+      setTeacherLoading(false);
+      setTeacherError('Official Teacher Invitation Required: Educators can only apply or register via an official invitation email dispatched by their School Administration.');
+      return;
+    }
+
+    setTeacherLoading(true);
+    setTeacherError(null);
+
+    classStaffService.verifyToken(inviteToken)
+      .then((res: any) => {
+        if (res && res.success && res.invite) {
+          setTeacherInvite(res.invite);
+          setTeacherAppForm(prev => ({
+            ...prev,
+            full_name: res.invite.full_name || '',
+            surname: res.invite.surname || '',
+            sace_number: res.invite.sace_number || '',
+            phone: res.invite.phone || '',
+            id_number: res.invite.id_number || '',
+            qualifications: res.invite.qualifications || '',
+            subjects_offered: Array.isArray(res.invite.subjects_offered) ? res.invite.subjects_offered.join(', ') : '',
+            sports_coached: Array.isArray(res.invite.sports_coached) ? res.invite.sports_coached.join(', ') : ''
+          }));
+        } else {
+          setTeacherError('Invalid or expired invitation link. Please request a new invite from your school administrator.');
+        }
+      })
+      .catch((err: any) => {
+        setTeacherError(err.response?.data?.error || 'Unable to verify teacher invitation credentials.');
+      })
+      .finally(() => {
+        setTeacherLoading(false);
+      });
+  }, [isTeacherFlow, inviteToken]);
+
+  const handleTeacherApplySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTeacherError(null);
+
+    if (!teacherAppForm.full_name.trim() || !teacherAppForm.surname.trim()) {
+      setTeacherError('First Name and Surname are required.');
+      return;
+    }
+    if (!teacherAppForm.phone.trim()) {
+      setTeacherError('Contact phone number is required.');
+      return;
+    }
+    const cleanId = teacherAppForm.id_number.replace(/\D/g, '');
+    if (cleanId.length !== 13) {
+      setTeacherError('A valid 13-digit South African National ID number is required.');
+      return;
+    }
+    if (!teacherAppForm.sace_number.trim()) {
+      setTeacherError('SACE Registration Number is required.');
+      return;
+    }
+    if (!teacherAppForm.qualifications.trim()) {
+      setTeacherError('Please specify your highest teaching qualification (e.g. B.Ed, PGCE, Diploma).');
+      return;
+    }
+
+    setTeacherSubmitting(true);
+    try {
+      await classStaffService.applyTeacher({
+        token: inviteToken,
+        full_name: teacherAppForm.full_name.trim(),
+        surname: teacherAppForm.surname.trim(),
+        phone: teacherAppForm.phone.trim(),
+        id_number: cleanId,
+        sace_number: teacherAppForm.sace_number.trim(),
+        qualifications: teacherAppForm.qualifications.trim(),
+        experience_years: parseInt(teacherAppForm.experience_years.toString(), 10) || 0,
+        subjects_offered: teacherAppForm.subjects_offered
+          ? teacherAppForm.subjects_offered.split(',').map(s => s.trim()).filter(Boolean)
+          : [],
+        sports_coached: teacherAppForm.sports_coached
+          ? teacherAppForm.sports_coached.split(',').map(s => s.trim()).filter(Boolean)
+          : [],
+        application_notes: teacherAppForm.application_notes.trim()
+      });
+
+      setTeacherAppSubmitted(true);
+      setTeacherInvite((prev: any) => ({ ...prev, status: 'applied' }));
+    } catch (err: any) {
+      setTeacherError(err.response?.data?.error || 'Failed to submit educator application.');
+    } finally {
+      setTeacherSubmitting(false);
+    }
+  };
+
+  const handleTeacherRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTeacherError(null);
+
+    if (!teacherRegForm.password || teacherRegForm.password.length < 6) {
+      setTeacherError('Password must be at least 6 characters long.');
+      return;
+    }
+    if (teacherRegForm.password !== teacherRegForm.confirmPassword) {
+      setTeacherError('Passwords do not match.');
+      return;
+    }
+
+    setTeacherSubmitting(true);
+    try {
+      await classStaffService.registerTeacher({
+        token: inviteToken,
+        password: teacherRegForm.password,
+        confirmPassword: teacherRegForm.confirmPassword
+      });
+
+      setTeacherRegistered(true);
+      setTeacherInvite((prev: any) => ({ ...prev, status: 'registered' }));
+    } catch (err: any) {
+      setTeacherError(err.response?.data?.error || 'Failed to complete registration.');
+    } finally {
+      setTeacherSubmitting(false);
+    }
+  };
+
   // Clear specific field error helper
   const clearFieldError = (field: string) => {
     setFieldErrors(prev => {
@@ -182,10 +341,16 @@ export const RegisterPage: React.FC = () => {
 
   // Check portal lock status on mount
   useEffect(() => {
-    systemControlService.getPortalLocks().then((controls: any[]) => {
-      const regControl = controls?.find((c: any) => c.control_id === 'user_registration');
+    systemControlService.getPortalLocks().then((res: any) => {
+      const controls = res?.controls || res;
+      let regControl = null;
+      if (Array.isArray(controls)) {
+        regControl = controls.find((c: any) => c.control_id === 'user_registration' || c.id === 'user_registration');
+      } else if (controls && typeof controls === 'object') {
+        regControl = controls.user_registration;
+      }
       if (regControl && regControl.is_locked) {
-        setPortalLock({ is_locked: true, reason: regControl.reason });
+        setPortalLock({ is_locked: true, reason: regControl.locked_reason || regControl.reason || 'User registration is temporarily closed.' });
       }
     }).catch(err => {
       console.warn('Could not check user registration lock status:', err);
@@ -577,6 +742,448 @@ export const RegisterPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // TEACHER ONBOARDING LIFECYCLE (Apply -> Await Principal Approval -> Register & Set Password)
+  if (isTeacherFlow) {
+    if (teacherLoading) {
+      return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+          <div className="text-center space-y-4 animate-fade-in">
+            <div className="w-12 h-12 border-3 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto" />
+            <h3 className="text-base font-bold text-white">Verifying Educator Invitation</h3>
+            <p className="text-xs text-slate-400">Authenticating accreditation token with school records...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (teacherError && !teacherInvite) {
+      return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+          <div className="max-w-md w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 text-center space-y-6 shadow-2xl">
+            <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center mx-auto text-rose-400">
+              <AlertCircle className="w-7 h-7" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-black text-white">Teacher Invitation Required</h2>
+              <p className="text-xs text-slate-300 leading-relaxed">{teacherError}</p>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-left text-[11px] text-slate-400 space-y-1">
+              <p className="font-bold text-slate-200">How to join as an educator:</p>
+              <p>• Teachers must receive an official invitation link from their School Principal.</p>
+              <p>• Once invited, you will submit your credentials for Principal accreditation.</p>
+            </div>
+            <div className="pt-2 flex gap-3">
+              <button
+                onClick={() => navigate('/login')}
+                className="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs transition-all cursor-pointer"
+              >
+                Sign In
+              </button>
+              <Link
+                to="/"
+                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-all border border-white/10 flex items-center justify-center"
+              >
+                Back to Home
+              </Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Phase: Application submitted / under review
+    if (teacherAppSubmitted || teacherInvite?.status === 'applied') {
+      return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+          <div className="max-w-lg w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 text-center space-y-6 shadow-2xl animate-fade-in relative">
+            <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 flex items-center justify-center mx-auto shadow-glow-cyan">
+              <GraduationCap className="w-9 h-9" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-bold">
+                Application Received
+              </span>
+              <h2 className="text-2xl font-black text-white">Application Under Review</h2>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Your educator application for <strong className="text-white">{teacherInvite?.school_name || 'your institution'}</strong> has been submitted.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 text-left space-y-2.5 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Applicant:</span>
+                <span className="font-bold text-white">{teacherInvite?.full_name} {teacherInvite?.surname}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Email:</span>
+                <span className="font-medium text-slate-300">{teacherInvite?.email}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Review Status:</span>
+                <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-bold text-[11px]">
+                  Pending Principal Approval
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-800/40 text-left text-xs text-cyan-200 leading-relaxed">
+              Once approved by the School Principal, you will receive an official approval email with your direct activation link to set your password and access the app.
+            </div>
+
+            <div className="pt-2 flex gap-3 justify-center">
+              <button
+                onClick={() => navigate('/login')}
+                className="px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-black transition-all cursor-pointer"
+              >
+                Go to Login
+              </button>
+              <Link
+                to="/"
+                className="px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-all border border-white/10"
+              >
+                Back to Home
+              </Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Phase: Registered / Active
+    if (teacherRegistered || teacherInvite?.status === 'registered' || teacherInvite?.status === 'accepted') {
+      return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+          <div className="max-w-md w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 text-center space-y-6 shadow-2xl animate-fade-in">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-9 h-9" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-bold">
+                Account Active
+              </span>
+              <h2 className="text-2xl font-black text-white">Educator Account Activated</h2>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Your educator account is active. You can now log into the web portal or mobile app directly.
+              </p>
+            </div>
+
+            <button
+              onClick={() => navigate(`/login?email=${encodeURIComponent(teacherInvite?.email || '')}`)}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-black shadow-lg cursor-pointer"
+            >
+              Sign In Now
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // Phase: Registration / Set Password (When approved or step === 'register')
+    if (teacherInvite?.status === 'approved' || stepParam === 'register') {
+      if (teacherInvite?.isRegLocked) {
+        return (
+          <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+            <div className="max-w-md w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 text-center space-y-5">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
+                <Lock className="w-7 h-7" />
+              </div>
+              <h2 className="text-xl font-black text-white">Registration Portal Locked</h2>
+              <p className="text-xs text-slate-300">
+                {teacherInvite?.regLockReason || 'User account registrations are currently paused by Geleza SA Executives.'}
+              </p>
+              <Link to="/login" className="inline-block px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold">
+                Sign In to Existing Account
+              </Link>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+          <div className="max-w-md w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 space-y-6 shadow-2xl">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mx-auto text-cyan-400">
+                <Lock className="w-6 h-6" />
+              </div>
+              <h2 className="text-xl font-black text-white">Complete Educator Registration</h2>
+              <p className="text-xs text-slate-400">
+                Set your secure password to complete activation for <strong className="text-slate-200">{teacherInvite?.email}</strong>.
+              </p>
+            </div>
+
+            {teacherError && (
+              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{teacherError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleTeacherRegisterSubmit} className="space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300">New Password *</label>
+                <div className="relative">
+                  <input
+                    type={showTeacherPassword ? 'text' : 'password'}
+                    placeholder="At least 6 characters"
+                    value={teacherRegForm.password}
+                    onChange={(e) => setTeacherRegForm({ ...teacherRegForm, password: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm outline-hidden focus:border-cyan-500 pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowTeacherPassword(!showTeacherPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-white"
+                  >
+                    {showTeacherPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300">Confirm Password *</label>
+                <div className="relative">
+                  <input
+                    type={showTeacherConfirmPassword ? 'text' : 'password'}
+                    placeholder="Repeat password"
+                    value={teacherRegForm.confirmPassword}
+                    onChange={(e) => setTeacherRegForm({ ...teacherRegForm, confirmPassword: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm outline-hidden focus:border-cyan-500 pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowTeacherConfirmPassword(!showTeacherConfirmPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-white"
+                  >
+                    {showTeacherConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={teacherSubmitting}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-black text-xs shadow-lg cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {teacherSubmitting ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Activating Account...</span>
+                  </>
+                ) : (
+                  <span>Activate Account & Sign In</span>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    // Phase: Application (Status is 'pending')
+    if (teacherInvite?.isAppLocked) {
+      return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+          <div className="max-w-md w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 text-center space-y-5">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
+              <Lock className="w-7 h-7" />
+            </div>
+            <h2 className="text-xl font-black text-white">Application Period Closed</h2>
+            <p className="text-xs text-slate-300">
+              {teacherInvite?.appLockReason || 'Teacher applications are currently closed by Geleza SA administration.'}
+            </p>
+            <Link to="/login" className="inline-block px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold">
+              Sign In to Existing Account
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-2xl w-full mx-auto rounded-3xl bg-slate-900 border border-slate-800 p-6 sm:p-8 space-y-6 shadow-2xl">
+          <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+            <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+              <GraduationCap className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-400 font-bold">
+                {teacherInvite?.school_name || 'Geleza SA Faculty Onboarding'}
+              </span>
+              <h2 className="text-lg sm:text-xl font-black text-white">Educator Onboarding Application</h2>
+            </div>
+          </div>
+
+          {teacherError && (
+            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{teacherError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleTeacherApplySubmit} className="space-y-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300">First Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Sipho"
+                  value={teacherAppForm.full_name}
+                  onChange={(e) => setTeacherAppForm({ ...teacherAppForm, full_name: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300">Surname *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Khumalo"
+                  value={teacherAppForm.surname}
+                  onChange={(e) => setTeacherAppForm({ ...teacherAppForm, surname: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300">Colleague Email</label>
+                <input
+                  type="email"
+                  value={teacherInvite?.email || ''}
+                  disabled
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 cursor-not-allowed"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300">Contact Phone Number *</label>
+                <input
+                  type="tel"
+                  placeholder="e.g. 082 123 4567"
+                  value={teacherAppForm.phone}
+                  onChange={(e) => setTeacherAppForm({ ...teacherAppForm, phone: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300">SA ID Number (13 Digits) *</label>
+                <input
+                  type="text"
+                  maxLength={13}
+                  placeholder="13-digit national ID"
+                  value={teacherAppForm.id_number}
+                  onChange={(e) => setTeacherAppForm({ ...teacherAppForm, id_number: e.target.value.replace(/\D/g, '') })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300">SACE Number *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. SACE-849201"
+                  value={teacherAppForm.sace_number}
+                  onChange={(e) => setTeacherAppForm({ ...teacherAppForm, sace_number: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300">Highest Qualification *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. B.Ed, PGCE, BSc Mathematics"
+                  value={teacherAppForm.qualifications}
+                  onChange={(e) => setTeacherAppForm({ ...teacherAppForm, qualifications: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300">Teaching Experience (Years)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="50"
+                  value={teacherAppForm.experience_years}
+                  onChange={(e) => setTeacherAppForm({ ...teacherAppForm, experience_years: parseInt(e.target.value, 10) || 0 })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-slate-300">Teaching Subjects (comma-separated)</label>
+              <input
+                type="text"
+                placeholder="e.g. Mathematics, Physical Sciences"
+                value={teacherAppForm.subjects_offered}
+                onChange={(e) => setTeacherAppForm({ ...teacherAppForm, subjects_offered: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-slate-300">Sports / Extracurriculars Coached (Optional)</label>
+              <input
+                type="text"
+                placeholder="e.g. Soccer, Chess, Athletics"
+                value={teacherAppForm.sports_coached}
+                onChange={(e) => setTeacherAppForm({ ...teacherAppForm, sports_coached: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-slate-300">Application Notes / Bio (Optional)</label>
+              <textarea
+                rows={2}
+                placeholder="Brief professional note for the Principal..."
+                value={teacherAppForm.application_notes}
+                onChange={(e) => setTeacherAppForm({ ...teacherAppForm, application_notes: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
+              />
+            </div>
+
+            <div className="pt-2 flex items-center justify-between gap-3">
+              <Link to="/login" className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white font-bold transition-all">
+                Cancel
+              </Link>
+              <button
+                type="submit"
+                disabled={teacherSubmitting}
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-black text-xs shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {teacherSubmitting ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Submitting Application...</span>
+                  </>
+                ) : (
+                  <span>Submit Application for Principal Review</span>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   if (success && submittedApp) {
     return (

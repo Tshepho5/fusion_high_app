@@ -172,13 +172,24 @@ const VoiceNotePlayer: React.FC<{
 
   const progress = audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
 
+  const resolvedAudioSrc = audioUrl
+    ? (audioUrl.startsWith('http://') || audioUrl.startsWith('https://') || audioUrl.startsWith('blob:')
+        ? audioUrl
+        : (audioUrl.startsWith('/') ? audioUrl : `/${audioUrl}`))
+    : '';
+
   return (
     <div className="flex items-center gap-2.5 py-1.5 px-1 min-w-[200px] sm:min-w-[240px]">
       <audio
         ref={audioRef}
-        src={audioUrl}
+        src={resolvedAudioSrc}
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleEnded}
+        onError={() => {
+          if (audioRef.current && resolvedAudioSrc.includes('/uploads/messages/') && !resolvedAudioSrc.includes('/voice/')) {
+            audioRef.current.src = resolvedAudioSrc.replace('/uploads/messages/', '/uploads/messages/voice/');
+          }
+        }}
         onLoadedMetadata={() => {
           if (audioRef.current?.duration && !isNaN(audioRef.current.duration)) {
             setAudioDuration(audioRef.current.duration);
@@ -900,7 +911,7 @@ export const LearnerMessages: React.FC = () => {
                           {(contact.full_name || 'U')[0]}{(contact.surname || '')[0]}
                         </div>
                       )}
-                      <span className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#111b21] absolute bottom-0 right-0" />
+                      <span className={`w-3 h-3 rounded-full ${contact.is_online ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-500'} border-2 border-[#111b21] absolute bottom-0 right-0`} />
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -969,7 +980,7 @@ export const LearnerMessages: React.FC = () => {
                         {(selectedContact.full_name || 'U')[0]}{(selectedContact.surname || '')[0]}
                       </div>
                     )}
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#111b21] absolute bottom-0 right-0" />
+                    <span className={`w-2.5 h-2.5 rounded-full ${selectedContact.is_online ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-500'} border-2 border-[#111b21] absolute bottom-0 right-0`} />
                   </div>
 
                   <div className="min-w-0">
@@ -979,10 +990,17 @@ export const LearnerMessages: React.FC = () => {
                     <div className="flex items-center gap-2 text-[11px] text-slate-400">
                       <span>{selectedContact.tag_name || selectedContact.email}</span>
                       <span>•</span>
-                      <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        Online
-                      </span>
+                      {selectedContact.is_online ? (
+                        <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          Online
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 font-medium flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                          Offline
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1069,10 +1087,20 @@ export const LearnerMessages: React.FC = () => {
                       ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                       : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-                    const hasAttachment = !!msg.attachment_url;
-                    const isVoiceNote = msg.attachment_type === 'voice_note' || (msg.attachment_url && msg.attachment_url.includes('/voice/'));
-                    const isImage = msg.attachment_type === 'image' || (msg.attachment_url && (msg.attachment_url.match(/\.(jpg|jpeg|png|webp|gif)$/i) || msg.attachment_url.includes('/images/')));
-                    const isDoc = hasAttachment && !isVoiceNote && !isImage;
+                    const mediaUrl = msg.attachment_url || msg.file_url || msg.attachment_path || '';
+                    const cleanUrl = mediaUrl
+                      ? (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://') || mediaUrl.startsWith('blob:')
+                          ? mediaUrl
+                          : (mediaUrl.startsWith('/') ? mediaUrl : `/${mediaUrl}`))
+                      : '';
+
+                    const isVoiceNote = msg.attachment_type === 'voice_note' || cleanUrl.includes('/voice/') || (msg.attachment_name && msg.attachment_name.match(/\.(webm|ogg|wav|mp3|m4a)$/i));
+                    const isImage = msg.attachment_type === 'image' || 
+                      (cleanUrl && (cleanUrl.match(/\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i) || cleanUrl.includes('/images/'))) ||
+                      (msg.attachment_name && msg.attachment_name.match(/\.(jpg|jpeg|png|webp|gif)$/i)) ||
+                      (msg.body && (msg.body.startsWith('📷 Photo') || msg.body.match(/^[a-zA-Z0-9_\-\s]+\.(jpg|jpeg|png|webp|gif)$/i)));
+                    const isDoc = (!!cleanUrl || !!msg.attachment_name) && !isVoiceNote && !isImage;
+                    const finalImageUrl = cleanUrl || (msg.attachment_name ? `/uploads/messages/images/${msg.attachment_name}` : (msg.body?.startsWith('📷 Photo') ? `/uploads/messages/images/${msg.body.replace(/^📷 Photo\s*\((.*)\)$/, '$1')}` : ''));
 
                     return (
                       <div
@@ -1087,13 +1115,22 @@ export const LearnerMessages: React.FC = () => {
                           }`}
                         >
                           {/* Image Attachment Rendering */}
-                          {isImage && msg.attachment_url && (
-                            <div className="mb-2 rounded-xl overflow-hidden group relative cursor-pointer shadow-md bg-black/20" onClick={() => setLightboxImage({ url: msg.attachment_url, name: msg.attachment_name || 'Photo' })}>
+                          {isImage && (finalImageUrl || cleanUrl) && (
+                            <div
+                              className="mb-2 rounded-xl overflow-hidden group relative cursor-pointer shadow-md bg-black/20"
+                              onClick={() => setLightboxImage({ url: finalImageUrl || cleanUrl, name: msg.attachment_name || 'Photo' })}
+                            >
                               <img
-                                src={msg.attachment_url}
+                                src={finalImageUrl || cleanUrl}
                                 alt={msg.attachment_name || 'Shared Image'}
                                 className="max-h-60 sm:max-h-72 w-full object-cover rounded-xl transition-transform duration-300 group-hover:scale-105"
                                 loading="lazy"
+                                onError={(e) => {
+                                  const currentSrc = (e.target as HTMLImageElement).src;
+                                  if (currentSrc.includes('/uploads/messages/') && !currentSrc.includes('/images/')) {
+                                    (e.target as HTMLImageElement).src = currentSrc.replace('/uploads/messages/', '/uploads/messages/images/');
+                                  }
+                                }}
                               />
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white">
                                 <Maximize2 className="w-5 h-5 drop-shadow-md" />
@@ -1103,18 +1140,18 @@ export const LearnerMessages: React.FC = () => {
                           )}
 
                           {/* Voice Note Audio Player Rendering */}
-                          {isVoiceNote && msg.attachment_url && (
+                          {isVoiceNote && (cleanUrl || msg.attachment_url) && (
                             <VoiceNotePlayer
-                              audioUrl={msg.attachment_url}
+                              audioUrl={cleanUrl || msg.attachment_url}
                               duration={msg.voice_duration}
                               isMe={isMe}
                             />
                           )}
 
                           {/* Document Attachment Rendering */}
-                          {isDoc && msg.attachment_url && (
+                          {isDoc && cleanUrl && (
                             <a
-                              href={msg.attachment_url}
+                              href={cleanUrl}
                               target="_blank"
                               rel="noreferrer"
                               download={msg.attachment_name || 'document'}
@@ -1131,8 +1168,12 @@ export const LearnerMessages: React.FC = () => {
                             </a>
                           )}
 
-                          {/* Text Message Content (if not a pure placeholder) */}
-                          {msg.body && !msg.body.startsWith('🎤 Voice Note') && !msg.body.startsWith('📷 Photo') && !msg.body.startsWith('📎 Document') && (
+                          {/* Text Message Content (if not a pure placeholder or raw file name) */}
+                          {msg.body &&
+                            !msg.body.startsWith('🎤 Voice Note') &&
+                            !msg.body.startsWith('📷 Photo') &&
+                            !msg.body.startsWith('📎 Document') &&
+                            !msg.body.match(/^[a-zA-Z0-9_\-\s]+\.(png|jpg|jpeg|webp|gif|webm|pdf|doc|docx)$/i) && (
                             <p className="leading-relaxed whitespace-pre-wrap break-words text-xs md:text-sm">
                               {msg.body || msg.content}
                             </p>

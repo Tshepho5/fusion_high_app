@@ -338,16 +338,16 @@ export const ExamSeatingManager: React.FC = () => {
 
       {/* Modal: Create Exam Session */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-3xl bg-surface-dark border border-white/10 p-6 space-y-4 shadow-2xl animate-fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md overflow-y-auto flex items-start sm:items-center justify-center p-3 sm:p-5">
+          <div className="relative w-full max-w-lg my-auto rounded-3xl bg-surface-dark border border-white/10 p-5 sm:p-6 space-y-4 shadow-2xl animate-fade-in max-h-[92vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
               <h3 className="text-base font-bold text-white">Create Examination Session</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white p-1 rounded-lg">
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateSession} className="space-y-4 text-xs">
+            <form onSubmit={handleCreateSession} className="space-y-4 text-xs overflow-y-auto pr-1 custom-scrollbar">
               <div>
                 <label className="block text-slate-300 font-bold mb-1">Session Title *</label>
                 <input
@@ -355,11 +355,11 @@ export const ExamSeatingManager: React.FC = () => {
                   required
                   value={sessionForm.title}
                   onChange={(e) => setSessionForm(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-300 font-bold mb-1">Subject *</label>
                   <input
@@ -367,7 +367,7 @@ export const ExamSeatingManager: React.FC = () => {
                     required
                     value={sessionForm.subject}
                     onChange={(e) => setSessionForm(prev => ({ ...prev, subject: e.target.value }))}
-                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500"
+                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -375,7 +375,7 @@ export const ExamSeatingManager: React.FC = () => {
                   <select
                     value={sessionForm.grade}
                     onChange={(e) => setSessionForm(prev => ({ ...prev, grade: parseInt(e.target.value, 10) }))}
-                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500"
+                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white focus:ring-2 focus:ring-brand-500 focus:outline-none font-bold"
                   >
                     <option value={8}>Grade 8</option>
                     <option value={9}>Grade 9</option>
@@ -386,7 +386,7 @@ export const ExamSeatingManager: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-300 font-bold mb-1">Exam Date *</label>
                   <input
@@ -394,7 +394,7 @@ export const ExamSeatingManager: React.FC = () => {
                     required
                     value={sessionForm.exam_date}
                     onChange={(e) => setSessionForm(prev => ({ ...prev, exam_date: e.target.value }))}
-                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500"
+                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -404,12 +404,12 @@ export const ExamSeatingManager: React.FC = () => {
                     required
                     value={sessionForm.venue}
                     onChange={(e) => setSessionForm(prev => ({ ...prev, venue: e.target.value }))}
-                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500"
+                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-300 font-bold mb-1">Start Time *</label>
                   <input
@@ -417,7 +417,7 @@ export const ExamSeatingManager: React.FC = () => {
                     required
                     value={sessionForm.start_time}
                     onChange={(e) => setSessionForm(prev => ({ ...prev, start_time: e.target.value }))}
-                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500"
+                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -427,12 +427,12 @@ export const ExamSeatingManager: React.FC = () => {
                     required
                     value={sessionForm.end_time}
                     onChange={(e) => setSessionForm(prev => ({ ...prev, end_time: e.target.value }))}
-                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500"
+                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-300 font-bold mb-1">Hall Rows</label>
                   <input
@@ -441,7 +441,7 @@ export const ExamSeatingManager: React.FC = () => {
                     max={20}
                     value={sessionForm.total_rows}
                     onChange={(e) => setSessionForm(prev => ({ ...prev, total_rows: parseInt(e.target.value, 10) }))}
-                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500"
+                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -452,22 +452,22 @@ export const ExamSeatingManager: React.FC = () => {
                     max={15}
                     value={sessionForm.total_cols}
                     onChange={(e) => setSessionForm(prev => ({ ...prev, total_cols: parseInt(e.target.value, 10) }))}
-                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500"
+                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/10 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold"
+                  className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold transition-all text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold shadow-glow-indigo transition-all"
+                  className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold shadow-glow-indigo transition-all text-xs"
                 >
                   Create Session
                 </button>

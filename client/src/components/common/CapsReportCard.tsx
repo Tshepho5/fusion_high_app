@@ -135,7 +135,8 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
     learner_number: rawLearner.learner_number || `2026-FHS-${String(rawLearner.id || rawLearner.child_id || 94).padStart(3, '0')}`,
     grade: rawLearner.grade || 10,
     stream: rawLearner.stream || 'Science',
-    class_name: rawLearner.class_name || `${rawLearner.grade || 10}A`
+    class_name: rawLearner.class_name || `${rawLearner.grade || 10}A`,
+    home_language: rawLearner.home_language || 'Sepedi'
   };
 
   const school = data?.school || {
@@ -151,43 +152,72 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
     principal_name: 'Dr. T. Makola'
   };
 
-  // Standard 7 CAPS subjects for FET Science
+  // Resolve official South African Home Language for this learner
+  const rawHomeLang = (
+    previewLearner?.home_language || 
+    learner.home_language || 
+    data?.learner?.home_language || 
+    'Sepedi'
+  ).trim();
+  const learnerHomeLang = rawHomeLang.toLowerCase().includes('home language') 
+    ? rawHomeLang 
+    : `${rawHomeLang} Home Language`;
+
+  // Standard 7 CAPS subjects for FET Science (using the specific official Home Language)
   const defaultScienceSubjects = [
     'Mathematics',
     'Physical Sciences',
     'Life Sciences',
     'Geography',
-    'English First Additional Language',
-    'Home Language',
+    'English FAL',
+    learnerHomeLang,
     'Life Orientation'
   ];
+
+  // Helper to normalize subject names and eliminate duplicates
+  const normalizeSubjName = (name: string) => {
+    const trimmed = (name || '').trim();
+    const lower = trimmed.toLowerCase();
+    if (lower === 'home language' || lower === 'home language (hl)' || lower === 'hmlg' || lower === 'hmlg08' || lower === 'hmlg09' || lower === 'hmlg10' || lower === 'hmlg11' || lower === 'hmlg12') {
+      return learnerHomeLang;
+    }
+    if (lower === 'english first additional language' || lower === 'english first additional') {
+      return 'English FAL';
+    }
+    return trimmed;
+  };
 
   // Subjects resolution (NO hardcoded fake marks!)
   let subjects: any[] = [];
   if (previewLearner) {
-    const rawSubsDict = (previewLearner.subjects && typeof previewLearner.subjects === 'object')
-      ? previewLearner.subjects
-      : {};
+    const rawSubsDict: Record<string, any> = {};
+    if (previewLearner.subjects && typeof previewLearner.subjects === 'object') {
+      Object.entries(previewLearner.subjects).forEach(([k, v]) => {
+        const normKey = normalizeSubjName(k);
+        rawSubsDict[normKey] = v;
+      });
+    }
 
-    // Ensure all 7 subjects are represented
+    // Ensure all 7 subjects are represented without duplicates
     const subjectNames = [...defaultScienceSubjects];
     Object.keys(rawSubsDict).forEach(sName => {
-      if (!subjectNames.some(existing => existing.toLowerCase() === sName.toLowerCase())) {
-        subjectNames.push(sName);
+      const norm = normalizeSubjName(sName);
+      if (!subjectNames.some(existing => existing.toLowerCase() === norm.toLowerCase())) {
+        subjectNames.push(norm);
       }
     });
 
     subjects = subjectNames.map((subjName) => {
-      // Find matching key case-insensitively
-      const dictKey = Object.keys(rawSubsDict).find(k => k.toLowerCase() === subjName.toLowerCase()) || subjName;
+      const normName = normalizeSubjName(subjName);
+      const dictKey = Object.keys(rawSubsDict).find(k => k.toLowerCase() === normName.toLowerCase()) || normName;
       const markVal = rawSubsDict[dictKey];
       const hasVal = markVal !== null && markVal !== undefined && markVal !== '';
       const numVal = hasVal ? Number(markVal) : null;
       const caps = getCapsLevelDescriptor(numVal);
 
       return {
-        subject: subjName,
-        code: subjName.substring(0, 4).toUpperCase(),
+        subject: normName,
+        code: normName.substring(0, 4).toUpperCase(),
         raw_score: numVal,
         max_score: numVal !== null ? 100 : null,
         average: numVal !== null ? Math.max(30, Math.min(85, Math.round(numVal * 0.95))) : null,
@@ -201,7 +231,19 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
       };
     });
   } else if (Array.isArray(data?.subjects) && data.subjects.length > 0) {
-    subjects = [...data.subjects];
+    const rawList = data.subjects.map((s: any) => ({
+      ...s,
+      subject: normalizeSubjName(s.subject || s.name || '')
+    }));
+
+    // Deduplicate by normalized subject name
+    const seen = new Set<string>();
+    subjects = rawList.filter((s: any) => {
+      const key = s.subject.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 
     // Ensure Geography is present for Grade 10-12 Science if missing
     if (parseInt(String(learner.grade), 10) >= 10 && learner.stream === 'Science') {
@@ -497,17 +539,17 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
           {/* 3. Official CAPS Curriculum Subject Marks Schedule (With Average, Percentage, and Mark!) */}
           <div className="overflow-x-auto rounded border border-slate-400 shadow-sm">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-900 text-white border-b-2 border-slate-900">
+              <thead className="bg-slate-100 text-slate-900 border-b-2 border-slate-400">
                 <tr>
-                  <th className="py-1 px-2 font-bold uppercase text-[9px] tracking-wider border-r border-slate-700 w-1/4">Subject Name & Code</th>
-                  <th className="py-1 px-1.5 font-bold uppercase text-[9px] tracking-wider text-center border-r border-slate-700 w-16">Mark</th>
-                  <th className="py-1 px-1.5 font-bold uppercase text-[9px] tracking-wider text-center border-r border-slate-700 w-16">Class Avg</th>
-                  <th className="py-1 px-1.5 font-bold uppercase text-[9px] tracking-wider text-center border-r border-slate-700 w-14">SBA (%)</th>
-                  <th className="py-1 px-1.5 font-bold uppercase text-[9px] tracking-wider text-center border-r border-slate-700 w-14">Exam (%)</th>
-                  <th className="py-1 px-1.5 font-bold uppercase text-[9px] tracking-wider text-center border-r border-slate-700 w-16">Final (%)</th>
-                  <th className="py-1 px-1.5 font-bold uppercase text-[9px] tracking-wider text-center border-r border-slate-700 w-14">CAPS Lvl</th>
-                  <th className="py-1 px-2 font-bold uppercase text-[9px] tracking-wider border-r border-slate-700 w-36">Achievement Rating</th>
-                  <th className="py-1 px-2 font-bold uppercase text-[9px] tracking-wider">Remarks & Competencies</th>
+                  <th className="py-2 px-2 font-black uppercase text-[9.5px] tracking-wider text-slate-900 border-r border-slate-300 w-1/4 bg-slate-100">Subject Name & Code</th>
+                  <th className="py-2 px-1.5 font-black uppercase text-[9.5px] tracking-wider text-center text-slate-900 border-r border-slate-300 w-16 bg-slate-100">Mark</th>
+                  <th className="py-2 px-1.5 font-black uppercase text-[9.5px] tracking-wider text-center text-slate-900 border-r border-slate-300 w-16 bg-slate-100">Class Avg</th>
+                  <th className="py-2 px-1.5 font-black uppercase text-[9.5px] tracking-wider text-center text-slate-900 border-r border-slate-300 w-14 bg-slate-100">SBA (%)</th>
+                  <th className="py-2 px-1.5 font-black uppercase text-[9.5px] tracking-wider text-center text-slate-900 border-r border-slate-300 w-14 bg-slate-100">Exam (%)</th>
+                  <th className="py-2 px-1.5 font-black uppercase text-[9.5px] tracking-wider text-center text-slate-900 border-r border-slate-300 w-16 bg-slate-100">Final (%)</th>
+                  <th className="py-2 px-1.5 font-black uppercase text-[9.5px] tracking-wider text-center text-slate-900 border-r border-slate-300 w-14 bg-slate-100">CAPS Lvl</th>
+                  <th className="py-2 px-2 font-black uppercase text-[9.5px] tracking-wider text-slate-900 border-r border-slate-300 w-36 bg-slate-100">Achievement Rating</th>
+                  <th className="py-2 px-2 font-black uppercase text-[9.5px] tracking-wider text-slate-900 bg-slate-100">Remarks & Competencies</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-300 font-medium">

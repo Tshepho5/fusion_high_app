@@ -90,15 +90,20 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
   // Pure Icon + Title ONLY
   const allModules: ModuleItem[] = [
     // 1. Governance & Staff
-    ...(user?.email?.toLowerCase() === '202247878@myturf.ul.ac.za' ? [
-      {
-        id: 'testers',
-        title: 'Master Control & Testers',
-        category: 'governance' as const,
-        icon: ShieldCheck,
-        badge: 'Master Only',
-      }
-    ] : []),
+    {
+      id: 'testers',
+      title: 'Master Controls & Testers',
+      category: 'governance' as const,
+      icon: ShieldCheck,
+      badge: 'Access Gates',
+    },
+    {
+      id: 'metrics',
+      title: 'School Performance Metrics',
+      category: 'governance' as const,
+      icon: Trophy,
+      badge: 'Official KPIs',
+    },
     {
       id: 'command-center',
       title: 'Multi-School Command',
@@ -278,9 +283,6 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
                 Executive Portal
               </span>
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400 max-w-xl">
-              Manage school governance, curriculum audits, educator relief, exam allocations, and technical settings.
-            </p>
           </div>
 
           {/* Search & View Mode Switcher */}

@@ -185,7 +185,7 @@ function getSubjectsForGradeAndStream(grade, stream, homeLanguage = null) {
 
   return baseList.map(subj => {
     if (subj === 'Home Language' || subj === 'Home Language (HL)') {
-      return langSubjectName || 'Select Home Language';
+      return langSubjectName || 'Sepedi Home Language';
     }
     return subj;
   });

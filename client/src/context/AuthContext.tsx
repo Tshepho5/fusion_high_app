@@ -90,17 +90,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Initialize timer
     resetTimer();
 
+    // Send heartbeat periodically to maintain online status while user is active in the app
+    userService.heartbeat().catch(() => {});
+    const heartbeatInterval = setInterval(() => {
+      userService.heartbeat().catch(() => {});
+    }, 25000);
+
     // Activity events to detect user interaction
     const activityEvents = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
     activityEvents.forEach((event) => {
       window.addEventListener(event, resetTimer, { passive: true });
     });
 
+    const handleUnload = () => {
+      try {
+        navigator.sendBeacon?.('/api/user/logout-status');
+      } catch (_) {}
+    };
+    window.addEventListener('beforeunload', handleUnload);
+
     return () => {
       clearTimeout(timeoutId);
+      clearInterval(heartbeatInterval);
       activityEvents.forEach((event) => {
         window.removeEventListener(event, resetTimer);
       });
+      window.removeEventListener('beforeunload', handleUnload);
     };
   }, [token]);
 
@@ -121,6 +136,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.setItem('userRole', userRole);
       }
       localStorage.setItem('user', JSON.stringify(userData));
+
+      // Trigger immediate presence heartbeat on login
+      userService.heartbeat().catch(() => {});
 
       // Auto-sync school profile to school context and CSS root
       if (data.school) {
@@ -143,6 +161,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = () => {
+    try {
+      userService.updateLogoutStatus().catch(() => {});
+    } catch (_) {}
     setToken(null);
     setRole(null);
     setUserState(null);

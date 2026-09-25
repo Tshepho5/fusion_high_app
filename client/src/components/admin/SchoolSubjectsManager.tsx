@@ -209,9 +209,6 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
                   GRADES 8 – 12 CAPS
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-                Explore all active curriculum subjects across General, Science, Commerce, and Tourism streams. View teacher mark submissions, live learner registers, attendance rates, and risk flags.
-              </p>
             </div>
           </div>
 
@@ -247,7 +244,6 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
           <p className="text-2xl font-black font-mono text-white">
             {filteredSubjects.length}
           </p>
-          <p className="text-[10px] text-blue-300 font-semibold">Across selected grades & streams</p>
         </div>
 
         <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 space-y-1">
@@ -258,7 +254,6 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
           <p className="text-2xl font-black font-mono text-cyan-400">
             {totalEnrolled}
           </p>
-          <p className="text-[10px] text-cyan-300 font-semibold">Registered across subject classes</p>
         </div>
 
         <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 space-y-1">
@@ -269,7 +264,6 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
           <p className="text-2xl font-black font-mono text-emerald-400">
             {avgSchoolScore}%
           </p>
-          <p className="text-[10px] text-emerald-300 font-semibold">SBA verified benchmark</p>
         </div>
 
         <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 space-y-1">
@@ -280,7 +274,6 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
           <p className="text-2xl font-black font-mono text-emerald-400">
             {publishedSubjectsCount} / {subjects.length}
           </p>
-          <p className="text-[10px] text-emerald-300 font-semibold">Ready for Report Cards</p>
         </div>
       </div>
 
@@ -437,13 +430,13 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
                     <div>
                       <p className="text-[10px] text-slate-400">Class Average</p>
                       <p className="text-sm font-extrabold font-mono text-emerald-400">
-                        {sub.average_mark || 72}%
+                        {sub.average_mark !== null && sub.average_mark !== undefined ? `${sub.average_mark}%` : 'Pending'}
                       </p>
                     </div>
                     <div>
                       <p className="text-[10px] text-slate-400">Pass Rate (≥40%)</p>
                       <p className="text-sm font-extrabold font-mono text-cyan-400">
-                        {sub.pass_rate || 85}%
+                        {sub.pass_rate !== null && sub.pass_rate !== undefined ? `${sub.pass_rate}%` : 'Pending'}
                       </p>
                     </div>
                   </div>
@@ -452,7 +445,7 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
                 {/* Footer Action Button: View Learners */}
                 <div className="pt-3 border-t border-white/10 flex items-center justify-between">
                   <span className="text-xs text-slate-400 font-mono">
-                    <strong className="text-white">{sub.learner_count || sub.enrolled_count || 42}</strong> Learners
+                    <strong className="text-white">{sub.learner_count ?? sub.enrolled_count ?? 0}</strong> Learners
                   </span>
 
                   <button

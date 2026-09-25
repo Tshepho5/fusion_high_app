@@ -49,8 +49,14 @@ export const LoginPage: React.FC = () => {
     } catch (_) {}
 
     // Check registration lock status
-    systemControlService.getPortalLocks().then((controls: any[]) => {
-      const regControl = controls?.find((c: any) => c.control_id === 'user_registration');
+    systemControlService.getPortalLocks().then((res: any) => {
+      const controls = res?.controls || res;
+      let regControl = null;
+      if (Array.isArray(controls)) {
+        regControl = controls.find((c: any) => c.control_id === 'user_registration' || c.id === 'user_registration');
+      } else if (controls && typeof controls === 'object') {
+        regControl = controls.user_registration;
+      }
       if (regControl && regControl.is_locked) {
         setRegLocked(true);
       }

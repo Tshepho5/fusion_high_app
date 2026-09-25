@@ -256,9 +256,6 @@ export const LearnerMoreHub: React.FC<LearnerMoreHubProps> = ({ onNavigateTab })
                 Learner Portal
               </span>
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400 max-w-xl">
-              Access your academic marks, homework submissions, bursary engines, exam candidate cards, and campus life tools.
-            </p>
           </div>
 
           {/* Search & View Mode Toggle */}

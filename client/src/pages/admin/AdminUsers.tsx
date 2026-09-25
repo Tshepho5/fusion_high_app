@@ -37,6 +37,20 @@ import {
   Clock
 } from 'lucide-react';
 
+const SA_OFFICIAL_LANGUAGES = [
+  'Sepedi',
+  'isiZulu',
+  'isiXhosa',
+  'Afrikaans',
+  'English',
+  'Setswana',
+  'Sesotho',
+  'Xitsonga',
+  'siSwati',
+  'Tshivenda',
+  'isiNdebele'
+];
+
 interface UserRecord {
   id: number;
   full_name: string;
@@ -684,11 +698,6 @@ export const AdminUsers: React.FC = () => {
             <Users className="w-6 h-6 text-brand-400" />
             School Directory & Multi-Tenant Access
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            {isSuperAdmin
-              ? 'Main Executive Administrator Hub: Appoint School SubAdmins, oversee all schools, and manage isolated school staff, parents, and learners.'
-              : `School Administrator Hub for ${currentSchool?.name || 'Your School'}: Onboard faculty staff, register parents, enroll learners, and review applications.`}
-          </p>
         </div>
 
         {/* Primary Action Buttons */}
@@ -697,33 +706,33 @@ export const AdminUsers: React.FC = () => {
           {isSuperAdmin && (
             <button
               onClick={() => setIsAddAdminModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-brand-600 hover:from-purple-500 hover:to-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all transform hover:scale-[1.02]"
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-surface-darker hover:bg-white/10 text-white font-bold text-xs border border-white/10 transition-colors"
               title="Appoint a Dedicated SubAdmin for an Individual School"
             >
-              <Shield className="w-4 h-4 text-purple-200" />
+              <Shield className="w-4 h-4 text-slate-300" />
               <span>+ Appoint School SubAdmin</span>
             </button>
           )}
 
           <button
             onClick={() => setIsAddEmployeeModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-xs shadow-glow-indigo transition-all"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-sm transition-all"
           >
-            <Briefcase className="w-4 h-4 text-cyan-200" />
+            <Briefcase className="w-4 h-4 text-white" />
             <span>+ Add Employee / Teacher</span>
           </button>
 
           <button
             onClick={() => setIsAddParentModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md transition-all"
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-surface-darker hover:bg-white/10 text-white font-bold text-xs border border-white/10 transition-colors"
           >
-            <Heart className="w-4 h-4 text-violet-200" />
+            <Heart className="w-4 h-4 text-slate-300" />
             <span>+ Register Parent</span>
           </button>
 
           <button
             onClick={() => setIsAddLearnerModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold text-xs shadow-md transition-all"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-sm transition-all"
           >
             <GraduationCap className="w-4 h-4 text-white" />
             <span>+ Enroll Learner</span>
@@ -754,11 +763,11 @@ export const AdminUsers: React.FC = () => {
               onClick={() => setActiveTab('admins')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                 activeTab === 'admins'
-                  ? 'bg-purple-600 text-white shadow-glow-indigo'
+                  ? 'bg-brand-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              <Shield className="w-3.5 h-3.5 text-purple-300" />
+              <Shield className="w-3.5 h-3.5" />
               <span>School Admins ({schoolAdmins.length})</span>
             </button>
           )}
@@ -767,7 +776,7 @@ export const AdminUsers: React.FC = () => {
             onClick={() => setActiveTab('employees')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'employees'
-                ? 'bg-brand-600 text-white shadow-glow-indigo'
+                ? 'bg-brand-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -779,7 +788,7 @@ export const AdminUsers: React.FC = () => {
             onClick={() => setActiveTab('parents')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'parents'
-                ? 'bg-amber-600 text-white shadow-md'
+                ? 'bg-brand-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -791,7 +800,7 @@ export const AdminUsers: React.FC = () => {
             onClick={() => setActiveTab('learners')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'learners'
-                ? 'bg-cyan-600 text-white shadow-glow-cyan'
+                ? 'bg-brand-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -803,7 +812,7 @@ export const AdminUsers: React.FC = () => {
             onClick={() => setActiveTab('admissions')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'admissions'
-                ? 'bg-emerald-600 text-white shadow-md'
+                ? 'bg-brand-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -815,14 +824,14 @@ export const AdminUsers: React.FC = () => {
             onClick={() => setActiveTab('parent-applications')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'parent-applications'
-                ? 'bg-amber-600 text-white shadow-glow-amber'
+                ? 'bg-brand-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            <Clock className="w-3.5 h-3.5 text-amber-300" />
+            <Clock className="w-3.5 h-3.5" />
             <span>Parent Applications ({parentApplications.length})</span>
             {parentApplications.filter(pa => pa.status === 'pending').length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-extrabold text-[10px]">
+              <span className="px-1.5 py-0.2 rounded-full bg-white/20 text-white font-extrabold text-[10px]">
                 {parentApplications.filter(pa => pa.status === 'pending').length}
               </span>
             )}
@@ -832,7 +841,7 @@ export const AdminUsers: React.FC = () => {
             onClick={() => setActiveTab('all')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'all'
-                ? 'bg-indigo-600 text-white shadow-md'
+                ? 'bg-brand-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -1571,7 +1580,7 @@ export const AdminUsers: React.FC = () => {
               {[
                 'Mathematics', 'Physical Sciences', 'Life Sciences', 'Accounting', 
                 'Business Studies', 'Economics', 'Tourism', 'Mathematical Literacy', 
-                'English FAL', 'Home Language', 'Life Orientation', 'Natural Sciences'
+                'English FAL', 'Sepedi Home Language', 'isiZulu Home Language', 'isiXhosa Home Language', 'Afrikaans Home Language', 'Life Orientation', 'Natural Sciences'
               ].map(sub => {
                 const isSelected = employeeForm.subjects.includes(sub);
                 return (
@@ -1800,7 +1809,7 @@ export const AdminUsers: React.FC = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-extrabold shadow-md transition-all disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-extrabold shadow-sm transition-all disabled:opacity-50"
             >
               {submitting ? 'Registering & Sending Email...' : 'Register Parent'}
             </button>
@@ -1843,7 +1852,7 @@ export const AdminUsers: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <label className="block text-slate-300 font-bold mb-1">Learner ID / Number</label>
               <input
@@ -1881,6 +1890,18 @@ export const AdminUsers: React.FC = () => {
                 <option value="General">General Stream</option>
               </select>
             </div>
+            <div>
+              <label className="block text-slate-300 font-bold mb-1">Official Home Language *</label>
+              <select
+                value={learnerForm.home_language}
+                onChange={(e) => setLearnerForm(prev => ({ ...prev, home_language: e.target.value }))}
+                className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-cyan-500 font-bold"
+              >
+                {SA_OFFICIAL_LANGUAGES.map((lang) => (
+                  <option key={lang} value={lang}>{lang} Home Language</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1913,7 +1934,7 @@ export const AdminUsers: React.FC = () => {
               {[
                 'Mathematics', 'Physical Sciences', 'Life Sciences', 'Accounting', 
                 'Business Studies', 'Economics', 'Tourism', 'Mathematical Literacy', 
-                'English FAL', 'Home Language', 'Life Orientation', 'Natural Sciences'
+                'English FAL', `${learnerForm.home_language || 'Sepedi'} Home Language`, 'Life Orientation', 'Natural Sciences'
               ].map(sub => {
                 const isSelected = learnerForm.subjects.includes(sub);
                 return (
@@ -1963,7 +1984,7 @@ export const AdminUsers: React.FC = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-extrabold shadow-md transition-all disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-extrabold shadow-sm transition-all disabled:opacity-50"
             >
               {submitting ? 'Enrolling in Database...' : 'Enroll Learner'}
             </button>
@@ -2173,9 +2194,9 @@ export const AdminUsers: React.FC = () => {
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-brand-600 hover:from-purple-500 hover:to-brand-500 text-white font-extrabold shadow-glow-indigo transition-all disabled:opacity-50 flex items-center gap-2"
+                className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-extrabold shadow-sm transition-all disabled:opacity-50 flex items-center gap-2"
               >
-                <Shield className="w-4 h-4 text-purple-200" />
+                <Shield className="w-4 h-4 text-white" />
                 <span>{submitting ? 'Appointing SubAdmin & Sending Email...' : 'Appoint SubAdmin & Dispatch Email'}</span>
               </button>
             </div>

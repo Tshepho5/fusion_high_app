@@ -239,9 +239,6 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
                   Parent Portal
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                Quick access to all guardian tools, student performance records, and school services
-              </p>
             </div>
           </div>
 

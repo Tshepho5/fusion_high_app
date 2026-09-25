@@ -1158,22 +1158,21 @@ exports.getTeacherSubmissionsOverview = async (req, res) => {
       let markCount = 0;
       let lastUploadedAt = null;
       let teacherInfo = 'Assigned Subject Teacher';
-
       if (learnerIds.length > 0) {
         const mRes = await db.query(
-          `SELECT m.created_at, m.recorded_at, u.full_name, u.surname
+          `SELECT m.recorded_at, u.full_name, u.surname
            FROM marks m
-           LEFT JOIN users u ON m.teacher_id = u.id
+           LEFT JOIN users u ON m.recorded_by = u.id
            WHERE (m.child_id = ANY($1) OR m.learner_id = ANY($1))
              AND (m.term = $2 OR m.term IS NULL)
              AND LOWER(m.subject) = LOWER($3)
-           ORDER BY m.recorded_at DESC, m.created_at DESC`,
+           ORDER BY m.recorded_at DESC`,
           [learnerIds, termNum, sub]
         );
 
         markCount = mRes.rows.length;
         if (mRes.rows[0]) {
-          lastUploadedAt = mRes.rows[0].recorded_at || mRes.rows[0].created_at;
+          lastUploadedAt = mRes.rows[0].recorded_at;
           if (mRes.rows[0].full_name) {
             teacherInfo = `${mRes.rows[0].full_name} ${mRes.rows[0].surname || ''}`.trim();
           }

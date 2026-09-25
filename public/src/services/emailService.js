@@ -2518,8 +2518,111 @@ const emailService = {
       title: 'Faculty Invitation',
       subtitle: `${principalName} has invited you to join ${schoolName}`,
       contentHtml,
-      ctaText: 'Accept Invitation & Register',
-      ctaLink: inviteUrl || 'https://gelezasa.co.za/register'
+      ctaText: 'Accept Invitation & Apply',
+      ctaLink: inviteUrl || 'https://gelezasa.co.za/register?role=teacher'
+    });
+    return await emailService.send(colleagueEmail, subject, html);
+  },
+
+  sendTeacherApplicationReceivedNotice: async ({ colleagueEmail, colleagueName, schoolName, roleType }) => {
+    const subject = `[Geleza SA] Application Received: ${schoolName}`;
+    const contentHtml = `
+      <p style="margin: 0 0 16px 0; font-size: 15px;">Dear <strong>${colleagueName || 'Educator'}</strong>,</p>
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #cbd5e1; line-height: 1.6;">
+        Your official educator application to join <strong>${schoolName}</strong> on <strong>Geleza SA</strong> has been successfully received and placed in the Principal Review Queue.
+      </p>
+      <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #334155; border-radius: 10px; padding: 18px; margin: 20px 0;">
+        <h4 style="margin: 0 0 10px 0; color: #38bdf8; font-size: 13px; text-transform: uppercase;">Application Status</h4>
+        <p style="margin: 0; color: #f59e0b; font-weight: bold; font-size: 14px;">PENDING PRINCIPAL APPROVAL</p>
+        <p style="margin: 8px 0 0 0; color: #94a3b8; font-size: 12px; line-height: 1.6;">
+          Once the School Principal verifies your credentials, you will receive an approval email containing an official button to set your password and complete your registration.
+        </p>
+      </div>
+    `;
+    const html = createBaseEmailTemplate({
+      preheader: `Your application to ${schoolName} has been received`,
+      title: 'Application Under Review',
+      subtitle: `Educator Application Submitted for ${schoolName}`,
+      contentHtml
+    });
+    return await emailService.send(colleagueEmail, subject, html);
+  },
+
+  sendTeacherApplicationPrincipalNotice: async ({ principalEmail, principalName, colleagueName, schoolName, roleType, saceNumber, reviewUrl }) => {
+    const subject = `[Action Required] New Educator Application: ${colleagueName}`;
+    const contentHtml = `
+      <p style="margin: 0 0 16px 0; font-size: 15px;">Dear Principal <strong>${principalName || 'Principal'}</strong>,</p>
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #cbd5e1; line-height: 1.6;">
+        An invited educator, <strong>${colleagueName}</strong>, has submitted their official application to join the faculty of <strong>${schoolName}</strong>.
+      </p>
+      <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #334155; border-radius: 10px; padding: 18px; margin: 20px 0;">
+        <h4 style="margin: 0 0 10px 0; color: #38bdf8; font-size: 13px; text-transform: uppercase;">Educator Profile</h4>
+        <ul style="margin: 0; padding-left: 20px; color: #94a3b8; font-size: 13px; line-height: 1.7;">
+          <li><strong style="color: #f1f5f9;">Name:</strong> ${colleagueName}</li>
+          <li><strong style="color: #f1f5f9;">Designation:</strong> ${roleType === 'sports_coach' ? 'Sports Coach' : 'Teacher / Educator'}</li>
+          ${saceNumber ? `<li><strong style="color: #f1f5f9;">SACE Number:</strong> ${saceNumber}</li>` : ''}
+        </ul>
+      </div>
+      <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;">
+        Log into your Admin Dashboard under <strong>Dynamic Classes & Staff Invites</strong> to review and approve this application.
+      </p>
+    `;
+    const html = createBaseEmailTemplate({
+      preheader: `New educator application submitted for ${schoolName}`,
+      title: 'New Educator Application',
+      subtitle: `${colleagueName} has applied to join your school faculty`,
+      contentHtml,
+      ctaText: 'Review in Admin Portal',
+      ctaLink: reviewUrl || 'https://gelezasa.co.za/login'
+    });
+    return await emailService.send(principalEmail, subject, html);
+  },
+
+  sendTeacherApplicationApprovedNotice: async ({ colleagueEmail, colleagueName, principalName, schoolName, roleType, registerUrl }) => {
+    const subject = `Congratulations! Your Faculty Application at ${schoolName} is Approved`;
+    const contentHtml = `
+      <p style="margin: 0 0 16px 0; font-size: 15px;">Dear <strong>${colleagueName || 'Educator'}</strong>,</p>
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #cbd5e1; line-height: 1.6;">
+        We are thrilled to inform you that your application to join the faculty of <strong>${schoolName}</strong> has been officially <strong>approved</strong> by Principal <strong>${principalName}</strong>.
+      </p>
+      <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 18px; margin: 20px 0;">
+        <h4 style="margin: 0 0 8px 0; color: #10b981; font-size: 13px; text-transform: uppercase;">Application Approved</h4>
+        <p style="margin: 0; color: #d1fae5; font-size: 13px; line-height: 1.6;">
+          Your official appointment as <strong>${roleType === 'sports_coach' ? 'Sports Coach' : 'Educator'}</strong> is now confirmed. Please click the button below to set your secure password and complete your registration.
+        </p>
+      </div>
+      <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;">
+        Once registered, you can log into Geleza SA directly to view your assigned classes, learners, and timetable. If you ever forget your password, you can reset it via the login screen.
+      </p>
+    `;
+    const html = createBaseEmailTemplate({
+      preheader: `Your faculty appointment at ${schoolName} is approved! Complete registration now.`,
+      title: 'Appointment Approved',
+      subtitle: `Welcome to the faculty of ${schoolName}`,
+      contentHtml,
+      ctaText: 'Set Password & Complete Registration',
+      ctaLink: registerUrl || 'https://gelezasa.co.za/register'
+    });
+    return await emailService.send(colleagueEmail, subject, html);
+  },
+
+  sendTeacherApplicationDeclinedNotice: async ({ colleagueEmail, colleagueName, schoolName, reason }) => {
+    const subject = `Faculty Application Update: ${schoolName}`;
+    const contentHtml = `
+      <p style="margin: 0 0 16px 0; font-size: 15px;">Dear <strong>${colleagueName || 'Applicant'}</strong>,</p>
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #cbd5e1; line-height: 1.6;">
+        Thank you for your interest in joining <strong>${schoolName}</strong>. After careful review, the administration has determined that your application cannot be approved at this time.
+      </p>
+      ${reason ? `
+      <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #334155; border-radius: 10px; padding: 14px; margin: 16px 0;">
+        <p style="margin: 0; color: #94a3b8; font-size: 13px;"><strong>Note:</strong> ${reason}</p>
+      </div>` : ''}
+    `;
+    const html = createBaseEmailTemplate({
+      preheader: `Update regarding your application at ${schoolName}`,
+      title: 'Application Decision',
+      subtitle: `Review completed for ${schoolName}`,
+      contentHtml
     });
     return await emailService.send(colleagueEmail, subject, html);
   },

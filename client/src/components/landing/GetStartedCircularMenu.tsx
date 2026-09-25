@@ -46,9 +46,13 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
     };
   }, [isOpen]);
 
+  // Access gates evaluation:
+  // Apply is visible ONLY when unlocked
   const isApplyLocked = Boolean(portalControls.parent_application?.is_locked);
+  // Register is visible ONLY when unlocked
   const isRegisterLocked = Boolean(portalControls.user_registration?.is_locked);
 
+  // Filter items: Sign In is always available; Apply & Register only appear when period is open
   const items = [
     {
       id: 'signin',
@@ -56,61 +60,63 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
       subtitle: 'Portal Login',
       to: '/login',
       isExternal: false,
-      isLocked: false,
       icon: LogIn,
-      // Radiant Indigo theme - Always Open!
       gradient: 'from-indigo-600 to-blue-600',
       border: 'border-indigo-400',
       glow: 'shadow-[0_0_30px_rgba(99,102,241,0.7),0_10px_25px_rgba(0,0,0,0.6)]',
       hoverGlow: 'hover:shadow-[0_0_55px_rgba(99,102,241,0.95),0_20px_35px_rgba(0,0,0,0.85)]',
       pillBg: 'bg-indigo-950/80 border-indigo-500/40 text-indigo-200 group-hover:text-white group-hover:border-indigo-400',
-      desktopTransform: isOpen ? 'translate(-115px, -85px) scale(1)' : 'translate(0px, 0px) scale(0)',
-      mobileTransform: isOpen ? 'translate(-95px, -70px) scale(1)' : 'translate(0px, 0px) scale(0)'
     },
-    {
+    ...(!isApplyLocked ? [{
       id: 'apply',
-      title: isApplyLocked ? 'Apply (Locked)' : 'Apply',
-      subtitle: isApplyLocked ? 'Admissions Closed' : '2026 Admissions',
+      title: 'Apply',
+      subtitle: '2026 Admissions',
       to: '/application.html',
       isExternal: true,
-      isLocked: isApplyLocked,
-      lockReason: portalControls.parent_application?.locked_reason || 'Admissions application intake is currently closed by Geleza SA Administrators.',
-      icon: isApplyLocked ? Lock : GraduationCap,
-      // Radiant Emerald / Rose if locked
-      gradient: isApplyLocked ? 'from-rose-700 to-slate-800' : 'from-emerald-600 to-teal-600',
-      border: isApplyLocked ? 'border-rose-400/80' : 'border-emerald-400',
-      glow: isApplyLocked ? 'shadow-[0_0_20px_rgba(244,63,94,0.4)]' : 'shadow-[0_0_30px_rgba(16,185,129,0.7),0_10px_25px_rgba(0,0,0,0.6)]',
+      icon: GraduationCap,
+      gradient: 'from-emerald-600 to-teal-600',
+      border: 'border-emerald-400',
+      glow: 'shadow-[0_0_30px_rgba(16,185,129,0.7),0_10px_25px_rgba(0,0,0,0.6)]',
       hoverGlow: 'hover:shadow-[0_0_55px_rgba(16,185,129,0.95),0_20px_35px_rgba(0,0,0,0.85)]',
-      pillBg: isApplyLocked ? 'bg-rose-950/90 border-rose-500/50 text-rose-300' : 'bg-emerald-950/80 border-emerald-500/40 text-emerald-200 group-hover:text-white group-hover:border-emerald-400',
-      desktopTransform: isOpen ? 'translate(0px, -135px) scale(1)' : 'translate(0px, 0px) scale(0)',
-      mobileTransform: isOpen ? 'translate(0px, -115px) scale(1)' : 'translate(0px, 0px) scale(0)'
-    },
-    {
+      pillBg: 'bg-emerald-950/80 border-emerald-500/40 text-emerald-200 group-hover:text-white group-hover:border-emerald-400',
+    }] : []),
+    ...(!isRegisterLocked ? [{
       id: 'register',
-      title: isRegisterLocked ? 'Register (Locked)' : 'Registration',
-      subtitle: isRegisterLocked ? 'Admins Closed' : 'Parent & Staff',
+      title: 'Registration',
+      subtitle: 'Parent & Staff',
       to: '/register',
       isExternal: false,
-      isLocked: isRegisterLocked,
-      lockReason: portalControls.user_registration?.locked_reason || 'User registration is currently closed by Geleza SA Administrators.',
-      icon: isRegisterLocked ? Lock : UserPlus,
-      // Radiant Cyan / Amber if locked
-      gradient: isRegisterLocked ? 'from-amber-700 to-slate-800' : 'from-cyan-600 to-sky-600',
-      border: isRegisterLocked ? 'border-amber-400/80' : 'border-cyan-400',
-      glow: isRegisterLocked ? 'shadow-[0_0_20px_rgba(245,158,11,0.4)]' : 'shadow-[0_0_30px_rgba(6,182,212,0.7),0_10px_25px_rgba(0,0,0,0.6)]',
+      icon: UserPlus,
+      gradient: 'from-cyan-600 to-sky-600',
+      border: 'border-cyan-400',
+      glow: 'shadow-[0_0_30px_rgba(6,182,212,0.7),0_10px_25px_rgba(0,0,0,0.6)]',
       hoverGlow: 'hover:shadow-[0_0_55px_rgba(6,182,212,0.95),0_20px_35px_rgba(0,0,0,0.85)]',
-      pillBg: isRegisterLocked ? 'bg-amber-950/90 border-amber-500/50 text-amber-300' : 'bg-cyan-950/80 border-cyan-500/40 text-cyan-200 group-hover:text-white group-hover:border-cyan-400',
-      desktopTransform: isOpen ? 'translate(115px, -85px) scale(1)' : 'translate(0px, 0px) scale(0)',
-      mobileTransform: isOpen ? 'translate(95px, -70px) scale(1)' : 'translate(0px, 0px) scale(0)'
-    }
+      pillBg: 'bg-cyan-950/80 border-cyan-500/40 text-cyan-200 group-hover:text-white group-hover:border-cyan-400',
+    }] : []),
   ];
 
-  const handleItemClick = (e: React.MouseEvent, item: any) => {
-    if (item.isLocked && item.id === 'apply') {
-      e.preventDefault();
-      setLockedAlert(item.lockReason || 'Application intake is currently closed by Geleza SA Administrators.');
-      return;
+  const getItemTransform = (index: number, total: number, isDesktop: boolean) => {
+    if (!isOpen) return 'translate(0px, 0px) scale(0)';
+    if (total === 1) {
+      return isDesktop ? 'translate(0px, -115px) scale(1)' : 'translate(0px, -95px) scale(1)';
     }
+    if (total === 2) {
+      if (index === 0) {
+        return isDesktop ? 'translate(-85px, -95px) scale(1)' : 'translate(-70px, -80px) scale(1)';
+      }
+      return isDesktop ? 'translate(85px, -95px) scale(1)' : 'translate(70px, -80px) scale(1)';
+    }
+    // 3 items:
+    if (index === 0) {
+      return isDesktop ? 'translate(-115px, -85px) scale(1)' : 'translate(-95px, -70px) scale(1)';
+    }
+    if (index === 1) {
+      return isDesktop ? 'translate(0px, -135px) scale(1)' : 'translate(0px, -115px) scale(1)';
+    }
+    return isDesktop ? 'translate(115px, -85px) scale(1)' : 'translate(95px, -70px) scale(1)';
+  };
+
+  const handleItemClick = () => {
     setIsOpen(false);
   };
 
@@ -181,11 +187,11 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
           </div>
         )}
 
-        {/* The 3 Circular Glowing Action Buttons */}
-        {items.map((item) => {
+        {/* Circular Glowing Action Buttons */}
+        {items.map((item, index) => {
           const IconComp = item.icon;
           const isDesktop = typeof window !== 'undefined' ? window.innerWidth >= 640 : true;
-          const transformStyle = isDesktop ? item.desktopTransform : item.mobileTransform;
+          const transformStyle = getItemTransform(index, items.length, isDesktop);
 
           const buttonContent = (
             <div className="flex flex-col items-center gap-1.5 group cursor-pointer transition-all duration-300">
@@ -197,11 +203,6 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
                 {/* Specular light shimmer on top */}
                 <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-black/20 pointer-events-none" />
                 <IconComp className="w-6 h-6 sm:w-7 sm:h-7 drop-shadow-md group-hover:scale-110 transition-transform duration-300 relative z-10" />
-                {item.isLocked && (
-                  <div className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-rose-500 border border-white flex items-center justify-center">
-                    <Lock className="w-2 h-2 text-white" />
-                  </div>
-                )}
               </div>
 
               {/* Title & Badge with High Contrast Glow */}
@@ -224,11 +225,11 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
               }`}
             >
               {item.isExternal ? (
-                <a href={item.to} onClick={(e) => handleItemClick(e, item)}>
+                <a href={item.to} onClick={handleItemClick}>
                   {buttonContent}
                 </a>
               ) : (
-                <Link to={item.to} onClick={(e) => handleItemClick(e, item)}>
+                <Link to={item.to} onClick={handleItemClick}>
                   {buttonContent}
                 </Link>
               )}
