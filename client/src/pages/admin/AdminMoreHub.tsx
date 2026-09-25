@@ -25,6 +25,7 @@ import {
   Star,
   Swords,
   Megaphone,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -89,6 +90,15 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
   // Pure Icon + Title ONLY
   const allModules: ModuleItem[] = [
     // 1. Governance & Staff
+    ...(user?.email?.toLowerCase() === '202247878@myturf.ul.ac.za' ? [
+      {
+        id: 'testers',
+        title: 'Master Control & Testers',
+        category: 'governance' as const,
+        icon: ShieldCheck,
+        badge: 'Master Only',
+      }
+    ] : []),
     {
       id: 'command-center',
       title: 'Multi-School Command',

@@ -27,6 +27,7 @@ import { AdminMoreHub } from './AdminMoreHub';
 import { AdminDiscoverHub } from './AdminDiscoverHub';
 import { AdminCalendarHub } from './AdminCalendarHub';
 import { AdminMessagesHub } from './AdminMessagesHub';
+import { MasterAdminExecutiveHub } from '../../components/admin/MasterAdminExecutiveHub';
 import {
   ArrowLeft,
   ChevronRight,
@@ -113,6 +114,9 @@ export const AdminDashboard: React.FC = () => {
         return 'Dynamic Classes & Homeroom Teacher Allocations';
       case 'staff-invites':
         return 'Faculty & Sports Coach Invitations';
+      case 'testers':
+      case 'portal-controls':
+        return 'Executive Master Controls & Beta Testers Hub';
       case 'settings':
         return 'App & Technical Settings';
       default:
@@ -227,6 +231,9 @@ export const AdminDashboard: React.FC = () => {
       {activeTab === 'classes-streams' && <DynamicClassesManager initialTab="classes" />}
       {activeTab === 'staff-invites' && <DynamicClassesManager initialTab="invites" />}
       {activeTab === 'announcements' && <AnnouncementsFeed />}
+      {(activeTab === 'testers' || activeTab === 'portal-controls') && (
+        <MasterAdminExecutiveHub onNavigateTab={handleSelectTab} />
+      )}
       {activeTab === 'settings' && <LearnerSettings />}
     </DashboardLayout>
   );

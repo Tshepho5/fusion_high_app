@@ -665,10 +665,27 @@ export const classStaffService = {
   deleteStaffInvite: (id: number | string) => api.delete(`/api/admin/staff-invites/${id}`).then(res => res.data),
 };
 
-// Geleza SA Executive & Admin Portal Access / Gatekeeper Controls
+// Geleza SA Executive & Admin Portal Access / Gatekeeper Controls & Tester QA Management
 export const systemControlService = {
   getPortalLocks: () => api.get('/api/system/portal-locks').then(res => res.data),
   updatePortalLock: (id: string, is_locked: boolean, locked_reason?: string) =>
     api.put(`/api/system/portal-locks/${id}`, { is_locked, locked_reason }).then(res => res.data),
+  getTestingUsers: () => api.get('/api/system/test-users').then(res => res.data),
+  createTestingUser: (data: {
+    email: string;
+    full_name: string;
+    surname?: string;
+    role: string;
+    school_id?: number;
+    password?: string;
+    phone?: string;
+    send_email?: boolean;
+  }) => api.post('/api/system/test-users', data).then(res => res.data),
+  updateTesterRole: (id: number | string, role: string) =>
+    api.put(`/api/system/test-users/${id}/role`, { role }).then(res => res.data),
+  resendTesterCredentials: (id: number | string) =>
+    api.post(`/api/system/test-users/${id}/resend`).then(res => res.data),
+  deleteTestingUser: (id: number | string) =>
+    api.delete(`/api/system/test-users/${id}`).then(res => res.data),
 };
 

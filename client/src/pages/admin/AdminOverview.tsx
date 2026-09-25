@@ -4,6 +4,7 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { AdminOverviewSkeleton } from '../../components/admin/AdminOverviewSkeleton';
 import { Modal } from '../../components/common/Modal';
 import { FavoriteModulesSection } from '../../components/common/FavoriteModulesSection';
+import { MasterAdminExecutiveHub } from '../../components/admin/MasterAdminExecutiveHub';
 import {
   Users,
   GraduationCap,
@@ -415,6 +416,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
 
   return (
     <div className="space-y-8 animate-fade-in text-slate-900 dark:text-slate-100 pb-16">
+
+      {/* MASTER EXECUTIVE HUB: System Locks & App Testers Management (Exclusively for 202247878@myturf.ul.ac.za) */}
+      <MasterAdminExecutiveHub onNavigateTab={onNavigateTab} />
 
       {/* 1. HORIZONTAL CAROUSEL OF SCHOOL METRIC CARDS */}
       <section className="space-y-3">
