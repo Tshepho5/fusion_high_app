@@ -98,12 +98,12 @@ class _MessagesScreenState extends State<MessagesScreen> {
     final text = (textOverride ?? _inputController.text).trim();
     if (text.isEmpty || _selectedContact == null || _isSending) return;
 
+    final myId = context.read<AuthProvider>().user?.id;
     setState(() => _isSending = true);
     _inputController.clear();
 
     try {
       await _apiService.sendMessage(_selectedContact!.id, text);
-      final myId = context.read<AuthProvider>().user?.id;
       final updatedMsgs = await _apiService.getConversation(_selectedContact!.id, myId);
       if (mounted) {
         setState(() {
