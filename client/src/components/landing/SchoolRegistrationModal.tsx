@@ -23,6 +23,7 @@ import {
   EyeOff
 } from 'lucide-react';
 import { schoolRegistrationService } from '../../services/api';
+import { useSchool } from '../../context/SchoolContext';
 
 interface SchoolRegistrationModalProps {
   isOpen: boolean;
@@ -181,6 +182,7 @@ const validateSAID = (id: string) => {
 };
 
 export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = ({ isOpen, onClose }) => {
+  const schoolCtx = useSchool();
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -412,6 +414,10 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
         school_name: form.school_name,
         principal_email: form.principal_email
       });
+      // Immediately refresh active school directory in React context
+      if (schoolCtx && typeof schoolCtx.refreshSchools === 'function') {
+        await schoolCtx.refreshSchools().catch(() => {});
+      }
       setStep(5);
     } catch (err: any) {
       console.error('Failed to submit school application:', err);
@@ -1045,9 +1051,9 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
               </div>
 
               <div className="space-y-1.5">
-                <h3 className="text-xl font-black text-white">School Application Received!</h3>
+                <h3 className="text-xl font-black text-white">School Successfully Registered!</h3>
                 <p className="text-xs text-slate-400 max-w-md mx-auto">
-                  Your official application for <strong>{form.school_name}</strong> has been logged in the Geleza SA Executive Accreditation Queue.
+                  Your official school registration for <strong>{form.school_name}</strong> is complete and active on Geleza SA. Parents and learners can now select your school and submit admissions applications immediately.
                 </p>
               </div>
 
@@ -1066,12 +1072,12 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Status:</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300">Pending Executive Review</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300">Active & Listed for Applications</span>
                 </div>
               </div>
 
               <div className="p-3.5 rounded-xl bg-blue-950/20 border border-blue-500/20 text-[11px] text-slate-300 max-w-md mx-auto text-left">
-                <strong>Continuous Email Notification:</strong> We have dispatched an official confirmation receipt to <code className="text-cyan-300">{form.principal_email}</code>. Once approved by our Executive team, your master school admin credentials and login link will arrive automatically.
+                <strong>Continuous Email Notification:</strong> We have dispatched an official confirmation receipt and master administrator credentials to <code className="text-cyan-300">{form.principal_email}</code>. You can now log into your school portal or direct applicants to submit admissions.
               </div>
 
               <button

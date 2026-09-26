@@ -98,19 +98,7 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const saved = localStorage.getItem('active_school_profile');
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        if (parsed.id === 1 || parsed.slug === 'fusion-high' || parsed.slug === 'geleza-sa') {
-          return {
-            ...parsed,
-            name: 'Geleza SA',
-            motto: 'Geleza Smart, The Future Is Thine',
-            domain: 'geleza-sa.co.za',
-            contact_email: 'admin@geleza-sa.co.za',
-            logo_url: '/assets/schools/geleza-sa.svg',
-            badge_url: '/assets/schools/geleza-sa.svg'
-          };
-        }
-        return parsed;
+        return JSON.parse(saved);
       } catch (_) {}
     }
     return DEFAULT_SCHOOL;
@@ -122,25 +110,11 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setLoading(true);
       const res = await axios.get('/api/schools');
       if (Array.isArray(res.data) && res.data.length > 0) {
-        const sanitized = res.data.map(s => {
-          if (s.id === 1 || s.slug === 'fusion-high' || s.name === 'Fusion High School') {
-            return {
-              ...s,
-              name: 'Geleza SA',
-              motto: 'Geleza Smart, The Future Is Thine',
-              domain: 'geleza-sa.co.za',
-              contact_email: 'admin@geleza-sa.co.za',
-              logo_url: '/assets/schools/geleza-sa.svg',
-              badge_url: '/assets/schools/geleza-sa.svg'
-            };
-          }
-          return s;
-        });
-        setSchoolsList(sanitized);
+        setSchoolsList(res.data);
         
         // Match active school in list or update it
         const savedId = localStorage.getItem('active_school_id');
-        const matched = sanitized.find(s => String(s.id) === savedId || s.slug === savedId) || sanitized[0];
+        const matched = res.data.find(s => String(s.id) === savedId || s.slug === savedId) || res.data[0];
         if (matched) {
           setCurrentSchoolState(matched);
           localStorage.setItem('active_school_profile', JSON.stringify(matched));
