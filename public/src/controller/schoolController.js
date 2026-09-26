@@ -3,23 +3,10 @@ const bcrypt = require('bcryptjs');
 const emailService = require('../services/emailService');
 const { isControlLocked } = require('./systemController');
 
-// Fallback seed data in case table is booting
+// Fallback seed data in case table is booting: Only Geleza SA and Fusion High School
 const FALLBACK_SCHOOLS = [
-  // 1. Limpopo (Polokwane & Mankweng - Capricorn South District)
-  { id: 1, name: 'Geleza SA', slug: 'fusion-high', domain: 'geleza-sa.co.za', emis_number: '911220001', circuit: 'Polokwane Central Circuit', district: 'Capricorn South', province: 'Limpopo', physical_address: 'Polokwane Central, Limpopo, 0700', contact_email: 'admin@geleza-sa.co.za', contact_phone: '+27 15 291 0000', principal_name: 'Dr. T. Makola', logo_url: '/assets/schools/geleza-sa.svg', badge_url: '/assets/schools/geleza-sa.svg', primary_color: '#0284c7', secondary_color: '#06b6d4', accent_color: '#f59e0b', motto: 'Geleza Smart, The Future Is Thine', curriculum_type: 'CAPS (DBE Limpopo)', grade_range: '8-12', is_active: true },
-  { id: 2, name: 'Mountainview Senior Secondary School', slug: 'mountainview-high', domain: 'mountainview.co.za', emis_number: '923241054', circuit: 'Mankweng Circuit', district: 'Capricorn South', province: 'Limpopo', physical_address: 'Mankweng Unit B/C, Polokwane, 0727', contact_email: 'info@mountainviewhigh.co.za', contact_phone: '+27 15 267 1100', principal_name: 'Mr. M. S. Phasha', logo_url: '/assets/schools/mountainview-high.svg', badge_url: '/assets/schools/mountainview-high.svg', primary_color: '#7A1426', secondary_color: '#D4AF37', accent_color: '#F59E0B', motto: 'Strive for Excellence', curriculum_type: 'CAPS (DBE Limpopo)', grade_range: '8-12', is_active: true },
-  { id: 3, name: 'Makgoka High School', slug: 'makgoka-high', domain: 'makgoka.co.za', emis_number: '923240457', circuit: 'Molepo Circuit', district: 'Capricorn South', province: 'Limpopo', physical_address: 'Maclean Farm, Boyne, Mankweng Area, 0727', contact_email: 'admin@makgoka.co.za', contact_phone: '+27 15 266 0022', principal_name: 'Mrs. K. E. Molepo', logo_url: '/assets/schools/makgoka-high.svg', badge_url: '/assets/schools/makgoka-high.svg', primary_color: '#065f46', secondary_color: '#10b981', accent_color: '#fbbf24', motto: 'Thuto Ke Lesedi', curriculum_type: 'CAPS (DBE Limpopo)', grade_range: '8-12', is_active: true },
-  { id: 4, name: 'Turfloop High School', slug: 'turfloop-high', domain: 'turfloop.co.za', emis_number: '923240890', circuit: 'Mankweng Circuit', district: 'Capricorn South', province: 'Limpopo', physical_address: 'University Road, Turfloop, Mankweng, 0727', contact_email: 'principal@turfloophigh.co.za', contact_phone: '+27 15 267 3300', principal_name: 'Mr. N. J. Mamabolo', logo_url: '/assets/schools/turfloop-high.svg', badge_url: '/assets/schools/turfloop-high.svg', primary_color: '#1e1b4b', secondary_color: '#4338ca', accent_color: '#991b1b', motto: 'Education for Progress', curriculum_type: 'CAPS (DBE Limpopo)', grade_range: '8-12', is_active: true },
-  { id: 5, name: 'Hwiti High School', slug: 'hwiti-high', domain: 'hwiti.co.za', emis_number: '923240150', circuit: 'Mankweng Circuit', district: 'Capricorn South', province: 'Limpopo', physical_address: '118 Zone 1, Hwiti St, Mankweng/Sovenga, 0727', contact_email: 'info@hwitisecondary.co.za', contact_phone: '+27 15 267 4400', principal_name: 'Mrs. R. M. Ramokgopa', logo_url: '/assets/schools/hwiti-high.svg', badge_url: '/assets/schools/hwiti-high.svg', primary_color: '#581c87', secondary_color: '#9333ea', accent_color: '#06b6d4', motto: 'Tsebo Ke Maatla', curriculum_type: 'CAPS (DBE Limpopo)', grade_range: '8-12', is_active: true },
-  { id: 6, name: 'Ngwana Mohube Secondary School', slug: 'ngwana-mohube', domain: 'ngwanamohube.co.za', emis_number: '923260994', circuit: 'Mankweng Circuit', district: 'Capricorn South', province: 'Limpopo', physical_address: 'Gamphahlele, Seleteng, Limpopo, 0734', contact_email: 'admin@ngwanamohube.co.za', contact_phone: '+27 15 267 5500', principal_name: 'Mr. S. P. Mohube', logo_url: '/assets/schools/ngwana-mohube.svg', badge_url: '/assets/schools/ngwana-mohube.svg', primary_color: '#991b1b', secondary_color: '#ef4444', accent_color: '#0f172a', motto: 'Thuto Ke Maatla', curriculum_type: 'CAPS (DBE Limpopo)', grade_range: '8-12', is_active: true },
-  
-  // 2. Gauteng (Lotus Gardens & Atteridgeville, Pretoria - GDE)
-  { id: 7, name: 'Fusion Secondary School (Lotus Gardens)', slug: 'fusion-secondary-lotus', domain: 'fusionsecondary.co.za', emis_number: '700232348', circuit: 'Tshwane West District', district: 'Tshwane West', province: 'Gauteng', physical_address: '809 Cyme Crescent, Lotus Gardens, Pretoria, 0008', contact_email: 'admin@fusionsecondary.co.za', contact_phone: '+27 12 373 0000', principal_name: 'Dr. T. Makola', logo_url: '/assets/schools/fusion-secondary-lotus.svg', badge_url: '/assets/schools/fusion-secondary-lotus.svg', primary_color: '#4f46e5', secondary_color: '#06b6d4', accent_color: '#f59e0b', motto: 'Innovate, Aspire, Achieve', curriculum_type: 'CAPS (GDE Gauteng)', grade_range: '8-12', is_active: true },
-  { id: 8, name: 'Saulridge Secondary School', slug: 'saulridge-secondary', domain: 'saulridge.co.za', emis_number: '700232223', circuit: 'Tshwane South District (D4)', district: 'Tshwane South', province: 'Gauteng', physical_address: 'Ramokgopa St, Saulsville, Atteridgeville, Pretoria, 0008', contact_email: 'info@saulridge.co.za', contact_phone: '+27 12 375 6000', principal_name: 'Mr. K. E. Masemola', logo_url: '/assets/schools/saulridge-secondary.svg', badge_url: '/assets/schools/saulridge-secondary.svg', primary_color: '#1e3a8a', secondary_color: '#f59e0b', accent_color: '#3b82f6', motto: 'Knowledge is Power', curriculum_type: 'CAPS (GDE Gauteng)', grade_range: '8-12', is_active: true },
-  { id: 9, name: 'Phelindaba Secondary School', slug: 'phelindaba-secondary', domain: 'phelindaba.co.za', emis_number: '700232124', circuit: 'Tshwane South District (D4)', district: 'Tshwane South', province: 'Gauteng', physical_address: 'Kgwale St, Atteridgeville, Pretoria, 0008', contact_email: 'admin@phelindaba.co.za', contact_phone: '+27 12 373 8100', principal_name: 'Mrs. M. T. Sithole', logo_url: '/assets/schools/phelindaba-secondary.svg', badge_url: '/assets/schools/phelindaba-secondary.svg', primary_color: '#14532d', secondary_color: '#eab308', accent_color: '#10b981', motto: 'Strive for Success', curriculum_type: 'CAPS (GDE Gauteng)', grade_range: '8-12', is_active: true },
-  { id: 10, name: 'Flavius Mareka Secondary School', slug: 'flavius-mareka', domain: 'flaviusmareka.co.za', emis_number: '700231670', circuit: 'Tshwane South District (D4)', district: 'Tshwane South', province: 'Gauteng', physical_address: 'Khoza St, Atteridgeville, Pretoria, 0008', contact_email: 'principal@flaviusmareka.co.za', contact_phone: '+27 12 373 9200', principal_name: 'Mr. L. N. Maluleke', logo_url: '/assets/schools/flavius-mareka.svg', badge_url: '/assets/schools/flavius-mareka.svg', primary_color: '#1d4ed8', secondary_color: '#38bdf8', accent_color: '#fbbf24', motto: 'Excellence in Action', curriculum_type: 'CAPS (GDE Gauteng)', grade_range: '8-12', is_active: true },
-  { id: 11, name: 'Dr. W.F. Nkomo Secondary School', slug: 'wf-nkomo-secondary', domain: 'wfnkomo.co.za', emis_number: '700231613', circuit: 'Tshwane South District (D4)', district: 'Tshwane South', province: 'Gauteng', physical_address: '84 Khudu St, Atteridgeville, Pretoria, 0008', contact_email: 'info@wfnkomo.co.za', contact_phone: '+27 12 375 7300', principal_name: 'Mr. D. M. Ndlovu', logo_url: '/assets/schools/wf-nkomo-secondary.svg', badge_url: '/assets/schools/wf-nkomo-secondary.svg', primary_color: '#881337', secondary_color: '#f43f5e', accent_color: '#fbbf24', motto: 'Labor Omnia Vincit', curriculum_type: 'CAPS (GDE Gauteng)', grade_range: '8-12', is_active: true },
-  { id: 12, name: 'Hofmeyr Secondary School', slug: 'hofmeyr-secondary', domain: 'hofmeyr.co.za', emis_number: '700231746', circuit: 'Tshwane South District (D4)', district: 'Tshwane South', province: 'Gauteng', physical_address: '1 Mngadi and Mafole St, Atteridgeville, Pretoria, 0008', contact_email: 'admin@hofmeyr.co.za', contact_phone: '+27 12 373 7400', principal_name: 'Mrs. S. R. Mogale', logo_url: '/assets/schools/hofmeyr-secondary.svg', badge_url: '/assets/schools/hofmeyr-secondary.svg', primary_color: '#581c87', secondary_color: '#14b8a6', accent_color: '#f59e0b', motto: 'Education for Liberation', curriculum_type: 'CAPS (GDE Gauteng)', grade_range: '8-12', is_active: true }
+  { id: 1, name: 'Geleza SA', slug: 'geleza-sa', domain: 'gelezasa.co.za', emis_number: '911220001', circuit: 'Polokwane Central Circuit', district: 'Capricorn South', province: 'Limpopo', physical_address: 'Polokwane Central, Limpopo, 0700', contact_email: 'admin@gelezasa.co.za', contact_phone: '+27 15 291 0000', principal_name: 'Dr. T. Makola', logo_url: '/assets/schools/geleza-sa.svg', badge_url: '/assets/schools/geleza-sa.svg', primary_color: '#0284c7', secondary_color: '#06b6d4', accent_color: '#f59e0b', motto: 'Geleza Smart, The Future Is Thine', curriculum_type: 'CAPS (DBE Limpopo)', grade_range: '8-12', is_active: true },
+  { id: 2, name: 'Fusion High School', slug: 'fusion-high', domain: 'fusionhigh.co.za', emis_number: '700232348', circuit: 'Tshwane West District', district: 'Tshwane West', province: 'Gauteng', physical_address: '809 Cyme Crescent, Lotus Gardens, Pretoria, 0008', contact_email: 'admin@fusionhigh.co.za', contact_phone: '+27 12 373 0000', principal_name: 'Tshepho Letlalo Makula', logo_url: '/assets/schools/fusion-secondary-lotus.svg', badge_url: '/assets/schools/fusion-secondary-lotus.svg', primary_color: '#4f46e5', secondary_color: '#06b6d4', accent_color: '#f59e0b', motto: 'Innovate, Aspire, Achieve', curriculum_type: 'CAPS (GDE Gauteng)', grade_range: '8-12', is_active: true }
 ];
 
 /**
@@ -376,6 +363,78 @@ exports.applySchool = async (req, res) => {
     const payRef = payment_reference || `PAY-${Date.now().toString().slice(-8)}`;
     const passHash = password && password.trim().length >= 6 ? await bcrypt.hash(password.trim(), 10) : null;
 
+    // 1. Generate unique slug for school
+    let slug = school_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const existingSlug = await db.query('SELECT id FROM schools WHERE slug = $1', [slug]);
+    if (existingSlug.rows.length > 0) {
+      slug = `${slug}-${cleanEmis.slice(-4)}`;
+    }
+
+    // 2. Insert into schools table directly so it is immediately active and available for admissions
+    const schoolInsert = await db.query(`
+      INSERT INTO schools (
+        name, slug, domain, emis_number, circuit, district, province,
+        physical_address, contact_email, contact_phone, principal_name,
+        primary_color, secondary_color, motto, curriculum_type, grade_range,
+        offered_streams, offered_languages, offered_subjects, sace_number,
+        bank_name, account_holder, account_number, branch_code, account_type,
+        application_fee, registration_fee, is_active
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, TRUE)
+      RETURNING *;
+    `, [
+      school_name.trim(), slug, `${slug}.co.za`, cleanEmis, circuit ? circuit.trim() : null, district.trim(), province.trim(),
+      physical_address.trim(), (contact_email || principal_email || '').trim().toLowerCase(), (contact_phone || principal_phone || '').trim(),
+      `${firstName} ${surname}`, primary_color || '#0284c7', secondary_color || '#06b6d4', motto || 'Excellence in Education',
+      curriculum_type || 'CAPS (DBE)', grade_range || '8-12',
+      offered_streams || ['General', 'Science', 'Commerce'],
+      offered_languages || ['English Home Language', 'English FAL', 'Sepedi Home Language', 'isiZulu Home Language'],
+      offered_subjects || [], (principal_sace_number || req.body.principal_sace || '').toString().trim() || null,
+      req.body.bank_name || 'Standard Bank', req.body.account_holder || school_name.trim(), req.body.account_number || '20491823901',
+      req.body.branch_code || '051001', req.body.account_type || 'Cheque / Current',
+      parseFloat(application_fee_paid) || 250.00, parseFloat(registration_fee_paid) || 1500.00
+    ]);
+    const newSchool = schoolInsert.rows[0];
+
+    // 3. Create or Update Principal user account
+    let finalPassHash = passHash;
+    if (!finalPassHash) {
+      finalPassHash = await bcrypt.hash('password123', 10);
+    }
+
+    const userInsert = await db.query(`
+      INSERT INTO users (
+        email, password_hash, role_id, school_id, is_superadmin,
+        full_name, surname, id_number, phone, country
+      )
+      VALUES ($1, $2, (SELECT id FROM roles WHERE name = 'admin'), $3, FALSE, $4, $5, $6, $7, 'South Africa')
+      ON CONFLICT (email) DO UPDATE SET
+        password_hash = EXCLUDED.password_hash,
+        role_id = EXCLUDED.role_id,
+        school_id = EXCLUDED.school_id,
+        full_name = EXCLUDED.full_name,
+        surname = EXCLUDED.surname
+      RETURNING id;
+    `, [
+      principal_email.trim().toLowerCase(), finalPassHash, newSchool.id,
+      firstName, surname, cleanId, principal_phone.trim()
+    ]);
+    const principalUserId = userInsert.rows[0].id;
+
+    // 4. Create Employee record for Principal
+    await db.query(`
+      INSERT INTO employees (user_id, full_name, surname, department_id, school_id, phone, email)
+      VALUES ($1, $2, $3, 1, $4, $5, $6)
+      ON CONFLICT (user_id) DO UPDATE SET
+        school_id = EXCLUDED.school_id,
+        full_name = EXCLUDED.full_name,
+        surname = EXCLUDED.surname;
+    `, [
+      principalUserId, firstName, surname,
+      newSchool.id, principal_phone.trim(), principal_email.trim().toLowerCase()
+    ]);
+
+    // 5. Record school application with approved status
     const insertQuery = `
       INSERT INTO school_applications (
         application_number, status, school_name, emis_number, province, district, circuit,
@@ -383,15 +442,16 @@ exports.applySchool = async (req, res) => {
         offered_streams, offered_languages, offered_subjects,
         principal_first_name, principal_surname, principal_id_number, principal_sace_number,
         principal_email, principal_phone, motto, primary_color, secondary_color,
-        application_fee_paid, registration_fee_paid, payment_status, payment_reference, password_hash
+        application_fee_paid, registration_fee_paid, payment_status, payment_reference, password_hash,
+        created_school_id
       )
       VALUES (
-        $1, 'pending_review', $2, $3, $4, $5, $6,
+        $1, 'approved', $2, $3, $4, $5, $6,
         $7, $8, $9, $10, $11,
         $12, $13, $14,
         $15, $16, $17, $18,
         $19, $20, $21, $22, $23,
-        $24, $25, 'paid', $26, $27
+        $24, $25, 'paid', $26, $27, $28
       )
       RETURNING *;
     `;
@@ -399,15 +459,18 @@ exports.applySchool = async (req, res) => {
     const result = await db.query(insertQuery, [
       appNumber, school_name.trim(), cleanEmis, province.trim(), district.trim(), circuit ? circuit.trim() : null,
       physical_address.trim(), (contact_email || principal_email || '').trim().toLowerCase(), (contact_phone || principal_phone || '').trim(), curriculum_type || 'CAPS (DBE)', grade_range || '8-12',
-      offered_streams || ['General', 'Science'], offered_languages || ['English FAL'], offered_subjects || [],
+      offered_streams || ['General', 'Science', 'Commerce'],
+      offered_languages || ['English Home Language', 'English FAL', 'Sepedi Home Language', 'isiZulu Home Language'],
+      offered_subjects || [],
       firstName, surname, cleanId, (principal_sace_number || req.body.principal_sace || '').toString().trim() || null,
       principal_email.trim().toLowerCase(), principal_phone.trim(), (motto || 'Excellence in Education').trim(), primary_color || '#0284c7', secondary_color || '#06b6d4',
-      parseFloat(application_fee_paid) || 450.00, parseFloat(registration_fee_paid) || 1500.00, payRef, passHash
+      parseFloat(application_fee_paid) || 450.00, parseFloat(registration_fee_paid) || 1500.00, payRef, finalPassHash,
+      newSchool.id
     ]);
 
     const createdApp = result.rows[0];
 
-    // Trigger instant email confirmation to Principal
+    // 6. Trigger instant email confirmation to Principal
     emailService.sendSchoolApplicationReceivedNotice({
       principalEmail: createdApp.principal_email,
       principalName: `${createdApp.principal_first_name} ${createdApp.principal_surname}`,
@@ -420,8 +483,9 @@ exports.applySchool = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'School application submitted successfully. It has been placed in the Geleza SA Executive Accreditation Queue.',
+      message: `School "${newSchool.name}" successfully registered and onboarded! It is now active and ready to accept learner admissions.`,
       application_number: appNumber,
+      school: newSchool,
       application: createdApp
     });
   } catch (err) {
