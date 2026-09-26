@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { teacherService } from '../../services/api';
 import {
   Star,
   Plus,
@@ -665,7 +666,7 @@ const DEFAULT_FAVORITE_IDS: Record<string, string[]> = {
 
 interface FavoriteModulesSectionProps {
   role: 'teacher' | 'learner' | 'admin' | 'parent';
-  onNavigateTab: (tabId: string) => void;
+  onNavigateTab: (tabId: string, params?: any) => void;
   className?: string;
 }
 
@@ -676,6 +677,11 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
 }) => {
   const storageKey = `geleza_favorites_${role}`;
   const catalog = useMemo(() => ROLE_MODULE_CATALOGS[role] || ROLE_MODULE_CATALOGS.teacher, [role]);
+
+  // Multi-Class Attendance Selection Modal State
+  const [isClassModalOpen, setIsClassModalOpen] = useState(false);
+  const [teacherClasses, setTeacherClasses] = useState<{ name: string; rawName: string; grade?: number; stream?: string; subject?: string }[]>([]);
+  const [loadingClasses, setLoadingClasses] = useState(false);
 
   // Load saved favorite IDs with sensible defaults
   const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
@@ -692,6 +698,72 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+
+  // Load teacher assigned classes for multi-class attendance selection
+  useEffect(() => {
+    if (role !== 'teacher') return;
+    let isMounted = true;
+    setLoadingClasses(true);
+
+    teacherService.getClasses()
+      .then((res: any) => {
+        if (!isMounted) return;
+        const list = Array.isArray(res) ? res : res?.classes || [];
+        if (list.length > 0) {
+          const mapped = list.map((c: any) => {
+            const rawName = c.name || c.class_name || '';
+            const displayName = rawName.startsWith('Class ') ? rawName : `Class ${rawName}`;
+            return {
+              name: displayName,
+              rawName: rawName,
+              grade: c.grade || c.grade_level,
+              stream: c.stream,
+              subject: c.subject_name
+            };
+          });
+          const seen = new Set();
+          const unique = mapped.filter((item: any) => {
+            if (seen.has(item.name)) return false;
+            seen.add(item.name);
+            return true;
+          });
+          setTeacherClasses(unique);
+        } else {
+          return teacherService.getMySubjectsOverview().then((subRes: any) => {
+            if (!isMounted) return;
+            const subList = Array.isArray(subRes) ? subRes : [];
+            const mapped = subList.map((s: any) => {
+              const rawName = s.class_name || `${s.grade}A`;
+              const displayName = rawName.startsWith('Class ') ? rawName : `Class ${rawName}`;
+              return {
+                name: displayName,
+                rawName: rawName,
+                grade: s.grade || s.grade_level,
+                stream: s.stream || 'Science',
+                subject: s.subject_name
+              };
+            });
+            const seen = new Set();
+            const unique = mapped.filter((item: any) => {
+              if (seen.has(item.name)) return false;
+              seen.add(item.name);
+              return true;
+            });
+            setTeacherClasses(unique);
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to load teacher assigned classes:', err);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingClasses(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [role]);
 
   // Save to localStorage whenever favorites change
   const saveFavorites = (newIds: string[]) => {
@@ -816,7 +888,13 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
             return (
               <div
                 key={mod.id}
-                onClick={() => onNavigateTab(mod.id)}
+                onClick={() => {
+                  if (mod.id === 'attendance' && role === 'teacher') {
+                    setIsClassModalOpen(true);
+                  } else {
+                    onNavigateTab(mod.id);
+                  }
+                }}
                 className="group relative p-3.5 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-cyan-500/50 dark:hover:border-cyan-500/40 hover:shadow-lg dark:hover:shadow-cyan-950/20 transition-all cursor-pointer flex flex-col justify-between gap-3 overflow-hidden"
               >
                 {/* Remove Quick Button (Stop Propagation) */}
@@ -853,7 +931,17 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
                 </div>
 
                 {/* Bottom Launch Link */}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-[#1B2E3D]/60 text-[11px] text-slate-400 dark:text-slate-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-300">
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (mod.id === 'attendance' && role === 'teacher') {
+                      setIsClassModalOpen(true);
+                    } else {
+                      onNavigateTab(mod.id);
+                    }
+                  }}
+                  className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-[#1B2E3D]/60 text-[11px] text-slate-400 dark:text-slate-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-300"
+                >
                   <span className="font-semibold text-[10px] uppercase tracking-wider">Launch</span>
                   <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1 text-cyan-500" />
                 </div>
@@ -1070,6 +1158,117 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
                   Done
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Multi-Class Selection Modal for Attendance */}
+      {isClassModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-fade-in"
+          onClick={() => setIsClassModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-3xl bg-white dark:bg-[#0B1520] border border-slate-200 dark:border-teal-500/30 p-5 sm:p-6 shadow-2xl animate-scale-in text-slate-900 dark:text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-[#1B2E3D]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center">
+                  <CalendarCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black font-display text-slate-900 dark:text-white">
+                    Select Class for Attendance
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Choose an assigned class to open Class Attendance Register & Logs
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsClassModalOpen(false)}
+                className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-400 hover:text-slate-700 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body: Interactive Class Buttons */}
+            <div className="py-4">
+              {loadingClasses ? (
+                <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-400">
+                  <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs">Loading assigned classes...</span>
+                </div>
+              ) : teacherClasses.length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-[11px] uppercase tracking-wider font-bold text-slate-400">
+                    Assigned Classes ({teacherClasses.length})
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[55vh] overflow-y-auto pr-1">
+                    {teacherClasses.map((cls) => (
+                      <button
+                        key={cls.name}
+                        type="button"
+                        onClick={() => {
+                          setIsClassModalOpen(false);
+                          onNavigateTab('attendance', { class: cls.name });
+                        }}
+                        className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#101D28] hover:bg-teal-500/10 dark:hover:bg-teal-500/20 border border-slate-200 dark:border-teal-500/25 hover:border-teal-400 text-left transition-all duration-200 shadow-xs hover:shadow-md hover:shadow-teal-500/10 group cursor-pointer active:scale-98 flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-500/40 text-teal-400 flex items-center justify-center font-black text-xs shrink-0">
+                            {cls.grade ? `G${cls.grade}` : 'CL'}
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:text-teal-400 transition-colors">
+                              {cls.name}
+                            </h4>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1">
+                              {cls.subject ? `${cls.subject}` : (cls.stream || 'CAPS Class')}
+                            </p>
+                          </div>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-teal-500/70 group-hover:text-teal-400 group-hover:translate-x-1 transition-all shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="py-8 text-center">
+                  <CalendarCheck className="w-10 h-10 text-slate-400 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs text-slate-400 mb-4">No specific classes currently assigned to your profile.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsClassModalOpen(false);
+                      onNavigateTab('attendance', { class: 'Class 10A' });
+                    }}
+                    className="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs shadow-sm transition-all"
+                  >
+                    Open General Register
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-slate-100 dark:border-[#1B2E3D] flex items-center justify-between">
+              <span className="text-[11px] text-slate-400">
+                Directly opens Class Attendance Register & Logs
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsClassModalOpen(false)}
+                className="px-4 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

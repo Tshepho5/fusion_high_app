@@ -142,6 +142,7 @@ CREATE TABLE users
   profile_picture_path TEXT,
   profile_picture TEXT,
   preferences JSONB DEFAULT '{}'::jsonb,
+  previous_passwords TEXT[] DEFAULT '{}',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -166,8 +167,23 @@ CREATE TABLE classes
   name VARCHAR(50) UNIQUE NOT NULL, -- e.g., '10A', '11B Science'
   grade INTEGER NOT NULL CHECK (grade BETWEEN 8 AND 12), 
   stream VARCHAR(50) CHECK (stream IN ('General','Science','Commerce','Tourism')), 
-  homeroom_teacher_id INTEGER REFERENCES employees(user_id) ON DELETE SET NULL
+  homeroom_teacher_id INTEGER REFERENCES employees(user_id) ON DELETE SET NULL,
+  assigned_teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
+
+CREATE TABLE IF NOT EXISTS teacher_assignments (
+  id SERIAL PRIMARY KEY,
+  teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  subject_name VARCHAR(100) NOT NULL,
+  subject_code VARCHAR(50),
+  grade_level INTEGER NOT NULL,
+  class_name VARCHAR(50),
+  class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_teacher_assignment UNIQUE (teacher_id, subject_name, grade_level, class_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_teacher_assignments_filter ON teacher_assignments(teacher_id, subject_name, grade_level);
 
 -- Seed sample classes
 

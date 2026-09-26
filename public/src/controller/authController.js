@@ -1225,6 +1225,93 @@ exports.verifyOTP = async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
+const PASSWORD_ALREADY_USED_ERROR = "the password already exists and has been used before, put a new password";
+
+/**
+ * Checks if a candidate password matches the user's current password or any previously stored password in database history.
+ */
+async function checkPasswordHistoryMatch(userId, candidatePassword, currentPasswordHash, previousPasswordsArray) {
+    if (!candidatePassword) return false;
+
+    // 1. Check current password_hash
+    if (currentPasswordHash) {
+        try {
+            const isMatch = currentPasswordHash.startsWith('$2')
+                ? await bcrypt.compare(candidatePassword, currentPasswordHash)
+                : (candidatePassword === currentPasswordHash);
+            if (isMatch) return true;
+        } catch (e) {}
+    }
+
+    // 2. Check previous_passwords array on users record
+    if (previousPasswordsArray && Array.isArray(previousPasswordsArray)) {
+        for (const prevHash of previousPasswordsArray) {
+            if (prevHash) {
+                try {
+                    const isMatch = prevHash.startsWith('$2')
+                        ? await bcrypt.compare(candidatePassword, prevHash)
+                        : (candidatePassword === prevHash);
+                    if (isMatch) return true;
+                } catch (e) {}
+            }
+        }
+    }
+
+    // 3. Check user_password_history table specifically for this user
+    if (userId) {
+        try {
+            const historyRes = await db.query(
+                'SELECT password_hash FROM user_password_history WHERE user_id = $1',
+                [userId]
+            );
+            for (const row of historyRes.rows) {
+                const pHash = row.password_hash;
+                if (pHash) {
+                    try {
+                        const isMatch = pHash.startsWith('$2')
+                            ? await bcrypt.compare(candidatePassword, pHash)
+                            : (candidatePassword === pHash);
+                        if (isMatch) return true;
+                    } catch (e) {}
+                }
+            }
+        } catch (e) {
+            console.warn('user_password_history lookup warning:', e.message);
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Records a new password into the database history for this specific user.
+ */
+async function recordNewPassword(userId, newPasswordHash, oldPasswordHash) {
+    await db.query(`
+        UPDATE users 
+        SET password_hash = $1, 
+            previous_passwords = array_append(COALESCE(previous_passwords, '{}'), $2),
+            reset_code = NULL, 
+            reset_expiry = NULL 
+        WHERE id = $3
+    `, [newPasswordHash, oldPasswordHash || newPasswordHash, userId]);
+
+    try {
+        if (oldPasswordHash) {
+            await db.query(`
+                INSERT INTO user_password_history (user_id, password_hash)
+                VALUES ($1, $2)
+            `, [userId, oldPasswordHash]);
+        }
+        await db.query(`
+            INSERT INTO user_password_history (user_id, password_hash)
+            VALUES ($1, $2)
+        `, [userId, newPasswordHash]);
+    } catch (e) {
+        // Ignored if table duplicate or transient
+    }
+}
+
 exports.resetPassword = async (req, res) => {
     const { email, identifier, code, otp, new_password, newPassword } = req.body;
     try {
@@ -1241,7 +1328,7 @@ exports.resetPassword = async (req, res) => {
         let userRes;
         if (cleanInput.includes('@')) {
             userRes = await db.query(`
-                SELECT u.id, u.email, u.password_hash, u.reset_expiry, COALESCE(r.name, u.role_id::text, 'learner') as role_name
+                SELECT u.id, u.email, u.password_hash, u.previous_passwords, u.reset_expiry, COALESCE(r.name, u.role_id::text, 'learner') as role_name
                 FROM users u
                 LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                 WHERE LOWER(TRIM(u.email::text)) = $1
@@ -1250,7 +1337,7 @@ exports.resetPassword = async (req, res) => {
             `, [cleanInput, rawCode]);
         } else {
             userRes = await db.query(`
-                SELECT u.id, u.email, u.password_hash, u.reset_expiry, COALESCE(r.name, u.role_id::text, 'learner') as role_name
+                SELECT u.id, u.email, u.password_hash, u.previous_passwords, u.reset_expiry, COALESCE(r.name, u.role_id::text, 'learner') as role_name
                 FROM users u
                 LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                 LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
@@ -1287,43 +1374,24 @@ exports.resetPassword = async (req, res) => {
         const pwError = validatePassword(targetPassword);
         if (pwError) return res.status(400).json({ error: pwError });
 
-        // 2. Similarity & Exact Match Detection against old password
-        if (user.password_hash) {
-            const isExactMatch = await bcrypt.compare(targetPassword, user.password_hash);
-            if (isExactMatch) {
-                return res.status(400).json({
-                    error: "You are close! This is the exact password you were trying to recover. If you remembered it, you can log in directly, or enter a new, distinct password to replace it."
-                });
-            }
-
-            // Check common slight mutations/variations (trailing digits, casing, suffix)
-            const mutations = [
-                targetPassword.slice(0, -1),
-                targetPassword.slice(0, -2),
-                targetPassword.toLowerCase(),
-                targetPassword.toUpperCase(),
-                targetPassword.replace(/\d+$/, ''),
-                targetPassword.replace(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g, '')
-            ].filter(m => m && m.length >= 4 && m !== targetPassword);
-
-            for (const mutation of mutations) {
-                try {
-                    const isClose = await bcrypt.compare(mutation, user.password_hash);
-                    if (isClose) {
-                        return res.status(400).json({
-                            error: "You are very close to your old password! Please create a distinctly different new password to ensure account security."
-                        });
-                    }
-                } catch (e) {
-                    // Ignore compare errors on malformed candidate
-                }
-            }
+        // 2. Exact Match Detection against current and previous passwords in database
+        const isAlreadyUsed = await checkPasswordHistoryMatch(
+            user.id,
+            targetPassword,
+            user.password_hash,
+            user.previous_passwords
+        );
+        if (isAlreadyUsed) {
+            return res.status(400).json({
+                error: PASSWORD_ALREADY_USED_ERROR
+            });
         }
 
-        // 3. If password is way different, replace the old one with the new one
+        // 3. Save new password and record old hash into previous_passwords & user_password_history
         const hash = await bcrypt.hash(targetPassword, 10);
         const normalizedEmail = (user.email || '').toLowerCase().trim();
-        await db.query('UPDATE users SET password_hash = $1, reset_code = NULL, reset_expiry = NULL WHERE id = $2', [hash, user.id]);
+        await recordNewPassword(user.id, hash, user.password_hash);
+
         if (normalizedEmail && !normalizedEmail.endsWith('@fusion.high')) {
             emailService.send(normalizedEmail, emailService.templates.passwordResetSuccess().subject, emailService.templates.passwordResetSuccess().body).catch(() => {});
         }
@@ -1354,14 +1422,28 @@ exports.changePassword = async (req, res) => {
     if (pwError) return res.status(400).json({ error: pwError });
 
     try {
-        const userRes = await db.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+        const userRes = await db.query('SELECT password_hash, previous_passwords FROM users WHERE id = $1', [userId]);
         if (userRes.rows.length === 0) return res.status(404).json({ error: 'User not found.' });
 
-        const valid = await bcrypt.compare(current_password, userRes.rows[0].password_hash);
+        const user = userRes.rows[0];
+        const valid = await bcrypt.compare(current_password, user.password_hash);
         if (!valid) return res.status(400).json({ error: 'Current password is incorrect.' });
 
+        // Compare with current password and all previously used passwords in database
+        const isAlreadyUsed = await checkPasswordHistoryMatch(
+            userId,
+            new_password,
+            user.password_hash,
+            user.previous_passwords
+        );
+        if (isAlreadyUsed) {
+            return res.status(400).json({
+                error: PASSWORD_ALREADY_USED_ERROR
+            });
+        }
+
         const hash = await bcrypt.hash(new_password, 10);
-        await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, userId]);
+        await recordNewPassword(userId, hash, user.password_hash);
 
         res.json({ message: 'Password updated successfully.' });
     } catch (err) {

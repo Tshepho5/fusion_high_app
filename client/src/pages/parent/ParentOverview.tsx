@@ -26,7 +26,12 @@ import {
   ClipboardList,
   UserCheck,
   CheckCircle2,
-  FileText
+  FileText,
+  Plus,
+  X,
+  AlertCircle,
+  User,
+  Mail
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
@@ -54,6 +59,89 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
     localStorage.setItem('parent_children_view_mode', mode);
   };
 
+  // Link Child Modal State
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [linkForm, setLinkForm] = useState({
+    first_name: '',
+    surname: '',
+    identifier: '',
+    grade: '10',
+    relationship: 'Mother'
+  });
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [linkSuccess, setLinkSuccess] = useState<string | null>(null);
+
+  const refreshChildren = async () => {
+    try {
+      const res = await parentService.getChildrenDetailed();
+      const list = Array.isArray(res) ? res : res.children || [];
+      setChildren(list);
+    } catch (_) {
+      try {
+        const res2 = await parentService.getChildren();
+        const list2 = Array.isArray(res2) ? res2 : res2.children || [];
+        setChildren(list2);
+      } catch (err) {
+        console.error('Failed to reload parent children:', err);
+      }
+    }
+  };
+
+  const handleLinkChildSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLinkError(null);
+    setLinkSuccess(null);
+
+    if (!linkForm.first_name.trim() || !linkForm.surname.trim()) {
+      setLinkError("Please provide both the learner's first name and surname.");
+      return;
+    }
+
+    const cleanIdentifier = linkForm.identifier.trim();
+    if (!cleanIdentifier) {
+      setLinkError("Please provide the learner's Official Learner Number or 13-digit National ID Number.");
+      return;
+    }
+
+    setLinkLoading(true);
+
+    const isNumericId = /^\d{6,13}$/.test(cleanIdentifier);
+    const payload: any = {
+      first_name: linkForm.first_name.trim(),
+      surname: linkForm.surname.trim(),
+      relationship: linkForm.relationship
+    };
+
+    if (isNumericId) {
+      payload.id_number = cleanIdentifier;
+    } else {
+      payload.learner_number = cleanIdentifier;
+    }
+
+    try {
+      const res = await parentService.linkChild(payload);
+      setLinkSuccess(res.message || "Child successfully linked to your parent portal! A confirmation email has been dispatched.");
+      await refreshChildren();
+      setTimeout(() => {
+        setIsLinkModalOpen(false);
+        setLinkSuccess(null);
+        setLinkForm({
+          first_name: '',
+          surname: '',
+          identifier: '',
+          grade: '10',
+          relationship: 'Mother'
+        });
+      }, 2500);
+    } catch (err: any) {
+      const backendError = err?.response?.data?.error;
+      setLinkError(backendError || "The child does not exist in the system.");
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
   const scrollCarousel = (direction: number) => {
     if (carouselRef.current) {
       carouselRef.current.scrollBy({ left: direction * 320, behavior: 'smooth' });
@@ -62,22 +150,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
 
   useEffect(() => {
     setLoading(true);
-    parentService.getChildrenDetailed()
-      .then((res) => {
-        const list = Array.isArray(res) ? res : res.children || [];
-        setChildren(list);
-      })
-      .catch(() => {
-        parentService.getChildren()
-          .then((res) => {
-            const list = Array.isArray(res) ? res : res.children || [];
-            setChildren(list);
-          })
-          .catch((err) => {
-            console.error('Failed to load parent children from database:', err);
-          });
-      })
-      .finally(() => setLoading(false));
+    refreshChildren().finally(() => setLoading(false));
   }, []);
 
   if (loading) return <ParentOverviewSkeleton />;
@@ -100,6 +173,21 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
           </div>
           
           <div className="flex items-center gap-2 self-start sm:self-center">
+            {/* Link Child Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setLinkError(null);
+                setLinkSuccess(null);
+                setIsLinkModalOpen(true);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-[#0A121A] text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 shrink-0"
+              title="Link a new or additional learner"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Link Child</span>
+            </button>
+
             {/* View Mode Switcher */}
             <div className="flex items-center gap-1 p-1 bg-[#EDF4F7] dark:bg-[#0A121A] rounded-2xl border border-slate-200/90 dark:border-[#1B2E3D]">
               <button
@@ -250,7 +338,11 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                 <p className="text-sm font-bold text-[#1C252C] dark:text-white">No learners linked yet</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Link your child by their learner number in Account settings.</p>
                 <button
-                  onClick={() => onNavigateTab('profile')}
+                  onClick={() => {
+                    setLinkError(null);
+                    setLinkSuccess(null);
+                    setIsLinkModalOpen(true);
+                  }}
                   className="px-4 py-2 rounded-xl bg-[#13C8D9] text-[#0A121A] text-xs font-bold shadow-md hover:bg-[#18E2EC] transition-colors cursor-pointer"
                 >
                   Link Child
@@ -416,6 +508,185 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
 
       {/* 2. FAVORITE MODULES SECTION (QUICK ACCESS FOR PARENT) */}
       <FavoriteModulesSection role="parent" onNavigateTab={onNavigateTab} />
+
+      {/* 3. LINK CHILD MODAL FORM */}
+      {isLinkModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-fade-in"
+          onClick={() => {
+            if (!linkLoading) setIsLinkModalOpen(false);
+          }}
+        >
+          <div
+            className="w-full max-w-lg rounded-3xl bg-white dark:bg-[#0B1520] border border-slate-200 dark:border-[#13C8D9]/30 p-5 sm:p-6 shadow-2xl animate-scale-in text-slate-900 dark:text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-[#1B2E3D]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#13C8D9]/15 border border-[#13C8D9]/30 text-[#13C8D9] flex items-center justify-center font-bold">
+                  <GraduationCap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black font-display text-slate-900 dark:text-white">
+                    Link Child to Parent Portal
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Provide the child's information to verify enrollment and link your accounts.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={linkLoading}
+                onClick={() => setIsLinkModalOpen(false)}
+                className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-400 hover:text-slate-700 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Live Alerts */}
+            {linkError && (
+              <div className="mt-4 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-500 dark:text-rose-400 text-xs flex items-center gap-2.5 animate-fade-in">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span className="font-semibold">{linkError}</span>
+              </div>
+            )}
+
+            {linkSuccess && (
+              <div className="mt-4 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 dark:text-emerald-400 text-xs flex items-center gap-2.5 animate-fade-in">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span className="font-semibold">{linkSuccess}</span>
+              </div>
+            )}
+
+            {/* Modal Form */}
+            <form onSubmit={handleLinkChildSubmit} className="py-4 space-y-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    Child First Name *
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      required
+                      value={linkForm.first_name}
+                      onChange={(e) => setLinkForm({ ...linkForm, first_name: e.target.value })}
+                      placeholder="e.g. Sipho"
+                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#13C8D9]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    Child Surname *
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      required
+                      value={linkForm.surname}
+                      onChange={(e) => setLinkForm({ ...linkForm, surname: e.target.value })}
+                      placeholder="e.g. Nkosi"
+                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#13C8D9]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                  Official Learner Number OR SA ID Number *
+                </label>
+                <div className="relative">
+                  <CreditCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    required
+                    value={linkForm.identifier}
+                    onChange={(e) => setLinkForm({ ...linkForm, identifier: e.target.value })}
+                    placeholder="e.g. 2026-FHS-001 or 13-digit National ID"
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#13C8D9]"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                  The system will automatically search enrollment records to match and verify your child.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    Academic Grade
+                  </label>
+                  <select
+                    value={linkForm.grade}
+                    onChange={(e) => setLinkForm({ ...linkForm, grade: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#13C8D9]"
+                  >
+                    {[8, 9, 10, 11, 12].map((g) => (
+                      <option key={g} value={String(g)}>Grade {g}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    Your Relationship
+                  </label>
+                  <select
+                    value={linkForm.relationship}
+                    onChange={(e) => setLinkForm({ ...linkForm, relationship: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#13C8D9]"
+                  >
+                    <option value="Mother">Mother</option>
+                    <option value="Father">Father</option>
+                    <option value="Legal Guardian">Legal Guardian</option>
+                    <option value="Foster Parent">Foster Parent</option>
+                    <option value="Grandparent">Grandparent</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="pt-4 border-t border-slate-100 dark:border-[#1B2E3D] flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  disabled={linkLoading}
+                  onClick={() => setIsLinkModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={linkLoading}
+                  className="px-5 py-2 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-[#0A121A] text-xs font-extrabold shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
+                >
+                  {linkLoading ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-[#0A121A] border-t-transparent rounded-full animate-spin" />
+                      <span>Verifying Enrollment...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserCheck className="w-4 h-4" />
+                      <span>Verify & Link Child</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -808,3 +808,122 @@ exports.getClassMarksHistory = async (req, res) => {
     }
 };
 
+/**
+ * GET /api/teacher/classes
+ * Strictly returns classes assigned to the authenticated teacher.
+ * Supports filtering by teacher_id (enforced), subject_name, and grade_level.
+ */
+exports.getTeacherClasses = async (req, res) => {
+    try {
+        const teacherId = req.user.id;
+        const q = req.query || {};
+        const subjectParam = (q.subject_name || q.subject || '').toString().trim();
+        const gradeParam = q.grade_level || q.grade ? parseInt(q.grade_level || q.grade, 10) : null;
+
+        // Query teacher_assignments and classes directly filtered by current teacher's id
+        let query = `
+            SELECT DISTINCT 
+                COALESCE(c.id, ta.class_id) as id,
+                COALESCE(c.name, ta.class_name) as name,
+                COALESCE(c.grade, ta.grade_level) as grade,
+                COALESCE(c.stream, 'General') as stream,
+                ta.subject_name,
+                ta.subject_code,
+                ta.teacher_id,
+                COALESCE(c.assigned_teacher_id, ta.teacher_id) as assigned_teacher_id
+            FROM teacher_assignments ta
+            LEFT JOIN classes c ON (c.name = ta.class_name OR c.id = ta.class_id OR c.assigned_teacher_id = ta.teacher_id)
+            WHERE ta.teacher_id = $1
+        `;
+        const params = [teacherId];
+
+        if (subjectParam) {
+            params.push(subjectParam);
+            query += ` AND LOWER(ta.subject_name) = LOWER($${params.length})`;
+        }
+
+        if (gradeParam) {
+            params.push(gradeParam);
+            query += ` AND (ta.grade_level = $${params.length} OR c.grade = $${params.length})`;
+        }
+
+        query += ` ORDER BY grade ASC, name ASC`;
+
+        let result = await db.query(query, params);
+
+        // Resilient fallback check on teacher_timetable, classes, and employees table for this educator
+        if (result.rows.length === 0) {
+            try {
+                const ttRes = await db.query(`
+                    SELECT DISTINCT 
+                        c.id,
+                        COALESCE(c.name, CONCAT(COALESCE(tt.grade, s.grade, 10), 'A')) as name,
+                        COALESCE(tt.grade, s.grade, c.grade, 10) as grade,
+                        COALESCE(c.stream, 'General') as stream,
+                        s.name as subject_name,
+                        s.code as subject_code,
+                        tt.teacher_id,
+                        tt.teacher_id as assigned_teacher_id
+                    FROM teacher_timetable tt
+                    JOIN subjects s ON s.id = tt.subject_id
+                    LEFT JOIN classes c ON c.id = tt.class_id
+                    WHERE tt.teacher_id = $1
+                `, [teacherId]);
+                if (ttRes.rows.length > 0) {
+                    return res.json(ttRes.rows);
+                }
+            } catch (e) {}
+
+            try {
+                const clRes = await db.query(`
+                    SELECT DISTINCT 
+                        c.id, c.name, c.grade, COALESCE(c.stream, 'General') as stream,
+                        s.name as subject_name, s.code as subject_code,
+                        $1::int as teacher_id, $1::int as assigned_teacher_id
+                    FROM classes c
+                    JOIN subjects s ON (s.grade = c.grade AND (s.school_id = c.school_id OR s.school_id IS NULL))
+                    WHERE c.assigned_teacher_id = $1 OR c.homeroom_teacher_id = $1
+                `, [teacherId]);
+                if (clRes.rows.length > 0) {
+                    return res.json(clRes.rows);
+                }
+            } catch (e) {}
+
+            const empRes = await db.query(
+                `SELECT subjects, grades_taught, classes_taught FROM employees WHERE user_id = $1 OR LOWER(email) = LOWER($2)`,
+                [teacherId, (req.user?.email || '').toLowerCase().trim()]
+            );
+            if (empRes.rows.length > 0) {
+                const emp = empRes.rows[0];
+                const empSubjects = emp.subjects || [];
+                const empClasses = emp.classes_taught || [];
+
+                const matching = [];
+                for (const cls of empClasses) {
+                    const gradeNum = parseInt((cls || '').replace(/\D/g, ''), 10) || 10;
+                    if (gradeParam && gradeNum !== gradeParam) continue;
+
+                    for (const sub of empSubjects) {
+                        if (subjectParam && sub.toLowerCase() !== subjectParam.toLowerCase()) continue;
+                        matching.push({
+                            id: null,
+                            name: cls,
+                            grade: gradeNum,
+                            stream: 'General',
+                            subject_name: sub,
+                            teacher_id: teacherId,
+                            assigned_teacher_id: teacherId
+                        });
+                    }
+                }
+                return res.json(matching);
+            }
+            return res.json([]);
+        }
+
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching teacher assigned classes:', err);
+        res.status(500).json({ error: 'Failed to retrieve assigned classes: ' + err.message });
+    }
+};

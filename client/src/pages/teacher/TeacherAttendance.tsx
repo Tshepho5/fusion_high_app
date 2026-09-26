@@ -48,10 +48,14 @@ interface AttendanceHistoryRecord {
   parent_name?: string;
 }
 
-export const TeacherAttendance: React.FC = () => {
+interface TeacherAttendanceProps {
+  initialClass?: string;
+}
+
+export const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ initialClass }) => {
   const [activeSubTab, setActiveSubTab] = useState<'register' | 'history'>('register');
-  const [classes, setClasses] = useState<string[]>(['10A', '11A']);
-  const [selectedClass, setSelectedClass] = useState<string>('10A');
+  const [classes, setClasses] = useState<string[]>(initialClass ? [initialClass] : []);
+  const [selectedClass, setSelectedClass] = useState<string>(initialClass || '');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [learners, setLearners] = useState<LearnerRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,29 +120,33 @@ export const TeacherAttendance: React.FC = () => {
           ) as string[];
           if (names.length > 0) {
             setClasses(names);
-            setSelectedClass(names[0]);
+            if (!initialClass || !names.includes(initialClass)) {
+              setSelectedClass(names[0]);
+            } else {
+              setSelectedClass(initialClass);
+            }
             return;
           }
         }
-        return teacherService.getClassList();
+        return teacherService.getClasses();
       })
       .then((res: any) => {
         if (!res) return;
-        const list = Array.isArray(res) ? res : res.classes || [];
+        const list = Array.isArray(res) ? res : [];
         if (list.length > 0) {
           const names = Array.from(
-            new Set(list.map((c: any) => (typeof c === 'string' ? c : c.name || c.class_name)).filter(Boolean))
+            new Set(list.map((c: any) => c.name || c.class_name).filter(Boolean))
           ) as string[];
           if (names.length > 0) {
             setClasses(names);
-            setSelectedClass(names[0]);
+            if (!selectedClass) setSelectedClass(names[0]);
           }
         }
       })
       .catch(() => {
-        // Keeps default assigned classes
+        // Keeps empty if unassigned
       });
-  }, []);
+  }, [initialClass]);
 
   // Load learners for selected class from database
   useEffect(() => {

@@ -247,6 +247,8 @@ export const teacherService = {
   getOverview: () => api.get('/api/teacher/overview-stats').then(res => res.data),
   getWorkload: () => api.get('/api/teacher/workload').then(res => res.data),
   getMySubjectsOverview: () => api.get('/api/teacher/my-subjects-overview').then(res => res.data),
+  getClasses: (params?: { subject_name?: string; subject?: string; grade_level?: number; grade?: number }) => 
+    api.get('/api/teacher/classes', { params }).then(res => res.data),
   getClassList: () => api.get('/api/teacher/classlist').then(res => res.data),
   getClassRoster: (params?: { grade?: number; class?: string; subject?: string; term?: string }) => 
     api.get(`/api/teacher/class-roster?grade=${params?.grade || ''}&class=${params?.class || ''}&subject=${encodeURIComponent(params?.subject || '')}&term=${encodeURIComponent(params?.term || '')}`).then(res => res.data),

@@ -268,7 +268,7 @@ exports.changePassword = async (req, res) => {
     }
 
     try {
-        const userRes = await db.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+        const userRes = await db.query('SELECT password_hash, previous_passwords FROM users WHERE id = $1', [userId]);
         if (userRes.rows.length === 0) {
             return res.status(404).json({ success: false, error: 'User not found.' });
         }
@@ -279,8 +279,31 @@ exports.changePassword = async (req, res) => {
             return res.status(401).json({ success: false, error: 'Incorrect current password.' });
         }
 
+        // Check if matches current password or previously used password
+        const isCurrentMatch = await bcrypt.compare(newPassword, user.password_hash);
+        if (isCurrentMatch) {
+            return res.status(400).json({ success: false, error: "this passworkd has already been used, create a new one" });
+        }
+        if (user.previous_passwords && Array.isArray(user.previous_passwords)) {
+            for (const prevHash of user.previous_passwords) {
+                if (prevHash) {
+                    try {
+                        const isPrevMatch = await bcrypt.compare(newPassword, prevHash);
+                        if (isPrevMatch) {
+                            return res.status(400).json({ success: false, error: "this passworkd has already been used, create a new one" });
+                        }
+                    } catch (e) {}
+                }
+            }
+        }
+
         const newHash = await bcrypt.hash(newPassword, 10);
-        await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newHash, userId]);
+        await db.query(`
+            UPDATE users 
+            SET password_hash = $1, 
+                previous_passwords = array_append(COALESCE(previous_passwords, '{}'), $2)
+            WHERE id = $3
+        `, [newHash, user.password_hash, userId]);
         res.json({ success: true, message: 'Password changed successfully.' });
     } catch (err) {
         res.status(500).json({ success: false, error: 'An internal server error occurred: ' + err.message });
@@ -732,3 +755,4 @@ exports.getConversationHistory = async (req, res) => {
 };
 
 exports.getConversation = exports.getConversationHistory;
+exports.changePassword = (req, res) => require('./authController').changePassword(req, res);

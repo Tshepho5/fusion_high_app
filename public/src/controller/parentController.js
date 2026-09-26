@@ -217,10 +217,20 @@ exports.activateChild = async (req, res) => {
  */
 exports.linkChild = async (req, res) => {
     const parentId = req.user.id;
-    const { learner_number, learner_id, id_number, first_name, full_name, surname, relationship } = req.body;
+    const { learner_number, learner_id, id_number, id_or_learner_number, identifier, first_name, full_name, surname, relationship } = req.body;
 
-    const targetLearnerNum = (learner_number || learner_id || '').toString().trim();
-    const targetIdNumber = (id_number || '').toString().replace(/\D/g, '').trim();
+    let targetLearnerNum = (learner_number || learner_id || '').toString().trim();
+    let targetIdNumber = (id_number || '').toString().replace(/\D/g, '').trim();
+    const rawIdentifier = (id_or_learner_number || identifier || '').toString().trim();
+
+    if (!targetIdNumber && !targetLearnerNum && rawIdentifier) {
+        if (/^\d{6,13}$/.test(rawIdentifier)) {
+            targetIdNumber = rawIdentifier;
+        } else {
+            targetLearnerNum = rawIdentifier;
+        }
+    }
+
     const targetFirstName = (first_name || full_name || '').toString().trim();
     const targetSurname = (surname || '').toString().trim();
 
@@ -276,7 +286,7 @@ exports.linkChild = async (req, res) => {
 
         if (rows.length === 0) {
             return res.status(404).json({
-                error: `No enrolled learner found matching the provided details. Please verify the child's Name, Surname, and ID Number.`
+                error: `The child does not exist in the system.`
             });
         }
 

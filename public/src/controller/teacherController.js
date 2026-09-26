@@ -22,6 +22,7 @@ module.exports = {
     getMyLearners: learnersController.getMyLearners,
     getClassList: learnersController.getClassList,
     getClassRoster: learnersController.getClassRoster,
+    getTeacherClasses: learnersController.getTeacherClasses,
     saveClassMarks: learnersController.saveClassMarks,
     getClassMarksHistory: learnersController.getClassMarksHistory,
     recordMark: learnersController.recordMark,

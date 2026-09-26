@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { teacherService } from '../../services/api';
 import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
@@ -23,7 +23,9 @@ import {
   Eye,
   FileCheck,
   Megaphone,
-  X
+  X,
+  ArrowLeft,
+  ArrowRight
 } from 'lucide-react';
 
 interface ResourceItem {
@@ -68,6 +70,13 @@ const RESOURCE_TYPES = [
   { id: 'exam_memo', label: 'Exam Memorandum', icon: CheckCircle2, color: 'amber' },
 ];
 
+interface AssignedSubject {
+  subject: string;
+  grade: number;
+  class_name?: string;
+  stream?: string;
+}
+
 export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?: any) => void }> = ({ onNavigateTab }) => {
   const [resources, setResources] = useState<ResourceItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,10 +85,13 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Assigned subjects for tailored button-driven landing view
+  const [assignedSubjects, setAssignedSubjects] = useState<AssignedSubject[]>([]);
+  const [loadingAssigned, setLoadingAssigned] = useState(true);
+  const [selectedSubjectItem, setSelectedSubjectItem] = useState<AssignedSubject | null>(null);
+
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('All');
-  const [selectedGradeFilter, setSelectedGradeFilter] = useState('All');
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('All');
 
   // Preview past papers bank modal
@@ -87,9 +99,9 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
 
   // Upload Form State
   const [formData, setFormData] = useState({
-    subject: 'Mathematics',
+    subject: 'Physical Sciences',
     grade: '10',
-    stream: 'General',
+    stream: 'Science',
     resource_type: 'past_paper',
     title: '',
     description: '',
@@ -97,6 +109,26 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
     year: '2026',
     file: null as File | null,
   });
+
+  const teacherSubjectsList = useMemo(() => {
+    if (assignedSubjects.length > 0) {
+      return Array.from(new Set(assignedSubjects.map(a => a.subject))).sort();
+    }
+    return SUBJECTS_LIST;
+  }, [assignedSubjects]);
+
+  const teacherGradesList = useMemo(() => {
+    if (assignedSubjects.length > 0) {
+      const gradesForSub = assignedSubjects
+        .filter(a => !formData.subject || a.subject.toLowerCase() === formData.subject.toLowerCase())
+        .map(a => a.grade);
+      if (gradesForSub.length > 0) {
+        return Array.from(new Set(gradesForSub)).sort((a, b) => a - b);
+      }
+      return Array.from(new Set(assignedSubjects.map(a => a.grade))).sort((a, b) => a - b);
+    }
+    return [8, 9, 10, 11, 12];
+  }, [assignedSubjects, formData.subject]);
 
   const fetchResources = async () => {
     setLoading(true);
@@ -112,6 +144,77 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
       setLoading(false);
     }
   };
+
+  // Fetch only assigned subjects for the logged-in teacher
+  useEffect(() => {
+    let isMounted = true;
+    setLoadingAssigned(true);
+
+    teacherService.getMySubjectsOverview()
+      .then((res: any) => {
+        if (!isMounted) return;
+        const list = Array.isArray(res) ? res : [];
+        if (list.length > 0) {
+          const formatted = list.map((item: any) => ({
+            subject: item.subject_name || item.subject,
+            grade: Number(item.grade || item.grade_level || 10),
+            class_name: item.class_name,
+            stream: item.stream || 'CAPS Curricula'
+          }));
+          const seen = new Set();
+          const unique = formatted.filter((item: any) => {
+            const key = `${item.subject}-${item.grade}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+          setAssignedSubjects(unique);
+          if (unique.length > 0) {
+            setFormData(prev => ({
+              ...prev,
+              subject: unique[0].subject,
+              grade: String(unique[0].grade)
+            }));
+          }
+        } else {
+          return teacherService.getClasses().then((clsRes: any) => {
+            if (!isMounted) return;
+            const cList = Array.isArray(clsRes) ? clsRes : clsRes?.classes || [];
+            const formatted = cList.map((c: any) => ({
+              subject: c.subject_name || 'Physical Sciences',
+              grade: Number(c.grade || 10),
+              class_name: c.name || c.class_name,
+              stream: c.stream || 'CAPS Curricula'
+            }));
+            const seen = new Set();
+            const unique = formatted.filter((item: any) => {
+              const key = `${item.subject}-${item.grade}`;
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+            setAssignedSubjects(unique);
+            if (unique.length > 0) {
+              setFormData(prev => ({
+                ...prev,
+                subject: unique[0].subject,
+                grade: String(unique[0].grade)
+              }));
+            }
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to load teacher assigned subjects:', err);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingAssigned(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     fetchResources();
@@ -193,8 +296,13 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
       item.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesSubject = selectedSubjectFilter === 'All' || item.subject?.toLowerCase() === selectedSubjectFilter.toLowerCase();
-    const matchesGrade = selectedGradeFilter === 'All' || String(item.grade) === String(selectedGradeFilter);
+    // Strict isolation based on active subject button
+    const matchesSubject = !selectedSubjectItem || 
+      item.subject?.toLowerCase() === selectedSubjectItem.subject.toLowerCase();
+    
+    const matchesGrade = !selectedSubjectItem || 
+      String(item.grade) === String(selectedSubjectItem.grade);
+
     const matchesType = selectedTypeFilter === 'All' || item.resource_type === selectedTypeFilter;
 
     return matchesSearch && matchesSubject && matchesGrade && matchesType;
@@ -231,10 +339,22 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
             <h2 className="text-2xl md:text-3xl font-extrabold font-display text-white tracking-tight">
               Learning Resources & Past Papers
             </h2>
+            <p className="text-xs text-slate-400 mt-1 max-w-xl">
+              Upload, distribute, and track CAPS past exam papers, question sheets, and syllabus guides tailored to your assigned classes.
+            </p>
           </div>
 
           <button
-            onClick={() => setIsUploadModalOpen(true)}
+            onClick={() => {
+              if (selectedSubjectItem) {
+                setFormData(prev => ({
+                  ...prev,
+                  subject: selectedSubjectItem.subject,
+                  grade: String(selectedSubjectItem.grade)
+                }));
+              }
+              setIsUploadModalOpen(true);
+            }}
             className="flex items-center gap-2 self-start md:self-auto px-5 py-3 rounded-2xl bg-gradient-to-r from-cyan-600 to-brand-600 hover:from-cyan-500 hover:to-brand-500 text-white font-bold text-xs tracking-wide shadow-glow-cyan transition-all"
           >
             <Plus className="w-4 h-4" />
@@ -277,64 +397,184 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
         </div>
       )}
 
-      {/* Search & Filter Toolbar */}
-      <div className="flex flex-col md:flex-row gap-3 p-4 rounded-2xl bg-surface-dark border border-white/10">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search past papers, textbooks, or syllabus topics..."
-            className="w-full pl-10 pr-4 py-2 rounded-xl bg-surface-darker border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
-          />
+      {/* ========================================================================= */}
+      {/* 1. TAILORED BUTTON-DRIVEN LANDING VIEW (WHEN NO SUBJECT IS CURRENTLY ACTIVE) */}
+      {/* ========================================================================= */}
+      {!selectedSubjectItem ? (
+        <div className="space-y-4 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-white/5">
+            <div>
+              <h3 className="text-base sm:text-lg font-bold font-display text-white flex items-center gap-2">
+                <span>My Assigned CAPS Subjects & Learning Vaults</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Select an assigned subject below to access, filter, and upload curriculum resources and past exam papers.
+              </p>
+            </div>
+            <span className="self-start sm:self-auto text-xs font-mono text-cyan-400 font-bold px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20">
+              {assignedSubjects.length} Subject{assignedSubjects.length === 1 ? '' : 's'} Assigned
+            </span>
+          </div>
+
+          {loadingAssigned ? (
+            <div className="p-16 flex flex-col items-center justify-center gap-3">
+              <LoadingSpinner size="md" text="Loading your assigned subjects..." />
+            </div>
+          ) : assignedSubjects.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {assignedSubjects.map((item) => {
+                const count = resources.filter(r => 
+                  r.subject?.toLowerCase() === item.subject.toLowerCase() && 
+                  String(r.grade) === String(item.grade)
+                ).length;
+                return (
+                  <button
+                    key={`${item.subject}-${item.grade}`}
+                    type="button"
+                    onClick={() => {
+                      setSelectedSubjectItem(item);
+                      setFormData(prev => ({
+                        ...prev,
+                        subject: item.subject,
+                        grade: String(item.grade)
+                      }));
+                    }}
+                    className="group p-5 rounded-3xl bg-surface-dark border border-white/10 hover:border-cyan-500/50 hover:bg-[#0D1824] transition-all duration-300 text-left shadow-sm hover:shadow-glow-cyan active:scale-98 flex flex-col justify-between min-h-[175px] cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center font-black group-hover:scale-110 transition-transform">
+                        <Layers className="w-6 h-6" />
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge variant="cyan" size="sm">Grade {item.grade}</Badge>
+                        {item.class_name && (
+                          <span className="text-[10px] font-mono text-slate-400">Class {item.class_name}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <h4 className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+                        {item.subject}
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-1 flex items-center gap-2">
+                        <span>{count} Resource{count === 1 ? '' : 's'} & Past Paper{count === 1 ? '' : 's'}</span>
+                        <span>•</span>
+                        <span className="text-slate-500">{item.stream || 'CAPS'}</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 mt-3 border-t border-white/5 text-xs font-bold text-cyan-400 group-hover:translate-x-1 transition-transform">
+                      <span>Enter Subject Vault</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="p-12 text-center rounded-3xl bg-surface-dark border border-white/10 space-y-3">
+              <Layers className="w-12 h-12 text-slate-500 mx-auto opacity-40" />
+              <h4 className="text-base font-bold text-white">No Subjects Assigned</h4>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                No specific subjects or classes are currently linked to your educator account. Contact school administration to assign your curriculum classes.
+              </p>
+            </div>
+          )}
         </div>
+      ) : (
+        /* ========================================================================= */
+        /* 2. SUBJECT REPOSITORY VIEW (CRUCIAL: ALL SUBJECTS & GRADE DROPDOWNS REMOVED) */
+        /* ========================================================================= */
+        <div className="space-y-4 animate-fade-in">
+          {/* Back & Interactive Subject Switcher Navigation Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-surface-dark border border-cyan-500/20 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setSelectedSubjectItem(null)}
+              className="px-3.5 py-1.5 rounded-xl bg-surface-darker hover:bg-white/10 border border-white/10 hover:border-cyan-500/40 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer group active:scale-95 shrink-0"
+              title="Return to assigned subjects landing view"
+            >
+              <ArrowLeft className="w-4 h-4 text-cyan-400 group-hover:-translate-x-0.5 transition-transform" />
+              <span>Back to My Subjects</span>
+            </button>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Subject Filter */}
-          <select
-            value={selectedSubjectFilter}
-            onChange={(e) => setSelectedSubjectFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-surface-darker border border-white/10 text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
-          >
-            <option value="All">All Subjects</option>
-            {SUBJECTS_LIST.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+            {/* Interactive Subject Switcher Buttons (Replaces dropdown menus) */}
+            <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1 hidden md:inline">
+                Assigned:
+              </span>
+              {assignedSubjects.map((sub) => {
+                const isActive = sub.subject === selectedSubjectItem.subject && sub.grade === selectedSubjectItem.grade;
+                return (
+                  <button
+                    key={`${sub.subject}-${sub.grade}`}
+                    type="button"
+                    onClick={() => {
+                      setSelectedSubjectItem(sub);
+                      setFormData(prev => ({
+                        ...prev,
+                        subject: sub.subject,
+                        grade: String(sub.grade)
+                      }));
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                      isActive
+                        ? 'bg-cyan-500 text-slate-950 shadow-glow-cyan'
+                        : 'bg-surface-darker text-slate-400 hover:text-white border border-white/10 hover:border-cyan-500/40'
+                    }`}
+                  >
+                    <span>{sub.subject}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${isActive ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-white/5 text-slate-400'}`}>
+                      Gr {sub.grade}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-          {/* Grade Filter */}
-          <select
-            value={selectedGradeFilter}
-            onChange={(e) => setSelectedGradeFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-surface-darker border border-white/10 text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
-          >
-            <option value="All">All Grades</option>
-            {[8, 9, 10, 11, 12].map(g => (
-              <option key={g} value={g}>Grade {g}</option>
-            ))}
-          </select>
+          {/* Search & Resource Type Filter Toolbar (WITHOUT All Subjects or Grade Dropdowns) */}
+          <div className="flex flex-col md:flex-row gap-3 p-4 rounded-2xl bg-surface-dark border border-white/10">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={`Search ${selectedSubjectItem.subject} (Grade ${selectedSubjectItem.grade}) past papers, topics...`}
+                className="w-full pl-10 pr-4 py-2 rounded-xl bg-surface-darker border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
+              />
+            </div>
 
-          {/* Type Filter */}
-          <select
-            value={selectedTypeFilter}
-            onChange={(e) => setSelectedTypeFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-surface-darker border border-white/10 text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
-          >
-            <option value="All">All Types</option>
-            {RESOURCE_TYPES.map(t => (
-              <option key={t.id} value={t.id}>{t.label}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+            <div className="flex items-center gap-2">
+              {/* Active Subject Tag */}
+              <div className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold">
+                <span>{selectedSubjectItem.subject}</span>
+                <span className="text-white/60">•</span>
+                <span>Grade {selectedSubjectItem.grade}</span>
+              </div>
 
-      {/* Resources Cards Grid */}
-      {loading ? (
-        <div className="p-16 flex flex-col items-center justify-center gap-3">
-          <LoadingSpinner size="lg" text="Loading educator learning resources..." />
-        </div>
-      ) : filteredResources.length > 0 ? (
+              {/* Resource Type Filter */}
+              <select
+                value={selectedTypeFilter}
+                onChange={(e) => setSelectedTypeFilter(e.target.value)}
+                className="px-3 py-2 rounded-xl bg-surface-darker border border-white/10 text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
+              >
+                <option value="All">All Resource Types</option>
+                {RESOURCE_TYPES.map(t => (
+                  <option key={t.id} value={t.id}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Resources Cards Grid */}
+          {loading ? (
+            <div className="p-16 flex flex-col items-center justify-center gap-3">
+              <LoadingSpinner size="lg" text="Loading educator learning resources..." />
+            </div>
+          ) : filteredResources.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredResources.map((item) => (
             <div
@@ -417,6 +657,8 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
           </button>
         </div>
       )}
+        </div>
+      )}
 
       {/* Upload Resource Modal */}
       <Modal
@@ -455,10 +697,20 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
               </label>
               <select
                 value={formData.subject}
-                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                onChange={(e) => {
+                  const newSub = e.target.value;
+                  const relevantGrades = assignedSubjects
+                    .filter(a => a.subject.toLowerCase() === newSub.toLowerCase())
+                    .map(a => String(a.grade));
+                  setFormData(prev => ({
+                    ...prev,
+                    subject: newSub,
+                    grade: relevantGrades.includes(prev.grade) ? prev.grade : (relevantGrades[0] || prev.grade)
+                  }));
+                }}
                 className="w-full px-3 py-2.5 rounded-xl bg-surface-darker border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-500"
               >
-                {SUBJECTS_LIST.map(s => (
+                {teacherSubjectsList.map(s => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
@@ -473,7 +725,7 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
                 onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
                 className="w-full px-3 py-2.5 rounded-xl bg-surface-darker border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-500"
               >
-                {[8, 9, 10, 11, 12].map(g => (
+                {teacherGradesList.map(g => (
                   <option key={g} value={String(g)}>Grade {g}</option>
                 ))}
               </select>

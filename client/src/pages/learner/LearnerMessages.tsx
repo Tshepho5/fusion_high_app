@@ -233,7 +233,11 @@ const VoiceNotePlayer: React.FC<{
   );
 };
 
-export const LearnerMessages: React.FC = () => {
+interface LearnerMessagesProps {
+  onBack?: () => void;
+}
+
+export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
   const { user } = useAuth();
   const { theme: appTheme } = useTheme();
   const [contacts, setContacts] = useState<any[]>([]);
@@ -728,11 +732,28 @@ export const LearnerMessages: React.FC = () => {
       {/* Top Banner */}
       <div className={`p-4 rounded-2xl ${cardBg} border flex items-center justify-between gap-4 shadow-sm`}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-cyan-600 flex items-center justify-center text-white shadow-sm">
+          <button
+            type="button"
+            onClick={() => {
+              if (onBack) {
+                onBack();
+              } else if (window.history.length > 1) {
+                window.history.back();
+              }
+            }}
+            className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 hover:border-emerald-500/50 text-slate-700 dark:text-slate-200 hover:text-emerald-500 dark:hover:text-white transition-all flex items-center gap-1.5 text-xs font-bold shadow-xs cursor-pointer group active:scale-95 shrink-0"
+            title="Back to previous page"
+            aria-label="Back to previous page"
+          >
+            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5 text-emerald-500" />
+            <span className="hidden sm:inline">Back</span>
+          </button>
+
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-cyan-600 flex items-center justify-center text-white shadow-sm shrink-0">
             <MessageSquare className="w-5 h-5" />
           </div>
           <div>
-            <h2 className={`text-base font-extrabold font-display ${isLight ? 'text-slate-900' : 'text-white'} flex items-center gap-2`}>
+            <h2 className={`text-base font-extrabold font-display ${isLight ? 'text-slate-900' : 'text-white'} flex items-center gap-2 flex-wrap`}>
               Communication & Messaging Hub
               <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
                 isLight ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'

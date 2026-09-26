@@ -131,13 +131,13 @@ export const ASSESSMENT_COMPONENTS = [
 
 export const TeacherAssessments: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const initialSubject = searchParams.get('subject') || 'Mathematics';
-  const initialClass = searchParams.get('class') || '10A';
+  const querySubject = searchParams.get('subject');
+  const queryClass = searchParams.get('class');
 
-  const [subjects, setSubjects] = useState<string[]>([initialSubject, 'Physical Sciences', 'Life Sciences', 'English FAL', 'Life Orientation']);
-  const [classes, setClasses] = useState<string[]>([initialClass, '10A', '11A']);
-  const [selectedSubject, setSelectedSubject] = useState<string>(initialSubject);
-  const [selectedClass, setSelectedClass] = useState<string>(initialClass);
+  const [subjects, setSubjects] = useState<string[]>(querySubject ? [querySubject] : []);
+  const [classes, setClasses] = useState<string[]>(queryClass ? [queryClass] : []);
+  const [selectedSubject, setSelectedSubject] = useState<string>(querySubject || '');
+  const [selectedClass, setSelectedClass] = useState<string>(queryClass || '');
 
   // Active Category View: 'formal' | 'term' | 'ai' | 'entry' | 'history'
   const [activeCategory, setActiveCategory] = useState<'formal' | 'term' | 'ai' | 'entry' | 'history'>('formal');
@@ -179,35 +179,42 @@ export const TeacherAssessments: React.FC = () => {
       .then((res) => {
         const list = Array.isArray(res) ? res : [];
         if (list.length > 0) {
-          const subNames = Array.from(new Set(list.map((c: any) => c.subject_name || c.title).filter(Boolean))) as string[];
+          const subNames = Array.from(new Set(list.map((c: any) => c.subject_name).filter(Boolean))) as string[];
           const classNames = Array.from(new Set(list.map((c: any) => c.class_name || `${c.grade}A`).filter(Boolean))) as string[];
           if (subNames.length > 0) {
             setSubjects(subNames);
-            if (!searchParams.get('subject')) setSelectedSubject(subNames[0]);
+            if (!querySubject || !subNames.includes(querySubject)) {
+              setSelectedSubject(subNames[0]);
+            }
           }
           if (classNames.length > 0) {
             setClasses(classNames);
-            if (!searchParams.get('class')) setSelectedClass(classNames[0]);
+            if (!queryClass || !classNames.includes(queryClass)) {
+              setSelectedClass(classNames[0]);
+            }
           }
           return;
         }
-        return teacherService.getWorkload();
+        return teacherService.getClasses();
       })
       .then((res: any) => {
         if (!res) return;
-        const subList = res?.subjects || [];
-        const clsList = res?.classes_taught || [];
-        if (subList.length > 0) {
-          setSubjects(Array.from(new Set(subList)));
-          if (!searchParams.get('subject')) setSelectedSubject(subList[0]);
-        }
-        if (clsList.length > 0) {
-          setClasses(Array.from(new Set(clsList)));
-          if (!searchParams.get('class')) setSelectedClass(clsList[0]);
+        const list = Array.isArray(res) ? res : [];
+        if (list.length > 0) {
+          const subNames = Array.from(new Set(list.map((c: any) => c.subject_name).filter(Boolean))) as string[];
+          const classNames = Array.from(new Set(list.map((c: any) => c.name || c.class_name).filter(Boolean))) as string[];
+          if (subNames.length > 0) {
+            setSubjects(subNames);
+            if (!selectedSubject) setSelectedSubject(subNames[0]);
+          }
+          if (classNames.length > 0) {
+            setClasses(classNames);
+            if (!selectedClass) setSelectedClass(classNames[0]);
+          }
         }
       })
       .catch(() => {
-        // Keeps defaults
+        // Keeps empty if unassigned
       });
   }, [searchParams]);
 

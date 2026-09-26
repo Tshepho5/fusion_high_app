@@ -180,7 +180,7 @@ export const TeacherDashboard: React.FC = () => {
       )}
 
       {activeTab === 'messages' && (
-        <LearnerMessages />
+        <LearnerMessages onBack={() => handleSelectTab('overview')} />
       )}
 
       {activeTab === 'more' && (
@@ -218,7 +218,9 @@ export const TeacherDashboard: React.FC = () => {
         />
       )}
       {activeTab === 'timetable' && <TeacherTimetable />}
-      {activeTab === 'attendance' && <TeacherAttendance />}
+      {activeTab === 'attendance' && (
+        <TeacherAttendance initialClass={searchParams.get('class') || undefined} />
+      )}
       {activeTab === 'assessments' && <TeacherAssessments />}
       {activeTab === 'announcements' && <AnnouncementsFeed />}
       {activeTab === 'settings' && <LearnerSettings />}

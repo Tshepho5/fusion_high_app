@@ -2657,6 +2657,74 @@ const emailService = {
       ctaLink: loginUrl || 'http://localhost:3000/login'
     });
     return await emailService.send(testerEmail, subject, html);
+  },
+
+  sendChildLinkageEmail: async ({ parentEmail, parentName, childName, surname, learnerNumber, grade, stream, subjects, loginEmail, password, baseUrl }) => {
+    const fullName = `${childName || ''} ${surname || ''}`.trim() || 'Learner';
+    const subject = `Learner Successfully Linked: ${fullName} (Grade ${grade || 10})`;
+    const contentHtml = `
+      <p style="margin: 0 0 16px 0; font-size: 15px;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #cbd5e1; line-height: 1.6;">
+        We are pleased to confirm that your child, <strong>${fullName}</strong>, has been successfully linked to your parent portal account on the <strong>Geleza SA Platform</strong>.
+      </p>
+      <div style="background: rgba(19, 200, 217, 0.08); border: 1px solid rgba(19, 200, 217, 0.3); border-radius: 12px; padding: 18px; margin: 20px 0;">
+        <h4 style="margin: 0 0 12px 0; color: #13C8D9; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Linked Learner Profile Details</h4>
+        <ul style="margin: 0; padding-left: 20px; color: #94a3b8; font-size: 13px; line-height: 1.8;">
+          <li><strong style="color: #f1f5f9;">Learner Full Name:</strong> ${fullName}</li>
+          <li><strong style="color: #f1f5f9;">Official Learner Number:</strong> <code style="background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #38bdf8;">${learnerNumber}</code></li>
+          <li><strong style="color: #f1f5f9;">Academic Grade:</strong> Grade ${grade || 10} • ${stream || 'General'}</li>
+          ${loginEmail ? `<li><strong style="color: #f1f5f9;">Learner Portal Email:</strong> <code style="background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #38bdf8;">${loginEmail}</code></li>` : ''}
+          ${password ? `<li><strong style="color: #f1f5f9;">Learner Access Password:</strong> <code style="background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #f59e0b; font-weight: bold;">${password}</code></li>` : ''}
+        </ul>
+      </div>
+      <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;">
+        You can now view their live DBE/CAPS report cards, daily attendance registers, period timetables, and communicate directly with their educators from your Parent Dashboard.
+      </p>
+    `;
+    const html = createBaseEmailTemplate({
+      preheader: `Confirmation of child linking for ${fullName}`,
+      title: 'Learner Successfully Linked',
+      subtitle: `Family Learning Hub • Geleza SA`,
+      contentHtml,
+      ctaText: 'Open Parent Dashboard',
+      ctaLink: baseUrl ? `${baseUrl}/parent-dashboard` : 'https://gelezasa.co.za/login'
+    });
+    return await emailService.send(parentEmail, subject, html);
+  }
+};
+
+emailService.templates = {
+  childLinkageWithCredentials: ({ parentName, childName, surname, learnerNumber, loginEmail, password, grade, stream, subjects, baseUrl }) => {
+    const fullName = `${childName || ''} ${surname || ''}`.trim() || 'Learner';
+    const subject = `Learner Successfully Linked: ${fullName} (Grade ${grade || 10})`;
+    const contentHtml = `
+      <p style="margin: 0 0 16px 0; font-size: 15px;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+      <p style="margin: 0 0 16px 0; font-size: 14px; color: #cbd5e1; line-height: 1.6;">
+        We are pleased to confirm that your child, <strong>${fullName}</strong>, has been successfully linked to your parent portal account on the <strong>Geleza SA Platform</strong>.
+      </p>
+      <div style="background: rgba(19, 200, 217, 0.08); border: 1px solid rgba(19, 200, 217, 0.3); border-radius: 12px; padding: 18px; margin: 20px 0;">
+        <h4 style="margin: 0 0 12px 0; color: #13C8D9; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Linked Learner Profile Details</h4>
+        <ul style="margin: 0; padding-left: 20px; color: #94a3b8; font-size: 13px; line-height: 1.8;">
+          <li><strong style="color: #f1f5f9;">Learner Full Name:</strong> ${fullName}</li>
+          <li><strong style="color: #f1f5f9;">Official Learner Number:</strong> <code style="background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #38bdf8;">${learnerNumber}</code></li>
+          <li><strong style="color: #f1f5f9;">Academic Grade:</strong> Grade ${grade || 10} • ${stream || 'General'}</li>
+          ${loginEmail ? `<li><strong style="color: #f1f5f9;">Learner Portal Email:</strong> <code style="background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #38bdf8;">${loginEmail}</code></li>` : ''}
+          ${password ? `<li><strong style="color: #f1f5f9;">Learner Access Password:</strong> <code style="background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #f59e0b; font-weight: bold;">${password}</code></li>` : ''}
+        </ul>
+      </div>
+      <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;">
+        You can now view their live DBE/CAPS report cards, daily attendance registers, period timetables, and communicate directly with their educators from your Parent Dashboard.
+      </p>
+    `;
+    const body = createBaseEmailTemplate({
+      preheader: `Confirmation of child linking for ${fullName}`,
+      title: 'Learner Successfully Linked',
+      subtitle: `Family Learning Hub • Geleza SA`,
+      contentHtml,
+      ctaText: 'Open Parent Dashboard',
+      ctaLink: baseUrl ? `${baseUrl}/parent-dashboard` : 'https://gelezasa.co.za/login'
+    });
+    return { subject, body };
   }
 };
 

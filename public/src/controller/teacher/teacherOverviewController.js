@@ -46,17 +46,68 @@ function parsePeriodFromSlot(slotKey, fallback = 1) {
 exports.getWorkload = async (req, res) => {
     try {
         const teacherId = req.user.id;
-        const empRes = await db.query(
-            'SELECT subjects, subject_codes, grades_taught, classes_taught FROM employees WHERE user_id = $1',
-            [teacherId]
-        );
-        const emp = empRes.rows[0] || {
-            subjects: ['Mathematics', 'Physical Sciences'],
-            subject_codes: ['MATH10', 'PHSC11'],
-            grades_taught: [10, 11],
-            classes_taught: ['10A', '11A']
-        };
-        res.json(emp);
+        const teacherEmail = (req.user?.email || '').toLowerCase().trim();
+
+        const [empRes, taRes, ttRes, clRes] = await Promise.all([
+            db.query('SELECT subjects, subject_codes, grades_taught, classes_taught FROM employees WHERE user_id = $1 OR LOWER(email) = LOWER($2)', [teacherId, teacherEmail]),
+            db.query('SELECT DISTINCT subject_name, subject_code, grade_level, class_name FROM teacher_assignments WHERE teacher_id = $1', [teacherId]),
+            db.query(`
+                SELECT DISTINCT s.name as subject_name, s.code as subject_code, 
+                       COALESCE(tt.grade, s.grade, 10) as grade_level, 
+                       COALESCE(c.name, CONCAT(COALESCE(tt.grade, s.grade, 10), 'A')) as class_name
+                FROM teacher_timetable tt
+                JOIN subjects s ON s.id = tt.subject_id
+                LEFT JOIN classes c ON c.id = tt.class_id
+                WHERE tt.teacher_id = $1
+            `, [teacherId]),
+            db.query(`
+                SELECT DISTINCT c.name as class_name, c.grade as grade_level, s.name as subject_name, s.code as subject_code
+                FROM classes c
+                LEFT JOIN subjects s ON (s.grade = c.grade AND (s.school_id = c.school_id OR s.school_id IS NULL))
+                WHERE c.assigned_teacher_id = $1 OR c.homeroom_teacher_id = $1
+            `, [teacherId])
+        ]);
+
+        let subjects = new Set();
+        let subject_codes = new Set();
+        let grades_taught = new Set();
+        let classes_taught = new Set();
+
+        taRes.rows.forEach(r => {
+            if (r.subject_name) subjects.add(r.subject_name);
+            if (r.subject_code) subject_codes.add(r.subject_code);
+            if (r.grade_level) grades_taught.add(r.grade_level);
+            if (r.class_name) classes_taught.add(r.class_name);
+        });
+
+        ttRes.rows.forEach(r => {
+            if (r.subject_name) subjects.add(r.subject_name);
+            if (r.subject_code) subject_codes.add(r.subject_code);
+            if (r.grade_level) grades_taught.add(r.grade_level);
+            if (r.class_name) classes_taught.add(r.class_name);
+        });
+
+        clRes.rows.forEach(r => {
+            if (r.subject_name) subjects.add(r.subject_name);
+            if (r.subject_code) subject_codes.add(r.subject_code);
+            if (r.grade_level) grades_taught.add(r.grade_level);
+            if (r.class_name) classes_taught.add(r.class_name);
+        });
+
+        if (empRes.rows.length > 0) {
+            const emp = empRes.rows[0];
+            (emp.subjects || []).forEach(s => subjects.add(s));
+            (emp.subject_codes || []).forEach(c => subject_codes.add(c));
+            (emp.grades_taught || []).forEach(g => grades_taught.add(g));
+            (emp.classes_taught || []).forEach(c => classes_taught.add(c));
+        }
+
+        res.json({
+            subjects: Array.from(subjects),
+            subject_codes: Array.from(subject_codes),
+            grades_taught: Array.from(grades_taught).sort((a, b) => a - b),
+            classes_taught: Array.from(classes_taught)
+        });
     } catch (err) {
         console.error('Error fetching workload:', err);
         res.status(500).json({ error: 'Failed to retrieve workload.' });
@@ -120,37 +171,129 @@ exports.getMySubjectsOverview = async (req, res) => {
     try {
         const teacherId = req.user.id;
         const schoolId = req.user?.school_id || 1;
+        const teacherEmail = (req.user?.email || '').toLowerCase().trim();
 
-        const [empRes, userRes] = await Promise.all([
-            db.query('SELECT full_name, surname, subjects, subject_codes, grades_taught, classes_taught FROM employees WHERE user_id = $1', [teacherId]),
-            db.query('SELECT full_name, surname FROM users WHERE id = $1', [teacherId])
+        const [taRes, empRes, userRes, ttTeacherRes, classTeacherRes] = await Promise.all([
+            db.query(
+                `SELECT subject_name, subject_code, grade_level, class_name 
+                 FROM teacher_assignments 
+                 WHERE teacher_id = $1 
+                 ORDER BY grade_level ASC, class_name ASC`,
+                [teacherId]
+            ),
+            db.query('SELECT full_name, surname, subjects, subject_codes, grades_taught, classes_taught FROM employees WHERE user_id = $1 OR LOWER(email) = LOWER($2)', [teacherId, teacherEmail]),
+            db.query('SELECT full_name, surname FROM users WHERE id = $1', [teacherId]),
+            db.query(`
+                SELECT DISTINCT s.name as subject_name, s.code as subject_code, 
+                       COALESCE(tt.grade, s.grade, c.grade, 10) as grade_level, 
+                       COALESCE(c.name, CONCAT(COALESCE(tt.grade, s.grade, 10), 'A')) as class_name
+                FROM teacher_timetable tt
+                JOIN subjects s ON s.id = tt.subject_id
+                LEFT JOIN classes c ON c.id = tt.class_id
+                WHERE tt.teacher_id = $1
+            `, [teacherId]),
+            db.query(`
+                SELECT DISTINCT c.id, c.name as class_name, c.grade as grade_level, c.stream,
+                       s.name as subject_name, s.code as subject_code
+                FROM classes c
+                LEFT JOIN subjects s ON (s.grade = c.grade AND (s.school_id = c.school_id OR s.school_id IS NULL))
+                WHERE c.assigned_teacher_id = $1 OR c.homeroom_teacher_id = $1
+            `, [teacherId])
         ]);
 
         const emp = empRes.rows[0] || {};
         const teacherFullName = `${emp.full_name || userRes.rows[0]?.full_name || ''} ${emp.surname || userRes.rows[0]?.surname || ''}`.trim().toLowerCase();
-        let subjects = emp.subjects;
-        let codes = emp.subject_codes;
-        let grades = emp.grades_taught;
-        let classes = emp.classes_taught;
 
-        // Resilient fallback if educator subjects are unassigned
-        if (!subjects || !Array.isArray(subjects) || subjects.length === 0) {
-            const subDb = await db.query('SELECT DISTINCT name, code, grade FROM subjects ORDER BY name ASC');
-            if (subDb.rows.length > 0) {
-                subjects = Array.from(new Set(subDb.rows.map(s => s.name)));
-                codes = subjects.map(s => (s.substring(0, 4) + '10').toUpperCase());
-            } else {
-                subjects = ['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Geography'];
-                codes = ['MATH10', 'PHSC10', 'LFSC10', 'ENGF10', 'GEOG10'];
+        let itemsToProcess = [];
+
+        // 1. Direct assignments from teacher_assignments
+        if (taRes.rows.length > 0) {
+            itemsToProcess = taRes.rows.map(r => ({
+                subjectName: r.subject_name,
+                code: r.subject_code || `${(r.subject_name || 'SUBJ').substring(0, 4).toUpperCase()}${r.grade_level}`,
+                gradeNum: r.grade_level,
+                className: r.class_name || `${r.grade_level}A`
+            }));
+        }
+
+        // 2. Scheduled timetable subjects for this teacher
+        if (ttTeacherRes.rows.length > 0) {
+            for (const r of ttTeacherRes.rows) {
+                const already = itemsToProcess.some(x => 
+                    x.subjectName.toLowerCase() === r.subject_name.toLowerCase() && 
+                    x.gradeNum === r.grade_level && 
+                    x.className === r.class_name
+                );
+                if (!already) {
+                    itemsToProcess.push({
+                        subjectName: r.subject_name,
+                        code: r.subject_code || `${r.subject_name.substring(0, 4).toUpperCase()}${r.grade_level}`,
+                        gradeNum: r.grade_level,
+                        className: r.class_name
+                    });
+                }
             }
         }
 
-        if (!grades || !Array.isArray(grades) || grades.length === 0) {
-            grades = [10, 11, 12];
+        // 3. Classes where teacher is assigned or homeroom teacher
+        if (classTeacherRes.rows.length > 0) {
+            for (const r of classTeacherRes.rows) {
+                if (r.subject_name) {
+                    const already = itemsToProcess.some(x => 
+                        x.subjectName.toLowerCase() === r.subject_name.toLowerCase() && 
+                        x.gradeNum === r.grade_level && 
+                        x.className === r.class_name
+                    );
+                    if (!already) {
+                        itemsToProcess.push({
+                            subjectName: r.subject_name,
+                            code: r.subject_code || `${r.subject_name.substring(0, 4).toUpperCase()}${r.grade_level}`,
+                            gradeNum: r.grade_level,
+                            className: r.class_name
+                        });
+                    }
+                }
+            }
         }
 
-        if (!classes || !Array.isArray(classes) || classes.length === 0) {
-            classes = grades.map(g => `${g}A`);
+        // 4. Employee record subjects & classes (matched by user_id or email)
+        if (emp.subjects && Array.isArray(emp.subjects) && emp.subjects.length > 0) {
+            const empSubs = emp.subjects;
+            const empGrades = (emp.grades_taught && emp.grades_taught.length > 0) ? emp.grades_taught : [10, 11, 12];
+            const empClasses = emp.classes_taught || [];
+            const empCodes = emp.subject_codes || [];
+
+            for (let i = 0; i < empSubs.length; i++) {
+                const sName = empSubs[i];
+                const sCode = empCodes[i] || `${(sName || 'SUBJ').substring(0, 4).toUpperCase()}${empGrades[0] || 10}`;
+                for (const gNum of empGrades) {
+                    const gradeClasses = empClasses.filter(c => {
+                        const d = (c || '').replace(/\D/g, '');
+                        return d ? parseInt(d, 10) === gNum : false;
+                    });
+                    const toAdd = gradeClasses.length > 0 ? gradeClasses : [`${gNum}A`];
+                    for (const cName of toAdd) {
+                        const already = itemsToProcess.some(x => 
+                            x.subjectName.toLowerCase() === sName.toLowerCase() && 
+                            x.gradeNum === gNum && 
+                            x.className === cName
+                        );
+                        if (!already) {
+                            itemsToProcess.push({
+                                subjectName: sName,
+                                code: sCode,
+                                gradeNum: gNum,
+                                className: cName
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // Strict isolation: if teacher has zero assigned subjects across all sources, return empty array
+        if (itemsToProcess.length === 0) {
+            return res.json([]);
         }
 
         // Fetch active timetables for this school to read actual scheduled slots
@@ -187,9 +330,12 @@ exports.getMySubjectsOverview = async (req, res) => {
 
         const subjectCards = [];
 
-        for (let i = 0; i < subjects.length; i++) {
-            const subjectName = subjects[i];
-            const code = (codes && codes[i]) || `${subjectName.substring(0, 4).toUpperCase()}${grades[0] || 10}`;
+        for (let idx = 0; idx < itemsToProcess.length; idx++) {
+            const item = itemsToProcess[idx];
+            const subjectName = item.subjectName;
+            const gradeNum = item.gradeNum;
+            const className = item.className;
+            const code = item.code;
 
             // Determine stream from subject
             let stream = 'General';
@@ -202,187 +348,170 @@ exports.getMySubjectsOverview = async (req, res) => {
                 stream = 'Tourism';
             }
 
-            for (let g = 0; g < grades.length; g++) {
-                const gradeNum = grades[g];
-
-                // Match classes strictly belonging to this grade (e.g. 10A for 10, 11A for 11, 12A for 12)
-                const gradeClasses = classes.filter(c => {
-                    if (!c) return false;
-                    const digits = c.toString().replace(/\D/g, '');
-                    return digits ? parseInt(digits, 10) === gradeNum : false;
-                });
-                const classesToProcess = gradeClasses.length > 0 ? gradeClasses : [`${gradeNum}A`];
-
-                for (let cIdx = 0; cIdx < classesToProcess.length; cIdx++) {
-                    const className = classesToProcess[cIdx];
-
-                // Calculate REAL enrolled count for this class & subject
-                let learnerCount = 0;
-                try {
-                    const countRes = await db.query(
+            // Calculate REAL enrolled count for this class & subject
+            let learnerCount = 0;
+            try {
+                const countRes = await db.query(
+                    `SELECT COUNT(*) FROM children c
+                     LEFT JOIN classes cl ON c.class_id = cl.id
+                     WHERE (c.school_id = $1 OR $1 IS NULL) AND c.grade = $2
+                       AND (cl.name ILIKE $3 OR CONCAT(c.grade, 'A') ILIKE $3 OR CONCAT('Grade ', c.grade, 'A') ILIKE $3 OR $3 = '')
+                       AND (
+                         c.subjects && ARRAY[$4]::text[]
+                         OR $4 = ANY(c.subjects)
+                         OR (c.subjects IS NULL AND (
+                           (c.stream = 'Science' AND ARRAY[$4]::text[] && ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Life Orientation']) OR
+                           (c.stream = 'Commerce' AND ARRAY[$4]::text[] && ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Life Orientation']) OR
+                           (c.stream = 'Tourism' AND ARRAY[$4]::text[] && ARRAY['Tourism', 'Geography', 'Mathematical Literacy', 'English FAL', 'Life Orientation']) OR
+                           (c.stream = 'General')
+                         ))
+                       )`,
+                    [schoolId, gradeNum, className, subjectName]
+                );
+                learnerCount = parseInt(countRes.rows[0]?.count, 10);
+                if (isNaN(learnerCount) || learnerCount === 0) {
+                    const gradeCountRes = await db.query(
                         `SELECT COUNT(*) FROM children c
-                         LEFT JOIN classes cl ON c.class_id = cl.id
                          WHERE (c.school_id = $1 OR $1 IS NULL) AND c.grade = $2
-                           AND (cl.name ILIKE $3 OR CONCAT(c.grade, 'A') ILIKE $3 OR CONCAT('Grade ', c.grade, 'A') ILIKE $3 OR $3 = '')
                            AND (
-                             c.subjects && ARRAY[$4]::text[]
-                             OR $4 = ANY(c.subjects)
+                             c.subjects && ARRAY[$3]::text[]
+                             OR $3 = ANY(c.subjects)
                              OR (c.subjects IS NULL AND (
-                               (c.stream = 'Science' AND ARRAY[$4]::text[] && ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Life Orientation']) OR
-                               (c.stream = 'Commerce' AND ARRAY[$4]::text[] && ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Life Orientation']) OR
-                               (c.stream = 'Tourism' AND ARRAY[$4]::text[] && ARRAY['Tourism', 'Geography', 'Mathematical Literacy', 'English FAL', 'Life Orientation']) OR
+                               (c.stream = 'Science' AND ARRAY[$3]::text[] && ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Life Orientation']) OR
+                               (c.stream = 'Commerce' AND ARRAY[$3]::text[] && ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Life Orientation']) OR
+                               (c.stream = 'Tourism' AND ARRAY[$3]::text[] && ARRAY['Tourism', 'Geography', 'Mathematical Literacy', 'English FAL', 'Life Orientation']) OR
                                (c.stream = 'General')
                              ))
                            )`,
-                        [schoolId, gradeNum, className, subjectName]
+                        [schoolId, gradeNum, subjectName]
                     );
-                    learnerCount = parseInt(countRes.rows[0]?.count, 10);
-                    if (isNaN(learnerCount) || learnerCount === 0) {
-                        // Check match by grade and subject stream
-                        const gradeCountRes = await db.query(
-                            `SELECT COUNT(*) FROM children c
-                             WHERE (c.school_id = $1 OR $1 IS NULL) AND c.grade = $2
-                               AND (
-                                 c.subjects && ARRAY[$3]::text[]
-                                 OR $3 = ANY(c.subjects)
-                                 OR (c.subjects IS NULL AND (
-                                   (c.stream = 'Science' AND ARRAY[$3]::text[] && ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Life Orientation']) OR
-                                   (c.stream = 'Commerce' AND ARRAY[$3]::text[] && ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Life Orientation']) OR
-                                   (c.stream = 'Tourism' AND ARRAY[$3]::text[] && ARRAY['Tourism', 'Geography', 'Mathematical Literacy', 'English FAL', 'Life Orientation']) OR
-                                   (c.stream = 'General')
-                                 ))
-                               )`,
-                            [schoolId, gradeNum, subjectName]
-                        );
-                        learnerCount = parseInt(gradeCountRes.rows[0]?.count, 10) || 0;
-                    }
-                } catch (e) {
-                    console.error('Error querying learner count:', e);
-                    learnerCount = 0;
+                    learnerCount = parseInt(gradeCountRes.rows[0]?.count, 10) || 0;
                 }
-
-                // If still 0, fallback to class count
-                if (learnerCount === 0) {
-                    try {
-                        const classFallbackRes = await db.query(
-                            `SELECT COUNT(*) FROM children c
-                             LEFT JOIN classes cl ON c.class_id = cl.id
-                             WHERE (c.school_id = $1 OR $1 IS NULL) AND c.grade = $2
-                               AND (cl.name ILIKE $3 OR CONCAT(c.grade, 'A') ILIKE $3 OR $3 = '')`,
-                            [schoolId, gradeNum, className]
-                        );
-                        learnerCount = parseInt(classFallbackRes.rows[0]?.count, 10) || 0;
-                    } catch (e) {}
-                }
-
-                let avgMark = null;
-                try {
-                    const avgRes = await db.query(
-                        `SELECT AVG(m.percentage) as avg_grade FROM marks m
-                         WHERE LOWER(m.subject) = LOWER($1) AND m.grade = $2 AND (m.is_formal = TRUE OR m.is_formal IS NULL)`,
-                        [subjectName, gradeNum]
-                    );
-                    if (avgRes.rows[0]?.avg_grade) {
-                        avgMark = Math.round(parseFloat(avgRes.rows[0].avg_grade));
-                    }
-                } catch (e) {}
-
-                let ungradedSubmissions = 0;
-                try {
-                    const pendingRes = await db.query(
-                        `SELECT COUNT(*) FROM assignments WHERE LOWER(subject) = LOWER($1) AND grade = $2`,
-                        [subjectName, gradeNum]
-                    );
-                    ungradedSubmissions = parseInt(pendingRes.rows[0]?.count, 10) || 0;
-                } catch (e) {}
-
-                let upcomingTests = 0;
-                try {
-                    const testRes = await db.query(
-                        `SELECT COUNT(*) FROM announcements WHERE is_assignment = TRUE AND (LOWER(subject_target) = LOWER($1) OR subject_target IS NULL) AND (grade_target = $2 OR grade_target IS NULL)`,
-                        [subjectName, gradeNum]
-                    );
-                    upcomingTests = parseInt(testRes.rows[0]?.count, 10) || 0;
-                } catch (e) {}
-
-                let curriculumPace = 45;
-                try {
-                    const paceRes = await db.query(
-                        `SELECT COUNT(DISTINCT p.notes) as task_count, COUNT(*) as total_marks 
-                         FROM progress p
-                         JOIN children c ON p.child_id = c.id
-                         WHERE LOWER(p.subject) = LOWER($1) AND c.grade = $2`,
-                        [subjectName, gradeNum]
-                    );
-
-                    const taskCount = parseInt(paceRes.rows[0]?.task_count, 10) || 0;
-                    const totalMarks = parseInt(paceRes.rows[0]?.total_marks, 10) || 0;
-
-                    if (totalMarks > 0) {
-                        curriculumPace = Math.min(100, Math.max(40, 30 + (taskCount * 20)));
-                    }
-                } catch (e) {}
-
-                // Live Subject Attendance Rate calculated from real database records
-                let subjectAttendanceRate = 100;
-                try {
-                    const attRes = await db.query(
-                        `SELECT 
-                            COUNT(*) as total,
-                            SUM(CASE WHEN a.status IN ('present', 'late') THEN 1 ELSE 0 END) as attended
-                         FROM attendance a
-                         JOIN children c ON a.child_id = c.id
-                         WHERE c.grade = $1 AND (LOWER(a.subject_name) LIKE LOWER($2) OR a.subject_name IS NULL)`,
-                        [gradeNum, `%${subjectName}%`]
-                    );
-                    const totalAtt = parseInt(attRes.rows[0]?.total || 0, 10);
-                    const attended = parseInt(attRes.rows[0]?.attended || 0, 10);
-                    if (totalAtt > 0) {
-                        subjectAttendanceRate = Math.round((attended / totalAtt) * 100);
-                    }
-                } catch (e) {}
-
-                // Resolve Timetable slot / room / period dynamically
-                let assignedPeriod = ((g * 2 + i) % 7) + 1;
-                let assignedRoom = `Room ${className}`;
-                if (subLower.includes('physic') || subLower.includes('chemistry') || subLower.includes('science')) {
-                    assignedRoom = g === 0 ? 'Science Lab 1' : (g === 1 ? 'Science Lab 2' : 'Science Lab 3');
-                } else if (subLower.includes('account') || subLower.includes('commerce') || subLower.includes('econom')) {
-                    assignedRoom = `Commerce Wing C${className.replace(/[^0-9]/g, '') || '10'}`;
-                }
-
-                // Check actual timetable slot match
-                const matchedSlot = timetableSlots.find(s =>
-                    s.grade === gradeNum &&
-                    s.class_name === className &&
-                    (s.subject.toLowerCase() === subLower || (teacherFullName && s.teacher.includes(teacherFullName)))
-                );
-                if (matchedSlot) {
-                    const parsed = parsePeriodFromSlot(matchedSlot.period, assignedPeriod);
-                    assignedPeriod = (parsed >= 1 && parsed <= 12) ? parsed : assignedPeriod;
-                    if (matchedSlot.room) assignedRoom = matchedSlot.room;
-                }
-
-                subjectCards.push({
-                    subject_name: subjectName,
-                    code,
-                    grade: gradeNum,
-                    class_name: className,
-                    title: `${subjectName} Grade ${gradeNum}`,
-                    stream,
-                    curriculum_progress: curriculumPace,
-                    learner_count: learnerCount,
-                    enrolled_count: learnerCount,
-                    period: assignedPeriod,
-                    room: assignedRoom,
-                    period_room: `Period ${assignedPeriod} • ${assignedRoom}`,
-                    ungraded_submissions: ungradedSubmissions,
-                    upcoming_tests: upcomingTests,
-                    recent_class_avg: avgMark,
-                    attendance_rate: subjectAttendanceRate
-                });
-                }
+            } catch (e) {
+                console.error('Error querying learner count:', e);
+                learnerCount = 0;
             }
+
+            // If still 0, fallback to class count
+            if (learnerCount === 0) {
+                try {
+                    const classFallbackRes = await db.query(
+                        `SELECT COUNT(*) FROM children c
+                         LEFT JOIN classes cl ON c.class_id = cl.id
+                         WHERE (c.school_id = $1 OR $1 IS NULL) AND c.grade = $2
+                           AND (cl.name ILIKE $3 OR CONCAT(c.grade, 'A') ILIKE $3 OR $3 = '')`,
+                        [schoolId, gradeNum, className]
+                    );
+                    learnerCount = parseInt(classFallbackRes.rows[0]?.count, 10) || 0;
+                } catch (e) {}
+            }
+
+            let avgMark = null;
+            try {
+                const avgRes = await db.query(
+                    `SELECT AVG(m.percentage) as avg_grade FROM marks m
+                     WHERE LOWER(m.subject) = LOWER($1) AND m.grade = $2 AND (m.is_formal = TRUE OR m.is_formal IS NULL)`,
+                    [subjectName, gradeNum]
+                );
+                if (avgRes.rows[0]?.avg_grade) {
+                    avgMark = Math.round(parseFloat(avgRes.rows[0].avg_grade));
+                }
+            } catch (e) {}
+
+            let ungradedSubmissions = 0;
+            try {
+                const pendingRes = await db.query(
+                    `SELECT COUNT(*) FROM assignments WHERE LOWER(subject) = LOWER($1) AND grade = $2`,
+                    [subjectName, gradeNum]
+                );
+                ungradedSubmissions = parseInt(pendingRes.rows[0]?.count, 10) || 0;
+            } catch (e) {}
+
+            let upcomingTests = 0;
+            try {
+                const testRes = await db.query(
+                    `SELECT COUNT(*) FROM announcements WHERE is_assignment = TRUE AND (LOWER(subject_target) = LOWER($1) OR subject_target IS NULL) AND (grade_target = $2 OR grade_target IS NULL)`,
+                    [subjectName, gradeNum]
+                );
+                upcomingTests = parseInt(testRes.rows[0]?.count, 10) || 0;
+            } catch (e) {}
+
+            let curriculumPace = 45;
+            try {
+                const paceRes = await db.query(
+                    `SELECT COUNT(DISTINCT p.notes) as task_count, COUNT(*) as total_marks 
+                     FROM progress p
+                     JOIN children c ON p.child_id = c.id
+                     WHERE LOWER(p.subject) = LOWER($1) AND c.grade = $2`,
+                    [subjectName, gradeNum]
+                );
+
+                const taskCount = parseInt(paceRes.rows[0]?.task_count, 10) || 0;
+                const totalMarks = parseInt(paceRes.rows[0]?.total_marks, 10) || 0;
+
+                if (totalMarks > 0) {
+                    curriculumPace = Math.min(100, Math.max(40, 30 + (taskCount * 20)));
+                }
+            } catch (e) {}
+
+            // Live Subject Attendance Rate calculated from real database records
+            let subjectAttendanceRate = 100;
+            try {
+                const attRes = await db.query(
+                    `SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN a.status IN ('present', 'late') THEN 1 ELSE 0 END) as attended
+                     FROM attendance a
+                     JOIN children c ON a.child_id = c.id
+                     WHERE c.grade = $1 AND (LOWER(a.subject_name) LIKE LOWER($2) OR a.subject_name IS NULL)`,
+                    [gradeNum, `%${subjectName}%`]
+                );
+                const totalAtt = parseInt(attRes.rows[0]?.total || 0, 10);
+                const attended = parseInt(attRes.rows[0]?.attended || 0, 10);
+                if (totalAtt > 0) {
+                    subjectAttendanceRate = Math.round((attended / totalAtt) * 100);
+                }
+            } catch (e) {}
+
+            // Resolve Timetable slot / room / period dynamically
+            let assignedPeriod = ((idx * 2) % 7) + 1;
+            let assignedRoom = `Room ${className}`;
+            if (subLower.includes('physic') || subLower.includes('chemistry') || subLower.includes('science')) {
+                assignedRoom = gradeNum === 10 ? 'Science Lab 1' : (gradeNum === 11 ? 'Science Lab 2' : 'Science Lab 3');
+            } else if (subLower.includes('account') || subLower.includes('commerce') || subLower.includes('econom')) {
+                assignedRoom = `Commerce Wing C${className.replace(/[^0-9]/g, '') || '10'}`;
+            }
+
+            // Check actual timetable slot match
+            const matchedSlot = timetableSlots.find(s =>
+                s.grade === gradeNum &&
+                s.class_name === className &&
+                (s.subject.toLowerCase() === subLower || (teacherFullName && s.teacher.includes(teacherFullName)))
+            );
+            if (matchedSlot) {
+                const parsed = parsePeriodFromSlot(matchedSlot.period, assignedPeriod);
+                assignedPeriod = (parsed >= 1 && parsed <= 12) ? parsed : assignedPeriod;
+                if (matchedSlot.room) assignedRoom = matchedSlot.room;
+            }
+
+            subjectCards.push({
+                subject_name: subjectName,
+                code,
+                grade: gradeNum,
+                class_name: className,
+                title: `${subjectName} Grade ${gradeNum}`,
+                stream,
+                curriculum_progress: curriculumPace,
+                learner_count: learnerCount,
+                enrolled_count: learnerCount,
+                period: assignedPeriod,
+                room: assignedRoom,
+                period_room: `Period ${assignedPeriod} • ${assignedRoom}`,
+                ungraded_submissions: ungradedSubmissions,
+                upcoming_tests: upcomingTests,
+                recent_class_avg: avgMark,
+                attendance_rate: subjectAttendanceRate
+            });
         }
 
         res.json(subjectCards);
@@ -401,17 +530,30 @@ exports.getTeacherPerformanceOverview = async (req, res) => {
         const subjectParam = req.query.subject;
         const gradeParam = req.query.grade;
 
-        const empRes = await db.query(
-            'SELECT subjects, grades_taught, classes_taught FROM employees WHERE user_id = $1',
-            [teacherId]
-        );
-        const emp = empRes.rows[0] || { subjects: [], grades_taught: [], classes_taught: [] };
-        let subjects = emp.subjects || ['Mathematics', 'Physical Sciences', 'Life Sciences'];
-        let grades = emp.grades_taught || [10, 11, 12];
+        const [empRes, taRes] = await Promise.all([
+            db.query('SELECT subjects, grades_taught, classes_taught FROM employees WHERE user_id = $1', [teacherId]),
+            db.query('SELECT DISTINCT subject_name, grade_level FROM teacher_assignments WHERE teacher_id = $1', [teacherId])
+        ]);
 
-        if (!subjects || subjects.length === 0) {
-            const dbSubRes = await db.query('SELECT name FROM subjects ORDER BY id ASC');
-            subjects = dbSubRes.rows.map(s => s.name);
+        let subjects = [];
+        let grades = [];
+
+        if (taRes.rows.length > 0) {
+            subjects = Array.from(new Set(taRes.rows.map(r => r.subject_name).filter(Boolean)));
+            grades = Array.from(new Set(taRes.rows.map(r => r.grade_level).filter(Boolean))).sort((a, b) => a - b);
+        } else if (empRes.rows.length > 0) {
+            subjects = empRes.rows[0].subjects || [];
+            grades = empRes.rows[0].grades_taught || [];
+        }
+
+        if (subjects.length === 0) {
+            return res.json({
+                options: [],
+                selected_subject: '',
+                subject_breakdown: [],
+                learners: [],
+                stats: { total_learners: 0, class_average: 0, pass_rate: 0, top_performer: null }
+            });
         }
 
         const subjectGradeOptions = [];

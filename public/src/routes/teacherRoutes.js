@@ -24,6 +24,7 @@ router.get('/performance-overview', teacherController.getTeacherPerformanceOverv
 router.post('/marks/save', teacherController.saveClassMarks);
 router.get('/marks/history', teacherController.getClassMarksHistory);
 router.get('/classlist', teacherController.getClassList);
+router.get('/classes', teacherController.getTeacherClasses);
 router.get('/class-roster', teacherController.getClassRoster);
 
 
