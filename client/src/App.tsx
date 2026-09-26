@@ -7,17 +7,47 @@ import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { PwaInstallPrompt } from './components/common/PwaInstallPrompt';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 
-// Code-split route components for performance optimization & faster initial bundle loading
-const LandingPage = lazy(() => import('./pages/landing/LandingPage').then(m => ({ default: m.LandingPage })));
-const AboutUsPage = lazy(() => import('./pages/landing/AboutUsPage').then(m => ({ default: m.AboutUsPage })));
-const TermsPage = lazy(() => import('./pages/landing/TermsPage').then(m => ({ default: m.TermsPage })));
-const LoginPage = lazy(() => import('./pages/auth/LoginPage').then(m => ({ default: m.LoginPage })));
-const RegisterPage = lazy(() => import('./pages/auth/RegisterPage').then(m => ({ default: m.RegisterPage })));
-const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
-const LearnerDashboard = lazy(() => import('./pages/learner/LearnerDashboard').then(m => ({ default: m.LearnerDashboard })));
-const TeacherDashboard = lazy(() => import('./pages/teacher/TeacherDashboard').then(m => ({ default: m.TeacherDashboard })));
-const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
-const ParentDashboard = lazy(() => import('./pages/parent/ParentDashboard').then(m => ({ default: m.ParentDashboard })));
+// Robust dynamic import wrapper with automatic cache-purge & page reload on chunk load failure.
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  factory: () => Promise<any>,
+  chunkKey: string
+) {
+  return lazy(async () => {
+    const hasRetried = sessionStorage.getItem(`chunk_retry_${chunkKey}`);
+    try {
+      const module = await factory();
+      sessionStorage.removeItem(`chunk_retry_${chunkKey}`);
+      const component = module[chunkKey] || module.default || module;
+      return { default: component as T };
+    } catch (err: any) {
+      console.warn(`[ChunkLoadRecovery] Stale chunk detected for ${chunkKey}. Purging caches & reloading...`, err);
+      if (!hasRetried) {
+        sessionStorage.setItem(`chunk_retry_${chunkKey}`, 'true');
+        if ('caches' in window) {
+          try {
+            const cacheKeys = await caches.keys();
+            await Promise.all(cacheKeys.map(k => caches.delete(k)));
+          } catch (_) {}
+        }
+        window.location.reload();
+        return new Promise(() => {}); // prevent throwing while reload takes over
+      }
+      throw err;
+    }
+  });
+}
+
+// Code-split route components with automatic recovery against outdated build chunks
+const LandingPage = lazyWithRetry(() => import('./pages/landing/LandingPage'), 'LandingPage');
+const AboutUsPage = lazyWithRetry(() => import('./pages/landing/AboutUsPage'), 'AboutUsPage');
+const TermsPage = lazyWithRetry(() => import('./pages/landing/TermsPage'), 'TermsPage');
+const LoginPage = lazyWithRetry(() => import('./pages/auth/LoginPage'), 'LoginPage');
+const RegisterPage = lazyWithRetry(() => import('./pages/auth/RegisterPage'), 'RegisterPage');
+const ForgotPasswordPage = lazyWithRetry(() => import('./pages/auth/ForgotPasswordPage'), 'ForgotPasswordPage');
+const LearnerDashboard = lazyWithRetry(() => import('./pages/learner/LearnerDashboard'), 'LearnerDashboard');
+const TeacherDashboard = lazyWithRetry(() => import('./pages/teacher/TeacherDashboard'), 'TeacherDashboard');
+const AdminDashboard = lazyWithRetry(() => import('./pages/admin/AdminDashboard'), 'AdminDashboard');
+const ParentDashboard = lazyWithRetry(() => import('./pages/parent/ParentDashboard'), 'ParentDashboard');
 import { TermsAgreementModal } from './components/common/TermsAgreementModal';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRole?: string }> = ({
