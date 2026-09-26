@@ -373,6 +373,9 @@ export const parentService = {
     stream?: string;
     home_language?: string;
     previous_school?: string;
+    school_id?: string | number;
+    payment_method?: string;
+    pay_now?: boolean;
   }) => api.post('/api/parent/children/link-sibling', payload).then(res => res.data),
   activateChild: (payload: {
     learner_number?: string;

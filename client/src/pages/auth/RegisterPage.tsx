@@ -518,18 +518,19 @@ export const RegisterPage: React.FC = () => {
   const updateChildField = (id: string, field: keyof ChildLinkItem, val: any) => {
     if (field === 'firstName' || field === 'surname') {
       if (/\d/.test(val)) {
-        setError('Numbers are not allowed in this field. Please use letters only.');
-        return;
+        setFieldErrors(prev => ({ ...prev, [`child_${id}_${field}`]: 'Numbers are not allowed in this field. Please use letters only.' }));
+        val = val.replace(/\d/g, '');
+      } else {
+        clearFieldError(`child_${id}_${field}`);
       }
-      setError(null);
     } else if (field === 'idNumber') {
-      const cleaned = (val || '').replace(/\D/g, '').slice(0, 13);
       if (/[a-zA-Z]/.test(val)) {
-        setError('Letters and words are not allowed in this field. Numbers only.');
-        return;
+        setFieldErrors(prev => ({ ...prev, [`child_${id}_idNumber`]: 'Letters and words are not allowed in this field. Numbers only.' }));
+        val = val.replace(/[a-zA-Z]/g, '').slice(0, 13);
+      } else {
+        clearFieldError(`child_${id}_idNumber`);
       }
-      setError(null);
-      val = cleaned;
+      val = (val || '').replace(/\D/g, '').slice(0, 13);
     }
 
     setChildrenList(prev => prev.map(c => {
@@ -1033,23 +1034,57 @@ export const RegisterPage: React.FC = () => {
                 <label className="font-bold text-slate-300">First Name *</label>
                 <input
                   type="text"
-                  placeholder="e.g. Sipho"
+                  placeholder="e.g. Sipho (letters only)"
                   value={teacherAppForm.full_name}
-                  onChange={(e) => setTeacherAppForm({ ...teacherAppForm, full_name: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/\d/.test(val)) {
+                      setFieldErrors(prev => ({ ...prev, teacher_full_name: 'Numbers are not allowed in this field. Please use letters only.' }));
+                      setTeacherAppForm({ ...teacherAppForm, full_name: val.replace(/\d/g, '') });
+                    } else {
+                      clearFieldError('teacher_full_name');
+                      setTeacherAppForm({ ...teacherAppForm, full_name: val });
+                    }
+                  }}
+                  className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border text-white outline-hidden focus:border-cyan-500 ${
+                    fieldErrors.teacher_full_name ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-slate-700'
+                  }`}
                   required
                 />
+                {fieldErrors.teacher_full_name && (
+                  <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{fieldErrors.teacher_full_name}</span>
+                  </p>
+                )}
               </div>
               <div className="space-y-1">
                 <label className="font-bold text-slate-300">Surname *</label>
                 <input
                   type="text"
-                  placeholder="e.g. Khumalo"
+                  placeholder="e.g. Khumalo (letters only)"
                   value={teacherAppForm.surname}
-                  onChange={(e) => setTeacherAppForm({ ...teacherAppForm, surname: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/\d/.test(val)) {
+                      setFieldErrors(prev => ({ ...prev, teacher_surname: 'Numbers are not allowed in this field. Please use letters only.' }));
+                      setTeacherAppForm({ ...teacherAppForm, surname: val.replace(/\d/g, '') });
+                    } else {
+                      clearFieldError('teacher_surname');
+                      setTeacherAppForm({ ...teacherAppForm, surname: val });
+                    }
+                  }}
+                  className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border text-white outline-hidden focus:border-cyan-500 ${
+                    fieldErrors.teacher_surname ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-slate-700'
+                  }`}
                   required
                 />
+                {fieldErrors.teacher_surname && (
+                  <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{fieldErrors.teacher_surname}</span>
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1067,12 +1102,29 @@ export const RegisterPage: React.FC = () => {
                 <label className="font-bold text-slate-300">Contact Phone Number *</label>
                 <input
                   type="tel"
-                  placeholder="e.g. 082 123 4567"
+                  placeholder="e.g. 0821234567 (numbers only)"
                   value={teacherAppForm.phone}
-                  onChange={(e) => setTeacherAppForm({ ...teacherAppForm, phone: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/[a-zA-Z]/.test(val)) {
+                      setFieldErrors(prev => ({ ...prev, teacher_phone: 'Letters and words are not allowed in this field. Numbers only.' }));
+                      setTeacherAppForm({ ...teacherAppForm, phone: val.replace(/[a-zA-Z]/g, '') });
+                    } else {
+                      clearFieldError('teacher_phone');
+                      setTeacherAppForm({ ...teacherAppForm, phone: val.replace(/[^\d+]/g, '') });
+                    }
+                  }}
+                  className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border text-white outline-hidden focus:border-cyan-500 ${
+                    fieldErrors.teacher_phone ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-slate-700'
+                  }`}
                   required
                 />
+                {fieldErrors.teacher_phone && (
+                  <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{fieldErrors.teacher_phone}</span>
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1082,12 +1134,29 @@ export const RegisterPage: React.FC = () => {
                 <input
                   type="text"
                   maxLength={13}
-                  placeholder="13-digit national ID"
+                  placeholder="13-digit national ID (numbers only)"
                   value={teacherAppForm.id_number}
-                  onChange={(e) => setTeacherAppForm({ ...teacherAppForm, id_number: e.target.value.replace(/\D/g, '') })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/[a-zA-Z]/.test(val)) {
+                      setFieldErrors(prev => ({ ...prev, teacher_id_number: 'Letters and words are not allowed in this field. Numbers only.' }));
+                      setTeacherAppForm({ ...teacherAppForm, id_number: val.replace(/[a-zA-Z]/g, '').slice(0, 13) });
+                    } else {
+                      clearFieldError('teacher_id_number');
+                      setTeacherAppForm({ ...teacherAppForm, id_number: val.replace(/\D/g, '').slice(0, 13) });
+                    }
+                  }}
+                  className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border text-white outline-hidden focus:border-cyan-500 ${
+                    fieldErrors.teacher_id_number ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-slate-700'
+                  }`}
                   required
                 />
+                {fieldErrors.teacher_id_number && (
+                  <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{fieldErrors.teacher_id_number}</span>
+                  </p>
+                )}
               </div>
               <div className="space-y-1">
                 <label className="font-bold text-slate-300">SACE Number *</label>

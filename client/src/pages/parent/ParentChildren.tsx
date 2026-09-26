@@ -27,9 +27,12 @@ import {
   Copy,
   X,
   Key,
-  Mail
+  Mail,
+  Building2,
+  CreditCard
 } from 'lucide-react';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
+import { useSchool } from '../../context/SchoolContext';
 
 const SA_OFFICIAL_LANGUAGES = [
   'isiZulu', 'isiXhosa', 'Afrikaans', 'English', 'Sepedi',
@@ -37,6 +40,7 @@ const SA_OFFICIAL_LANGUAGES = [
 ];
 
 export const ParentChildren: React.FC = () => {
+  const { currentSchool, schoolsList } = useSchool();
   const [children, setChildren] = useState<any[]>([]);
   const [selectedChild, setSelectedChild] = useState<any>(null);
   const [performanceData, setPerformanceData] = useState<any | null>(null);
@@ -54,7 +58,17 @@ export const ParentChildren: React.FC = () => {
   const [copiedKey, setCopiedKey] = useState(false);
   const [createdCredentials, setCreatedCredentials] = useState<any | null>(null);
 
-  // Sibling Form Data
+  // Sibling Form Data & School Verification (Scenario 2)
+  const [selectedSchoolId, setSelectedSchoolId] = useState<number>(currentSchool?.id || 1);
+  const [siblingPaymentChoice, setSiblingPaymentChoice] = useState<'card' | 'eft'>('card');
+  const [siblingLangCheck, setSiblingLangCheck] = useState<{
+    is_offered?: boolean;
+    language?: string;
+    school_name?: string;
+    referrals?: any[];
+    banking_details?: any;
+  } | null>(null);
+
   const [siblingForm, setSiblingForm] = useState({
     first_name: '',
     surname: '',
@@ -131,6 +145,15 @@ export const ParentChildren: React.FC = () => {
     fetchChildren();
   }, []);
 
+  // Live language offering check for selected school & sibling home language
+  useEffect(() => {
+    if (!selectedSchoolId || !siblingForm.home_language) return;
+    fetch(`/api/schools/check-language?school_id=${selectedSchoolId}&language=${encodeURIComponent(siblingForm.home_language)}`)
+      .then(r => r.json())
+      .then(data => setSiblingLangCheck(data))
+      .catch(err => console.warn('Sibling language check error:', err));
+  }, [selectedSchoolId, siblingForm.home_language]);
+
   const handleEnrollSibling = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!siblingForm.first_name.trim() || !siblingForm.surname.trim()) {
@@ -143,14 +166,24 @@ export const ParentChildren: React.FC = () => {
       return;
     }
 
+    if (siblingLangCheck && siblingLangCheck.is_offered === false) {
+      setError(`Notice: ${siblingLangCheck.school_name || 'Selected school'} does not offer ${siblingForm.home_language} Home Language. Please switch to a partner school offering this language below.`);
+      return;
+    }
+
     setSubmittingLink(true);
     setError(null);
     setSuccessMsg(null);
 
     try {
-      const res = await parentService.linkSibling(siblingForm);
+      const res = await parentService.linkSibling({
+        ...siblingForm,
+        school_id: selectedSchoolId,
+        payment_method: siblingPaymentChoice === 'card' ? 'instant_online' : 'eft',
+        pay_now: siblingPaymentChoice === 'card'
+      });
       setCreatedCredentials(res.credentials);
-      setSuccessMsg(res.message || 'Sibling successfully linked and enrolled!');
+      setSuccessMsg(res.message || 'Sibling successfully linked and enrolled! Official registration details dispatched via email.');
       
       // Refresh children list
       const updated = await parentService.getChildren();
@@ -1149,7 +1182,7 @@ export const ParentChildren: React.FC = () => {
                     </div>
                   </form>
                 ) : (
-                  /* FORM TAB 2: ENROLL SIBLING INTERNALLY */
+                  /* FORM TAB 2: ENROLL SIBLING INTERNALLY (SCENARIO 2) */
                   <form onSubmit={handleEnrollSibling} className="space-y-4 text-xs">
                     {/* Auto-Linked Parent Account Notice */}
                     <div className="p-3 rounded-2xl bg-brand-500/10 border border-brand-500/20 text-brand-300 flex items-center gap-2">
@@ -1157,6 +1190,27 @@ export const ParentChildren: React.FC = () => {
                       <span>
                         <strong>Auto-Linked Parent Profile:</strong> Your parent contact details are automatically linked from your session. You only need to provide the new learner's curriculum details.
                       </span>
+                    </div>
+
+                    {/* Target High School Selector */}
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">Target High School *</label>
+                      <div className="relative">
+                        <select
+                          value={selectedSchoolId}
+                          onChange={(e) => setSelectedSchoolId(parseInt(e.target.value, 10))}
+                          className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white font-bold focus:ring-2 focus:ring-brand-500"
+                        >
+                          {schoolsList.map(s => (
+                            <option key={s.id} value={s.id}>
+                              {s.name} ({s.circuit || s.province || 'Limpopo DBE'})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <p className="text-[10.5px] text-slate-400 mt-1">
+                        Select which high school this sibling is applying to enter.
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1275,7 +1329,7 @@ export const ParentChildren: React.FC = () => {
                         <select
                           value={siblingForm.home_language}
                           onChange={(e) => setSiblingForm({ ...siblingForm, home_language: e.target.value })}
-                          className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500"
+                          className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500 font-bold"
                         >
                           {SA_OFFICIAL_LANGUAGES.map((lang) => (
                             <option key={lang} value={lang}>{lang} Home Lang</option>
@@ -1283,6 +1337,37 @@ export const ParentChildren: React.FC = () => {
                         </select>
                       </div>
                     </div>
+
+                    {/* Language Compatibility & Referrals Banner */}
+                    {siblingLangCheck && siblingLangCheck.is_offered === false && (
+                      <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 space-y-2 animate-fade-in">
+                        <div className="flex items-center gap-1.5 font-bold text-rose-300">
+                          <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                          <span>Notice: {siblingLangCheck.school_name || 'Selected school'} does NOT offer {siblingLangCheck.language || siblingForm.home_language} Home Language</span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 leading-relaxed">
+                          The curriculum profile for {siblingLangCheck.school_name} does not offer this home language. You may choose a supported language or switch to one of the partner schools below that offer {siblingLangCheck.language}:
+                        </p>
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {(siblingLangCheck.referrals || []).map(r => (
+                            <button
+                              key={r.id}
+                              type="button"
+                              onClick={() => setSelectedSchoolId(r.id)}
+                              className="px-2.5 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-200 text-[11px] font-bold hover:bg-cyan-500/30 transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                              <span>🏛️ Switch to {r.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {siblingLangCheck && siblingLangCheck.is_offered === true && (
+                      <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span><strong>{siblingLangCheck.language || siblingForm.home_language} (Home Language)</strong> is officially offered and supported at {siblingLangCheck.school_name}.</span>
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-slate-300 font-bold mb-1">Previous School / Primary School Name</label>
@@ -1295,15 +1380,73 @@ export const ParentChildren: React.FC = () => {
                       />
                     </div>
 
-                    {/* Generator & Fee Notice */}
-                    <div className="p-3.5 rounded-2xl bg-brand-950/40 border border-brand-500/30 text-[11px] text-slate-300 space-y-2">
-                      <div className="flex items-center gap-1.5 text-brand-300 font-bold">
-                        <Key className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>Automated Credential Generation & Application Fee</span>
+                    {/* Application Fee Payment Selection */}
+                    <div className="p-3.5 rounded-2xl bg-surface-dark border border-emerald-500/30 space-y-3">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <span className="font-bold text-white text-xs flex items-center gap-1.5">
+                          <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Application Processing Fee (R250.00)</span>
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
+                          Fee: R250.00
+                        </span>
                       </div>
-                      <p className="text-slate-400 leading-relaxed">
-                        A sequential <strong>Learner Number (e.g. 202600XX)</strong> and password will be generated automatically. Sibling admission applications incur a standard processing fee of <strong>R250.00</strong>. Banking details and confirmation will be dispatched to your email.
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        To process the sibling admission application, please choose whether to pay online immediately or via school bank EFT:
                       </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <label
+                          onClick={() => setSiblingPaymentChoice('card')}
+                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-2.5 ${
+                            siblingPaymentChoice === 'card'
+                              ? 'bg-brand-500/15 border-brand-500 text-white'
+                              : 'bg-surface-darker border-white/10 text-slate-400 hover:border-white/20'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="sibling_payment"
+                            checked={siblingPaymentChoice === 'card'}
+                            onChange={() => setSiblingPaymentChoice('card')}
+                            className="mt-0.5 text-brand-500"
+                          />
+                          <div>
+                            <span className="font-bold text-xs text-white block">💳 Pay Online Immediately</span>
+                            <span className="text-[10px] text-slate-400 block mt-0.5">Instant fast-track verification & receipt</span>
+                          </div>
+                        </label>
+
+                        <label
+                          onClick={() => setSiblingPaymentChoice('eft')}
+                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-2.5 ${
+                            siblingPaymentChoice === 'eft'
+                              ? 'bg-amber-500/15 border-amber-500 text-white'
+                              : 'bg-surface-darker border-white/10 text-slate-400 hover:border-white/20'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="sibling_payment"
+                            checked={siblingPaymentChoice === 'eft'}
+                            onChange={() => setSiblingPaymentChoice('eft')}
+                            className="mt-0.5 text-amber-500"
+                          />
+                          <div>
+                            <span className="font-bold text-xs text-white block">🏦 Pay via School Bank (7 Days)</span>
+                            <span className="text-[10px] text-slate-400 block mt-0.5">School bank details emailed with 7-day due date</span>
+                          </div>
+                        </label>
+                      </div>
+
+                      {siblingPaymentChoice === 'eft' && siblingLangCheck?.banking_details && (
+                        <div className="p-3 rounded-xl bg-slate-950/70 border border-amber-500/30 text-[11px] text-slate-300 space-y-1 animate-fade-in">
+                          <div className="font-bold text-amber-400">🏛️ School Banking Details Preview:</div>
+                          <div>Bank: <strong>{siblingLangCheck.banking_details.bank_name || 'First National Bank (FNB)'}</strong> | Acc: <span className="font-mono text-cyan-300 font-bold">{siblingLangCheck.banking_details.account_number}</span> | Branch: <span className="font-mono">{siblingLangCheck.banking_details.branch_code}</span></div>
+                          <div className="text-[10.5px] text-slate-400 pt-1 border-t border-white/5">
+                            Payment reference will be the learner number. An automated reminder will be emailed 3 days before the 7-day deadline.
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
@@ -1320,7 +1463,7 @@ export const ParentChildren: React.FC = () => {
                         className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 text-white font-bold shadow-glow-indigo transition-all disabled:opacity-50 flex items-center gap-2"
                       >
                         <UserPlus className="w-3.5 h-3.5" />
-                        <span>{submittingLink ? 'Enrolling Sibling...' : 'Submit Application & Link Sibling'}</span>
+                        <span>{submittingLink ? 'Enrolling Sibling...' : 'Submit Sibling Application'}</span>
                       </button>
                     </div>
                   </form>

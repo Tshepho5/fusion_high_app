@@ -414,7 +414,10 @@ exports.linkSibling = async (req, res) => {
         grade = 8,
         stream = 'General',
         home_language,
-        previous_school = ''
+        previous_school = '',
+        school_id,
+        payment_method = 'instant_online',
+        pay_now = true
     } = req.body;
 
     if (!first_name || !surname) {
@@ -431,8 +434,38 @@ exports.linkSibling = async (req, res) => {
     const gradeInt = parseInt(grade, 10) || 8;
     const streamVal = gradeInt >= 10 ? (stream || 'Science') : 'General';
     const homeLangVal = home_language.trim();
+    const targetSchoolId = parseInt(school_id || req.user.school_id || 1, 10);
 
     try {
+        // 0. Language Compatibility Check for Target School
+        const schoolRes = await db.query('SELECT * FROM schools WHERE id = $1', [targetSchoolId]);
+        const school = schoolRes.rows[0] || { name: 'Fusion High School' };
+
+        let offeredLangs = [];
+        if (Array.isArray(school.offered_languages)) {
+            offeredLangs = school.offered_languages;
+        } else if (typeof school.offered_languages === 'string') {
+            try { offeredLangs = JSON.parse(school.offered_languages); } catch (_) { offeredLangs = [school.offered_languages]; }
+        }
+
+        const isLanguageOffered = offeredLangs.length === 0 || offeredLangs.some(l =>
+            l.toLowerCase().includes(homeLangVal.toLowerCase()) || homeLangVal.toLowerCase().includes(l.toLowerCase())
+        );
+
+        if (!isLanguageOffered) {
+            const refRes = await db.query(
+                `SELECT id, name, circuit, district FROM schools WHERE id != $1 AND offered_languages::text ILIKE $2 LIMIT 4`,
+                [targetSchoolId, `%${homeLangVal}%`]
+            );
+            return res.status(400).json({
+                error: `${school.name} does not offer ${homeLangVal} as an official Home Language.`,
+                school_name: school.name,
+                language: homeLangVal,
+                is_offered: false,
+                referrals: refRes.rows
+            });
+        }
+
         // 1. Generate official sequential Learner Number
         const lrnNumber = await generateOfficialLearnerNumber();
 
@@ -450,12 +483,29 @@ exports.linkSibling = async (req, res) => {
             [gradeInt]
         );
         const assignedClassId = classRes.rows[0]?.id || null;
+        const assignedClassName = classRes.rows[0]?.name || `Grade ${gradeInt}A`;
 
         // 5. Learner role ID
         const roleRes = await db.query("SELECT id FROM roles WHERE LOWER(name) = 'learner'");
         const learnerRoleId = roleRes.rows[0]?.id || 3;
 
-        // 6. Database transaction
+        // 6. Application fee and payment details
+        const isPaidImmediately = pay_now !== false && payment_method !== 'eft';
+        const appFeeAmount = 250.00;
+        const regFeeAmount = 1500.00;
+        const receiptNo = `REC-SIB-${Date.now().toString().slice(-6)}`;
+        const payRef = req.body.payment_reference || `PAY-SIB-${Date.now().toString().slice(-8)}`;
+
+        const bankingInfo = {
+            bank_name: school.bank_name || 'First National Bank (FNB)',
+            account_holder: school.account_holder || school.name,
+            account_number: school.account_number || '62849102841',
+            branch_code: school.branch_code || '250655',
+            account_type: school.account_type || 'Cheque / Current',
+            reference: lrnNumber
+        };
+
+        // 7. Database transaction
         const result = await withTransaction(async (client) => {
             // Check if learner user account already exists with this email or ID
             let learnerUserId;
@@ -466,9 +516,9 @@ exports.linkSibling = async (req, res) => {
 
             if (existingChildUser.rows.length === 0) {
                 const newUserRes = await client.query(
-                    `INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-                    [learnerEmail, childPwHash, learnerRoleId, cleanFirstName, cleanSurname, cleanIdNum || null, dob || null, gender]
+                    `INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, school_id)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+                    [learnerEmail, childPwHash, learnerRoleId, cleanFirstName, cleanSurname, cleanIdNum || null, dob || null, gender, targetSchoolId]
                 );
                 learnerUserId = newUserRes.rows[0].id;
             } else {
@@ -486,8 +536,8 @@ exports.linkSibling = async (req, res) => {
             if (existingChildRec.rows.length > 0) {
                 newChild = existingChildRec.rows[0];
                 await client.query(
-                    `UPDATE children SET parent_id = COALESCE(parent_id, $1), grade = $2, stream = $3, subjects = $4 WHERE id = $5`,
-                    [parentId, gradeInt, streamVal, officialSubjects, newChild.id]
+                    `UPDATE children SET parent_id = COALESCE(parent_id, $1), grade = $2, stream = $3, subjects = $4, class_id = $5 WHERE id = $6`,
+                    [parentId, gradeInt, streamVal, officialSubjects, assignedClassId, newChild.id]
                 );
             } else {
                 const childRes = await client.query(
@@ -521,39 +571,90 @@ exports.linkSibling = async (req, res) => {
                     generated_password: generatedPassword,
                     grade: gradeInt,
                     stream: streamVal,
-                    subjects: officialSubjects
+                    subjects: officialSubjects,
+                    class_name: assignedClassName
                 }
             };
         });
 
-        // 7. Send confirmation email with credentials to parent
-        if (result.parent && result.parent.email) {
+        const parentFullName = `${result.parent.full_name || ''} ${result.parent.surname || ''}`.trim() || 'Parent / Guardian';
+        const parentEmail = result.parent.email;
+
+        // 8. Record fee payment in application_payments if paid immediately
+        if (isPaidImmediately) {
             try {
-                const parentFullName = `${result.parent.full_name || ''} ${result.parent.surname || ''}`.trim() || 'Parent / Guardian';
-                const emailTpl = emailService.templates.childLinkageWithCredentials({
+                await db.query(`
+                    INSERT INTO application_payments (
+                        application_id, fee_type, amount, payment_method, payment_reference, receipt_number, payer_name, payer_email, status, created_at
+                    ) VALUES (NULL, 'application_fee', $1, $2, $3, $4, $5, $6, 'completed', NOW())
+                `, [appFeeAmount, payment_method, payRef, receiptNo, parentFullName, parentEmail]);
+            } catch (payErr) {
+                console.warn('Could not record sibling application fee payment:', payErr.message);
+            }
+        }
+
+        // 9. Dispatch Comprehensive Notification Emails to Parent
+        if (parentEmail) {
+            try {
+                // (a) Payment Receipt or EFT Banking Details Email
+                if (isPaidImmediately) {
+                    await emailService.sendApplicationFeePaymentReceived({
+                        parentEmail,
+                        parentName: parentFullName,
+                        learnerName: `${cleanFirstName} ${cleanSurname}`,
+                        schoolName: school.name,
+                        applicationNumber: lrnNumber,
+                        amountPaid: appFeeAmount,
+                        receiptNumber: receiptNo
+                    });
+                } else {
+                    const dueDate = new Date();
+                    dueDate.setDate(dueDate.getDate() + 7);
+                    await emailService.sendApplicationReceivedWithBanking({
+                        parentEmail,
+                        parentName: parentFullName,
+                        learnerName: `${cleanFirstName} ${cleanSurname}`,
+                        grade: gradeInt,
+                        stream: streamVal,
+                        homeLanguage: homeLangVal,
+                        schoolName: school.name,
+                        applicationNumber: lrnNumber,
+                        feeAmount: appFeeAmount,
+                        dueDateStr: dueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
+                        bankDetails: bankingInfo,
+                        paymentUrl: `${req.protocol}://${req.get('host')}/dashboard/parent`
+                    });
+                }
+
+                // (b) Official Registration Confirmation with Grade, Class & Subjects
+                await emailService.sendRegistrationSuccessWithAllocation({
+                    parentEmail,
                     parentName: parentFullName,
-                    childName: cleanFirstName,
-                    surname: cleanSurname,
+                    learnerName: `${cleanFirstName} ${cleanSurname}`,
+                    schoolName: school.name,
                     learnerNumber: lrnNumber,
-                    loginEmail: learnerEmail,
-                    password: generatedPassword,
                     grade: gradeInt,
                     stream: streamVal,
+                    assignedClass: assignedClassName,
                     subjects: officialSubjects,
-                    baseUrl: req.protocol + '://' + req.get('host')
+                    parentEmail,
+                    parentPassword: null,
+                    learnerEmail,
+                    learnerPassword: generatedPassword,
+                    portalUrl: `${req.protocol}://${req.get('host')}/login`
                 });
-                await emailService.send(result.parent.email, emailTpl.subject, emailTpl.body);
-                console.log(`[LINK SIBLING EMAIL] Sent confirmation & credentials to ${result.parent.email} for ${cleanFirstName}`);
+
+                console.log(`[LINK SIBLING EMAIL] Sent confirmation & credentials to ${parentEmail} for ${cleanFirstName}`);
             } catch (e) {
                 console.warn('[SIBLING EMAIL ERROR]:', e.message);
             }
         }
 
-        // 8. In-app notification
+        // 10. In-app notification
         NotificationService.sendToUsers({
             userIds: [parentId],
             title: `Sibling Enrolled: ${cleanFirstName} ${cleanSurname}`,
-            message: `${cleanFirstName} ${cleanSurname} has been enrolled into Grade ${gradeInt} and linked to your parent portal.`,
+            message: `${cleanFirstName} ${cleanSurname} has been enrolled into Grade ${gradeInt} (${assignedClassName}) with ${officialSubjects.length} CAPS subjects.`,
             type: 'admission',
             targetTab: 'children'
         }).catch(e => console.warn('[SIBLING NOTIFY]:', e.message));

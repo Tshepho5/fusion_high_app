@@ -253,7 +253,7 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
   // Name Validation: Strictly prevent numbers
   const handleNameInput = (field: 'principal_first_name' | 'principal_surname', value: string) => {
     if (/\d/.test(value)) {
-      setFieldErrors(prev => ({ ...prev, [field]: 'Numbers are strictly not allowed in the Name and Surname fields.' }));
+      setFieldErrors(prev => ({ ...prev, [field]: 'Numbers are not allowed in this field. Please use letters only.' }));
       setForm(prev => ({ ...prev, [field]: value.replace(/\d/g, '') }));
       return;
     }
@@ -270,7 +270,7 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
   // Numeric Validation: Clean alphabetic characters where digits are required
   const handleNumericInput = (field: 'emis_number' | 'principal_id_number' | 'principal_phone' | 'contact_phone', value: string) => {
     if (/[a-zA-Z]/.test(value)) {
-      setFieldErrors(prev => ({ ...prev, [field]: 'Letters and words are strictly prohibited in this numeric field.' }));
+      setFieldErrors(prev => ({ ...prev, [field]: 'Letters and words are not allowed in this field. Numbers only.' }));
       setForm(prev => ({ ...prev, [field]: value.replace(/[a-zA-Z]/g, '') }));
       return;
     }
