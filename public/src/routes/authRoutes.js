@@ -18,6 +18,7 @@ router.post('/reset-password', authController.resetPassword);
 
 // Parent Portal Access Application (Public)
 router.post('/parent-applications', parentAppController.submitParentApplication);
+router.post('/parent-applications/verify-child', parentAppController.verifyEnrolledChild);
 
 // Protected routes
 router.post('/change-password', authMiddleware, authController.changePassword);

@@ -2073,6 +2073,239 @@ const emailService = {
       };
     },
 
+    applicationReceivedWithBanking: ({ parentName, learnerName, grade, stream, homeLanguage, schoolName, applicationNumber, feeAmount = 250, dueDateStr, bankDetails = {}, paymentUrl }) => {
+      const loginUrl = paymentUrl || `${(process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim()}/application.html?appRef=${applicationNumber}&pay=true`;
+      const contentHtml = `
+        <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          We have successfully received the admission application for <strong>${learnerName}</strong> for <strong>Grade ${grade} (${stream})</strong> with Home Language: <strong style="color: #38bdf8;">${homeLanguage}</strong> at <strong>${schoolName}</strong>.
+        </p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Your official application reference is <strong style="color: #fbbf24; font-family: monospace;">${applicationNumber}</strong>.
+        </p>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #38bdf8; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
+          <h4 style="margin: 0 0 12px 0; color: #38bdf8; font-size: 14px; font-weight: 800; text-transform: uppercase;">
+            Application Fee & Official Banking Details
+          </h4>
+          <p style="margin: 0 0 12px 0; color: #cbd5e1; font-size: 13px;">
+            To ensure the fast processing and administrative verification of your application, please settle the non-refundable application fee of <strong style="color: #34d399; font-size: 15px;">R${Number(feeAmount).toFixed(2)}</strong> within <strong>7 days</strong> (Due date: <strong>${dueDateStr}</strong>).
+          </p>
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
+            <tr><td style="padding: 5px 0; color: #94a3b8; width: 140px;">Bank Name:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'First National Bank (FNB)'}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Account Holder:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.account_holder || schoolName}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Account Number:</td><td style="color: #34d399; font-family: monospace; font-weight: 700;">${bankDetails.account_number || '62849102841'}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-family: monospace;">${bankDetails.branch_code || '250655'}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Account Type:</td><td style="color: #ffffff;">${bankDetails.account_type || 'Cheque / Current'}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Payment Reference:</td><td style="color: #fbbf24; font-family: monospace; font-weight: 800; font-size: 14px;">${applicationNumber}</td></tr>
+          </table>
+        </div>
+
+        <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 14px 18px; margin: 18px 0;">
+          <p style="margin: 0; font-size: 13px; color: #fbbf24; font-weight: 700;">Automated Reminder Notice</p>
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: #cbd5e1; line-height: 1.5;">
+            You can pay immediately online by clicking below or make an EFT transfer using the details above. If payment has not been received, our automated system will dispatch a reminder email 3 days before the deadline.
+          </p>
+        </div>
+      `;
+
+      return {
+        subject: `[${schoolName}] Application Received: ${learnerName} (Ref: ${applicationNumber})`,
+        body: createBaseEmailTemplate({
+          preheader: `Application received for ${learnerName}. Please settle the application fee within 7 days.`,
+          title: 'Admission Application Received',
+          subtitle: `${schoolName} — Application Intake`,
+          contentHtml,
+          ctaText: 'Pay Application Fee Online Now',
+          ctaLink: loginUrl
+        })
+      };
+    },
+
+    applicationFeePaymentReceived: ({ parentEmail, parentName, learnerName, schoolName, applicationNumber, amountPaid = 250, receiptNumber }) => {
+      const loginUrl = `${(process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim()}/application-status.html`;
+      const contentHtml = `
+        <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Thank you! We have received your application fee payment of <strong style="color: #34d399;">R${Number(amountPaid).toFixed(2)}</strong> for <strong>${learnerName}</strong>'s admission application to <strong>${schoolName}</strong>.
+        </p>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #10b981; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
+          <h4 style="margin: 0 0 12px 0; color: #34d399; font-size: 14px; font-weight: 800; text-transform: uppercase;">
+            Payment Receipt Confirmation
+          </h4>
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
+            <tr><td style="padding: 5px 0; color: #94a3b8; width: 150px;">Receipt Number:</td><td style="color: #34d399; font-family: monospace; font-weight: 700;">${receiptNumber || 'REC-APP-' + Date.now()}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Application Ref:</td><td style="color: #fbbf24; font-family: monospace; font-weight: 700;">${applicationNumber}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Amount Paid:</td><td style="color: #ffffff; font-weight: 700;">R${Number(amountPaid).toFixed(2)}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Fee Status:</td><td style="color: #10b981; font-weight: 700;">PAID IN FULL</td></tr>
+          </table>
+        </div>
+
+        <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 14px 18px; margin: 18px 0;">
+          <p style="margin: 0; font-size: 13px; color: #38bdf8; font-weight: 700;">Next Step: School Administrative Review</p>
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: #cbd5e1; line-height: 1.5;">
+            The school administration team will now review and verify your application documents. You will receive an official notification email once the school administrator approves or makes a determination on your application.
+          </p>
+        </div>
+      `;
+
+      return {
+        subject: `[${schoolName}] Application Fee Receipt: ${learnerName} (Ref: ${applicationNumber})`,
+        body: createBaseEmailTemplate({
+          preheader: `Payment confirmation receipt for ${learnerName} (Receipt #${receiptNumber}).`,
+          title: 'Application Fee Payment Received',
+          subtitle: 'Official Payment Receipt',
+          contentHtml,
+          ctaText: 'Track Application Status',
+          ctaLink: loginUrl
+        })
+      };
+    },
+
+    applicationFeeReminder: ({ parentName, learnerName, schoolName, applicationNumber, feeAmount = 250, dueDateStr, bankDetails = {}, paymentUrl }) => {
+      const loginUrl = paymentUrl || `${(process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim()}/application.html?appRef=${applicationNumber}&pay=true`;
+      const contentHtml = `
+        <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          This is an urgent reminder regarding the admission application for <strong>${learnerName}</strong> at <strong>${schoolName}</strong> (Application Reference: <strong style="color: #fbbf24; font-family: monospace;">${applicationNumber}</strong>).
+        </p>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #ef4444; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
+          <h4 style="margin: 0 0 10px 0; color: #f87171; font-size: 14px; font-weight: 800; text-transform: uppercase;">
+            ⏳ Application Fee Payment Due Soon: 3 Days Remaining
+          </h4>
+          <p style="margin: 0 0 12px 0; color: #cbd5e1; font-size: 13px;">
+            The application fee payment of <strong style="color: #34d399; font-size: 15px;">R${Number(feeAmount).toFixed(2)}</strong> is due on <strong>${dueDateStr}</strong>. Please ensure payment is completed so the admissions committee can process and verify the application without cancellation.
+          </p>
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
+            <tr><td style="padding: 4px 0; color: #94a3b8; width: 140px;">Bank:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'First National Bank'}</td></tr>
+            <tr><td style="padding: 4px 0; color: #94a3b8;">Account:</td><td style="color: #34d399; font-family: monospace; font-weight: 700;">${bankDetails.account_number || '62849102841'}</td></tr>
+            <tr><td style="padding: 4px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-family: monospace;">${bankDetails.branch_code || '250655'}</td></tr>
+            <tr><td style="padding: 4px 0; color: #94a3b8;">Account Holder:</td><td style="color: #ffffff;">${bankDetails.account_holder || schoolName}</td></tr>
+            <tr><td style="padding: 4px 0; color: #94a3b8;">Reference:</td><td style="color: #fbbf24; font-family: monospace; font-weight: 800;">${applicationNumber}</td></tr>
+          </table>
+        </div>
+      `;
+
+      return {
+        subject: `[${schoolName}] Action Required: Application Fee Due in 3 Days for ${learnerName}`,
+        body: createBaseEmailTemplate({
+          preheader: `Reminder: Application fee for ${learnerName} is due in 3 days.`,
+          title: 'Application Fee Due in 3 Days',
+          subtitle: 'Admission Deadline Reminder',
+          contentHtml,
+          ctaText: 'Settle Application Fee Online',
+          ctaLink: loginUrl
+        })
+      };
+    },
+
+    applicationApprovedWithFeeNotice: ({ parentName, learnerName, schoolName, applicationNumber, grade, stream, appFeeUnpaid = false, appFeeAmount = 250, regFeeAmount = 1500, registrationUrl }) => {
+      const loginUrl = registrationUrl || `${(process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim()}/register?appRef=${applicationNumber}`;
+      const contentHtml = `
+        <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          We are pleased to inform you that the school administrator at <strong>${schoolName}</strong> has officially <strong style="color: #34d399;">APPROVED</strong> the application for <strong>${learnerName}</strong> for <strong>Grade ${grade} (${stream})</strong>.
+        </p>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #10b981; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
+          <h4 style="margin: 0 0 12px 0; color: #34d399; font-size: 14px; font-weight: 800; text-transform: uppercase;">
+            Application Approval Summary
+          </h4>
+          <p style="margin: 0 0 8px 0; color: #cbd5e1; font-size: 13px;">Application Reference: <strong style="color: #fbbf24; font-family: monospace;">${applicationNumber}</strong></p>
+          <p style="margin: 0 0 8px 0; color: #cbd5e1; font-size: 13px;">Grade Approved: <strong style="color: #38bdf8;">Grade ${grade} (${stream})</strong></p>
+          <p style="margin: 0; color: #cbd5e1; font-size: 13px;">School: <strong>${schoolName}</strong></p>
+        </div>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #f59e0b; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
+          <h4 style="margin: 0 0 10px 0; color: #fbbf24; font-size: 14px; font-weight: 800; text-transform: uppercase;">
+            Next Step: Final Registration & Fee Settlement
+          </h4>
+          ${appFeeUnpaid ? `
+            <p style="margin: 0 0 10px 0; color: #f87171; font-size: 13px;">
+              ⚠️ <strong>Remaining Application Fee:</strong> You have an outstanding application fee balance of <strong>R${Number(appFeeAmount).toFixed(2)}</strong>. This must be settled before you can register.
+            </p>
+          ` : `
+            <p style="margin: 0 0 10px 0; color: #34d399; font-size: 13px;">
+              ✓ Application fee has been paid in full.
+            </p>
+          `}
+          <p style="margin: 0; color: #cbd5e1; font-size: 13px; line-height: 1.5;">
+            To finalize the enrollment and secure your child's classroom seat, please pay the official registration fee of <strong style="color: #34d399; font-size: 15px;">R${Number(regFeeAmount).toFixed(2)}</strong> and complete registration.
+          </p>
+        </div>
+      `;
+
+      return {
+        subject: `[${schoolName}] Application Approved: Complete Registration for ${learnerName}`,
+        body: createBaseEmailTemplate({
+          preheader: `Congratulations! ${learnerName}'s application has been approved. Settle registration to finalize enrollment.`,
+          title: 'Application Approved!',
+          subtitle: 'Official Acceptance & Registration Notice',
+          contentHtml,
+          ctaText: 'Complete Registration & Pay Fee',
+          ctaLink: loginUrl
+        })
+      };
+    },
+
+    registrationSuccessWithAllocation: ({ parentName, learnerName, schoolName, learnerNumber, grade, stream, assignedClass, subjects = [], parentEmail, parentPassword, learnerEmail, learnerPassword, portalUrl }) => {
+      const loginUrl = portalUrl || `${(process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim()}/login`;
+      const formattedSubjects = Array.isArray(subjects) ? subjects.map(s => `<li style="margin-bottom: 4px;">${s}</li>`).join('') : `<li>${subjects}</li>`;
+
+      const contentHtml = `
+        <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Congratulations! Registration is complete and <strong>${learnerName}</strong> has been officially enrolled at <strong>${schoolName}</strong> for the 2026 Academic Year!
+        </p>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #10b981; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
+          <h4 style="margin: 0 0 12px 0; color: #34d399; font-size: 14px; font-weight: 800; text-transform: uppercase;">
+            Official Enrollment & Class Allocation
+          </h4>
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
+            <tr><td style="padding: 5px 0; color: #94a3b8; width: 160px;">Official Student ID:</td><td style="color: #34d399; font-family: monospace; font-weight: 800; font-size: 14px;">${learnerNumber}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Grade:</td><td style="color: #38bdf8; font-weight: 700;">Grade ${grade} (${stream || 'General'})</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Assigned Class:</td><td style="color: #fbbf24; font-weight: 800; font-size: 14px;">${assignedClass || `Grade ${grade}A`}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">School:</td><td style="color: #ffffff; font-weight: 700;">${schoolName}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Registration Fee:</td><td style="color: #34d399; font-weight: 700;">PAID IN FULL</td></tr>
+          </table>
+        </div>
+
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #6366f1; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
+          <h4 style="margin: 0 0 10px 0; color: #818cf8; font-size: 14px; font-weight: 800; text-transform: uppercase;">
+            Registered CAPS Subjects
+          </h4>
+          <ul style="margin: 0; padding-left: 20px; color: #cbd5e1; font-size: 13px; line-height: 1.6;">
+            ${formattedSubjects}
+          </ul>
+        </div>
+
+        <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 16px 20px; margin: 20px 0;">
+          <h4 style="margin: 0 0 8px 0; color: #38bdf8; font-size: 13px; font-weight: 700;">Portal Access Credentials</h4>
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 12px; color: #cbd5e1;">
+            <tr><td style="padding: 3px 0; color: #94a3b8; width: 140px;">Parent Email:</td><td style="color: #ffffff; font-family: monospace;">${parentEmail}</td></tr>
+            ${parentPassword ? `<tr><td style="padding: 3px 0; color: #94a3b8;">Parent Password:</td><td style="color: #34d399; font-family: monospace;">${parentPassword}</td></tr>` : ''}
+            <tr><td style="padding: 3px 0; color: #94a3b8;">Learner Email:</td><td style="color: #ffffff; font-family: monospace;">${learnerEmail}</td></tr>
+            ${learnerPassword ? `<tr><td style="padding: 3px 0; color: #94a3b8;">Learner Password:</td><td style="color: #34d399; font-family: monospace;">${learnerPassword}</td></tr>` : ''}
+          </table>
+        </div>
+      `;
+
+      return {
+        subject: `[${schoolName}] Registration Successful: ${learnerName} enrolled in ${assignedClass}!`,
+        body: createBaseEmailTemplate({
+          preheader: `Welcome to ${schoolName}! ${learnerName} has been enrolled in ${assignedClass}.`,
+          title: 'Registration Successful!',
+          subtitle: 'Official Enrollment & Class Allocation Confirmation',
+          contentHtml,
+          ctaText: 'Access Student & Parent Portal',
+          ctaLink: loginUrl
+        })
+      };
+    },
+
     // 19. Educator / Staff Welcome & Onboarding
     employeeWelcome: ({ name, surname, email, employeeNumber, roleTitle, role, department, subjects, grades, classes, temporaryPassword, baseUrl = 'http://localhost:5173' }) => {
       const loginUrl = `${(baseUrl || 'http://localhost:5173').replace(/\/+$/, '')}/login`;
@@ -2336,6 +2569,31 @@ const emailService = {
 
   sendApplicationUnsuccessful: async (params) => {
     const template = emailService.templates.applicationUnsuccessful(params);
+    return await emailService.send(params.parentEmail, template.subject, template.body);
+  },
+
+  sendApplicationReceivedWithBanking: async (params) => {
+    const template = emailService.templates.applicationReceivedWithBanking(params);
+    return await emailService.send(params.parentEmail, template.subject, template.body);
+  },
+
+  sendApplicationFeePaymentReceived: async (params) => {
+    const template = emailService.templates.applicationFeePaymentReceived(params);
+    return await emailService.send(params.parentEmail, template.subject, template.body);
+  },
+
+  sendApplicationFeeReminder: async (params) => {
+    const template = emailService.templates.applicationFeeReminder(params);
+    return await emailService.send(params.parentEmail, template.subject, template.body);
+  },
+
+  sendApplicationApprovedWithFeeNotice: async (params) => {
+    const template = emailService.templates.applicationApprovedWithFeeNotice(params);
+    return await emailService.send(params.parentEmail, template.subject, template.body);
+  },
+
+  sendRegistrationSuccessWithAllocation: async (params) => {
+    const template = emailService.templates.registrationSuccessWithAllocation(params);
     return await emailService.send(params.parentEmail, template.subject, template.body);
   },
 
@@ -2693,7 +2951,7 @@ const emailService = {
   }
 };
 
-emailService.templates = {
+Object.assign(emailService.templates, {
   childLinkageWithCredentials: ({ parentName, childName, surname, learnerNumber, loginEmail, password, grade, stream, subjects, baseUrl }) => {
     const fullName = `${childName || ''} ${surname || ''}`.trim() || 'Learner';
     const subject = `Learner Successfully Linked: ${fullName} (Grade ${grade || 10})`;
@@ -2725,7 +2983,254 @@ emailService.templates = {
       ctaLink: baseUrl ? `${baseUrl}/parent-dashboard` : 'https://gelezasa.co.za/login'
     });
     return { subject, body };
+  },
+
+  // Application Received with School Banking Details & 7-Day Due Date
+  applicationReceivedWithBanking: ({ parentName, learnerName, grade, stream, homeLanguage, schoolName, applicationNumber, feeAmount = 250, dueDateStr, bankDetails = {}, paymentUrl }) => {
+    const subject = `Admission Application Received [${applicationNumber}] — ${schoolName}`;
+    const contentHtml = `
+      <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+      <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+        Thank you for submitting an official learner admission application for <strong>${learnerName}</strong> to <strong>${schoolName}</strong> for <strong>Grade ${grade}</strong> (${stream || 'General'} Stream, Home Language: <strong>${homeLanguage}</strong>).
+      </p>
+      <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+        Your application reference number is <strong style="color: #38bdf8; font-family: monospace; font-size: 15px;">${applicationNumber}</strong>.
+      </p>
+
+      <!-- Fee & Banking Card -->
+      <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #f59e0b; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
+        <h4 style="margin: 0 0 10px 0; color: #f59e0b; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
+          💳 Application Fee & School Banking Details
+        </h4>
+        <p style="color: #e2e8f0; font-size: 13px; margin: 0 0 14px 0; line-height: 1.5;">
+          For fast processing, an application fee of <strong style="color: #10b981; font-size: 16px;">R${parseFloat(feeAmount).toFixed(2)}</strong> must be paid within <strong style="color: #f59e0b;">7 days</strong> (Deadline: <strong>${dueDateStr || 'Within 7 calendar days'}</strong>).
+        </p>
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1; border-top: 1px dashed #334155; padding-top: 12px;">
+          <tr><td style="padding: 5px 0; color: #94a3b8; width: 140px;">Bank Name:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'First National Bank (FNB)'}</td></tr>
+          <tr><td style="padding: 5px 0; color: #94a3b8;">Account Name:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.account_holder || schoolName}</td></tr>
+          <tr><td style="padding: 5px 0; color: #94a3b8;">Account Number:</td><td style="color: #38bdf8; font-weight: 800; font-family: monospace;">${bankDetails.account_number || '62849102841'}</td></tr>
+          <tr><td style="padding: 5px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-weight: 600;">${bankDetails.branch_code || '250655'}</td></tr>
+          <tr><td style="padding: 5px 0; color: #94a3b8;">Account Type:</td><td style="color: #cbd5e1;">${bankDetails.account_type || 'Cheque / Current'}</td></tr>
+          <tr><td style="padding: 5px 0; color: #f59e0b; font-weight: 700;">Payment Reference:</td><td style="color: #fbbf24; font-weight: 900; font-family: monospace; font-size: 14px;">${applicationNumber}</td></tr>
+        </table>
+      </div>
+
+      <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 10px; padding: 14px 18px; margin: 18px 0;">
+        <p style="margin: 0; color: #c7d2fe; font-size: 13px; line-height: 1.5;">
+          <strong>Important:</strong> Always use your application reference <code>${applicationNumber}</code> as the EFT payment reference. Once payment is confirmed, school administration will verify documents and adjudicate admission.
+        </p>
+      </div>
+    `;
+
+    const body = createBaseEmailTemplate({
+      preheader: `Application Received for ${learnerName} - Ref: ${applicationNumber}`,
+      title: 'Application Received',
+      subtitle: `${schoolName} • Grade ${grade} Admissions`,
+      contentHtml,
+      ctaText: 'Pay Fee Online or Upload Proof',
+      ctaLink: paymentUrl || 'https://gelezasa.co.za/application.html'
+    });
+
+    return { subject, body };
+  },
+
+  // 3-Day Deadline Fee Reminder
+  applicationFeeReminder: ({ parentName, learnerName, schoolName, applicationNumber, feeAmount = 250, dueDateStr, bankDetails = {}, paymentUrl }) => {
+    const subject = `⚠️ Reminder: Application Fee Due in 3 Days [${applicationNumber}] — ${schoolName}`;
+    const contentHtml = `
+      <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+      <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+        This is a friendly reminder that the application fee of <strong style="color: #10b981;">R${parseFloat(feeAmount).toFixed(2)}</strong> for <strong>${learnerName}</strong>'s admission to <strong>${schoolName}</strong> (Ref: <strong style="color: #38bdf8;">${applicationNumber}</strong>) is due in <strong style="color: #ef4444;">3 days</strong>.
+      </p>
+
+      <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 18px 22px; margin: 20px 0;">
+        <h4 style="margin: 0 0 10px 0; color: #f87171; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Payment Deadline Approaching</h4>
+        <p style="color: #cbd5e1; font-size: 13px; margin: 0 0 12px 0;">
+          Due Date: <strong style="color: #ffffff;">${dueDateStr}</strong>. Please ensure the application fee is settled promptly to prevent automatic cancellation of your application place.
+        </p>
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
+          <tr><td style="padding: 4px 0; color: #94a3b8; width: 140px;">Bank:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'FNB'}</td></tr>
+          <tr><td style="padding: 4px 0; color: #94a3b8;">Account Number:</td><td style="color: #38bdf8; font-weight: 800; font-family: monospace;">${bankDetails.account_number || '62849102841'}</td></tr>
+          <tr><td style="padding: 4px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff;">${bankDetails.branch_code || '250655'}</td></tr>
+          <tr><td style="padding: 4px 0; color: #f87171; font-weight: 700;">Reference:</td><td style="color: #fbbf24; font-weight: 900; font-family: monospace;">${applicationNumber}</td></tr>
+        </table>
+      </div>
+    `;
+
+    const body = createBaseEmailTemplate({
+      preheader: `Payment reminder: 3 days remaining for ${learnerName}'s application fee.`,
+      title: 'Application Fee Due in 3 Days',
+      subtitle: `${schoolName} • Urgent Payment Notice`,
+      contentHtml,
+      ctaText: 'Complete Payment Now',
+      ctaLink: paymentUrl || 'https://gelezasa.co.za/application.html'
+    });
+
+    return { subject, body };
+  },
+
+  // Application Fee Payment Received Confirmation
+  applicationFeePaymentReceived: ({ parentName, learnerName, schoolName, applicationNumber, amountPaid = 250, receiptNumber }) => {
+    const subject = `Payment Confirmed: Application Fee [${applicationNumber}] — ${schoolName}`;
+    const contentHtml = `
+      <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+      <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+        We gratefully acknowledge receipt of your application fee payment of <strong style="color: #10b981; font-size: 16px;">R${parseFloat(amountPaid).toFixed(2)}</strong> for <strong>${learnerName}</strong>'s admission to <strong>${schoolName}</strong>.
+      </p>
+
+      <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 18px 22px; margin: 20px 0;">
+        <h4 style="margin: 0 0 10px 0; color: #34d399; font-size: 14px; text-transform: uppercase;">Payment Receipt</h4>
+        <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #cbd5e1; line-height: 1.8;">
+          <li>Application Reference: <strong style="color: #ffffff;">${applicationNumber}</strong></li>
+          <li>Official Receipt: <strong style="color: #38bdf8; font-family: monospace;">${receiptNumber || 'REC-' + Date.now().toString().slice(-6)}</strong></li>
+          <li>Status: <strong style="color: #34d399;">PAID & ALLOCATED</strong></li>
+          <li>Current Stage: <strong style="color: #f59e0b;">Under School Administration Review</strong></li>
+        </ul>
+      </div>
+
+      <p style="color: #cbd5e1; font-size: 13px; line-height: 1.6;">
+        School administration has been notified and is now adjudicating the application documents. You will receive an official approval or review notice shortly.
+      </p>
+    `;
+
+    const body = createBaseEmailTemplate({
+      preheader: `Payment confirmed for ${learnerName}'s admission application.`,
+      title: 'Payment Confirmed',
+      subtitle: `${schoolName} • Application Fee Receipt`,
+      contentHtml,
+      ctaText: 'Track Application Status',
+      ctaLink: 'https://gelezasa.co.za/application.html'
+    });
+
+    return { subject, body };
+  },
+
+  // Application Approved with Registration Fee Notice
+  applicationApprovedWithFeeNotice: ({ parentName, learnerName, schoolName, applicationNumber, grade, stream, assignedClass, appFeeUnpaid = false, appFeeAmount = 250, regFeeAmount = 1500, registrationUrl }) => {
+    const subject = `🎉 Congratulations! Admission Approved [${applicationNumber}] — ${schoolName}`;
+    const contentHtml = `
+      <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+      <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+        School Administration at <strong>${schoolName}</strong> has officially <strong style="color: #34d399;">APPROVED</strong> the admission application for <strong>${learnerName}</strong> into <strong>Grade ${grade}</strong> (${stream || 'General'}).
+      </p>
+
+      ${appFeeUnpaid ? `
+      <!-- Unpaid Application Fee Warning -->
+      <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 18px 22px; margin: 20px 0;">
+        <h4 style="margin: 0 0 8px 0; color: #f87171; font-size: 14px; text-transform: uppercase;">⚠️ Outstanding Application Fee</h4>
+        <p style="color: #cbd5e1; font-size: 13px; margin: 0; line-height: 1.5;">
+          Your application has been accepted conditionally, but the initial application fee of <strong style="color: #f87171;">R${parseFloat(appFeeAmount).toFixed(2)}</strong> remains outstanding. Please settle this amount before completing registration.
+        </p>
+      </div>
+      ` : ''}
+
+      <!-- Registration Fee Card -->
+      <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #10b981; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
+        <h4 style="margin: 0 0 10px 0; color: #34d399; font-size: 14px; font-weight: 800; text-transform: uppercase;">
+          Next Step: Complete Registration & Settle Registration Fee
+        </h4>
+        <p style="color: #e2e8f0; font-size: 13px; margin: 0 0 12px 0; line-height: 1.5;">
+          To secure the allocated seat${assignedClass ? ` in class <strong>${assignedClass}</strong>` : ''} and generate the official Learner Number and curriculum schedule, please proceed to finalize registration and settle the registration fee of <strong style="color: #10b981; font-size: 16px;">R${parseFloat(regFeeAmount).toFixed(2)}</strong>.
+        </p>
+        <p style="margin: 0; color: #94a3b8; font-size: 12px;">
+          Upon registration payment, you will receive full class schedules, allocated CAPS subjects, and portal login credentials.
+        </p>
+      </div>
+    `;
+
+    const body = createBaseEmailTemplate({
+      preheader: `Admission approved for ${learnerName} at ${schoolName}!`,
+      title: 'Admission Approved',
+      subtitle: `${schoolName} • Grade ${grade} Enrollment`,
+      contentHtml,
+      ctaText: 'Proceed to Official Registration',
+      ctaLink: registrationUrl || 'https://gelezasa.co.za/register'
+    });
+
+    return { subject, body };
+  },
+
+  // Final Successful Registration Email with Grade, Assigned Class & Allocated Subjects
+  registrationSuccessWithAllocation: ({ parentName, learnerName, schoolName, learnerNumber, grade, stream, assignedClass, subjects = [], parentEmail, parentPassword, learnerEmail, learnerPassword, portalUrl }) => {
+    const subject = `🎓 Official Enrollment Confirmed: ${learnerName} — Grade ${grade} (${assignedClass || 'Class Assigned'})`;
+    const subjectsListHtml = Array.isArray(subjects) && subjects.length > 0
+      ? subjects.map(s => `<li style="padding: 3px 0; color: #cbd5e1;">${s}</li>`).join('')
+      : '<li style="color: #94a3b8;">CAPS Curriculum Subjects Allocated</li>';
+
+    const contentHtml = `
+      <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+      <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+        Welcome to the <strong>${schoolName}</strong> academic family! Registration has been completed successfully and <strong>${learnerName}</strong> is now officially enrolled for the academic school year.
+      </p>
+
+      <!-- Academic Allocation Card -->
+      <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #38bdf8; border-radius: 12px; padding: 20px 24px; margin: 20px 0;">
+        <h4 style="margin: 0 0 12px 0; color: #38bdf8; font-size: 14px; font-weight: 800; text-transform: uppercase;">
+          🏛️ Official Academic Placement & Class Allocation
+        </h4>
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1; margin-bottom: 12px;">
+          <tr><td style="padding: 4px 0; color: #94a3b8; width: 160px;">Official Learner Number:</td><td style="color: #38bdf8; font-weight: 900; font-family: monospace;">${learnerNumber}</td></tr>
+          <tr><td style="padding: 4px 0; color: #94a3b8;">Enrolled Grade:</td><td style="color: #ffffff; font-weight: 700;">Grade ${grade}</td></tr>
+          <tr><td style="padding: 4px 0; color: #94a3b8;">Assigned Class / Division:</td><td style="color: #34d399; font-weight: 800;">${assignedClass || 'Class 8A'}</td></tr>
+          <tr><td style="padding: 4px 0; color: #94a3b8;">Academic Stream:</td><td style="color: #ffffff;">${stream || 'General'}</td></tr>
+        </table>
+        
+        <h5 style="margin: 14px 0 6px 0; color: #e2e8f0; font-size: 13px; font-weight: 700;">📚 Allocated Curriculum Subjects:</h5>
+        <ul style="margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.6;">
+          ${subjectsListHtml}
+        </ul>
+      </div>
+
+      <!-- Login Credentials Card -->
+      <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; padding: 18px 22px; margin: 20px 0;">
+        <h4 style="margin: 0 0 10px 0; color: #818cf8; font-size: 14px; text-transform: uppercase;">🔑 Portal Access Credentials</h4>
+        <p style="color: #cbd5e1; font-size: 13px; margin: 0 0 10px 0;">You and your child can now access live DBE report cards, attendance registers, homework, and communications:</p>
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
+          <tr><td style="padding: 4px 0; color: #94a3b8; width: 140px;">Parent Email:</td><td style="color: #ffffff; font-weight: 700;">${parentEmail}</td></tr>
+          ${parentPassword ? `<tr><td style="padding: 4px 0; color: #94a3b8;">Parent Password:</td><td style="color: #f59e0b; font-weight: 800; font-family: monospace;">${parentPassword}</td></tr>` : ''}
+          <tr><td style="padding: 4px 0; color: #94a3b8;">Learner Email:</td><td style="color: #ffffff; font-weight: 700;">${learnerEmail || `${learnerNumber.toLowerCase()}@fusionhigh.co.za`}</td></tr>
+          ${learnerPassword ? `<tr><td style="padding: 4px 0; color: #94a3b8;">Learner Password:</td><td style="color: #f59e0b; font-weight: 800; font-family: monospace;">${learnerPassword}</td></tr>` : ''}
+        </table>
+      </div>
+    `;
+
+    const body = createBaseEmailTemplate({
+      preheader: `Official enrollment confirmed for ${learnerName} - Grade ${grade} (${assignedClass})`,
+      title: 'Enrollment Confirmed',
+      subtitle: `${schoolName} • Welcome to the New Academic Year`,
+      contentHtml,
+      ctaText: 'Access Parent Portal',
+      ctaLink: portalUrl || 'https://gelezasa.co.za/login'
+    });
+
+    return { subject, body };
   }
+});
+
+// Helper convenience methods on emailService
+emailService.sendApplicationReceivedWithBanking = async (params) => {
+  const template = emailService.templates.applicationReceivedWithBanking(params);
+  return await emailService.send(params.parentEmail, template.subject, template.body);
+};
+
+emailService.sendApplicationFeeReminder = async (params) => {
+  const template = emailService.templates.applicationFeeReminder(params);
+  return await emailService.send(params.parentEmail, template.subject, template.body);
+};
+
+emailService.sendApplicationFeePaymentReceived = async (params) => {
+  const template = emailService.templates.applicationFeePaymentReceived(params);
+  return await emailService.send(params.parentEmail, template.subject, template.body);
+};
+
+emailService.sendApplicationApprovedWithFeeNotice = async (params) => {
+  const template = emailService.templates.applicationApprovedWithFeeNotice(params);
+  return await emailService.send(params.parentEmail, template.subject, template.body);
+};
+
+emailService.sendRegistrationSuccessWithAllocation = async (params) => {
+  const template = emailService.templates.registrationSuccessWithAllocation(params);
+  return await emailService.send(params.parentEmail, template.subject, template.body);
 };
 
 module.exports = emailService;

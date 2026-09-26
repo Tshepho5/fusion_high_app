@@ -76,6 +76,37 @@ export const ParentChildren: React.FC = () => {
     relationship: 'Mother'
   });
 
+  // Inline field validation errors under placeholders
+  const [formFieldErrors, setFormFieldErrors] = useState<Record<string, string>>({});
+
+  const handleTextInputChange = (fieldName: string, value: string, setter: (val: string) => void) => {
+    if (/\d/.test(value)) {
+      setFormFieldErrors(prev => ({ ...prev, [fieldName]: 'Numbers are not allowed in this field. Please use letters only.' }));
+      setter(value.replace(/\d/g, ''));
+      return;
+    }
+    setFormFieldErrors(prev => {
+      const next = { ...prev };
+      delete next[fieldName];
+      return next;
+    });
+    setter(value);
+  };
+
+  const handleNumericInputChange = (fieldName: string, value: string, setter: (val: string) => void, maxLen?: number) => {
+    if (/[a-zA-Z]/.test(value)) {
+      setFormFieldErrors(prev => ({ ...prev, [fieldName]: 'Letters and words are not allowed in this field. Numbers only.' }));
+      setter(value.replace(/[a-zA-Z]/g, '').slice(0, maxLen || 13));
+      return;
+    }
+    setFormFieldErrors(prev => {
+      const next = { ...prev };
+      delete next[fieldName];
+      return next;
+    });
+    setter(value.replace(/\D/g, '').slice(0, maxLen || 13));
+  };
+
   const fetchChildren = async () => {
     setLoading(true);
     setError(null);
@@ -1014,10 +1045,16 @@ export const ParentChildren: React.FC = () => {
                           type="text"
                           required
                           value={linkExistingForm.first_name}
-                          onChange={(e) => setLinkExistingForm(prev => ({ ...prev, first_name: e.target.value.replace(/\d/g, '') }))}
-                          placeholder="e.g. Kabelo"
+                          onChange={(e) => handleTextInputChange('first_name', e.target.value, (val) => setLinkExistingForm(prev => ({ ...prev, first_name: val })))}
+                          placeholder="e.g. Kabelo (letters only)"
                           className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white placeholder-slate-500 focus:ring-2 focus:ring-amber-500"
                         />
+                        {formFieldErrors.first_name && (
+                          <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            <span>{formFieldErrors.first_name}</span>
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -1026,10 +1063,16 @@ export const ParentChildren: React.FC = () => {
                           type="text"
                           required
                           value={linkExistingForm.surname}
-                          onChange={(e) => setLinkExistingForm(prev => ({ ...prev, surname: e.target.value.replace(/\d/g, '') }))}
-                          placeholder="e.g. Makgoka"
+                          onChange={(e) => handleTextInputChange('surname', e.target.value, (val) => setLinkExistingForm(prev => ({ ...prev, surname: val })))}
+                          placeholder="e.g. Makgoka (letters only)"
                           className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white placeholder-slate-500 focus:ring-2 focus:ring-amber-500"
                         />
+                        {formFieldErrors.surname && (
+                          <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            <span>{formFieldErrors.surname}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -1040,13 +1083,16 @@ export const ParentChildren: React.FC = () => {
                           type="text"
                           maxLength={13}
                           value={linkExistingForm.id_number}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/\D/g, '');
-                            setLinkExistingForm(prev => ({ ...prev, id_number: val }));
-                          }}
-                          placeholder="e.g. 0905097812085 (13 digits)"
+                          onChange={(e) => handleNumericInputChange('id_number', e.target.value, (val) => setLinkExistingForm(prev => ({ ...prev, id_number: val })), 13)}
+                          placeholder="e.g. 0905097812085 (numbers only)"
                           className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white font-mono placeholder-slate-500 focus:ring-2 focus:ring-amber-500"
                         />
+                        {formFieldErrors.id_number && (
+                          <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            <span>{formFieldErrors.id_number}</span>
+                          </p>
+                        )}
                         <p className="text-[10.5px] text-slate-400 mt-1">13-digit South African ID.</p>
                       </div>
 
@@ -1055,10 +1101,16 @@ export const ParentChildren: React.FC = () => {
                         <input
                           type="text"
                           value={linkExistingForm.learner_number}
-                          onChange={(e) => setLinkExistingForm(prev => ({ ...prev, learner_number: e.target.value }))}
-                          placeholder="e.g. 202541106"
+                          onChange={(e) => handleNumericInputChange('learner_number', e.target.value, (val) => setLinkExistingForm(prev => ({ ...prev, learner_number: val })))}
+                          placeholder="e.g. 202541106 (numbers only)"
                           className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white font-mono placeholder-slate-500 focus:ring-2 focus:ring-amber-500"
                         />
+                        {formFieldErrors.learner_number && (
+                          <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            <span>{formFieldErrors.learner_number}</span>
+                          </p>
+                        )}
                         <p className="text-[10.5px] text-slate-400 mt-1">Official Student Number if known.</p>
                       </div>
                     </div>
@@ -1099,6 +1151,14 @@ export const ParentChildren: React.FC = () => {
                 ) : (
                   /* FORM TAB 2: ENROLL SIBLING INTERNALLY */
                   <form onSubmit={handleEnrollSibling} className="space-y-4 text-xs">
+                    {/* Auto-Linked Parent Account Notice */}
+                    <div className="p-3 rounded-2xl bg-brand-500/10 border border-brand-500/20 text-brand-300 flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-brand-400 shrink-0" />
+                      <span>
+                        <strong>Auto-Linked Parent Profile:</strong> Your parent contact details are automatically linked from your session. You only need to provide the new learner's curriculum details.
+                      </span>
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-slate-300 font-bold mb-1">Sibling First Name *</label>
@@ -1106,10 +1166,16 @@ export const ParentChildren: React.FC = () => {
                           type="text"
                           required
                           value={siblingForm.first_name}
-                          onChange={(e) => setSiblingForm({ ...siblingForm, first_name: e.target.value.replace(/\d/g, '') })}
-                          placeholder="e.g. Lesedi"
+                          onChange={(e) => handleTextInputChange('sibling_first_name', e.target.value, (val) => setSiblingForm(prev => ({ ...prev, first_name: val })))}
+                          placeholder="e.g. Lesedi (letters only)"
                           className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500"
                         />
+                        {formFieldErrors.sibling_first_name && (
+                          <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            <span>{formFieldErrors.sibling_first_name}</span>
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -1118,10 +1184,16 @@ export const ParentChildren: React.FC = () => {
                           type="text"
                           required
                           value={siblingForm.surname}
-                          onChange={(e) => setSiblingForm({ ...siblingForm, surname: e.target.value.replace(/\d/g, '') })}
-                          placeholder="e.g. Makola"
+                          onChange={(e) => handleTextInputChange('sibling_surname', e.target.value, (val) => setSiblingForm(prev => ({ ...prev, surname: val })))}
+                          placeholder="e.g. Makola (letters only)"
                           className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500"
                         />
+                        {formFieldErrors.sibling_surname && (
+                          <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            <span>{formFieldErrors.sibling_surname}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -1132,10 +1204,16 @@ export const ParentChildren: React.FC = () => {
                           type="text"
                           maxLength={13}
                           value={siblingForm.id_number}
-                          onChange={(e) => setSiblingForm({ ...siblingForm, id_number: e.target.value.replace(/\D/g, '') })}
-                          placeholder="13-digit ID (used for password)"
+                          onChange={(e) => handleNumericInputChange('sibling_id_number', e.target.value, (val) => setSiblingForm(prev => ({ ...prev, id_number: val })), 13)}
+                          placeholder="13-digit ID (numbers only)"
                           className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white font-mono placeholder-slate-500 focus:ring-2 focus:ring-brand-500"
                         />
+                        {formFieldErrors.sibling_id_number && (
+                          <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            <span>{formFieldErrors.sibling_id_number}</span>
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -1217,14 +1295,14 @@ export const ParentChildren: React.FC = () => {
                       />
                     </div>
 
-                    {/* Generator Notice */}
-                    <div className="p-3.5 rounded-2xl bg-brand-950/40 border border-brand-500/30 text-[11px] text-slate-300 space-y-1">
+                    {/* Generator & Fee Notice */}
+                    <div className="p-3.5 rounded-2xl bg-brand-950/40 border border-brand-500/30 text-[11px] text-slate-300 space-y-2">
                       <div className="flex items-center gap-1.5 text-brand-300 font-bold">
                         <Key className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>Automated Credential Generation</span>
+                        <span>Automated Credential Generation & Application Fee</span>
                       </div>
                       <p className="text-slate-400 leading-relaxed">
-                        A sequential <strong>Learner Number (e.g. 202600XX)</strong> and password (drawn systematically from the ID number) will be generated automatically and dispatched to your email.
+                        A sequential <strong>Learner Number (e.g. 202600XX)</strong> and password will be generated automatically. Sibling admission applications incur a standard processing fee of <strong>R250.00</strong>. Banking details and confirmation will be dispatched to your email.
                       </p>
                     </div>
 
@@ -1242,7 +1320,7 @@ export const ParentChildren: React.FC = () => {
                         className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 text-white font-bold shadow-glow-indigo transition-all disabled:opacity-50 flex items-center gap-2"
                       >
                         <UserPlus className="w-3.5 h-3.5" />
-                        <span>{submittingLink ? 'Enrolling Sibling...' : 'Enroll & Link Sibling'}</span>
+                        <span>{submittingLink ? 'Enrolling Sibling...' : 'Submit Application & Link Sibling'}</span>
                       </button>
                     </div>
                   </form>

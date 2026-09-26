@@ -33,6 +33,9 @@ exports.getAllSchools = async (req, res) => {
         s.physical_address, s.contact_email, s.contact_phone, s.principal_name,
         s.logo_url, s.badge_url, s.primary_color, s.secondary_color, s.accent_color,
         s.motto, s.curriculum_type, s.grade_range, s.is_active, s.settings,
+        s.offered_languages, s.offered_subjects, s.offered_streams,
+        s.bank_name, s.account_holder, s.account_number, s.branch_code, s.account_type,
+        s.application_fee, s.registration_fee,
         COALESCE((SELECT COUNT(*)::int FROM children c WHERE c.school_id::text = s.id::text), 0) AS enrolled_learners_count,
         COALESCE((SELECT COUNT(*)::int FROM employees e WHERE e.school_id::text = s.id::text), 0) AS staff_count,
         COALESCE((SELECT COUNT(*)::int FROM classes cl WHERE cl.school_id::text = s.id::text), 0) AS classes_count,
@@ -67,6 +70,9 @@ exports.getCurrentSchool = async (req, res) => {
         s.physical_address, s.contact_email, s.contact_phone, s.principal_name,
         s.logo_url, s.badge_url, s.primary_color, s.secondary_color, s.accent_color,
         s.motto, s.curriculum_type, s.grade_range, s.is_active, s.settings,
+        s.offered_languages, s.offered_subjects, s.offered_streams,
+        s.bank_name, s.account_holder, s.account_number, s.branch_code, s.account_type,
+        s.application_fee, s.registration_fee,
         COALESCE((SELECT COUNT(*)::int FROM children c WHERE c.school_id::text = s.id::text), 0) AS enrolled_learners_count,
         COALESCE((SELECT COUNT(*)::int FROM employees e WHERE e.school_id::text = s.id::text), 0) AS staff_count,
         COALESCE((SELECT COUNT(*)::int FROM classes cl WHERE cl.school_id::text = s.id::text), 0) AS classes_count,
@@ -98,8 +104,91 @@ exports.getCurrentSchool = async (req, res) => {
     res.json(matched);
   } catch (err) {
     console.error('Error fetching current school, using fallback:', err.message);
-    const matched = FALLBACK_SCHOOLS[0];
-    res.json(matched);
+    res.json(FALLBACK_SCHOOLS[0]);
+  }
+};
+
+/**
+ * Checks if a school offers a specific Home Language, and if not, refers other schools that do.
+ */
+exports.checkLanguageOffer = async (req, res) => {
+  try {
+    const schoolId = parseInt(req.query.school_id || 1, 10);
+    const requestedLanguage = (req.query.language || '').trim();
+
+    if (!requestedLanguage) {
+      return res.status(400).json({ error: 'Language parameter is required.' });
+    }
+
+    const schoolRes = await db.query(
+      'SELECT id, name, slug, circuit, district, province, offered_languages, bank_name, account_number, branch_code, account_holder, application_fee, registration_fee FROM schools WHERE id = $1',
+      [schoolId]
+    );
+
+    if (schoolRes.rows.length === 0) {
+      return res.status(404).json({ error: 'School not found.' });
+    }
+
+    const school = schoolRes.rows[0];
+    const offeredLangs = school.offered_languages || [];
+
+    const isOffered = offeredLangs.some(l => 
+      l.toLowerCase().includes(requestedLanguage.toLowerCase()) || 
+      requestedLanguage.toLowerCase().includes(l.toLowerCase())
+    );
+
+    if (isOffered) {
+      return res.json({
+        is_offered: true,
+        school_id: school.id,
+        school_name: school.name,
+        language: requestedLanguage,
+        offered_languages: offeredLangs,
+        banking_details: {
+          bank_name: school.bank_name || 'First National Bank (FNB)',
+          account_holder: school.account_holder || school.name,
+          account_number: school.account_number || '62849102841',
+          branch_code: school.branch_code || '250655',
+          application_fee: parseFloat(school.application_fee) || 250.00,
+          registration_fee: parseFloat(school.registration_fee) || 1500.00
+        }
+      });
+    }
+
+    // School does not offer the requested Home Language -> Find referrals!
+    const allSchools = await db.query(
+      'SELECT id, name, slug, circuit, district, province, offered_languages, bank_name, account_number, branch_code, account_holder FROM schools WHERE is_active = TRUE AND id != $1 ORDER BY name ASC',
+      [schoolId]
+    );
+
+    const referrals = allSchools.rows.filter(s => {
+      const sLangs = s.offered_languages || [];
+      return sLangs.some(l => 
+        l.toLowerCase().includes(requestedLanguage.toLowerCase()) || 
+        requestedLanguage.toLowerCase().includes(l.toLowerCase())
+      );
+    }).map(s => ({
+      id: s.id,
+      name: s.name,
+      slug: s.slug,
+      circuit: s.circuit,
+      district: s.district,
+      province: s.province,
+      offered_languages: s.offered_languages
+    }));
+
+    return res.json({
+      is_offered: false,
+      school_id: school.id,
+      school_name: school.name,
+      language: requestedLanguage,
+      offered_languages: offeredLangs,
+      message: `The school "${school.name}" does not provide ${requestedLanguage} as an official Home Language.`,
+      referrals
+    });
+  } catch (err) {
+    console.error('Error checking language offer:', err);
+    res.status(500).json({ error: 'Failed to verify school language offering.' });
   }
 };
 

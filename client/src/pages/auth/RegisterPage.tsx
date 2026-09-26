@@ -399,12 +399,12 @@ export const RegisterPage: React.FC = () => {
     const { name, value } = e.target;
     clearFieldError(name);
     if (/\d/.test(value)) {
-      setFieldErrors(prev => ({ ...prev, [name]: 'Numbers are strictly not allowed in names. Letters, spaces, and hyphens only.' }));
+      setFieldErrors(prev => ({ ...prev, [name]: 'Numbers are not allowed in this field. Please use letters only.' }));
       setFormData(prev => ({ ...prev, [name]: value.replace(/\d/g, '') }));
       return;
     }
     if (/[^A-Za-z\s\-']/.test(value)) {
-      setFieldErrors(prev => ({ ...prev, [name]: 'Special symbols are not allowed in names. Letters, spaces, and hyphens only.' }));
+      setFieldErrors(prev => ({ ...prev, [name]: 'Special symbols are not allowed. Letters, spaces, and hyphens only.' }));
       setFormData(prev => ({ ...prev, [name]: value.replace(/[^A-Za-z\s\-']/g, '') }));
       return;
     }
@@ -419,7 +419,7 @@ export const RegisterPage: React.FC = () => {
     
     if (name === 'phone') {
       if (/[a-zA-Z]/.test(value)) {
-        setFieldErrors(prev => ({ ...prev, phone: 'Letters and words are strictly not allowed in phone numbers. Numbers only.' }));
+        setFieldErrors(prev => ({ ...prev, phone: 'Letters and words are not allowed in this field. Numbers only.' }));
         setFormData(prev => ({ ...prev, [name]: value.replace(/[a-zA-Z]/g, '') }));
         return;
       }
@@ -428,7 +428,7 @@ export const RegisterPage: React.FC = () => {
       setFormData(prev => ({ ...prev, [name]: cleaned }));
     } else if (name === 'idNumber') {
       if (/[^\d]/.test(value)) {
-        setFieldErrors(prev => ({ ...prev, idNumber: 'Letters and symbols are strictly not allowed in ID numbers. Numbers only.' }));
+        setFieldErrors(prev => ({ ...prev, idNumber: 'Letters and words are not allowed in this field. Numbers only.' }));
         const cleaned = value.replace(/[^\d]/g, '').slice(0, 13);
         setFormData(prev => ({ ...prev, [name]: cleaned }));
         return;
@@ -518,14 +518,14 @@ export const RegisterPage: React.FC = () => {
   const updateChildField = (id: string, field: keyof ChildLinkItem, val: any) => {
     if (field === 'firstName' || field === 'surname') {
       if (/\d/.test(val)) {
-        setError('Child name fields cannot contain numbers.');
+        setError('Numbers are not allowed in this field. Please use letters only.');
         return;
       }
       setError(null);
     } else if (field === 'idNumber') {
       const cleaned = (val || '').replace(/\D/g, '').slice(0, 13);
-      if (val !== cleaned && val.length <= 13) {
-        setError('Child ID number must contain numbers only.');
+      if (/[a-zA-Z]/.test(val)) {
+        setError('Letters and words are not allowed in this field. Numbers only.');
         return;
       }
       setError(null);

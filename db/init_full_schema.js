@@ -191,6 +191,9 @@ async function initializeAllDatabaseTables(customClient) {
 
       ALTER TABLE users ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_online BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS previous_passwords TEXT[] DEFAULT '{}';
 
       CREATE TABLE IF NOT EXISTS employees (
         id SERIAL PRIMARY KEY,

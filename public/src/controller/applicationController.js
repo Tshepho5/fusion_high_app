@@ -198,23 +198,77 @@ exports.submitApplication = async (req, res) => {
 
     // Resolve School Tenant ID (Default: 1 - Fusion High, or 2..12 for partner schools)
     const schoolId = parseInt(body.school_id || req.headers['x-school-id'] || 1, 10);
-    let schoolSlug = 'fusion-high';
-    let schoolName = 'Fusion High School';
+    let targetSchool = null;
     try {
-      const sRes = await db.query('SELECT slug, name FROM schools WHERE id = $1', [schoolId]);
+      const sRes = await db.query('SELECT * FROM schools WHERE id = $1', [schoolId]);
       if (sRes.rows.length > 0) {
-        schoolSlug = sRes.rows[0].slug;
-        schoolName = sRes.rows[0].name;
+        targetSchool = sRes.rows[0];
       }
     } catch (_) {}
+
+    if (!targetSchool) {
+      const fallbackRes = await db.query('SELECT * FROM schools LIMIT 1');
+      targetSchool = fallbackRes.rows[0];
+    }
+
+    const schoolSlug = targetSchool.slug || 'fusion-high';
+    const schoolName = targetSchool.name || 'Fusion High School';
+    const offeredLangs = targetSchool.offered_languages || ['English', 'Sepedi', 'isiZulu'];
+    const homeLanguage = (body.home_language || '').trim();
+
+    // Enforce School Home Language Offering Verification & Referrals
+    const isLangOffered = offeredLangs.some(l => 
+      l.toLowerCase().includes(homeLanguage.toLowerCase()) || 
+      homeLanguage.toLowerCase().includes(l.toLowerCase())
+    );
+
+    if (!isLangOffered) {
+      // Find other registered schools offering this home language
+      const allOtherSchools = await db.query(
+        'SELECT id, name, slug, circuit, district, province, offered_languages FROM schools WHERE is_active = TRUE AND id != $1 ORDER BY name ASC',
+        [targetSchool.id]
+      );
+      const referrals = allOtherSchools.rows.filter(s => {
+        const sLangs = s.offered_languages || [];
+        return sLangs.some(l => 
+          l.toLowerCase().includes(homeLanguage.toLowerCase()) || 
+          homeLanguage.toLowerCase().includes(l.toLowerCase())
+        );
+      }).map(s => ({
+        id: s.id,
+        name: s.name,
+        slug: s.slug,
+        circuit: s.circuit,
+        district: s.district,
+        province: s.province,
+        offered_languages: s.offered_languages
+      }));
+
+      return res.status(400).json({
+        success: false,
+        error: `The school "${schoolName}" does not provide ${homeLanguage} as an official Home Language. Please select another language or choose one of the recommended schools below that offer ${homeLanguage}.`,
+        is_language_offered: false,
+        school_name: schoolName,
+        language: homeLanguage,
+        offered_languages: offeredLangs,
+        referrals
+      });
+    }
 
     const applicationNumber = applicationService.generateApplicationNumber(schoolSlug);
     const correctionToken = applicationService.generateCorrectionToken();
 
     const gradeApplied = parseInt(body.grade_applied, 10);
     const stream = gradeApplied >= 10 ? (body.stream || 'Science') : 'General';
-    const homeLanguage = (body.home_language || '').trim();
     const selectedSubjects = curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
+
+    const appFeeAmount = parseFloat(targetSchool.application_fee) || 250.00;
+    const regFeeAmount = parseFloat(targetSchool.registration_fee) || 1500.00;
+    const feeDueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7-day payment window
+    const payNow = body.pay_now === 'true' || body.pay_now === true;
+    const feeStatus = payNow ? 'paid' : 'unpaid';
+    const feePaidAt = payNow ? new Date() : null;
+    const paymentRef = body.payment_reference || `PAY-APP-${Date.now().toString().slice(-8)}`;
 
     // 2. Prepare Uploaded Documents Metadata
     const uploadedDocs = [];
@@ -336,13 +390,25 @@ exports.submitApplication = async (req, res) => {
         assigned_class_id,
         provisional_learner_number,
         home_language,
-        school_id
+        school_id,
+        application_fee_amount,
+        application_fee_status,
+        application_fee_paid_at,
+        application_fee_due_date,
+        registration_fee_amount,
+        registration_fee_status,
+        scenario,
+        existing_parent_id,
+        existing_learner_id,
+        payment_method,
+        payment_reference
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
         $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
         $31, $32, $33, $34, $35, $36, $37, $38, $39, $40,
-        $41, $42, $43, $44, $45
+        $41, $42, $43, $44, $45, $46, $47, $48, $49, $50,
+        $51, $52, $53, $54, $55, $56
       ) RETURNING id;
     `;
 
@@ -391,11 +457,39 @@ exports.submitApplication = async (req, res) => {
       assignedClass ? assignedClass.id : null,
       provisionalLearnerNumber,
       homeLanguage,
-      schoolId
+      schoolId,
+      appFeeAmount,
+      feeStatus,
+      feePaidAt,
+      feeDueDate,
+      regFeeAmount,
+      'unpaid',
+      body.scenario || 'public_new_applicant',
+      body.existing_parent_id ? parseInt(body.existing_parent_id, 10) : null,
+      body.existing_learner_id ? parseInt(body.existing_learner_id, 10) : null,
+      body.payment_method || (payNow ? 'instant_online' : 'eft'),
+      paymentRef
     ];
 
     const appInsertResult = await db.query(insertQuery, values);
     const applicationId = appInsertResult.rows[0].id;
+
+    // Record instant payment in application_payments if paid immediately
+    const receiptNo = `REC-APP-${Date.now().toString().slice(-6)}`;
+    if (payNow) {
+      try {
+        await db.query(`
+          INSERT INTO application_payments (
+            application_id, fee_type, amount, payment_method, payment_reference, receipt_number, payer_name, payer_email, status, created_at
+          ) VALUES ($1, 'application_fee', $2, $3, $4, $5, $6, $7, 'completed', NOW())
+        `, [
+          applicationId, appFeeAmount, body.payment_method || 'instant_online', paymentRef,
+          receiptNo, `${body.primary_parent_name} ${body.primary_parent_surname}`, body.primary_parent_email.trim()
+        ]);
+      } catch (payErr) {
+        console.warn('Could not insert application payment record:', payErr.message);
+      }
+    }
 
     // 6. Save Uploaded Documents into application_documents table
     for (const doc of uploadedDocs) {
@@ -476,8 +570,44 @@ exports.submitApplication = async (req, res) => {
     const resumptionUrl = `${baseUrl}/application.html?resume=${correctionToken}`;
     const registrationUrl = `${baseUrl}/register?appRef=${applicationNumber}&email=${encodeURIComponent(body.primary_parent_email)}&firstName=${encodeURIComponent(body.first_name)}&surname=${encodeURIComponent(body.surname)}&idNumber=${encodeURIComponent(body.id_number || '')}&grade=${encodeURIComponent(body.grade_applied)}&stream=${encodeURIComponent(body.stream || 'General')}`;
 
+    const bankingInfo = {
+      bank_name: targetSchool.bank_name || 'First National Bank (FNB)',
+      account_holder: targetSchool.account_holder || schoolName,
+      account_number: targetSchool.account_number || '62849102841',
+      branch_code: targetSchool.branch_code || '250655',
+      account_type: targetSchool.account_type || 'Cheque / Current',
+      reference: applicationNumber
+    };
+    const paymentUrl = `${baseUrl}/application.html?appRef=${applicationNumber}&pay=true`;
+
+    if (payNow) {
+      await emailService.sendApplicationFeePaymentReceived({
+        parentEmail: body.primary_parent_email,
+        parentName: primaryParentFullName,
+        learnerName: learnerFullName,
+        schoolName,
+        applicationNumber,
+        amountPaid: appFeeAmount,
+        receiptNumber: receiptNo
+      });
+    } else {
+      await emailService.sendApplicationReceivedWithBanking({
+        parentEmail: body.primary_parent_email,
+        parentName: primaryParentFullName,
+        learnerName: learnerFullName,
+        grade: gradeApplied,
+        stream,
+        homeLanguage,
+        schoolName,
+        applicationNumber,
+        feeAmount: appFeeAmount,
+        dueDateStr: feeDueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
+        bankDetails: bankingInfo,
+        paymentUrl
+      });
+    }
+
     if (applicationStatus === 'action_required') {
-      // Send Correction / Issues Email
       await emailService.sendApplicationCorrection({
         parentEmail: body.primary_parent_email,
         parentName: primaryParentFullName,
@@ -492,6 +622,9 @@ exports.submitApplication = async (req, res) => {
         status: 'action_required',
         applicationNumber,
         correctionToken,
+        application_fee_status: feeStatus,
+        application_fee_amount: appFeeAmount,
+        banking_details: bankingInfo,
         message: 'Document or detail inconsistencies detected. A detailed correction email with your resumption link has been sent.',
         issues: aiVerification.issues,
         resumptionUrl
@@ -499,7 +632,6 @@ exports.submitApplication = async (req, res) => {
     }
 
     if (applicationStatus === 'waitlisted') {
-      // Send Waitlist Email
       await emailService.sendApplicationWaitlisted({
         parentEmail: body.primary_parent_email,
         parentName: primaryParentFullName,
@@ -512,31 +644,29 @@ exports.submitApplication = async (req, res) => {
         success: true,
         status: 'waitlisted',
         applicationNumber,
+        application_fee_status: feeStatus,
+        application_fee_amount: appFeeAmount,
+        banking_details: bankingInfo,
         message: `Application qualified, but Grade ${gradeApplied} is currently at maximum capacity (< 30 per class). The applicant has been placed on the priority waiting list.`
       });
     }
 
-    if (applicationStatus === 'approved') {
-      // Send Official Acceptance Email
-      await emailService.sendApplicationAccepted({
-        parentEmail: body.primary_parent_email,
-        parentName: primaryParentFullName,
-        learnerName: learnerFullName,
-        grade: gradeApplied,
-        stream,
-        applicationNumber,
-        registrationUrl
-      });
-
-      return res.status(201).json({
-        success: true,
-        status: 'approved',
-        applicationNumber,
-        assignedClass: assignedClass ? assignedClass.name : null,
-        registrationUrl,
-        message: `Congratulations! Application approved for Grade ${gradeApplied}. Please complete Parent Registration to finalize enrollment and receive the official Learner Number.`
-      });
-    }
+    // Default: submitted & pending review
+    return res.status(201).json({
+      success: true,
+      status: applicationStatus,
+      applicationNumber,
+      assignedClass: assignedClass ? assignedClass.name : null,
+      registrationUrl,
+      application_fee_status: feeStatus,
+      application_fee_amount: appFeeAmount,
+      application_fee_due_date: feeDueDate,
+      banking_details: bankingInfo,
+      payment_url: paymentUrl,
+      message: payNow
+        ? `Application submitted and application fee of R${appFeeAmount.toFixed(2)} received successfully! It is now under school administration review.`
+        : `Application received! Please settle the application fee of R${appFeeAmount.toFixed(2)} within 7 days using the school banking details emailed to ${body.primary_parent_email}.`
+    });
 
   } catch (err) {
     console.error('[SUBMIT APPLICATION ERROR]:', err);
@@ -1078,6 +1208,47 @@ exports.reviewApplication = async (req, res) => {
       WHERE id = $5
     `, [finalStatus, admin_notes || app.admin_notes, assigned_class_id || app.assigned_class_id, provNumber, id]);
 
+    // Send Rejection or Approval Email
+    const baseUrl = getRequestBaseUrl(req);
+    const parentFullName = `${app.primary_parent_name} ${app.primary_parent_surname}`;
+    const learnerFullName = `${app.first_name} ${app.surname}`;
+    const registrationUrl = `${baseUrl}/register?appRef=${app.application_number}&email=${encodeURIComponent(app.primary_parent_email)}&firstName=${encodeURIComponent(app.first_name)}&surname=${encodeURIComponent(app.surname)}&idNumber=${encodeURIComponent(app.id_number || '')}&grade=${encodeURIComponent(app.grade_applied)}&stream=${encodeURIComponent(app.stream || 'General')}`;
+
+    if (status === 'rejected') {
+      try {
+        await emailService.sendApplicationUnsuccessful({
+          parentEmail: app.primary_parent_email,
+          parentName: parentFullName,
+          learnerName: learnerFullName,
+          grade: app.grade_applied,
+          applicationNumber: app.application_number,
+          reason: admin_notes || 'School capacity constraints or admission criteria not met.'
+        });
+      } catch (err) {
+        console.warn('Rejection email notice failed:', err.message);
+      }
+    } else if (status === 'approved') {
+      try {
+        const appFeeUnpaid = (app.application_fee_status !== 'paid');
+        await emailService.sendApplicationApprovedWithFeeNotice({
+          parentEmail: app.primary_parent_email,
+          parentName: parentFullName,
+          learnerName: learnerFullName,
+          schoolName: app.school_name || 'Fusion High School',
+          applicationNumber: app.application_number,
+          grade: app.grade_applied,
+          stream: app.stream,
+          assignedClass: null,
+          appFeeUnpaid,
+          appFeeAmount: app.application_fee_amount || 250,
+          regFeeAmount: app.registration_fee_amount || 1500,
+          registrationUrl
+        });
+      } catch (err) {
+        console.warn('Approval email notice failed:', err.message);
+      }
+    }
+
     // Update status in Firebase Cloud Firestore
     if (firestore) {
       setImmediate(async () => {
@@ -1098,7 +1269,7 @@ exports.reviewApplication = async (req, res) => {
       success: true,
       message: (status === 'approved' || status === 'enrolled')
         ? `Application approved & learner officially enrolled in 1 click! Learner Number: ${provNumber}. Welcome credentials sent to parent.`
-        : `Application status updated to ${status}.`,
+        : `Application status updated to ${status}. Notification email dispatched.`,
       status: finalStatus,
       enrollment: enrollmentDetails
     });
@@ -1107,3 +1278,315 @@ exports.reviewApplication = async (req, res) => {
     res.status(500).json({ error: 'Failed to process application enrollment: ' + err.message });
   }
 };
+
+/**
+ * Parent: Pay Application Fee (Online / EFT Confirmation)
+ */
+exports.payApplicationFee = async (req, res) => {
+  const { id } = req.params;
+  const { payment_method = 'instant_online', payment_reference } = req.body;
+
+  try {
+    const appRes = await db.query(
+      `SELECT a.*, s.name as school_name 
+       FROM applications a 
+       LEFT JOIN schools s ON a.school_id = s.id 
+       WHERE a.id::text = $1::text OR a.application_number = $1::text`,
+      [id]
+    );
+    if (appRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Application not found.' });
+    }
+
+    const app = appRes.rows[0];
+    const amount = parseFloat(app.application_fee_amount) || 250.00;
+    const payRef = payment_reference || `PAY-APP-${Date.now().toString().slice(-8)}`;
+    const receiptNo = `REC-APP-${Date.now().toString().slice(-6)}`;
+
+    // Update application fee status
+    await db.query(`
+      UPDATE applications SET
+        application_fee_status = 'paid',
+        application_fee_paid_at = NOW(),
+        payment_method = $1,
+        payment_reference = $2,
+        updated_at = NOW()
+      WHERE id = $3
+    `, [payment_method, payRef, app.id]);
+
+    // Record in application_payments
+    await db.query(`
+      INSERT INTO application_payments (
+        application_id, fee_type, amount, payment_method, payment_reference, receipt_number, payer_name, payer_email, status, created_at
+      ) VALUES ($1, 'application_fee', $2, $3, $4, $5, $6, $7, 'completed', NOW())
+    `, [
+      app.id, amount, payment_method, payRef, receiptNo,
+      `${app.primary_parent_name} ${app.primary_parent_surname}`, app.primary_parent_email
+    ]);
+
+    // Send confirmation email
+    await emailService.sendApplicationFeePaymentReceived({
+      parentEmail: app.primary_parent_email,
+      parentName: `${app.primary_parent_name} ${app.primary_parent_surname}`,
+      learnerName: `${app.first_name} ${app.surname}`,
+      schoolName: app.school_name || 'Fusion High School',
+      applicationNumber: app.application_number,
+      amountPaid: amount,
+      receiptNumber: receiptNo
+    });
+
+    res.json({
+      success: true,
+      message: `Application fee of R${amount.toFixed(2)} received successfully! Confirmation receipt has been emailed to ${app.primary_parent_email}.`,
+      receipt_number: receiptNo,
+      application_fee_status: 'paid'
+    });
+  } catch (err) {
+    console.error('Error paying application fee:', err);
+    res.status(500).json({ success: false, error: 'Failed to process application fee payment: ' + err.message });
+  }
+};
+
+/**
+ * Parent: Pay Registration Fee & Finalize Enrollment with Grade, Class & Allocated Subjects
+ */
+exports.payRegistrationFeeAndFinalize = async (req, res) => {
+  const { id } = req.params;
+  const { payment_method = 'instant_online', payment_reference } = req.body;
+
+  try {
+    const appRes = await db.query(
+      `SELECT a.*, s.name as school_name, s.slug as school_slug, c.name as assigned_class_name
+       FROM applications a
+       LEFT JOIN schools s ON a.school_id = s.id
+       LEFT JOIN classes c ON a.assigned_class_id = c.id
+       WHERE a.id::text = $1::text OR a.application_number = $1::text`,
+      [id]
+    );
+
+    if (appRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Application not found.' });
+    }
+
+    const app = appRes.rows[0];
+    const regFeeAmount = parseFloat(app.registration_fee_amount) || 1500.00;
+    const payRef = payment_reference || `PAY-REG-${Date.now().toString().slice(-8)}`;
+    const receiptNo = `REC-REG-${Date.now().toString().slice(-6)}`;
+
+    // 1. Generate or resolve Official Learner Number
+    let officialLearnerNo = app.provisional_learner_number;
+    if (!officialLearnerNo) {
+      officialLearnerNo = await applicationService.generateProvisionalLearnerNumber(app.grade_applied);
+    }
+
+    // 2. Class allocation
+    const gradeApplied = parseInt(app.grade_applied, 10);
+    const stream = app.stream || 'General';
+    const homeLanguage = (app.home_language || 'Sepedi').trim();
+    let assignedClassId = app.assigned_class_id;
+    let assignedClassName = app.assigned_class_name;
+
+    if (!assignedClassId) {
+      const allocatedClass = await applicationService.allocateAvailableClass(gradeApplied, stream);
+      if (allocatedClass) {
+        assignedClassId = allocatedClass.id;
+        assignedClassName = allocatedClass.name;
+      }
+    }
+
+    if (!assignedClassName) {
+      if (assignedClassId) {
+        try {
+          const clsRes = await db.query('SELECT name FROM classes WHERE id = $1', [assignedClassId]);
+          if (clsRes.rows.length > 0) assignedClassName = clsRes.rows[0].name;
+        } catch (_) {}
+      }
+      if (!assignedClassName) {
+        assignedClassName = `Grade ${gradeApplied}A`;
+      }
+    }
+
+    // 3. Curriculum allocation
+    const allocatedSubjects = curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
+
+    // 4. Create Parent User if doesn't exist
+    let parentUserId = null;
+    const parentEmailClean = app.primary_parent_email.trim().toLowerCase();
+    const parentInitialPw = 'Parent@2026';
+    const hashedParentPw = await bcrypt.hash(parentInitialPw, 10);
+
+    const existingParent = await db.query('SELECT id, email FROM users WHERE LOWER(email) = $1 LIMIT 1', [parentEmailClean]);
+    if (existingParent.rows.length > 0) {
+      parentUserId = existingParent.rows[0].id;
+    } else {
+      const parentRoleRes = await db.query("SELECT id FROM roles WHERE name = 'parent' LIMIT 1");
+      const parentRoleId = parentRoleRes.rows[0]?.id || 4;
+      const newParentRes = await db.query(
+        `INSERT INTO users (full_name, surname, email, password_hash, phone, id_number, role_id, school_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING id`,
+        [app.primary_parent_name, app.primary_parent_surname, parentEmailClean, hashedParentPw, app.primary_parent_phone || null, app.primary_parent_id_number || null, parentRoleId, app.school_id || 1]
+      );
+      parentUserId = newParentRes.rows[0].id;
+    }
+
+    // 5. Create Learner User if doesn't exist
+    let learnerUserId = null;
+    const learnerInitialPw = (app.id_number && app.id_number.trim().length >= 6) ? generateLearnerPasswordFromID(app.id_number.trim()) : '123456';
+    const hashedLearnerPw = await bcrypt.hash(learnerInitialPw, 10);
+    const learnerEmail = app.email ? app.email.trim().toLowerCase() : `${officialLearnerNo.toLowerCase()}@fusionhigh.co.za`;
+
+    const existingLearner = await db.query('SELECT id, email FROM users WHERE LOWER(email) = $1 LIMIT 1', [learnerEmail]);
+    if (existingLearner.rows.length > 0) {
+      learnerUserId = existingLearner.rows[0].id;
+    } else {
+      const learnerRoleRes = await db.query("SELECT id FROM roles WHERE name = 'learner' LIMIT 1");
+      const learnerRoleId = learnerRoleRes.rows[0]?.id || 3;
+      const newLearnerRes = await db.query(
+        `INSERT INTO users (full_name, surname, email, password_hash, phone, id_number, role_id, school_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING id`,
+        [app.first_name, app.surname, learnerEmail, hashedLearnerPw, app.phone || null, app.id_number || null, learnerRoleId, app.school_id || 1]
+      );
+      learnerUserId = newLearnerRes.rows[0].id;
+    }
+
+    // 6. Create or update children record
+    let childId;
+    const childCheck = await db.query('SELECT id FROM children WHERE learner_number = $1 OR application_number = $2 LIMIT 1', [officialLearnerNo, app.application_number]);
+    if (childCheck.rows.length > 0) {
+      childId = childCheck.rows[0].id;
+      await db.query(
+        `UPDATE children SET
+           full_name = $1, surname = $2, grade = $3, stream = $4, home_language = $5,
+           subjects = $6, parent_id = $7, learner_user_id = $8, class_id = $9, is_active = TRUE
+         WHERE id = $10`,
+        [app.first_name, app.surname, gradeApplied, stream, homeLanguage, allocatedSubjects, parentUserId, learnerUserId, assignedClassId, childId]
+      );
+    } else {
+      const childInsert = await db.query(
+        `INSERT INTO children (full_name, surname, learner_number, grade, stream, home_language, subjects, parent_id, learner_user_id, application_number, class_id, is_active, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, TRUE, NOW()) RETURNING id`,
+        [app.first_name, app.surname, officialLearnerNo, gradeApplied, stream, homeLanguage, allocatedSubjects, parentUserId, learnerUserId, app.application_number, assignedClassId]
+      );
+      childId = childInsert.rows[0].id;
+    }
+
+    // Link in parent_children table
+    if (parentUserId && childId) {
+      try {
+        await db.query(`INSERT INTO parent_children (parent_id, child_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [parentUserId, childId]);
+      } catch (_) {}
+    }
+
+    // 7. Update Application status
+    await db.query(`
+      UPDATE applications SET
+        status = 'enrolled',
+        registration_fee_status = 'paid',
+        registration_fee_paid_at = NOW(),
+        assigned_class_id = $1,
+        provisional_learner_number = $2,
+        updated_at = NOW()
+      WHERE id = $3
+    `, [assignedClassId, officialLearnerNo, app.id]);
+
+    // 8. Record in application_payments
+    await db.query(`
+      INSERT INTO application_payments (
+        application_id, fee_type, amount, payment_method, payment_reference, receipt_number, payer_name, payer_email, status, created_at
+      ) VALUES ($1, 'registration_fee', $2, $3, $4, $5, $6, $7, 'completed', NOW())
+    `, [
+      app.id, regFeeAmount, payment_method, payRef, receiptNo,
+      `${app.primary_parent_name} ${app.primary_parent_surname}`, app.primary_parent_email
+    ]);
+
+    // 9. Send Final Enrollment Email with Grade, Class, Subjects, and Credentials!
+    const baseUrl = getRequestBaseUrl(req);
+    await emailService.sendRegistrationSuccessWithAllocation({
+      parentEmail: app.primary_parent_email,
+      parentName: `${app.primary_parent_name} ${app.primary_parent_surname}`,
+      learnerName: `${app.first_name} ${app.surname}`,
+      schoolName: app.school_name || 'Fusion High School',
+      learnerNumber: officialLearnerNo,
+      grade: gradeApplied,
+      stream,
+      assignedClass: assignedClassName,
+      subjects: allocatedSubjects,
+      parentEmail: app.primary_parent_email,
+      parentPassword: parentInitialPw,
+      learnerEmail: learnerEmail,
+      learnerPassword: learnerInitialPw,
+      portalUrl: `${baseUrl}/login`
+    });
+
+    res.json({
+      success: true,
+      message: `Registration finalized! Enrollment confirmed for ${app.first_name} ${app.surname} in Grade ${gradeApplied} (${assignedClassName}). Official confirmation email with all subjects and portal credentials has been sent!`,
+      status: 'enrolled',
+      learner_number: officialLearnerNo,
+      assigned_class: assignedClassName,
+      class_name: assignedClassName,
+      subjects: allocatedSubjects,
+      receipt_number: receiptNo
+    });
+  } catch (err) {
+    console.error('Error finalizing registration:', err);
+    res.status(500).json({ success: false, error: 'Failed to process registration fee: ' + err.message });
+  }
+};
+
+/**
+ * Automated 3-Day Fee Reminder Trigger
+ */
+exports.triggerFeeReminders = async (req, res) => {
+  try {
+    const dueApps = await db.query(`
+      SELECT a.*, s.name as school_name, s.bank_name, s.account_number, s.branch_code, s.account_holder
+      FROM applications a
+      LEFT JOIN schools s ON a.school_id = s.id
+      WHERE a.application_fee_status = 'unpaid'
+        AND a.application_fee_reminder_sent = FALSE
+        AND a.application_fee_due_date <= (CURRENT_TIMESTAMP + INTERVAL '3 days')
+        AND a.application_fee_due_date >= CURRENT_TIMESTAMP
+    `);
+
+    let sentCount = 0;
+    const baseUrl = getRequestBaseUrl(req);
+
+    for (const app of dueApps.rows) {
+      try {
+        const dueDate = new Date(app.application_fee_due_date);
+        await emailService.sendApplicationFeeReminder({
+          parentEmail: app.primary_parent_email,
+          parentName: `${app.primary_parent_name} ${app.primary_parent_surname}`,
+          learnerName: `${app.first_name} ${app.surname}`,
+          schoolName: app.school_name || 'Fusion High School',
+          applicationNumber: app.application_number,
+          feeAmount: parseFloat(app.application_fee_amount) || 250,
+          dueDateStr: dueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
+          bankDetails: {
+            bank_name: app.bank_name,
+            account_number: app.account_number,
+            branch_code: app.branch_code,
+            account_holder: app.account_holder
+          },
+          paymentUrl: `${baseUrl}/application.html?appRef=${app.application_number}&pay=true`
+        });
+
+        await db.query('UPDATE applications SET application_fee_reminder_sent = TRUE WHERE id = $1', [app.id]);
+        sentCount++;
+      } catch (sendErr) {
+        console.warn(`[REMINDER ERROR for app ${app.application_number}]:`, sendErr.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Triggered application fee reminders. Sent ${sentCount} reminders.`,
+      reminders_sent: sentCount
+    });
+  } catch (err) {
+    console.error('Error triggering fee reminders:', err);
+    res.status(500).json({ success: false, error: 'Failed to process fee reminders.' });
+  }
+};
+

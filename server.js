@@ -302,6 +302,7 @@ app.get('/api/documentation/download', (req, res) => {
 
 // Auth & Profile
 app.use('/api', authRoutes);
+app.use('/api/auth', authRoutes);
 app.get('/api/profile', authenticateToken, userController.getProfile);
 app.put('/api/profile', authenticateToken, userController.updateProfile);
 app.post('/api/profile/picture', authenticateToken, uploadPfp.single('profilePicture'), userController.uploadProfilePicture);

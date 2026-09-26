@@ -34,4 +34,5 @@ Thumbs.db
 *firebase-adminsdk*.json
 serviceAccountKey*.json
 .firebase/
+scratch/
 

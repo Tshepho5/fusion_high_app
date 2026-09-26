@@ -355,8 +355,6 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <TeacherOverviewSkeleton />;
-
   const teacherName = stats?.teacher_name || user?.full_name || 'Educator';
   const subjectsList = workload?.subjects || [];
   const classesList = workload?.classes_taught || [];
@@ -390,6 +388,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
     }
     return [];
   }, [subjectsOverview, workload]);
+
+  if (loading) return <TeacherOverviewSkeleton />;
 
 
   return (

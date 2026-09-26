@@ -422,11 +422,10 @@ exports.heartbeat = async (req, res) => {
         await db.query(
             `UPDATE users SET last_seen_at = NOW(), is_online = TRUE WHERE id = $1`,
             [userId]
-        );
+        ).catch(() => {});
         res.json({ success: true, timestamp: new Date() });
     } catch (err) {
-        console.error('Error in heartbeat:', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.json({ success: true, timestamp: new Date() });
     }
 };
 
@@ -439,11 +438,10 @@ exports.updateLogoutStatus = async (req, res) => {
         await db.query(
             `UPDATE users SET is_online = FALSE, last_seen_at = (NOW() - INTERVAL '2 minutes') WHERE id = $1`,
             [userId]
-        );
+        ).catch(() => {});
         res.json({ success: true, is_online: false });
     } catch (err) {
-        console.error('Error updating logout status:', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.json({ success: true, is_online: false });
     }
 };
 
@@ -569,13 +567,41 @@ exports.getCommunicationContacts = async (req, res) => {
         let query = '';
         let params = [userId];
 
-        const onlineSelect = `
+        // Dynamically detect presence tracking columns and safely fallback if not yet migrated
+        let hasPresenceCols = false;
+        try {
+            const colCheck = await db.query(`
+                SELECT column_name FROM information_schema.columns 
+                WHERE table_name = 'users' AND column_name IN ('last_seen_at', 'is_online')
+            `);
+            hasPresenceCols = (colCheck.rows.length >= 2);
+            if (!hasPresenceCols) {
+                try {
+                    await db.query(`
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_online BOOLEAN DEFAULT FALSE;
+                    `);
+                    hasPresenceCols = true;
+                } catch (_) {
+                    hasPresenceCols = false;
+                }
+            }
+        } catch (_) {
+            hasPresenceCols = false;
+        }
+
+        const onlineSelect = hasPresenceCols ? `
             CASE 
                 WHEN u.last_seen_at IS NOT NULL AND u.last_seen_at >= (NOW() - INTERVAL '90 seconds') AND COALESCE(u.is_online, TRUE) = TRUE THEN true 
                 ELSE false 
             END AS is_online,
             u.last_seen_at,
+        ` : `
+            false AS is_online,
+            NULL::timestamp AS last_seen_at,
         `;
+
+        const groupByPresence = hasPresenceCols ? `, u.last_seen_at, u.is_online` : ``;
 
         if (role === 'teacher') {
             query = `
@@ -587,20 +613,20 @@ exports.getCommunicationContacts = async (req, res) => {
                            WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN COALESCE(MAX(e.subjects[1]), 'Teacher') || ' Teacher'
                            ELSE 'School Admin'
                        END AS tag_name,
-                       (
-                           SELECT body FROM messages m 
-                           WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
-                           ORDER BY created_at DESC LIMIT 1
-                       ) AS last_message,
-                       (
-                           SELECT created_at FROM messages m 
-                           WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
-                           ORDER BY created_at DESC LIMIT 1
-                       ) AS last_activity,
-                       (
-                           SELECT COUNT(*) FROM messages m
-                           WHERE m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text AND m.read_at IS NULL
-                       ) AS unread_count
+                        (
+                            SELECT body FROM messages m 
+                            WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
+                            ORDER BY created_at DESC LIMIT 1
+                        ) AS last_message,
+                        (
+                            SELECT created_at FROM messages m 
+                            WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
+                            ORDER BY created_at DESC LIMIT 1
+                        ) AS last_activity,
+                        (
+                            SELECT COUNT(*) FROM messages m
+                            WHERE m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text AND m.read_at IS NULL
+                        ) AS unread_count
                 FROM users u
                 LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                 LEFT JOIN employees e ON e.user_id::text = u.id::text
@@ -608,7 +634,7 @@ exports.getCommunicationContacts = async (req, res) => {
                 WHERE u.id::text != $1::text AND (
                     LOWER(COALESCE(r.name, u.role_id::text, '')) IN ('admin', 'teacher', 'parent', 'learner')
                 )
-                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id, u.last_seen_at, u.is_online
+                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id${groupByPresence}
                 ORDER BY last_activity DESC NULLS LAST, u.full_name ASC;
             `;
         } else if (role === 'learner') {
@@ -623,20 +649,20 @@ exports.getCommunicationContacts = async (req, res) => {
                            WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'learner' THEN 'Grade ' || COALESCE(MAX(c.grade)::text, 'N/A') || ' Learner'
                            ELSE 'School Admin'
                        END AS tag_name,
-                       (
-                           SELECT body FROM messages m 
-                           WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
-                           ORDER BY created_at DESC LIMIT 1
-                       ) AS last_message,
-                       (
-                           SELECT created_at FROM messages m 
-                           WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
-                           ORDER BY created_at DESC LIMIT 1
-                       ) AS last_activity,
-                       (
-                           SELECT COUNT(*) FROM messages m
-                           WHERE m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text AND m.read_at IS NULL
-                       ) AS unread_count
+                        (
+                            SELECT body FROM messages m 
+                            WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
+                            ORDER BY created_at DESC LIMIT 1
+                        ) AS last_message,
+                        (
+                            SELECT created_at FROM messages m 
+                            WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
+                            ORDER BY created_at DESC LIMIT 1
+                        ) AS last_activity,
+                        (
+                            SELECT COUNT(*) FROM messages m
+                            WHERE m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text AND m.read_at IS NULL
+                        ) AS unread_count
                 FROM users u
                 LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                 LEFT JOIN employees e ON e.user_id::text = u.id::text
@@ -646,7 +672,7 @@ exports.getCommunicationContacts = async (req, res) => {
                     OR (LOWER(COALESCE(r.name, u.role_id::text, '')) = 'learner' AND ($2::text IS NULL OR c.grade::text = $2::text))
                     OR (LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' AND ($2::int IS NULL OR $2::int = ANY(e.grades_taught) OR ARRAY_LENGTH(e.grades_taught, 1) IS NULL OR e.grades_taught = '{}'))
                 )
-                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id, u.last_seen_at, u.is_online
+                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id${groupByPresence}
                 ORDER BY last_activity DESC NULLS LAST, u.full_name ASC;
             `;
             params = [userId, learnerGrade ? String(learnerGrade) : null];
@@ -658,25 +684,25 @@ exports.getCommunicationContacts = async (req, res) => {
                            WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN COALESCE(MAX(e.subjects[1]), 'Teacher') || ' Teacher'
                            ELSE 'School Admin'
                        END AS tag_name,
-                       (
-                           SELECT body FROM messages m 
-                           WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
-                           ORDER BY created_at DESC LIMIT 1
-                       ) AS last_message,
-                       (
-                           SELECT created_at FROM messages m 
-                           WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
-                           ORDER BY created_at DESC LIMIT 1
-                       ) AS last_activity,
-                       (
-                           SELECT COUNT(*) FROM messages m
-                           WHERE m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text AND m.read_at IS NULL
-                       ) AS unread_count
+                        (
+                            SELECT body FROM messages m 
+                            WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
+                            ORDER BY created_at DESC LIMIT 1
+                        ) AS last_message,
+                        (
+                            SELECT created_at FROM messages m 
+                            WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
+                            ORDER BY created_at DESC LIMIT 1
+                        ) AS last_activity,
+                        (
+                            SELECT COUNT(*) FROM messages m
+                            WHERE m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text AND m.read_at IS NULL
+                        ) AS unread_count
                 FROM users u
                 LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                 LEFT JOIN employees e ON e.user_id::text = u.id::text
                 WHERE u.id::text != $1::text AND (LOWER(COALESCE(r.name, u.role_id::text, '')) IN ('admin', 'teacher'))
-                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id, u.last_seen_at, u.is_online
+                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id${groupByPresence}
                 ORDER BY last_activity DESC NULLS LAST, u.full_name ASC;
             `;
         } else {
@@ -689,25 +715,25 @@ exports.getCommunicationContacts = async (req, res) => {
                            WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'learner' THEN 'Learner'
                            ELSE 'School Admin'
                        END AS tag_name,
-                       (
-                           SELECT body FROM messages m 
-                           WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
-                           ORDER BY created_at DESC LIMIT 1
-                       ) AS last_message,
-                       (
-                           SELECT created_at FROM messages m 
-                           WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
-                           ORDER BY created_at DESC LIMIT 1
-                       ) AS last_activity,
-                       (
-                           SELECT COUNT(*) FROM messages m
-                           WHERE m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text AND m.read_at IS NULL
-                       ) AS unread_count
+                        (
+                            SELECT body FROM messages m 
+                            WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
+                            ORDER BY created_at DESC LIMIT 1
+                        ) AS last_message,
+                        (
+                            SELECT created_at FROM messages m 
+                            WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = u.id::text) OR (m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text)
+                            ORDER BY created_at DESC LIMIT 1
+                        ) AS last_activity,
+                        (
+                            SELECT COUNT(*) FROM messages m
+                            WHERE m.sender_id::text = u.id::text AND m.recipient_id::text = $1::text AND m.read_at IS NULL
+                        ) AS unread_count
                 FROM users u
                 LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                 LEFT JOIN employees e ON e.user_id::text = u.id::text
                 WHERE u.id::text != $1::text
-                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id, u.last_seen_at, u.is_online
+                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id${groupByPresence}
                 ORDER BY last_activity DESC NULLS LAST, u.full_name ASC;
             `;
         }

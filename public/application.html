@@ -107,6 +107,67 @@
           </div>
         </div>
 
+        <!-- Hidden scenario and existing learner state -->
+        <input type="hidden" id="application_scenario" name="scenario" value="new">
+        <input type="hidden" id="existing_learner_id" name="existing_learner_id" value="">
+
+        <!-- Enrolled Learner Status Toggle (Scenario 3: Parent not in system, Learner is in system) -->
+        <div class="form-group full-width" style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+          <label style="font-weight: 700; color: #cbd5e1; font-size: 14px; margin-bottom: 8px; display: block;">
+            👨‍👧 Learner Enrollment Status at this School
+          </label>
+          <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #fff; font-size: 13px;">
+              <input type="radio" name="enrollment_status_radio" id="enrollment_status_new" value="new" checked style="accent-color: #6366f1;">
+              <span><strong>No</strong> - New learner admission application (First-time applicant)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #fff; font-size: 13px;">
+              <input type="radio" name="enrollment_status_radio" id="enrollment_status_existing" value="existing" style="accent-color: #6366f1;">
+              <span><strong>Yes</strong> - Child is already enrolled in this school (Link Parent Account)</span>
+            </label>
+          </div>
+
+          <!-- Lookup Card for Already Enrolled Learner -->
+          <div id="enrolled-learner-lookup-box" style="display: none; margin-top: 14px; padding: 14px; background: rgba(15, 23, 42, 0.9); border: 1px dashed #6366f1; border-radius: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <span style="font-size: 1.1rem;">🔍</span>
+              <strong style="color: #818cf8; font-size: 13px;">Verify Currently Enrolled Child Details</strong>
+            </div>
+            <p style="color: #94a3b8; font-size: 12px; margin-bottom: 12px; line-height: 1.5;">
+              Enter your child's Learner Number or South African ID Number and names as registered at the selected school. The system will verify and link your parent profile.
+            </p>
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="lookup_learner_number">Official Learner Number</label>
+                <input type="text" id="lookup_learner_number" placeholder="e.g. 20260012 (numbers only)" data-type="numeric-only">
+                <div class="field-error"></div>
+              </div>
+              <div class="form-group">
+                <label for="lookup_id_number">Child South African ID Number</label>
+                <input type="text" id="lookup_id_number" maxlength="13" placeholder="13 digits (numbers only)" data-type="numeric-only">
+                <div class="field-error"></div>
+              </div>
+              <div class="form-group">
+                <label for="lookup_first_name">Child First Name</label>
+                <input type="text" id="lookup_first_name" placeholder="e.g. Thabo (letters only)" data-type="text-only">
+                <div class="field-error"></div>
+              </div>
+              <div class="form-group">
+                <label for="lookup_surname">Child Surname</label>
+                <input type="text" id="lookup_surname" placeholder="e.g. Molefe (letters only)" data-type="text-only">
+                <div class="field-error"></div>
+              </div>
+            </div>
+            <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <button type="button" id="btn-verify-enrolled-child" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;">
+                🔍 Verify Enrolled Learner
+              </button>
+              <div id="lookup-verify-spinner" style="display: none; font-size: 12px; color: #38bdf8;">Checking school database...</div>
+            </div>
+            <div id="enrolled-child-status-banner" style="margin-top: 12px; display: none;"></div>
+          </div>
+        </div>
+
         <div class="grid-2">
           <!-- First Names -->
           <div class="form-group">
@@ -205,6 +266,8 @@
             </select>
             <div class="hint">Official South African Home Language for CAPS subjects & curriculum allocation.</div>
             <div class="field-error"></div>
+            <!-- School Language Compatibility & Referrals Banner -->
+            <div id="language-referral-banner" style="margin-top: 10px; display: none;"></div>
           </div>
 
           <!-- Stream Selection (Grades 10-12 only) -->
@@ -519,6 +582,84 @@
           <div class="upload-title">Clinic Card / Immunization Certificate (Recommended for Grade 8)</div>
           <div class="upload-desc">Optional health records file</div>
           <div class="upload-preview"></div>
+        </div>
+
+        <!-- ================= APPLICATION FEE PAYMENT SELECTION ================= -->
+        <div class="form-group full-width" style="background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 14px; padding: 22px; margin-top: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+            <h3 style="color: #34d399; font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; margin: 0;">
+              💳 Application Fee Processing (R250.00)
+            </h3>
+            <span style="background: rgba(16, 185, 129, 0.2); color: #34d399; font-size: 12px; font-weight: 700; padding: 4px 14px; border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.4);">
+              Admission Fee: R250.00
+            </span>
+          </div>
+          <p style="color: #94a3b8; font-size: 12.5px; line-height: 1.6; margin-bottom: 16px;">
+            To expedite processing, you can pay the <strong>R250.00 application fee</strong> immediately online, or opt to receive official school banking details via email to pay via EFT or ATM deposit within <strong>7 days</strong>.
+          </p>
+
+          <input type="hidden" id="payment_method_input" name="payment_method" value="card">
+          <input type="hidden" id="pay_now_input" name="pay_now" value="true">
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;" class="payment-method-grid">
+            <!-- Option A: Pay Now -->
+            <label id="payment-choice-card-now" style="background: rgba(30, 41, 59, 0.7); border: 2px solid #6366f1; border-radius: 12px; padding: 14px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; transition: all 0.2s ease;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <input type="radio" name="payment_choice_radio" id="pay_choice_now" value="pay_now" checked style="accent-color: #6366f1;">
+                <span style="font-weight: 700; color: #fff; font-size: 13px;">💳 Pay Online Immediately</span>
+              </div>
+              <span style="font-size: 11px; color: #94a3b8; margin-left: 24px; line-height: 1.4;">
+                Instant card / EFT payment. Application fee verified immediately for fast-track processing.
+              </span>
+            </label>
+
+            <!-- Option B: Pay Later via EFT (7 days) -->
+            <label id="payment-choice-card-later" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 14px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; transition: all 0.2s ease;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <input type="radio" name="payment_choice_radio" id="pay_choice_later" value="eft_later" style="accent-color: #6366f1;">
+                <span style="font-weight: 700; color: #fff; font-size: 13px;">🏦 Pay via School Bank Account (7 Days)</span>
+              </div>
+              <span style="font-size: 11px; color: #94a3b8; margin-left: 24px; line-height: 1.4;">
+                Receive an email with school banking details & reference. You have 7 days to pay. A reminder is sent 3 days before deadline.
+              </span>
+            </label>
+          </div>
+
+          <!-- Instant Card Checkout Details (Shown when Pay Now is active) -->
+          <div id="pay-now-details-card" style="margin-top: 14px; padding: 14px; background: rgba(30, 41, 59, 0.5); border-radius: 10px; border: 1px solid rgba(99, 102, 241, 0.3);">
+            <div style="font-size: 12px; color: #cbd5e1; font-weight: 600; margin-bottom: 8px;">
+              Demo Secure Card Payment (Fee: R250.00):
+            </div>
+            <div class="grid-3">
+              <div class="form-group">
+                <label for="demo_card_number" style="font-size: 11px;">Card Number</label>
+                <input type="text" id="demo_card_number" placeholder="4000 1234 5678 9010 (numbers only)" maxlength="19" data-type="numeric-only" value="4000123456789010">
+                <div class="field-error"></div>
+              </div>
+              <div class="form-group">
+                <label for="demo_card_exp" style="font-size: 11px;">Expiry (MM/YY)</label>
+                <input type="text" id="demo_card_exp" placeholder="12/28" maxlength="5" value="12/28">
+              </div>
+              <div class="form-group">
+                <label for="demo_card_cvv" style="font-size: 11px;">CVV</label>
+                <input type="text" id="demo_card_cvv" placeholder="123 (numbers only)" maxlength="4" data-type="numeric-only" value="888">
+                <div class="field-error"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- EFT Banking Details Preview (Shown when Pay Later is active) -->
+          <div id="pay-later-details-card" style="display: none; margin-top: 14px; padding: 14px; background: rgba(30, 41, 59, 0.5); border-radius: 10px; border: 1px solid rgba(245, 158, 11, 0.3);">
+            <div style="font-size: 12px; color: #fbbf24; font-weight: 700; margin-bottom: 6px;">
+              🏛️ School Banking Details Preview:
+            </div>
+            <div id="school-bank-info-box" style="font-size: 12px; color: #cbd5e1; line-height: 1.6;">
+              Loading official banking details for selected school...
+            </div>
+            <div style="margin-top: 8px; font-size: 11px; color: #94a3b8; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;">
+              ⏳ <strong>7-Day Payment Deadline:</strong> Payment must reflect within 7 days. You will receive an automated email reminder 3 days before the deadline.
+            </div>
+          </div>
         </div>
 
         <!-- AI Verification Guarantee Notice -->

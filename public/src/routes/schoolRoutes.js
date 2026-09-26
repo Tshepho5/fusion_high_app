@@ -13,6 +13,7 @@ router.post('/applications/:id/decision', auth, requireRole(['admin']), schoolCo
 // Public route to list schools and view current active school
 router.get('/', schoolController.getAllSchools);
 router.get('/current', schoolController.getCurrentSchool);
+router.get('/check-language', schoolController.checkLanguageOffer);
 router.get('/:slug', schoolController.getSchoolBySlug);
 
 // Admin-only route to update school settings and colors

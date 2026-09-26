@@ -374,6 +374,7 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
           (c: any, index: number, self: any[]) => index === self.findIndex((o: any) => o.id === c.id)
         );
         setContacts(uniqueContacts);
+        setError(null);
         
         // NEVER overwrite or jump away from an already active contact selection!
         setSelectedContact((prev: any) => {
@@ -390,8 +391,12 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
       })
       .catch((err) => {
         console.error('Failed to load communication contacts:', err);
-        setError('Could not connect to messaging service.');
-        setContacts([]);
+        setContacts((prev) => {
+          if (prev.length === 0) {
+            setError(err?.response?.data?.error || 'Could not connect to messaging service.');
+          }
+          return prev;
+        });
       })
       .finally(() => setLoading(false));
   };

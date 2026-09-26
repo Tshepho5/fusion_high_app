@@ -645,3 +645,90 @@ exports.decideParentApplication = async (req, res) => {
         res.status(500).json({ error: err.message || 'Failed to approve parent application.' });
     }
 };
+
+/**
+ * Verify whether a child is already enrolled in a specific school (Scenario 3)
+ */
+exports.verifyEnrolledChild = async (req, res) => {
+    try {
+        const { school_id = 1, learner_number, first_name, surname, id_number, grade } = req.body;
+        const cleanId = (id_number || '').toString().replace(/\D/g, '').trim();
+        const cleanLrn = (learner_number || '').trim();
+        const cleanFirst = (first_name || '').trim();
+        const cleanSur = (surname || '').trim();
+
+        if (!cleanLrn && !cleanId && (!cleanFirst || !cleanSur)) {
+            return res.status(400).json({ 
+                found: false,
+                error: 'Please provide either the Official Learner Number, South African ID Number, or Student Full Name.' 
+            });
+        }
+
+        let query = `
+            SELECT c.*, s.name as school_name, cl.name as class_name, u.email as learner_email
+            FROM children c
+            LEFT JOIN schools s ON c.school_id = s.id
+            LEFT JOIN classes cl ON c.class_id = cl.id
+            LEFT JOIN users u ON c.learner_user_id = u.id
+            WHERE 1=1
+        `;
+        const params = [];
+
+        if (school_id) {
+            params.push(parseInt(school_id, 10));
+            query += ` AND (c.school_id = $${params.length} OR c.school_id IS NULL)`;
+        }
+
+        let matchConditions = [];
+        if (cleanLrn) {
+            params.push(cleanLrn);
+            matchConditions.push(`c.learner_number ILIKE $${params.length}`);
+        }
+        if (cleanId) {
+            params.push(cleanId);
+            matchConditions.push(`c.id_number = $${params.length}`);
+        }
+        if (cleanFirst && cleanSur) {
+            params.push(`%${cleanFirst}%`);
+            const p1 = params.length;
+            params.push(`%${cleanSur}%`);
+            const p2 = params.length;
+            matchConditions.push(`(c.full_name ILIKE $${p1} AND c.surname ILIKE $${p2})`);
+        }
+
+        if (matchConditions.length > 0) {
+            query += ` AND (${matchConditions.join(' OR ')})`;
+        }
+
+        const { rows } = await db.query(query, params);
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                found: false,
+                error: 'No enrolled learner found matching the provided details in this school. Please verify the Learner Number, Name, and National ID Number, or submit a new admission application if they are not yet enrolled.'
+            });
+        }
+
+        const child = rows[0];
+        res.json({
+            found: true,
+            child: {
+                id: child.id,
+                full_name: child.full_name,
+                surname: child.surname,
+                learner_number: child.learner_number,
+                grade: child.grade,
+                stream: child.stream,
+                class_name: child.class_name || `Grade ${child.grade}A`,
+                school_name: child.school_name || 'Fusion High School',
+                school_id: child.school_id || 1,
+                already_linked: !!child.parent_id
+            },
+            message: `Enrolled student verified: ${child.full_name} ${child.surname} (Grade ${child.grade}, Ref: ${child.learner_number}).`
+        });
+    } catch (err) {
+        console.error('Error verifying enrolled child:', err);
+        res.status(500).json({ found: false, error: 'Database verification failed: ' + err.message });
+    }
+};
+
