@@ -34,6 +34,14 @@ flock -w 120 9
 if ! pg_isready -h 127.0.0.1 -p 5432 -q; then
   pg_ver="$(ls /etc/postgresql 2>/dev/null | sort -V | tail -n 1 || true)"
   if [[ -n "$pg_ver" ]]; then
+    pidfile="/var/lib/postgresql/${pg_ver}/main/postmaster.pid"
+    # Snapshots taken while PostgreSQL is running leave a pid file for a dead process.
+    if sudo test -f "$pidfile"; then
+      oldpid="$(sudo head -n 1 "$pidfile" 2>/dev/null || true)"
+      if [[ -z "$oldpid" ]] || ! ps -p "$oldpid" >/dev/null 2>&1; then
+        sudo rm -f "$pidfile"
+      fi
+    fi
     sudo pg_ctlcluster "$pg_ver" main start || sudo service postgresql start
   else
     sudo service postgresql start
