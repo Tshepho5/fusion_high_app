@@ -143,6 +143,7 @@ const uploadChatMessage = multer({
 
 // Security Middleware
 app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
@@ -187,12 +188,19 @@ app.use('/api/register', authLimiter);
 app.use('/api/', apiLimiter);
 
 // General Middleware
+const productionOrigins = [
+  'https://fusion-high-app.web.app',
+  'https://fusion-high-app.firebaseapp.com',
+];
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:4000,http://127.0.0.1:4000')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
 if (process.env.APP_URL) allowedOrigins.push(process.env.APP_URL.trim());
 if (process.env.CLIENT_URL) allowedOrigins.push(process.env.CLIENT_URL.trim());
+for (const origin of productionOrigins) {
+  if (!allowedOrigins.includes(origin)) allowedOrigins.push(origin);
+}
 
 app.use(cors({
   origin(origin, callback) {
