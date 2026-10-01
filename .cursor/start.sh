@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Per-boot startup: PostgreSQL, local database, Express API, and Vite.
-# Safe to run more than once. Exits after the services are accepting connections.
+# Safe to run more than once. Stays attached after the services accept connections.
 set -euo pipefail
 
 if [[ -f /workspace/package.json ]]; then
