@@ -735,36 +735,43 @@ exports.decideParentApplication = async (req, res) => {
  */
 exports.verifyEnrolledChild = async (req, res) => {
     try {
-        const { learner_number, first_name, surname, id_number } = req.body;
+        const { first_name, surname, id_number, school_id } = req.body;
         const cleanId = (id_number || '').toString().replace(/\D/g, '').trim();
-        const cleanLrn = (learner_number || '').trim();
         const cleanFirst = (first_name || '').trim();
         const cleanSur = (surname || '').trim();
+        const schoolId = parseInt(school_id, 10);
 
-        if (!cleanLrn || cleanId.length !== 13 || !cleanFirst || !cleanSur) {
+        if (cleanId.length !== 13 || !cleanFirst || !cleanSur) {
             return res.status(400).json({
                 found: false,
-                error: 'The official learner number, a 13-digit ID, the first name, and the surname are all required.'
+                error: 'A 13-digit ID, the first name, and the surname are all required.'
             });
         }
 
+        const params = [cleanId, cleanFirst, cleanSur];
+        let schoolClause = '';
+        if (schoolId) {
+            params.push(schoolId);
+            schoolClause = 'AND (c.school_id = $4 OR c.school_id IS NULL)';
+        }
+
         const { rows } = await db.query(`
-            SELECT c.*, s.name as school_name, cl.name as class_name, u.email as learner_email, u.id_number
+            SELECT c.*, s.name as school_name, cl.name as class_name, u.email as learner_email, u.id_number, u.physical_address
             FROM children c
             LEFT JOIN schools s ON c.school_id = s.id
             LEFT JOIN classes cl ON c.class_id = cl.id
             JOIN users u ON c.learner_user_id = u.id
-            WHERE LOWER(TRIM(c.learner_number)) = LOWER(TRIM($1))
-              AND regexp_replace(COALESCE(u.id_number, ''), '\\D', '', 'g') = $2
-              AND LOWER(TRIM(c.full_name)) = LOWER(TRIM($3))
-              AND LOWER(TRIM(c.surname)) = LOWER(TRIM($4))
+            WHERE regexp_replace(COALESCE(u.id_number, ''), '\\D', '', 'g') = $1
+              AND LOWER(TRIM(c.full_name)) = LOWER(TRIM($2))
+              AND LOWER(TRIM(c.surname)) = LOWER(TRIM($3))
+              ${schoolClause}
             LIMIT 1
-        `, [cleanLrn, cleanId, cleanFirst, cleanSur]);
+        `, params);
 
         if (rows.length === 0) {
             return res.status(404).json({
                 found: false,
-                error: 'No enrolled learner found matching the learner number, 13-digit ID, first name, and surname.'
+                error: 'No enrolled learner found matching the 13-digit ID, first name, and surname.'
             });
         }
 
@@ -777,6 +784,8 @@ exports.verifyEnrolledChild = async (req, res) => {
                 surname: child.surname,
                 learner_number: child.learner_number,
                 grade: child.grade,
+                home_language: child.home_language || null,
+                physical_address: child.physical_address || null,
                 stream: child.stream,
                 class_name: child.class_name || `Grade ${child.grade}A`,
                 school_name: child.school_name || 'Fusion High School',

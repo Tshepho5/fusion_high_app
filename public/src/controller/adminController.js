@@ -815,13 +815,19 @@ exports.createLearner = async (req, res) => {
         class_name,
         stream,
         subjects,
-        parent_id
+        parent_id,
+        home_language
     } = req.body;
 
     if (!full_name || !surname) {
         return res.status(400).json({ error: 'Full name and surname are required to register a learner.' });
     }
     if (rejectNameDigits(res, full_name, surname)) return;
+
+    const schoolId = parseInt(req.user?.school_id, 10);
+    if (!schoolId) {
+        return res.status(400).json({ error: 'Sign in as the school admin before enrolling learners for that school.' });
+    }
 
     const learnerGrade = grade ? parseInt(grade, 10) : 10;
     const assignedStream = stream || (learnerGrade >= 10 ? 'Science' : 'General');
@@ -888,8 +894,8 @@ exports.createLearner = async (req, res) => {
         }
 
         const userInsertQuery = `
-            INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, phone, physical_address)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, phone, physical_address, school_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             RETURNING id, email, full_name, surname, phone;
         `;
         const userRes = await db.query(userInsertQuery, [
@@ -902,13 +908,14 @@ exports.createLearner = async (req, res) => {
             dobForDb,
             gender || null,
             phone || null,
-            physical_address || null
+            physical_address || null,
+            schoolId
         ]);
         const newUserId = userRes.rows[0].id;
 
         const childInsertQuery = `
-            INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, subjects, school_id, home_language)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             RETURNING *;
         `;
         const childRes = await db.query(childInsertQuery, [
@@ -920,7 +927,9 @@ exports.createLearner = async (req, res) => {
             learnerGrade,
             targetClassId,
             assignedStream,
-            subsArray
+            subsArray,
+            schoolId,
+            home_language || 'English'
         ]);
 
         await db.query('COMMIT');

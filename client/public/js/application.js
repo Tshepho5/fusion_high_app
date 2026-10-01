@@ -233,12 +233,28 @@ function initEnrolledLearnerLookup() {
   const spinner = document.getElementById('lookup-verify-spinner');
   const resultBanner = document.getElementById('enrolled-child-status-banner');
 
+  function setNewLearnerFormVisible(visible) {
+    const details = document.getElementById('new-learner-details');
+    if (!details) return;
+    details.style.display = visible ? '' : 'none';
+    details.querySelectorAll('input, select, textarea').forEach((el) => {
+      if (visible) {
+        if (el.dataset.wasRequired === 'true') el.setAttribute('required', 'required');
+      } else if (el.required) {
+        el.dataset.wasRequired = 'true';
+        el.removeAttribute('required');
+      }
+    });
+  }
+
   function updateStatusDisplay() {
     if (radioExisting && radioExisting.checked) {
       if (lookupBox) lookupBox.style.display = 'block';
+      setNewLearnerFormVisible(false);
       if (scenarioInput) scenarioInput.value = 'existing_learner';
     } else {
       if (lookupBox) lookupBox.style.display = 'none';
+      setNewLearnerFormVisible(true);
       if (scenarioInput) scenarioInput.value = 'new';
       if (existingLearnerIdInput) existingLearnerIdInput.value = '';
       if (resultBanner) resultBanner.style.display = 'none';
@@ -260,15 +276,14 @@ function initEnrolledLearnerLookup() {
     btnVerify.addEventListener('click', async () => {
       const schoolSelect = document.getElementById('school_id');
       const schoolId = schoolSelect ? schoolSelect.value : '';
-      const learnerNo = (document.getElementById('lookup_learner_number')?.value || '').trim();
       const idNum = (document.getElementById('lookup_id_number')?.value || '').trim();
       const firstName = (document.getElementById('lookup_first_name')?.value || '').trim();
       const surname = (document.getElementById('lookup_surname')?.value || '').trim();
 
-      if (!learnerNo || idNum.replace(/\D/g, '').length !== 13 || !firstName || !surname) {
+      if (idNum.replace(/\D/g, '').length !== 13 || !firstName || !surname) {
         if (resultBanner) {
           resultBanner.style.display = 'block';
-          resultBanner.innerHTML = `<div style="padding:10px; background:rgba(239,68,68,0.2); border:1px solid #ef4444; border-radius:8px; color:#fca5a5;">Enter the official learner number, the 13-digit ID, the first name, and the surname. All four must match the enrolled learner.</div>`;
+          resultBanner.innerHTML = `<div style="padding:10px; background:rgba(239,68,68,0.2); border:1px solid #ef4444; border-radius:8px; color:#fca5a5;">Enter the 13-digit ID, the first name, and the surname. All three must match the enrolled learner.</div>`;
         }
         return;
       }
@@ -282,7 +297,6 @@ function initEnrolledLearnerLookup() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             school_id: schoolId,
-            learner_number: learnerNo,
             id_number: idNum,
             first_name: firstName,
             surname: surname
@@ -300,9 +314,20 @@ function initEnrolledLearnerLookup() {
           const fnEl = document.getElementById('first_name');
           const snEl = document.getElementById('surname');
           const grEl = document.getElementById('grade_applied');
+          const idEl = document.getElementById('id_number');
+          const langEl = document.getElementById('home_language');
+          const addressEl = document.getElementById('physical_address');
           if (fnEl) { fnEl.value = data.child.full_name; fnEl.setAttribute('readonly', 'true'); }
           if (snEl) { snEl.value = data.child.surname; snEl.setAttribute('readonly', 'true'); }
+          if (idEl) {
+            idEl.value = idNum.replace(/\D/g, '');
+            idEl.dispatchEvent(new Event('input', { bubbles: true }));
+          }
           if (grEl && data.child.grade) { grEl.value = String(data.child.grade); grEl.dispatchEvent(new Event('change')); }
+          if (langEl && data.child.home_language) langEl.value = data.child.home_language;
+          if (addressEl && !addressEl.value.trim()) {
+            addressEl.value = data.child.physical_address || 'Recorded at the school';
+          }
         } else {
           isEnrolledLearnerVerified = false;
           if (existingLearnerIdInput) existingLearnerIdInput.value = '';
@@ -567,11 +592,13 @@ function validateStep(step) {
 
   if (step === 1) {
     const isExistingRadio = document.getElementById('enrollment_status_existing');
-    if (isExistingRadio && isExistingRadio.checked && !isEnrolledLearnerVerified) {
-      showError('lookup_learner_number', 'Verify the enrolled learner before continuing. The learner number, 13-digit ID, first name, and surname must all match.');
-      if (!firstInvalidElement) firstInvalidElement = document.getElementById('lookup_learner_number');
-      isValid = false;
-    }
+    if (isExistingRadio && isExistingRadio.checked) {
+      if (!isEnrolledLearnerVerified) {
+        showError('lookup_id_number', 'Verify the enrolled learner before continuing. The 13-digit ID, first name, and surname must match.');
+        if (!firstInvalidElement) firstInvalidElement = document.getElementById('lookup_id_number');
+        isValid = false;
+      }
+    } else {
 
     const firstName = document.getElementById('first_name');
     const surname = document.getElementById('surname');
@@ -636,6 +663,7 @@ function validateStep(step) {
       showError('learner_phone', 'Invalid phone number. Must start with +27 or 0, followed by 9 digits.');
       if (!firstInvalidElement) firstInvalidElement = phone;
       isValid = false;
+    }
     }
   }
 

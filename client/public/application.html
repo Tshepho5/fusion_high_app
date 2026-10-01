@@ -112,15 +112,10 @@
           <div id="enrolled-learner-lookup-box" style="display: none; margin-top: 14px; padding: 14px; background: rgba(15, 23, 42, 0.9); border: 1px dashed #6366f1; border-radius: 10px;">
             <strong style="color: #818cf8; font-size: 13px;">Match the enrolled learner</strong>
             <p style="color: #94a3b8; font-size: 12px; margin: 8px 0 12px; line-height: 1.5;">
-              The official learner number, the 13-digit ID, the first name, and the surname must all match.
+              The 13-digit ID, the first name, and the surname must match the learner the school has already entered.
             </p>
             <div class="grid-2">
-              <div class="form-group">
-                <label for="lookup_learner_number">Official Learner Number</label>
-                <input type="text" id="lookup_learner_number" placeholder="Learner number">
-                <div class="field-error"></div>
-              </div>
-              <div class="form-group">
+              <div class="form-group full-width">
                 <label for="lookup_id_number">Child South African ID Number</label>
                 <input type="text" id="lookup_id_number" maxlength="13" placeholder="13 digits" data-type="numeric-only">
                 <div class="field-error"></div>
@@ -144,6 +139,7 @@
           </div>
         </div>
 
+        <div id="new-learner-details">
         <div class="grid-2">
           <!-- First Names -->
           <div class="form-group">
@@ -280,6 +276,7 @@
             <div class="hint">Include House/Stand number, Street Name, Suburb, City, and Postal Code.</div>
             <div class="field-error"></div>
           </div>
+        </div>
         </div>
       </div>
 
