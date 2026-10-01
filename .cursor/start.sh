@@ -65,12 +65,12 @@ listening() {
 }
 
 if ! listening 4000; then
-  setsid nohup npm start >> /tmp/fusion-api.log 2>&1 < /dev/null 9>&- &
+  npm start >> /tmp/fusion-api.log 2>&1 9>&- &
   echo $! > /tmp/fusion-api.pid
 fi
 
 if ! listening 3000; then
-  setsid nohup npm --prefix client run dev -- --host 0.0.0.0 --port 3000 >> /tmp/fusion-vite.log 2>&1 < /dev/null 9>&- &
+  npm --prefix client run dev -- --host 0.0.0.0 --port 3000 >> /tmp/fusion-vite.log 2>&1 9>&- &
   echo $! > /tmp/fusion-vite.pid
 fi
 
@@ -103,3 +103,5 @@ if [[ "$vite_ok" -ne 1 ]]; then
 fi
 
 echo "Fusion High dev stack is up: API http://127.0.0.1:4000  Vite http://127.0.0.1:3000"
+# Stay attached so PostgreSQL, the API, and Vite are not torn down when startup exits.
+wait
