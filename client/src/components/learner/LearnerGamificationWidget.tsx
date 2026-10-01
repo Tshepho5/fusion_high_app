@@ -155,9 +155,6 @@ export const LearnerGamificationWidget: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold font-display text-white">CAPS Achievement Badges</h3>
-                  <p className="text-xs text-slate-400">
-                    Earn XP and unlock honours across Mathematics, Sciences, Quizzes, and Perfect Attendance.
-                  </p>
                 </div>
               </div>
               <button
@@ -191,7 +188,6 @@ export const LearnerGamificationWidget: React.FC = () => {
                           <Lock className="w-3 h-3 text-slate-500" />
                         )}
                       </div>
-                      <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">{b.description}</p>
                       <div className="flex items-center gap-2 mt-2">
                         <Badge variant={b.unlocked ? 'amber' : 'slate'} size="sm">
                           {b.category}

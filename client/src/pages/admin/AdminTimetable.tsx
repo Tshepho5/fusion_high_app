@@ -260,9 +260,6 @@ export const AdminTimetable: React.FC = () => {
             <Calendar className="w-6 h-6 text-brand-400" />
             <h2 className="text-xl font-bold font-display text-white">AI Timetable & Master Scheduling</h2>
           </div>
-          <p className="text-xs text-slate-400">
-            Intelligent 1-hour conflict-free periods (07:15 – 14:00) with educator draft review and learner auto-sync.
-          </p>
         </div>
 
         <button
@@ -645,9 +642,6 @@ export const AdminTimetable: React.FC = () => {
             </div>
             <div>
               <h3 className="text-sm font-bold text-white">FET Educator Subject Allocations (Grades 10 - 12)</h3>
-              <p className="text-xs text-slate-400">
-                Manually and optionally assign or expand subjects for high school teachers. The AI Timetable Generator strictly obeys these specializations.
-              </p>
             </div>
           </div>
           <Badge variant="indigo" size="sm">

@@ -195,9 +195,6 @@ export const LearnerSettings: React.FC = () => {
             <Sliders className="w-6 h-6 text-indigo-400" />
             <span>App & Technical Settings</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Configure visual typography, notification chimes, audio feedback, and system preferences.
-          </p>
         </div>
 
         {savedBanner && (
@@ -255,10 +252,7 @@ export const LearnerSettings: React.FC = () => {
                     <IconComp className={`w-4 h-4 ${theme === t.id ? 'text-indigo-400' : 'text-slate-500'}`} />
                     {theme === t.id && <Check className="w-3.5 h-3.5 text-indigo-400" />}
                   </div>
-                  <div>
-                    <span className="text-xs font-bold text-white">{t.label}</span>
-                    <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">{t.desc}</p>
-                  </div>
+                  <span className="text-xs font-bold text-white">{t.label}</span>
                 </button>
               );
             })}
@@ -387,10 +381,7 @@ export const LearnerSettings: React.FC = () => {
                       : 'border-white/5 bg-surface-darker text-slate-400 hover:text-white'
                   }`}
                 >
-                  <div>
-                    <span className="text-xs font-bold">{tone.label}</span>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{tone.desc}</p>
-                  </div>
+                  <span className="text-xs font-bold">{tone.label}</span>
                   <button
                     type="button"
                     onClick={(e) => {
@@ -422,7 +413,6 @@ export const LearnerSettings: React.FC = () => {
             <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-darker border border-white/5">
               <div>
                 <h4 className="text-xs font-bold text-white">Assignment Due Dates & Tasks</h4>
-                <p className="text-[11px] text-slate-400">Alert 24h before teacher homework deadlines</p>
               </div>
               <input
                 type="checkbox"
@@ -436,7 +426,6 @@ export const LearnerSettings: React.FC = () => {
             <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-darker border border-white/5">
               <div>
                 <h4 className="text-xs font-bold text-white">Teacher & Educator Messages</h4>
-                <p className="text-[11px] text-slate-400">Sound and badge alerts for new private chats</p>
               </div>
               <input
                 type="checkbox"
@@ -450,7 +439,6 @@ export const LearnerSettings: React.FC = () => {
             <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-darker border border-white/5">
               <div>
                 <h4 className="text-xs font-bold text-white">School Broadcasts & Bulletins</h4>
-                <p className="text-[11px] text-slate-400">Urgent principal updates and sports alerts</p>
               </div>
               <input
                 type="checkbox"
@@ -464,7 +452,6 @@ export const LearnerSettings: React.FC = () => {
             <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-darker border border-white/5">
               <div>
                 <h4 className="text-xs font-bold text-white">AI Tutor Revision Suggestions</h4>
-                <p className="text-[11px] text-slate-400">Weekly exam practice and formula reviews</p>
               </div>
               <input
                 type="checkbox"
@@ -483,9 +470,6 @@ export const LearnerSettings: React.FC = () => {
               <HardDrive className="w-4 h-4 text-slate-400" />
               <span>Offline Cache & Temporary Storage</span>
             </h3>
-            <p className="text-xs text-slate-400">
-              Clear local textbook caches, downloaded chapters, and dismiss flags without affecting your academic marks.
-            </p>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">

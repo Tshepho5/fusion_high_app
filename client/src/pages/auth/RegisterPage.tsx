@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService, parentApplicationService, systemControlService, classStaffService } from '../../services/api';
 import { useSchool } from '../../context/SchoolContext';
+import { intakeClosed, intakeReason } from '../../utils/admissionGate';
 import { FusionAIIcon } from '../../components/common/FusionAIIcon';
 import { SchoolRegistrationModal } from '../../components/landing/SchoolRegistrationModal';
 import {
@@ -147,6 +148,7 @@ export const RegisterPage: React.FC = () => {
       firstName: '',
       surname: '',
       idNumber: '',
+      learnerNumber: '',
       grade: '10',
       stream: 'Science',
       homeLanguage: 'isiZulu',
@@ -162,6 +164,7 @@ export const RegisterPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [portalLock, setPortalLock] = useState<{ is_locked: boolean; reason?: string } | null>(null);
+  const [schoolRegLock, setSchoolRegLock] = useState<{ is_locked: boolean; reason?: string } | null>(null);
   const [success, setSuccess] = useState(false);
   const [submittedApp, setSubmittedApp] = useState<{
     application_number: string;
@@ -232,6 +235,9 @@ export const RegisterPage: React.FC = () => {
             subjects_offered: Array.isArray(res.invite.subjects_offered) ? res.invite.subjects_offered.join(', ') : '',
             sports_coached: Array.isArray(res.invite.sports_coached) ? res.invite.sports_coached.join(', ') : ''
           }));
+          if (res.invite.isAppLocked || res.invite.isRegLocked) {
+            setTeacherError(res.invite.appLockReason || res.invite.regLockReason || 'Teacher registration is closed.');
+          }
         } else {
           setTeacherError('Invalid or expired invitation link. Please request a new invite from your school administrator.');
         }
@@ -342,20 +348,28 @@ export const RegisterPage: React.FC = () => {
   // Check portal lock status on mount
   useEffect(() => {
     systemControlService.getPortalLocks().then((res: any) => {
-      const controls = res?.controls || res;
-      let regControl = null;
-      if (Array.isArray(controls)) {
-        regControl = controls.find((c: any) => c.control_id === 'user_registration' || c.id === 'user_registration');
-      } else if (controls && typeof controls === 'object') {
-        regControl = controls.user_registration;
+      const controls = res?.controls || {};
+      if (isTeacherFlow) {
+        const teacherGate = controls.teacher_registration;
+        if (intakeClosed(teacherGate)) {
+          setTeacherError(intakeReason(teacherGate, 'Teacher registration is closed.'));
+        }
+        return;
       }
-      if (regControl && regControl.is_locked) {
-        setPortalLock({ is_locked: true, reason: regControl.locked_reason || regControl.reason || 'User registration is temporarily closed.' });
+      const parentGate = controls.parent_registration;
+      const legacyGate = controls.user_registration;
+      const closedGate = intakeClosed(parentGate) ? parentGate : (intakeClosed(legacyGate) ? legacyGate : null);
+      if (closedGate) {
+        setPortalLock({ is_locked: true, reason: intakeReason(closedGate, 'Parent registration is closed.') });
+      }
+      const schoolGate = controls.school_registration;
+      if (intakeClosed(schoolGate)) {
+        setSchoolRegLock({ is_locked: true, reason: intakeReason(schoolGate, 'School registration is closed.') });
       }
     }).catch(err => {
-      console.warn('Could not check user registration lock status:', err);
+      console.warn('Could not check registration lock status:', err);
     });
-  }, []);
+  }, [isTeacherFlow]);
 
   // Auto-populate from URL params if redirected from Application Acceptance
   React.useEffect(() => {
@@ -500,6 +514,7 @@ export const RegisterPage: React.FC = () => {
         firstName: '',
         surname: '',
         idNumber: '',
+        learnerNumber: '',
         grade: '10',
         stream: 'Science',
         homeLanguage: 'isiZulu',
@@ -546,8 +561,8 @@ export const RegisterPage: React.FC = () => {
     const item = childrenList.find(c => c.id === id);
     if (!item) return;
 
-    if (!item.firstName.trim() || !item.surname.trim()) {
-      setChildrenList(prev => prev.map(c => c.id === id ? { ...c, error: 'Please enter child first name and surname.' } : c));
+    if (!item.learnerNumber?.trim() || item.idNumber.trim().length !== 13 || !item.firstName.trim() || !item.surname.trim()) {
+      setChildrenList(prev => prev.map(c => c.id === id ? { ...c, error: 'Enter the official learner number, the 13-digit ID, the first name, and the surname.' } : c));
       return;
     }
 
@@ -558,6 +573,7 @@ export const RegisterPage: React.FC = () => {
         first_name: item.firstName.trim(),
         surname: item.surname.trim(),
         id_number: item.idNumber.trim(),
+        learner_number: item.learnerNumber.trim(),
         grade: item.grade,
         stream: item.stream
       });
@@ -657,21 +673,34 @@ export const RegisterPage: React.FC = () => {
       return;
     }
 
+    if (skipLinkingChildren) {
+      setError('Parent registration needs the official learner number, 13-digit ID, first name, and surname of an enrolled learner.');
+      return;
+    }
+
     // Process Children / Twins (Optional)
     let validatedChildren: any[] = [];
     if (!skipLinkingChildren) {
       const childErrs: Record<string, string> = {};
-      const filledChildren = childrenList.filter(c => c.firstName.trim() || c.surname.trim() || c.idNumber.trim());
+      const filledChildren = childrenList.filter(c => c.firstName.trim() || c.surname.trim() || c.idNumber.trim() || c.learnerNumber?.trim());
+
+      if (filledChildren.length === 0) {
+        setError('Parent registration needs the official learner number, 13-digit ID, first name, and surname of an enrolled learner.');
+        return;
+      }
 
       for (let i = 0; i < filledChildren.length; i++) {
         const c = filledChildren[i];
+        if (!c.learnerNumber?.trim()) {
+          childErrs[`child_${c.id}_learnerNumber`] = `Child #${i + 1} needs the official learner number.`;
+        }
         if (!c.firstName.trim()) {
           childErrs[`child_${c.id}_firstName`] = `Please provide First Name for Child #${i + 1}.`;
         }
         if (!c.surname.trim()) {
           childErrs[`child_${c.id}_surname`] = `Please provide Surname for Child #${i + 1}.`;
         }
-        if (c.idNumber && c.idNumber.length !== 13) {
+        if (c.idNumber.length !== 13) {
           childErrs[`child_${c.id}_idNumber`] = `Child #${i + 1} South African ID must be 13 digits.`;
         }
       }
@@ -686,6 +715,7 @@ export const RegisterPage: React.FC = () => {
         firstName: c.firstName.trim(),
         surname: c.surname.trim(),
         idNumber: c.idNumber.trim(),
+        learnerNumber: c.learnerNumber?.trim() || '',
         grade: parseInt(c.grade, 10) || 10,
         stream: c.stream || 'General',
         homeLanguage: c.homeLanguage || 'isiZulu',
@@ -707,7 +737,7 @@ export const RegisterPage: React.FC = () => {
         parent_type: formData.parentType,
         password: formData.password,
         confirm_password: formData.confirmPassword,
-        school_id: currentSchool?.id || 1,
+        school_id: currentSchool?.id > 0 ? currentSchool.id : undefined,
         children: validatedChildren,
         child_first_name: primaryChild.firstName || '',
         child_surname: primaryChild.surname || '',
@@ -1266,13 +1296,15 @@ export const RegisterPage: React.FC = () => {
 
           <div className="space-y-2">
             <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-bold">
-              Parent Portal Application Submitted
+              {submittedApp.status === 'linked' ? 'Parent account linked' : 'Parent Portal Application Submitted'}
             </span>
             <h2 className="text-2xl font-extrabold font-display text-white">
-              Application Under Review
+              {submittedApp.status === 'linked' ? 'You can sign in' : 'Application Under Review'}
             </h2>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Your application has been received and forwarded to school administrators at <strong className="text-white">{submittedApp.school_name || currentSchool?.name}</strong> for verification against student records.
+              {submittedApp.status === 'linked'
+                ? 'The learner number, ID, first name, and surname matched an enrolled learner. Sign in with the email and password you chose.'
+                : <>Your application has been received and forwarded to school administrators at <strong className="text-white">{submittedApp.school_name || currentSchool?.name}</strong> for verification against student records.</>}
             </p>
           </div>
 
@@ -1288,11 +1320,12 @@ export const RegisterPage: React.FC = () => {
             <div className="flex justify-between items-center text-xs">
               <span className="text-slate-400">Review Status:</span>
               <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-semibold text-[11px]">
-                Pending School Admin Approval
+                {submittedApp.status === 'linked' ? 'Linked to the enrolled learner' : 'Pending School Admin Approval'}
               </span>
             </div>
           </div>
 
+          {submittedApp.status !== 'linked' && (
           <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-left text-xs text-blue-300 leading-relaxed space-y-1">
             <p className="font-bold text-white flex items-center gap-1.5">
               <Mail className="w-4 h-4 text-blue-400" /> Acceptance Email Notice
@@ -1301,6 +1334,7 @@ export const RegisterPage: React.FC = () => {
               Once the school administrator accepts your application, you will receive an acceptance confirmation email to immediately sign into your Parent Dashboard using the password you created.
             </p>
           </div>
+          )}
 
           <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
             <button
@@ -1365,11 +1399,21 @@ export const RegisterPage: React.FC = () => {
         <div className="pt-2">
           <button
             type="button"
-            onClick={() => setIsSchoolModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/30 text-xs font-bold text-cyan-300 transition-all hover:scale-102 active:scale-98 shadow-sm cursor-pointer"
+            onClick={() => {
+              if (schoolRegLock?.is_locked) {
+                setError(schoolRegLock.reason || 'School registration is closed.');
+                return;
+              }
+              setIsSchoolModalOpen(true);
+            }}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl border text-xs font-bold transition-all shadow-sm cursor-pointer ${
+              schoolRegLock?.is_locked
+                ? 'bg-slate-800/60 border-slate-600 text-slate-300'
+                : 'bg-cyan-950/40 hover:bg-cyan-900/50 border-cyan-500/30 text-cyan-300 hover:scale-102 active:scale-98'
+            }`}
           >
             <Building2 className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Are you a School Principal? Register & Onboard Your School &rarr;</span>
+            <span>{schoolRegLock?.is_locked ? 'School registration is closed' : 'Are you a School Principal? Register & Onboard Your School →'}</span>
           </button>
         </div>
       </div>
@@ -1469,10 +1513,13 @@ export const RegisterPage: React.FC = () => {
                     </label>
                   </div>
                   <select
-                    value={currentSchool?.id || 1}
+                    value={currentSchool?.id > 0 ? currentSchool.id : ''}
                     onChange={(e) => setSchoolById(parseInt(e.target.value, 10))}
                     className="w-full rounded-xl bg-surface-dark border border-white/15 px-3 py-2.5 text-xs text-white focus:ring-2 focus:ring-brand-500 font-medium"
                   >
+                    {schoolsList.length === 0 && (
+                      <option value="" className="bg-surface-dark text-white">No school is registered yet</option>
+                    )}
                     {schoolsList.map(s => (
                       <option key={s.id} value={s.id} className="bg-surface-dark text-white">
                         {s.name}
@@ -1480,7 +1527,9 @@ export const RegisterPage: React.FC = () => {
                     ))}
                   </select>
                   <p className="text-[10px] text-slate-400 italic">
-                    All linked children and communication will be registered under this school's official DBE records.
+                    {schoolsList.length === 0
+                      ? 'A principal registers the school from the Geleza SA home page. It appears here after Geleza SA approves it.'
+                      : 'All linked children and communication will be registered under this school\'s official DBE records.'}
                   </p>
                 </div>
 
@@ -1767,9 +1816,9 @@ export const RegisterPage: React.FC = () => {
                 <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-start gap-2.5">
                   <LinkIcon className="w-4 h-4 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-bold">Child & Twin Linkage (Optional)</p>
+                    <p className="font-bold">Link an enrolled learner</p>
                     <p className="text-[11px] text-slate-300 mt-0.5">
-                      You can link <strong>1 or more learners (including twins or siblings)</strong> now, or skip this step and link them anytime from your Parent Dashboard after approval.
+                      The official learner number, 13-digit ID, first name, and surname must all match a learner who is already enrolled.
                     </p>
                   </div>
                 </div>
@@ -1899,6 +1948,26 @@ export const RegisterPage: React.FC = () => {
                                   </p>
                                 )}
                               </div>
+                            </div>
+
+                            {/* Official learner number */}
+                            <div>
+                              <label className="block text-[11px] text-slate-400 mb-1">Official Learner Number *</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. 2026001"
+                                value={child.learnerNumber || ''}
+                                onChange={(e) => updateChildField(child.id, 'learnerNumber', e.target.value)}
+                                className={`w-full rounded-xl bg-surface-dark border px-3 py-2 text-xs text-white focus:ring-2 focus:ring-brand-500 font-mono ${
+                                  fieldErrors[`child_${child.id}_learnerNumber`] ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-white/10'
+                                }`}
+                              />
+                              {fieldErrors[`child_${child.id}_learnerNumber`] && (
+                                <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                  <span>{fieldErrors[`child_${child.id}_learnerNumber`]}</span>
+                                </p>
+                              )}
                             </div>
 
                             {/* ID Number */}

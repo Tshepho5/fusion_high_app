@@ -15,6 +15,10 @@ router.delete('/ai-tutor/conversations/:id', auth, requireRole(['learner', 'teac
 router.get('/ai-tutor/life-sciences/topics', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.getLifeSciencesTopics);
 router.post('/ai-tutor/life-sciences/evaluate', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.evaluateLifeSciencesAnswer);
 
+const adaptivePracticeController = require('../controller/adaptivePracticeController');
+router.get('/adaptive/practice', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), adaptivePracticeController.getPractice);
+router.post('/adaptive/answer', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), adaptivePracticeController.submitAnswer);
+
 // Shared learning assets & DBE resources (Open to learners, teachers, admins, and parents)
 router.get('/subject-resources', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), learnerController.getSubjectResources);
 router.get('/topics', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), learnerController.getTopics);

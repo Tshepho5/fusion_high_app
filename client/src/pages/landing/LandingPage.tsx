@@ -24,6 +24,7 @@ import {
 import { HelpSupportModal } from '../../components/common/HelpSupportModal';
 import { SchoolRegistrationModal } from '../../components/landing/SchoolRegistrationModal';
 import { systemControlService } from '../../services/api';
+import { intakeClosed, intakeReason } from '../../utils/admissionGate';
 
 // Sequence phases:
 // 1. 'icon_arrival': Exactly 5 seconds while the app icon travels from deep space
@@ -44,7 +45,7 @@ export const LandingPage: React.FC = () => {
   const [isSchoolRegisterOpen, setIsSchoolRegisterOpen] = useState<boolean>(false);
 
   // Executive Portal Control Lock State
-  const [schoolRegLock, setSchoolRegLock] = useState<{ is_locked: boolean; locked_reason?: string } | null>(null);
+  const [schoolRegLock, setSchoolRegLock] = useState<{ is_locked?: boolean; effectively_closed?: boolean; locked_reason?: string; public_reason?: string } | null>(null);
   const [showLockedModal, setShowLockedModal] = useState<boolean>(false);
 
   useEffect(() => {
@@ -55,13 +56,7 @@ export const LandingPage: React.FC = () => {
     }).catch(() => {});
   }, []);
 
-  const handleRegisterSchoolClick = () => {
-    if (schoolRegLock?.is_locked) {
-      setShowLockedModal(true);
-    } else {
-      setIsSchoolRegisterOpen(true);
-    }
-  };
+  const schoolIntakeClosed = intakeClosed(schoolRegLock);
 
   // Animation sequence states
   const [phase, setPhase] = useState<SequencePhase>('icon_arrival');
@@ -153,7 +148,7 @@ export const LandingPage: React.FC = () => {
                 Institutional Registration Locked
               </h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                {schoolRegLock?.locked_reason || 'School registration is currently locked by Geleza SA Executives.'}
+                {intakeReason(schoolRegLock, 'School registration is currently closed.')}
               </p>
             </div>
 
@@ -202,16 +197,21 @@ export const LandingPage: React.FC = () => {
           {/* Header Controls */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Controlled School Registration CTA: Only appears when NOT locked by admin */}
-            {!schoolRegLock?.is_locked && (
-              <button
-                onClick={handleRegisterSchoolClick}
-                className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full font-bold text-xs border transition-all hover:scale-105 active:scale-95 cursor-pointer bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white shadow-[0_0_15px_rgba(56,189,248,0.35)] border-cyan-400/40"
-                title="Register School"
-              >
-                <Building2 className="w-3.5 h-3.5 text-cyan-100" />
-                <span>Register School</span>
-              </button>
-            )}
+            <button
+              onClick={() => {
+                if (schoolIntakeClosed) setShowLockedModal(true);
+                else setIsSchoolRegisterOpen(true);
+              }}
+              className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full font-bold text-xs border transition-all hover:scale-105 active:scale-95 cursor-pointer ${
+                schoolIntakeClosed
+                  ? 'bg-slate-200 text-slate-700 border-slate-300 dark:bg-white/10 dark:text-slate-200 dark:border-white/15'
+                  : 'bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white shadow-[0_0_15px_rgba(56,189,248,0.35)] border-cyan-400/40'
+              }`}
+              title={schoolIntakeClosed ? 'School applications are closed' : 'Register School'}
+            >
+              {schoolIntakeClosed ? <Lock className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5 text-cyan-100" />}
+              <span>{schoolIntakeClosed ? 'School applications closed' : 'Register School'}</span>
+            </button>
 
             <button
               onClick={() => setIsAboutOpen(true)}
@@ -326,9 +326,9 @@ export const LandingPage: React.FC = () => {
 
           {/* Glowing Circular "Get Started" Action Menu */}
           <div
-            className={`w-full flex flex-col items-center justify-center pt-2 transition-all duration-700 ease-out transform-gpu ${
+            className={`w-full flex flex-col items-center justify-center pt-2 transition-all duration-700 ease-out ${
               phase === 'ready'
-                ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto'
+                ? 'opacity-100 pointer-events-auto'
                 : 'opacity-0 translate-y-8 scale-90 pointer-events-none'
             }`}
           >

@@ -3,15 +3,10 @@ const router = express.Router();
 const systemController = require('../controller/systemController');
 const { auth } = require('../../../authMiddleware');
 
-/**
- * Gatekeeper middleware: Strictly restricts access to 202247878@myturf.ul.ac.za (Master Admin)
- */
 const requireMasterAdmin = (req, res, next) => {
-  const email = (req.user?.email || '').toLowerCase().trim();
-  const isMaster = email === '202247878@myturf.ul.ac.za' || req.user?.is_superadmin;
-  if (!isMaster) {
+  if (!req.user?.is_superadmin) {
     return res.status(403).json({
-      error: 'Access restricted: Only Master Executive Admin (202247878@myturf.ul.ac.za) has authorization for this action.'
+      error: 'Access restricted to a master administrator.'
     });
   }
   next();

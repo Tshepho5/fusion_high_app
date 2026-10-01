@@ -7,6 +7,8 @@ import {
   LayoutGrid,
 } from 'lucide-react';
 import api from '../../services/api';
+import { useSchool } from '../../context/SchoolContext';
+import { moduleAllowed } from '../../utils/schoolModules';
 
 export type TeacherPrimaryTab = 'home' | 'calendar' | 'more' | 'messages' | 'profile';
 
@@ -45,6 +47,7 @@ export const getPrimaryTabFromActive = (tab: string): TeacherPrimaryTab => {
     case 'ai-tools':
     case 'inter-school':
     case 'assessments':
+    case 'early-warning':
     case 'assignments':
     case 'attendance':
     case 'conduct':
@@ -64,6 +67,7 @@ export const TeacherNavigationBar: React.FC<TeacherNavigationBarProps> = ({
   className = '',
 }) => {
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const { currentSchool } = useSchool();
 
   // Poll for unread message count
   useEffect(() => {
@@ -137,12 +141,12 @@ export const TeacherNavigationBar: React.FC<TeacherNavigationBarProps> = ({
       className={`relative select-none ${className}`}
     >
       {/* Outer Floating Bar Container (Sleek Obsidian Pill Bar) */}
-      <div className="relative flex items-center justify-between sm:justify-center gap-1 sm:gap-3 p-1.5 sm:p-2 rounded-full bg-[#0D1620]/95 backdrop-blur-2xl border border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.65)] ring-1 ring-white/5 transition-all duration-300">
+      <div className="relative flex items-center justify-between sm:justify-center xl:justify-between xl:px-8 gap-1 sm:gap-3 p-1.5 sm:p-2 rounded-full bg-[#0D1620]/95 backdrop-blur-2xl border border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.65)] ring-1 ring-white/5 transition-all duration-300">
         {/* Ambient Subtle Cyan Underlay Glow */}
         <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-cyan-500/15 via-teal-500/15 to-cyan-500/15 blur-lg -z-10 pointer-events-none" />
         
         {/* Nav Items */}
-        {navItems.map((item) => {
+        {navItems.filter((item) => moduleAllowed('teacher', item.targetTab, currentSchool.teacher_modules)).map((item) => {
           const IconComp = item.icon;
           const isActive = primaryTab === item.id;
 

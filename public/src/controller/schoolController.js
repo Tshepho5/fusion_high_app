@@ -2,18 +2,15 @@ const db = require('../../../db/db');
 const bcrypt = require('bcryptjs');
 const emailService = require('../services/emailService');
 const { isControlLocked } = require('./systemController');
-
-// Fallback seed data in case table is booting: Only Geleza SA and Fusion High School
-const FALLBACK_SCHOOLS = [
-  { id: 1, name: 'Geleza SA', slug: 'geleza-sa', domain: 'gelezasa.co.za', emis_number: '911220001', circuit: 'Polokwane Central Circuit', district: 'Capricorn South', province: 'Limpopo', physical_address: 'Polokwane Central, Limpopo, 0700', contact_email: 'admin@gelezasa.co.za', contact_phone: '+27 15 291 0000', principal_name: 'Dr. T. Makola', logo_url: '/assets/schools/geleza-sa.svg', badge_url: '/assets/schools/geleza-sa.svg', primary_color: '#0284c7', secondary_color: '#06b6d4', accent_color: '#f59e0b', motto: 'Geleza Smart, The Future Is Thine', curriculum_type: 'CAPS (DBE Limpopo)', grade_range: '8-12', is_active: true },
-  { id: 2, name: 'Fusion High School', slug: 'fusion-high', domain: 'fusionhigh.co.za', emis_number: '700232348', circuit: 'Tshwane West District', district: 'Tshwane West', province: 'Gauteng', physical_address: '809 Cyme Crescent, Lotus Gardens, Pretoria, 0008', contact_email: 'admin@fusionhigh.co.za', contact_phone: '+27 12 373 0000', principal_name: 'Tshepho Letlalo Makula', logo_url: '/assets/schools/fusion-secondary-lotus.svg', badge_url: '/assets/schools/fusion-secondary-lotus.svg', primary_color: '#4f46e5', secondary_color: '#06b6d4', accent_color: '#f59e0b', motto: 'Innovate, Aspire, Achieve', curriculum_type: 'CAPS (GDE Gauteng)', grade_range: '8-12', is_active: true }
-];
+const paymentHold = require('../services/paymentHold');
+const { ensureSchoolModuleColumns, linkSchoolModules } = require('../services/schoolModules');
 
 /**
- * Returns all active enrolled schools with real live database counts.
+ * Returns schools whose principal registration has been approved.
  */
 exports.getAllSchools = async (req, res) => {
   try {
+    await ensureSchoolModuleColumns();
     const query = `
       SELECT 
         s.id, s.name, s.slug, s.domain, s.emis_number, s.circuit, s.district, s.province,
@@ -21,6 +18,7 @@ exports.getAllSchools = async (req, res) => {
         s.logo_url, s.badge_url, s.primary_color, s.secondary_color, s.accent_color,
         s.motto, s.curriculum_type, s.grade_range, s.is_active, s.settings,
         s.offered_languages, s.offered_subjects, s.offered_streams,
+        s.teacher_modules, s.learner_modules,
         s.bank_name, s.account_holder, s.account_number, s.branch_code, s.account_type,
         s.application_fee, s.registration_fee,
         COALESCE((SELECT COUNT(*)::int FROM children c WHERE c.school_id::text = s.id::text), 0) AS enrolled_learners_count,
@@ -32,13 +30,10 @@ exports.getAllSchools = async (req, res) => {
       ORDER BY s.id ASC;
     `;
     const result = await db.query(query);
-    if (result.rows && result.rows.length > 0) {
-      return res.json(result.rows);
-    }
-    return res.json(FALLBACK_SCHOOLS);
+    return res.json(result.rows || []);
   } catch (err) {
-    console.error('Error fetching schools, using fallback list:', err.message);
-    res.json(FALLBACK_SCHOOLS);
+    console.error('Error fetching schools:', err.message);
+    res.status(500).json({ error: 'The school list could not be loaded.' });
   }
 };
 
@@ -48,6 +43,7 @@ exports.getAllSchools = async (req, res) => {
  */
 exports.getCurrentSchool = async (req, res) => {
   try {
+    await ensureSchoolModuleColumns();
     const requestedId = req.query.school_id || req.headers['x-school-id'] || req.user?.school_id || 1;
     const requestedSlug = req.query.slug || req.headers['x-school-slug'];
 
@@ -58,6 +54,7 @@ exports.getCurrentSchool = async (req, res) => {
         s.logo_url, s.badge_url, s.primary_color, s.secondary_color, s.accent_color,
         s.motto, s.curriculum_type, s.grade_range, s.is_active, s.settings,
         s.offered_languages, s.offered_subjects, s.offered_streams,
+        s.teacher_modules, s.learner_modules,
         s.bank_name, s.account_holder, s.account_number, s.branch_code, s.account_type,
         s.application_fee, s.registration_fee,
         COALESCE((SELECT COUNT(*)::int FROM children c WHERE c.school_id::text = s.id::text), 0) AS enrolled_learners_count,
@@ -87,11 +84,10 @@ exports.getCurrentSchool = async (req, res) => {
     if (result.rows && result.rows.length > 0) {
       return res.json(result.rows[0]);
     }
-    const matched = FALLBACK_SCHOOLS.find(s => String(s.id) === String(requestedId) || s.slug === requestedSlug) || FALLBACK_SCHOOLS[0];
-    res.json(matched);
+    return res.status(404).json({ error: 'No school is registered yet. A principal registers the school first.' });
   } catch (err) {
-    console.error('Error fetching current school, using fallback:', err.message);
-    res.json(FALLBACK_SCHOOLS[0]);
+    console.error('Error fetching current school:', err.message);
+    res.status(500).json({ error: 'The school record could not be loaded.' });
   }
 };
 
@@ -131,14 +127,10 @@ exports.checkLanguageOffer = async (req, res) => {
         school_name: school.name,
         language: requestedLanguage,
         offered_languages: offeredLangs,
-        banking_details: {
-          bank_name: school.bank_name || 'First National Bank (FNB)',
-          account_holder: school.account_holder || school.name,
-          account_number: school.account_number || '62849102841',
-          branch_code: school.branch_code || '250655',
-          application_fee: parseFloat(school.application_fee) || 250.00,
-          registration_fee: parseFloat(school.registration_fee) || 1500.00
-        }
+        banking_details: paymentHold.realBank(school),
+        application_fee: parseFloat(school.application_fee) || 250.00,
+        registration_fee: parseFloat(school.registration_fee) || 1500.00,
+        payments_waiting: !paymentHold.realBank(school)
       });
     }
 
@@ -300,12 +292,17 @@ exports.applySchool = async (req, res) => {
       secondary_color = '#06b6d4',
       application_fee_paid = 450.00,
       registration_fee_paid = 1500.00,
-      payment_reference
+      payment_reference,
+      teacher_modules,
+      learner_modules
     } = req.body;
 
     // Strict input validation
     if (!school_name || !school_name.trim()) {
       return res.status(400).json({ error: 'Official school name is strictly required.' });
+    }
+    if (/\d/.test(school_name)) {
+      return res.status(400).json({ error: 'Numbers are not allowed in this field. Please use letters only.' });
     }
 
     const cleanEmis = (emis_number || '').toString().replace(/\D/g, '');
@@ -342,6 +339,19 @@ exports.applySchool = async (req, res) => {
       return res.status(400).json({ error: 'A valid Principal work email address is required.' });
     }
 
+    if (!principal_phone || !String(principal_phone).trim()) {
+      return res.status(400).json({ error: 'Principal cellphone number is required.' });
+    }
+
+    if (!password || password.trim().length < 6) {
+      return res.status(400).json({ error: 'Choose a password of at least 6 characters. It is used only after Geleza SA approves the school.' });
+    }
+
+    const existingUser = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [principal_email.trim()]);
+    if (existingUser.rows.length > 0) {
+      return res.status(409).json({ error: 'That email already has a Geleza SA account. Use a different principal email.' });
+    }
+
     // Check if school already exists
     const existingSchool = await db.query('SELECT id, name FROM schools WHERE emis_number = $1 OR LOWER(name) = LOWER($2)', [cleanEmis, school_name.trim()]);
     if (existingSchool.rows.length > 0) {
@@ -361,80 +371,14 @@ exports.applySchool = async (req, res) => {
 
     const appNumber = `GSA-SCH-${Date.now().toString().slice(-6)}`;
     const payRef = payment_reference || `PAY-${Date.now().toString().slice(-8)}`;
-    const passHash = password && password.trim().length >= 6 ? await bcrypt.hash(password.trim(), 10) : null;
+    const passHash = await bcrypt.hash(password.trim(), 10);
 
-    // 1. Generate unique slug for school
-    let slug = school_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    const existingSlug = await db.query('SELECT id FROM schools WHERE slug = $1', [slug]);
-    if (existingSlug.rows.length > 0) {
-      slug = `${slug}-${cleanEmis.slice(-4)}`;
-    }
+    await db.query('ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS password_hash TEXT');
+    await ensureSchoolModuleColumns();
+    const linkedModules = linkSchoolModules(teacher_modules, learner_modules);
+    const chosenTeacherModules = linkedModules.teacher;
+    const chosenLearnerModules = linkedModules.learner;
 
-    // 2. Insert into schools table directly so it is immediately active and available for admissions
-    const schoolInsert = await db.query(`
-      INSERT INTO schools (
-        name, slug, domain, emis_number, circuit, district, province,
-        physical_address, contact_email, contact_phone, principal_name,
-        primary_color, secondary_color, motto, curriculum_type, grade_range,
-        offered_streams, offered_languages, offered_subjects, sace_number,
-        bank_name, account_holder, account_number, branch_code, account_type,
-        application_fee, registration_fee, is_active
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, TRUE)
-      RETURNING *;
-    `, [
-      school_name.trim(), slug, `${slug}.co.za`, cleanEmis, circuit ? circuit.trim() : null, district.trim(), province.trim(),
-      physical_address.trim(), (contact_email || principal_email || '').trim().toLowerCase(), (contact_phone || principal_phone || '').trim(),
-      `${firstName} ${surname}`, primary_color || '#0284c7', secondary_color || '#06b6d4', motto || 'Excellence in Education',
-      curriculum_type || 'CAPS (DBE)', grade_range || '8-12',
-      offered_streams || ['General', 'Science', 'Commerce'],
-      offered_languages || ['English Home Language', 'English FAL', 'Sepedi Home Language', 'isiZulu Home Language'],
-      offered_subjects || [], (principal_sace_number || req.body.principal_sace || '').toString().trim() || null,
-      req.body.bank_name || 'Standard Bank', req.body.account_holder || school_name.trim(), req.body.account_number || '20491823901',
-      req.body.branch_code || '051001', req.body.account_type || 'Cheque / Current',
-      parseFloat(application_fee_paid) || 250.00, parseFloat(registration_fee_paid) || 1500.00
-    ]);
-    const newSchool = schoolInsert.rows[0];
-
-    // 3. Create or Update Principal user account
-    let finalPassHash = passHash;
-    if (!finalPassHash) {
-      finalPassHash = await bcrypt.hash('password123', 10);
-    }
-
-    const userInsert = await db.query(`
-      INSERT INTO users (
-        email, password_hash, role_id, school_id, is_superadmin,
-        full_name, surname, id_number, phone, country
-      )
-      VALUES ($1, $2, (SELECT id FROM roles WHERE name = 'admin'), $3, FALSE, $4, $5, $6, $7, 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        password_hash = EXCLUDED.password_hash,
-        role_id = EXCLUDED.role_id,
-        school_id = EXCLUDED.school_id,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname
-      RETURNING id;
-    `, [
-      principal_email.trim().toLowerCase(), finalPassHash, newSchool.id,
-      firstName, surname, cleanId, principal_phone.trim()
-    ]);
-    const principalUserId = userInsert.rows[0].id;
-
-    // 4. Create Employee record for Principal
-    await db.query(`
-      INSERT INTO employees (user_id, full_name, surname, department_id, school_id, phone, email)
-      VALUES ($1, $2, $3, 1, $4, $5, $6)
-      ON CONFLICT (user_id) DO UPDATE SET
-        school_id = EXCLUDED.school_id,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname;
-    `, [
-      principalUserId, firstName, surname,
-      newSchool.id, principal_phone.trim(), principal_email.trim().toLowerCase()
-    ]);
-
-    // 5. Record school application with approved status
     const insertQuery = `
       INSERT INTO school_applications (
         application_number, status, school_name, emis_number, province, district, circuit,
@@ -443,15 +387,16 @@ exports.applySchool = async (req, res) => {
         principal_first_name, principal_surname, principal_id_number, principal_sace_number,
         principal_email, principal_phone, motto, primary_color, secondary_color,
         application_fee_paid, registration_fee_paid, payment_status, payment_reference, password_hash,
-        created_school_id
+        teacher_modules, learner_modules
       )
       VALUES (
-        $1, 'approved', $2, $3, $4, $5, $6,
+        $1, 'pending_review', $2, $3, $4, $5, $6,
         $7, $8, $9, $10, $11,
         $12, $13, $14,
         $15, $16, $17, $18,
         $19, $20, $21, $22, $23,
-        $24, $25, 'paid', $26, $27, $28
+        $24, $25, 'awaiting_bank', $26, $27,
+        $28::jsonb, $29::jsonb
       )
       RETURNING *;
     `;
@@ -464,13 +409,13 @@ exports.applySchool = async (req, res) => {
       offered_subjects || [],
       firstName, surname, cleanId, (principal_sace_number || req.body.principal_sace || '').toString().trim() || null,
       principal_email.trim().toLowerCase(), principal_phone.trim(), (motto || 'Excellence in Education').trim(), primary_color || '#0284c7', secondary_color || '#06b6d4',
-      parseFloat(application_fee_paid) || 450.00, parseFloat(registration_fee_paid) || 1500.00, payRef, finalPassHash,
-      newSchool.id
+      parseFloat(application_fee_paid) || 450.00, parseFloat(registration_fee_paid) || 1500.00, payRef, passHash,
+      JSON.stringify(chosenTeacherModules), JSON.stringify(chosenLearnerModules)
     ]);
 
     const createdApp = result.rows[0];
+    delete createdApp.password_hash;
 
-    // 6. Trigger instant email confirmation to Principal
     emailService.sendSchoolApplicationReceivedNotice({
       principalEmail: createdApp.principal_email,
       principalName: `${createdApp.principal_first_name} ${createdApp.principal_surname}`,
@@ -483,9 +428,8 @@ exports.applySchool = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: `School "${newSchool.name}" successfully registered and onboarded! It is now active and ready to accept learner admissions.`,
+      message: `School "${school_name.trim()}" is with Geleza SA for approval. Families can select it only after that approval.`,
       application_number: appNumber,
-      school: newSchool,
       application: createdApp
     });
   } catch (err) {
@@ -510,7 +454,11 @@ exports.getSchoolApplications = async (req, res) => {
 
     query += ' ORDER BY created_at DESC;';
     const result = await db.query(query, params);
-    res.json(result.rows);
+    res.json(result.rows.map((row) => {
+      const copy = { ...row };
+      delete copy.password_hash;
+      return copy;
+    }));
   } catch (err) {
     console.error('Error fetching school applications:', err.message);
     res.status(500).json({ error: 'Failed to retrieve school applications.' });
@@ -536,6 +484,15 @@ exports.reviewSchoolApplication = async (req, res) => {
 
     const app = appRes.rows[0];
 
+    if (app.status === 'approved') {
+      return res.status(409).json({ error: 'This school application is already approved.' });
+    }
+    if (app.status === 'declined') {
+      return res.status(409).json({ error: 'This school application was declined.' });
+    }
+
+    await ensureSchoolModuleColumns();
+
     if (decision === 'approve') {
       // 1. Generate unique slug for school
       let slug = app.school_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -544,15 +501,20 @@ exports.reviewSchoolApplication = async (req, res) => {
         slug = `${slug}-${app.emis_number.slice(-4)}`;
       }
 
+      const approvedModules = (app.teacher_modules || app.learner_modules)
+        ? linkSchoolModules(app.teacher_modules, app.learner_modules)
+        : null;
+
       // 2. Insert into schools table
       const schoolInsert = await db.query(`
         INSERT INTO schools (
           name, slug, domain, emis_number, circuit, district, province,
           physical_address, contact_email, contact_phone, principal_name,
           primary_color, secondary_color, motto, curriculum_type, grade_range,
-          offered_streams, offered_languages, offered_subjects, sace_number, is_active
+          offered_streams, offered_languages, offered_subjects, sace_number, is_active,
+          teacher_modules, learner_modules
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, TRUE)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, TRUE, $21::jsonb, $22::jsonb)
         RETURNING *;
       `, [
         app.school_name, slug, `${slug}.co.za`, app.emis_number, app.circuit, app.district, app.province,
@@ -561,16 +523,17 @@ exports.reviewSchoolApplication = async (req, res) => {
         app.curriculum_type || 'CAPS (DBE)', app.grade_range || '8-12',
         app.offered_streams || ['General', 'Science', 'Commerce', 'Tourism'],
         app.offered_languages || ['English FAL', 'Sepedi Home Language'],
-        app.offered_subjects || [], app.principal_sace_number
+        app.offered_subjects || [], app.principal_sace_number,
+        approvedModules ? JSON.stringify(approvedModules.teacher) : null,
+        approvedModules ? JSON.stringify(approvedModules.learner) : null
       ]);
 
       const newSchool = schoolInsert.rows[0];
 
       // 3. Create or Update Principal user account
-      let passHash = app.password_hash;
+      const passHash = app.password_hash;
       if (!passHash) {
-        const tempPassword = 'password123';
-        passHash = await bcrypt.hash(tempPassword, 10);
+        return res.status(400).json({ error: 'This application has no principal password. Ask the principal to register again.' });
       }
 
       const userInsert = await db.query(`
@@ -596,8 +559,8 @@ exports.reviewSchoolApplication = async (req, res) => {
 
       // 4. Create Employee record for Principal
       await db.query(`
-        INSERT INTO employees (user_id, full_name, surname, department_id, school_id, phone, email)
-        VALUES ($1, $2, $3, 1, $4, $5, $6)
+      INSERT INTO employees (user_id, full_name, surname, department_id, school_id, phone, email)
+      VALUES ($1, $2, $3, (SELECT id FROM departments ORDER BY id ASC LIMIT 1), $4, $5, $6)
         ON CONFLICT (user_id) DO UPDATE SET
           school_id = EXCLUDED.school_id,
           full_name = EXCLUDED.full_name,
@@ -626,7 +589,7 @@ exports.reviewSchoolApplication = async (req, res) => {
         principalName: `${app.principal_first_name} ${app.principal_surname}`,
         schoolName: app.school_name,
         emisNumber: app.emis_number,
-        temporaryPassword: app.password_hash ? undefined : 'password123',
+        temporaryPassword: undefined,
         loginUrl: `${baseUrl}/login`
       }).catch(err => {
         console.warn('[EMAIL NOTIFY] Could not send approval email:', err.message);
@@ -673,6 +636,37 @@ exports.reviewSchoolApplication = async (req, res) => {
   } catch (err) {
     console.error('Error reviewing school application:', err.message);
     res.status(500).json({ error: 'Failed to process application review.' });
+  }
+};
+
+exports.updateSchoolModules = async (req, res) => {
+  try {
+    await ensureSchoolModuleColumns();
+    const schoolId = parseInt(req.params.id, 10);
+    if (!schoolId) {
+      return res.status(400).json({ error: 'A school is required.' });
+    }
+    if (!req.user?.is_superadmin && Number(req.user?.school_id) !== schoolId) {
+      return res.status(403).json({ error: 'You can only choose modules for your own school.' });
+    }
+
+    const linkedModules = linkSchoolModules(req.body.teacher_modules, req.body.learner_modules);
+    const teacherModules = linkedModules.teacher;
+    const learnerModules = linkedModules.learner;
+    const updated = await db.query(
+      `UPDATE schools
+       SET teacher_modules = $1::jsonb, learner_modules = $2::jsonb
+       WHERE id = $3
+       RETURNING id, name, teacher_modules, learner_modules`,
+      [JSON.stringify(teacherModules), JSON.stringify(learnerModules), schoolId]
+    );
+    if (updated.rows.length === 0) {
+      return res.status(404).json({ error: 'School not found.' });
+    }
+    res.json({ success: true, school: updated.rows[0] });
+  } catch (err) {
+    console.error('Error saving school modules:', err.message);
+    res.status(500).json({ error: 'The school modules could not be saved.' });
   }
 };
 

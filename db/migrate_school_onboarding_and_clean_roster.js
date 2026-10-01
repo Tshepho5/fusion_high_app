@@ -65,6 +65,7 @@ async function migrateSchoolOnboardingAndCleanRoster() {
       ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS executive_notes TEXT;
       ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS declined_reason TEXT;
       ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS created_school_id INTEGER REFERENCES schools(id) ON DELETE SET NULL;
+      ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS password_hash TEXT;
     `);
 
     // 2. Add School-Specific Offerings & SACE Columns to Schools Table
@@ -126,9 +127,8 @@ async function migrateSchoolOnboardingAndCleanRoster() {
     // Executive 1: Tshepho Letlalo Makula (SuperAdmin)
     await db.query(`
       INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
-      VALUES ('admin@gelezasa.co.za', $1, $2, 1, TRUE, 'Tshepho Letlalo', 'Makula', '0209205494088', '0692606618', 'South Africa')
+      VALUES ('admin@gelezasa.co.za', $1, $2, NULL, TRUE, 'Tshepho Letlalo', 'Makula', '0209205494088', '0692606618', 'South Africa')
       ON CONFLICT (email) DO UPDATE SET
-        password_hash = EXCLUDED.password_hash,
         role_id = EXCLUDED.role_id,
         is_superadmin = TRUE,
         full_name = EXCLUDED.full_name,
@@ -138,22 +138,24 @@ async function migrateSchoolOnboardingAndCleanRoster() {
     // Executive 2: Executive Director (Geleza SA Operations)
     await db.query(`
       INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
-      VALUES ('exec@gelezasa.co.za', $1, $2, 1, TRUE, 'Geleza Executive', 'Director', '8001015099088', '0123730000', 'South Africa')
+      VALUES ('exec@gelezasa.co.za', $1, $2, NULL, TRUE, 'Geleza Executive', 'Director', '8001015099088', '0123730000', 'South Africa')
       ON CONFLICT (email) DO UPDATE SET
-        password_hash = EXCLUDED.password_hash,
         role_id = EXCLUDED.role_id,
         is_superadmin = TRUE,
         full_name = EXCLUDED.full_name,
         surname = EXCLUDED.surname;
     `, [defaultHash, adminRoleId]);
 
+    const rosterSchools = await db.query('SELECT id FROM schools WHERE id IN (2, 3)');
+    if (rosterSchools.rows.length < 2) {
+      console.log('[MIGRATION] No seeded schools. A principal registers a school before a school roster is created.');
+    } else {
     // B. 2 School Principals (Showing Multi-School Isolation between School 3 and School 2)
     // Principal 1: Makgoka High School (School 3)
     await db.query(`
       INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
       VALUES ('principal@makgoka.co.za', $1, $2, 3, FALSE, 'K. E.', 'Molepo', '8005200494082', '0152660022', 'South Africa')
       ON CONFLICT (email) DO UPDATE SET
-        password_hash = EXCLUDED.password_hash,
         role_id = EXCLUDED.role_id,
         school_id = 3,
         full_name = EXCLUDED.full_name,
@@ -165,7 +167,6 @@ async function migrateSchoolOnboardingAndCleanRoster() {
       INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
       VALUES ('principal@mountainview.co.za', $1, $2, 2, FALSE, 'M. S.', 'Phasha', '7803155494081', '0152671100', 'South Africa')
       ON CONFLICT (email) DO UPDATE SET
-        password_hash = EXCLUDED.password_hash,
         role_id = EXCLUDED.role_id,
         school_id = 2,
         full_name = EXCLUDED.full_name,
@@ -178,7 +179,6 @@ async function migrateSchoolOnboardingAndCleanRoster() {
       INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
       VALUES ('teacher.science@gelezasa.co.za', $1, $2, 3, FALSE, 'Thabang', 'Maetane', '0208285930086', '0827637087', 'South Africa')
       ON CONFLICT (email) DO UPDATE SET
-        password_hash = EXCLUDED.password_hash,
         role_id = EXCLUDED.role_id,
         school_id = 3,
         full_name = EXCLUDED.full_name,
@@ -203,7 +203,6 @@ async function migrateSchoolOnboardingAndCleanRoster() {
       INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
       VALUES ('teacher.commerce@gelezasa.co.za', $1, $2, 2, FALSE, 'Minenhle', 'Dlungwane', '0205101032085', '0711943962', 'South Africa')
       ON CONFLICT (email) DO UPDATE SET
-        password_hash = EXCLUDED.password_hash,
         role_id = EXCLUDED.role_id,
         school_id = 2,
         full_name = EXCLUDED.full_name,
@@ -246,7 +245,6 @@ async function migrateSchoolOnboardingAndCleanRoster() {
       INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country, parent_type)
       VALUES ('parent.walters@gelezasa.co.za', $1, $2, 3, FALSE, 'Sarah', 'Walters', '7905150099081', '0820000003', 'South Africa', 'Mother')
       ON CONFLICT (email) DO UPDATE SET
-        password_hash = EXCLUDED.password_hash,
         role_id = EXCLUDED.role_id,
         school_id = 3,
         full_name = EXCLUDED.full_name,
@@ -260,7 +258,6 @@ async function migrateSchoolOnboardingAndCleanRoster() {
       INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country, parent_type)
       VALUES ('parent.modiba@gelezasa.co.za', $1, $2, 2, FALSE, 'Matome', 'Modiba', '7608125099082', '0820000004', 'South Africa', 'Father')
       ON CONFLICT (email) DO UPDATE SET
-        password_hash = EXCLUDED.password_hash,
         role_id = EXCLUDED.role_id,
         school_id = 2,
         full_name = EXCLUDED.full_name,
@@ -275,7 +272,6 @@ async function migrateSchoolOnboardingAndCleanRoster() {
       INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, dob, gender, phone, country)
       VALUES ('learner.walters@gelezasa.co.za', $1, $2, 3, FALSE, 'Lerato', 'Walters', '0901014089081', '2009-01-01', 'Female', '0820000010', 'South Africa')
       ON CONFLICT (email) DO UPDATE SET
-        password_hash = EXCLUDED.password_hash,
         role_id = EXCLUDED.role_id,
         school_id = 3,
         full_name = EXCLUDED.full_name,
@@ -312,7 +308,6 @@ async function migrateSchoolOnboardingAndCleanRoster() {
       INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, dob, gender, phone, country)
       VALUES ('learner.modiba@gelezasa.co.za', $1, $2, 2, FALSE, 'Karabo', 'Modiba', '0905061234567', '2009-05-06', 'Male', '0820000020', 'South Africa')
       ON CONFLICT (email) DO UPDATE SET
-        password_hash = EXCLUDED.password_hash,
         role_id = EXCLUDED.role_id,
         school_id = 2,
         full_name = EXCLUDED.full_name,
@@ -344,13 +339,8 @@ async function migrateSchoolOnboardingAndCleanRoster() {
       ON CONFLICT (parent_id, child_id) DO NOTHING;
     `, [parent2Id, child2Id]);
 
-    console.log('[MIGRATION] Clean 2-per-role roster successfully seeded.');
-    console.log('[MIGRATION] Roster Accounts (Password for all: password123 | Admin Makola: #Makola#$5$):');
-    console.log(' - SuperAdmins: admin@gelezasa.co.za, exec@gelezasa.co.za');
-    console.log(' - Principals:  principal@makgoka.co.za (Makgoka), principal@mountainview.co.za (Mountainview)');
-    console.log(' - Teachers:    teacher.science@gelezasa.co.za (10A Science), teacher.commerce@gelezasa.co.za (10B Commerce)');
-    console.log(' - Parents:     parent.walters@gelezasa.co.za, parent.modiba@gelezasa.co.za');
-    console.log(' - Learners:    learner.walters@gelezasa.co.za, learner.modiba@gelezasa.co.za');
+    }
+    console.log('[MIGRATION] Demo roster checked. Existing passwords were left unchanged.');
 
   } catch (err) {
     console.error('[MIGRATION ERROR] Failed to run school onboarding migration:', err.message);

@@ -27,17 +27,10 @@ import { AdminMoreHub } from './AdminMoreHub';
 import { AdminDiscoverHub } from './AdminDiscoverHub';
 import { AdminCalendarHub } from './AdminCalendarHub';
 import { AdminMessagesHub } from './AdminMessagesHub';
+import { AdminNavigationBar } from '../../components/admin/AdminNavigationBar';
+import { ModulePageHeader } from '../../components/layout/WorkspaceChrome';
 import { MasterAdminExecutiveHub } from '../../components/admin/MasterAdminExecutiveHub';
 import { SchoolPerformanceMetricsView } from '../../components/admin/SchoolPerformanceMetricsView';
-import {
-  ArrowLeft,
-  ChevronRight,
-  Home,
-  LayoutGrid,
-  Compass,
-  Calendar,
-  MessageSquare,
-} from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -139,15 +132,15 @@ export const AdminDashboard: React.FC = () => {
   // Determine intelligent backtrack target
   const getBacktrackConfig = () => {
     if (activeTab === 'command-center' || activeTab === 'inter-school' || activeTab === 'bursaries') {
-      return { target: 'discover', label: 'Back to Discover', parentLabel: 'Discover', icon: Compass };
+      return { target: 'discover', label: 'Back to Discover', parentLabel: 'Discover' };
     }
     if (activeTab === 'announcements' || activeTab === 'consultations') {
-      return { target: 'messages', label: 'Back to Messages', parentLabel: 'Messages', icon: MessageSquare };
+      return { target: 'messages', label: 'Back to Messages', parentLabel: 'Messages' };
     }
     if (activeTab === 'timetable') {
-      return { target: 'calendar', label: 'Back to Calendar', parentLabel: 'Calendar', icon: Calendar };
+      return { target: 'calendar', label: 'Back to Calendar', parentLabel: 'Calendar' };
     }
-    return { target: 'more', label: 'Back to Menu', parentLabel: 'Menu', icon: LayoutGrid };
+    return { target: 'more', label: 'Back to Menu', parentLabel: 'Menu' };
   };
 
   const backtrack = getBacktrackConfig();
@@ -157,31 +150,23 @@ export const AdminDashboard: React.FC = () => {
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
-    >
-      {/* Universal Breadcrumb & Backtrack Bar for Sub-Modules */}
-      {isSubModule && (
-        <div className="flex items-center justify-between gap-3 p-3 mb-6 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 shadow-sm animate-fade-in">
-          <button
-            onClick={() => handleSelectTab(backtrack.target)}
-            className="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-surface-darker hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 hover:border-cyan-500/40 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white font-bold text-xs flex items-center gap-2 transition-all shadow-sm group cursor-pointer"
-            title={backtrack.label}
-          >
-            <ArrowLeft className="w-4 h-4 text-cyan-600 dark:text-cyan-400 group-hover:-translate-x-1 transition-transform" />
-            <span>{backtrack.label}</span>
-          </button>
-
-          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 font-semibold">
-            <button
-              onClick={() => handleSelectTab(backtrack.target)}
-              className="hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <backtrack.icon className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-              <span>{backtrack.parentLabel}</span>
-            </button>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600" />
-            <span className="text-cyan-700 dark:text-cyan-300 font-bold">{getTabTitle()}</span>
-          </div>
+      customBottomDock={
+        <div className="fixed bottom-4 inset-x-0 z-[60] flex justify-center px-2 sm:px-4 pointer-events-none">
+          <AdminNavigationBar
+            activeTab={activeTab}
+            onSelectTab={handleSelectTab}
+            className="pointer-events-auto w-full max-w-xl xl:max-w-4xl 2xl:max-w-5xl"
+          />
         </div>
+      }
+    >
+      {isSubModule && (
+        <ModulePageHeader
+          title={getTabTitle()}
+          parentLabel={backtrack.parentLabel}
+          backLabel={backtrack.label}
+          onBack={() => handleSelectTab(backtrack.target)}
+        />
       )}
 
       {/* ========================================================================= */}

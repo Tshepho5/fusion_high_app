@@ -1,6 +1,7 @@
 const db = require('../../../db/db');
 const emailService = require('../services/emailService');
 const applicationService = require('../services/applicationService');
+const { rejectNameDigits } = require('../services/lettersOnly');
 
 /**
  * Resolves the target school tenant ID from query, header, or user token.
@@ -261,13 +262,7 @@ exports.createEmployee = async (req, res) => {
     if (!full_name || !surname || !normalizedEmail) {
         return res.status(400).json({ error: 'Full name, surname, and email are required to register an employee.' });
     }
-
-    if (/\d/.test(full_name)) {
-        return res.status(400).json({ error: 'First name cannot contain numbers.' });
-    }
-    if (/\d/.test(surname)) {
-        return res.status(400).json({ error: 'Surname cannot contain numbers.' });
-    }
+    if (rejectNameDigits(res, full_name, surname)) return;
     if (phone && /[^\d+\s-]/.test(phone)) {
         return res.status(400).json({ error: 'Phone number must contain digits only.' });
     }
@@ -448,13 +443,7 @@ exports.createParent = async (req, res) => {
     if (!full_name || !surname || !normalizedEmail) {
         return res.status(400).json({ error: 'Full name, surname, and email are required to register a parent.' });
     }
-
-    if (/\d/.test(full_name)) {
-        return res.status(400).json({ error: 'First name cannot contain numbers.' });
-    }
-    if (/\d/.test(surname)) {
-        return res.status(400).json({ error: 'Surname cannot contain numbers.' });
-    }
+    if (rejectNameDigits(res, full_name, surname)) return;
     if (phone && /[^\d+\s-]/.test(phone)) {
         return res.status(400).json({ error: 'Phone number must contain digits only.' });
     }
@@ -628,6 +617,7 @@ exports.createSchoolAdmin = async (req, res) => {
     if (!full_name || !surname || !normalizedEmail) {
         return res.status(400).json({ error: 'Full name, surname, and email are required to create a school admin.' });
     }
+    if (rejectNameDigits(res, full_name, surname)) return;
 
     const targetSchoolId = parseInt(school_id, 10);
     if (!targetSchoolId || isNaN(targetSchoolId)) {
@@ -831,13 +821,7 @@ exports.createLearner = async (req, res) => {
     if (!full_name || !surname) {
         return res.status(400).json({ error: 'Full name and surname are required to register a learner.' });
     }
-
-    if (/\d/.test(full_name)) {
-        return res.status(400).json({ error: 'First name cannot contain numbers.' });
-    }
-    if (/\d/.test(surname)) {
-        return res.status(400).json({ error: 'Surname cannot contain numbers.' });
-    }
+    if (rejectNameDigits(res, full_name, surname)) return;
 
     const learnerGrade = grade ? parseInt(grade, 10) : 10;
     const assignedStream = stream || (learnerGrade >= 10 ? 'Science' : 'General');
@@ -2105,6 +2089,7 @@ exports.updateUserProfile = async (req, res) => {
         const existingUser = userRes.rows[0];
         const updatedFullName = full_name !== undefined ? String(full_name).trim() : existingUser.full_name;
         const updatedSurname = surname !== undefined ? String(surname).trim() : existingUser.surname;
+        if (rejectNameDigits(res, full_name, surname)) return;
         const updatedEmail = email !== undefined ? String(email).trim().toLowerCase() : existingUser.email;
         const updatedPhone = phone !== undefined ? String(phone).trim() : existingUser.phone;
 
@@ -3067,7 +3052,9 @@ exports.getSchoolSubjectsSummary = async (req, res) => {
             const educator = empRes.rows.find(e => 
                 Array.isArray(e.subjects) && e.subjects.some(s => s.toLowerCase() === sub.name.toLowerCase())
             );
-            const teacherName = educator ? `${educator.full_name} ${educator.surname}` : 'Department Educator';
+            const teacherName = educator
+              ? `${educator.full_name} ${educator.surname}`.trim()
+              : '';
 
             // Count learners actually enrolled in this specific subject
             let countQuery = `
@@ -3444,6 +3431,7 @@ exports.createStaffInvite = async (req, res) => {
     if (!email || !email.includes('@')) {
       return res.status(400).json({ error: 'A valid educator email address is required.' });
     }
+    if (rejectNameDigits(res, full_name, surname)) return;
 
     const cleanEmail = email.trim().toLowerCase();
     const token = require('crypto').randomBytes(24).toString('hex');

@@ -23,8 +23,6 @@ import {
   Sparkles,
   Mail
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
-
 interface SchoolFeesManagerProps {
   userRole: 'parent' | 'learner' | 'admin';
   childId?: number | string;
@@ -46,7 +44,7 @@ export const SchoolFeesManager: React.FC<SchoolFeesManagerProps> = ({
   const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
   const [paymentAmount, setPaymentAmount] = useState<string>('');
-  const [paymentMethod, setPaymentMethod] = useState<string>('PayFast');
+  const [paymentMethod, setPaymentMethod] = useState<string>('eft');
   const [isProcessingPayment, setIsProcessingPayment] = useState<boolean>(false);
   const [paymentSuccessData, setPaymentSuccessData] = useState<any | null>(null);
 
@@ -108,7 +106,6 @@ export const SchoolFeesManager: React.FC<SchoolFeesManagerProps> = ({
       });
 
       setPaymentSuccessData(res);
-      confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
       fetchData();
     } catch (err: any) {
       alert('Payment processing failed: ' + (err.response?.data?.error || err.message));
@@ -333,7 +330,7 @@ export const SchoolFeesManager: React.FC<SchoolFeesManagerProps> = ({
                             className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-glow-emerald transition-all flex items-center gap-2"
                           >
                             <CreditCard className="w-3.5 h-3.5" />
-                            <span>Pay Online (Instant EFT / Card)</span>
+                            <span>Choose a payment method</span>
                           </button>
                         )}
                       </div>
@@ -447,14 +444,14 @@ export const SchoolFeesManager: React.FC<SchoolFeesManagerProps> = ({
             <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-glow-emerald">
               <CheckCircle2 className="w-8 h-8" />
             </div>
-            <h3 className="text-xl font-extrabold font-display">Payment Successful!</h3>
+            <h3 className="text-xl font-extrabold font-display">Payment choice saved</h3>
             <p className="text-xs text-slate-300 max-w-md mx-auto">
-              Your settlement has been verified and applied to invoice <strong>{selectedInvoice?.invoice_number}</strong>.
+              {paymentSuccessData?.message || 'This payment is waiting for the school bank account. No money has been taken.'}
             </p>
             <div className="p-4 rounded-2xl bg-surface-darker border border-white/10 font-mono text-xs space-y-1 text-left max-w-sm mx-auto">
               <div className="flex justify-between"><span>Receipt No:</span><strong className="text-emerald-400">{paymentSuccessData.payment?.receipt_number}</strong></div>
-              <div className="flex justify-between"><span>Amount Paid:</span><strong className="text-white">R {parseFloat(paymentSuccessData.payment?.amount).toFixed(2)}</strong></div>
-              <div className="flex justify-between"><span>Remaining Balance:</span><strong className="text-cyan-400">R {parseFloat(paymentSuccessData.invoice?.balance || 0).toFixed(2)}</strong></div>
+              <div className="flex justify-between"><span>Amount waiting:</span><strong className="text-white">R {parseFloat(paymentSuccessData.payment?.amount).toFixed(2)}</strong></div>
+              <div className="flex justify-between"><span>Invoice balance:</span><strong className="text-cyan-400">R {parseFloat(paymentSuccessData.invoice?.balance || 0).toFixed(2)}</strong></div>
             </div>
             <button
               onClick={() => setIsPaymentModalOpen(false)}
@@ -482,10 +479,10 @@ export const SchoolFeesManager: React.FC<SchoolFeesManagerProps> = ({
               <label className="block text-slate-300 font-bold">Select South African Payment Method</label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
-                  { id: 'PayFast', label: 'PayFast', sub: 'Instant Credit/Debit' },
-                  { id: 'Ozow', label: 'Ozow', sub: 'Instant EFT Bank' },
-                  { id: 'SnapScan', label: 'SnapScan', sub: 'QR Code Mobile' },
-                  { id: 'Card', label: 'Visa / Master', sub: 'Secure 3D Card' }
+                  { id: 'card', label: 'Card', sub: 'PayFast, waits for the school bank' },
+                  { id: 'instant_eft', label: 'Instant EFT', sub: 'Ozow, waits for the school bank' },
+                  { id: 'eft', label: 'Bank EFT', sub: 'School account, once connected' },
+                  { id: 'cash', label: 'Cash', sub: 'Recorded at the school office' }
                 ].map((method) => (
                   <button
                     type="button"
@@ -523,7 +520,7 @@ export const SchoolFeesManager: React.FC<SchoolFeesManagerProps> = ({
 
             <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />
-              <span>256-Bit SSL Encrypted & POPIA Compliant Payment Processing. Instant digital receipt will be generated.</span>
+              <span>No money is taken on this screen. The choice waits until the school connects its own bank account.</span>
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
@@ -540,7 +537,7 @@ export const SchoolFeesManager: React.FC<SchoolFeesManagerProps> = ({
                 className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
               >
                 <CreditCard className="w-4 h-4" />
-                <span>{isProcessingPayment ? 'Connecting Gateway...' : `Authorize R ${parseFloat(String(paymentAmount || 0)).toFixed(2)}`}</span>
+                <span>{isProcessingPayment ? 'Saving the choice...' : `Save R ${parseFloat(String(paymentAmount || 0)).toFixed(2)} as waiting`}</span>
               </button>
             </div>
           </form>

@@ -3,6 +3,7 @@ import { parentService } from '../../services/api';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { ParentOverviewSkeleton } from '../../components/parent/ParentOverviewSkeleton';
 import { FavoriteModulesSection } from '../../components/common/FavoriteModulesSection';
+import { HomeGreeting } from '../../components/layout/WorkspaceChrome';
 import {
   Users,
   GraduationCap,
@@ -64,13 +65,30 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
   const [linkForm, setLinkForm] = useState({
     first_name: '',
     surname: '',
-    identifier: '',
+    learner_number: '',
+    id_number: '',
     grade: '10',
     relationship: 'Mother'
   });
   const [linkLoading, setLinkLoading] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkSuccess, setLinkSuccess] = useState<string | null>(null);
+  const [linkFieldErrors, setLinkFieldErrors] = useState<Record<string, string>>({});
+
+  const setLinkName = (field: 'first_name' | 'surname', value: string) => {
+    if (/\d/.test(value)) {
+      setLinkFieldErrors(prev => ({ ...prev, [field]: 'Numbers are not allowed in this field. Please use letters only.' }));
+      setLinkForm(prev => ({ ...prev, [field]: value.replace(/\d/g, '') }));
+      return;
+    }
+    setLinkFieldErrors(prev => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setLinkForm(prev => ({ ...prev, [field]: value }));
+  };
 
   const refreshChildren = async () => {
     try {
@@ -93,31 +111,20 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
     setLinkError(null);
     setLinkSuccess(null);
 
-    if (!linkForm.first_name.trim() || !linkForm.surname.trim()) {
-      setLinkError("Please provide both the learner's first name and surname.");
-      return;
-    }
-
-    const cleanIdentifier = linkForm.identifier.trim();
-    if (!cleanIdentifier) {
-      setLinkError("Please provide the learner's Official Learner Number or 13-digit National ID Number.");
+    if (!linkForm.first_name.trim() || !linkForm.surname.trim() || !linkForm.learner_number.trim() || linkForm.id_number.trim().length !== 13) {
+      setLinkError('Linking needs the official learner number, the 13-digit ID, the first name, and the surname.');
       return;
     }
 
     setLinkLoading(true);
 
-    const isNumericId = /^\d{6,13}$/.test(cleanIdentifier);
-    const payload: any = {
+    const payload = {
       first_name: linkForm.first_name.trim(),
       surname: linkForm.surname.trim(),
+      learner_number: linkForm.learner_number.trim(),
+      id_number: linkForm.id_number.trim(),
       relationship: linkForm.relationship
     };
-
-    if (isNumericId) {
-      payload.id_number = cleanIdentifier;
-    } else {
-      payload.learner_number = cleanIdentifier;
-    }
 
     try {
       const res = await parentService.linkChild(payload);
@@ -129,7 +136,8 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
         setLinkForm({
           first_name: '',
           surname: '',
-          identifier: '',
+          learner_number: '',
+          id_number: '',
           grade: '10',
           relationship: 'Mother'
         });
@@ -159,6 +167,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
 
   return (
     <div className="space-y-6 animate-fade-in text-slate-900 dark:text-slate-100 pb-12">
+      <HomeGreeting />
 
       {/* 1. REGISTERED LEARNERS (WITH CAROUSEL / GRID / COMPACT / LIST VIEWS) */}
       <section className="space-y-3">
@@ -167,7 +176,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
             <div className="w-8 h-8 rounded-xl bg-[#EDF4F7] dark:bg-[#152535] text-[#13C8D9] flex items-center justify-center border border-slate-200/80 dark:border-[#1B2E3D]">
               <GraduationCap className="w-4 h-4" />
             </div>
-            <h2 className="text-base md:text-lg font-bold font-display text-[#1C252C] dark:text-white tracking-tight">
+            <h2 className="text-base md:text-lg xl:text-2xl font-bold font-display text-[#1C252C] dark:text-white tracking-tight">
               My Registered Learners
             </h2>
           </div>
@@ -272,18 +281,23 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
         {childrenViewMode === 'carousel' && (
           <div
             ref={carouselRef}
-            className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin custom-scrollbar snap-x snap-mandatory scroll-smooth"
+            className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin custom-scrollbar snap-x snap-mandatory scroll-smooth xl:flex-wrap xl:overflow-visible"
           >
             {children && children.length > 0 ? (
               children.map((child, idx) => {
                 const fullName = `${child.full_name || child.name || 'Learner'} ${child.surname || ''}`.trim();
                 const pfp = getProfilePictureUrl(child.profile_picture_path || child.profile_picture);
+                const solo = children.length === 1;
                 return (
                   <div
                     key={idx}
-                    className="min-w-[290px] max-w-[320px] shrink-0 snap-start rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#13C8D9]/50 p-4 transition-all shadow-sm flex flex-col justify-between group space-y-3"
+                    className={
+                      solo
+                        ? 'min-w-[290px] max-w-[320px] shrink-0 snap-start xl:max-w-none xl:min-w-0 xl:w-full xl:shrink xl:flex-row xl:items-center xl:justify-between xl:gap-6 xl:p-5 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#13C8D9]/50 p-4 transition-all shadow-sm flex flex-col justify-between group space-y-3 xl:space-y-0'
+                        : 'min-w-[290px] max-w-[320px] shrink-0 snap-start xl:max-w-[420px] xl:min-w-[320px] xl:flex-1 xl:basis-[340px] rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#13C8D9]/50 p-4 transition-all shadow-sm flex flex-col justify-between group space-y-3'
+                    }
                   >
-                    <div className="flex items-start justify-between gap-2">
+                    <div className={`flex items-start justify-between gap-2 ${solo ? 'xl:shrink-0 xl:w-40 xl:flex-col xl:items-start' : ''}`}>
                       <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#EDF4F7] dark:bg-[#142230] text-[#13C8D9] border border-slate-200/80 dark:border-[#1B2E3D]">
                         Grade {child.grade || 10} • {child.stream || 'General'}
                       </span>
@@ -292,7 +306,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className={`flex items-center gap-3 ${solo ? 'xl:flex-1 xl:min-w-[200px]' : ''}`}>
                       <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#13C8D9] to-cyan-400 border border-white/20 flex items-center justify-center text-white font-bold text-lg overflow-hidden shrink-0 shadow-xs">
                         {pfp ? <img src={pfp} alt={fullName} className="w-full h-full object-cover" /> : fullName.charAt(0)}
                       </div>
@@ -309,12 +323,12 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                       </div>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-[#EDF4F7] dark:bg-[#0A121A] border border-slate-200/80 dark:border-[#1B2E3D] flex justify-between items-center text-xs">
+                    <div className={`p-2.5 rounded-xl bg-[#EDF4F7] dark:bg-[#0A121A] border border-slate-200/80 dark:border-[#1B2E3D] flex justify-between items-center text-xs ${solo ? 'xl:min-w-[220px] xl:shrink-0' : ''}`}>
                       <span className="text-slate-500 dark:text-slate-400 font-semibold">Term Average</span>
                       <span className="text-emerald-600 dark:text-emerald-400 font-black text-sm">{child.overall_average ? `${child.overall_average}%` : 'Pending Marks'}</span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    <div className={`grid grid-cols-2 gap-1.5 pt-1 ${solo ? 'xl:w-56 xl:shrink-0 xl:pt-0' : ''}`}>
                       <button
                         onClick={() => onNavigateTab('attendance', child.id)}
                         className="px-2 py-1.5 rounded-lg bg-[#EDF4F7] dark:bg-[#0A121A] hover:bg-slate-200 dark:hover:bg-[#152535] text-slate-700 dark:text-slate-300 text-[11px] font-medium border border-slate-200/80 dark:border-[#1B2E3D] transition-colors text-center cursor-pointer"
@@ -531,9 +545,6 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                   <h3 className="text-base sm:text-lg font-black font-display text-slate-900 dark:text-white">
                     Link Child to Parent Portal
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Provide the child's information to verify enrollment and link your accounts.
-                  </p>
                 </div>
               </div>
               <button
@@ -575,11 +586,14 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                       type="text"
                       required
                       value={linkForm.first_name}
-                      onChange={(e) => setLinkForm({ ...linkForm, first_name: e.target.value })}
+                      onChange={(e) => setLinkName('first_name', e.target.value)}
                       placeholder="e.g. Sipho"
                       className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#13C8D9]"
                     />
                   </div>
+                  {linkFieldErrors.first_name && (
+                    <p className="mt-1 text-[11px] font-semibold text-rose-500">{linkFieldErrors.first_name}</p>
+                  )}
                 </div>
 
                 <div>
@@ -592,31 +606,49 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                       type="text"
                       required
                       value={linkForm.surname}
-                      onChange={(e) => setLinkForm({ ...linkForm, surname: e.target.value })}
+                      onChange={(e) => setLinkName('surname', e.target.value)}
                       placeholder="e.g. Nkosi"
                       className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#13C8D9]"
                     />
                   </div>
+                  {linkFieldErrors.surname && (
+                    <p className="mt-1 text-[11px] font-semibold text-rose-500">{linkFieldErrors.surname}</p>
+                  )}
                 </div>
               </div>
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                  Official Learner Number OR SA ID Number *
+                  Official Learner Number *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={linkForm.learner_number}
+                  onChange={(e) => setLinkForm({ ...linkForm, learner_number: e.target.value })}
+                  placeholder="e.g. 2026001"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#13C8D9]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                  13-digit South African ID *
                 </label>
                 <div className="relative">
                   <CreditCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
                     type="text"
                     required
-                    value={linkForm.identifier}
-                    onChange={(e) => setLinkForm({ ...linkForm, identifier: e.target.value })}
-                    placeholder="e.g. 2026-FHS-001 or 13-digit National ID"
+                    maxLength={13}
+                    value={linkForm.id_number}
+                    onChange={(e) => setLinkForm({ ...linkForm, id_number: e.target.value.replace(/\D/g, '').slice(0, 13) })}
+                    placeholder="13 digits"
                     className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#13C8D9]"
                   />
                 </div>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                  The system will automatically search enrollment records to match and verify your child.
+                  The learner number, ID, first name, and surname must all match the enrolled learner.
                 </p>
               </div>
 

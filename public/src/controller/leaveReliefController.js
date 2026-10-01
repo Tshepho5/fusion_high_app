@@ -303,6 +303,11 @@ exports.getDailyReliefRoster = async (req, res) => {
     const { date } = req.query;
     const targetDate = date || new Date().toISOString().split('T')[0];
 
+    const schoolId = req.user?.is_superadmin ? null : req.user?.school_id;
+    if (!req.user?.is_superadmin && !schoolId) {
+      return res.status(403).json({ error: 'School context is required for the relief roster.' });
+    }
+
     const query = `
       SELECT 
         r.*,
@@ -314,10 +319,11 @@ exports.getDailyReliefRoster = async (req, res) => {
       JOIN users absent ON r.absent_teacher_id = absent.id
       JOIN users relief ON r.relief_teacher_id = relief.id
       WHERE r.relief_date = $1
+        AND ($2::int IS NULL OR r.school_id = $2 OR absent.school_id = $2)
       ORDER BY r.period_number ASC, r.grade ASC;
     `;
 
-    const { rows } = await db.query(query, [targetDate]);
+    const { rows } = await db.query(query, [targetDate, schoolId]);
     res.json(rows);
   } catch (err) {
     console.error('Error fetching daily relief roster:', err);

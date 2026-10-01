@@ -128,11 +128,7 @@ interface SchoolMetadata {
 export const AdminUsers: React.FC = () => {
   const { currentSchool, schoolsList } = useSchool();
   const { user: currentUser } = useAuth();
-  const isSuperAdmin = Boolean(
-    currentUser?.is_superadmin || 
-    (currentUser?.email && currentUser?.email.toLowerCase() === '202247878@myturf.ul.ac.za') ||
-    (currentUser?.email && currentUser?.email.toLowerCase() === 'sthepomakola23@gmail.com')
-  );
+  const isSuperAdmin = Boolean(currentUser?.is_superadmin);
 
   const [activeTab, setActiveTab] = useState<'employees' | 'learners' | 'parents' | 'parent-applications' | 'admissions' | 'admins' | 'all'>('employees');
   
@@ -156,6 +152,15 @@ export const AdminUsers: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nameRule, setNameRule] = useState('');
+  const lettersOnly = (value: string) => {
+    if (/\d/.test(value)) {
+      setNameRule('Numbers are not allowed in this field. Please use letters only.');
+      return value.replace(/\d/g, '');
+    }
+    setNameRule('');
+    return value;
+  };
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   // Modals
@@ -322,11 +327,11 @@ export const AdminUsers: React.FC = () => {
     setSubAdminModalError(null);
 
     if (/\d/.test(adminForm.full_name)) {
-      setSubAdminModalError('First name cannot contain numbers.');
+      setSubAdminModalError('Numbers are not allowed in this field. Please use letters only.');
       return;
     }
     if (/\d/.test(adminForm.surname)) {
-      setSubAdminModalError('Surname cannot contain numbers.');
+      setSubAdminModalError('Numbers are not allowed in this field. Please use letters only.');
       return;
     }
     if (!adminForm.email) {
@@ -379,11 +384,11 @@ export const AdminUsers: React.FC = () => {
 
     // Validation
     if (/\d/.test(employeeForm.full_name)) {
-      setError('First name cannot contain numbers.');
+      setError('Numbers are not allowed in this field. Please use letters only.');
       return;
     }
     if (/\d/.test(employeeForm.surname)) {
-      setError('Surname cannot contain numbers.');
+      setError('Numbers are not allowed in this field. Please use letters only.');
       return;
     }
     if (employeeForm.phone && /[^\d+\s-]/.test(employeeForm.phone)) {
@@ -440,11 +445,11 @@ export const AdminUsers: React.FC = () => {
 
     // Strict validation
     if (/\d/.test(parentForm.full_name)) {
-      setError('First name cannot contain numbers.');
+      setError('Numbers are not allowed in this field. Please use letters only.');
       return;
     }
     if (/\d/.test(parentForm.surname)) {
-      setError('Surname cannot contain numbers.');
+      setError('Numbers are not allowed in this field. Please use letters only.');
       return;
     }
     if (parentForm.phone && /[^\d+\s-]/.test(parentForm.phone)) {
@@ -497,11 +502,11 @@ export const AdminUsers: React.FC = () => {
     setError(null);
 
     if (/\d/.test(learnerForm.full_name)) {
-      setError('First name cannot contain numbers.');
+      setError('Numbers are not allowed in this field. Please use letters only.');
       return;
     }
     if (/\d/.test(learnerForm.surname)) {
-      setError('Surname cannot contain numbers.');
+      setError('Numbers are not allowed in this field. Please use letters only.');
       return;
     }
     if (learnerForm.id_number && /\D/.test(learnerForm.id_number)) {
@@ -1487,7 +1492,7 @@ export const AdminUsers: React.FC = () => {
                 type="text"
                 required
                 value={employeeForm.full_name}
-                onChange={(e) => setEmployeeForm(prev => ({ ...prev, full_name: e.target.value.replace(/\d/g, '') }))}
+                onChange={(e) => setEmployeeForm(prev => ({ ...prev, full_name: lettersOnly(e.target.value) }))}
                 placeholder="e.g. Sipho"
                 className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-brand-500"
               />
@@ -1498,11 +1503,14 @@ export const AdminUsers: React.FC = () => {
                 type="text"
                 required
                 value={employeeForm.surname}
-                onChange={(e) => setEmployeeForm(prev => ({ ...prev, surname: e.target.value.replace(/\d/g, '') }))}
+                onChange={(e) => setEmployeeForm(prev => ({ ...prev, surname: lettersOnly(e.target.value) }))}
                 placeholder="e.g. Ndlovu"
                 className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-brand-500"
               />
             </div>
+            {nameRule && (
+              <p className="sm:col-span-2 text-[11px] font-semibold text-rose-400">{nameRule}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1671,7 +1679,7 @@ export const AdminUsers: React.FC = () => {
                 type="text"
                 required
                 value={parentForm.full_name}
-                onChange={(e) => setParentForm(prev => ({ ...prev, full_name: e.target.value.replace(/\d/g, '') }))}
+                onChange={(e) => setParentForm(prev => ({ ...prev, full_name: lettersOnly(e.target.value) }))}
                 placeholder="e.g. Nombuso"
                 className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-amber-500"
               />
@@ -1682,11 +1690,14 @@ export const AdminUsers: React.FC = () => {
                 type="text"
                 required
                 value={parentForm.surname}
-                onChange={(e) => setParentForm(prev => ({ ...prev, surname: e.target.value.replace(/\d/g, '') }))}
+                onChange={(e) => setParentForm(prev => ({ ...prev, surname: lettersOnly(e.target.value) }))}
                 placeholder="e.g. Dlamini"
                 className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-amber-500"
               />
             </div>
+            {nameRule && (
+              <p className="sm:col-span-2 text-[11px] font-semibold text-rose-400">{nameRule}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1834,7 +1845,7 @@ export const AdminUsers: React.FC = () => {
                 type="text"
                 required
                 value={learnerForm.full_name}
-                onChange={(e) => setLearnerForm(prev => ({ ...prev, full_name: e.target.value.replace(/\d/g, '') }))}
+                onChange={(e) => setLearnerForm(prev => ({ ...prev, full_name: lettersOnly(e.target.value) }))}
                 placeholder="e.g. Thabo"
                 className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-cyan-500"
               />
@@ -1845,11 +1856,14 @@ export const AdminUsers: React.FC = () => {
                 type="text"
                 required
                 value={learnerForm.surname}
-                onChange={(e) => setLearnerForm(prev => ({ ...prev, surname: e.target.value.replace(/\d/g, '') }))}
+                onChange={(e) => setLearnerForm(prev => ({ ...prev, surname: lettersOnly(e.target.value) }))}
                 placeholder="e.g. Molefe"
                 className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-cyan-500"
               />
             </div>
+            {nameRule && (
+              <p className="sm:col-span-2 text-[11px] font-semibold text-rose-400">{nameRule}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -2118,7 +2132,7 @@ export const AdminUsers: React.FC = () => {
                   type="text"
                   required
                   value={adminForm.full_name}
-                  onChange={(e) => setAdminForm(prev => ({ ...prev, full_name: e.target.value.replace(/\d/g, '') }))}
+                  onChange={(e) => setAdminForm(prev => ({ ...prev, full_name: lettersOnly(e.target.value) }))}
                   placeholder="e.g. Kagiso"
                   className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-purple-500"
                 />
@@ -2129,11 +2143,14 @@ export const AdminUsers: React.FC = () => {
                   type="text"
                   required
                   value={adminForm.surname}
-                  onChange={(e) => setAdminForm(prev => ({ ...prev, surname: e.target.value.replace(/\d/g, '') }))}
+                  onChange={(e) => setAdminForm(prev => ({ ...prev, surname: lettersOnly(e.target.value) }))}
                   placeholder="e.g. Masemola"
                   className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-purple-500"
                 />
               </div>
+              {nameRule && (
+                <p className="sm:col-span-2 text-[11px] font-semibold text-rose-400">{nameRule}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

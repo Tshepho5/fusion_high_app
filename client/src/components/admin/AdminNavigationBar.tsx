@@ -136,7 +136,7 @@ export const AdminNavigationBar: React.FC<AdminNavigationBarProps> = ({
       className={`relative select-none ${className}`}
     >
       {/* Outer Floating Bar Container */}
-      <div className="relative flex items-center justify-between sm:justify-center gap-1 sm:gap-3 p-1.5 sm:p-2 rounded-2xl md:rounded-full bg-[#0D1620]/95 backdrop-blur-2xl border border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.65)] ring-1 ring-white/5 transition-all duration-300">
+      <div className="relative flex items-center justify-between sm:justify-center xl:justify-between xl:px-8 gap-1 sm:gap-3 p-1.5 sm:p-2 rounded-2xl md:rounded-full bg-[#0D1620]/95 backdrop-blur-2xl border border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.65)] ring-1 ring-white/5 transition-all duration-300">
         {/* Ambient Subtle Underlay Glow */}
         <div className="absolute -inset-0.5 rounded-2xl md:rounded-full bg-gradient-to-r from-cyan-500/15 via-teal-500/15 to-cyan-500/15 blur-md -z-10 pointer-events-none" />
 

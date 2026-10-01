@@ -67,10 +67,11 @@ export function normalizePeriodTime(rawTime: string): string {
 type TimetableViewMode = 'matrix' | 'cards' | 'list';
 
 interface ParentTimetableProps {
-  onNavigateTab?: (tab: string) => void;
+  onNavigateTab?: (tab: string, childId?: string | number) => void;
+  childId?: string | number | null;
 }
 
-export const ParentTimetable: React.FC<ParentTimetableProps> = ({ onNavigateTab }) => {
+export const ParentTimetable: React.FC<ParentTimetableProps> = ({ onNavigateTab, childId }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
@@ -105,7 +106,8 @@ export const ParentTimetable: React.FC<ParentTimetableProps> = ({ onNavigateTab 
         const list = Array.isArray(res) ? res : res.children || [];
         setChildren(list);
         if (list.length > 0) {
-          setSelectedChild(list[0]);
+          const match = childId ? list.find((c: any) => String(c.id) === String(childId)) : null;
+          setSelectedChild(match || list[0]);
         }
       })
       .catch(err => {
@@ -113,7 +115,7 @@ export const ParentTimetable: React.FC<ParentTimetableProps> = ({ onNavigateTab 
         setError('Could not load linked learners.');
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [childId]);
 
   useEffect(() => {
     if (!selectedChild) return;
@@ -314,7 +316,10 @@ export const ParentTimetable: React.FC<ParentTimetableProps> = ({ onNavigateTab 
             return (
               <button
                 key={child.id}
-                onClick={() => setSelectedChild(child)}
+                onClick={() => {
+                  setSelectedChild(child);
+                  onNavigateTab?.('timetable', child.id);
+                }}
                 className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
                   isSelected
                     ? 'bg-gradient-to-r from-amber-600 to-brand-600 text-white shadow-md'

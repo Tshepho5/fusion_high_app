@@ -222,7 +222,7 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
   return (
     <div className="space-y-6 max-w-7xl mx-auto w-full pb-20 animate-fade-in">
       {/* Top Header Card */}
-      <div className="rounded-3xl bg-white/80 dark:bg-[#0F1A24]/90 backdrop-blur-xl border border-slate-200/90 dark:border-[#1B2E3D] p-5 sm:p-6 shadow-sm">
+      <div className="rounded-3xl bg-white/80 dark:bg-[#0F1A24]/90 backdrop-blur-xl border border-slate-200/90 dark:border-[#1B2E3D] p-5 sm:p-6 xl:px-1 xl:bg-transparent xl:dark:bg-transparent xl:border-transparent xl:shadow-none shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 p-0.5 shadow-md flex items-center justify-center shrink-0">
@@ -232,7 +232,7 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-black font-display text-slate-900 dark:text-white tracking-tight">
+                <h1 className="text-xl sm:text-2xl xl:text-4xl font-black font-display text-slate-900 dark:text-white tracking-tight">
                   Main Navigation Menu
                 </h1>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-600 dark:text-[#18E2EC] border border-cyan-500/20 uppercase tracking-wider">
@@ -318,7 +318,7 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
 
       {/* VIEW MODE 1: Detailed Cards */}
       {viewMode === 'grid' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5">
           {filteredModules.map((item) => {
             const IconComp = item.icon;
             const isFav = favoriteIds.includes(item.id);
@@ -333,17 +333,12 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
                     <IconComp className="w-6 h-6 text-slate-800 dark:text-[#18E2EC]" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors leading-snug truncate">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors leading-snug line-clamp-2">
                       {item.title}
                     </h3>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {item.badge && (
-                    <span className="px-2 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-[#142230] border border-slate-200/80 dark:border-[#1B2E3D] text-cyan-600 dark:text-cyan-400 uppercase tracking-wider hidden sm:inline">
-                      {item.badge}
-                    </span>
-                  )}
                   <button
                     type="button"
                     onClick={(e) => toggleFavorite(e, item.id)}
@@ -366,7 +361,7 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
 
       {/* VIEW MODE 2: Compact App Tiles */}
       {viewMode === 'compact' && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 2xl:grid-cols-8 gap-2.5">
           {filteredModules.map((item) => {
             const IconComp = item.icon;
             const isFav = favoriteIds.includes(item.id);
@@ -424,11 +419,6 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  {item.badge && (
-                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-[#142230] text-cyan-600 dark:text-cyan-400 border border-slate-200/80 dark:border-[#1B2E3D]">
-                      {item.badge}
-                    </span>
-                  )}
                   <button
                     type="button"
                     onClick={(e) => toggleFavorite(e, item.id)}

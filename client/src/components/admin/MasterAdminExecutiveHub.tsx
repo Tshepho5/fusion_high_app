@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AdmissionWindowPanel } from './AdmissionWindowPanel';
 import { systemControlService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useSchool } from '../../context/SchoolContext';
@@ -50,10 +51,7 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
   const { schoolsList } = useSchool();
 
   // Strict exclusivity verification
-  const isMasterAdmin = Boolean(
-    user?.is_superadmin ||
-    (user?.email && user.email.toLowerCase().trim() === '202247878@myturf.ul.ac.za')
-  );
+  const isMasterAdmin = Boolean(user?.is_superadmin);
 
   // Portal Controls State
   const [controls, setControls] = useState<Record<string, any>>({
@@ -124,23 +122,18 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
   }
 
   // Toggle Portal Access Control
-  const handleToggleControl = async (controlId: string, currentLocked: boolean, defaultReason: string) => {
+  const handleSaveGate = async (controlId: string, payload: { is_locked?: boolean; locked_reason?: string; opens_at?: string | null; closes_at?: string | null }) => {
     setTogglingLock(controlId);
     setActionSuccess(null);
     try {
-      const nextLocked = !currentLocked;
-      const res = await systemControlService.updatePortalLock(
-        controlId,
-        nextLocked,
-        nextLocked ? (controls[controlId]?.locked_reason || defaultReason) : 'Unlocked by Master Admin'
-      );
+      const res = await systemControlService.updatePortalLock(controlId, payload);
       setControls(prev => ({
         ...prev,
-        [controlId]: res.control || { ...prev[controlId], is_locked: nextLocked }
+        [controlId]: res.control || { ...prev[controlId], ...payload }
       }));
-      setActionSuccess(res.message || `Control status successfully updated.`);
+      setActionSuccess(res.message || 'Intake updated.');
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to update portal access control.');
+      alert(err.response?.data?.error || 'Failed to update this intake.');
     } finally {
       setTogglingLock(null);
     }
@@ -245,7 +238,7 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
               <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase font-mono tracking-wider bg-white/10 text-slate-300 border border-white/10">
                 Master Administration
               </span>
-              <span className="text-xs text-slate-400 font-mono">202247878@myturf.ul.ac.za</span>
+              <span className="text-xs text-slate-400 font-mono">{user?.email || 'Master administrator'}</span>
             </div>
             <h2 className="text-xl md:text-2xl font-black font-display text-white tracking-tight">
               Executive Portal Controls & User Access
@@ -299,112 +292,7 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Switch 1: School Registration */}
-          <div className="p-5 rounded-2xl bg-surface-darker border border-white/10 flex flex-col justify-between space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-1">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">Accreditation</span>
-                <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
-                  <Building2 className="w-4 h-4 text-slate-300" />
-                  <span>School Applications</span>
-                </h4>
-              </div>
-              <button
-                disabled={togglingLock === 'school_registration'}
-                onClick={() => handleToggleControl('school_registration', controls.school_registration?.is_locked, 'School registration is currently locked by Geleza SA Executives.')}
-                className="cursor-pointer transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
-                title={controls.school_registration?.is_locked ? 'Click to Turn ON (Unlock)' : 'Click to Turn OFF (Lock)'}
-              >
-                {controls.school_registration?.is_locked ? (
-                  <ToggleLeft className="w-9 h-9 text-slate-500 hover:text-slate-400 transition-colors" />
-                ) : (
-                  <ToggleRight className="w-9 h-9 text-emerald-400" />
-                )}
-              </button>
-            </div>
-            <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs font-mono">
-              <span className="text-slate-400">Status:</span>
-              <span className={`px-2.5 py-0.5 rounded-md font-bold uppercase text-[11px] border ${
-                controls.school_registration?.is_locked 
-                  ? 'bg-white/5 border-white/10 text-slate-400' 
-                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-              }`}>
-                {controls.school_registration?.is_locked ? 'Turned OFF (Locked)' : 'Turned ON (Active)'}
-              </span>
-            </div>
-          </div>
-
-          {/* Switch 2: User Registration (Parents & Learners) */}
-          <div className="p-5 rounded-2xl bg-surface-darker border border-white/10 flex flex-col justify-between space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-1">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">User Portal</span>
-                <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-slate-300" />
-                  <span>User Registrations</span>
-                </h4>
-              </div>
-              <button
-                disabled={togglingLock === 'user_registration'}
-                onClick={() => handleToggleControl('user_registration', controls.user_registration?.is_locked, 'Registration is temporarily locked for system updates by Geleza SA Executives.')}
-                className="cursor-pointer transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
-                title={controls.user_registration?.is_locked ? 'Click to Turn ON (Unlock)' : 'Click to Turn OFF (Lock)'}
-              >
-                {controls.user_registration?.is_locked ? (
-                  <ToggleLeft className="w-9 h-9 text-slate-500 hover:text-slate-400 transition-colors" />
-                ) : (
-                  <ToggleRight className="w-9 h-9 text-emerald-400" />
-                )}
-              </button>
-            </div>
-            <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs font-mono">
-              <span className="text-slate-400">Status:</span>
-              <span className={`px-2.5 py-0.5 rounded-md font-bold uppercase text-[11px] border ${
-                controls.user_registration?.is_locked 
-                  ? 'bg-white/5 border-white/10 text-slate-400' 
-                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-              }`}>
-                {controls.user_registration?.is_locked ? 'Turned OFF (Locked)' : 'Turned ON (Active)'}
-              </span>
-            </div>
-          </div>
-
-          {/* Switch 3: Admission Applications */}
-          <div className="p-5 rounded-2xl bg-surface-darker border border-white/10 flex flex-col justify-between space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-1">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">Admissions</span>
-                <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
-                  <UserCheck className="w-4 h-4 text-slate-300" />
-                  <span>Student Admissions</span>
-                </h4>
-              </div>
-              <button
-                disabled={togglingLock === 'parent_application'}
-                onClick={() => handleToggleControl('parent_application', controls.parent_application?.is_locked, 'Online admission applications are currently closed.')}
-                className="cursor-pointer transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
-                title={controls.parent_application?.is_locked ? 'Click to Turn ON (Unlock)' : 'Click to Turn OFF (Lock)'}
-              >
-                {controls.parent_application?.is_locked ? (
-                  <ToggleLeft className="w-9 h-9 text-slate-500 hover:text-slate-400 transition-colors" />
-                ) : (
-                  <ToggleRight className="w-9 h-9 text-emerald-400" />
-                )}
-              </button>
-            </div>
-            <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs font-mono">
-              <span className="text-slate-400">Status:</span>
-              <span className={`px-2.5 py-0.5 rounded-md font-bold uppercase text-[11px] border ${
-                controls.parent_application?.is_locked 
-                  ? 'bg-white/5 border-white/10 text-slate-400' 
-                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-              }`}>
-                {controls.parent_application?.is_locked ? 'Turned OFF (Locked)' : 'Turned ON (Active)'}
-              </span>
-            </div>
-          </div>
-        </div>
+        <AdmissionWindowPanel controls={controls} busyId={togglingLock} onSave={handleSaveGate} />
       </div>
 
       {/* ========================================================================= */}
@@ -553,9 +441,9 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
       {/* MODAL 1: ASSIGN / INVITE NEW TESTING USER                                 */}
       {/* ========================================================================= */}
       {isAddTesterModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="w-full max-w-lg rounded-3xl bg-slate-900 border border-cyan-500/30 shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+        <div className="fixed inset-0 z-[80] flex justify-center overflow-y-auto bg-black/80 backdrop-blur-md px-3 pt-16 pb-6 animate-fade-in">
+          <div className="w-full max-w-lg h-fit rounded-2xl bg-slate-900 border border-cyan-500/30 shadow-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-white/10">
               <div className="flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-cyan-400" />
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">Assign App Testing User</h3>
@@ -575,7 +463,7 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
               </div>
             )}
 
-            <form onSubmit={handleCreateTester} className="space-y-3.5 text-xs">
+            <form onSubmit={handleCreateTester} className="space-y-2.5 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-300">Tester First Name *</label>
@@ -585,7 +473,13 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
                     placeholder="e.g. Kagiso"
                     value={testerForm.full_name}
                     onChange={(e) => {
-                      setTesterForm(prev => ({ ...prev, full_name: e.target.value.replace(/\d/g, '') }));
+                      const raw = e.target.value;
+                      if (/\d/.test(raw)) {
+                        setFormFieldErrors(prev => ({ ...prev, full_name: 'Numbers are not allowed in this field. Please use letters only.' }));
+                        setTesterForm(prev => ({ ...prev, full_name: raw.replace(/\d/g, '') }));
+                        return;
+                      }
+                      setTesterForm(prev => ({ ...prev, full_name: raw }));
                       if (formFieldErrors.full_name) setFormFieldErrors(prev => ({ ...prev, full_name: '' }));
                     }}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 focus:border-cyan-400 outline-hidden"
@@ -601,9 +495,21 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
                     type="text"
                     placeholder="e.g. Phasha"
                     value={testerForm.surname}
-                    onChange={(e) => setTesterForm(prev => ({ ...prev, surname: e.target.value.replace(/\d/g, '') }))}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (/\d/.test(raw)) {
+                        setFormFieldErrors(prev => ({ ...prev, surname: 'Numbers are not allowed in this field. Please use letters only.' }));
+                        setTesterForm(prev => ({ ...prev, surname: raw.replace(/\d/g, '') }));
+                        return;
+                      }
+                      setTesterForm(prev => ({ ...prev, surname: raw }));
+                      if (formFieldErrors.surname) setFormFieldErrors(prev => ({ ...prev, surname: '' }));
+                    }}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 focus:border-cyan-400 outline-hidden"
                   />
+                  {formFieldErrors.surname && (
+                    <p className="text-[11px] text-rose-400 font-semibold">{formFieldErrors.surname}</p>
+                  )}
                 </div>
               </div>
 
@@ -701,7 +607,7 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
                 <button
                   type="button"
                   onClick={() => setIsAddTesterModalOpen(false)}
@@ -763,7 +669,6 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
                   }`}
                 >
                   <p className="text-xs font-bold">{item.label}</p>
-                  <p className="text-[10px] text-slate-400">{item.desc}</p>
                 </button>
               ))}
             </div>

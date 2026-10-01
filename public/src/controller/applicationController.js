@@ -9,6 +9,7 @@ const emailService = require('../services/emailService');
 const { validateSAID } = require('./saIDvalidations');
 const applicationService = require('../services/applicationService');
 const curriculumService = require('../services/curriculumService');
+const paymentHold = require('../services/paymentHold');
 const { generateLearnerPasswordFromID } = require('./authController');
 const { isControlLocked } = require('./systemController');
 
@@ -68,10 +69,10 @@ function validateFormFields(body) {
 
   // Learner Names
   if (!body.first_name || !NAME_REGEX.test(body.first_name.trim())) {
-    errors.push({ field: 'first_name', message: 'Learner first name must only contain letters, spaces, or hyphens (no numbers).' });
+    errors.push({ field: 'first_name', message: body.first_name && /\d/.test(body.first_name) ? 'Numbers are not allowed in this field. Please use letters only.' : 'Learner first name must only contain letters, spaces, or hyphens (no numbers).' });
   }
   if (!body.surname || !NAME_REGEX.test(body.surname.trim())) {
-    errors.push({ field: 'surname', message: 'Learner surname must only contain letters, spaces, or hyphens (no numbers).' });
+    errors.push({ field: 'surname', message: body.surname && /\d/.test(body.surname) ? 'Numbers are not allowed in this field. Please use letters only.' : 'Learner surname must only contain letters, spaces, or hyphens (no numbers).' });
   }
 
   // Learner ID
@@ -115,10 +116,10 @@ function validateFormFields(body) {
 
   // Primary Parent Validation
   if (!body.primary_parent_name || !NAME_REGEX.test(body.primary_parent_name.trim())) {
-    errors.push({ field: 'primary_parent_name', message: 'Primary parent full name must only contain letters, spaces, or hyphens.' });
+    errors.push({ field: 'primary_parent_name', message: body.primary_parent_name && /\d/.test(body.primary_parent_name) ? 'Numbers are not allowed in this field. Please use letters only.' : 'Primary parent full name must only contain letters, spaces, or hyphens.' });
   }
   if (!body.primary_parent_surname || !NAME_REGEX.test(body.primary_parent_surname.trim())) {
-    errors.push({ field: 'primary_parent_surname', message: 'Primary parent surname must only contain letters, spaces, or hyphens.' });
+    errors.push({ field: 'primary_parent_surname', message: body.primary_parent_surname && /\d/.test(body.primary_parent_surname) ? 'Numbers are not allowed in this field. Please use letters only.' : 'Primary parent surname must only contain letters, spaces, or hyphens.' });
   }
   if (!body.primary_parent_relationship) {
     errors.push({ field: 'primary_parent_relationship', message: 'Please specify the relationship of the primary parent/guardian (e.g. Mother, Father, Guardian).' });
@@ -139,7 +140,7 @@ function validateFormFields(body) {
   // Optional Secondary Parent Validation
   if (body.has_secondary_parent === 'true' || body.has_secondary_parent === true) {
     if (body.secondary_parent_name && !NAME_REGEX.test(body.secondary_parent_name.trim())) {
-      errors.push({ field: 'secondary_parent_name', message: 'Secondary parent name must only contain letters, spaces, or hyphens.' });
+      errors.push({ field: 'secondary_parent_name', message: /\d/.test(body.secondary_parent_name) ? 'Numbers are not allowed in this field. Please use letters only.' : 'Secondary parent name must only contain letters, spaces, or hyphens.' });
     }
     if (body.secondary_parent_phone && !PHONE_REGEX.test(body.secondary_parent_phone.replace(/[\s-]/g, ''))) {
       errors.push({ field: 'secondary_parent_phone', message: 'Secondary parent phone must start with +27 or 0, followed by 9 digits.' });
@@ -265,10 +266,10 @@ exports.submitApplication = async (req, res) => {
     const appFeeAmount = parseFloat(targetSchool.application_fee) || 250.00;
     const regFeeAmount = parseFloat(targetSchool.registration_fee) || 1500.00;
     const feeDueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7-day payment window
-    const payNow = body.pay_now === 'true' || body.pay_now === true;
-    const feeStatus = payNow ? 'paid' : 'unpaid';
-    const feePaidAt = payNow ? new Date() : null;
     const paymentRef = body.payment_reference || `PAY-APP-${Date.now().toString().slice(-8)}`;
+    const hold = paymentHold.describe(body.payment_method, targetSchool, appFeeAmount, applicationNumber);
+    const feeStatus = 'unpaid';
+    const feePaidAt = null;
 
     // 2. Prepare Uploaded Documents Metadata
     const uploadedDocs = [];
@@ -454,7 +455,7 @@ exports.submitApplication = async (req, res) => {
       body.secondary_parent_employer || null,
       aiVerification.isValid ? 'passed' : 'flagged',
       JSON.stringify(aiVerification.issues),
-      assignedClass ? assignedClass.id : null,
+      null,
       provisionalLearnerNumber,
       homeLanguage,
       schoolId,
@@ -467,28 +468,26 @@ exports.submitApplication = async (req, res) => {
       body.scenario || 'public_new_applicant',
       body.existing_parent_id ? parseInt(body.existing_parent_id, 10) : null,
       body.existing_learner_id ? parseInt(body.existing_learner_id, 10) : null,
-      body.payment_method || (payNow ? 'instant_online' : 'eft'),
+      hold.method,
       paymentRef
     ];
 
     const appInsertResult = await db.query(insertQuery, values);
     const applicationId = appInsertResult.rows[0].id;
 
-    // Record instant payment in application_payments if paid immediately
-    const receiptNo = `REC-APP-${Date.now().toString().slice(-6)}`;
-    if (payNow) {
-      try {
-        await db.query(`
-          INSERT INTO application_payments (
-            application_id, fee_type, amount, payment_method, payment_reference, receipt_number, payer_name, payer_email, status, created_at
-          ) VALUES ($1, 'application_fee', $2, $3, $4, $5, $6, $7, 'completed', NOW())
-        `, [
-          applicationId, appFeeAmount, body.payment_method || 'instant_online', paymentRef,
-          receiptNo, `${body.primary_parent_name} ${body.primary_parent_surname}`, body.primary_parent_email.trim()
-        ]);
-      } catch (payErr) {
-        console.warn('Could not insert application payment record:', payErr.message);
-      }
+    const receiptNo = `HOLD-APP-${Date.now().toString().slice(-6)}`;
+    try {
+      await db.query(`
+        INSERT INTO application_payments (
+          application_id, fee_type, amount, payment_method, payment_reference, receipt_number, payer_name, payer_email, status, created_at
+        ) VALUES ($1, 'application_fee', $2, $3, $4, $5, $6, $7, $8, NOW())
+      `, [
+        applicationId, appFeeAmount, hold.method, paymentRef,
+        receiptNo, `${body.primary_parent_name} ${body.primary_parent_surname}`, body.primary_parent_email.trim(),
+        hold.status
+      ]);
+    } catch (payErr) {
+      console.warn('Could not insert application payment record:', payErr.message);
     }
 
     // 6. Save Uploaded Documents into application_documents table
@@ -570,42 +569,30 @@ exports.submitApplication = async (req, res) => {
     const resumptionUrl = `${baseUrl}/application.html?resume=${correctionToken}`;
     const registrationUrl = `${baseUrl}/register?appRef=${applicationNumber}&email=${encodeURIComponent(body.primary_parent_email)}&firstName=${encodeURIComponent(body.first_name)}&surname=${encodeURIComponent(body.surname)}&idNumber=${encodeURIComponent(body.id_number || '')}&grade=${encodeURIComponent(body.grade_applied)}&stream=${encodeURIComponent(body.stream || 'General')}`;
 
-    const bankingInfo = {
-      bank_name: targetSchool.bank_name || 'First National Bank (FNB)',
-      account_holder: targetSchool.account_holder || schoolName,
-      account_number: targetSchool.account_number || '62849102841',
-      branch_code: targetSchool.branch_code || '250655',
-      account_type: targetSchool.account_type || 'Cheque / Current',
-      reference: applicationNumber
-    };
+    const bankingInfo = hold.banking_details;
     const paymentUrl = `${baseUrl}/application.html?appRef=${applicationNumber}&pay=true`;
 
-    if (payNow) {
-      await emailService.sendApplicationFeePaymentReceived({
-        parentEmail: body.primary_parent_email,
-        parentName: primaryParentFullName,
-        learnerName: learnerFullName,
-        schoolName,
-        applicationNumber,
-        amountPaid: appFeeAmount,
-        receiptNumber: receiptNo
-      });
-    } else {
-      await emailService.sendApplicationReceivedWithBanking({
-        parentEmail: body.primary_parent_email,
-        parentName: primaryParentFullName,
-        learnerName: learnerFullName,
-        grade: gradeApplied,
-        stream,
-        homeLanguage,
-        schoolName,
-        applicationNumber,
-        feeAmount: appFeeAmount,
-        dueDateStr: feeDueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
-        bankDetails: bankingInfo,
-        paymentUrl
-      });
-    }
+    await emailService.sendApplicationReceivedWithBanking({
+      parentEmail: body.primary_parent_email,
+      parentName: primaryParentFullName,
+      learnerName: learnerFullName,
+      grade: gradeApplied,
+      stream,
+      homeLanguage,
+      schoolName,
+      applicationNumber,
+      feeAmount: appFeeAmount,
+      dueDateStr: feeDueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
+      bankDetails: bankingInfo || {
+        bank_name: 'Waiting for the school bank account',
+        account_holder: schoolName,
+        account_number: 'Not connected yet',
+        branch_code: 'Not connected yet',
+        account_type: 'Cheque / Current',
+        reference: applicationNumber
+      },
+      paymentUrl
+    });
 
     if (applicationStatus === 'action_required') {
       await emailService.sendApplicationCorrection({
@@ -656,16 +643,16 @@ exports.submitApplication = async (req, res) => {
       success: true,
       status: applicationStatus,
       applicationNumber,
-      assignedClass: assignedClass ? assignedClass.name : null,
+      assignedClass: null,
       registrationUrl,
       application_fee_status: feeStatus,
       application_fee_amount: appFeeAmount,
       application_fee_due_date: feeDueDate,
       banking_details: bankingInfo,
       payment_url: paymentUrl,
-      message: payNow
-        ? `Application submitted and application fee of R${appFeeAmount.toFixed(2)} received successfully! It is now under school administration review.`
-        : `Application received! Please settle the application fee of R${appFeeAmount.toFixed(2)} within 7 days using the school banking details emailed to ${body.primary_parent_email}.`
+      payment_held: true,
+      payment_method: hold.method,
+      message: hold.message
     });
 
   } catch (err) {
@@ -892,7 +879,7 @@ exports.resubmitApplication = async (req, res) => {
       merged.secondary_parent_address || null,
       aiVerification.isValid ? 'passed' : 'flagged',
       JSON.stringify(aiVerification.issues),
-      assignedClass ? assignedClass.id : null,
+      null,
       provNumber,
       application.id
     ]);
@@ -1048,9 +1035,16 @@ exports.reviewApplication = async (req, res) => {
       provNumber = await applicationService.generateProvisionalLearnerNumber(app.grade_applied);
     }
 
-    // 1. If approved or enrolled, execute full 1-Click Autonomous Enrollment
+    if (status === 'enrolled' && app.registration_fee_status !== 'paid') {
+      return res.status(400).json({
+        error: 'The learner is placed in a class only after the R1,500 registration fee is paid.'
+      });
+    }
+
+    // Approval records the decision and asks for the registration fee.
+    // Class, accounts, and subjects are created when that fee is paid.
     let enrollmentDetails = null;
-    if (status === 'approved' || status === 'enrolled') {
+    if (status === 'enrolled' && app.registration_fee_status === 'paid') {
       const gradeApplied = parseInt(app.grade_applied, 10) || 10;
       const stream = app.stream || 'General';
       const homeLanguage = (app.home_language || 'Sepedi').trim();
@@ -1196,7 +1190,7 @@ exports.reviewApplication = async (req, res) => {
       };
     }
 
-    const finalStatus = (status === 'approved' || status === 'enrolled') ? 'enrolled' : status;
+    const finalStatus = status;
 
     await db.query(`
       UPDATE applications SET
@@ -1267,8 +1261,8 @@ exports.reviewApplication = async (req, res) => {
 
     res.json({
       success: true,
-      message: (status === 'approved' || status === 'enrolled')
-        ? `Application approved & learner officially enrolled in 1 click! Learner Number: ${provNumber}. Welcome credentials sent to parent.`
+      message: status === 'approved'
+        ? `Application approved. The learner is placed in a class after the R1,500 registration fee is paid.`
         : `Application status updated to ${status}. Notification email dispatched.`,
       status: finalStatus,
       enrollment: enrollmentDetails
@@ -1280,7 +1274,49 @@ exports.reviewApplication = async (req, res) => {
 };
 
 /**
- * Parent: Pay Application Fee (Online / EFT Confirmation)
+ * A school records that money arrived in its own bank account.
+ * Card, instant EFT, bank EFT, and cash stay unpaid until that account exists.
+ */
+exports.confirmSchoolReceipt = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const feeType = req.body.fee_type === 'application_fee' ? 'application_fee' : 'registration_fee';
+    const appRes = await db.query(
+      'SELECT * FROM applications WHERE id::text = $1::text OR application_number = $1::text',
+      [id]
+    );
+    if (appRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Application not found.' });
+    }
+    const app = appRes.rows[0];
+    if (!req.user?.is_superadmin && String(req.user?.school_id || '') !== String(app.school_id || '')) {
+      return res.status(403).json({ error: 'Only this school can record money in its bank account.' });
+    }
+    const schoolRes = await db.query('SELECT * FROM schools WHERE id = $1', [app.school_id]);
+    if (!paymentHold.realBank(schoolRes.rows[0])) {
+      return res.status(409).json({ error: 'Connect this school\'s own bank account before recording that the fee arrived.' });
+    }
+    if (feeType === 'application_fee') {
+      await db.query(
+        `UPDATE applications SET application_fee_status = 'paid', application_fee_paid_at = NOW(), updated_at = NOW() WHERE id = $1`,
+        [app.id]
+      );
+      return res.json({
+        success: true,
+        application_fee_status: 'paid',
+        message: 'The application fee is recorded against the school bank account. The learner is still placed in a class only after the registration fee is recorded.'
+      });
+    }
+    req.body.school_confirmed = true;
+    return exports.payRegistrationFeeAndFinalize(req, res);
+  } catch (err) {
+    console.error('Error confirming school receipt:', err.message);
+    return res.status(500).json({ error: 'The school receipt could not be recorded.' });
+  }
+};
+
+/**
+ * Parent: choose a payment method. The fee stays unpaid until the school bank account receives it.
  */
 exports.payApplicationFee = async (req, res) => {
   const { id } = req.params;
@@ -1299,47 +1335,38 @@ exports.payApplicationFee = async (req, res) => {
     }
 
     const app = appRes.rows[0];
+    const schoolRes = await db.query('SELECT * FROM schools WHERE id = $1', [app.school_id]);
     const amount = parseFloat(app.application_fee_amount) || 250.00;
+    const hold = paymentHold.describe(payment_method, schoolRes.rows[0], amount, app.application_number);
     const payRef = payment_reference || `PAY-APP-${Date.now().toString().slice(-8)}`;
-    const receiptNo = `REC-APP-${Date.now().toString().slice(-6)}`;
+    const receiptNo = `HOLD-APP-${Date.now().toString().slice(-6)}`;
 
-    // Update application fee status
     await db.query(`
       UPDATE applications SET
-        application_fee_status = 'paid',
-        application_fee_paid_at = NOW(),
+        application_fee_status = 'unpaid',
         payment_method = $1,
         payment_reference = $2,
         updated_at = NOW()
       WHERE id = $3
-    `, [payment_method, payRef, app.id]);
+    `, [hold.method, payRef, app.id]);
 
-    // Record in application_payments
     await db.query(`
       INSERT INTO application_payments (
         application_id, fee_type, amount, payment_method, payment_reference, receipt_number, payer_name, payer_email, status, created_at
-      ) VALUES ($1, 'application_fee', $2, $3, $4, $5, $6, $7, 'completed', NOW())
+      ) VALUES ($1, 'application_fee', $2, $3, $4, $5, $6, $7, $8, NOW())
     `, [
-      app.id, amount, payment_method, payRef, receiptNo,
-      `${app.primary_parent_name} ${app.primary_parent_surname}`, app.primary_parent_email
+      app.id, amount, hold.method, payRef, receiptNo,
+      `${app.primary_parent_name} ${app.primary_parent_surname}`, app.primary_parent_email, hold.status
     ]);
 
-    // Send confirmation email
-    await emailService.sendApplicationFeePaymentReceived({
-      parentEmail: app.primary_parent_email,
-      parentName: `${app.primary_parent_name} ${app.primary_parent_surname}`,
-      learnerName: `${app.first_name} ${app.surname}`,
-      schoolName: app.school_name || 'Fusion High School',
-      applicationNumber: app.application_number,
-      amountPaid: amount,
-      receiptNumber: receiptNo
-    });
-
-    res.json({
+    return res.status(202).json({
       success: true,
-      message: `Application fee of R${amount.toFixed(2)} received successfully! Confirmation receipt has been emailed to ${app.primary_parent_email}.`,
-      receipt_number: receiptNo,
-      application_fee_status: 'paid'
+      held: true,
+      paid: false,
+      message: hold.message,
+      payment_method: hold.method,
+      banking_details: hold.banking_details,
+      application_fee_status: 'unpaid'
     });
   } catch (err) {
     console.error('Error paying application fee:', err);
@@ -1369,6 +1396,43 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
     }
 
     const app = appRes.rows[0];
+    if (app.status === 'enrolled' && app.registration_fee_status === 'paid') {
+      return res.json({
+        success: true,
+        message: 'The registration fee is already recorded and the learner is in a class.',
+        status: 'enrolled'
+      });
+    }
+    if (app.status !== 'approved' && app.status !== 'enrolled') {
+      return res.status(400).json({
+        success: false,
+        error: 'The school must approve the application before the registration fee can place the learner in a class.'
+      });
+    }
+    const schoolBankRes = await db.query('SELECT * FROM schools WHERE id = $1', [app.school_id]);
+    const regPreview = parseFloat(app.registration_fee_amount) || 1500.00;
+    const hold = paymentHold.describe(payment_method, schoolBankRes.rows[0], regPreview, app.application_number);
+    if (!req.body.school_confirmed) {
+      await db.query(`
+        UPDATE applications SET payment_method = $1, payment_reference = $2, updated_at = NOW() WHERE id = $3
+      `, [hold.method, payment_reference || `PAY-REG-${Date.now().toString().slice(-8)}`, app.id]);
+      return res.status(202).json({
+        success: true,
+        enrolled: false,
+        held: true,
+        paid: false,
+        message: hold.message,
+        payment_method: hold.method,
+        banking_details: hold.banking_details,
+        registration_fee_status: app.registration_fee_status || 'unpaid'
+      });
+    }
+    if (!paymentHold.realBank(schoolBankRes.rows[0])) {
+      return res.status(409).json({
+        success: false,
+        error: 'Connect this school\'s own bank account before recording that the fee arrived.'
+      });
+    }
     const regFeeAmount = parseFloat(app.registration_fee_amount) || 1500.00;
     const payRef = payment_reference || `PAY-REG-${Date.now().toString().slice(-8)}`;
     const receiptNo = `REC-REG-${Date.now().toString().slice(-6)}`;
@@ -1534,51 +1598,55 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
   }
 };
 
-/**
- * Automated 3-Day Fee Reminder Trigger
- */
+async function dispatchFeeReminders(baseUrl) {
+  const dueApps = await db.query(`
+    SELECT a.*, s.name as school_name, s.bank_name, s.account_number, s.branch_code, s.account_holder
+    FROM applications a
+    LEFT JOIN schools s ON a.school_id = s.id
+    WHERE a.application_fee_status = 'unpaid'
+      AND a.application_fee_reminder_sent = FALSE
+      AND a.application_fee_due_date <= (CURRENT_TIMESTAMP + INTERVAL '3 days')
+      AND a.application_fee_due_date >= CURRENT_TIMESTAMP
+  `);
+
+  let sentCount = 0;
+  const origin = baseUrl || process.env.APP_URL || 'http://localhost:4000';
+
+  for (const app of dueApps.rows) {
+    try {
+      const dueDate = new Date(app.application_fee_due_date);
+      await emailService.sendApplicationFeeReminder({
+        parentEmail: app.primary_parent_email,
+        parentName: `${app.primary_parent_name} ${app.primary_parent_surname}`,
+        learnerName: `${app.first_name} ${app.surname}`,
+        schoolName: app.school_name || 'Fusion High School',
+        applicationNumber: app.application_number,
+        feeAmount: parseFloat(app.application_fee_amount) || 250,
+        dueDateStr: dueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
+        bankDetails: {
+          bank_name: app.bank_name,
+          account_number: app.account_number,
+          branch_code: app.branch_code,
+          account_holder: app.account_holder
+        },
+        paymentUrl: `${origin}/application.html?appRef=${app.application_number}&pay=true`
+      });
+
+      await db.query('UPDATE applications SET application_fee_reminder_sent = TRUE WHERE id = $1', [app.id]);
+      sentCount++;
+    } catch (sendErr) {
+      console.warn(`[REMINDER ERROR for app ${app.application_number}]:`, sendErr.message);
+    }
+  }
+
+  return sentCount;
+}
+
+exports.runScheduledFeeReminders = (baseUrl) => dispatchFeeReminders(baseUrl);
+
 exports.triggerFeeReminders = async (req, res) => {
   try {
-    const dueApps = await db.query(`
-      SELECT a.*, s.name as school_name, s.bank_name, s.account_number, s.branch_code, s.account_holder
-      FROM applications a
-      LEFT JOIN schools s ON a.school_id = s.id
-      WHERE a.application_fee_status = 'unpaid'
-        AND a.application_fee_reminder_sent = FALSE
-        AND a.application_fee_due_date <= (CURRENT_TIMESTAMP + INTERVAL '3 days')
-        AND a.application_fee_due_date >= CURRENT_TIMESTAMP
-    `);
-
-    let sentCount = 0;
-    const baseUrl = getRequestBaseUrl(req);
-
-    for (const app of dueApps.rows) {
-      try {
-        const dueDate = new Date(app.application_fee_due_date);
-        await emailService.sendApplicationFeeReminder({
-          parentEmail: app.primary_parent_email,
-          parentName: `${app.primary_parent_name} ${app.primary_parent_surname}`,
-          learnerName: `${app.first_name} ${app.surname}`,
-          schoolName: app.school_name || 'Fusion High School',
-          applicationNumber: app.application_number,
-          feeAmount: parseFloat(app.application_fee_amount) || 250,
-          dueDateStr: dueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
-          bankDetails: {
-            bank_name: app.bank_name,
-            account_number: app.account_number,
-            branch_code: app.branch_code,
-            account_holder: app.account_holder
-          },
-          paymentUrl: `${baseUrl}/application.html?appRef=${app.application_number}&pay=true`
-        });
-
-        await db.query('UPDATE applications SET application_fee_reminder_sent = TRUE WHERE id = $1', [app.id]);
-        sentCount++;
-      } catch (sendErr) {
-        console.warn(`[REMINDER ERROR for app ${app.application_number}]:`, sendErr.message);
-      }
-    }
-
+    const sentCount = await dispatchFeeReminders(getRequestBaseUrl(req));
     res.json({
       success: true,
       message: `Triggered application fee reminders. Sent ${sentCount} reminders.`,

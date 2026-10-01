@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { teacherService } from '../../services/api';
+import { useSchool } from '../../context/SchoolContext';
+import { moduleAllowed } from '../../utils/schoolModules';
 import {
   Star,
   Plus,
@@ -86,6 +88,17 @@ export const ROLE_MODULE_CATALOGS: Record<string, CatalogModule[]> = {
       badge: 'Marksheet',
       color: 'text-emerald-400',
       iconBg: 'bg-emerald-500/15 border-emerald-500/30'
+    },
+    {
+      id: 'early-warning',
+      title: 'AI Early-Warning Radar',
+      description: 'Exam mark projections, 3-tier risk classification, and study habit interventions.',
+      category: 'academics',
+      categoryLabel: 'Academics & AI',
+      icon: TrendingUp,
+      badge: 'ML Radar',
+      color: 'text-amber-400',
+      iconBg: 'bg-amber-500/15 border-amber-500/30'
     },
     {
       id: 'ai-tools',
@@ -676,7 +689,14 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
   className = ''
 }) => {
   const storageKey = `geleza_favorites_${role}`;
-  const catalog = useMemo(() => ROLE_MODULE_CATALOGS[role] || ROLE_MODULE_CATALOGS.teacher, [role]);
+  const { currentSchool } = useSchool();
+  const catalog = useMemo(() => {
+    const base = ROLE_MODULE_CATALOGS[role] || ROLE_MODULE_CATALOGS.teacher;
+    if (role !== 'teacher' && role !== 'learner') return base;
+    const selected = role === 'teacher' ? currentSchool.teacher_modules : currentSchool.learner_modules;
+    const partner = role === 'learner' ? currentSchool.teacher_modules : undefined;
+    return base.filter((module) => moduleAllowed(role, module.id, selected, partner));
+  }, [role, currentSchool.teacher_modules, currentSchool.learner_modules]);
 
   // Multi-Class Attendance Selection Modal State
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);
@@ -847,7 +867,7 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm sm:text-base font-extrabold font-display text-slate-900 dark:text-white tracking-tight">
+              <h2 className="text-sm sm:text-base xl:text-xl font-extrabold font-display text-slate-900 dark:text-white tracking-tight">
                 Favorite Modules
               </h2>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/25 font-mono">
@@ -882,7 +902,7 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
 
       {/* 2. Favorites Grid or Empty State */}
       {favoriteModules.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-3">
           {favoriteModules.map((mod) => {
             const IconComp = mod.icon;
             return (
@@ -895,7 +915,7 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
                     onNavigateTab(mod.id);
                   }
                 }}
-                className="group relative p-3.5 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-cyan-500/50 dark:hover:border-cyan-500/40 hover:shadow-lg dark:hover:shadow-cyan-950/20 transition-all cursor-pointer flex flex-col justify-between gap-3 overflow-hidden"
+                className="group relative p-3.5 xl:p-4 rounded-2xl xl:rounded-3xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-cyan-500/50 dark:hover:border-cyan-500/40 hover:shadow-lg dark:hover:shadow-cyan-950/20 transition-all cursor-pointer flex items-center gap-3 overflow-hidden min-h-[72px] xl:min-h-[92px]"
               >
                 {/* Remove Quick Button (Stop Propagation) */}
                 <button
@@ -919,31 +939,10 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
                     />
                   </div>
                   <div className="pr-6">
-                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors line-clamp-1">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors line-clamp-2">
                       {mod.title}
                     </h3>
-                    {mod.badge && (
-                      <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block line-clamp-1">
-                        {mod.badge}
-                      </span>
-                    )}
                   </div>
-                </div>
-
-                {/* Bottom Launch Link */}
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (mod.id === 'attendance' && role === 'teacher') {
-                      setIsClassModalOpen(true);
-                    } else {
-                      onNavigateTab(mod.id);
-                    }
-                  }}
-                  className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-[#1B2E3D]/60 text-[11px] text-slate-400 dark:text-slate-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-300"
-                >
-                  <span className="font-semibold text-[10px] uppercase tracking-wider">Launch</span>
-                  <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1 text-cyan-500" />
                 </div>
               </div>
             );
@@ -975,9 +974,6 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
               <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
                 No favorite modules added yet
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Pin your most-used modules here on the home page for instant 1-click access.
-              </p>
             </div>
           </div>
           <button
@@ -1009,11 +1005,8 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm sm:text-base font-extrabold font-display">
-                    Add Favorite Modules to Home Page
+                    Add Favorite Modules
                   </h3>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Select the modules you want displayed on your home page dashboard.
-                  </p>
                 </div>
               </div>
               <button
@@ -1090,11 +1083,6 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
                             <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
                               {mod.title}
                             </h4>
-                            {mod.badge && (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10">
-                                {mod.badge}
-                              </span>
-                            )}
                           </div>
                         </div>
                       </div>

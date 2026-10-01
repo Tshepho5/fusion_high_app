@@ -694,7 +694,7 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
             return (
               <div
                 key={a.id}
-                className={`p-5 rounded-3xl border transition-all flex flex-col justify-between shadow-xl space-y-4 ${
+                className={`min-w-0 p-5 rounded-3xl border transition-all flex flex-col justify-between shadow-xl space-y-4 ${
                   isAI
                     ? 'bg-surface-dark border-purple-500/30 hover:border-purple-500/60'
                     : 'bg-surface-dark border-white/10 hover:border-brand-500/30'
@@ -768,34 +768,44 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
                     </div>
                   </div>
 
-                  {/* Actions Row */}
-                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                  {/* Actions stay inside the card: status and inspect share a row, submissions uses the full width */}
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => handleToggleStatus(a.id, a.item_type, a.status)}
-                      className="px-3 py-2.5 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-300 hover:text-white font-bold text-xs border border-white/10 transition-colors flex items-center gap-1.5 shrink-0"
+                      className="min-w-0 px-3 py-2.5 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-300 hover:text-white font-bold text-xs border border-white/10 transition-colors flex items-center justify-center gap-1.5"
                       title="Manually toggle Graded / Ungraded status"
                     >
-                      <Edit3 className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>{isGraded ? 'Set Ungraded' : 'Set Graded'}</span>
+                      <Edit3 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span className="truncate">{isGraded ? 'Set Ungraded' : 'Set Graded'}</span>
                     </button>
 
-                    {isAI && (
+                    {isAI ? (
                       <button
                         onClick={() => setInspectingQuizQuestions(a)}
-                        className="px-3 py-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 font-bold text-xs border border-purple-500/30 transition-all flex items-center justify-center gap-1.5 shrink-0"
+                        className="min-w-0 px-3 py-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 font-bold text-xs border border-purple-500/30 transition-all flex items-center justify-center gap-1.5"
                       >
-                        <HelpCircle className="w-3.5 h-3.5 text-cyan-300" />
-                        <span>Inspect Task</span>
+                        <HelpCircle className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
+                        <span className="truncate">Inspect Task</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleOpenSubmissions(a)}
+                        className="min-w-0 px-3 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <Eye className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">Submissions ({totalSubs})</span>
                       </button>
                     )}
 
-                    <button
-                      onClick={() => handleOpenSubmissions(a)}
-                      className="flex-1 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all flex items-center justify-center gap-1.5 min-w-[120px]"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Submissions ({totalSubs})</span>
-                    </button>
+                    {isAI && (
+                      <button
+                        onClick={() => handleOpenSubmissions(a)}
+                        className="col-span-2 min-w-0 px-3 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <Eye className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">Submissions ({totalSubs})</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

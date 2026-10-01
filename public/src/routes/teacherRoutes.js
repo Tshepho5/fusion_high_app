@@ -1,22 +1,35 @@
 const express = require('express');
 const multer = require('multer');
+const path = require('path');
 const teacherController = require('../controller/teacherController');
 const { auth: authenticateToken, requireRole } = require('../../../authMiddleware');
 
 const router = express.Router();
 
-// Configure Multer for PDF storage (assuming same config as server.js)
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, 'uploads/textbooks/'),
-    filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
+    filename: (req, file, cb) => {
+        const base = path.basename(file.originalname || 'textbook.pdf');
+        const ext = path.extname(base).toLowerCase();
+        const stem = path.basename(base, path.extname(base)).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || 'textbook';
+        cb(null, `${Date.now()}-${stem}${ext === '.pdf' ? '.pdf' : ''}`);
+    }
 });
 const upload = multer({
     storage,
-    fileFilter: (req, file, cb) => cb(null, file.mimetype === 'application/pdf')
+    limits: { fileSize: 25 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const ext = path.extname(file.originalname || '').toLowerCase();
+        const mime = String(file.mimetype || '').toLowerCase();
+        const mimeOk = mime === 'application/pdf' || mime === 'application/octet-stream' || mime === 'application/x-pdf';
+        cb(null, ext === '.pdf' && mimeOk);
+    }
 });
 
 router.use(authenticateToken, requireRole(['teacher', 'admin']));
 
+const adaptivePracticeController = require('../controller/adaptivePracticeController');
+router.get('/concept-gaps', adaptivePracticeController.getClassGaps);
 router.get('/workload', teacherController.getWorkload);
 router.get('/overview-stats', teacherController.getTeacherOverviewStats);
 router.get('/my-subjects-overview', teacherController.getMySubjectsOverview);

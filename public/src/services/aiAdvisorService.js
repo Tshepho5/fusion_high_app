@@ -5,8 +5,14 @@
 
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
+
+const VENV_PYTHON = path.join(__dirname, '..', '..', '..', '.venv', 'Scripts', 'python.exe');
+const PYTHON_BIN = fs.existsSync(VENV_PYTHON) ? VENV_PYTHON : 'python';
 
 const PREDICT_SCRIPT = path.join(__dirname, '..', '..', '..', 'ml_models', 'src', 'predict.py');
+const GELEZA_PREDICT_SCRIPT = path.join(__dirname, '..', '..', '..', 'ml_models', 'src', 'predict_geleza.py');
+const GELEZA_METRICS_PATH = path.join(__dirname, '..', '..', '..', 'ml_models', 'reports', 'geleza_models_evaluation.json');
 
 /**
  * Predicts careers, projected score, and at-risk assessment for a single student profile.
@@ -16,7 +22,7 @@ const PREDICT_SCRIPT = path.join(__dirname, '..', '..', '..', 'ml_models', 'src'
 async function predictStudent(studentData) {
   return new Promise((resolve) => {
     try {
-      const pythonProcess = spawn('python', [PREDICT_SCRIPT, '--stdin'], {
+      const pythonProcess = spawn(PYTHON_BIN, [PREDICT_SCRIPT, '--stdin'], {
         windowsHide: true
       });
 
@@ -226,7 +232,201 @@ function getFallbackPrediction(data) {
   };
 }
 
+/**
+ * Predicts continuous exam mark and balanced risk tier using Geleza SA Performance Factor Model
+ * @param {Object} studentData
+ * @returns {Promise<Object>}
+ */
+async function predictGelezaPerformance(studentData) {
+  return new Promise((resolve) => {
+    try {
+      const pythonProcess = spawn(PYTHON_BIN, [GELEZA_PREDICT_SCRIPT, '--stdin'], {
+        windowsHide: true
+      });
+
+      let stdoutData = '';
+      let stderrData = '';
+
+      pythonProcess.stdout.on('data', (chunk) => {
+        stdoutData += chunk.toString();
+      });
+
+      pythonProcess.stderr.on('data', (chunk) => {
+        stderrData += chunk.toString();
+      });
+
+      pythonProcess.on('error', (err) => {
+        console.warn('[Geleza AI Advisor] Process spawn error, using intelligent fallback:', err.message);
+        resolve(getGelezaFallback(studentData));
+      });
+
+      pythonProcess.on('close', (code) => {
+        if (code === 0 && stdoutData.trim()) {
+          try {
+            const parsed = JSON.parse(stdoutData.trim());
+            return resolve(parsed);
+          } catch (e) {
+            console.warn('[Geleza AI Advisor] JSON parse error:', e.message);
+          }
+        }
+        console.warn(`[Geleza AI Advisor] Python exited with code ${code}. Stderr: ${stderrData}`);
+        resolve(getGelezaFallback(studentData));
+      });
+
+      pythonProcess.stdin.write(JSON.stringify(studentData));
+      pythonProcess.stdin.end();
+
+      setTimeout(() => {
+        try { pythonProcess.kill(); } catch (_) {}
+        resolve(getGelezaFallback(studentData));
+      }, 5000);
+
+    } catch (err) {
+      console.warn('[Geleza AI Advisor] Exception invoking predict_geleza.py:', err.message);
+      resolve(getGelezaFallback(studentData));
+    }
+  });
+}
+
+/**
+ * Batch prediction for multiple learners
+ * @param {Array<Object>} studentsList 
+ * @returns {Promise<Array<Object>>}
+ */
+async function predictGelezaBatch(studentsList) {
+  if (!Array.isArray(studentsList) || studentsList.length === 0) return [];
+  return new Promise((resolve) => {
+    try {
+      const pythonProcess = spawn(PYTHON_BIN, [GELEZA_PREDICT_SCRIPT, '--stdin'], {
+        windowsHide: true
+      });
+
+      let stdoutData = '';
+      pythonProcess.stdout.on('data', (chunk) => { stdoutData += chunk.toString(); });
+      pythonProcess.on('close', (code) => {
+        if (code === 0 && stdoutData.trim()) {
+          try {
+            const parsed = JSON.parse(stdoutData.trim());
+            return resolve(parsed);
+          } catch (_) {}
+        }
+        resolve(studentsList.map(s => getGelezaFallback(s)));
+      });
+
+      pythonProcess.stdin.write(JSON.stringify(studentsList));
+      pythonProcess.stdin.end();
+
+      setTimeout(() => {
+        try { pythonProcess.kill(); } catch (_) {}
+        resolve(studentsList.map(s => getGelezaFallback(s)));
+      }, 10000);
+    } catch (_) {
+      resolve(studentsList.map(s => getGelezaFallback(s)));
+    }
+  });
+}
+
+/**
+ * What-If Study Simulator: Compares baseline student parameters against simulated improvements
+ * @param {Object} baselineData 
+ * @param {Object} simulatedAdjustments 
+ * @returns {Promise<Object>}
+ */
+async function simulateGelezaStudyImpact(baselineData, simulatedAdjustments) {
+  const adjustedData = { ...baselineData, ...simulatedAdjustments };
+  const [baselinePred, adjustedPred] = await Promise.all([
+    predictGelezaPerformance(baselineData),
+    predictGelezaPerformance(adjustedData)
+  ]);
+
+  const scoreDiff = Math.round((adjustedPred.predicted_score - baselinePred.predicted_score) * 10) / 10;
+  const tierChanged = baselinePred.risk_tier.id !== adjustedPred.risk_tier.id;
+
+  return {
+    baseline: baselinePred,
+    simulated: adjustedPred,
+    impact: {
+      score_delta: scoreDiff,
+      is_improvement: scoreDiff > 0,
+      tier_upgraded: tierChanged && adjustedPred.risk_tier.id > baselinePred.risk_tier.id,
+      summary: scoreDiff > 0
+        ? `Implementing these habits is projected to raise exam marks by +${scoreDiff}% points.`
+        : 'Adjustments yield steady/comparable performance.'
+    }
+  };
+}
+
+/**
+ * Fetches cached Geleza model evaluation metrics and confusion matrix
+ * @returns {Object}
+ */
+function getGelezaModelMetrics() {
+  try {
+    if (fs.existsSync(GELEZA_METRICS_PATH)) {
+      const raw = fs.readFileSync(GELEZA_METRICS_PATH, 'utf-8');
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.warn('[Geleza AI Advisor] Failed to read metrics JSON:', e.message);
+  }
+  return {
+    metadata: { project: "Geleza SA Multi-School Analytics", model_version: "2.0.0", unavailable: true },
+    metrics: null
+  };
+}
+
+/**
+ * Live support bands use the predicted mark.
+ * Below 50 is priority support, 50–69 is core progress, and 70+ is high achiever.
+ */
+function scoreSupportBand(score) {
+  const value = Number(score);
+  if (!Number.isFinite(value)) return null;
+  if (value < 50) {
+    return { id: 0, label: 'Priority Support (below 50)', color: 'red', badge: '🔴' };
+  }
+  if (value < 70) {
+    return { id: 1, label: 'Core Progress (50-69)', color: 'green', badge: '🟢' };
+  }
+  return { id: 2, label: 'High Achiever (70+)', color: 'gold', badge: '🌟' };
+}
+
+/**
+ * Robust fallback for Geleza student predictions
+ */
+function getGelezaFallback(data) {
+  const attendance = Number(data.Attendance) || 75;
+  const hours = Number(data.Hours_Studied) || 15;
+  const prev = Number(data.Previous_Scores) || 65;
+  const estScore = Math.min(100, Math.max(40, Math.round(prev * 0.4 + attendance * 0.35 + hours * 0.7)));
+  const band = scoreSupportBand(estScore);
+  return {
+    predicted_score: estScore,
+    risk_tier: {
+      id: band.id,
+      label: band.label,
+      color: band.color,
+      badge: band.badge,
+      probabilities: {
+        priority_support: band.id === 0 ? 100 : 0,
+        core_progress: band.id === 1 ? 100 : 0,
+        high_achiever: band.id === 2 ? 100 : 0
+      }
+    },
+    actionable_nudges: [
+      attendance < 85 ? `Boosting attendance from ${attendance}% to 90%+ is the single highest-impact factor for grade recovery.` : null,
+      hours < 20 ? `Increasing weekly study hours from ${hours} to 20+ hrs is projected to raise marks.` : null
+    ].filter(Boolean),
+    is_fallback: true
+  };
+}
+
 module.exports = {
   predictStudent,
-  predictBatch
+  predictBatch,
+  predictGelezaPerformance,
+  predictGelezaBatch,
+  simulateGelezaStudyImpact,
+  getGelezaModelMetrics,
+  scoreSupportBand
 };

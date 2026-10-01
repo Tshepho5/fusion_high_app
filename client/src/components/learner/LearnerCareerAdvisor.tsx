@@ -207,9 +207,6 @@ export const LearnerCareerAdvisor: React.FC = () => {
                 <ShieldCheck className="w-5 h-5 text-emerald-400" />
                 <span>{aps.nscPassType}</span>
               </h3>
-              <p className="text-xs text-slate-400">
-                Calculated according to the South African Department of Basic Education (DBE) National Senior Certificate rating scale.
-              </p>
             </div>
             <Badge variant="emerald" size="md">Level {Math.round(aps.apsWithoutLo / 6)} Average</Badge>
           </div>
@@ -298,8 +295,6 @@ export const LearnerCareerAdvisor: React.FC = () => {
                     )}
                   </div>
 
-                  <p className="text-xs text-slate-400">{prog.description}</p>
-
                   <div className="pt-2 border-t border-white/5 space-y-2">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-400">Min. Required APS:</span>
@@ -347,9 +342,6 @@ export const LearnerCareerAdvisor: React.FC = () => {
                   <Sliders className="w-5 h-5 text-purple-400" />
                   <span>Matric Marks & APS Simulator</span>
                 </h3>
-                <p className="text-xs text-slate-400 max-w-xl">
-                  Adjust your projected marks using the sliders below to see how higher scores unlock competitive programmes like Medicine, Engineering, Computer Science, and Law.
-                </p>
               </div>
 
               <button
@@ -464,8 +456,6 @@ export const LearnerCareerAdvisor: React.FC = () => {
                             </span>
                           )}
                         </div>
-
-                        <p className="text-xs text-slate-400">{prog.description}</p>
 
                         <div className="pt-2 border-t border-white/5 space-y-2">
                           <div className="flex items-center justify-between text-xs">

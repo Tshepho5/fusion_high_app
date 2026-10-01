@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { aiTutorService, learnerService } from '../../services/api';
+import { AdaptivePracticePanel } from '../../components/learner/AdaptivePracticePanel';
 import { Badge } from '../../components/common/Badge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { FusionAIIcon } from '../../components/common/FusionAIIcon';
@@ -150,7 +151,7 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
   const [loading, setLoading] = useState(false);
 
   // Dedicated Subject AI Studio State (Grade 12 Life Sciences)
-  const [activeTab, setActiveTab] = useState<'chat' | 'life-sciences-studio'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'life-sciences-studio' | 'adaptive'>('chat');
   const [lifeSciencesData, setLifeSciencesData] = useState<any[]>([]);
   const [selectedLsItem, setSelectedLsItem] = useState<any | null>(null);
   const [studentAnswerText, setStudentAnswerText] = useState<string>('');
@@ -554,9 +555,6 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                 </h2>
                 <Badge variant="cyan" size="sm">Grade {learnerGrade} {learnerStream}</Badge>
               </div>
-              <p className="text-xs text-slate-400">
-                Interactive Department of Basic Education CAPS curriculum explanations, step-by-step calculations & exam memos
-              </p>
             </div>
           </div>
 
@@ -609,6 +607,18 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
 
         {/* Studio & Chat Mode Switcher */}
         <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-white/5">
+          <button
+            onClick={() => setActiveTab('adaptive')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'adaptive'
+                ? 'bg-cyan-600 text-white shadow-md'
+                : 'bg-surface-darker hover:bg-white/5 text-cyan-200 border border-cyan-500/20'
+            }`}
+          >
+            <BrainCircuit className="w-4 h-4" />
+            <span>Adaptive practice</span>
+          </button>
+
           <button
             onClick={() => setActiveTab('chat')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -679,7 +689,9 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
       </div>
 
       {/* Render Main Content: Either Dedicated Life Sciences Studio OR 24/7 Chat Grid */}
-      {activeTab === 'life-sciences-studio' ? (
+      {activeTab === 'adaptive' ? (
+        <AdaptivePracticePanel subject={subject} grade={learnerGrade} />
+      ) : activeTab === 'life-sciences-studio' ? (
         <div className="space-y-4">
           {/* Life Sciences Studio Banner */}
           <div className="rounded-3xl bg-gradient-to-r from-emerald-950/70 via-surface-dark to-surface-darker border border-emerald-500/30 p-6 shadow-xl relative overflow-hidden">

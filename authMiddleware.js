@@ -1,22 +1,69 @@
 const jwt = require('jsonwebtoken');
 const db = require('./db/db');
 
+const SESSION_COOKIE = 'geleza_session';
+
+const sessionCookieOptions = () => ({
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: '/',
+});
+
+function readSessionToken(req) {
+    const raw = req.headers.cookie;
+    if (!raw) return null;
+    for (const part of raw.split(';')) {
+        const idx = part.indexOf('=');
+        if (idx === -1) continue;
+        if (part.slice(0, idx).trim() !== SESSION_COOKIE) continue;
+        const value = part.slice(idx + 1).trim();
+        try {
+            return decodeURIComponent(value);
+        } catch (_) {
+            return value;
+        }
+    }
+    return null;
+}
+
+function attachSessionCookie(res, token) {
+    if (token) res.cookie(SESSION_COOKIE, token, sessionCookieOptions());
+}
+
+function clearSessionCookie(res) {
+    res.clearCookie(SESSION_COOKIE, {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+    });
+}
+
 /**
- * Verifies the JWT token from the Authorization header.
+ * Verifies the JWT from the Authorization header or the sign-in cookie.
  */
 const auth = (req, res, next) => {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const bearer = authHeader && authHeader.split(' ')[1];
+    const token = (bearer && bearer !== 'null' && bearer !== 'undefined') ? bearer : readSessionToken(req);
 
     if (!token || token === 'null' || token === 'undefined') {
         return res.status(401).json({ error: 'Access denied: No valid session token provided' });
     }
 
-    jwt.verify(token, process.env.JWT_SECRET || 'fusion_high_secret_jwt_key', (err, user) => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        return res.status(500).json({ error: 'Server signing secret is not configured.' });
+    }
+
+    jwt.verify(token, secret, (err, user) => {
         if (err) {
             return res.status(403).json({ error: 'Invalid or expired token' });
         }
         req.user = user;
+        attachSessionCookie(res, token);
         next();
     });
 };
@@ -81,7 +128,7 @@ const requireRole = (roles) => async (req, res, next) => {
         req.user.role = roleName;
         if (row) {
             req.user.school_id = row.school_id || req.user.school_id || 1;
-            req.user.is_superadmin = Boolean(row.is_superadmin || (row.email && row.email.toLowerCase() === '202247878@myturf.ul.ac.za'));
+            req.user.is_superadmin = Boolean(row.is_superadmin);
         }
 
         if (!allowedRoles.includes(roleName)) {
@@ -100,4 +147,4 @@ const requireRole = (roles) => async (req, res, next) => {
  */
 const isAdmin = requireRole('admin');
 
-module.exports = { auth, authenticateToken: auth, isAdmin, requireRole };
+module.exports = { auth, authenticateToken: auth, isAdmin, requireRole, attachSessionCookie, clearSessionCookie };

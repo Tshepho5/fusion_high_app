@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { parentService, conductService } from '../../services/api';
+import { parentService, conductService, systemControlService } from '../../services/api';
+import { intakeClosed, intakeReason } from '../../utils/admissionGate';
 import { Badge } from '../../components/common/Badge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { FusionAIIcon } from '../../components/common/FusionAIIcon';
@@ -39,12 +40,17 @@ const SA_OFFICIAL_LANGUAGES = [
   'Setswana', 'Sesotho', 'Xitsonga', 'siSwati', 'Tshivenda', 'isiNdebele'
 ];
 
-export const ParentChildren: React.FC = () => {
+interface ParentChildrenProps {
+  childId?: string | number | null;
+}
+
+export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId }) => {
   const { currentSchool, schoolsList } = useSchool();
   const [children, setChildren] = useState<any[]>([]);
   const [selectedChild, setSelectedChild] = useState<any>(null);
   const [performanceData, setPerformanceData] = useState<any | null>(null);
   const [progressRecords, setProgressRecords] = useState<any[]>([]);
+  const [homework, setHomework] = useState<any[]>([]);
   const [conductData, setConductData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingChildData, setLoadingChildData] = useState(false);
@@ -53,6 +59,8 @@ export const ParentChildren: React.FC = () => {
 
   // Link Modal States
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [siblingIntakeClosed, setSiblingIntakeClosed] = useState(false);
+  const [siblingIntakeReason, setSiblingIntakeReason] = useState('');
   const [linkTab, setLinkTab] = useState<'link_existing' | 'enroll_sibling'>('link_existing');
   const [submittingLink, setSubmittingLink] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
@@ -60,7 +68,7 @@ export const ParentChildren: React.FC = () => {
 
   // Sibling Form Data & School Verification (Scenario 2)
   const [selectedSchoolId, setSelectedSchoolId] = useState<number>(currentSchool?.id || 1);
-  const [siblingPaymentChoice, setSiblingPaymentChoice] = useState<'card' | 'eft'>('card');
+  const [siblingPaymentChoice, setSiblingPaymentChoice] = useState<'card' | 'instant_eft' | 'eft' | 'cash'>('eft');
   const [siblingLangCheck, setSiblingLangCheck] = useState<{
     is_offered?: boolean;
     language?: string;
@@ -129,7 +137,10 @@ export const ParentChildren: React.FC = () => {
       const list = Array.isArray(res) ? res : res.children || [];
       setChildren(list);
       if (list.length > 0) {
-        if (!selectedChild || !list.some((c: any) => c.id === selectedChild.id)) {
+        const requested = childId ? list.find((c: any) => String(c.id) === String(childId)) : null;
+        if (requested) {
+          setSelectedChild(requested);
+        } else if (!selectedChild || !list.some((c: any) => c.id === selectedChild.id)) {
           setSelectedChild(list[0]);
         }
       }
@@ -144,6 +155,20 @@ export const ParentChildren: React.FC = () => {
   useEffect(() => {
     fetchChildren();
   }, []);
+
+  useEffect(() => {
+    systemControlService.getPortalLocks().then((res: any) => {
+      const gate = res?.controls?.sibling_enrollment;
+      setSiblingIntakeClosed(intakeClosed(gate));
+      setSiblingIntakeReason(intakeReason(gate, 'Sibling enrollment is closed.'));
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!childId || children.length === 0) return;
+    const match = children.find((c: any) => String(c.id) === String(childId));
+    if (match) setSelectedChild(match);
+  }, [childId, children]);
 
   // Live language offering check for selected school & sibling home language
   useEffect(() => {
@@ -179,10 +204,10 @@ export const ParentChildren: React.FC = () => {
       const res = await parentService.linkSibling({
         ...siblingForm,
         school_id: selectedSchoolId,
-        payment_method: siblingPaymentChoice === 'card' ? 'instant_online' : 'eft',
-        pay_now: siblingPaymentChoice === 'card'
+        payment_method: siblingPaymentChoice,
+        pay_now: false
       });
-      setCreatedCredentials(res.credentials);
+      setCreatedCredentials(res.enrolled === false ? null : res.credentials);
       setSuccessMsg(res.message || 'Sibling successfully linked and enrolled! Official registration details dispatched via email.');
       
       // Refresh children list
@@ -217,13 +242,8 @@ export const ParentChildren: React.FC = () => {
     e.preventDefault();
     setError(null);
 
-    if (!linkExistingForm.first_name.trim() || !linkExistingForm.surname.trim()) {
-      setError('Learner First Name and Surname are required.');
-      return;
-    }
-
-    if (!linkExistingForm.id_number.trim() && !linkExistingForm.learner_number.trim()) {
-      setError('Please provide the learner\'s South African ID Number or Learner Number.');
+    if (!linkExistingForm.first_name.trim() || !linkExistingForm.surname.trim() || !linkExistingForm.learner_number.trim() || linkExistingForm.id_number.trim().length !== 13) {
+      setError('Linking needs the official learner number, the 13-digit ID, the first name, and the surname.');
       return;
     }
 
@@ -280,13 +300,15 @@ export const ParentChildren: React.FC = () => {
     Promise.all([
       parentService.getChildPerformance(selectedChild.id).catch(() => null),
       parentService.getChildProgress(selectedChild.id).catch(() => []),
-      conductService.getChildConductForParent(selectedChild.id).catch(() => null)
+      conductService.getChildConductForParent(selectedChild.id).catch(() => null),
+      parentService.getChildHomework(selectedChild.id).catch(() => ({ assignments: [] }))
     ])
-      .then(([perf, prog, cond]) => {
+      .then(([perf, prog, cond, work]) => {
         setPerformanceData(perf);
         const records = Array.isArray(prog) ? prog : prog.progress || prog.records || [];
         setProgressRecords(records);
         setConductData(cond);
+        setHomework(Array.isArray(work?.assignments) ? work.assignments : []);
       })
       .catch((err) => {
         console.error('Error fetching child performance details:', err);
@@ -433,15 +455,23 @@ export const ParentChildren: React.FC = () => {
         <div className="flex items-center gap-2.5 self-start sm:self-auto">
           <button
             onClick={() => {
+              if (siblingIntakeClosed) {
+                setError(siblingIntakeReason || 'Sibling enrollment is closed.');
+                return;
+              }
               setIsLinkModalOpen(true);
               setCreatedCredentials(null);
               setError(null);
               setSuccessMsg(null);
             }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all"
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all ${
+              siblingIntakeClosed
+                ? 'bg-slate-700 text-slate-200'
+                : 'bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 text-white shadow-glow-indigo'
+            }`}
           >
             <UserPlus className="w-4 h-4" />
-            <span>Link / Enroll Sibling</span>
+            <span>{siblingIntakeClosed ? 'Sibling enrollment closed' : 'Link / Enroll Sibling'}</span>
           </button>
 
           {selectedChild && progressRecords.length > 0 && (
@@ -871,6 +901,58 @@ export const ParentChildren: React.FC = () => {
             )}
           </div>
 
+          <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="text-sm font-bold font-display text-white flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-cyan-400" />
+                Homework ({homework.length})
+              </h3>
+              <span className="text-[11px] text-slate-400">Same mark the educator signed</span>
+            </div>
+            {homework.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-6">
+                No homework has been published for this learner yet.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-surface-darker text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                    <tr>
+                      <th className="py-2.5 px-3 rounded-l-xl">Subject</th>
+                      <th className="py-2.5 px-3">Task</th>
+                      <th className="py-2.5 px-3">Status</th>
+                      <th className="py-2.5 px-3">Mark</th>
+                      <th className="py-2.5 px-3 rounded-r-xl">Educator note</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {homework.map((item) => {
+                      const marked = item.teacher_score !== null && item.teacher_score !== undefined && item.teacher_score !== '';
+                      const statusLabel = marked
+                        ? 'Marked'
+                        : item.submission_status === 'not_submitted'
+                          ? 'Not submitted'
+                          : 'Submitted';
+                      return (
+                        <tr key={item.id} className="hover:bg-white/5 transition-colors">
+                          <td className="py-2.5 px-3">{item.subject}</td>
+                          <td className="py-2.5 px-3">{item.title}</td>
+                          <td className="py-2.5 px-3">{statusLabel}</td>
+                          <td className="py-2.5 px-3 font-semibold text-white">
+                            {marked
+                              ? `${item.teacher_score}${item.total_marks ? `/${item.total_marks}` : ''}${item.teacher_percentage != null ? ` (${item.teacher_percentage}%)` : ''}`
+                              : '—'}
+                          </td>
+                          <td className="py-2.5 px-3">{item.teacher_feedback || '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
           {/* Learner Merits & Conduct History */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Merits Card */}
@@ -1130,7 +1212,7 @@ export const ParentChildren: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-slate-300 font-bold mb-1">Learner Number (Optional)</label>
+                        <label className="block text-slate-300 font-bold mb-1">Official Learner Number *</label>
                         <input
                           type="text"
                           value={linkExistingForm.learner_number}
@@ -1374,10 +1456,13 @@ export const ParentChildren: React.FC = () => {
                       <input
                         type="text"
                         value={siblingForm.previous_school}
-                        onChange={(e) => setSiblingForm({ ...siblingForm, previous_school: e.target.value })}
+                        onChange={(e) => handleTextInputChange('previous_school', e.target.value, (val) => setSiblingForm(prev => ({ ...prev, previous_school: val })))}
                         placeholder="e.g. Fusion Primary / Sunnyside Primary"
                         className="w-full rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2.5 text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-500"
                       />
+                      {formFieldErrors.previous_school && (
+                        <p className="mt-1 text-[11px] font-semibold text-rose-400">{formFieldErrors.previous_school}</p>
+                      )}
                     </div>
 
                     {/* Application Fee Payment Selection */}
@@ -1392,7 +1477,7 @@ export const ParentChildren: React.FC = () => {
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-400 leading-relaxed">
-                        To process the sibling admission application, please choose whether to pay online immediately or via school bank EFT:
+                        Choose how the family will pay. No money is taken now. Card, instant EFT, bank EFT, and cash all wait until this school connects its own bank account.
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         <label
@@ -1411,8 +1496,8 @@ export const ParentChildren: React.FC = () => {
                             className="mt-0.5 text-brand-500"
                           />
                           <div>
-                            <span className="font-bold text-xs text-white block">💳 Pay Online Immediately</span>
-                            <span className="text-[10px] text-slate-400 block mt-0.5">Instant fast-track verification & receipt</span>
+                            <span className="font-bold text-xs text-white block">Card (PayFast)</span>
+                            <span className="text-[10px] text-slate-400 block mt-0.5">Waits for the school bank account</span>
                           </div>
                         </label>
 
@@ -1432,19 +1517,62 @@ export const ParentChildren: React.FC = () => {
                             className="mt-0.5 text-amber-500"
                           />
                           <div>
-                            <span className="font-bold text-xs text-white block">🏦 Pay via School Bank (7 Days)</span>
-                            <span className="text-[10px] text-slate-400 block mt-0.5">School bank details emailed with 7-day due date</span>
+                            <span className="font-bold text-xs text-white block">Bank EFT</span>
+                            <span className="text-[10px] text-slate-400 block mt-0.5">Uses the school account once it is connected</span>
+                          </div>
+                        </label>
+
+                        <label
+                          onClick={() => setSiblingPaymentChoice('instant_eft')}
+                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-2.5 ${
+                            siblingPaymentChoice === 'instant_eft'
+                              ? 'bg-cyan-500/15 border-cyan-500 text-white'
+                              : 'bg-surface-darker border-white/10 text-slate-400 hover:border-white/20'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="sibling_payment"
+                            checked={siblingPaymentChoice === 'instant_eft'}
+                            onChange={() => setSiblingPaymentChoice('instant_eft')}
+                            className="mt-0.5 text-cyan-500"
+                          />
+                          <div>
+                            <span className="font-bold text-xs text-white block">Instant EFT (Ozow)</span>
+                            <span className="text-[10px] text-slate-400 block mt-0.5">Waits for the school bank account</span>
+                          </div>
+                        </label>
+
+                        <label
+                          onClick={() => setSiblingPaymentChoice('cash')}
+                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-2.5 ${
+                            siblingPaymentChoice === 'cash'
+                              ? 'bg-emerald-500/15 border-emerald-500 text-white'
+                              : 'bg-surface-darker border-white/10 text-slate-400 hover:border-white/20'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="sibling_payment"
+                            checked={siblingPaymentChoice === 'cash'}
+                            onChange={() => setSiblingPaymentChoice('cash')}
+                            className="mt-0.5 text-emerald-500"
+                          />
+                          <div>
+                            <span className="font-bold text-xs text-white block">Cash at the school office</span>
+                            <span className="text-[10px] text-slate-400 block mt-0.5">The school records it against its bank account</span>
                           </div>
                         </label>
                       </div>
 
-                      {siblingPaymentChoice === 'eft' && siblingLangCheck?.banking_details && (
-                        <div className="p-3 rounded-xl bg-slate-950/70 border border-amber-500/30 text-[11px] text-slate-300 space-y-1 animate-fade-in">
-                          <div className="font-bold text-amber-400">🏛️ School Banking Details Preview:</div>
-                          <div>Bank: <strong>{siblingLangCheck.banking_details.bank_name || 'First National Bank (FNB)'}</strong> | Acc: <span className="font-mono text-cyan-300 font-bold">{siblingLangCheck.banking_details.account_number}</span> | Branch: <span className="font-mono">{siblingLangCheck.banking_details.branch_code}</span></div>
-                          <div className="text-[10.5px] text-slate-400 pt-1 border-t border-white/5">
-                            Payment reference will be the learner number. An automated reminder will be emailed 3 days before the 7-day deadline.
-                          </div>
+                      {siblingLangCheck?.banking_details ? (
+                        <div className="p-3 rounded-xl bg-slate-950/70 border border-amber-500/30 text-[11px] text-slate-300 space-y-1">
+                          <div className="font-bold text-amber-400">School bank account</div>
+                          <div>Bank: <strong>{siblingLangCheck.banking_details.bank_name}</strong> | Acc: <span className="font-mono text-cyan-300 font-bold">{siblingLangCheck.banking_details.account_number}</span> | Branch: <span className="font-mono">{siblingLangCheck.banking_details.branch_code}</span></div>
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-xl bg-slate-950/70 border border-amber-500/30 text-[11px] text-amber-100">
+                          This school has not connected a bank account yet. The payment choice is saved and no money is taken.
                         </div>
                       )}
                     </div>

@@ -339,9 +339,6 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
             <h2 className="text-2xl md:text-3xl font-extrabold font-display text-white tracking-tight">
               Learning Resources & Past Papers
             </h2>
-            <p className="text-xs text-slate-400 mt-1 max-w-xl">
-              Upload, distribute, and track CAPS past exam papers, question sheets, and syllabus guides tailored to your assigned classes.
-            </p>
           </div>
 
           <button

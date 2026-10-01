@@ -88,7 +88,31 @@ const NAME_PATTERN = /^[A-Za-z\s\-']+$/;
 const PHONE_PATTERN = /^(\+27|0)[0-9]{9}$/;
 
 // DOM Initialization
+async function guardAdmissionWindow() {
+  try {
+    const res = await fetch(`${API_BASE}/api/system/portal-locks`);
+    const data = await res.json();
+    const gate = data.controls && data.controls.parent_application;
+    const closed = gate && (gate.effectively_closed === true || (gate.effectively_closed == null && gate.is_locked));
+    if (!closed) return;
+    const reason = gate.public_reason || gate.locked_reason || 'New family applications are closed.';
+    const banner = document.createElement('div');
+    banner.setAttribute('role', 'status');
+    banner.style.cssText = 'margin:16px auto;max-width:880px;padding:16px 18px;border-radius:16px;background:#0f172a;border:1px solid #fb7185;color:#ffe4e6;font-family:sans-serif;';
+    banner.innerHTML = '<strong>Applications are closed.</strong><div style="margin-top:6px;font-size:14px;line-height:1.45;"></div>';
+    banner.querySelector('div').textContent = reason;
+    const form = document.querySelector('form');
+    if (form && form.parentNode) {
+      form.parentNode.insertBefore(banner, form);
+      form.querySelectorAll('input, select, textarea, button').forEach((el) => { el.disabled = true; });
+    } else {
+      document.body.prepend(banner);
+    }
+  } catch (_) {}
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+  await guardAdmissionWindow();
   initSchoolSelector();
   initLanguageOfferingCheck();
   initEnrolledLearnerLookup();
@@ -119,7 +143,7 @@ function initSchoolSelector() {
 
   function updateSchoolDisplay() {
     const selectedOpt = schoolSelect.options[schoolSelect.selectedIndex];
-    if (!selectedOpt) return;
+    if (!selectedOpt || !selectedOpt.value) return;
     const schoolName = selectedOpt.textContent.split('(')[0].trim();
     const emis = selectedOpt.getAttribute('data-emis') || '911220001';
     const circuit = selectedOpt.getAttribute('data-circuit') || 'Polokwane Central Circuit';
@@ -313,10 +337,10 @@ function initEnrolledLearnerLookup() {
       const firstName = (document.getElementById('lookup_first_name')?.value || '').trim();
       const surname = (document.getElementById('lookup_surname')?.value || '').trim();
 
-      if (!learnerNo && !idNum && (!firstName || !surname)) {
+      if (!learnerNo || idNum.replace(/\D/g, '').length !== 13 || !firstName || !surname) {
         if (resultBanner) {
           resultBanner.style.display = 'block';
-          resultBanner.innerHTML = `<div style="padding:10px; background:rgba(239,68,68,0.2); border:1px solid #ef4444; border-radius:8px; color:#fca5a5;">Please enter the child's Learner Number or South African ID Number and names to look up their enrolled record.</div>`;
+          resultBanner.innerHTML = `<div style="padding:10px; background:rgba(239,68,68,0.2); border:1px solid #ef4444; border-radius:8px; color:#fca5a5;">Enter the official learner number, the 13-digit ID, the first name, and the surname. All four must match the enrolled learner.</div>`;
         }
         return;
       }
@@ -411,7 +435,7 @@ function initPaymentMethodSelector() {
       if (payNowDetails) payNowDetails.style.display = 'block';
       if (payLaterDetails) payLaterDetails.style.display = 'none';
       if (paymentMethodInput) paymentMethodInput.value = 'card';
-      if (payNowInput) payNowInput.value = 'true';
+      if (payNowInput) payNowInput.value = 'false';
     } else {
       if (cardLater) {
         cardLater.style.borderColor = '#f59e0b';

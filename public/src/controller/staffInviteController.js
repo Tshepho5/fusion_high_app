@@ -2,6 +2,7 @@ const db = require('../../../db/db');
 const bcrypt = require('bcryptjs');
 const emailService = require('../services/emailService');
 const { isControlLocked } = require('./systemController');
+const { rejectNameDigits } = require('../services/lettersOnly');
 
 /**
  * Public endpoint to verify a staff invitation or approval token.
@@ -28,8 +29,8 @@ exports.verifyToken = async (req, res) => {
     const schoolRes = await db.query('SELECT name, district, province FROM schools WHERE id = $1', [invite.school_id]);
     const school = schoolRes.rows[0] || { name: 'Geleza SA Partner School' };
 
-    const appLock = await isControlLocked('parent_application');
-    const regLock = await isControlLocked('user_registration');
+    const appLock = await isControlLocked('teacher_registration');
+    const regLock = await isControlLocked('teacher_registration');
 
     res.json({
       valid: true,
@@ -68,7 +69,7 @@ exports.verifyToken = async (req, res) => {
 exports.submitTeacherApplication = async (req, res) => {
   try {
     // 1. Verify gatekeeper
-    const lockState = await isControlLocked('parent_application');
+    const lockState = await isControlLocked('teacher_registration');
     if (lockState && lockState.is_locked) {
       return res.status(403).json({
         error: lockState.locked_reason || 'Teacher applications are currently closed by Executive Administration.',
@@ -96,6 +97,7 @@ exports.submitTeacherApplication = async (req, res) => {
     if (!full_name || !surname) {
       return res.status(400).json({ error: 'Full name and surname are required.' });
     }
+    if (rejectNameDigits(res, full_name, surname)) return;
 
     const cleanId = (id_number || '').toString().replace(/\D/g, '');
     if (cleanId && cleanId.length !== 13) {
@@ -167,7 +169,7 @@ exports.submitTeacherApplication = async (req, res) => {
 exports.registerTeacherAccount = async (req, res) => {
   try {
     // 1. Verify gatekeeper
-    const lockState = await isControlLocked('user_registration');
+    const lockState = await isControlLocked('teacher_registration');
     if (lockState && lockState.is_locked) {
       return res.status(403).json({
         error: lockState.locked_reason || 'User registration is currently closed by Executive Administration.',

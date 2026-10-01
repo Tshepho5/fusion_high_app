@@ -12,10 +12,11 @@ router.post('/resume/:token', applicationController.uploadApplicationDocs, appli
 // Payment & Enrollment Finalization Routes
 router.post('/:id/pay-application-fee', applicationController.payApplicationFee);
 router.post('/:id/pay-registration-fee', applicationController.payRegistrationFeeAndFinalize);
+router.post('/:id/confirm-receipt', authenticateToken, isAdmin, applicationController.confirmSchoolReceipt);
 
-// Automated Reminders
-router.get('/cron/reminders', applicationController.triggerFeeReminders);
-router.post('/cron/reminders', applicationController.triggerFeeReminders);
+// Fee reminders run on the server schedule. An admin can still trigger them by hand.
+router.get('/cron/reminders', authenticateToken, isAdmin, applicationController.triggerFeeReminders);
+router.post('/cron/reminders', authenticateToken, isAdmin, applicationController.triggerFeeReminders);
 
 // Admin Application Management Routes
 router.get('/', authenticateToken, isAdmin, applicationController.listApplications);

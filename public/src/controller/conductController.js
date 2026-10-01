@@ -46,7 +46,8 @@ exports.awardMerit = async (req, res) => {
         title: `🌟 Commendation for ${child.full_name}`,
         message: `An educator awarded a merit badge (+${points} pts) to ${child.full_name} ${child.surname} for "${title}" (${category}).`,
         type: 'merit',
-        targetTab: 'children'
+        targetTab: 'children',
+        metadata: { child_id }
       }).catch(e => console.error('Merit notification error (parent):', e));
     }
 
@@ -119,7 +120,8 @@ exports.recordDisciplinaryIncident = async (req, res) => {
         title: `⚠️ Disciplinary Notice: ${child.full_name}`,
         message: `A ${severity} infraction (${category}) was recorded for ${child.full_name} ${child.surname}. Action: ${action_taken || 'Demerit recorded'}.${detention_date ? ` Detention date: ${detention_date}.` : ''}`,
         type: 'disciplinary',
-        targetTab: 'children'
+        targetTab: 'children',
+        metadata: { child_id }
       }).catch(e => console.error('Disciplinary notification error (parent):', e));
     }
 

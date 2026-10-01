@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 const { validatePassword } = require('./authController');
+const { rejectNameDigits } = require('../services/lettersOnly');
 
 exports.getProfile = async (req, res) => {
     try {
@@ -194,6 +195,8 @@ exports.updateProfile = async (req, res) => {
                 error: `Profile editing is locked by school administration. You cannot modify personal details (${attemptedLockedFields.join(', ')}). Please request your school administrator to unlock your profile to submit changes.`
             });
         }
+
+        if (rejectNameDigits(res, updates.full_name, updates.surname)) return;
 
         const keys = Object.keys(updates).filter(key => allowedFields.includes(key));
 
@@ -434,6 +437,8 @@ exports.heartbeat = async (req, res) => {
  */
 exports.updateLogoutStatus = async (req, res) => {
     try {
+        const { clearSessionCookie } = require('../../../authMiddleware');
+        clearSessionCookie(res);
         const userId = req.user.id;
         await db.query(
             `UPDATE users SET is_online = FALSE, last_seen_at = (NOW() - INTERVAL '2 minutes') WHERE id = $1`,

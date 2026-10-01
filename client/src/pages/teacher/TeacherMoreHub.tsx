@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { useSchool } from '../../context/SchoolContext';
+import { moduleAllowed } from '../../utils/schoolModules';
 import {
   FileSpreadsheet,
   FileText,
@@ -25,6 +27,7 @@ import {
   Compass,
   MessageSquare,
   Star,
+  Activity,
 } from 'lucide-react';
 
 type MoreViewMode = 'grid' | 'compact' | 'list';
@@ -114,6 +117,15 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
       badge: 'Exams',
       color: 'text-indigo-400',
       iconBg: 'bg-indigo-500/15 border-indigo-500/30',
+    },
+    {
+      id: 'early-warning',
+      title: 'AI Early-Warning Radar',
+      category: 'assessments',
+      icon: Activity,
+      badge: 'ML Radar',
+      color: 'text-amber-400',
+      iconBg: 'bg-amber-500/15 border-amber-500/30',
     },
 
     // 2. Classroom & Learner Management
@@ -260,8 +272,11 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     },
   ];
 
+  const { currentSchool } = useSchool();
+  const schoolModules = allModules.filter((module) => moduleAllowed('teacher', module.id, currentSchool.teacher_modules));
+
   const filteredModules = useMemo(() => {
-    return allModules.filter((m) => {
+    return schoolModules.filter((m) => {
       const matchesCategory = selectedCategory === 'all' || m.category === selectedCategory;
       const query = searchQuery.toLowerCase().trim();
       const matchesSearch =
@@ -270,18 +285,18 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
         (m.badge && m.badge.toLowerCase().includes(query));
       return matchesCategory && matchesSearch;
     });
-  }, [allModules, selectedCategory, searchQuery]);
+  }, [schoolModules, selectedCategory, searchQuery]);
 
   return (
     <div className="space-y-6 animate-fade-in text-slate-800 dark:text-slate-100 pb-20">
       {/* Header Banner with View Mode Switcher & Search */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-white/80 dark:bg-[#0F1A24]/90 backdrop-blur-xl border border-slate-200/90 dark:border-[#1B2E3D] shadow-sm relative overflow-hidden">
+      <div className="p-5 sm:p-6 xl:px-1 xl:bg-transparent xl:dark:bg-transparent xl:border-transparent xl:shadow-none rounded-3xl bg-white/80 dark:bg-[#0F1A24]/90 backdrop-blur-xl border border-slate-200/90 dark:border-[#1B2E3D] shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black font-display text-slate-900 dark:text-white tracking-tight">
+              <h1 className="text-xl sm:text-2xl xl:text-4xl font-black font-display text-slate-900 dark:text-white tracking-tight">
                 Main Navigation Menu
               </h1>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-600 dark:text-[#18E2EC] border border-cyan-500/20 uppercase tracking-wider">
@@ -373,7 +388,7 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
       {/* VIEW MODE 1: Standard Grid (Icon + Title Only, No Descriptions)          */}
       {/* ========================================================================= */}
       {viewMode === 'grid' && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
           {filteredModules.map((item) => {
             const IconComp = item.icon;
             const isFav = favoriteIds.includes(item.id);
@@ -387,14 +402,9 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
                   <IconComp className="w-6 h-6 text-slate-800 dark:text-[#18E2EC]" />
                 </div>
                 <div className="flex-1 min-w-0 pr-6">
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors leading-snug">
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors leading-snug line-clamp-2">
                     {item.title}
                   </h3>
-                  {item.badge && (
-                    <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-slate-100 dark:bg-[#142230] border border-slate-200/80 dark:border-[#1B2E3D] text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">
-                      {item.badge}
-                    </span>
-                  )}
                 </div>
                 <button
                   type="button"
@@ -418,7 +428,7 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
       {/* VIEW MODE 2: Compact App Tiles (Icon + Title Centered, Launchpad Style)   */}
       {/* ========================================================================= */}
       {viewMode === 'compact' && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 2xl:grid-cols-8 gap-2.5">
           {filteredModules.map((item) => {
             const IconComp = item.icon;
             const isFav = favoriteIds.includes(item.id);
@@ -455,7 +465,7 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
       {/* VIEW MODE 3: List View (Icon + Title + Arrow, Clean Rows)                */}
       {/* ========================================================================= */}
       {viewMode === 'list' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
           {filteredModules.map((item) => {
             const IconComp = item.icon;
             const isFav = favoriteIds.includes(item.id);
@@ -470,14 +480,9 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
                     <IconComp className="w-4.5 h-4.5 text-slate-800 dark:text-[#18E2EC]" />
                   </div>
                   <div className="min-w-0">
-                    <span className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors truncate block">
+                    <span className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2">
                       {item.title}
                     </span>
-                    {item.badge && (
-                      <span className="text-[9.5px] font-medium text-slate-400 dark:text-slate-500 block">
-                        {item.badge}
-                      </span>
-                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

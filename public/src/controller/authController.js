@@ -1,11 +1,14 @@
+const crypto = require('crypto');
 const db = require('../../../db/db');
 const { db: firestore } = require('../../../db/firebase');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { attachSessionCookie } = require('../../../authMiddleware');
 const emailService = require('../services/emailService');
 const { validateSAID } = require('./saIDvalidations');
 const curriculumService = require('../services/curriculumService');
 const { isControlLocked } = require('./systemController');
+const { rejectNameDigits } = require('../services/lettersOnly');
 
 const validatePassword = (password) => {
     if (!password) return "Password is required.";
@@ -51,123 +54,32 @@ exports.verifyLearner = async (req, res) => {
     const firstName = (req.body.first_name || req.body.name || req.query.first_name || '').toString().trim();
     const surname = (req.body.surname || req.query.surname || '').toString().trim();
     const idNumber = (req.body.id_number || req.body.idNumber || req.query.id_number || '').toString().replace(/\D/g, '').trim();
-    const grade = req.body.grade || req.query.grade;
-    const stream = (req.body.stream || req.query.stream || '').toString().trim();
     const learnerNumber = (req.body.learner_number || req.body.learnerNumber || req.query.learner_number || '').toString().trim();
 
-    if (!learnerNumber && (!firstName || !surname) && !idNumber) {
-        return res.status(400).json({ error: 'Please provide Child Name, Surname, ID Number, Grade, and Stream to verify.' });
+    if (!learnerNumber || idNumber.length !== 13 || !firstName || !surname) {
+        return res.status(400).json({
+            error: 'The official learner number, a 13-digit ID, the first name, and the surname are all required.'
+        });
     }
 
     try {
-        let query = `
-            SELECT c.id, c.full_name, c.surname, c.learner_number, c.grade, c.stream, c.subjects, c.parent_id,
+        const { rows } = await db.query(`
+            SELECT c.id, c.full_name, c.surname, c.learner_number, c.grade, c.stream, c.subjects, c.parent_id, c.secondary_parent_id,
                    u.id_number, u.email as learner_email, cl.name as class_name
             FROM children c
-            LEFT JOIN users u ON c.learner_user_id = u.id
+            JOIN users u ON c.learner_user_id = u.id
             LEFT JOIN classes cl ON c.class_id = cl.id
-            WHERE 1=1
-        `;
-        const params = [];
+            WHERE LOWER(TRIM(c.learner_number)) = LOWER(TRIM($1))
+              AND regexp_replace(COALESCE(u.id_number, ''), '\\D', '', 'g') = $2
+              AND LOWER(TRIM(c.full_name)) = LOWER(TRIM($3))
+              AND LOWER(TRIM(c.surname)) = LOWER(TRIM($4))
+            LIMIT 1
+        `, [learnerNumber, idNumber, firstName, surname]);
 
-        if (idNumber && idNumber.length >= 6) {
-            params.push(idNumber);
-            query += ` AND (u.id_number = $${params.length})`;
-        } else if (learnerNumber) {
-            params.push(learnerNumber);
-            query += ` AND (c.learner_number = $${params.length} OR c.id::text = $${params.length})`;
-        } else if (firstName && surname) {
-            params.push(`%${firstName}%`);
-            params.push(`%${surname}%`);
-            query += ` AND c.full_name ILIKE $${params.length - 1} AND c.surname ILIKE $${params.length}`;
-        }
-
-        if (grade) {
-            params.push(parseInt(grade, 10));
-            query += ` AND c.grade = $${params.length}`;
-        }
-
-        query += ` LIMIT 1`;
-
-        const { rows } = await db.query(query, params);
         if (rows.length === 0) {
-            // Check applications table for approved admissions
-            let appQuery = `
-                SELECT a.id, a.first_name, a.surname, a.provisional_learner_number, a.application_number,
-                       a.grade_applied, a.stream, a.id_number, a.selected_subjects, a.assigned_class_id,
-                       c.name as class_name
-                FROM applications a
-                LEFT JOIN classes c ON a.assigned_class_id = c.id
-                WHERE a.status IN ('approved', 'enrolled')
-            `;
-            const appParams = [];
-
-            if (learnerNumber) {
-                appParams.push(learnerNumber);
-                appQuery += ` AND (a.provisional_learner_number = $${appParams.length} OR a.application_number = $${appParams.length})`;
-            } else if (idNumber && idNumber.length >= 6) {
-                appParams.push(idNumber);
-                appQuery += ` AND (a.id_number = $${appParams.length})`;
-            } else if (firstName && surname) {
-                appParams.push(`%${firstName}%`);
-                appParams.push(`%${surname}%`);
-                appQuery += ` AND a.first_name ILIKE $${appParams.length - 1} AND a.surname ILIKE $${appParams.length}`;
-            }
-
-            const appRes = await db.query(appQuery + ` LIMIT 1`, appParams);
-            if (appRes.rows.length > 0) {
-                const appRow = appRes.rows[0];
-                return res.json({
-                    verified: true,
-                    is_from_application: true,
-                    learner: {
-                        id: appRow.id,
-                        full_name: appRow.first_name,
-                        surname: appRow.surname,
-                        id_number: appRow.id_number,
-                        learner_number: appRow.provisional_learner_number || appRow.application_number,
-                        application_number: appRow.application_number,
-                        grade: appRow.grade_applied,
-                        stream: appRow.stream || stream || 'General',
-                        class_name: appRow.class_name || `Grade ${appRow.grade_applied}A`,
-                        subjects: appRow.selected_subjects && appRow.selected_subjects.length > 0 
-                            ? appRow.selected_subjects 
-                            : ['English FAL', 'Mathematics', 'Life Orientation'],
-                        already_linked: false
-                    }
-                });
-            }
-
-            // Fallback: Check relaxed match by name + surname in children table
-            if (firstName && surname) {
-                const fallbackRes = await db.query(
-                    `SELECT c.id, c.full_name, c.surname, c.learner_number, c.grade, c.stream, c.subjects, c.parent_id, c.secondary_parent_id, cl.name as class_name 
-                     FROM children c 
-                     LEFT JOIN classes cl ON c.class_id = cl.id 
-                     WHERE c.full_name ILIKE $1 AND c.surname ILIKE $2 LIMIT 1`,
-                    [`%${firstName}%`, `%${surname}%`]
-                );
-                if (fallbackRes.rows.length > 0) {
-                    const lrn = fallbackRes.rows[0];
-                    return res.json({
-                        verified: true,
-                        learner: {
-                            id: lrn.id,
-                            full_name: lrn.full_name,
-                            surname: lrn.surname,
-                            id_number: idNumber || null,
-                            learner_number: lrn.learner_number || `ID-${lrn.id}`,
-                            grade: lrn.grade,
-                            stream: lrn.stream || stream || 'General',
-                            class_name: lrn.class_name || `Grade ${lrn.grade}A`,
-                            subjects: lrn.subjects || ['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL'],
-                            already_linked: !!lrn.parent_id && !!lrn.secondary_parent_id
-                        }
-                    });
-                }
-            }
-
-            return res.status(404).json({ error: 'No enrolled or approved learner found matching these details. Please verify the Name, Surname, ID Number, or Application Reference.' });
+            return res.status(404).json({
+                error: 'Those four details do not match an enrolled learner. A new learner is not created from this check.'
+            });
         }
 
         const learner = rows[0];
@@ -183,7 +95,7 @@ exports.verifyLearner = async (req, res) => {
                 stream: learner.stream,
                 class_name: learner.class_name || `Grade ${learner.grade}A`,
                 subjects: learner.subjects || ['English FAL', 'Mathematics', 'Life Orientation'],
-                already_linked: !!learner.parent_id && !learner.secondary_parent_id ? false : (!!learner.parent_id && !!learner.secondary_parent_id)
+                already_linked: !!learner.parent_id && !!learner.secondary_parent_id
             }
         });
     } catch (err) {
@@ -287,12 +199,36 @@ exports.getSchoolAcZaDomain = getSchoolAcZaDomain;
  */
 exports.registerUser = async (req, res) => {
     // 0. Geleza SA Executive & Admin Portal Lock Verification
-    const lockState = await isControlLocked('user_registration');
-    if (lockState && lockState.is_locked) {
-        return res.status(403).json({
-            error: lockState.locked_reason || 'User registration is currently closed by Geleza SA Administrators.',
-            is_locked: true
-        });
+    const requestedRole = (req.body.role || 'parent').toString().toLowerCase();
+    if (requestedRole === 'learner') {
+        const learnerLock = await isControlLocked('learner_registration');
+        if (learnerLock && learnerLock.is_locked) {
+            return res.status(403).json({
+                error: learnerLock.locked_reason || 'Learner registration is closed.',
+                is_locked: true
+            });
+        }
+    }
+    if (requestedRole === 'teacher') {
+        const teacherLock = await isControlLocked('teacher_registration');
+        if (teacherLock && teacherLock.is_locked) {
+            return res.status(403).json({
+                error: teacherLock.locked_reason || 'Teacher registration is closed.',
+                is_locked: true
+            });
+        }
+    }
+
+    if (requestedRole !== 'learner' && requestedRole !== 'teacher') {
+        const parentLock = await isControlLocked('parent_registration');
+        const legacyLock = await isControlLocked('user_registration');
+        const lockState = (parentLock && parentLock.is_locked) ? parentLock : legacyLock;
+        if (lockState && lockState.is_locked) {
+            return res.status(403).json({
+                error: lockState.locked_reason || 'Parent registration is closed.',
+                is_locked: true
+            });
+        }
     }
 
     let { 
@@ -311,6 +247,12 @@ exports.registerUser = async (req, res) => {
     const normalizedEmail = (email || '').toString().toLowerCase().trim();
     if (!normalizedEmail || !password || !full_name || !surname) {
         return res.status(400).json({ error: 'Full name, surname, email, and password are required.' });
+    }
+    if (rejectNameDigits(res, full_name, surname)) return;
+    if (Array.isArray(children_to_link)) {
+        for (const child of children_to_link) {
+            if (rejectNameDigits(res, child && child.full_name, child && child.surname)) return;
+        }
     }
 
     const pwError = validatePassword(password);
@@ -344,116 +286,46 @@ exports.registerUser = async (req, res) => {
         }
 
         for (const item of rawChildren) {
-            let childObj = typeof item === 'object' ? item : { learner_number: item };
-            const childIdOrNum = childObj.id || childObj.learner_number || childObj.learnerNumber;
+            const childObj = typeof item === 'object' ? item : { learner_number: item };
+            const learnerNumber = (childObj.learner_number || childObj.learnerNumber || '').toString().trim();
             const childFirstName = (childObj.firstName || childObj.first_name || childObj.name || '').trim();
             const childSurname = (childObj.surname || '').trim();
             const childIdNum = (childObj.idNumber || childObj.id_number || '').toString().replace(/\D/g, '').trim();
-            const childGrade = childObj.grade ? parseInt(childObj.grade, 10) : null;
-            const childStream = childObj.stream || 'General';
 
-            let cRes = { rows: [] };
-
-            if (childIdOrNum) {
-                cRes = await db.query(
-                    `SELECT c.id, c.learner_user_id, c.full_name, c.surname, c.grade, c.stream, c.subjects, c.learner_number, c.parent_id,
-                            u.id_number as user_id_num, u.email as learner_email 
-                     FROM children c 
-                     LEFT JOIN users u ON c.learner_user_id = u.id
-                     WHERE c.learner_number = $1 OR c.id::text = $1`,
-                    [childIdOrNum.toString().trim()]
-                );
-            }
-
-            if (cRes.rows.length === 0 && childFirstName && childSurname) {
-                cRes = await db.query(
-                    `SELECT c.id, c.learner_user_id, c.full_name, c.surname, c.grade, c.stream, c.subjects, c.learner_number, c.parent_id,
-                            u.id_number as user_id_num, u.email as learner_email 
-                     FROM children c 
-                     LEFT JOIN users u ON c.learner_user_id = u.id
-                     WHERE c.full_name ILIKE $1 AND c.surname ILIKE $2`,
-                    [`%${childFirstName}%`, `%${childSurname}%`]
-                );
-            }
-
-            // If found in children table
-            if (cRes.rows.length > 0) {
-                const found = cRes.rows[0];
-                const cleanId = (found.user_id_num || childIdNum || '').toString().replace(/\D/g, '').trim();
-                const lrnNumber = found.learner_number || await generateOfficialLearnerNumber();
-                const generatedPassword = cleanId || lrnNumber;
-                const learnerEmail = `${lrnNumber.toLowerCase().replace(/[\s-]/g, '')}@${schoolDomain}`;
-
-                validatedChildren.push({
-                    ...found,
-                    learner_number: lrnNumber,
-                    id_number: cleanId,
-                    learner_email: learnerEmail,
-                    generated_password: generatedPassword,
-                    grade: found.grade || childGrade || 10,
-                    stream: found.stream || childStream
+            if (!learnerNumber || childIdNum.length !== 13 || !childFirstName || !childSurname) {
+                return res.status(400).json({
+                    error: 'Each learner must be matched with the official learner number, a 13-digit ID, the first name, and the surname.'
                 });
-            } else {
-                // Check in applications table for approved applicant
-                const appChildRes = await db.query(
-                    `SELECT a.id, a.first_name, a.surname, a.provisional_learner_number, a.application_number,
-                            a.grade_applied, a.stream, a.id_number, a.selected_subjects, a.assigned_class_id,
-                            c.name as class_name
-                     FROM applications a
-                     LEFT JOIN classes c ON a.assigned_class_id = c.id
-                     WHERE (a.provisional_learner_number = $1 OR a.application_number = $1 OR a.id_number = $2 OR (a.first_name ILIKE $3 AND a.surname ILIKE $4))
-                       AND a.status IN ('approved', 'enrolled')
-                     ORDER BY a.id DESC LIMIT 1`,
-                    [childIdOrNum ? childIdOrNum.toString().trim() : '', childIdNum || '', `%${childFirstName}%`, `%${childSurname}%`]
-                );
-
-                if (appChildRes.rows.length > 0) {
-                    const appChild = appChildRes.rows[0];
-                    // Generate official unique learner number upon registration
-                    let lrnNumber = appChild.provisional_learner_number;
-                    if (!lrnNumber || lrnNumber.startsWith('FHS-') || lrnNumber.includes('-')) {
-                        lrnNumber = await generateOfficialLearnerNumber();
-                    }
-                    const cleanId = (appChild.id_number || childIdNum || '').toString().replace(/\D/g, '').trim();
-                    const generatedPassword = cleanId || lrnNumber;
-                    const learnerEmail = `${lrnNumber.toLowerCase().replace(/[\s-]/g, '')}@${schoolDomain}`;
-
-                    validatedChildren.push({
-                        is_from_application: true,
-                        application_id: appChild.id,
-                        application_number: appChild.application_number,
-                        full_name: appChild.first_name || childFirstName,
-                        surname: appChild.surname || childSurname,
-                        id_number: cleanId,
-                        learner_number: lrnNumber,
-                        learner_email: learnerEmail,
-                        generated_password: generatedPassword,
-                        grade: appChild.grade_applied || childGrade || 8,
-                        stream: appChild.stream || childStream || 'General',
-                        assigned_class_id: appChild.assigned_class_id,
-                        subjects: appChild.selected_subjects || ['English FAL', 'Mathematics', 'Life Orientation']
-                    });
-                } else if (childFirstName && childSurname) {
-                    // Dynamically register new learner record with official sequential number
-                    const assignedNum = await generateOfficialLearnerNumber();
-                    const cleanId = childIdNum || '';
-                    const generatedPassword = cleanId || assignedNum;
-                    const learnerEmail = `${assignedNum.toLowerCase().replace(/[\s-]/g, '')}@${schoolDomain}`;
-
-                    validatedChildren.push({
-                        is_new: true,
-                        full_name: childFirstName,
-                        surname: childSurname,
-                        id_number: cleanId,
-                        learner_number: assignedNum,
-                        learner_email: learnerEmail,
-                        generated_password: generatedPassword,
-                        grade: childGrade || 10,
-                        stream: childStream,
-                        subjects: ['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL']
-                    });
-                }
             }
+
+            const cRes = await db.query(
+                `SELECT c.id, c.learner_user_id, c.full_name, c.surname, c.grade, c.stream, c.subjects, c.learner_number, c.parent_id,
+                        u.id_number as user_id_num, u.email as learner_email
+                 FROM children c
+                 JOIN users u ON c.learner_user_id = u.id
+                 WHERE LOWER(TRIM(c.learner_number)) = LOWER(TRIM($1))
+                   AND regexp_replace(COALESCE(u.id_number, ''), '\\D', '', 'g') = $2
+                   AND LOWER(TRIM(c.full_name)) = LOWER(TRIM($3))
+                   AND LOWER(TRIM(c.surname)) = LOWER(TRIM($4))
+                 LIMIT 1`,
+                [learnerNumber, childIdNum, childFirstName, childSurname]
+            );
+
+            if (cRes.rows.length === 0) {
+                return res.status(404).json({
+                    error: 'Those four details do not match an enrolled learner. Parent registration does not create a new learner.'
+                });
+            }
+
+            const found = cRes.rows[0];
+            validatedChildren.push({
+                ...found,
+                learner_number: found.learner_number,
+                id_number: childIdNum,
+                learner_email: found.learner_email,
+                grade: found.grade,
+                stream: found.stream
+            });
         }
 
         if (validatedChildren.length === 0) {
@@ -504,9 +376,8 @@ exports.registerUser = async (req, res) => {
         const learnerRoleId = learnerRoleRes.rows[0]?.id || 3;
 
         for (const child of validatedChildren) {
-            const childPwHash = await bcrypt.hash(child.generated_password, 10);
-
             if (child.is_from_application || child.is_new) {
+            const childPwHash = await bcrypt.hash(child.generated_password, 10);
                 // 1. Create or update user account for child
                 let learnerUserId;
                 const existingChildUser = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [child.learner_email]);
@@ -584,10 +455,7 @@ exports.registerUser = async (req, res) => {
                 if (child.application_number) {
                     await db.query(`UPDATE applications SET status = 'enrolled' WHERE application_number = $1`, [child.application_number]);
                 }
-                
-                if (child.learner_user_id) {
-                    await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [childPwHash, child.learner_user_id]);
-                }
+
                 finalLinkedChildren.push(child);
             }
         }
@@ -805,143 +673,29 @@ exports.login = async (req, res) => {
         const user = result.rows[0];
         let isValid = false;
 
-        // 1. Check bcrypt hash
         if (user.password_hash) {
             try {
                 isValid = await bcrypt.compare(rawPassword, user.password_hash);
             } catch (e) {}
         }
 
-        // 2. Check admin bootstrap fallback / ID number recovery
-        if (!isValid && user.role_name === 'admin') {
-            const trimmedInput = rawPassword.trim();
-            const cleanIdNum = (user.id_number || '').replace(/\D/g, '');
-            const cleanInput = rawPassword.replace(/\D/g, '');
-            const cleanPhone = (user.phone || '').replace(/\D/g, '');
-
-            if (
-                trimmedInput === '#Butcher#$5$' ||
-                trimmedInput === '#Makola#$5$' ||
-                trimmedInput === 'Admin@2026' ||
-                trimmedInput === 'Admin@2026!' ||
-                trimmedInput === 'Fusion@2026' ||
-                trimmedInput === 'Fusion@2026!' ||
-                trimmedInput === 'password123' ||
-                trimmedInput === 'password' ||
-                (cleanIdNum && cleanInput === cleanIdNum) ||
-                (cleanPhone && cleanInput === cleanPhone) ||
-                (user.id_number && trimmedInput === user.id_number.trim())
-            ) {
-                isValid = true;
-                try {
-                    const newHash = await bcrypt.hash(rawPassword, 10);
-                    await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newHash, user.id]);
-                } catch (e) {}
-            }
-        }
-
-        // 3. Check teacher fallback / ID number match
-        if (!isValid && user.role_name === 'teacher') {
-            const trimmedInput = rawPassword.trim();
-            const cleanIdNum = (user.id_number || '').replace(/\D/g, '');
-            const cleanInput = rawPassword.replace(/\D/g, '');
-            const cleanPhone = (user.phone || '').replace(/\D/g, '');
-
-            if (
-                trimmedInput === 'password123' ||
-                trimmedInput === 'password' ||
-                trimmedInput === 'Teacher@2026' ||
-                trimmedInput === 'Teacher@2026!' ||
-                trimmedInput === 'Fusion@2026' ||
-                trimmedInput === 'Fusion@2026!' ||
-                (cleanIdNum && cleanInput === cleanIdNum) ||
-                (cleanPhone && cleanInput === cleanPhone) ||
-                (user.id_number && trimmedInput === user.id_number.trim())
-            ) {
-                isValid = true;
-                try {
-                    const newHash = await bcrypt.hash(rawPassword, 10);
-                    await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newHash, user.id]);
-                } catch (e) {}
-            }
-        }
-
-        // 4. Check parent fallback / ID number match
-        if (!isValid && user.role_name === 'parent') {
-            const trimmedInput = rawPassword.trim();
-            const cleanIdNum = (user.id_number || '').replace(/\D/g, '');
-            const cleanInput = rawPassword.replace(/\D/g, '');
-            const cleanPhone = (user.phone || '').replace(/\D/g, '');
-
-            if (
-                trimmedInput === 'password123' ||
-                trimmedInput === 'password' ||
-                trimmedInput === 'Parent@2026' ||
-                trimmedInput === 'Parent@2026!' ||
-                trimmedInput === 'Fusion@2026' ||
-                trimmedInput === 'Fusion@2026!' ||
-                (cleanIdNum && cleanInput === cleanIdNum) ||
-                (cleanPhone && cleanInput === cleanPhone) ||
-                (user.id_number && trimmedInput === user.id_number.trim())
-            ) {
-                isValid = true;
-                try {
-                    const newHash = await bcrypt.hash(rawPassword, 10);
-                    await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newHash, user.id]);
-                } catch (e) {}
-            }
-        }
-
-        // 5. Check plaintext ID number or learner number match for learners
-        if (!isValid && (user.role_name === 'learner' || user.id_number || user.learner_number)) {
-            const cleanInputPw = rawPassword.replace(/\D/g, '');
-            const cleanIdNum = (user.id_number || '').replace(/\D/g, '');
-            const trimmedInput = rawPassword.trim();
-            const trimmedId = (user.id_number || '').trim();
-            const learnerNum = (user.learner_number || (user.email ? user.email.split('@')[0] : '')).trim();
-            const cleanLearnerNum = learnerNum.replace(/\D/g, '');
-            const systematicPw = generateLearnerPasswordFromID(cleanIdNum || user.id_number);
-
-            if (
-                trimmedInput === 'password123' ||
-                trimmedInput === 'password' ||
-                trimmedInput === '123456' ||
-                trimmedInput === '12345678' ||
-                trimmedInput === '123456789' ||
-                trimmedInput === 'Learner@2026' ||
-                trimmedInput === 'Learner@2026!' ||
-                trimmedInput === 'Fusion@2026' ||
-                trimmedInput === 'Fusion@2026!' ||
-                trimmedInput === '#Butcher#$5$' ||
-                (systematicPw && trimmedInput === systematicPw) ||
-                (cleanIdNum.length >= 6 && cleanInputPw === cleanIdNum) ||
-                (cleanIdNum.length >= 6 && cleanInputPw === cleanIdNum.substring(0, 6)) || // YYMMDD
-                (cleanIdNum.length >= 6 && cleanInputPw === cleanIdNum.substring(cleanIdNum.length - 6)) ||
-                (trimmedId && trimmedInput === trimmedId) ||
-                (learnerNum && trimmedInput === learnerNum) ||
-                (cleanLearnerNum && cleanInputPw === cleanLearnerNum) ||
-                (user.password_hash && trimmedInput === user.password_hash)
-            ) {
-                isValid = true;
-                // Rehash and update in DB so standard bcrypt authentication works for future logins
-                try {
-                    const newHash = await bcrypt.hash(rawPassword, 10);
-                    await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newHash, user.id]);
-                } catch (e) {}
-            }
-        }
-
         if (!isValid) {
             return res.status(401).json({ error: 'Invalid password. Please check your credentials.' });
         }
 
-        const isSuperAdmin = Boolean(user.is_superadmin || (user.email && user.email.toLowerCase() === '202247878@myturf.ul.ac.za') || (user.email && user.email.toLowerCase() === 'sthepomakola23@gmail.com'));
+        const isSuperAdmin = Boolean(user.is_superadmin);
+
+        const signingSecret = process.env.JWT_SECRET;
+        if (!signingSecret) {
+            return res.status(500).json({ error: 'Server signing secret is not configured.' });
+        }
 
         const token = jwt.sign(
             { id: user.id, role: user.role_name, email: user.email, full_name: user.full_name, school_id: user.school_id, is_superadmin: isSuperAdmin },
-            process.env.JWT_SECRET || 'fusion_high_secret_jwt_key',
+            signingSecret,
             { expiresIn: '7d' }
         );
+        attachSessionCookie(res, token);
 
         const schoolObj = user.school_id ? {
             id: user.school_id,
@@ -1081,7 +835,7 @@ exports.forgotPassword = async (req, res) => {
             });
         }
 
-        const otp = Math.floor(1000 + Math.random() * 9000).toString();
+        const otp = crypto.randomInt(0, 10000000000).toString().padStart(10, '0');
         // Set OTP expiry to 5 minutes (300 seconds) so users have sufficient time across all email clients
         await db.query(
             "UPDATE users SET reset_code = $1, reset_expiry = NOW() + INTERVAL '5 minutes' WHERE id = $2",
@@ -1093,7 +847,7 @@ exports.forgotPassword = async (req, res) => {
             await db.query(
                 `INSERT INTO notifications (user_id, title, message, type)
                  VALUES ($1, $2, $3, 'security')`,
-                [user.id, 'Password Reset OTP Code', `Your Fusion High School password recovery verification code is: ${otp} (valid for 5 minutes).`]
+                [user.id, 'Password Reset Code', 'A password reset code was sent to your email. It is valid for 5 minutes.']
             );
         } catch (nErr) {}
 
@@ -1104,7 +858,6 @@ exports.forgotPassword = async (req, res) => {
                     user_id: user.id,
                     email: user.email,
                     target_email: targetDeliveryEmail,
-                    otp: otp,
                     created_at: new Date(),
                     expires_at: new Date(Date.now() + 5 * 60 * 1000)
                 });
@@ -1154,7 +907,7 @@ exports.forgotPassword = async (req, res) => {
         });
 
         res.status(200).json({ 
-            message: `A 4-digit reset code has been sent immediately to your registered email (${masked}). Please check your Inbox and Spam/Junk folder (valid for 5 minutes).`,
+            message: `A 10-digit reset code has been sent to your registered email (${masked}). Please check your Inbox and Spam/Junk folder (valid for 5 minutes).`,
             email: user.email,
             delivery_email: masked,
             expires_in: 300
@@ -1210,7 +963,7 @@ exports.verifyOTP = async (req, res) => {
         }
 
         if (result.rows.length === 0) {
-            return res.status(400).json({ error: 'Invalid 4-digit OTP code or identifier. Please check and try again.' });
+            return res.status(400).json({ error: 'Invalid reset code or identifier. Please check and try again.' });
         }
 
         const user = result.rows[0];

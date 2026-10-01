@@ -23,6 +23,8 @@ export interface SchoolProfile {
   curriculum_type?: string;
   grade_range?: string;
   is_active: boolean;
+  teacher_modules?: string[] | null;
+  learner_modules?: string[] | null;
   settings?: Record<string, any>;
   enrolled_learners_count?: number;
   staff_count?: number;
@@ -30,56 +32,18 @@ export interface SchoolProfile {
   parents_count?: number;
 }
 
-export const DEFAULT_SCHOOLS: SchoolProfile[] = [
-  {
-    id: 1,
-    name: 'Geleza SA',
-    slug: 'geleza-sa',
-    domain: 'gelezasa.co.za',
-    emis_number: '911220001',
-    circuit: 'Polokwane Central Circuit',
-    district: 'Capricorn South',
-    province: 'Limpopo',
-    physical_address: 'Polokwane Central, Limpopo, 0700',
-    contact_email: 'admin@gelezasa.co.za',
-    contact_phone: '+27 15 291 0000',
-    principal_name: 'Dr. T. Makola',
-    logo_url: '/assets/schools/geleza-sa.svg',
-    badge_url: '/assets/schools/geleza-sa.svg',
-    primary_color: '#0284c7',
-    secondary_color: '#06b6d4',
-    accent_color: '#f59e0b',
-    motto: 'Geleza Smart, The Future Is Thine',
-    curriculum_type: 'CAPS (DBE Limpopo)',
-    grade_range: '8-12',
-    is_active: true
-  },
-  {
-    id: 2,
-    name: 'Fusion High School',
-    slug: 'fusion-high',
-    domain: 'fusionhigh.co.za',
-    emis_number: '700232348',
-    circuit: 'Tshwane West District',
-    district: 'Tshwane West',
-    province: 'Gauteng',
-    physical_address: '809 Cyme Crescent, Lotus Gardens, Pretoria, 0008',
-    contact_email: 'admin@fusionhigh.co.za',
-    contact_phone: '+27 12 373 0000',
-    principal_name: 'Tshepho Letlalo Makula',
-    logo_url: '/assets/schools/fusion-secondary-lotus.svg',
-    badge_url: '/assets/schools/fusion-secondary-lotus.svg',
-    primary_color: '#4f46e5',
-    secondary_color: '#06b6d4',
-    accent_color: '#f59e0b',
-    motto: 'Innovate, Aspire, Achieve',
-    curriculum_type: 'CAPS (GDE Gauteng)',
-    grade_range: '8-12',
-    is_active: true
-  }
-];
+export const DEFAULT_SCHOOLS: SchoolProfile[] = [];
 
-export const DEFAULT_SCHOOL: SchoolProfile = DEFAULT_SCHOOLS[0];
+export const DEFAULT_SCHOOL: SchoolProfile = {
+  id: 0,
+  name: 'No school registered yet',
+  slug: '',
+  primary_color: '#0284c7',
+  secondary_color: '#06b6d4',
+  accent_color: '#f59e0b',
+  motto: 'Geleza Smart, The Future Is Thine',
+  is_active: false
+};
 
 interface SchoolContextType {
   currentSchool: SchoolProfile;
@@ -93,16 +57,8 @@ interface SchoolContextType {
 const SchoolContext = createContext<SchoolContextType | undefined>(undefined);
 
 export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [schoolsList, setSchoolsList] = useState<SchoolProfile[]>(DEFAULT_SCHOOLS);
-  const [currentSchool, setCurrentSchoolState] = useState<SchoolProfile>(() => {
-    const saved = localStorage.getItem('active_school_profile');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (_) {}
-    }
-    return DEFAULT_SCHOOL;
-  });
+  const [schoolsList, setSchoolsList] = useState<SchoolProfile[]>([]);
+  const [currentSchool, setCurrentSchoolState] = useState<SchoolProfile>(DEFAULT_SCHOOL);
   const [loading, setLoading] = useState(false);
 
   const fetchSchools = async () => {
@@ -111,15 +67,16 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const res = await axios.get('/api/schools');
       if (Array.isArray(res.data) && res.data.length > 0) {
         setSchoolsList(res.data);
-        
-        // Match active school in list or update it
         const savedId = localStorage.getItem('active_school_id');
-        const matched = res.data.find(s => String(s.id) === savedId || s.slug === savedId) || res.data[0];
-        if (matched) {
-          setCurrentSchoolState(matched);
-          localStorage.setItem('active_school_profile', JSON.stringify(matched));
-          localStorage.setItem('active_school_id', String(matched.id));
-        }
+        const matched = res.data.find((s: SchoolProfile) => String(s.id) === savedId || s.slug === savedId) || res.data[0];
+        setCurrentSchoolState(matched);
+        localStorage.setItem('active_school_profile', JSON.stringify(matched));
+        localStorage.setItem('active_school_id', String(matched.id));
+      } else {
+        setSchoolsList([]);
+        setCurrentSchoolState(DEFAULT_SCHOOL);
+        localStorage.removeItem('active_school_profile');
+        localStorage.removeItem('active_school_id');
       }
     } catch (err) {
       console.warn('Could not fetch schools list, using fallback defaults:', err);

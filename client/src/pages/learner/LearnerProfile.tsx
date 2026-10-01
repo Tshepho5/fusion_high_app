@@ -36,6 +36,22 @@ export const LearnerProfile: React.FC = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [nameFieldErrors, setNameFieldErrors] = useState<Record<string, string>>({});
+
+  const setProfileName = (field: 'full_name' | 'surname', value: string) => {
+    if (/\d/.test(value)) {
+      setNameFieldErrors(prev => ({ ...prev, [field]: 'Numbers are not allowed in this field. Please use letters only.' }));
+      setProfile((prev: any) => ({ ...prev, [field]: value.replace(/\d/g, '') }));
+      return;
+    }
+    setNameFieldErrors(prev => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setProfile((prev: any) => ({ ...prev, [field]: value }));
+  };
   const [loading, setLoading] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -363,7 +379,7 @@ export const LearnerProfile: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                  <label className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                     <span>First Name</span>
                     <span className={`text-[9px] font-mono ${isProfileUnlocked ? 'text-emerald-400' : 'text-amber-400/80'}`}>
                       {isProfileUnlocked ? 'EDITABLE' : 'LOCKED'}
@@ -373,7 +389,7 @@ export const LearnerProfile: React.FC = () => {
                     <input
                       type="text"
                       value={profile.full_name !== undefined ? profile.full_name : fullName}
-                      onChange={(e) => isProfileUnlocked && setProfile({ ...profile, full_name: e.target.value })}
+                      onChange={(e) => isProfileUnlocked && setProfileName('full_name', e.target.value)}
                       disabled={!isProfileUnlocked}
                       readOnly={!isProfileUnlocked}
                       className={`w-full rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition-all ${
@@ -384,10 +400,13 @@ export const LearnerProfile: React.FC = () => {
                     />
                     {!isProfileUnlocked && <Lock className="w-3.5 h-3.5 absolute right-3 top-3 text-slate-500" />}
                   </div>
+                  {nameFieldErrors.full_name && (
+                    <p className="mt-1 text-[11px] font-semibold text-rose-400">{nameFieldErrors.full_name}</p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                  <label className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                     <span>Surname</span>
                     <span className={`text-[9px] font-mono ${isProfileUnlocked ? 'text-emerald-400' : 'text-amber-400/80'}`}>
                       {isProfileUnlocked ? 'EDITABLE' : 'LOCKED'}
@@ -397,7 +416,7 @@ export const LearnerProfile: React.FC = () => {
                     <input
                       type="text"
                       value={profile.surname !== undefined ? profile.surname : surname}
-                      onChange={(e) => isProfileUnlocked && setProfile({ ...profile, surname: e.target.value })}
+                      onChange={(e) => isProfileUnlocked && setProfileName('surname', e.target.value)}
                       disabled={!isProfileUnlocked}
                       readOnly={!isProfileUnlocked}
                       className={`w-full rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition-all ${
@@ -408,10 +427,13 @@ export const LearnerProfile: React.FC = () => {
                     />
                     {!isProfileUnlocked && <Lock className="w-3.5 h-3.5 absolute right-3 top-3 text-slate-500" />}
                   </div>
+                  {nameFieldErrors.surname && (
+                    <p className="mt-1 text-[11px] font-semibold text-rose-400">{nameFieldErrors.surname}</p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                  <label className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                     <span>National SA ID</span>
                     <span className="text-[9px] text-cyan-400 font-mono">VERIFIED</span>
                   </label>
@@ -428,7 +450,7 @@ export const LearnerProfile: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                  <label className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                     <span>Student Number</span>
                     <span className="text-[9px] text-cyan-400/80 font-mono">OFFICIAL</span>
                   </label>
@@ -445,7 +467,7 @@ export const LearnerProfile: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                  <label className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                     <span>Grade & Stream</span>
                     <span className="text-[9px] text-indigo-400/80 font-mono">CAPS</span>
                   </label>
@@ -462,7 +484,7 @@ export const LearnerProfile: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                  <label className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                     <span>Registered Email</span>
                     <span className="text-[9px] text-amber-400/80 font-mono">LOCKED</span>
                   </label>
@@ -491,7 +513,7 @@ export const LearnerProfile: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1 flex items-center gap-1.5">
+                <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
                   <Phone className="w-3.5 h-3.5 text-cyan-400" />
                   <span>Contact Phone Number</span>
                 </label>
@@ -505,7 +527,7 @@ export const LearnerProfile: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1 flex items-center gap-1.5">
+                <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
                   <MapPin className="w-3.5 h-3.5 text-cyan-400" />
                   <span>Physical Residential Address</span>
                 </label>

@@ -288,7 +288,7 @@ exports.createAssignment = async (req, res) => {
               title: `New Homework: ${subject}`,
               message: `${teacherName} published new homework: "${title}". Due on ${due_date}.`,
               type: 'assignment',
-              targetTab: 'subjects',
+              targetTab: 'assignments',
               metadata: { assignment_id: assignment.id, subject, due_date }
             }).catch(e => console.warn('[ASSIGNMENT NOTIFY LEARNER]:', e.message));
 
@@ -316,7 +316,7 @@ exports.createAssignment = async (req, res) => {
               title: `Child Homework: ${learnerFullName} (${subject})`,
               message: `New ${subject} homework task "${title}" assigned to ${learnerFullName}. Due: ${due_date}.`,
               type: 'assignment',
-              targetTab: 'subjects',
+              targetTab: 'children',
               metadata: { assignment_id: assignment.id, child_id: l.child_id, subject, due_date }
             }).catch(e => console.warn('[ASSIGNMENT NOTIFY PARENT]:', e.message));
 
@@ -664,7 +664,7 @@ exports.gradeSubmission = async (req, res) => {
             title: `Homework Marked: ${sub.subject}`,
             message: `Your homework "${sub.assignment_title}" was marked by ${teacherFullName}: ${scoreVal}/${totalMarks} (${percentage}%).`,
             type: 'grade',
-            targetTab: 'subjects',
+            targetTab: 'assignments',
             metadata: { assignment_id: sub.assignment_id, submission_id: sub.id, score: scoreVal, percentage }
           }).catch(e => console.warn('[NOTIFY LEARNER GRADE]:', e.message));
 

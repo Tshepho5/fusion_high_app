@@ -486,7 +486,6 @@ export const CapsCareerQuest: React.FC<{
                         {boss.name}
                       </h4>
                       <p className="text-[11px] text-cyan-300 font-mono">{boss.title}</p>
-                      <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">{boss.description}</p>
                     </div>
 
                     <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs font-mono">

@@ -369,9 +369,6 @@ export const FusionArcadeHub: React.FC<{ initialSubject?: string }> = ({ initial
                   </h3>
                   <Badge variant="cyan" size="sm">Multiplayer / AI</Badge>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  Timed 60-second rapid-fire battle against classmates or the AI Bot with dynamic non-repeating Grade {selectedGrade} questions.
-                </p>
               </div>
               <button
                 onClick={() => handleStartBattle()}
@@ -394,9 +391,6 @@ export const FusionArcadeHub: React.FC<{ initialSubject?: string }> = ({ initial
                   </h3>
                   <Badge variant="cyan" size="sm">Mathematics</Badge>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  Adjust elevation angles, Cartesian vectors, and parabolic launch curves to hit targets with mathematical precision.
-                </p>
               </div>
               <button
                 onClick={() => setActiveMode('trig-sniper')}
@@ -419,9 +413,6 @@ export const FusionArcadeHub: React.FC<{ initialSubject?: string }> = ({ initial
                   </h3>
                   <Badge variant="emerald" size="sm">Physical Sciences</Badge>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  Balance chemical reactions, calculate limiting reagents and synthesize water and ammonia without virtual lab explosions.
-                </p>
               </div>
               <button
                 onClick={() => setActiveMode('mole-lab')}
@@ -444,9 +435,6 @@ export const FusionArcadeHub: React.FC<{ initialSubject?: string }> = ({ initial
                   </h3>
                   <Badge variant="amber" size="sm">Accounting / EMS</Badge>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  Maintain the sacred Accounting Equation (A = O + L) under timed ledger transactions and audit checks.
-                </p>
               </div>
               <button
                 onClick={() => setActiveMode('balance-sheet')}

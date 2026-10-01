@@ -17,23 +17,41 @@ import { SportsExtracurriculars } from '../../components/common/SportsExtracurri
 import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
 import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
 import { ParentMoreHub } from './ParentMoreHub';
-import { ArrowLeft, ChevronRight, Home } from 'lucide-react';
+import { LearnerNavigationBar } from '../../components/learner/LearnerNavigationBar';
+import { ModulePageHeader } from '../../components/layout/WorkspaceChrome';
+
+const CHILD_SCOPED_TABS = new Set(['children', 'marks', 'reports', 'attendance', 'timetable', 'finance']);
 
 export const ParentDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'overview';
   const [activeTab, setActiveTab] = useState<string>(initialTab);
+  const selectedChildId = searchParams.get('child') || searchParams.get('child_id') || '';
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     if (tabParam && tabParam !== activeTab) {
       setActiveTab(tabParam);
     }
-  }, [searchParams]);
+  }, [searchParams, activeTab]);
 
-  const handleSelectTab = (tabId: string) => {
+  const handleSelectTab = (tabId: string, childOrParams?: string | number | Record<string, any>) => {
+    let nextChild = selectedChildId;
+    if (typeof childOrParams === 'string' || typeof childOrParams === 'number') {
+      nextChild = String(childOrParams);
+    } else if (childOrParams && typeof childOrParams === 'object') {
+      const fromParams = childOrParams.child ?? childOrParams.childId ?? childOrParams.child_id;
+      if (fromParams !== undefined && fromParams !== null && fromParams !== '') {
+        nextChild = String(fromParams);
+      }
+    }
+
     setActiveTab(tabId);
-    setSearchParams({ tab: tabId });
+    const nextParams: Record<string, string> = { tab: tabId };
+    if (nextChild && CHILD_SCOPED_TABS.has(tabId)) {
+      nextParams.child = nextChild;
+    }
+    setSearchParams(nextParams);
   };
 
   const getTabTitle = () => {
@@ -65,31 +83,23 @@ export const ParentDashboard: React.FC = () => {
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
-    >
-      {/* Universal Module Backtrack Navigation Bar */}
-      {activeTab !== 'overview' && (
-        <div className="flex items-center justify-between gap-3 p-3 mb-6 rounded-2xl bg-surface-dark border border-white/10 shadow-sm animate-fade-in">
-          <button
-            onClick={() => handleSelectTab('overview')}
-            className="px-3.5 py-1.5 rounded-xl bg-surface-darker hover:bg-white/10 border border-white/10 hover:border-amber-500/40 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-2 transition-all shadow-sm group"
-            title="Back to Parent Portal Overview"
-          >
-            <ArrowLeft className="w-4 h-4 text-amber-400 group-hover:-translate-x-1 transition-transform" />
-            <span>Back to Overview</span>
-          </button>
-
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 font-mono">
-            <button
-              onClick={() => handleSelectTab('overview')}
-              className="hover:text-white flex items-center gap-1 transition-colors"
-            >
-              <Home className="w-3.5 h-3.5 text-amber-400" />
-              <span>Portal</span>
-            </button>
-            <ChevronRight className="w-3 h-3 text-slate-600" />
-            <span className="text-amber-300 font-bold">{getTabTitle()}</span>
-          </div>
+      customBottomDock={
+        <div className="fixed bottom-4 inset-x-0 z-[60] flex justify-center px-2 sm:px-4 pointer-events-none">
+          <LearnerNavigationBar
+            activeTab={activeTab}
+            onSelectTab={handleSelectTab}
+            className="pointer-events-auto w-full max-w-xl xl:max-w-4xl 2xl:max-w-5xl"
+          />
         </div>
+      }
+    >
+      {!['overview', 'more', 'messages', 'calendar', 'profile'].includes(activeTab) && (
+        <ModulePageHeader
+          title={getTabTitle()}
+          parentLabel="Family desk"
+          backLabel="Back to Home"
+          onBack={() => handleSelectTab('overview')}
+        />
       )}
 
       {activeTab === 'overview' && (
@@ -98,16 +108,16 @@ export const ParentDashboard: React.FC = () => {
       {activeTab === 'more' && (
         <ParentMoreHub onNavigateTab={handleSelectTab} />
       )}
-      {(activeTab === 'children' || activeTab === 'marks') && <ParentChildren />}
-      {activeTab === 'finance' && <SchoolFeesManager userRole="parent" />}
+      {(activeTab === 'children' || activeTab === 'marks') && <ParentChildren childId={selectedChildId} />}
+      {activeTab === 'finance' && <SchoolFeesManager userRole="parent" childId={selectedChildId || undefined} />}
       {activeTab === 'bursaries' && <BursaryScholarshipHub isParentView={true} />}
-      {activeTab === 'reports' && <CapsReportCard onNavigateTab={handleSelectTab} />}
+      {activeTab === 'reports' && <CapsReportCard childId={selectedChildId || undefined} onNavigateTab={handleSelectTab} />}
       {(activeTab === 'ptc' || activeTab === 'consultations') && <ParentTeacherConsultations />}
       {activeTab === 'inter-school' && <InterSchoolCompetitions />}
       {activeTab === 'sports' && <SportsExtracurriculars />}
-      {activeTab === 'timetable' && <ParentTimetable onNavigateTab={handleSelectTab} />}
+      {activeTab === 'timetable' && <ParentTimetable childId={selectedChildId} onNavigateTab={handleSelectTab} />}
       {activeTab === 'calendar' && <SchoolCalendar />}
-      {activeTab === 'attendance' && <ParentAttendance onNavigateTab={handleSelectTab} />}
+      {activeTab === 'attendance' && <ParentAttendance childId={selectedChildId} onNavigateTab={handleSelectTab} />}
       {activeTab === 'announcements' && <AnnouncementsFeed />}
       {activeTab === 'messages' && <LearnerMessages />}
       {activeTab === 'profile' && <LearnerProfile />}

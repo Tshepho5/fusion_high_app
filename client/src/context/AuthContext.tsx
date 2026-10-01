@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { authService, userService } from '../services/api';
 
 export type UserRole = 'learner' | 'teacher' | 'admin' | 'parent' | null;
@@ -38,6 +38,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return saved ? JSON.parse(saved) : null;
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [sessionPrompt, setSessionPrompt] = useState<null | 'idle' | 'logout'>(null);
+  const promptKind = useRef<null | 'idle' | 'logout'>(null);
+  const resetIdleTimer = useRef<() => void>(() => {});
 
   const refreshUser = async () => {
     if (!token) {
@@ -68,24 +71,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [token]);
 
-  // Inactivity Auto-Logout Timer: 1 minute and 30 seconds (90,000 ms) of inactivity
+  // After 3 minutes without interaction, ask whether to stay or sign in again.
   useEffect(() => {
     if (!token) return;
 
-    const INACTIVITY_TIMEOUT_MS = 90 * 1000; // 1 minute 30 seconds
-    let timeoutId: any;
-
-    const handleInactivityLogout = () => {
-      try {
-        sessionStorage.setItem('logout_reason', 'inactivity');
-      } catch (_) {}
-      logout();
-    };
+    const INACTIVITY_TIMEOUT_MS = 3 * 60 * 1000;
+    let timeoutId: ReturnType<typeof setTimeout>;
 
     const resetTimer = () => {
+      if (promptKind.current) return;
       clearTimeout(timeoutId);
-      timeoutId = setTimeout(handleInactivityLogout, INACTIVITY_TIMEOUT_MS);
+      timeoutId = setTimeout(() => {
+        if (promptKind.current === 'logout') return;
+        promptKind.current = 'idle';
+        setSessionPrompt('idle');
+      }, INACTIVITY_TIMEOUT_MS);
     };
+    resetIdleTimer.current = resetTimer;
 
     // Initialize timer
     resetTimer();
@@ -160,7 +162,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const logout = () => {
+  const finishLogout = () => {
+    promptKind.current = null;
+    setSessionPrompt(null);
+    try {
+      sessionStorage.removeItem('logout_reason');
+    } catch (_) {}
     try {
       userService.updateLogoutStatus().catch(() => {});
     } catch (_) {}
@@ -170,7 +177,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
     localStorage.removeItem('user');
+    localStorage.removeItem('active_school_profile');
+    localStorage.removeItem('active_school_id');
     window.location.href = '/login';
+  };
+
+  const logout = () => {
+    promptKind.current = 'logout';
+    setSessionPrompt('logout');
+  };
+
+  const staySignedIn = () => {
+    promptKind.current = null;
+    setSessionPrompt(null);
+    resetIdleTimer.current();
   };
 
   const updateUser = (updatedData: Partial<User>) => {
@@ -195,6 +215,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }}
     >
       {children}
+      {sessionPrompt && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="session-choice-title"
+            className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900"
+          >
+            <h2 id="session-choice-title" className="text-lg font-extrabold text-slate-900 dark:text-white">
+              {sessionPrompt === 'idle' ? 'Sign in again?' : 'Log out of Geleza SA?'}
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              {sessionPrompt === 'idle'
+                ? 'You have not used Geleza SA for 3 minutes. Do you want to sign in again, or stay on this page?'
+                : 'Do you want to log out, or stay signed in?'}
+            </p>
+            <div className="mt-5 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <button
+                type="button"
+                onClick={staySignedIn}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-bold text-slate-800 hover:bg-slate-100 dark:border-white/15 dark:text-white dark:hover:bg-white/10 cursor-pointer"
+              >
+                Stay
+              </button>
+              <button
+                type="button"
+                onClick={finishLogout}
+                className={`px-4 py-2.5 rounded-xl text-sm font-bold text-always-white cursor-pointer ${
+                  sessionPrompt === 'idle' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-rose-600 hover:bg-rose-500'
+                }`}
+              >
+                {sessionPrompt === 'idle' ? 'Sign in' : 'Log out'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AuthContext.Provider>
   );
 };

@@ -1,0 +1,164 @@
+{
+  "metadata": {
+    "project": "Geleza SA Multi-School Analytics",
+    "model_version": "2.0.0",
+    "created_at": "2026-09-30T18:47:38.257346",
+    "dataset_rows": 6607,
+    "features": [
+      "Attendance",
+      "Hours_Studied",
+      "Access_to_Resources",
+      "Previous_Scores",
+      "Parental_Involvement",
+      "Tutoring_Sessions"
+    ],
+    "feature_count": 6,
+    "test_split_size": 0.2,
+    "random_state": 42,
+    "tier_definitions": {
+      "0": {
+        "label": "Priority Support (<=65)",
+        "min_score": 0,
+        "max_score": 65
+      },
+      "1": {
+        "label": "Core Progress (66-68)",
+        "min_score": 66,
+        "max_score": 68
+      },
+      "2": {
+        "label": "High Achiever (>=69)",
+        "min_score": 69,
+        "max_score": 100
+      }
+    }
+  },
+  "metrics": {
+    "score_predictor": {
+      "r2_score": 0.6192,
+      "r2_train": 0.745,
+      "mae": 1.1677,
+      "mae_train": 0.9732,
+      "rmse": 2.4038,
+      "ridge_baseline_mae": 1.0274,
+      "feature_importance_percentage": {
+        "Previous_Scores": 26.45,
+        "Hours_Studied": 24.31,
+        "Attendance": 21.45,
+        "Tutoring_Sessions": 11.68,
+        "Parental_Involvement": 8.53,
+        "Access_to_Resources": 7.57
+      },
+      "feature_importance_tree_splits": {
+        "Previous_Scores": 1820,
+        "Hours_Studied": 1673,
+        "Attendance": 1476,
+        "Tutoring_Sessions": 804,
+        "Parental_Involvement": 587,
+        "Access_to_Resources": 521
+      },
+      "subgroup_mae_fairness": {
+        "access_to_resources": {
+          "low_resource_mae": 1.179,
+          "high_resource_mae": 1.151,
+          "disparity": 0.027
+        },
+        "parental_involvement": {
+          "low_involvement_mae": 1.228,
+          "high_involvement_mae": 1.234,
+          "disparity": 0.006
+        }
+      }
+    },
+    "risk_tier_classifier": {
+      "accuracy": 0.792,
+      "macro_f1": 0.7949,
+      "weighted_f1": 0.7943,
+      "confusion_matrix": {
+        "raw_matrix": [
+          [
+            351,
+            75,
+            0
+          ],
+          [
+            54,
+            339,
+            53
+          ],
+          [
+            7,
+            86,
+            357
+          ]
+        ],
+        "labels": [
+          "Priority Support (<=65)",
+          "Core Progress (66-68)",
+          "High Achiever (>=69)"
+        ],
+        "description": "Rows represent Actual Tiers; Columns represent Predicted Tiers"
+      },
+      "per_class_metrics": {
+        "Priority Support (<=65)": {
+          "precision": 0.8519,
+          "recall": 0.8239,
+          "f1_score": 0.8377,
+          "support": 426
+        },
+        "Core Progress (66-68)": {
+          "precision": 0.678,
+          "recall": 0.7601,
+          "f1_score": 0.7167,
+          "support": 446
+        },
+        "High Achiever (>=69)": {
+          "precision": 0.8707,
+          "recall": 0.7933,
+          "f1_score": 0.8302,
+          "support": 450
+        }
+      },
+      "classification_report": {
+        "Priority Support (<=65)": {
+          "precision": 0.8519417475728155,
+          "recall": 0.823943661971831,
+          "f1-score": 0.837708830548926,
+          "support": 426.0
+        },
+        "Core Progress (66-68)": {
+          "precision": 0.678,
+          "recall": 0.7600896860986547,
+          "f1-score": 0.7167019027484144,
+          "support": 446.0
+        },
+        "High Achiever (>=69)": {
+          "precision": 0.8707317073170732,
+          "recall": 0.7933333333333333,
+          "f1-score": 0.8302325581395349,
+          "support": 450.0
+        },
+        "accuracy": 0.791981845688351,
+        "macro avg": {
+          "precision": 0.8002244849632962,
+          "recall": 0.7924555604679396,
+          "f1-score": 0.794881097145625,
+          "support": 1322.0
+        },
+        "weighted avg": {
+          "precision": 0.7996554105587763,
+          "recall": 0.791981845688351,
+          "f1-score": 0.7943401373694599,
+          "support": 1322.0
+        }
+      },
+      "disparate_impact_audit": {
+        "low_resource_risk_rate": 0.4039,
+        "high_resource_risk_rate": 0.2381,
+        "low_involvement_risk_rate": 0.3502,
+        "high_involvement_risk_rate": 0.2308,
+        "gender_disparate_impact_ratio": 1.0
+      }
+    }
+  }
+}

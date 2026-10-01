@@ -21,25 +21,45 @@ import { SportsExtracurriculars } from '../../components/common/SportsExtracurri
 import { TextbookAssetTracker } from '../../components/common/TextbookAssetTracker';
 import { EducatorLeaveReliefManager } from '../../components/admin/EducatorLeaveReliefManager';
 import { TeacherAssignments } from '../../components/teacher/TeacherAssignments';
-import { TeacherNavigationBar, getPrimaryTabFromActive } from '../../components/teacher/TeacherNavigationBar';
+import { GelezaEarlyWarningRadar } from '../../components/teacher/GelezaEarlyWarningRadar';
+import { TeacherNavigationBar } from '../../components/teacher/TeacherNavigationBar';
+import { ModulePageHeader } from '../../components/layout/WorkspaceChrome';
 import { TeacherMoreHub } from './TeacherMoreHub';
 import { TeacherDiscoverHub } from './TeacherDiscoverHub';
 import { TeacherCalendarHub } from './TeacherCalendarHub';
-import { ArrowLeft, ChevronRight, Home, LayoutGrid, Compass, Calendar, MessageSquare, User } from 'lucide-react';
+import { useSchool } from '../../context/SchoolContext';
+import { moduleAllowed } from '../../utils/schoolModules';
 
 export const TeacherDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { currentSchool, refreshSchools } = useSchool();
   const initialTab = searchParams.get('tab') || 'overview';
-  const [activeTab, setActiveTab] = useState<string>(initialTab);
+  const [activeTab, setActiveTab] = useState<string>(() =>
+    moduleAllowed('teacher', initialTab, currentSchool.teacher_modules) ? initialTab : 'overview'
+  );
 
   useEffect(() => {
-    const tabParam = searchParams.get('tab');
-    if (tabParam && tabParam !== activeTab) {
-      setActiveTab(tabParam);
+    refreshSchools();
+  }, []);
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab') || activeTab || 'overview';
+    if (!moduleAllowed('teacher', tabParam, currentSchool.teacher_modules)) {
+      if (activeTab !== 'overview') setActiveTab('overview');
+      if (searchParams.get('tab') && searchParams.get('tab') !== 'overview') {
+        setSearchParams({ tab: 'overview' });
+      }
+      return;
     }
-  }, [searchParams]);
+    if (tabParam !== activeTab) setActiveTab(tabParam);
+  }, [searchParams, currentSchool.teacher_modules, activeTab]);
 
   const handleSelectTab = (tabId: string, params?: any) => {
+    if (!moduleAllowed('teacher', tabId, currentSchool.teacher_modules)) {
+      setActiveTab('overview');
+      setSearchParams({ tab: 'overview' });
+      return;
+    }
     setActiveTab(tabId);
     const newParams: any = { tab: tabId };
     if (params) {
@@ -90,6 +110,8 @@ export const TeacherDashboard: React.FC = () => {
         return 'Class Attendance Register';
       case 'assessments':
         return 'Marks & Assessments';
+      case 'early-warning':
+        return 'Geleza AI Early-Warning Academic Radar';
       case 'assignments':
         return 'Homework & Digital Assignment Submission Hub';
       case 'announcements':
@@ -105,7 +127,6 @@ export const TeacherDashboard: React.FC = () => {
     }
   };
 
-  const primaryCategory = getPrimaryTabFromActive(activeTab);
   const isSubModule = activeTab !== 'overview' && activeTab !== 'home' && activeTab !== 'calendar' && activeTab !== 'profile' && activeTab !== 'discover' && activeTab !== 'messages' && activeTab !== 'more';
 
   // Determine intelligent backtrack target
@@ -129,35 +150,24 @@ export const TeacherDashboard: React.FC = () => {
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
+      customBottomDock={
+        <div className="fixed bottom-4 inset-x-0 z-[60] flex justify-center px-2 sm:px-4 pointer-events-none">
+          <TeacherNavigationBar
+            activeTab={activeTab}
+            onSelectTab={handleSelectTab}
+            className="pointer-events-auto w-full max-w-xl xl:max-w-4xl 2xl:max-w-5xl"
+          />
+        </div>
+      }
     >
 
-      {/* Universal Breadcrumb & Backtrack Bar for Sub-Modules */}
       {isSubModule && (
-        <div className="flex items-center justify-between gap-3 p-3 mb-6 rounded-2xl bg-surface-dark border border-white/10 shadow-sm animate-fade-in">
-          <button
-            onClick={() => handleSelectTab(backtrack.target)}
-            className="px-3.5 py-1.5 rounded-xl bg-surface-darker hover:bg-white/10 border border-white/10 hover:border-cyan-500/40 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-2 transition-all shadow-sm group cursor-pointer"
-            title={backtrack.label}
-          >
-            <ArrowLeft className="w-4 h-4 text-cyan-400 group-hover:-translate-x-1 transition-transform" />
-            <span>{backtrack.label}</span>
-          </button>
-
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 font-mono">
-            <button
-              onClick={() => handleSelectTab(backtrack.target)}
-              className="hover:text-white flex items-center gap-1 transition-colors"
-            >
-              {backtrack.parentLabel === 'More Modules' && <LayoutGrid className="w-3.5 h-3.5 text-cyan-400" />}
-              {backtrack.parentLabel === 'Discover' && <Compass className="w-3.5 h-3.5 text-purple-400" />}
-              {backtrack.parentLabel === 'Home' && <Home className="w-3.5 h-3.5 text-indigo-400" />}
-              {backtrack.parentLabel === 'Messages' && <MessageSquare className="w-3.5 h-3.5 text-sky-400" />}
-              <span>{backtrack.parentLabel}</span>
-            </button>
-            <ChevronRight className="w-3 h-3 text-slate-600" />
-            <span className="text-cyan-300 font-bold">{getTabTitle()}</span>
-          </div>
-        </div>
+        <ModulePageHeader
+          title={getTabTitle()}
+          parentLabel={backtrack.parentLabel}
+          backLabel={backtrack.label}
+          onBack={() => handleSelectTab(backtrack.target)}
+        />
       )}
 
       {/* ========================================================================= */}
@@ -222,6 +232,7 @@ export const TeacherDashboard: React.FC = () => {
         <TeacherAttendance initialClass={searchParams.get('class') || undefined} />
       )}
       {activeTab === 'assessments' && <TeacherAssessments />}
+      {activeTab === 'early-warning' && <GelezaEarlyWarningRadar onNavigateTab={handleSelectTab} />}
       {activeTab === 'announcements' && <AnnouncementsFeed />}
       {activeTab === 'settings' && <LearnerSettings />}
     </DashboardLayout>

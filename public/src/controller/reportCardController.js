@@ -1,5 +1,6 @@
 const db = require('../../../db/db');
 const emailService = require('../services/emailService');
+const { assertChildAccess } = require('../services/familyAccess');
 const aiAdvisorService = require('../services/aiAdvisorService');
 
 /**
@@ -814,6 +815,8 @@ exports.getOfficialReportCardView = async (req, res) => {
       return res.status(400).json({ error: 'Child ID is required.' });
     }
 
+    if (!(await assertChildAccess(req, res, childId))) return;
+
     // 1. Fetch learner and school data
     const childRes = await db.query(
       `SELECT c.*, s.name as school_name, s.emis_number, s.circuit, s.district, s.province,
@@ -1081,6 +1084,8 @@ exports.getLearnerReportCards = async (req, res) => {
     if (!targetChildId) {
       return res.json({ success: true, report_cards: [] });
     }
+
+    if (!(await assertChildAccess(req, res, targetChildId))) return;
 
     const query = `
       SELECT 

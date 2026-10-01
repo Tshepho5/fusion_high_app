@@ -31,6 +31,8 @@ interface NotificationItem {
   created_at: string;
 }
 
+import { soundNotificationService } from '../../services/soundNotificationService';
+
 export const NotificationDropdown: React.FC = () => {
   const { role, user } = useAuth();
   const navigate = useNavigate();
@@ -40,62 +42,46 @@ export const NotificationDropdown: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
   const prevCountRef = useRef<number | null>(null);
 
-  // Play portal notification alert chime
   const playNotificationChime = () => {
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = audioCtxRef.current || new AudioCtx();
-      audioCtxRef.current = ctx;
-      if (ctx.state === 'suspended') ctx.resume();
-
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(523.25, now); // C5
-      osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.12); // G5
-      osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.24); // C6
-
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.35);
-    } catch (_) {}
+    soundNotificationService.playAnnouncementSound();
   };
 
   const fetchUnreadCount = async () => {
     try {
-      const res = await notificationService.getUnreadCount();
-      if (res && res.unreadCount !== undefined) {
-        const count = res.unreadCount;
-        if (prevCountRef.current !== null && count > prevCountRef.current) {
-          playNotificationChime();
-        }
-        prevCountRef.current = count;
-        setUnreadCount(count);
+      const res = await notificationService.getNotifications(1);
+      if (res && typeof res.unreadCount === 'number') {
+        setUnreadCount(res.unreadCount);
       }
-    } catch {
-      // Quiet fail on network polling
-    }
+    } catch (_) {}
   };
+
+  // Sync with global sound and notification service
+  useEffect(() => {
+    if (user?.id) {
+      soundNotificationService.init(user.id);
+    }
+    const unsubscribe = soundNotificationService.subscribe(({ announcements }) => {
+      setUnreadCount(announcements);
+    });
+    return () => unsubscribe();
+  }, [user?.id]);
 
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const res = await notificationService.getNotifications(30);
+      const res = await notificationService.getNotifications(35);
       if (res && Array.isArray(res.notifications)) {
-        setNotifications(res.notifications);
+        // Reserve Bell exclusively for announcements, alerts, and circulars (exclude chat messages)
+        const announcementsOnly = res.notifications.filter(
+          (n: NotificationItem) => n.type !== 'chat' && n.type !== 'message'
+        );
+        setNotifications(announcementsOnly);
         setUnreadCount(res.unreadCount || 0);
       }
     } catch (err) {
-      console.error('Failed to load notifications:', err);
+      console.error('Failed to load announcements:', err);
     } finally {
       setLoading(false);
     }
@@ -175,29 +161,45 @@ export const NotificationDropdown: React.FC = () => {
     }
   };
 
+  const resolveAlertDestination = (notif: NotificationItem) => {
+    const userRole = (role || 'learner').toLowerCase();
+    const type = (notif.type || '').toLowerCase();
+    let tab = notif.target_tab || 'overview';
+    let meta: any = notif.metadata || {};
+    if (typeof meta === 'string') {
+      try { meta = JSON.parse(meta); } catch { meta = {}; }
+    }
+
+    if (userRole === 'parent') {
+      if (type === 'attendance') tab = 'attendance';
+      else if (type === 'assignment' || tab === 'subjects') tab = 'children';
+      else if (type === 'grade' || type === 'marks' || tab === 'academics') tab = 'marks';
+      else if (type === 'merit' || type === 'disciplinary') tab = 'children';
+      else if (tab === 'calendar' && type === 'attendance') tab = 'attendance';
+    } else if (userRole === 'learner') {
+      if (type === 'assignment' || tab === 'subjects') tab = 'assignments';
+      else if (type === 'grade' || type === 'marks' || tab === 'academics') tab = 'reports';
+    }
+
+    return { userRole, tab, meta };
+  };
+
   const handleNotificationClick = async (notif: NotificationItem) => {
-    // 1. Mark as read
     if (!notif.is_read) {
       handleMarkAsRead(notif.id);
     }
 
-    // 2. Close menu
     setIsOpen(false);
 
-    // 3. Resolve destination
-    const userRole = role || 'learner';
-    const targetTab = notif.target_tab || 'overview';
-    const meta = notif.metadata || {};
+    const { userRole, tab, meta } = resolveAlertDestination(notif);
+    const params = new URLSearchParams({ tab });
+    const childId = meta.child_id || meta.childId || meta.child;
+    if (childId) params.set('child', String(childId));
+    if (meta.subject) params.set('subject', String(meta.subject));
+    if (meta.grade) params.set('grade', String(meta.grade));
+    if (meta.assignment_id) params.set('assignment', String(meta.assignment_id));
 
-    let path = `/dashboard/${userRole}?tab=${targetTab}`;
-    if (meta.subject) {
-      path += `&subject=${encodeURIComponent(meta.subject)}`;
-    }
-    if (meta.grade) {
-      path += `&grade=${encodeURIComponent(meta.grade)}`;
-    }
-
-    navigate(path);
+    navigate(`/dashboard/${userRole}?${params.toString()}`);
   };
 
   const getNotificationIcon = (type: string) => {
@@ -249,43 +251,44 @@ export const NotificationDropdown: React.FC = () => {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Bell Button Trigger */}
+      {/* Bell Button Trigger (Strictly for Official School Announcements & Circulars) */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`relative p-2 rounded-xl transition-all ${
           isOpen
-            ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40 shadow-glow-indigo'
+            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-glow-amber'
             : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
         }`}
-        title="Notifications & Academic Alerts"
-        aria-label="Notifications"
+        title="Official School Announcements & Circulars"
+        aria-label="Announcements & Notices"
       >
         <Bell className={`w-4 h-4 ${unreadCount > 0 ? 'text-amber-400 animate-bounce' : ''}`} />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-500 text-[9px] font-extrabold text-white ring-2 ring-surface-darker shadow-sm animate-pulse">
+          <span className="absolute top-1 right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-amber-500 text-[9px] font-extrabold text-slate-950 ring-2 ring-surface-darker shadow-sm animate-pulse">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
 
-      {/* Notifications Flyout Dropdown */}
+      {/* Announcements Flyout Dropdown */}
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-3xl bg-surface-dark border border-white/10 p-4 shadow-2xl z-50 animate-fade-in text-xs space-y-3">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-brand-500/20 border border-brand-500/30 flex items-center justify-center text-brand-400">
-                <Bell className="w-3.5 h-3.5" />
+              <div className="w-7 h-7 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <Megaphone className="w-3.5 h-3.5" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
-                  Notifications
+                  Announcements & Notices
                   {unreadCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30 text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
                       {unreadCount} new
                     </span>
                   )}
                 </h3>
+                <p className="text-[10px] text-slate-400">Official circulars from Admin, Principal & Teachers</p>
               </div>
             </div>
 
@@ -372,7 +375,7 @@ export const NotificationDropdown: React.FC = () => {
 
                     <div className="flex items-center justify-between mt-2 pt-1 border-t border-white/5">
                       <span className="text-[10px] font-bold text-brand-400 group-hover:underline flex items-center gap-1">
-                        <span>Go to {notif.target_tab || 'details'}</span>
+                        <span>Go to {resolveAlertDestination(notif).tab}</span>
                         <ExternalLink className="w-2.5 h-2.5" />
                       </span>
 

@@ -30,6 +30,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { commandCenterService, schoolRegistrationService, systemControlService } from '../../services/api';
+import { AdmissionWindowPanel } from './AdmissionWindowPanel';
 import { useSchool } from '../../context/SchoolContext';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Badge } from '../common/Badge';
@@ -124,9 +125,8 @@ export const MultiSchoolCommandCenter: React.FC = () => {
     setLoadingApps(true);
     try {
       const res = await schoolRegistrationService.getAllApplications();
-      if (res.success) {
-        setApplications(res.applications || []);
-      }
+      const rows = Array.isArray(res) ? res : (res.applications || []);
+      setApplications(rows);
     } catch (err: any) {
       console.error('Failed to load school applications:', err);
     } finally {
@@ -155,24 +155,22 @@ export const MultiSchoolCommandCenter: React.FC = () => {
     }
   };
 
-  const handleToggleLock = async (controlId: string, currentLocked: boolean) => {
+  const handleSaveGate = async (controlId: string, payload: { is_locked?: boolean; locked_reason?: string; opens_at?: string | null; closes_at?: string | null }) => {
     setUpdatingControlId(controlId);
     setControlSuccessMsg(null);
     try {
-      const nextLockedState = !currentLocked;
-      const customReason = lockReasonInputs[controlId] || undefined;
-      const res = await systemControlService.updatePortalLock(controlId, nextLockedState, customReason);
+      const res = await systemControlService.updatePortalLock(controlId, payload);
       if (res.success && res.control) {
         setPortalControls(prev => ({
           ...prev,
           [controlId]: res.control
         }));
-        setControlSuccessMsg(`Successfully ${nextLockedState ? 'LOCKED' : 'UNLOCKED'} "${res.control.name}".`);
+        setControlSuccessMsg(res.message || 'Intake updated.');
         setTimeout(() => setControlSuccessMsg(null), 5000);
       }
     } catch (err: any) {
-      console.error('Failed to toggle portal lock:', err);
-      alert(err.response?.data?.error || 'Failed to toggle portal control.');
+      console.error('Failed to update portal lock:', err);
+      alert(err.response?.data?.error || 'Failed to update this intake.');
     } finally {
       setUpdatingControlId(null);
     }
@@ -230,10 +228,13 @@ export const MultiSchoolCommandCenter: React.FC = () => {
     return matchesSearch && matchesCircuit;
   });
 
-  const pendingAppsCount = applications.filter(a => a.status === 'pending').length;
+  const isWaitingReview = (status: string) => status === 'pending' || status === 'pending_review' || status === 'under_review';
+  const pendingAppsCount = applications.filter(a => isWaitingReview(a.status)).length;
 
   const filteredApplications = applications.filter(a => {
-    if (appFilterStatus !== 'all' && a.status !== appFilterStatus) return false;
+    if (appFilterStatus === 'pending') {
+      if (!isWaitingReview(a.status)) return false;
+    } else if (appFilterStatus !== 'all' && a.status !== appFilterStatus) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       return (
@@ -263,7 +264,7 @@ export const MultiSchoolCommandCenter: React.FC = () => {
             Multi-School Command Center
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Real-time comparative oversight across all 12 registered high schools in Limpopo & Gauteng provinces.
+            Schools appear here after a principal registers one and Geleza SA approves it.
           </p>
         </div>
 
@@ -732,13 +733,9 @@ export const MultiSchoolCommandCenter: React.FC = () => {
 
                         <td className="py-4 px-3">
                           <div className="space-y-1">
-                            <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-bold">
-                              <CheckCircle2 className="w-3 h-3" />
-                              <span>App Fee: R{app.application_fee_amount || 450}</span>
-                            </div>
-                            <div className="flex items-center gap-1 text-[11px] text-cyan-400 font-bold">
-                              <CheckCircle2 className="w-3 h-3" />
-                              <span>Reg Fee: R{app.registration_fee_amount || 1500}</span>
+                            <div className="flex items-center gap-1 text-[11px] text-amber-200 font-bold">
+                              <Clock className="w-3 h-3" />
+                              <span>Fees wait for a bank account</span>
                             </div>
                           </div>
                         </td>
@@ -755,13 +752,13 @@ export const MultiSchoolCommandCenter: React.FC = () => {
                           >
                             {app.status === 'approved' && <CheckCircle className="w-3 h-3" />}
                             {app.status === 'declined' && <XCircle className="w-3 h-3" />}
-                            {app.status === 'pending' && <Clock className="w-3 h-3" />}
-                            {app.status}
+                            {isWaitingReview(app.status) && <Clock className="w-3 h-3" />}
+                            {isWaitingReview(app.status) ? 'Pending review' : app.status}
                           </span>
                         </td>
 
                         <td className="py-4 px-3 text-right">
-                          {app.status === 'pending' ? (
+                          {isWaitingReview(app.status) ? (
                             <div className="flex items-center justify-end gap-2">
                               <button
                                 onClick={() => {
@@ -859,245 +856,7 @@ export const MultiSchoolCommandCenter: React.FC = () => {
             </div>
           </div>
 
-          {/* 3 Executive / Admin Gatekeeper Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {/* 1. School Registration Gatekeeper */}
-            {(() => {
-              const ctrl = portalControls.school_registration || { is_locked: false, name: 'School Registration Portal' };
-              const isLocked = Boolean(ctrl.is_locked);
-              const isBusy = updatingControlId === 'school_registration';
-
-              return (
-                <div className={`p-5 rounded-3xl border transition-all flex flex-col justify-between space-y-4 shadow-xl ${
-                  isLocked 
-                    ? 'bg-rose-950/20 border-rose-500/40 shadow-rose-950/30' 
-                    : 'bg-slate-900/90 border-slate-800 shadow-slate-950/50'
-                }`}>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                        Executive Authority Only
-                      </span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 border ${
-                        isLocked
-                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                      }`}>
-                        {isLocked ? <Lock className="w-3 h-3 text-rose-400" /> : <Unlock className="w-3 h-3 text-emerald-400" />}
-                        {isLocked ? 'LOCKED' : 'UNLOCKED'}
-                      </span>
-                    </div>
-
-                    <div>
-                      <h4 className="text-base font-black text-white flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-cyan-400" />
-                        "Register School" Button
-                      </h4>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Controls institutional school onboarding. When locked, principals cannot submit applications and see an executive advisory notice.
-                      </p>
-                    </div>
-
-                    <div className="space-y-1.5 pt-1">
-                      <label className="text-[11px] font-bold text-slate-300">
-                        Advisory Reason (Shown to public):
-                      </label>
-                      <input
-                        type="text"
-                        value={lockReasonInputs.school_registration || ''}
-                        onChange={(e) => setLockReasonInputs(prev => ({ ...prev, school_registration: e.target.value }))}
-                        placeholder="e.g. School registration is locked by Geleza SA Executives."
-                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                      />
-                    </div>
-
-                    {ctrl.updated_at && (
-                      <p className="text-[10px] text-slate-500 font-mono">
-                        Last toggled: {new Date(ctrl.updated_at).toLocaleString()} by {ctrl.updated_by_email || 'Executive'}
-                      </p>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => handleToggleLock('school_registration', isLocked)}
-                    disabled={isBusy}
-                    className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer ${
-                      isLocked
-                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/40'
-                        : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-900/40'
-                    }`}
-                  >
-                    {isBusy ? (
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    ) : isLocked ? (
-                      <Unlock className="w-3.5 h-3.5" />
-                    ) : (
-                      <Lock className="w-3.5 h-3.5" />
-                    )}
-                    <span>{isLocked ? 'Unlock "Register School" Button' : 'Lock "Register School" Button'}</span>
-                  </button>
-                </div>
-              );
-            })()}
-
-            {/* 2. User Registration Gatekeeper */}
-            {(() => {
-              const ctrl = portalControls.user_registration || { is_locked: false, name: 'User Registration Portal' };
-              const isLocked = Boolean(ctrl.is_locked);
-              const isBusy = updatingControlId === 'user_registration';
-
-              return (
-                <div className={`p-5 rounded-3xl border transition-all flex flex-col justify-between space-y-4 shadow-xl ${
-                  isLocked 
-                    ? 'bg-rose-950/20 border-rose-500/40 shadow-rose-950/30' 
-                    : 'bg-slate-900/90 border-slate-800 shadow-slate-950/50'
-                }`}>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/40">
-                        Admin / Executive Authority
-                      </span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 border ${
-                        isLocked
-                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                      }`}>
-                        {isLocked ? <Lock className="w-3 h-3 text-rose-400" /> : <Unlock className="w-3 h-3 text-emerald-400" />}
-                        {isLocked ? 'LOCKED' : 'UNLOCKED'}
-                      </span>
-                    </div>
-
-                    <div>
-                      <h4 className="text-base font-black text-white flex items-center gap-2">
-                        <Users className="w-4 h-4 text-cyan-400" />
-                        "Registration" Button
-                      </h4>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Governs self-registration of parents & learners on `/register`. When locked, direct registration is halted while highlighting Login.
-                      </p>
-                    </div>
-
-                    <div className="space-y-1.5 pt-1">
-                      <label className="text-[11px] font-bold text-slate-300">
-                        Advisory Reason (Shown to public):
-                      </label>
-                      <input
-                        type="text"
-                        value={lockReasonInputs.user_registration || ''}
-                        onChange={(e) => setLockReasonInputs(prev => ({ ...prev, user_registration: e.target.value }))}
-                        placeholder="e.g. Registration is closed by Geleza SA Admins."
-                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                      />
-                    </div>
-
-                    {ctrl.updated_at && (
-                      <p className="text-[10px] text-slate-500 font-mono">
-                        Last toggled: {new Date(ctrl.updated_at).toLocaleString()} by {ctrl.updated_by_email || 'Admin'}
-                      </p>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => handleToggleLock('user_registration', isLocked)}
-                    disabled={isBusy}
-                    className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer ${
-                      isLocked
-                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/40'
-                        : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-900/40'
-                    }`}
-                  >
-                    {isBusy ? (
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    ) : isLocked ? (
-                      <Unlock className="w-3.5 h-3.5" />
-                    ) : (
-                      <Lock className="w-3.5 h-3.5" />
-                    )}
-                    <span>{isLocked ? 'Unlock "Registration" Button' : 'Lock "Registration" Button'}</span>
-                  </button>
-                </div>
-              );
-            })()}
-
-            {/* 3. Application Intake Gatekeeper */}
-            {(() => {
-              const ctrl = portalControls.parent_application || { is_locked: false, name: 'Admissions & Applications' };
-              const isLocked = Boolean(ctrl.is_locked);
-              const isBusy = updatingControlId === 'parent_application';
-
-              return (
-                <div className={`p-5 rounded-3xl border transition-all flex flex-col justify-between space-y-4 shadow-xl ${
-                  isLocked 
-                    ? 'bg-rose-950/20 border-rose-500/40 shadow-rose-950/30' 
-                    : 'bg-slate-900/90 border-slate-800 shadow-slate-950/50'
-                }`}>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-500/40">
-                        Admin / Executive Authority
-                      </span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 border ${
-                        isLocked
-                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                      }`}>
-                        {isLocked ? <Lock className="w-3 h-3 text-rose-400" /> : <Unlock className="w-3 h-3 text-emerald-400" />}
-                        {isLocked ? 'LOCKED' : 'UNLOCKED'}
-                      </span>
-                    </div>
-
-                    <div>
-                      <h4 className="text-base font-black text-white flex items-center gap-2">
-                        <GraduationCap className="w-4 h-4 text-cyan-400" />
-                        "Application" Button
-                      </h4>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Controls intake of 2026 admissions and parent portal applications. When locked, prospective applicants are guided to check back during open windows.
-                      </p>
-                    </div>
-
-                    <div className="space-y-1.5 pt-1">
-                      <label className="text-[11px] font-bold text-slate-300">
-                        Advisory Reason (Shown to public):
-                      </label>
-                      <input
-                        type="text"
-                        value={lockReasonInputs.parent_application || ''}
-                        onChange={(e) => setLockReasonInputs(prev => ({ ...prev, parent_application: e.target.value }))}
-                        placeholder="e.g. Applications are currently closed by Geleza SA Admins."
-                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                      />
-                    </div>
-
-                    {ctrl.updated_at && (
-                      <p className="text-[10px] text-slate-500 font-mono">
-                        Last toggled: {new Date(ctrl.updated_at).toLocaleString()} by {ctrl.updated_by_email || 'Admin'}
-                      </p>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => handleToggleLock('parent_application', isLocked)}
-                    disabled={isBusy}
-                    className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer ${
-                      isLocked
-                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/40'
-                        : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-900/40'
-                    }`}
-                  >
-                    {isBusy ? (
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    ) : isLocked ? (
-                      <Unlock className="w-3.5 h-3.5" />
-                    ) : (
-                      <Lock className="w-3.5 h-3.5" />
-                    )}
-                    <span>{isLocked ? 'Unlock "Application" Button' : 'Lock "Application" Button'}</span>
-                  </button>
-                </div>
-              );
-            })()}
-          </div>
+          <AdmissionWindowPanel controls={portalControls} busyId={updatingControlId} onSave={handleSaveGate} />
         </div>
       )}
 

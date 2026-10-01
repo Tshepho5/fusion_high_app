@@ -5,6 +5,7 @@ import { LearnerOverviewSkeleton } from '../../components/learner/LearnerOvervie
 import { FusionAIIcon } from '../../components/common/FusionAIIcon';
 import { FusionAppIcon } from '../../components/common/FusionAppIcon';
 import { FavoriteModulesSection } from '../../components/common/FavoriteModulesSection';
+import { HomeGreeting } from '../../components/layout/WorkspaceChrome';
 import {
   GraduationCap,
   BookOpen,
@@ -280,7 +281,8 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
 
   return (
     <div className="space-y-6 animate-fade-in text-slate-100 pb-20">
-      
+      <HomeGreeting />
+
       {/* 1. ENROLLED SUBJECTS HUB - CUSTOMIZABLE PRESENTATION & PICTURES */}
       <section className="space-y-4">
         {/* Section Header with Title & View Mode Selectors */}
@@ -291,16 +293,13 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg md:text-xl font-bold font-display text-white tracking-tight">
+                <h2 className="text-lg md:text-xl xl:text-2xl font-bold font-display text-white tracking-tight">
                   My Enrolled Subjects
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500/20 text-brand-300 border border-brand-500/30">
                   {filteredSubjects.length} of {displaySubjects.length}
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
-                CAPS subjects, past papers, and study resources
-              </p>
             </div>
           </div>
 
@@ -431,7 +430,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
         {subjectViewMode === 'carousel' && (
           <div
             ref={subjectCarouselRef}
-            className="flex gap-5 overflow-x-auto pb-4 scrollbar-thin custom-scrollbar snap-x snap-mandatory scroll-smooth"
+            className="flex gap-5 overflow-x-auto pb-4 scrollbar-thin custom-scrollbar snap-x snap-mandatory scroll-smooth xl:flex-wrap xl:overflow-visible"
           >
             {filteredSubjects.map((sub, idx) => {
               const name = safeString(sub.name, 'Subject');
@@ -445,10 +444,10 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
               return (
                 <div
                   key={idx}
-                  className="min-w-[310px] sm:min-w-[340px] max-w-[360px] shrink-0 snap-start rounded-3xl bg-surface-dark border border-white/10 hover:border-brand-500/50 transition-all shadow-xl overflow-hidden flex flex-col justify-between group card-interactive animated-border-card relative"
+                  className="min-w-[310px] sm:min-w-[340px] max-w-[360px] shrink-0 snap-start xl:max-w-[440px] xl:min-w-[340px] xl:flex-1 xl:basis-[360px] rounded-3xl bg-surface-dark border border-white/10 hover:border-brand-500/50 transition-all shadow-xl overflow-hidden flex flex-col justify-between group card-interactive animated-border-card relative"
                 >
                   {/* Subject Picture Hero Header */}
-                  <div className="relative h-44 w-full overflow-hidden">
+                  <div data-theme-preserve="true" className="relative h-44 w-full overflow-hidden">
                     <img
                       src={meta.imageUrl}
                       alt={name}
@@ -456,7 +455,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                       loading="lazy"
                     />
                     {/* Atmospheric Dark Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-surface-dark via-surface-dark/50 to-transparent" />
+                    <div data-theme-preserve="true" className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-black/10" />
 
                     {/* Wave Cut Mask over Image Bottom */}
                     <div className="absolute -bottom-0.5 inset-x-0 pointer-events-none">
@@ -490,7 +489,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                       </span>
                       <h3
                         onClick={() => onNavigateTab('subjects', name)}
-                        className="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors cursor-pointer leading-snug drop-shadow-md line-clamp-1"
+                        className="text-lg font-bold text-white text-always-white group-hover:text-cyan-200 transition-colors cursor-pointer leading-snug drop-shadow-md line-clamp-1"
                         title={`Open ${name} Workspace`}
                       >
                         {name}
@@ -573,7 +572,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
         {/* VIEW MODE 1: VISUAL HERO CARDS WITH HIGH-RESOLUTION SUBJECT PICTURES     */}
         {/* ========================================================================= */}
         {subjectViewMode === 'visual' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filteredSubjects.map((sub, idx) => {
               const name = safeString(sub.name, 'Subject');
               const code = safeString(sub.code, `${name.slice(0, 4).toUpperCase()}10`);
@@ -589,7 +588,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                   className="rounded-3xl bg-surface-dark border border-white/10 hover:border-brand-500/50 transition-all shadow-xl overflow-hidden flex flex-col justify-between group card-interactive animated-border-card relative"
                 >
                   {/* Subject Picture Hero Header */}
-                  <div className="relative h-44 w-full overflow-hidden">
+                  <div data-theme-preserve="true" className="relative h-44 w-full overflow-hidden">
                     <img
                       src={meta.imageUrl}
                       alt={name}
@@ -597,7 +596,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                       loading="lazy"
                     />
                     {/* Atmospheric Dark Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-surface-dark via-surface-dark/50 to-transparent" />
+                    <div data-theme-preserve="true" className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-black/10" />
 
                     {/* Wave Cut Mask over Image Bottom */}
                     <div className="absolute -bottom-0.5 inset-x-0 pointer-events-none">
@@ -631,7 +630,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                       </span>
                       <h3
                         onClick={() => onNavigateTab('subjects', name)}
-                        className="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors cursor-pointer leading-snug drop-shadow-md line-clamp-1"
+                        className="text-lg font-bold text-white text-always-white group-hover:text-cyan-200 transition-colors cursor-pointer leading-snug drop-shadow-md line-clamp-1"
                         title={`Open ${name} Workspace`}
                       >
                         {name}
@@ -714,7 +713,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
         {/* VIEW MODE 2: RESPONSIVE GRID CARDS WITH COMPACT IMAGE THUMBNAIL          */}
         {/* ========================================================================= */}
         {subjectViewMode === 'grid' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredSubjects.map((sub, idx) => {
               const name = safeString(sub.name, 'Subject');
               const code = safeString(sub.code, `${name.slice(0, 4).toUpperCase()}10`);
@@ -771,7 +770,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
         {/* VIEW MODE 3: COMPACT APP TILES                                           */}
         {/* ========================================================================= */}
         {subjectViewMode === 'compact' && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8 gap-3">
             {filteredSubjects.map((sub, idx) => {
               const name = safeString(sub.name, 'Subject');
               const progress = safeNumber(sub.progress, 0);
@@ -900,7 +899,6 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                   <h3 className="text-base font-bold text-white">
                     {safeString(selectedResourceSubject.name)} Resources
                   </h3>
-                  <p className="text-xs text-slate-400">Grade {safeNumber(selectedResourceSubject.grade)} Textbooks & Study Guides</p>
                 </div>
               </div>
               <button

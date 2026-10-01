@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { schoolRegistrationService } from '../../services/api';
 import { useSchool } from '../../context/SchoolContext';
+import { SchoolModuleChoices } from '../admin/SchoolModuleChoices';
+import { defaultLearnerModules, defaultTeacherModules } from '../../utils/schoolModules';
 
 interface SchoolRegistrationModalProps {
   isOpen: boolean;
@@ -216,6 +218,8 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
       'Business Studies',
       'Life Orientation'
     ],
+    teacher_modules: defaultTeacherModules(),
+    learner_modules: defaultLearnerModules(),
 
     // Step 3: Principal & Lead Administrator
     principal_first_name: '',
@@ -253,7 +257,7 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
   };
 
   // Name Validation: Strictly prevent numbers
-  const handleNameInput = (field: 'principal_first_name' | 'principal_surname', value: string) => {
+  const handleNameInput = (field: 'school_name' | 'principal_first_name' | 'principal_surname', value: string) => {
     if (/\d/.test(value)) {
       setFieldErrors(prev => ({ ...prev, [field]: 'Numbers are not allowed in this field. Please use letters only.' }));
       setForm(prev => ({ ...prev, [field]: value.replace(/\d/g, '') }));
@@ -310,6 +314,8 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
     const errors: Record<string, string> = {};
     if (!form.school_name.trim()) {
       errors.school_name = 'Please enter the official School Name.';
+    } else if (/\d/.test(form.school_name)) {
+      errors.school_name = 'Numbers are not allowed in this field. Please use letters only.';
     }
     const cleanEmis = form.emis_number.replace(/\D/g, '');
     if (cleanEmis.length !== 9) {
@@ -509,7 +515,7 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
                     type="text"
                     placeholder="e.g. Makgoka High School / Fusion Secondary"
                     value={form.school_name}
-                    onChange={(e) => handleFieldChange('school_name', e.target.value)}
+                    onChange={(e) => handleNameInput('school_name', e.target.value)}
                     className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-950/70 border text-sm text-white placeholder:text-slate-500 transition-all outline-hidden ${
                       fieldErrors.school_name ? 'border-rose-500 focus:border-rose-400' : 'border-slate-700 focus:border-cyan-400'
                     }`}
@@ -747,6 +753,13 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
                   })}
                 </div>
               </div>
+
+              <SchoolModuleChoices
+                teacherModules={form.teacher_modules}
+                learnerModules={form.learner_modules}
+                onChangeTeacher={(ids) => setForm((prev) => ({ ...prev, teacher_modules: ids }))}
+                onChangeLearner={(ids) => setForm((prev) => ({ ...prev, learner_modules: ids }))}
+              />
             </div>
           )}
 
@@ -1016,8 +1029,8 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
                     <CreditCard className="w-4 h-4 text-cyan-400" />
                     <span className="text-xs font-bold uppercase tracking-wider text-white">Application & Onboarding Fee</span>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    Fast-Track Verification
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-200 border border-amber-500/30">
+                    Waiting for a bank account
                   </span>
                 </div>
 
@@ -1037,7 +1050,7 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-cyan-950/30 border border-cyan-800/40 text-[11px] text-cyan-200">
-                  <strong>Fast-Track Guarantee:</strong> Both fees are logged under reference <code className="text-white font-mono bg-cyan-900/40 px-1 py-0.5 rounded">{form.payment_reference}</code>. Applications with paid fees are expedited for priority review by the Geleza SA Executive desk.
+                  These fees are listed under reference <code className="text-white font-mono bg-cyan-900/40 px-1 py-0.5 rounded">{form.payment_reference}</code>. Submitting does not take money. Card, instant EFT, bank EFT, and cash wait until a real bank account is connected.
                 </div>
               </div>
             </div>
@@ -1051,9 +1064,9 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
               </div>
 
               <div className="space-y-1.5">
-                <h3 className="text-xl font-black text-white">School Successfully Registered!</h3>
+                <h3 className="text-xl font-black text-white">Sent to Geleza SA</h3>
                 <p className="text-xs text-slate-400 max-w-md mx-auto">
-                  Your official school registration for <strong>{form.school_name}</strong> is complete and active on Geleza SA. Parents and learners can now select your school and submit admissions applications immediately.
+                  The registration for <strong>{form.school_name}</strong> is waiting for Geleza SA. Families can select this school only after that approval. You sign in with the password you chose once the approval arrives.
                 </p>
               </div>
 
@@ -1072,12 +1085,12 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Status:</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300">Active & Listed for Applications</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-200">Waiting for Geleza SA</span>
                 </div>
               </div>
 
               <div className="p-3.5 rounded-xl bg-blue-950/20 border border-blue-500/20 text-[11px] text-slate-300 max-w-md mx-auto text-left">
-                <strong>Continuous Email Notification:</strong> We have dispatched an official confirmation receipt and master administrator credentials to <code className="text-cyan-300">{form.principal_email}</code>. You can now log into your school portal or direct applicants to submit admissions.
+                <strong>What happens next:</strong> A receipt goes to <code className="text-cyan-300">{form.principal_email}</code>. Geleza SA approves the school before it appears on the family application form.
               </div>
 
               <button
@@ -1128,7 +1141,7 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>Submit & Pay Application Fee</span>
+                    <span>Submit for Geleza SA approval</span>
                   </>
                 )}
               </button>

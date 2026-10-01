@@ -8,6 +8,8 @@ import {
   LayoutGrid,
 } from 'lucide-react';
 import api from '../../services/api';
+import { useSchool } from '../../context/SchoolContext';
+import { moduleAllowed } from '../../utils/schoolModules';
 import { useAuth } from '../../context/AuthContext';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
 
@@ -53,6 +55,11 @@ export const getLearnerPrimaryTabFromActive = (tab: string): LearnerPrimaryTab =
     case 'textbooks':
     case 'sports':
     case 'settings':
+    case 'children':
+    case 'marks':
+    case 'attendance':
+    case 'ptc':
+    case 'consultations':
     default:
       return 'more';
   }
@@ -64,6 +71,7 @@ export const LearnerNavigationBar: React.FC<LearnerNavigationBarProps> = ({
   className = '',
 }) => {
   const { user } = useAuth();
+  const { currentSchool } = useSchool();
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
   // Poll for unread message count
@@ -138,12 +146,12 @@ export const LearnerNavigationBar: React.FC<LearnerNavigationBarProps> = ({
       className={`relative select-none ${className}`}
     >
       {/* Outer Floating Bar Container (Deep Navy Dock) */}
-      <div className="relative flex items-center justify-between sm:justify-center gap-1 sm:gap-2.5 p-1.5 sm:p-2 rounded-full bg-[#0D1620]/95 backdrop-blur-2xl border border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.65)] ring-1 ring-white/5 transition-all duration-300">
+      <div className="relative flex items-center justify-between sm:justify-center xl:justify-between xl:px-8 gap-1 sm:gap-2.5 p-1.5 sm:p-2 rounded-full bg-[#0D1620]/95 backdrop-blur-2xl border border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.65)] ring-1 ring-white/5 transition-all duration-300">
         {/* Ambient Subtle Cyan Underlay Glow */}
         <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-cyan-500/15 via-teal-500/15 to-cyan-500/15 blur-lg -z-10 pointer-events-none" />
 
         {/* Nav Items */}
-        {navItems.map((item) => {
+        {navItems.filter((item) => moduleAllowed('learner', item.targetTab, currentSchool.learner_modules, currentSchool.teacher_modules)).map((item) => {
           const IconComp = item.icon;
           const isActive = primaryTab === item.id;
           const isMore = item.id === 'more';

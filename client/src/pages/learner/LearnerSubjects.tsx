@@ -260,9 +260,11 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold font-display text-white tracking-tight">
                   {selectedSubName}
                 </h2>
-                <p className="text-xs md:text-sm text-slate-400 max-w-xl">
-                  {selectedSubject?.teacher ? `Educator: ${selectedSubject.teacher} • ` : ''}High School Curriculum Workspace
-                </p>
+                {selectedSubject?.teacher && (
+                  <p className="text-xs md:text-sm text-slate-400">
+                    {selectedSubject.teacher}
+                  </p>
+                )}
               </div>
 
               {/* Action Buttons & Quick Stats */}
@@ -556,7 +558,6 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                   <div className="p-8 text-center rounded-2xl bg-surface-darker border border-white/5 space-y-3">
                     <FileText className="w-10 h-10 text-purple-400 mx-auto" />
                     <p className="text-sm text-slate-200 font-bold">Official Question Papers & Study Materials for Grade {selectedGrade} {selectedSubName}</p>
-                    <p className="text-xs text-slate-400 max-w-md mx-auto">Access the interactive past examination papers, worked questions, and marking memorandums directly in the Past Papers tab.</p>
                     <button
                       onClick={() => setActiveTab('past-papers')}
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-all mt-2"
@@ -729,11 +730,8 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                   </Badge>
                 </div>
                 <h3 className="text-base font-bold text-white">
-                  {currentHomeLanguage ? `Selected Home Language: ${currentHomeLanguage}` : 'Select Your South African Home Language (1 of 11)'}
+                  {currentHomeLanguage ? `Selected Home Language: ${currentHomeLanguage}` : 'Select Your South African Home Language'}
                 </h3>
-                <p className="text-xs text-slate-400 max-w-2xl">
-                  Choose which of the 11 official South African languages you study. The school database permanently allocates your specified language and synchronizes your AI Subject Specialist.
-                </p>
               </div>
 
               <div className="flex items-center gap-2">

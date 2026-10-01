@@ -368,13 +368,14 @@ class NotificationService {
   }
 
   /**
-   * Retrieves notifications for a specific user.
+   * Retrieves official school notifications (announcements, academic alerts, circulars) for a user.
+   * Direct peer chat messages are managed via the Message Hub.
    */
   static async getUserNotifications(userId, limit = 30) {
     const result = await db.query(`
       SELECT id, title, message, type, target_tab, metadata, is_read, created_at
       FROM notifications
-      WHERE user_id = $1
+      WHERE user_id = $1 AND (type IS NULL OR type NOT IN ('chat', 'message'))
       ORDER BY created_at DESC
       LIMIT $2
     `, [userId, limit]);
@@ -382,13 +383,13 @@ class NotificationService {
   }
 
   /**
-   * Gets unread notifications count for a user.
+   * Gets unread notifications count for official school announcements and notices.
    */
   static async getUnreadCount(userId) {
     const result = await db.query(`
       SELECT COUNT(*)::int AS unread_count
       FROM notifications
-      WHERE user_id = $1 AND is_read = FALSE
+      WHERE user_id = $1 AND is_read = FALSE AND (type IS NULL OR type NOT IN ('chat', 'message'))
     `, [userId]);
     return result.rows[0]?.unread_count || 0;
   }

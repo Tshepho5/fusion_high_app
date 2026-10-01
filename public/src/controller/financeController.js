@@ -1,4 +1,6 @@
 const db = require('../../../db/db');
+const { loadActor, canAccessInvoice } = require('../services/familyAccess');
+const paymentHold = require('../services/paymentHold');
 const path = require('path');
 const fs = require('fs');
 
@@ -7,9 +9,10 @@ const fs = require('fs');
  */
 exports.getInvoices = async (req, res) => {
   try {
-    const userRole = (req.user?.role || '').toLowerCase();
     const userId = req.user?.id;
     const { childId, status, term } = req.query;
+    const actor = await loadActor(req.user);
+    const actorRole = actor?.role || '';
 
     let query = `
       SELECT fi.*, c.full_name as learner_name, c.surname as learner_surname, c.grade as learner_grade,
@@ -21,22 +24,25 @@ exports.getInvoices = async (req, res) => {
     `;
     const params = [];
 
-    if (userRole === 'parent') {
-      // Find children linked to this parent
+    if (actorRole === 'parent') {
       params.push(userId);
-      query += ` AND (fi.parent_id = $${params.length} OR fi.learner_id IN (
-        SELECT child_id FROM parent_children WHERE parent_id = $${params.length}
-      ))`;
+      query += ` AND (
+        fi.parent_id = $${params.length}
+        OR fi.learner_id IN (SELECT child_id FROM parent_children WHERE parent_id = $${params.length})
+        OR fi.learner_id IN (SELECT id FROM children WHERE parent_id = $${params.length} OR secondary_parent_id = $${params.length})
+      )`;
       if (childId) {
         params.push(childId);
         query += ` AND fi.learner_id = $${params.length}`;
       }
-    } else if (userRole === 'learner') {
+    } else if (actorRole === 'learner') {
       // Find child record linked to this learner user
       const childRes = await db.query('SELECT id FROM children WHERE learner_user_id = $1 OR id = $1', [userId]);
       const lrnId = childRes.rows[0]?.id || userId;
       params.push(lrnId);
       query += ` AND fi.learner_id = $${params.length}`;
+    } else if (actorRole !== 'admin' && !actor?.is_superadmin) {
+      return res.status(403).json({ error: 'You can only open fee records for your own family.' });
     }
 
     if (status) {
@@ -79,6 +85,9 @@ exports.getInvoiceById = async (req, res) => {
     }
 
     const invoice = invRes.rows[0];
+    if (!(await canAccessInvoice(req.user, invoice))) {
+      return res.status(403).json({ error: 'You can only open fee records for your own family.' });
+    }
     const paymentsRes = await db.query(`
       SELECT * FROM fee_payments WHERE invoice_id = $1 ORDER BY created_at DESC
     `, [invoice.id]);
@@ -109,18 +118,20 @@ exports.processPayment = async (req, res) => {
     }
 
     const invoice = invRes.rows[0];
+    if (!(await canAccessInvoice(req.user, invoice))) {
+      return res.status(403).json({ error: 'You can only pay invoices for your own family.' });
+    }
     const payAmount = parseFloat(amount);
-    const newPaidAmount = parseFloat(invoice.paid_amount || 0) + payAmount;
-    const totalAmount = parseFloat(invoice.amount);
-    const newBalance = Math.max(0, totalAmount - newPaidAmount);
-    const newStatus = newBalance <= 0 ? 'paid' : 'partial';
-
-    // Generate unique payment reference & receipt number
+    const schoolRes = await db.query(
+      `SELECT s.* FROM schools s
+       JOIN children c ON c.school_id = s.id
+       WHERE c.id = $1`,
+      [invoice.learner_id]
+    );
+    const hold = paymentHold.describe(paymentMethod, schoolRes.rows[0], payAmount, invoice.invoice_number);
     const paymentRef = `PAY-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const receiptNum = `REC-2026-${Date.now().toString().slice(-6)}`;
-    const gatewayTxId = `GW-${(paymentMethod || 'PAYFAST').toUpperCase().slice(0, 3)}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const receiptNum = `HOLD-${Date.now().toString().slice(-6)}`;
 
-    // 1. Record Payment
     const paymentRes = await db.query(`
       INSERT INTO fee_payments (
         invoice_id, learner_id, parent_id, payment_reference, receipt_number,
@@ -134,31 +145,22 @@ exports.processPayment = async (req, res) => {
       paymentRef,
       receiptNum,
       payAmount,
-      paymentMethod || 'PayFast Instant Settlement',
-      gatewayTxId,
-      'completed',
+      hold.method_label,
+      null,
+      hold.status,
       payerName || req.user?.full_name || 'Guardian Payer',
-      payerEmail || req.user?.email || 'parent@fusionhigh.co.za',
-      notes || `Online payment for ${invoice.invoice_number}`
+      payerEmail || req.user?.email || '',
+      notes || hold.message
     ]);
 
-    // 2. Update Invoice status & balance
-    const updatedInv = await db.query(`
-      UPDATE fee_invoices
-      SET paid_amount = $1,
-          balance = $2,
-          status = $3,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = $4
-      RETURNING *;
-    `, [newPaidAmount, newBalance, newStatus, invoice.id]);
-
-    res.json({
+    return res.status(202).json({
       success: true,
-      message: `Payment of R${payAmount.toFixed(2)} processed successfully via ${paymentMethod || 'Gateway'}.`,
+      held: true,
+      paid: false,
+      message: hold.message,
       payment: paymentRes.rows[0],
-      invoice: updatedInv.rows[0],
-      receipt_url: `/api/finance/receipts/${receiptNum}/download`
+      invoice,
+      banking_details: hold.banking_details
     });
   } catch (err) {
     console.error('Error processing payment:', err);
@@ -171,8 +173,9 @@ exports.processPayment = async (req, res) => {
  */
 exports.getReceipts = async (req, res) => {
   try {
-    const userRole = (req.user?.role || '').toLowerCase();
     const userId = req.user?.id;
+    const actor = await loadActor(req.user);
+    const actorRole = actor?.role || '';
 
     let query = `
       SELECT fp.*, fi.invoice_number, fi.title as invoice_title,
@@ -184,16 +187,20 @@ exports.getReceipts = async (req, res) => {
     `;
     const params = [];
 
-    if (userRole === 'parent') {
+    if (actorRole === 'parent') {
       params.push(userId);
-      query += ` AND (fp.parent_id = $${params.length} OR fp.learner_id IN (
-        SELECT child_id FROM parent_children WHERE parent_id = $${params.length}
-      ))`;
-    } else if (userRole === 'learner') {
+      query += ` AND (
+        fp.parent_id = $${params.length}
+        OR fp.learner_id IN (SELECT child_id FROM parent_children WHERE parent_id = $${params.length})
+        OR fp.learner_id IN (SELECT id FROM children WHERE parent_id = $${params.length} OR secondary_parent_id = $${params.length})
+      )`;
+    } else if (actorRole === 'learner') {
       const childRes = await db.query('SELECT id FROM children WHERE learner_user_id = $1 OR id = $1', [userId]);
       const lrnId = childRes.rows[0]?.id || userId;
       params.push(lrnId);
       query += ` AND fp.learner_id = $${params.length}`;
+    } else if (actorRole !== 'admin' && !actor?.is_superadmin) {
+      return res.status(403).json({ error: 'You can only open fee records for your own family.' });
     }
 
     query += ` ORDER BY fp.created_at DESC`;

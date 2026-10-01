@@ -1,4 +1,5 @@
 const db = require('../../../../db/db');
+const { rejectNameDigits } = require('../../services/lettersOnly');
 
 exports.getTeacherProfileDetails = async (req, res) => {
     try {
@@ -22,6 +23,7 @@ exports.updateTeacherProfileDetails = async (req, res) => {
     try {
         const teacherId = req.user.id;
         const { full_name, surname, phone, physical_address } = req.body;
+        if (rejectNameDigits(res, full_name, surname)) return;
 
         await db.query(
             `UPDATE users SET full_name = $1, surname = $2, phone = $3, physical_address = $4 WHERE id = $5`,

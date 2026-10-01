@@ -169,20 +169,27 @@ exports.getClassList = async (req, res) => {
 
         let whereClause = `WHERE ` + conditions.join(' AND ');
 
+        params.push(termParam);
+        const termIdx = params.length;
+        params.push(assessmentParam);
+        const assessmentIdx = params.length;
+        params.push(`%${assessmentParam}%`);
+        const assessmentLikeIdx = params.length;
+
         let markSubquery = `
             (SELECT COALESCE(p.score, p.grade) 
              FROM progress p 
              WHERE p.child_id = c.id 
                AND ($1 = '' OR LOWER(p.subject) = LOWER($1))
-               ${termParam ? `AND p.term = '${termParam.replace(/'/g, "''")}'` : ''}
-               ${assessmentParam ? `AND (p.assessment_name = '${assessmentParam.replace(/'/g, "''")}' OR p.notes ILIKE '%${assessmentParam.replace(/'/g, "''")}%')` : ''}
+               AND ($${termIdx} = '' OR p.term = $${termIdx})
+               AND ($${assessmentIdx} = '' OR p.assessment_name = $${assessmentIdx} OR p.notes ILIKE $${assessmentLikeIdx})
              ORDER BY p.id DESC LIMIT 1) as current_mark,
             (SELECT p.is_published 
              FROM progress p 
              WHERE p.child_id = c.id 
                AND ($1 = '' OR LOWER(p.subject) = LOWER($1))
-               ${termParam ? `AND p.term = '${termParam.replace(/'/g, "''")}'` : ''}
-               ${assessmentParam ? `AND (p.assessment_name = '${assessmentParam.replace(/'/g, "''")}' OR p.notes ILIKE '%${assessmentParam.replace(/'/g, "''")}%')` : ''}
+               AND ($${termIdx} = '' OR p.term = $${termIdx})
+               AND ($${assessmentIdx} = '' OR p.assessment_name = $${assessmentIdx} OR p.notes ILIKE $${assessmentLikeIdx})
              ORDER BY p.id DESC LIMIT 1) as is_published
         `;
 
@@ -223,9 +230,9 @@ exports.getClassList = async (req, res) => {
                        (SELECT p.is_published FROM progress p WHERE p.child_id = c.id ORDER BY p.id DESC LIMIT 1) as is_published
                 FROM children c
                 LEFT JOIN classes cl ON c.class_id = cl.id
-                WHERE c.grade = $1
+                WHERE c.grade = $1 AND c.school_id = $2
                 ORDER BY c.grade ASC, c.surname ASC, c.full_name ASC
-            `, [parseInt(gradeParam, 10)]);
+            `, [parseInt(gradeParam, 10), schoolId]);
         }
 
         if (result.rows.length === 0) {
@@ -244,8 +251,9 @@ exports.getClassList = async (req, res) => {
                        (SELECT p.is_published FROM progress p WHERE p.child_id = c.id ORDER BY p.id DESC LIMIT 1) as is_published
                 FROM children c
                 LEFT JOIN classes cl ON c.class_id = cl.id
+                WHERE c.school_id = $1
                 ORDER BY c.grade ASC, c.surname ASC, c.full_name ASC
-            `);
+            `, [schoolId]);
         }
 
         // 3. Query marks table for all learners in this class for the selected subject and term
@@ -601,7 +609,7 @@ exports.saveClassMarks = async (req, res) => {
                 message: markAnnouncementContent,
                 fullContent: markAnnouncementContent,
                 type: 'marks',
-                targetTab: 'academics',
+                targetTab: 'reports',
                 sendToMessages: false,
                 sendEmail: true,
                 metadata: {
@@ -652,20 +660,36 @@ exports.recordMark = async (req, res) => {
 
         if (childRes.rows.length > 0) {
             const child = childRes.rows[0];
-            const targetIds = [child.learner_user_id, child.parent_id].filter(Boolean);
             const noticeTitle = `New Mark Recorded: ${subject} (${mark}%)`;
             const noticeMsg = `A new mark of ${mark}% for ${notes || assessmentTitle || 'Class Assessment'} in ${subject} has been recorded for ${child.full_name || 'student'}.`;
 
-            NotificationService.sendToUsers({
-                userIds: targetIds,
-                title: noticeTitle,
-                message: noticeMsg,
-                type: 'marks',
-                targetTab: 'academics',
-                authorId: req.user?.id || 1,
-                sendToMessages: true,
-                sendEmail: true
-            }).catch(err => console.error('[RECORD MARK NOTIFICATION ERROR]', err));
+            if (child.learner_user_id) {
+                NotificationService.sendToUsers({
+                    userIds: [child.learner_user_id],
+                    title: noticeTitle,
+                    message: noticeMsg,
+                    type: 'marks',
+                    targetTab: 'reports',
+                    metadata: { child_id: child.id, subject },
+                    authorId: req.user?.id || 1,
+                    sendToMessages: true,
+                    sendEmail: true
+                }).catch(err => console.error('[RECORD MARK LEARNER NOTIFICATION ERROR]', err));
+            }
+
+            if (child.parent_id) {
+                NotificationService.sendToUsers({
+                    userIds: [child.parent_id],
+                    title: noticeTitle,
+                    message: noticeMsg,
+                    type: 'marks',
+                    targetTab: 'marks',
+                    metadata: { child_id: child.id, subject },
+                    authorId: req.user?.id || 1,
+                    sendToMessages: true,
+                    sendEmail: false
+                }).catch(err => console.error('[RECORD MARK PARENT NOTIFICATION ERROR]', err));
+            }
         }
 
         res.json({ message: 'Mark recorded successfully and notification sent.' });

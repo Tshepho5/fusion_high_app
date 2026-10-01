@@ -22,16 +22,25 @@ import { LearnerAssignments } from '../../components/learner/LearnerAssignments'
 import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
 import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
 import { FusionArcadeHub } from '../../components/learner/FusionArcadeHub';
-import { LearnerNavigationBar, getLearnerPrimaryTabFromActive } from '../../components/learner/LearnerNavigationBar';
+import { LearnerNavigationBar } from '../../components/learner/LearnerNavigationBar';
+import { ModulePageHeader } from '../../components/layout/WorkspaceChrome';
 import { LearnerMoreHub } from './LearnerMoreHub';
 import { LearnerDiscoverHub } from './LearnerDiscoverHub';
 import { LearnerCalendarHub } from './LearnerCalendarHub';
-import { ArrowLeft, ChevronRight, Home, LayoutGrid, Compass, Calendar, MessageSquare } from 'lucide-react';
+import { useSchool } from '../../context/SchoolContext';
+import { moduleAllowed } from '../../utils/schoolModules';
 
 export const LearnerDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { currentSchool, refreshSchools } = useSchool();
   const initialTab = searchParams.get('tab') || 'overview';
-  const [activeTab, setActiveTab] = useState<string>(initialTab);
+  const [activeTab, setActiveTab] = useState<string>(() =>
+    moduleAllowed('learner', initialTab, currentSchool.learner_modules, currentSchool.teacher_modules) ? initialTab : 'overview'
+  );
+
+  useEffect(() => {
+    refreshSchools();
+  }, []);
 
   // State passed to AI Tutor when launching from Subjects
   const [tutorContext, setTutorContext] = useState<{
@@ -43,13 +52,23 @@ export const LearnerDashboard: React.FC = () => {
   });
 
   useEffect(() => {
-    const tabParam = searchParams.get('tab');
-    if (tabParam && tabParam !== activeTab) {
-      setActiveTab(tabParam);
+    const tabParam = searchParams.get('tab') || activeTab || 'overview';
+    if (!moduleAllowed('learner', tabParam, currentSchool.learner_modules, currentSchool.teacher_modules)) {
+      if (activeTab !== 'overview') setActiveTab('overview');
+      if (searchParams.get('tab') && searchParams.get('tab') !== 'overview') {
+        setSearchParams({ tab: 'overview' });
+      }
+      return;
     }
-  }, [searchParams]);
+    if (tabParam !== activeTab) setActiveTab(tabParam);
+  }, [searchParams, currentSchool.learner_modules, currentSchool.teacher_modules, activeTab]);
 
   const handleSelectTab = (tabId: string, subjectName?: string) => {
+    if (!moduleAllowed('learner', tabId, currentSchool.learner_modules, currentSchool.teacher_modules)) {
+      setActiveTab('overview');
+      setSearchParams({ tab: 'overview' });
+      return;
+    }
     setActiveTab(tabId);
     if (subjectName) {
       setSearchParams({ tab: tabId, subject: subjectName });
@@ -149,35 +168,23 @@ export const LearnerDashboard: React.FC = () => {
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
-    >
-      {/* Universal Breadcrumb & Backtrack Bar for Sub-Modules */}
-      {isSubModule && (
-        <div className="flex items-center justify-between gap-3 p-3 mb-6 rounded-2xl bg-surface-dark border border-white/10 shadow-sm animate-fade-in">
-          <button
-            onClick={() => handleSelectTab(backtrack.target)}
-            className="px-3.5 py-1.5 rounded-xl bg-surface-darker hover:bg-white/10 border border-white/10 hover:border-brand-500/40 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-2 transition-all shadow-sm group cursor-pointer"
-            title={backtrack.label}
-          >
-            <ArrowLeft className="w-4 h-4 text-cyan-400 group-hover:-translate-x-1 transition-transform" />
-            <span>{backtrack.label}</span>
-          </button>
-
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 font-mono">
-            <button
-              onClick={() => handleSelectTab(backtrack.target)}
-              className="hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
-            >
-              {backtrack.parentLabel === 'More Modules' && <LayoutGrid className="w-3.5 h-3.5 text-cyan-400" />}
-              {backtrack.parentLabel === 'Discover' && <Compass className="w-3.5 h-3.5 text-purple-400" />}
-              {backtrack.parentLabel === 'Home' && <Home className="w-3.5 h-3.5 text-brand-400" />}
-              {backtrack.parentLabel === 'Messages' && <MessageSquare className="w-3.5 h-3.5 text-sky-400" />}
-              {backtrack.parentLabel === 'Calendar' && <Calendar className="w-3.5 h-3.5 text-indigo-400" />}
-              <span>{backtrack.parentLabel}</span>
-            </button>
-            <ChevronRight className="w-3 h-3 text-slate-600" />
-            <span className="text-cyan-300 font-bold">{getTabTitle()}</span>
-          </div>
+      customBottomDock={
+        <div className="fixed bottom-4 inset-x-0 z-[60] flex justify-center px-2 sm:px-4 pointer-events-none">
+          <LearnerNavigationBar
+            activeTab={activeTab}
+            onSelectTab={handleSelectTab}
+            className="pointer-events-auto w-full max-w-xl xl:max-w-4xl 2xl:max-w-5xl"
+          />
         </div>
+      }
+    >
+      {isSubModule && (
+        <ModulePageHeader
+          title={getTabTitle()}
+          parentLabel={backtrack.parentLabel}
+          backLabel={backtrack.label}
+          onBack={() => handleSelectTab(backtrack.target)}
+        />
       )}
 
       {/* ========================================================================= */}

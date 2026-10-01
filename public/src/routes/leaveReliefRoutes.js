@@ -14,6 +14,6 @@ router.get('/requests', requireRole(['teacher', 'admin']), leaveReliefController
 router.patch('/requests/:id/status', requireRole(['admin']), leaveReliefController.updateLeaveStatus);
 router.get('/available-teachers', requireRole(['teacher', 'admin']), leaveReliefController.getAvailableReliefTeachers);
 router.post('/assign-relief', requireRole(['admin']), leaveReliefController.assignReliefPeriod);
-router.get('/daily-roster', leaveReliefController.getDailyReliefRoster);
+router.get('/daily-roster', requireRole(['teacher', 'admin']), leaveReliefController.getDailyReliefRoster);
 
 module.exports = router;

@@ -234,6 +234,10 @@ export const aiTutorService = {
     api.get('/api/ai/life-sciences/topics').then(res => res.data),
   evaluateLifeSciencesAnswer: (payload: { itemId: string; studentAnswer: string }) =>
     api.post('/api/ai/life-sciences/evaluate', payload).then(res => res.data),
+  getAdaptivePractice: (subject: string, grade?: number) =>
+    api.get('/api/learner/adaptive/practice', { params: { subject, grade } }).then(res => res.data),
+  submitAdaptiveAnswer: (payload: { token: string; answer: string; grade?: number }) =>
+    api.post('/api/learner/adaptive/answer', payload).then(res => res.data),
 };
 
 // Official Academic Report Card Service
@@ -355,6 +359,7 @@ export const parentService = {
   getChildPerformance: (childId: string | number) => api.get(`/api/parent/child-performance?childId=${childId}`).then(res => res.data),
   getChildAttendance: (childId: string | number) => api.get(`/api/parent/child-attendance?childId=${childId}`).then(res => res.data),
   getChildTimetable: (childId?: string | number) => api.get(`/api/parent/child-timetable${childId ? `?child_id=${childId}` : ''}`).then(res => res.data),
+  getChildHomework: (childId: string | number) => api.get('/api/parent/child-assignments', { params: { childId } }).then(res => res.data),
   getChildProgress: (childId: string | number) => api.get(`/api/progress/${childId}`).then(res => res.data),
   linkChild: (payload: {
     learner_number?: string;
@@ -646,6 +651,8 @@ export const schoolRegistrationService = {
     api.get(`/api/schools/applications/all${status ? `?status=${status}` : ''}`).then(res => res.data),
   reviewApplication: (id: number | string, decision: 'approve' | 'decline', reason?: string, executive_notes?: string) =>
     api.post(`/api/schools/applications/${id}/decision`, { decision, reason, executive_notes }).then(res => res.data),
+  updateModules: (schoolId: number, teacher_modules: string[], learner_modules: string[]) =>
+    api.put(`/api/schools/${schoolId}/modules`, { teacher_modules, learner_modules }).then(res => res.data),
 };
 
 // Dynamic Class & Staff Invitation API
@@ -682,8 +689,8 @@ export const classStaffService = {
 // Geleza SA Executive & Admin Portal Access / Gatekeeper Controls & Tester QA Management
 export const systemControlService = {
   getPortalLocks: () => api.get('/api/system/portal-locks').then(res => res.data),
-  updatePortalLock: (id: string, is_locked: boolean, locked_reason?: string) =>
-    api.put(`/api/system/portal-locks/${id}`, { is_locked, locked_reason }).then(res => res.data),
+  updatePortalLock: (id: string, payload: { is_locked?: boolean; locked_reason?: string; opens_at?: string | null; closes_at?: string | null }) =>
+    api.put(`/api/system/portal-locks/${id}`, payload).then(res => res.data),
   getTestingUsers: () => api.get('/api/system/test-users').then(res => res.data),
   createTestingUser: (data: {
     email: string;

@@ -40,9 +40,6 @@ export const LearnerDiscoverHub: React.FC<LearnerDiscoverHubProps> = ({
           <h1 className="text-xl sm:text-2xl font-black font-display text-white tracking-tight">
             Discover Learning Tools
           </h1>
-          <p className="text-xs text-slate-400 max-w-xl">
-            Explore 24/7 DBE syllabus AI tutoring, Grade 12 Life Sciences Exam Studio, APS matric career matching, and Fusion arcade study games.
-          </p>
         </div>
 
         {/* Sub-Tab Navigation Bar */}

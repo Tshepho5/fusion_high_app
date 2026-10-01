@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { assertChildAccess } = require('../services/familyAccess');
 
 exports.getLearnerProgress = async (req, res) => {
     try {
@@ -17,6 +18,7 @@ exports.getLearnerProgress = async (req, res) => {
 
 exports.getChildProgress = async (req, res) => {
     try {
+        if (!(await assertChildAccess(req, res, req.params.childId))) return;
         const result = await db.query(
             `SELECT id, subject, grade, grade as score, grade as percentage, 
               notes, notes as insight, notes as aiInsight, date, term, time_taken_seconds 
@@ -82,6 +84,8 @@ exports.getCapsReportCardData = async (req, res) => {
                 error: 'Learner profile not found.'
             });
         }
+
+        if (!(await assertChildAccess(req, res, childId))) return;
 
         const childRes = await db.query(
             `SELECT c.id, c.full_name, c.surname, c.learner_number, c.grade, c.stream, c.subjects, lu.profile_picture_path,

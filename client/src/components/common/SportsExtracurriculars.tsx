@@ -70,6 +70,7 @@ export const SportsExtracurriculars: React.FC = () => {
     coach_user_id: user?.role === 'teacher' ? String(user.id) : ''
   });
 
+  const [opponentNameError, setOpponentNameError] = useState('');
   const [eventForm, setEventForm] = useState({
     title: '',
     event_type: 'Match',
@@ -383,7 +384,6 @@ export const SportsExtracurriculars: React.FC = () => {
 
               <div>
                 <h3 className="text-base font-bold text-white group-hover:text-amber-300 transition-colors">{act.name}</h3>
-                <p className="text-xs text-slate-400 line-clamp-2 mt-1">{act.description || 'Official school extracurricular team.'}</p>
               </div>
 
               <div className="pt-2 border-t border-white/5 space-y-1.5 text-xs text-slate-300">
@@ -922,9 +922,21 @@ export const SportsExtracurriculars: React.FC = () => {
                 type="text"
                 placeholder="e.g. St Johns / Westville High"
                 value={eventForm.opponent_school}
-                onChange={(e) => setEventForm(prev => ({ ...prev, opponent_school: e.target.value }))}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (/\d/.test(raw)) {
+                    setOpponentNameError('Numbers are not allowed in this field. Please use letters only.');
+                    setEventForm(prev => ({ ...prev, opponent_school: raw.replace(/\d/g, '') }));
+                    return;
+                  }
+                  setOpponentNameError('');
+                  setEventForm(prev => ({ ...prev, opponent_school: raw }));
+                }}
                 className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-cyan-500 placeholder:text-slate-500"
               />
+              {opponentNameError && (
+                <p className="mt-1 text-[11px] font-semibold text-rose-400">{opponentNameError}</p>
+              )}
             </div>
           </div>
 

@@ -530,12 +530,11 @@ const emailService = {
               <td style="color: #38bdf8; font-family: monospace; font-weight: 700;">${l.learner_email || `${(l.learner_number || 'learner').toLowerCase().replace(/\s/g, '')}@fusionhigh.ac.za`}</td>
             </tr>
             <tr>
-              <td style="padding: 3px 0; color: #94a3b8;">Generated Password:</td>
+              <td style="padding: 3px 0; color: #94a3b8;">Learner login:</td>
               <td>
-                <span style="display: inline-block; background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(99, 102, 241, 0.4); color: #c7d2fe; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-weight: 800; letter-spacing: 1px;">
-                  ${l.generated_password || l.id_number || '123456'}
-                </span>
-                <span style="font-size: 10px; color: #64748b; margin-left: 6px;">(System-generated password from Learner ID)</span>
+                ${l.generated_password
+                  ? `<span style="display: inline-block; background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(99, 102, 241, 0.4); color: #c7d2fe; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-weight: 800; letter-spacing: 1px;">${l.generated_password}</span>`
+                  : `<span style="color: #cbd5e1;">This learner already has a portal login.</span>`}
               </td>
             </tr>
           </table>
@@ -818,14 +817,14 @@ const emailService = {
 
       const contentHtml = `
         <p style="font-size: 14px; color: #cbd5e1; margin-top: 0;">
-          We received a request to reset your password for your Geleza SA account. Please use the 4-digit verification code below:
+          We received a request to reset your password for your Geleza SA account. Please use the 10-digit verification code below:
         </p>
 
         <div style="background: #0f172a; border: 1px dashed #6366f1; border-radius: 12px; padding: 22px; text-align: center; margin: 20px 0;">
           <p style="margin: 0 0 6px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; font-weight: 700;">
-            Your 4-Digit Security Code
+            Your 10-Digit Security Code
           </p>
-          <span style="font-size: 36px; font-weight: 900; letter-spacing: 8px; color: #818cf8; font-family: monospace; display: inline-block;">
+          <span style="font-size: 28px; font-weight: 900; letter-spacing: 3px; color: #818cf8; font-family: monospace; display: inline-block;">
             ${otp}
           </span>
           <div style="margin-top: 10px; display: inline-block; padding: 4px 12px; border-radius: 20px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);">
@@ -836,7 +835,7 @@ const emailService = {
         </div>
 
         <p style="font-size: 13px; color: #cbd5e1; line-height: 1.5;">
-          Click the button below to open the verification screen and manually enter your 4-digit OTP code before it expires:
+          Click the button below to open the verification screen and enter your 10-digit code before it expires:
         </p>
       `;
 
@@ -2094,8 +2093,8 @@ const emailService = {
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
             <tr><td style="padding: 5px 0; color: #94a3b8; width: 140px;">Bank Name:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'First National Bank (FNB)'}</td></tr>
             <tr><td style="padding: 5px 0; color: #94a3b8;">Account Holder:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.account_holder || schoolName}</td></tr>
-            <tr><td style="padding: 5px 0; color: #94a3b8;">Account Number:</td><td style="color: #34d399; font-family: monospace; font-weight: 700;">${bankDetails.account_number || '62849102841'}</td></tr>
-            <tr><td style="padding: 5px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-family: monospace;">${bankDetails.branch_code || '250655'}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Account Number:</td><td style="color: #34d399; font-family: monospace; font-weight: 700;">${bankDetails.account_number || 'Not connected yet'}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-family: monospace;">${bankDetails.branch_code || 'Not connected yet'}</td></tr>
             <tr><td style="padding: 5px 0; color: #94a3b8;">Account Type:</td><td style="color: #ffffff;">${bankDetails.account_type || 'Cheque / Current'}</td></tr>
             <tr><td style="padding: 5px 0; color: #94a3b8;">Payment Reference:</td><td style="color: #fbbf24; font-family: monospace; font-weight: 800; font-size: 14px;">${applicationNumber}</td></tr>
           </table>
@@ -2180,8 +2179,8 @@ const emailService = {
           </p>
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
             <tr><td style="padding: 4px 0; color: #94a3b8; width: 140px;">Bank:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'First National Bank'}</td></tr>
-            <tr><td style="padding: 4px 0; color: #94a3b8;">Account:</td><td style="color: #34d399; font-family: monospace; font-weight: 700;">${bankDetails.account_number || '62849102841'}</td></tr>
-            <tr><td style="padding: 4px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-family: monospace;">${bankDetails.branch_code || '250655'}</td></tr>
+            <tr><td style="padding: 4px 0; color: #94a3b8;">Account:</td><td style="color: #34d399; font-family: monospace; font-weight: 700;">${bankDetails.account_number || 'Not connected yet'}</td></tr>
+            <tr><td style="padding: 4px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-family: monospace;">${bankDetails.branch_code || 'Not connected yet'}</td></tr>
             <tr><td style="padding: 4px 0; color: #94a3b8;">Account Holder:</td><td style="color: #ffffff;">${bankDetails.account_holder || schoolName}</td></tr>
             <tr><td style="padding: 4px 0; color: #94a3b8;">Reference:</td><td style="color: #fbbf24; font-family: monospace; font-weight: 800;">${applicationNumber}</td></tr>
           </table>
@@ -2702,8 +2701,8 @@ const emailService = {
             <td><code style="color: #38bdf8; font-size: 13px;">${principalEmail}</code></td>
           </tr>
           <tr>
-            <td style="padding-right: 16px; color: #94a3b8; font-weight: 600;">Temporary Password:</td>
-            <td><code style="color: #fbbf24; font-size: 13px; font-weight: 800; background: rgba(251, 191, 36, 0.15); padding: 2px 6px; border-radius: 4px;">${temporaryPassword || 'password123'}</code></td>
+            <td style="padding-right: 16px; color: #94a3b8; font-weight: 600;">Password:</td>
+            <td><span style="color: #fbbf24; font-size: 13px; font-weight: 700;">${temporaryPassword || 'The password you chose when you registered the school'}</span></td>
           </tr>
         </table>
       </div>
@@ -3008,8 +3007,8 @@ Object.assign(emailService.templates, {
         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1; border-top: 1px dashed #334155; padding-top: 12px;">
           <tr><td style="padding: 5px 0; color: #94a3b8; width: 140px;">Bank Name:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'First National Bank (FNB)'}</td></tr>
           <tr><td style="padding: 5px 0; color: #94a3b8;">Account Name:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.account_holder || schoolName}</td></tr>
-          <tr><td style="padding: 5px 0; color: #94a3b8;">Account Number:</td><td style="color: #38bdf8; font-weight: 800; font-family: monospace;">${bankDetails.account_number || '62849102841'}</td></tr>
-          <tr><td style="padding: 5px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-weight: 600;">${bankDetails.branch_code || '250655'}</td></tr>
+          <tr><td style="padding: 5px 0; color: #94a3b8;">Account Number:</td><td style="color: #38bdf8; font-weight: 800; font-family: monospace;">${bankDetails.account_number || 'Not connected yet'}</td></tr>
+          <tr><td style="padding: 5px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-weight: 600;">${bankDetails.branch_code || 'Not connected yet'}</td></tr>
           <tr><td style="padding: 5px 0; color: #94a3b8;">Account Type:</td><td style="color: #cbd5e1;">${bankDetails.account_type || 'Cheque / Current'}</td></tr>
           <tr><td style="padding: 5px 0; color: #f59e0b; font-weight: 700;">Payment Reference:</td><td style="color: #fbbf24; font-weight: 900; font-family: monospace; font-size: 14px;">${applicationNumber}</td></tr>
         </table>
@@ -3050,8 +3049,8 @@ Object.assign(emailService.templates, {
         </p>
         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
           <tr><td style="padding: 4px 0; color: #94a3b8; width: 140px;">Bank:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'FNB'}</td></tr>
-          <tr><td style="padding: 4px 0; color: #94a3b8;">Account Number:</td><td style="color: #38bdf8; font-weight: 800; font-family: monospace;">${bankDetails.account_number || '62849102841'}</td></tr>
-          <tr><td style="padding: 4px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff;">${bankDetails.branch_code || '250655'}</td></tr>
+          <tr><td style="padding: 4px 0; color: #94a3b8;">Account Number:</td><td style="color: #38bdf8; font-weight: 800; font-family: monospace;">${bankDetails.account_number || 'Not connected yet'}</td></tr>
+          <tr><td style="padding: 4px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff;">${bankDetails.branch_code || 'Not connected yet'}</td></tr>
           <tr><td style="padding: 4px 0; color: #f87171; font-weight: 700;">Reference:</td><td style="color: #fbbf24; font-weight: 900; font-family: monospace;">${applicationNumber}</td></tr>
         </table>
       </div>

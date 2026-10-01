@@ -24,9 +24,6 @@ export const LearnerCalendarHub: React.FC<LearnerCalendarHubProps> = ({
           <h1 className="text-xl sm:text-2xl font-black font-display text-white tracking-tight">
             Timetable & Academic Calendar
           </h1>
-          <p className="text-xs text-slate-400 max-w-xl">
-            View your daily 7-period South African CAPS timetable, teacher venues, and term dates.
-          </p>
         </div>
 
         {/* Toggle Switcher */}

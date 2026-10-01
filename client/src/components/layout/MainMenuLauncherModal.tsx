@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useSchool } from '../../context/SchoolContext';
+import { moduleAllowed } from '../../utils/schoolModules';
 import { FusionAIIcon } from '../common/FusionAIIcon';
 import {
   LayoutDashboard,
@@ -51,6 +53,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
   onSelectTab,
 }) => {
   const { role } = useAuth();
+  const { currentSchool } = useSchool();
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('all');
   
@@ -109,7 +112,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
         return [
           { id: 'overview', label: 'Family Dashboard', desc: 'Child academic summary, attendance & school alerts', category: 'academic', icon: LayoutDashboard, gradient: 'from-[#0284c7] to-[#2563eb]' },
           { id: 'children', label: 'Linked Learners', desc: 'Overview of all your enrolled children at Geleza SA', category: 'academic', icon: GraduationCap, gradient: 'from-[#0ea5e9] to-[#0284c7]' },
-          { id: 'finance', label: 'School Fees & PayFast', desc: 'Tuition statements, itemized levies & Instant EFT settlements', category: 'operations', icon: CreditCard, gradient: 'from-[#0f766e] to-[#0284c7]', badge: 'PAY' },
+          { id: 'finance', label: 'School Fees', desc: 'Fee statements. Card, instant EFT, bank EFT, and cash wait for the school bank account', category: 'operations', icon: CreditCard, gradient: 'from-[#0f766e] to-[#0284c7]', badge: 'PAY' },
           { id: 'bursaries', label: 'NSFAS & Bursaries', desc: 'Tertiary scholarships, funding coverage & checklist tracker', category: 'academic', icon: GraduationCap, gradient: 'from-[#2563eb] to-[#4338ca]', badge: 'FUND' },
           { id: 'reports', label: 'CAPS Report Cards', desc: 'Official term report cards & educator remarks', category: 'academic', icon: Award, gradient: 'from-[#0f766e] to-[#2563eb]', badge: 'PDF' },
           { id: 'ptc', label: 'Parent Conferences (PTC)', desc: 'Book consultations with your child’s subject teachers', category: 'chat', icon: Users, gradient: 'from-[#0284c7] to-[#1e40af]' },
@@ -143,7 +146,13 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
     }
   };
 
-  const modules = useMemo(() => getRoleModules(), [role]);
+  const modules = useMemo(() => {
+    const list = getRoleModules();
+    if (role !== 'teacher' && role !== 'learner') return list;
+    const selected = role === 'teacher' ? currentSchool.teacher_modules : currentSchool.learner_modules;
+    const partner = role === 'learner' ? currentSchool.teacher_modules : undefined;
+    return list.filter((module) => moduleAllowed(role, module.id, selected, partner));
+  }, [role, currentSchool.teacher_modules, currentSchool.learner_modules]);
 
   const filteredModules = useMemo(() => {
     let list = modules;
@@ -329,11 +338,8 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                       )}
                     </div>
 
-                    <span className="text-xs font-black text-white mt-2.5 line-clamp-1 group-hover:text-[#18E2EC] transition-colors font-display">
+                    <span className="text-xs font-black text-white mt-2.5 line-clamp-2 group-hover:text-[#18E2EC] transition-colors font-display leading-tight">
                       {item.label}
-                    </span>
-                    <span className="text-[10px] text-slate-400 capitalize line-clamp-1 mt-0.5">
-                      {item.category}
                     </span>
                   </button>
                 );
@@ -383,14 +389,9 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                         </div>
                       </div>
 
-                      <h4 className="text-sm font-black text-white mt-3 group-hover:text-[#18E2EC] transition-colors font-display">
+                      <h4 className="text-sm font-black text-white mt-3 group-hover:text-[#18E2EC] transition-colors font-display leading-snug">
                         {item.label}
                       </h4>
-                    </div>
-
-                    <div className="mt-4 flex items-center justify-between pt-2 border-t border-white/5 text-[10px] text-slate-400 group-hover:text-[#18E2EC] font-bold">
-                      <span className="capitalize">{item.category} Module</span>
-                      <ChevronRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
                     </div>
                   </button>
                 );
@@ -440,12 +441,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0 pl-2">
-                      <span className="text-[9px] font-mono text-slate-500 uppercase font-bold hidden sm:inline">
-                        {item.category}
-                      </span>
-                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#18E2EC] group-hover:translate-x-1 transition-all" />
-                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#18E2EC] group-hover:translate-x-1 transition-all shrink-0" />
                   </button>
                 );
               })}

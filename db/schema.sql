@@ -52,41 +52,15 @@ CREATE TABLE IF NOT EXISTS schools (
   motto TEXT DEFAULT 'Innovate, Lead, Transform',
   curriculum_type VARCHAR(100) DEFAULT 'CAPS (DBE Limpopo)',
   grade_range VARCHAR(50) DEFAULT '8-12',
+  school_type VARCHAR(50) DEFAULT 'Public',
   is_active BOOLEAN DEFAULT TRUE,
+  teacher_modules JSONB,
+  learner_modules JSONB,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO schools (id, name, slug, domain, emis_number, circuit, district, province, physical_address, contact_email, contact_phone, principal_name, logo_url, badge_url, primary_color, secondary_color, accent_color, motto, curriculum_type, grade_range)
-VALUES
-  -- 1. Limpopo (Polokwane & Mankweng - Capricorn South District)
-  (1, 'Fusion High School', 'fusion-high', 'fusion-high.co.za', '911220001', 'Polokwane Central Circuit', 'Capricorn South', 'Limpopo', 'Polokwane Central, Limpopo, 0700', 'admin@fusionhigh.co.za', '+27 15 291 0000', 'Dr. T. Makola', '/assets/schools/fusion-high.svg', '/assets/schools/fusion-high.svg', '#4f46e5', '#06b6d4', '#f59e0b', 'Innovate, Lead, Transform', 'CAPS (DBE Limpopo)', '8-12'),
-  (2, 'Mountainview Senior Secondary School', 'mountainview-high', 'mountainview.co.za', '923241054', 'Mankweng Circuit', 'Capricorn South', 'Limpopo', 'Mankweng Unit B/C, Polokwane, 0727', 'info@mountainviewhigh.co.za', '+27 15 267 1100', 'Mr. M. S. Phasha', '/assets/schools/mountainview-high.svg', '/assets/schools/mountainview-high.svg', '#7A1426', '#D4AF37', '#F59E0B', 'Strive for Excellence', 'CAPS (DBE Limpopo)', '8-12'),
-  (3, 'Makgoka High School', 'makgoka-high', 'makgoka.co.za', '923240457', 'Molepo Circuit', 'Capricorn South', 'Limpopo', 'Maclean Farm, Boyne, Mankweng Area, 0727', 'admin@makgoka.co.za', '+27 15 266 0022', 'Mrs. K. E. Molepo', '/assets/schools/makgoka-high.svg', '/assets/schools/makgoka-high.svg', '#065f46', '#10b981', '#fbbf24', 'Thuto Ke Lesedi', 'CAPS (DBE Limpopo)', '8-12'),
-  (4, 'Turfloop High School', 'turfloop-high', 'turfloop.co.za', '923240890', 'Mankweng Circuit', 'Capricorn South', 'Limpopo', 'University Road, Turfloop, Mankweng, 0727', 'principal@turfloophigh.co.za', '+27 15 267 3300', 'Mr. N. J. Mamabolo', '/assets/schools/turfloop-high.svg', '/assets/schools/turfloop-high.svg', '#1e1b4b', '#4338ca', '#991b1b', 'Education for Progress', 'CAPS (DBE Limpopo)', '8-12'),
-  (5, 'Hwiti High School', 'hwiti-high', 'hwiti.co.za', '923240150', 'Mankweng Circuit', 'Capricorn South', 'Limpopo', '118 Zone 1, Hwiti St, Mankweng/Sovenga, 0727', 'info@hwitisecondary.co.za', '+27 15 267 4400', 'Mrs. R. M. Ramokgopa', '/assets/schools/hwiti-high.svg', '/assets/schools/hwiti-high.svg', '#581c87', '#9333ea', '#06b6d4', 'Tsebo Ke Maatla', 'CAPS (DBE Limpopo)', '8-12'),
-  (6, 'Ngwana Mohube Secondary School', 'ngwana-mohube', 'ngwanamohube.co.za', '923260994', 'Mankweng Circuit', 'Capricorn South', 'Limpopo', 'Gamphahlele, Seleteng, Limpopo, 0734', 'admin@ngwanamohube.co.za', '+27 15 267 5500', 'Mr. S. P. Mohube', '/assets/schools/ngwana-mohube.svg', '/assets/schools/ngwana-mohube.svg', '#991b1b', '#ef4444', '#0f172a', 'Thuto Ke Maatla', 'CAPS (DBE Limpopo)', '8-12'),
-  
-  -- 2. Gauteng (Lotus Gardens & Atteridgeville, Pretoria - GDE)
-  (7, 'Fusion Secondary School (Lotus Gardens)', 'fusion-secondary-lotus', 'fusionsecondary.co.za', '700232348', 'Tshwane West District', 'Tshwane West', 'Gauteng', '809 Cyme Crescent, Lotus Gardens, Pretoria, 0008', 'admin@fusionsecondary.co.za', '+27 12 373 0000', 'Dr. T. Makola', '/assets/schools/fusion-secondary-lotus.svg', '/assets/schools/fusion-secondary-lotus.svg', '#4f46e5', '#06b6d4', '#f59e0b', 'Innovate, Aspire, Achieve', 'CAPS (GDE Gauteng)', '8-12'),
-  (8, 'Saulridge Secondary School', 'saulridge-secondary', 'saulridge.co.za', '700232223', 'Tshwane South District (D4)', 'Tshwane South', 'Gauteng', 'Ramokgopa St, Saulsville, Atteridgeville, Pretoria, 0008', 'info@saulridge.co.za', '+27 12 375 6000', 'Mr. K. E. Masemola', '/assets/schools/saulridge-secondary.svg', '/assets/schools/saulridge-secondary.svg', '#1e3a8a', '#f59e0b', '#3b82f6', 'Knowledge is Power', 'CAPS (GDE Gauteng)', '8-12'),
-  (9, 'Phelindaba Secondary School', 'phelindaba-secondary', 'phelindaba.co.za', '700232124', 'Tshwane South District (D4)', 'Tshwane South', 'Gauteng', 'Kgwale St, Atteridgeville, Pretoria, 0008', 'admin@phelindaba.co.za', '+27 12 373 8100', 'Mrs. M. T. Sithole', '/assets/schools/phelindaba-secondary.svg', '/assets/schools/phelindaba-secondary.svg', '#14532d', '#eab308', '#10b981', 'Strive for Success', 'CAPS (GDE Gauteng)', '8-12'),
-  (10, 'Flavius Mareka Secondary School', 'flavius-mareka', 'flaviusmareka.co.za', '700231670', 'Tshwane South District (D4)', 'Tshwane South', 'Gauteng', 'Khoza St, Atteridgeville, Pretoria, 0008', 'principal@flaviusmareka.co.za', '+27 12 373 9200', 'Mr. L. N. Maluleke', '/assets/schools/flavius-mareka.svg', '/assets/schools/flavius-mareka.svg', '#1d4ed8', '#38bdf8', '#fbbf24', 'Excellence in Action', 'CAPS (GDE Gauteng)', '8-12'),
-  (11, 'Dr. W.F. Nkomo Secondary School', 'wf-nkomo-secondary', 'wfnkomo.co.za', '700231613', 'Tshwane South District (D4)', 'Tshwane South', 'Gauteng', '84 Khudu St, Atteridgeville, Pretoria, 0008', 'info@wfnkomo.co.za', '+27 12 375 7300', 'Mr. D. M. Ndlovu', '/assets/schools/wf-nkomo-secondary.svg', '/assets/schools/wf-nkomo-secondary.svg', '#881337', '#f43f5e', '#fbbf24', 'Labor Omnia Vincit (Work Conquers All)', 'CAPS (GDE Gauteng)', '8-12'),
-  (12, 'Hofmeyr Secondary School', 'hofmeyr-secondary', 'hofmeyr.co.za', '700231746', 'Tshwane South District (D4)', 'Tshwane South', 'Gauteng', '1 Mngadi and Mafole St, Atteridgeville, Pretoria, 0008', 'admin@hofmeyr.co.za', '+27 12 373 7400', 'Mrs. S. R. Mogale', '/assets/schools/hofmeyr-secondary.svg', '/assets/schools/hofmeyr-secondary.svg', '#581c87', '#14b8a6', '#f59e0b', 'Education for Liberation', 'CAPS (GDE Gauteng)', '8-12')
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  slug = EXCLUDED.slug,
-  emis_number = EXCLUDED.emis_number,
-  circuit = EXCLUDED.circuit,
-  district = EXCLUDED.district,
-  province = EXCLUDED.province,
-  physical_address = EXCLUDED.physical_address,
-  logo_url = EXCLUDED.logo_url,
-  badge_url = EXCLUDED.badge_url,
-  primary_color = EXCLUDED.primary_color,
-  secondary_color = EXCLUDED.secondary_color,
-  accent_color = EXCLUDED.accent_color,
-  motto = EXCLUDED.motto;
+
+-- Schools are created when a principal's registration is approved.
 
 CREATE TABLE roles (
   id SERIAL PRIMARY KEY,
@@ -1668,3 +1642,52 @@ CREATE TABLE IF NOT EXISTS marks (
   recorded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- =========================================================================
+-- GELEZA SA AI PERFORMANCE FACTOR & INTERVENTION TABLES
+-- =========================================================================
+
+-- 1. Learner Study & Environmental Performance Profiles
+CREATE TABLE IF NOT EXISTS learner_performance_profiles (
+  id SERIAL PRIMARY KEY,
+  child_id INTEGER UNIQUE NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+  weekly_hours_studied NUMERIC(4,1) DEFAULT 18.0,
+  tutoring_sessions INTEGER DEFAULT 1,
+  access_to_resources VARCHAR(20) DEFAULT 'Medium' CHECK (access_to_resources IN ('Low', 'Medium', 'High')),
+  internet_access BOOLEAN DEFAULT TRUE,
+  motivation_level VARCHAR(20) DEFAULT 'Medium' CHECK (motivation_level IN ('Low', 'Medium', 'High')),
+  peer_influence VARCHAR(20) DEFAULT 'Positive' CHECK (peer_influence IN ('Negative', 'Neutral', 'Positive')),
+  family_income VARCHAR(20) DEFAULT 'Medium' CHECK (family_income IN ('Low', 'Medium', 'High')),
+  learning_disabilities BOOLEAN DEFAULT FALSE,
+  parental_involvement VARCHAR(20) DEFAULT 'Medium' CHECK (parental_involvement IN ('Low', 'Medium', 'High')),
+  parental_education_level VARCHAR(50) DEFAULT 'High School' CHECK (parental_education_level IN ('High School', 'College', 'Postgraduate')),
+  distance_from_home VARCHAR(20) DEFAULT 'Near' CHECK (distance_from_home IN ('Near', 'Moderate', 'Far')),
+  teacher_quality VARCHAR(20) DEFAULT 'High' CHECK (teacher_quality IN ('Low', 'Medium', 'High')),
+  notes TEXT,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_perf_profiles_child_id ON learner_performance_profiles(child_id);
+
+-- 2. AI Historical Performance Predictions & Early-Warning Snapshots
+CREATE TABLE IF NOT EXISTS ai_performance_predictions (
+  id SERIAL PRIMARY KEY,
+  child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+  school_id INTEGER REFERENCES schools(id) ON DELETE SET NULL,
+  academic_year INTEGER NOT NULL DEFAULT 2026,
+  term INTEGER NOT NULL DEFAULT 1 CHECK (term BETWEEN 1 AND 4),
+  predicted_score NUMERIC(5,2) NOT NULL,
+  risk_tier_id INTEGER NOT NULL CHECK (risk_tier_id IN (0, 1, 2)),
+  risk_tier_label VARCHAR(50) NOT NULL,
+  risk_tier_color VARCHAR(20) NOT NULL,
+  confidence_probabilities JSONB DEFAULT '{}'::jsonb,
+  actionable_nudges TEXT[] DEFAULT '{}',
+  features_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
+  evaluated_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_predictions_child_id ON ai_performance_predictions(child_id);
+CREATE INDEX IF NOT EXISTS idx_ai_predictions_school_term ON ai_performance_predictions(school_id, academic_year, term);
+CREATE INDEX IF NOT EXISTS idx_ai_predictions_tier ON ai_performance_predictions(risk_tier_id);
+

@@ -45,6 +45,7 @@ import {
   SlidersHorizontal
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { HomeGreeting } from '../../components/layout/WorkspaceChrome';
 
 export type SubjectViewMode = 'carousel' | 'grid' | 'compact' | 'list';
 
@@ -116,6 +117,12 @@ export const getSubjectCoverImage = (subjectName: string = ''): string => {
   
   // Default academic study hall
   return 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=600&q=80';
+};
+
+const classAverageLabel = (value: unknown): string | null => {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return `${n % 1 === 0 ? n.toFixed(0) : n.toFixed(1)}%`;
 };
 
 interface TeacherOverviewProps {
@@ -343,7 +350,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
               class_name: c.name || c.class_name || `${c.grade || 10}A`,
               code: c.subject_code || `${(c.subject_name || 'SUBJ').substring(0, 4).toUpperCase()}${c.grade || 10}`,
               stream: c.stream || 'Science',
-              learner_count: 35,
+              learner_count: 0,
               period_room: `Room ${c.name || '10A'} • Scheduled`
             }));
             setSubjectsOverview(mapped);
@@ -379,7 +386,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
             class_name: matchedClass,
             code: `${subName.substring(0, 4).toUpperCase()}${g}`,
             stream: subName.toLowerCase().includes('scien') || subName.toLowerCase().includes('physic') ? 'Science' : 'General',
-            learner_count: 35,
+            learner_count: 0,
             period_room: `Room ${matchedClass} • Scheduled`
           });
         });
@@ -394,6 +401,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
 
   return (
     <div className="space-y-6 animate-fade-in text-slate-100 pb-12">
+      <HomeGreeting />
 
       {/* 1. ASSIGNED CLASSES & SUBJECTS WITH MULTI-VIEW SWITCHER */}
       <section className="space-y-3">
@@ -403,7 +411,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
               <BookOpen className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base md:text-lg font-bold font-display text-white tracking-tight">
+              <h2 className="text-base md:text-lg xl:text-2xl font-bold font-display text-white tracking-tight">
                 My Assigned Teaching Classes
               </h2>
             </div>
@@ -509,7 +517,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
             {subjectsViewMode === 'carousel' && (
               <div
                 ref={carouselRef}
-                className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin custom-scrollbar snap-x snap-mandatory scroll-smooth"
+                className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin custom-scrollbar snap-x snap-mandatory scroll-smooth xl:flex-wrap xl:overflow-visible"
               >
             {displayCards.map((card: any, idx: number) => {
               const enrolledCount = card.learner_count ?? card.enrolled_count ?? 0;
@@ -519,17 +527,17 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
               return (
                 <div
                   key={card.id || idx}
-                  className="min-w-[310px] max-w-[340px] shrink-0 snap-start rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden animated-border-card"
+                  className="min-w-[310px] max-w-[340px] shrink-0 snap-start xl:max-w-[420px] xl:min-w-[320px] xl:flex-1 xl:basis-[340px] rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden animated-border-card"
                 >
                   {/* Subject Picture Banner with Profile Overlay */}
-                  <div className="relative h-28 w-full overflow-hidden bg-slate-900">
+                  <div data-theme-preserve="true" className="relative h-28 w-full overflow-hidden bg-slate-900">
                     <img
                       src={coverImage}
                       alt={card.subject_name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       loading="lazy"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-surface-dark via-surface-dark/40 to-black/40" />
+                    <div data-theme-preserve="true" className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/20" />
                     
                     {/* Top Badges: Grade & Class + Stream + Enrolled */}
                     <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-1">
@@ -553,7 +561,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     <div className="absolute bottom-2 inset-x-3">
                       <h3
                         onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                        className="text-base font-extrabold text-white group-hover:text-indigo-300 transition-colors cursor-pointer truncate drop-shadow-md"
+                        className="text-base font-extrabold text-white text-always-white group-hover:text-indigo-200 transition-colors cursor-pointer truncate drop-shadow-md"
                         title={`Open ${card.subject_name} Marksheet`}
                       >
                         {card.subject_name}
@@ -569,9 +577,13 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                         <Clock className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                         <span className="truncate">{periodRoomText}</span>
                       </span>
-                      <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 shrink-0">
-                        {card.recent_class_avg || 74}% Avg
-                      </span>
+                      {classAverageLabel(card.recent_class_avg) ? (
+                        <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 shrink-0">
+                          {classAverageLabel(card.recent_class_avg)} Avg
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-slate-500 shrink-0">No marks yet</span>
+                      )}
                     </div>
 
                     {/* Primary Action Buttons (Register & Marks) */}
@@ -640,7 +652,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
 
         {/* View Mode 2: STANDARD RESPONSIVE MULTI-COLUMN GRID */}
         {subjectsViewMode === 'grid' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
             {displayCards.map((card: any, idx: number) => {
               const enrolledCount = card.learner_count ?? card.enrolled_count ?? 0;
               const periodRoomText = card.period_room || (card.period ? `Period ${card.period} • ${card.room || 'Room ' + card.class_name}` : `Room ${card.room || card.class_name} • Scheduled`);
@@ -652,14 +664,14 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                   className="rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden w-full animated-border-card"
                 >
                   {/* Subject Picture Banner with Profile Overlay */}
-                  <div className="relative h-28 w-full overflow-hidden bg-slate-900">
+                  <div data-theme-preserve="true" className="relative h-28 w-full overflow-hidden bg-slate-900">
                     <img
                       src={coverImage}
                       alt={card.subject_name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       loading="lazy"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-surface-dark via-surface-dark/40 to-black/40" />
+                    <div data-theme-preserve="true" className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/20" />
                     
                     {/* Top Badges */}
                     <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-1">
@@ -683,7 +695,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     <div className="absolute bottom-2 inset-x-3">
                       <h3
                         onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                        className="text-base font-extrabold text-white group-hover:text-indigo-300 transition-colors cursor-pointer truncate drop-shadow-md"
+                        className="text-base font-extrabold text-white text-always-white group-hover:text-indigo-200 transition-colors cursor-pointer truncate drop-shadow-md"
                         title={`Open ${card.subject_name} Marksheet`}
                       >
                         {card.subject_name}
@@ -698,9 +710,13 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                         <Clock className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                         <span className="truncate">{periodRoomText}</span>
                       </span>
-                      <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 shrink-0">
-                        {card.recent_class_avg || 74}% Avg
-                      </span>
+                      {classAverageLabel(card.recent_class_avg) ? (
+                        <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 shrink-0">
+                          {classAverageLabel(card.recent_class_avg)} Avg
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-slate-500 shrink-0">No marks yet</span>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
@@ -767,7 +783,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
 
         {/* View Mode 3: COMPACT APP TILES */}
         {subjectsViewMode === 'compact' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
             {displayCards.map((card: any, idx: number) => {
               const enrolledCount = card.learner_count ?? card.enrolled_count ?? 0;
               const periodRoomText = card.period_room || (card.period ? `Period ${card.period} • ${card.room || 'Room ' + card.class_name}` : `Room ${card.room || card.class_name} • Scheduled`);
@@ -778,21 +794,21 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                   key={card.id || idx}
                   className="rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden animated-border-card"
                 >
-                  <div className="relative h-20 w-full overflow-hidden bg-slate-900">
+                  <div data-theme-preserve="true" className="relative h-20 w-full overflow-hidden bg-slate-900">
                     <img
                       src={coverImage}
                       alt={card.subject_name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       loading="lazy"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-surface-dark via-surface-dark/50 to-black/40" />
+                    <div data-theme-preserve="true" className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/20" />
                     <div className="absolute top-2 left-2">
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-600 text-white">
                         Grade {card.grade} • {card.class_name}
                       </span>
                     </div>
                     <div className="absolute bottom-1.5 inset-x-2.5">
-                      <h4 className="text-sm font-bold text-white truncate drop-shadow-sm">
+                      <h4 className="text-sm font-bold text-white text-always-white truncate drop-shadow-sm">
                         {card.subject_name}
                       </h4>
                     </div>
@@ -1225,13 +1241,13 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
         >
           <div className="space-y-4 text-slate-200">
             {/* Subject Profile Banner with Subject Meaning Picture */}
-            <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-lg bg-slate-900">
+            <div data-theme-preserve="true" className="relative rounded-2xl overflow-hidden border border-white/10 shadow-lg bg-slate-900">
               <img
                 src={getSubjectCoverImage(viewAllSubject.subject_name)}
                 alt={viewAllSubject.subject_name}
                 className="w-full h-36 sm:h-44 object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-surface-darker via-surface-darker/60 to-black/30" />
+              <div data-theme-preserve="true" className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/20" />
               
               <div className="absolute bottom-0 inset-x-0 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
                 <div>
@@ -1248,7 +1264,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       </span>
                     )}
                   </div>
-                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-display drop-shadow-md">
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-white text-always-white font-display drop-shadow-md">
                     {viewAllSubject.subject_name}
                   </h3>
                   <div className="text-xs text-slate-300 mt-1 flex items-center gap-2">
@@ -1264,7 +1280,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                   </div>
                   <div className="px-3 py-1.5 rounded-xl bg-black/50 backdrop-blur-md border border-white/15 text-center min-w-[72px]">
                     <span className="text-[10px] uppercase font-bold text-slate-400 block">Class Avg</span>
-                    <span className="text-sm font-bold font-mono text-emerald-300">{viewAllSubject.recent_class_avg || 74}%</span>
+                    <span className="text-sm font-bold font-mono text-emerald-300">{classAverageLabel(viewAllSubject.recent_class_avg) || '—'}</span>
                   </div>
                 </div>
               </div>

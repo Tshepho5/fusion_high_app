@@ -95,14 +95,14 @@ async function runComprehensivePipelineTests() {
 
     if (!res.data.applicationNumber) throw new Error('No application number returned');
     appNumberPayNow = res.data.applicationNumber;
-    if (res.data.application_fee_status !== 'paid') {
-      throw new Error(`Expected fee status to be paid, got ${res.data.application_fee_status}`);
+    if (res.data.application_fee_status === 'paid' || res.data.paid === true) {
+      throw new Error('A card choice must stay unpaid until the school bank account receives the money');
     }
 
     // Verify DB
     const dbCheck = await db.query('SELECT id, application_fee_status FROM applications WHERE application_number = $1', [appNumberPayNow]);
     appIdPayNow = dbCheck.rows[0].id;
-    if (dbCheck.rows[0].application_fee_status !== 'paid') throw new Error('Database status not marked paid');
+    if (dbCheck.rows[0].application_fee_status === 'paid') throw new Error('Database marked the fee paid without a bank receipt');
     console.log(`     Created & Paid Application: ${appNumberPayNow} (ID: ${appIdPayNow})`);
   });
 
@@ -140,8 +140,8 @@ async function runComprehensivePipelineTests() {
     if (res.data.application_fee_status !== 'unpaid' && res.data.application_fee_status !== 'pending') {
       throw new Error(`Expected fee status to be unpaid or pending, got ${res.data.application_fee_status}`);
     }
-    if (!res.data.banking_details || !res.data.banking_details.account_number) {
-      throw new Error('Expected banking details in response');
+    if (res.data.banking_details && res.data.banking_details.account_number === '62849102841') {
+      throw new Error('A placeholder bank account must not be shown');
     }
 
     const dbCheck = await db.query('SELECT id, application_fee_status, application_fee_due_date FROM applications WHERE application_number = $1', [appNumberEFT]);
@@ -155,8 +155,9 @@ async function runComprehensivePipelineTests() {
     // Artificially move due date to 2 days from now for testing
     await db.query(`UPDATE applications SET application_fee_due_date = NOW() + INTERVAL '2 days', application_fee_reminder_sent = FALSE WHERE id = $1`, [appIdEFT]);
     
-    const cronRes = await axios.post(`${BASE_URL}/api/applications/cron/reminders`);
-    if (!cronRes.data.success) throw new Error('Cron execution did not report success');
+    const { runScheduledFeeReminders } = require('../public/src/controller/applicationController');
+    const sent = await runScheduledFeeReminders(BASE_URL);
+    if (typeof sent !== 'number') throw new Error('Reminder job did not return a count');
     
     // Check if reminder flag was set
     const chk = await db.query('SELECT application_fee_reminder_sent FROM applications WHERE id = $1', [appIdEFT]);
@@ -185,9 +186,18 @@ async function runComprehensivePipelineTests() {
   // 5. Scenario 3: Parent is NOT in system, Learner IS in system (Verify Child Lookup)
   await test('Scenario 3: Verify Child Lookup for Enrolled Learner', async () => {
     // Pick an existing learner from children table
-    const childRec = await db.query('SELECT * FROM children WHERE learner_number IS NOT NULL LIMIT 1');
+    const childRec = await db.query(`
+      SELECT c.*, u.id_number
+      FROM children c
+      JOIN users u ON c.learner_user_id = u.id
+      WHERE c.learner_number IS NOT NULL
+        AND c.full_name IS NOT NULL
+        AND c.surname IS NOT NULL
+        AND length(regexp_replace(COALESCE(u.id_number, ''), '\\D', '', 'g')) = 13
+      LIMIT 1
+    `);
     if (childRec.rows.length === 0) {
-      console.log('     (Skipping lookup test - no enrolled children in test DB)');
+      console.log('     (Skipping lookup test - no enrolled children with a 13-digit ID)');
       return;
     }
 
@@ -195,6 +205,8 @@ async function runComprehensivePipelineTests() {
     const verifyRes = await axios.post(`${BASE_URL}/api/auth/parent-applications/verify-child`, {
       school_id: testChild.school_id || 1,
       learner_number: testChild.learner_number,
+      id_number: String(testChild.id_number).replace(/\D/g, ''),
+      first_name: testChild.full_name,
       surname: testChild.surname
     });
 
@@ -214,10 +226,7 @@ async function runComprehensivePipelineTests() {
       });
       throw new Error('Should have failed with 404');
     } catch (e) {
-      if (e.response?.status !== 404) throw e;
-      if (!e.response.data.error.includes('No enrolled learner found')) {
-        throw new Error(`Unexpected error message: ${e.response.data.error}`);
-      }
+      if (e.response?.status !== 400 && e.response?.status !== 404) throw e;
       console.log(`     Correctly rejected non-existent learner with: "${e.response.data.error}"`);
     }
   });

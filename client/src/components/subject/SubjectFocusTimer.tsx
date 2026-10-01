@@ -409,7 +409,6 @@ export const SubjectFocusTimer: React.FC<SubjectFocusTimerProps> = ({
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-slate-400">{b.desc}</p>
                     </div>
                   </div>
                 );

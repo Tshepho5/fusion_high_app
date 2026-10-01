@@ -16,10 +16,11 @@ import {
 } from 'lucide-react';
 
 interface ParentAttendanceProps {
-  onNavigateTab?: (tab: string) => void;
+  onNavigateTab?: (tab: string, childId?: string | number) => void;
+  childId?: string | number | null;
 }
 
-export const ParentAttendance: React.FC<ParentAttendanceProps> = ({ onNavigateTab }) => {
+export const ParentAttendance: React.FC<ParentAttendanceProps> = ({ onNavigateTab, childId }) => {
   const [children, setChildren] = useState<any[]>([]);
   const [selectedChild, setSelectedChild] = useState<any | null>(null);
   const [attendanceData, setAttendanceData] = useState<any | null>(null);
@@ -35,7 +36,8 @@ export const ParentAttendance: React.FC<ParentAttendanceProps> = ({ onNavigateTa
         const list = Array.isArray(res) ? res : res.children || [];
         setChildren(list);
         if (list.length > 0) {
-          setSelectedChild(list[0]);
+          const match = childId ? list.find((c: any) => String(c.id) === String(childId)) : null;
+          setSelectedChild(match || list[0]);
         }
       })
       .catch(err => {
@@ -43,7 +45,7 @@ export const ParentAttendance: React.FC<ParentAttendanceProps> = ({ onNavigateTa
         setError('Could not load linked learners.');
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [childId]);
 
   useEffect(() => {
     if (!selectedChild) return;
@@ -124,7 +126,10 @@ export const ParentAttendance: React.FC<ParentAttendanceProps> = ({ onNavigateTa
             return (
               <button
                 key={child.id}
-                onClick={() => setSelectedChild(child)}
+                onClick={() => {
+                  setSelectedChild(child);
+                  onNavigateTab?.('attendance', child.id);
+                }}
                 className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
                   isSelected
                     ? 'bg-gradient-to-r from-emerald-600 to-brand-600 text-white shadow-md'

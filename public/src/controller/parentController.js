@@ -6,6 +6,8 @@ const { validatePassword, generateOfficialLearnerNumber, generateLearnerPassword
 const { validateSAID } = require('./saIDvalidations');
 const { withTransaction } = require('../../../db/transaction');
 const curriculumService = require('../services/curriculumService');
+const paymentHold = require('../services/paymentHold');
+const { rejectNameDigits } = require('../services/lettersOnly');
 const academicMlService = require('../services/academicMlService');
 
 exports.getChildren = async (req, res) => {
@@ -115,6 +117,7 @@ exports.activateChild = async (req, res) => {
     if (!targetID || !targetFirstName || !targetSurname) {
         return res.status(400).json({ error: 'Learner ID Number, First Name, and Surname are required.' });
     }
+    if (rejectNameDigits(res, targetFirstName, targetSurname)) return;
 
     try {
         const learnerQuery = `SELECT 
@@ -234,14 +237,15 @@ exports.linkChild = async (req, res) => {
     const targetFirstName = (first_name || full_name || '').toString().trim();
     const targetSurname = (surname || '').toString().trim();
 
-    if (!targetIdNumber && !targetLearnerNum) {
+    if (!targetLearnerNum || targetIdNumber.length !== 13 || !targetFirstName || !targetSurname) {
         return res.status(400).json({
-            error: 'Please provide either the Learner SA ID Number or Official Learner Number.'
+            error: 'Linking needs the official learner number, the 13-digit ID, the first name, and the surname.'
         });
     }
+    if (rejectNameDigits(res, targetFirstName, targetSurname)) return;
 
     try {
-        let query = `
+        const query = `
             SELECT 
                 c.id as child_id, 
                 c.full_name, 
@@ -257,30 +261,14 @@ exports.linkChild = async (req, res) => {
                 u.id_number as user_id_number,
                 TO_CHAR(u.dob, 'YYYY-MM-DD') as dob_string
             FROM children c
-            LEFT JOIN users u ON c.learner_user_id = u.id
-            WHERE 1=1
+            JOIN users u ON c.learner_user_id = u.id
+            WHERE LOWER(TRIM(c.learner_number)) = LOWER(TRIM($1))
+              AND regexp_replace(COALESCE(u.id_number, ''), '\\D', '', 'g') = $2
+              AND LOWER(TRIM(c.full_name)) = LOWER(TRIM($3))
+              AND LOWER(TRIM(c.surname)) = LOWER(TRIM($4))
+            LIMIT 1
         `;
-        const params = [];
-
-        if (targetIdNumber) {
-            params.push(targetIdNumber);
-            query += ` AND (u.id_number = $${params.length} OR u.id_number ILIKE '%' || $${params.length} || '%')`;
-        } else if (targetLearnerNum) {
-            params.push(targetLearnerNum);
-            query += ` AND (LOWER(TRIM(c.learner_number)) = LOWER(TRIM($${params.length})) OR c.learner_number ILIKE '%' || TRIM($${params.length}) || '%' OR c.id::text = TRIM($${params.length}))`;
-        }
-
-        if (targetFirstName) {
-            params.push(`%${targetFirstName}%`);
-            query += ` AND (c.full_name ILIKE $${params.length} OR u.full_name ILIKE $${params.length})`;
-        }
-
-        if (targetSurname) {
-            params.push(`%${targetSurname}%`);
-            query += ` AND (c.surname ILIKE $${params.length} OR u.surname ILIKE $${params.length})`;
-        }
-
-        query += ` LIMIT 1;`;
+        const params = [targetLearnerNum, targetIdNumber, targetFirstName, targetSurname];
 
         const { rows } = await db.query(query, params);
 
@@ -404,6 +392,15 @@ exports.linkChild = async (req, res) => {
  * Generates official Learner Number & password (FH@<first-6-of-ID>) using the established system generator.
  */
 exports.linkSibling = async (req, res) => {
+    const { isControlLocked } = require('./systemController');
+    const siblingLock = await isControlLocked('sibling_enrollment');
+    if (siblingLock && siblingLock.is_locked) {
+        return res.status(403).json({
+            error: siblingLock.locked_reason || 'Sibling enrollment is closed.',
+            is_locked: true
+        });
+    }
+
     const parentId = req.user.id;
     const {
         first_name,
@@ -423,6 +420,7 @@ exports.linkSibling = async (req, res) => {
     if (!first_name || !surname) {
         return res.status(400).json({ error: 'Sibling first name and surname are required.' });
     }
+    if (rejectNameDigits(res, first_name, surname, previous_school)) return;
 
     if (!home_language || !home_language.trim()) {
         return res.status(400).json({ error: 'Official Home Language is required for sibling curriculum allocation.' });
@@ -466,6 +464,102 @@ exports.linkSibling = async (req, res) => {
             });
         }
 
+        const method = paymentHold.normaliseMethod(payment_method);
+        const siblingHold = paymentHold.describe(method, school, 1500, '');
+        if (true) {
+            if (cleanIdNum.length !== 13) {
+                return res.status(400).json({ error: 'A 13-digit South African ID is required before an EFT sibling application can be held.' });
+            }
+            const parentRes = await db.query(
+                'SELECT email, full_name, surname, phone, id_number, physical_address FROM users WHERE id = $1',
+                [parentId]
+            );
+            const parent = parentRes.rows[0] || {};
+            const parentIdNumber = (parent.id_number || '').toString().replace(/\D/g, '');
+            if (!parent.email || parentIdNumber.length !== 13) {
+                return res.status(400).json({ error: 'The parent profile needs an email address and a 13-digit ID before an EFT sibling application can be held.' });
+            }
+            const applicationService = require('../services/applicationService');
+            const applicationNumber = applicationService.generateApplicationNumber(school.name || 'fusion-high');
+            const dueDate = new Date();
+            dueDate.setDate(dueDate.getDate() + 7);
+            const address = (parent.physical_address || 'Address held on the parent account').trim();
+            await db.query(
+                `INSERT INTO applications (
+                    application_number, correction_token, status,
+                    first_name, surname, id_number, physical_address, grade_applied, stream,
+                    primary_parent_name, primary_parent_surname, primary_parent_relationship,
+                    primary_parent_id_number, primary_parent_phone, primary_parent_email, primary_parent_address,
+                    home_language, school_id,
+                    application_fee_amount, application_fee_status, application_fee_due_date,
+                    registration_fee_amount, registration_fee_status,
+                    scenario, existing_parent_id, payment_method
+                ) VALUES (
+                    $1, $2, 'approved',
+                    $3, $4, $5, $6, $7, $8,
+                    $9, $10, 'Parent',
+                    $11, $12, $13, $14,
+                    $15, $16,
+                    250, 'unpaid', $17,
+                    1500, 'unpaid',
+                    'sibling', $18, $19
+                )`,
+                [
+                    applicationNumber,
+                    applicationService.generateCorrectionToken(),
+                    cleanFirstName,
+                    cleanSurname,
+                    cleanIdNum,
+                    address,
+                    gradeInt,
+                    streamVal,
+                    parent.full_name || 'Parent',
+                    parent.surname || 'Guardian',
+                    parentIdNumber,
+                    parent.phone || '0000000000',
+                    parent.email,
+                    address,
+                    homeLangVal,
+                    targetSchoolId,
+                    dueDate,
+                    parentId,
+                    method
+                ]
+            );
+            const bankingInfo = siblingHold.banking_details || {
+                bank_name: 'Waiting for the school bank account',
+                account_holder: school.name,
+                account_number: 'Not connected yet',
+                branch_code: 'Not connected yet',
+                account_type: 'Cheque / Current',
+                reference: applicationNumber
+            };
+            try {
+                await emailService.sendApplicationReceivedWithBanking({
+                    parentEmail: parent.email,
+                    parentName: `${parent.full_name || ''} ${parent.surname || ''}`.trim(),
+                    learnerName: `${cleanFirstName} ${cleanSurname}`,
+                    grade: gradeInt,
+                    stream: streamVal,
+                    homeLanguage: homeLangVal,
+                    schoolName: school.name,
+                    applicationNumber,
+                    feeAmount: 1500,
+                    dueDateStr: dueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
+                    bankDetails: bankingInfo,
+                    paymentUrl: `${req.protocol}://${req.get('host')}/dashboard/parent`
+                });
+            } catch (mailErr) {
+                console.warn('[SIBLING EFT EMAIL]:', mailErr.message);
+            }
+            return res.status(202).json({
+                success: true,
+                enrolled: false,
+                application_number: applicationNumber,
+                message: siblingHold.message
+            });
+        }
+
         // 1. Generate official sequential Learner Number
         const lrnNumber = await generateOfficialLearnerNumber();
 
@@ -477,20 +571,21 @@ exports.linkSibling = async (req, res) => {
         // 3. Allocate CAPS curriculum subjects
         const officialSubjects = curriculumService.getSubjectsForGradeAndStream(gradeInt, streamVal, homeLangVal);
 
-        // 4. Class allocation
-        const classRes = await db.query(
-            `SELECT id, name FROM classes WHERE grade = $1 ORDER BY id ASC LIMIT 1`,
-            [gradeInt]
-        );
-        const assignedClassId = classRes.rows[0]?.id || null;
-        const assignedClassName = classRes.rows[0]?.name || `Grade ${gradeInt}A`;
+        // 4. Class allocation — a class with space, not the first class in the grade
+        const applicationService = require('../services/applicationService');
+        const allocatedClass = await applicationService.allocateAvailableClass(gradeInt, streamVal);
+        if (!allocatedClass) {
+            return res.status(409).json({ error: `Grade ${gradeInt} has no class with space. The sibling was not enrolled.` });
+        }
+        const assignedClassId = allocatedClass.id;
+        const assignedClassName = allocatedClass.name;
 
         // 5. Learner role ID
         const roleRes = await db.query("SELECT id FROM roles WHERE LOWER(name) = 'learner'");
         const learnerRoleId = roleRes.rows[0]?.id || 3;
 
         // 6. Application fee and payment details
-        const isPaidImmediately = pay_now !== false && payment_method !== 'eft';
+        // Unpaid EFT already returned above. This path has received the fee.
         const appFeeAmount = 250.00;
         const regFeeAmount = 1500.00;
         const receiptNo = `REC-SIB-${Date.now().toString().slice(-6)}`;
@@ -541,10 +636,10 @@ exports.linkSibling = async (req, res) => {
                 );
             } else {
                 const childRes = await client.query(
-                    `INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, stream, subjects, class_id, home_language)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                    `INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, stream, subjects, class_id, home_language, school_id)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                      RETURNING *`,
-                    [learnerUserId, cleanFirstName, cleanSurname, parentId, lrnNumber, gradeInt, streamVal, officialSubjects, assignedClassId, homeLangVal]
+                    [learnerUserId, cleanFirstName, cleanSurname, parentId, lrnNumber, gradeInt, streamVal, officialSubjects, assignedClassId, homeLangVal, targetSchoolId]
                 );
                 newChild = childRes.rows[0];
             }
@@ -607,42 +702,23 @@ exports.linkSibling = async (req, res) => {
                         amountPaid: appFeeAmount,
                         receiptNumber: receiptNo
                     });
-                } else {
-                    const dueDate = new Date();
-                    dueDate.setDate(dueDate.getDate() + 7);
-                    await emailService.sendApplicationReceivedWithBanking({
+                    await emailService.sendRegistrationSuccessWithAllocation({
                         parentEmail,
                         parentName: parentFullName,
                         learnerName: `${cleanFirstName} ${cleanSurname}`,
+                        schoolName: school.name,
+                        learnerNumber: lrnNumber,
                         grade: gradeInt,
                         stream: streamVal,
-                        homeLanguage: homeLangVal,
-                        schoolName: school.name,
-                        applicationNumber: lrnNumber,
-                        feeAmount: appFeeAmount,
-                        dueDateStr: dueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
-                        bankDetails: bankingInfo,
-                        paymentUrl: `${req.protocol}://${req.get('host')}/dashboard/parent`
+                        assignedClass: assignedClassName,
+                        subjects: officialSubjects,
+                        parentEmail,
+                        parentPassword: null,
+                        learnerEmail,
+                        learnerPassword: generatedPassword,
+                        portalUrl: `${req.protocol}://${req.get('host')}/login`
                     });
                 }
-
-                // (b) Official Registration Confirmation with Grade, Class & Subjects
-                await emailService.sendRegistrationSuccessWithAllocation({
-                    parentEmail,
-                    parentName: parentFullName,
-                    learnerName: `${cleanFirstName} ${cleanSurname}`,
-                    schoolName: school.name,
-                    learnerNumber: lrnNumber,
-                    grade: gradeInt,
-                    stream: streamVal,
-                    assignedClass: assignedClassName,
-                    subjects: officialSubjects,
-                    parentEmail,
-                    parentPassword: null,
-                    learnerEmail,
-                    learnerPassword: generatedPassword,
-                    portalUrl: `${req.protocol}://${req.get('host')}/login`
-                });
 
                 console.log(`[LINK SIBLING EMAIL] Sent confirmation & credentials to ${parentEmail} for ${cleanFirstName}`);
             } catch (e) {
@@ -1608,59 +1684,64 @@ exports.getChildAttendanceOverview = async (req, res) => {
 exports.getChildAssignments = async (req, res) => {
     try {
         const parentId = req.user.id;
-        let childId = req.query.childId;
+        const requestedId = req.query.childId || req.query.child_id;
+        const children = await fetchParentChildren(parentId);
+        if (children.length === 0) return res.json({ assignments: [] });
 
-        if (!childId) {
-            const availableChildren = await fetchParentChildren(parentId);
-            if (availableChildren.length === 0) return res.status(404).json({ error: 'No linked children found.' });
-            childId = availableChildren[0].id;
+        const child = requestedId
+            ? children.find((row) => String(row.id) === String(requestedId))
+            : children[0];
+        if (!child) {
+            return res.status(403).json({ error: 'This learner is not linked to your account.' });
         }
 
-        const childRes = await db.query(`SELECT grade, stream, subjects FROM children WHERE id = $1`, [childId]);
-        if (childRes.rows.length === 0) return res.status(404).json({ error: 'Child not found.' });
-
-        const child = childRes.rows[0];
-        const grade = child.grade;
-
-        const assignRes = await db.query(
-            `SELECT id, title, content, created_at as due_date 
-             FROM announcements 
-             WHERE role_target IN ('learner', 'all') AND is_assignment = TRUE AND (grade_target = $1 OR grade_target IS NULL)
-             ORDER BY created_at DESC`,
-            [grade]
+        const { rows } = await db.query(
+            `SELECT a.id, a.title, a.subject, a.due_date, a.total_marks, a.grade,
+                    u.full_name AS teacher_name, u.surname AS teacher_surname,
+                    s.id AS submission_id, s.submitted_at, s.status AS submission_status,
+                    s.teacher_score, s.teacher_percentage, s.teacher_feedback, s.signed_at
+             FROM homework_assignments a
+             LEFT JOIN users u ON a.teacher_id::text = u.id::text
+             LEFT JOIN homework_submissions s
+               ON a.id::text = s.assignment_id::text AND s.child_id::text = $1::text
+             WHERE a.grade::text = $2::text
+             ORDER BY a.due_date ASC NULLS LAST, a.created_at DESC`,
+            [child.id, String(child.grade)]
         );
 
-        const progRes = await db.query(
-            `SELECT subject, grade as score, notes as title, date 
-             FROM progress WHERE child_id = $1 ORDER BY date DESC`,
-            [childId]
-        );
+        let enrolled = child.subjects;
+        if (typeof enrolled === 'string') {
+            try {
+                enrolled = JSON.parse(enrolled);
+            } catch (_) {
+                enrolled = enrolled.split(',').map((subject) => subject.trim()).filter(Boolean);
+            }
+        }
+        if (!Array.isArray(enrolled)) enrolled = [];
+        const matched = enrolled.length === 0
+            ? rows
+            : rows.filter((assignment) => enrolled.some((subject) =>
+                String(subject).toLowerCase() === String(assignment.subject || '').toLowerCase()
+            ));
+        const visible = matched.length > 0 ? matched : rows;
 
-        const assignmentsList = [
-            ...progRes.rows.map(p => ({
-                id: `p-${p.subject}`,
-                title: p.title || `${p.subject} Assessment`,
-                subject: p.subject,
-                teacher: 'Subject Educator',
-                due_date: new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                status: 'Completed',
-                marks: `${Math.round(p.score)}%`,
-                feedback: p.score >= 75 ? 'Good understanding demonstrated.' : 'Requires additional practice.'
-            })),
-            ...assignRes.rows.map(a => ({
-                id: `a-${a.id}`,
-                title: a.title,
-                subject: 'General Academic',
-                teacher: 'Class Educator',
-                due_date: new Date(a.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                status: 'Pending',
-                marks: 'Pending',
-                feedback: 'Awaiting submission'
+        res.json({
+            child_id: child.id,
+            assignments: visible.map((row) => ({
+                id: row.id,
+                title: row.title,
+                subject: row.subject,
+                due_date: row.due_date,
+                total_marks: row.total_marks,
+                teacher: [row.teacher_name, row.teacher_surname].filter(Boolean).join(' ') || 'Subject educator',
+                submitted_at: row.submitted_at,
+                submission_status: row.submission_status || 'not_submitted',
+                teacher_score: row.teacher_score,
+                teacher_percentage: row.teacher_percentage,
+                teacher_feedback: row.teacher_feedback,
+                signed_at: row.signed_at
             }))
-        ];
-
-        res.json({ assignments: assignmentsList });
-
+        });
     } catch (err) {
         console.error('Error fetching child assignments:', err);
         res.status(500).json({ error: 'Failed to retrieve assignments.' });

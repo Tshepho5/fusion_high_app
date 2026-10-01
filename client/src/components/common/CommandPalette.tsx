@@ -487,11 +487,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                             <p className="text-xs md:text-sm font-bold text-white truncate">
                               {item.title}
                             </p>
-                            {item.subtitle && (
-                              <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                                {item.subtitle}
-                              </p>
-                            )}
                           </div>
                         </div>
 

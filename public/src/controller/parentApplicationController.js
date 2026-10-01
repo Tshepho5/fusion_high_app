@@ -13,6 +13,20 @@ function generateParentAppNumber(year = new Date().getFullYear()) {
     return `PAR-${year}-${randomDigits}`;
 }
 
+async function findExactEnrolledChild({ learnerNumber, idNumber, firstName, surname }) {
+    const { rows } = await db.query(`
+        SELECT c.id, c.full_name, c.surname, c.learner_number, c.grade, c.stream, c.parent_id, u.email AS learner_email
+        FROM children c
+        JOIN users u ON c.learner_user_id = u.id
+        WHERE LOWER(TRIM(c.learner_number)) = LOWER(TRIM($1))
+          AND regexp_replace(COALESCE(u.id_number, ''), '\\D', '', 'g') = $2
+          AND LOWER(TRIM(c.full_name)) = LOWER(TRIM($3))
+          AND LOWER(TRIM(c.surname)) = LOWER(TRIM($4))
+        LIMIT 1
+    `, [learnerNumber, idNumber, firstName, surname]);
+    return rows[0] || null;
+}
+
 /**
  * Module-level Schema Engine
  * Guarantees parent_portal_applications table exists across all database environments (local & cloud)
@@ -79,9 +93,12 @@ ensureParentAppSchema().catch(() => {});
 exports.submitParentApplication = async (req, res) => {
     // 0. Geleza SA Executive & Admin Portal Lock Verification
     const lockState = await isControlLocked('parent_application');
-    if (lockState && lockState.is_locked) {
+    const parentRegLock = await isControlLocked('parent_registration');
+    const legacyRegLock = await isControlLocked('user_registration');
+    const closed = [lockState, parentRegLock, legacyRegLock].find((row) => row && row.is_locked);
+    if (closed) {
         return res.status(403).json({
-            error: lockState.locked_reason || 'Application submissions are currently closed by Geleza SA Administrators.',
+            error: closed.locked_reason || 'Parent registration is currently closed by Geleza SA Administrators.',
             is_locked: true
         });
     }
@@ -164,6 +181,7 @@ exports.submitParentApplication = async (req, res) => {
                 firstName: first,
                 surname: sur,
                 idNumber: cleanChildId,
+                learnerNumber: (c.learnerNumber || c.learner_number || '').toString().trim(),
                 grade: c.grade ? parseInt(c.grade, 10) : 10,
                 stream: c.stream || 'General',
                 isTwin: !!(c.isTwin || c.is_twin)
@@ -221,6 +239,72 @@ exports.submitParentApplication = async (req, res) => {
                 gender = parsed.gender;
             }
         }
+
+        const readyToLink = validatedChildren.length > 0 && validatedChildren.every((child) =>
+            child.learnerNumber && child.idNumber.length === 13 && child.firstName && child.surname
+        );
+        if (!readyToLink) {
+            return res.status(400).json({
+                error: 'Parent registration needs the official learner number, a 13-digit ID, the first name, and the surname of an enrolled learner.'
+            });
+        }
+
+        const matches = [];
+        for (const child of validatedChildren) {
+            const found = await findExactEnrolledChild(child);
+            if (!found) {
+                return res.status(404).json({
+                    error: 'The learner number, 13-digit ID, first name, and surname must all match an enrolled learner. A new learner is not created from parent registration.'
+                });
+            }
+            matches.push(found);
+        }
+
+        const roleResult = await db.query("SELECT id FROM roles WHERE LOWER(name) = 'parent'");
+        const parentRoleId = roleResult.rows[0]?.id || 4;
+        const inserted = await db.query(
+            `INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, phone, physical_address, parent_type, school_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+            [
+                normalizedEmail,
+                passwordHash,
+                parentRoleId,
+                parent_name.trim(),
+                parent_surname.trim(),
+                cleanParentId || null,
+                dob,
+                gender,
+                parent_phone.trim(),
+                (physical_address || 'Not provided').trim(),
+                parent_type || 'Parent',
+                validSchoolId
+            ]
+        );
+        const parentUserId = inserted.rows[0].id;
+        for (const child of matches) {
+            const isPrimary = !child.parent_id;
+            if (isPrimary) {
+                await db.query('UPDATE children SET parent_id = $1 WHERE id = $2', [parentUserId, child.id]);
+            } else if (child.parent_id !== parentUserId) {
+                await db.query('UPDATE children SET secondary_parent_id = $1 WHERE id = $2', [parentUserId, child.id]);
+            }
+            await db.query(
+                `INSERT INTO parent_children (parent_id, child_id, relationship, is_primary)
+                 VALUES ($1, $2, $3, $4) ON CONFLICT (parent_id, child_id) DO NOTHING`,
+                [parentUserId, child.id, parent_type || 'Parent', isPrimary]
+            );
+        }
+
+        return res.status(201).json({
+            success: true,
+            linked_immediately: true,
+            message: 'Your parent account is linked to the enrolled learner. Sign in with the email and password you chose.',
+            application: {
+                application_number: 'LINKED',
+                parent_email: normalizedEmail,
+                status: 'linked'
+            }
+        });
 
         let savedApp;
         let isUpdate = false;
@@ -651,61 +735,36 @@ exports.decideParentApplication = async (req, res) => {
  */
 exports.verifyEnrolledChild = async (req, res) => {
     try {
-        const { school_id = 1, learner_number, first_name, surname, id_number, grade } = req.body;
+        const { learner_number, first_name, surname, id_number } = req.body;
         const cleanId = (id_number || '').toString().replace(/\D/g, '').trim();
         const cleanLrn = (learner_number || '').trim();
         const cleanFirst = (first_name || '').trim();
         const cleanSur = (surname || '').trim();
 
-        if (!cleanLrn && !cleanId && (!cleanFirst || !cleanSur)) {
-            return res.status(400).json({ 
+        if (!cleanLrn || cleanId.length !== 13 || !cleanFirst || !cleanSur) {
+            return res.status(400).json({
                 found: false,
-                error: 'Please provide either the Official Learner Number, South African ID Number, or Student Full Name.' 
+                error: 'The official learner number, a 13-digit ID, the first name, and the surname are all required.'
             });
         }
 
-        let query = `
-            SELECT c.*, s.name as school_name, cl.name as class_name, u.email as learner_email
+        const { rows } = await db.query(`
+            SELECT c.*, s.name as school_name, cl.name as class_name, u.email as learner_email, u.id_number
             FROM children c
             LEFT JOIN schools s ON c.school_id = s.id
             LEFT JOIN classes cl ON c.class_id = cl.id
-            LEFT JOIN users u ON c.learner_user_id = u.id
-            WHERE 1=1
-        `;
-        const params = [];
-
-        if (school_id) {
-            params.push(parseInt(school_id, 10));
-            query += ` AND (c.school_id = $${params.length} OR c.school_id IS NULL)`;
-        }
-
-        let matchConditions = [];
-        if (cleanLrn) {
-            params.push(cleanLrn);
-            matchConditions.push(`c.learner_number ILIKE $${params.length}`);
-        }
-        if (cleanId) {
-            params.push(cleanId);
-            matchConditions.push(`c.id_number = $${params.length}`);
-        }
-        if (cleanFirst && cleanSur) {
-            params.push(`%${cleanFirst}%`);
-            const p1 = params.length;
-            params.push(`%${cleanSur}%`);
-            const p2 = params.length;
-            matchConditions.push(`(c.full_name ILIKE $${p1} AND c.surname ILIKE $${p2})`);
-        }
-
-        if (matchConditions.length > 0) {
-            query += ` AND (${matchConditions.join(' OR ')})`;
-        }
-
-        const { rows } = await db.query(query, params);
+            JOIN users u ON c.learner_user_id = u.id
+            WHERE LOWER(TRIM(c.learner_number)) = LOWER(TRIM($1))
+              AND regexp_replace(COALESCE(u.id_number, ''), '\\D', '', 'g') = $2
+              AND LOWER(TRIM(c.full_name)) = LOWER(TRIM($3))
+              AND LOWER(TRIM(c.surname)) = LOWER(TRIM($4))
+            LIMIT 1
+        `, [cleanLrn, cleanId, cleanFirst, cleanSur]);
 
         if (rows.length === 0) {
             return res.status(404).json({
                 found: false,
-                error: 'No enrolled learner found matching the provided details in this school. Please verify the Learner Number, Name, and National ID Number, or submit a new admission application if they are not yet enrolled.'
+                error: 'No enrolled learner found matching the learner number, 13-digit ID, first name, and surname.'
             });
         }
 

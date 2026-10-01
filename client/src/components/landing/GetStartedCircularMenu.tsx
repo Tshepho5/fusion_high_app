@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { LogIn, GraduationCap, UserPlus, X, ChevronUp, Lock, ShieldAlert } from 'lucide-react';
 import { systemControlService } from '../../services/api';
+import { intakeClosed, intakeReason } from '../../utils/admissionGate';
 
 interface GetStartedCircularMenuProps {
   className?: string;
@@ -46,13 +47,11 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
     };
   }, [isOpen]);
 
-  // Access gates evaluation:
-  // Apply is visible ONLY when unlocked
-  const isApplyLocked = Boolean(portalControls.parent_application?.is_locked);
-  // Register is visible ONLY when unlocked
-  const isRegisterLocked = Boolean(portalControls.user_registration?.is_locked);
+  const isApplyLocked = intakeClosed(portalControls.parent_application);
+  const isRegisterLocked = intakeClosed(portalControls.parent_registration) || intakeClosed(portalControls.user_registration);
+  const applyReason = intakeReason(portalControls.parent_application, 'New family applications are closed.');
+  const registerReason = intakeReason(portalControls.parent_registration, intakeReason(portalControls.user_registration, 'Parent registration is closed.'));
 
-  // Filter items: Sign In is always available; Apply & Register only appear when period is open
   const items = [
     {
       id: 'signin',
@@ -60,6 +59,8 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
       subtitle: 'Portal Login',
       to: '/login',
       isExternal: false,
+      closed: false,
+      closedMessage: '',
       icon: LogIn,
       gradient: 'from-indigo-600 to-blue-600',
       border: 'border-indigo-400',
@@ -67,70 +68,63 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
       hoverGlow: 'hover:shadow-[0_0_55px_rgba(99,102,241,0.95),0_20px_35px_rgba(0,0,0,0.85)]',
       pillBg: 'bg-indigo-950/80 border-indigo-500/40 text-indigo-200 group-hover:text-white group-hover:border-indigo-400',
     },
-    ...(!isApplyLocked ? [{
+    {
       id: 'apply',
-      title: 'Apply',
+      title: isApplyLocked ? 'Apply closed' : 'Apply',
       subtitle: '2026 Admissions',
       to: '/application.html',
       isExternal: true,
-      icon: GraduationCap,
-      gradient: 'from-emerald-600 to-teal-600',
-      border: 'border-emerald-400',
-      glow: 'shadow-[0_0_30px_rgba(16,185,129,0.7),0_10px_25px_rgba(0,0,0,0.6)]',
+      closed: isApplyLocked,
+      closedMessage: applyReason,
+      icon: isApplyLocked ? Lock : GraduationCap,
+      gradient: isApplyLocked ? 'from-slate-600 to-slate-700' : 'from-emerald-600 to-teal-600',
+      border: isApplyLocked ? 'border-slate-400' : 'border-emerald-400',
+      glow: isApplyLocked ? 'shadow-[0_0_20px_rgba(15,23,42,0.45)]' : 'shadow-[0_0_30px_rgba(16,185,129,0.7),0_10px_25px_rgba(0,0,0,0.6)]',
       hoverGlow: 'hover:shadow-[0_0_55px_rgba(16,185,129,0.95),0_20px_35px_rgba(0,0,0,0.85)]',
-      pillBg: 'bg-emerald-950/80 border-emerald-500/40 text-emerald-200 group-hover:text-white group-hover:border-emerald-400',
-    }] : []),
-    ...(!isRegisterLocked ? [{
+      pillBg: isApplyLocked ? 'bg-slate-950/80 border-slate-500/40 text-slate-200' : 'bg-emerald-950/80 border-emerald-500/40 text-emerald-200 group-hover:text-white group-hover:border-emerald-400',
+    },
+    {
       id: 'register',
-      title: 'Registration',
+      title: isRegisterLocked ? 'Registration closed' : 'Registration',
       subtitle: 'Parent & Staff',
       to: '/register',
       isExternal: false,
-      icon: UserPlus,
-      gradient: 'from-cyan-600 to-sky-600',
-      border: 'border-cyan-400',
-      glow: 'shadow-[0_0_30px_rgba(6,182,212,0.7),0_10px_25px_rgba(0,0,0,0.6)]',
+      closed: isRegisterLocked,
+      closedMessage: registerReason,
+      icon: isRegisterLocked ? Lock : UserPlus,
+      gradient: isRegisterLocked ? 'from-slate-600 to-slate-700' : 'from-cyan-600 to-sky-600',
+      border: isRegisterLocked ? 'border-slate-400' : 'border-cyan-400',
+      glow: isRegisterLocked ? 'shadow-[0_0_20px_rgba(15,23,42,0.45)]' : 'shadow-[0_0_30px_rgba(6,182,212,0.7),0_10px_25px_rgba(0,0,0,0.6)]',
       hoverGlow: 'hover:shadow-[0_0_55px_rgba(6,182,212,0.95),0_20px_35px_rgba(0,0,0,0.85)]',
-      pillBg: 'bg-cyan-950/80 border-cyan-500/40 text-cyan-200 group-hover:text-white group-hover:border-cyan-400',
-    }] : []),
+      pillBg: isRegisterLocked ? 'bg-slate-950/80 border-slate-500/40 text-slate-200' : 'bg-cyan-950/80 border-cyan-500/40 text-cyan-200 group-hover:text-white group-hover:border-cyan-400',
+    },
   ];
 
-  const getItemTransform = (index: number, total: number, isDesktop: boolean) => {
-    if (!isOpen) return 'translate(0px, 0px) scale(0)';
-    if (total === 1) {
-      return isDesktop ? 'translate(0px, -115px) scale(1)' : 'translate(0px, -95px) scale(1)';
-    }
+  const getItemTransform = (index: number, total: number) => {
+    if (!isOpen) return 'translate(-50%, 24px) scale(0)';
+    if (total === 1) return 'translate(-50%, -108px) scale(1)';
     if (total === 2) {
-      if (index === 0) {
-        return isDesktop ? 'translate(-85px, -95px) scale(1)' : 'translate(-70px, -80px) scale(1)';
-      }
-      return isDesktop ? 'translate(85px, -95px) scale(1)' : 'translate(70px, -80px) scale(1)';
+      return index === 0
+        ? 'translate(calc(-50% - 150px), -36px) scale(1)'
+        : 'translate(calc(-50% + 150px), -36px) scale(1)';
     }
-    // 3 items:
-    if (index === 0) {
-      return isDesktop ? 'translate(-115px, -85px) scale(1)' : 'translate(-95px, -70px) scale(1)';
-    }
-    if (index === 1) {
-      return isDesktop ? 'translate(0px, -135px) scale(1)' : 'translate(0px, -115px) scale(1)';
-    }
-    return isDesktop ? 'translate(115px, -85px) scale(1)' : 'translate(95px, -70px) scale(1)';
+    if (index === 0) return 'translate(calc(-50% - 168px), -28px) scale(1)';
+    if (index === 1) return 'translate(-50%, -118px) scale(1)';
+    return 'translate(calc(-50% + 168px), -28px) scale(1)';
   };
 
-  const handleItemClick = () => {
+  const openItem = (item: { closed?: boolean; closedMessage?: string; to: string; isExternal: boolean }) => {
+    if (item.closed) {
+      setLockedAlert(item.closedMessage || 'This intake is closed.');
+      return;
+    }
     setIsOpen(false);
+    window.location.assign(item.to);
   };
 
   return (
     <div ref={menuRef} className={`relative flex flex-col items-center justify-center select-none ${className}`}>
       
-      {/* Dimmed Background Overlay when circular menu is open */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-[2px] transition-opacity duration-300 animate-fade-in"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
-
       {/* Locked Alert Modal for Application button */}
       {lockedAlert && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
@@ -177,21 +171,15 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
       )}
 
       {/* Circular Orbit & Action Buttons Container */}
-      <div className="relative flex items-center justify-center z-40">
-        
-        {/* Glowing Circular Orbit Halo Ring (visible when opened) */}
+      <div className="relative z-40 mx-auto h-[250px] w-[440px] max-w-[100vw]">
         {isOpen && (
-          <div className="absolute w-64 h-64 sm:w-72 sm:h-72 rounded-full border-2 border-dashed border-cyan-400/40 bg-gradient-to-b from-indigo-950/50 via-cyan-950/30 to-transparent backdrop-blur-md shadow-[0_0_50px_rgba(6,182,212,0.3)] animate-fade-in pointer-events-none flex items-center justify-center">
-            {/* Concentric inner orbit pulse */}
-            <div className="w-48 h-48 sm:w-56 sm:h-56 rounded-full border border-indigo-500/30 animate-pulse-subtle" />
-          </div>
+          <div className="pointer-events-none absolute bottom-5 left-1/2 h-[200px] w-[400px] max-w-[92vw] -translate-x-1/2 rounded-t-full border-2 border-b-0 border-dashed border-cyan-400/70" />
         )}
 
         {/* Circular Glowing Action Buttons */}
         {items.map((item, index) => {
           const IconComp = item.icon;
-          const isDesktop = typeof window !== 'undefined' ? window.innerWidth >= 640 : true;
-          const transformStyle = getItemTransform(index, items.length, isDesktop);
+          const transformStyle = getItemTransform(index, items.length);
 
           const buttonContent = (
             <div className="flex flex-col items-center gap-1.5 group cursor-pointer transition-all duration-300">
@@ -207,7 +195,7 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
 
               {/* Title & Badge with High Contrast Glow */}
               <div
-                className={`px-2.5 py-0.5 rounded-full border text-[11px] sm:text-xs font-black tracking-wide shadow-lg backdrop-blur-md transition-all duration-300 whitespace-nowrap group-hover:scale-105 ${item.pillBg}`}
+                className={`px-2.5 py-0.5 rounded-full border text-[11px] sm:text-xs font-black tracking-wide shadow-lg transition-all duration-300 whitespace-nowrap group-hover:scale-105 ${item.pillBg}`}
               >
                 {item.title}
               </div>
@@ -218,21 +206,15 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
             <div
               key={item.id}
               style={{ transform: transformStyle }}
-              className={`absolute transition-all duration-400 ease-out z-40 ${
+              className={`absolute left-1/2 bottom-16 transition-all duration-400 ease-out z-40 ${
                 isOpen
                   ? 'opacity-100 pointer-events-auto'
                   : 'opacity-0 pointer-events-none'
               }`}
             >
-              {item.isExternal ? (
-                <a href={item.to} onClick={handleItemClick}>
-                  {buttonContent}
-                </a>
-              ) : (
-                <Link to={item.to} onClick={handleItemClick}>
-                  {buttonContent}
-                </Link>
-              )}
+              <button type="button" onClick={() => openItem(item)} className="bg-transparent border-0 p-0">
+                {buttonContent}
+              </button>
             </div>
           );
         })}
@@ -241,7 +223,7 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className={`relative z-50 flex items-center gap-2.5 px-8 py-4 rounded-full font-display font-extrabold text-sm sm:text-base tracking-wide transition-all duration-300 active:scale-95 border-2 ${
+          className={`absolute left-1/2 bottom-0 -translate-x-1/2 z-50 flex items-center gap-2.5 px-8 py-3.5 rounded-full font-display font-extrabold text-sm sm:text-base tracking-wide transition-all duration-300 active:scale-95 border-2 whitespace-nowrap ${
             isOpen
               ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-400 shadow-[0_0_35px_rgba(244,63,94,0.7)]'
               : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white border-cyan-400/50 shadow-[0_0_30px_rgba(37,99,235,0.65),0_10px_25px_rgba(0,0,0,0.5)] hover:shadow-[0_0_45px_rgba(6,182,212,0.85)] hover:scale-105'

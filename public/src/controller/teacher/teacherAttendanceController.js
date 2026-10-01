@@ -202,7 +202,7 @@ exports.submitAttendance = async (req, res) => {
                                 title: `Attendance: ${learnerFullName} marked ${statusText}`,
                                 message: `${learnerFullName} was marked ${statusText} for ${subject} on ${attendanceDate} at ${scanTimeStr}.`,
                                 type: 'attendance',
-                                targetTab: 'calendar',
+                                targetTab: 'attendance',
                                 metadata: { child_id: childId, status, date: attendanceDate, subject }
                             }).catch(e => console.warn('[NOTIFICATION SERVICE ATTENDANCE NOTICE]:', e.message));
 

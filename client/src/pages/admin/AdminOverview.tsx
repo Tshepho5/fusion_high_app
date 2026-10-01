@@ -4,7 +4,9 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { AdminOverviewSkeleton } from '../../components/admin/AdminOverviewSkeleton';
 import { Modal } from '../../components/common/Modal';
 import { FavoriteModulesSection } from '../../components/common/FavoriteModulesSection';
+import { HomeGreeting } from '../../components/layout/WorkspaceChrome';
 import { MasterAdminExecutiveHub } from '../../components/admin/MasterAdminExecutiveHub';
+import { SchoolModulePreferences } from '../../components/admin/SchoolModulePreferences';
 import {
   Users,
   GraduationCap,
@@ -136,8 +138,8 @@ export interface SchoolSubjectItem {
   stream: string;
   teacher_name: string;
   learner_count: number;
-  average_mark: number;
-  pass_rate: number;
+  average_mark: number | null;
+  pass_rate: number | null;
   status: string;
 }
 
@@ -306,20 +308,37 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
       { id: 'g12-agri', name: 'Agricultural Sciences', code: 'CAPS-AGR-G12', grade: 12, category: 'technical', stream: 'Agri Sciences', teacher_name: 'Mr. P. Radebe', learner_count: 24, average_mark: 76, pass_rate: 92, status: 'Matric Target 95%' }
     ];
 
-    // If API returned real database subjects, update matches or append unique records
+    const realNumber = (value: unknown): number | null => {
+      if (value === null || value === undefined || value === '') return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    // Catalog names stay. Invented averages, pass rates, class sizes, and teacher names do not.
+    const catalog: SchoolSubjectItem[] = rawList.map((subject) => ({
+      ...subject,
+      teacher_name: '',
+      learner_count: 0,
+      average_mark: null,
+      pass_rate: null,
+    }));
+
     if (apiSubjects && apiSubjects.length > 0) {
-      const merged = [...rawList];
+      const merged = [...catalog];
       apiSubjects.forEach((apiSub: any) => {
+        const average = realNumber(apiSub.average_mark);
+        const pass = realNumber(apiSub.pass_rate);
+        const learners = realNumber(apiSub.learner_count);
         const foundIdx = merged.findIndex(
           (m) => m.name.toLowerCase() === apiSub.name?.toLowerCase() && Number(m.grade) === Number(apiSub.grade)
         );
         if (foundIdx >= 0) {
           merged[foundIdx] = {
             ...merged[foundIdx],
-            learner_count: apiSub.learner_count ?? merged[foundIdx].learner_count,
-            teacher_name: apiSub.teacher_name || merged[foundIdx].teacher_name,
-            average_mark: apiSub.average_mark ? Number(apiSub.average_mark) : merged[foundIdx].average_mark,
-            pass_rate: apiSub.pass_rate ? Number(apiSub.pass_rate) : merged[foundIdx].pass_rate,
+            learner_count: learners ?? 0,
+            teacher_name: apiSub.teacher_name || '',
+            average_mark: average,
+            pass_rate: pass,
             code: apiSub.code || merged[foundIdx].code,
             status: apiSub.status || merged[foundIdx].status
           };
@@ -327,14 +346,14 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
           merged.push({
             id: `api-${apiSub.id || apiSub.name}-${apiSub.grade}`,
             name: apiSub.name,
-            code: apiSub.code || `CAPS-${apiSub.name.substring(0, 3).toUpperCase()}-G${apiSub.grade}`,
+            code: apiSub.code || `CAPS-${String(apiSub.name || 'SUB').substring(0, 3).toUpperCase()}-G${apiSub.grade}`,
             grade: Number(apiSub.grade) || 10,
             category: 'stem',
             stream: apiSub.stream || 'Curriculum Subject',
-            teacher_name: apiSub.teacher_name || 'Department Lead',
-            learner_count: apiSub.learner_count || 35,
-            average_mark: apiSub.average_mark ? Number(apiSub.average_mark) : 72,
-            pass_rate: apiSub.pass_rate ? Number(apiSub.pass_rate) : 88,
+            teacher_name: apiSub.teacher_name || '',
+            learner_count: learners ?? 0,
+            average_mark: average,
+            pass_rate: pass,
             status: apiSub.status || 'Active'
           });
         }
@@ -342,7 +361,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
       return merged;
     }
 
-    return rawList;
+    return catalog;
   }, [apiSubjects]);
 
   // Filtered list based on Grade, Category, and Search
@@ -416,6 +435,8 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
 
   return (
     <div className="space-y-8 animate-fade-in text-slate-900 dark:text-slate-100 pb-16">
+      <HomeGreeting />
+      <SchoolModulePreferences />
 
       {/* ========================================================================= */}
       {/* 1. SCHOOL CURRICULUM SUBJECTS & GRADE EXPLORATION                         */}
@@ -609,7 +630,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           </div>
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/70 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 backdrop-blur-md">
                             <Users className="w-3 h-3 text-emerald-400" />
-                            {sub.learner_count}
+                            {sub.learner_count > 0 ? sub.learner_count : '—'}
                           </span>
                         </div>
 
@@ -623,7 +644,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                             {sub.name}
                           </h3>
                           <p className="text-[11px] text-slate-200 font-medium truncate">
-                            {sub.teacher_name}
+                            {sub.teacher_name || 'Educator not assigned'}
                           </p>
                         </div>
                       </div>
@@ -634,8 +655,8 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           <span className="text-slate-700 dark:text-slate-300 font-mono text-xs font-semibold">
                             {sub.code}
                           </span>
-                          <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/15 dark:bg-emerald-500/20 px-2.5 py-0.5 rounded-md border border-emerald-500/30">
-                            {sub.pass_rate}% Pass Rate
+                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-md border ${sub.pass_rate == null ? 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/10 border-slate-300 dark:border-white/15' : 'text-emerald-700 dark:text-emerald-400 bg-emerald-500/15 dark:bg-emerald-500/20 border-emerald-500/30'}`}>
+                            {sub.pass_rate == null ? 'No marks yet' : `${sub.pass_rate}% Pass Rate`}
                           </span>
                         </div>
 
@@ -661,7 +682,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                         {/* View More Button */}
                         <div className="pt-2 border-t border-slate-300 dark:border-white/10 flex items-center justify-between">
                           <span className="text-xs text-slate-700 dark:text-slate-300">
-                            Avg Mark: <strong className="text-slate-900 dark:text-white font-bold">{sub.average_mark}%</strong>
+                            Avg Mark: <strong className="text-slate-900 dark:text-white font-bold">{sub.average_mark == null ? 'No marks yet' : `${sub.average_mark}%`}</strong>
                           </span>
                           <button
                             onClick={() => setViewMoreSubject(sub)}
@@ -712,7 +733,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           </div>
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/70 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 backdrop-blur-md">
                             <Users className="w-3 h-3 text-emerald-400" />
-                            {sub.learner_count}
+                            {sub.learner_count > 0 ? sub.learner_count : '—'}
                           </span>
                         </div>
 
@@ -726,7 +747,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                             {sub.name}
                           </h3>
                           <p className="text-[11px] text-slate-200 font-medium truncate">
-                            {sub.teacher_name}
+                            {sub.teacher_name || 'Educator not assigned'}
                           </p>
                         </div>
                       </div>
@@ -737,8 +758,8 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           <span className="text-slate-700 dark:text-slate-300 font-mono text-xs font-semibold">
                             {sub.code}
                           </span>
-                          <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/15 dark:bg-emerald-500/20 px-2.5 py-0.5 rounded-md border border-emerald-500/30">
-                            {sub.pass_rate}% Pass Rate
+                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-md border ${sub.pass_rate == null ? 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/10 border-slate-300 dark:border-white/15' : 'text-emerald-700 dark:text-emerald-400 bg-emerald-500/15 dark:bg-emerald-500/20 border-emerald-500/30'}`}>
+                            {sub.pass_rate == null ? 'No marks yet' : `${sub.pass_rate}% Pass Rate`}
                           </span>
                         </div>
 
@@ -764,7 +785,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                         {/* View More Button */}
                         <div className="pt-2 border-t border-slate-300 dark:border-white/10 flex items-center justify-between">
                           <span className="text-xs text-slate-700 dark:text-slate-300">
-                            Avg Mark: <strong className="text-slate-900 dark:text-white font-bold">{sub.average_mark}%</strong>
+                            Avg Mark: <strong className="text-slate-900 dark:text-white font-bold">{sub.average_mark == null ? 'No marks yet' : `${sub.average_mark}%`}</strong>
                           </span>
                           <button
                             onClick={() => setViewMoreSubject(sub)}
@@ -806,7 +827,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           Gr {sub.grade}
                         </span>
                         <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-black/70 text-emerald-300 border border-emerald-500/30">
-                          {sub.pass_rate}%
+                          {sub.pass_rate == null ? 'No marks' : `${sub.pass_rate}%`}
                         </span>
                       </div>
 
@@ -860,7 +881,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                             {sub.name}
                           </h4>
                           <p className="text-xs text-slate-600 dark:text-slate-300 truncate">
-                            Educator: <span className="font-semibold text-slate-900 dark:text-white">{sub.teacher_name}</span>
+                            Educator: <span className="font-semibold text-slate-900 dark:text-white">{sub.teacher_name || 'Educator not assigned'}</span>
                           </p>
                         </div>
                       </div>
@@ -869,10 +890,10 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                         <div className="text-right hidden md:block">
                           <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1">
                             <Users className="w-3.5 h-3.5 text-indigo-500" />
-                            <span>{sub.learner_count} Learners</span>
+                            <span>{sub.learner_count > 0 ? sub.learner_count : '—'} Learners</span>
                           </div>
                           <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                            {sub.pass_rate}% Pass Rate
+                            {sub.pass_rate == null ? 'No marks yet' : `${sub.pass_rate}% Pass Rate`}
                           </div>
                         </div>
 
@@ -952,15 +973,15 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   </h3>
                   <p className="text-xs text-slate-200 font-medium flex items-center gap-1.5 mt-0.5">
                     <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Lead Educator: {viewMoreSubject.teacher_name}</span>
+                    <span>Lead Educator: {viewMoreSubject.teacher_name || 'Educator not assigned'}</span>
                   </p>
                 </div>
                 <div className="text-right">
                   <span className="text-xs text-emerald-400 font-bold block">
-                    {viewMoreSubject.pass_rate}% Pass Rate
+                    {viewMoreSubject.pass_rate == null ? 'No marks yet' : `${viewMoreSubject.pass_rate}% Pass Rate`}
                   </span>
                   <span className="text-[11px] text-slate-300">
-                    {viewMoreSubject.learner_count} Learners
+                    {viewMoreSubject.learner_count > 0 ? `${viewMoreSubject.learner_count} Learners` : 'Enrolment not recorded'}
                   </span>
                 </div>
               </div>
@@ -970,11 +991,11 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
             <div className="grid grid-cols-3 gap-2.5">
               <div className="p-3 rounded-xl bg-slate-100 dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-center">
                 <span className="text-[11px] text-slate-700 dark:text-slate-300 block font-bold">Total Enrolled</span>
-                <span className="text-base font-black text-slate-900 dark:text-white">{viewMoreSubject.learner_count} Students</span>
+                <span className="text-base font-black text-slate-900 dark:text-white">{viewMoreSubject.learner_count > 0 ? `${viewMoreSubject.learner_count} Students` : '—'}</span>
               </div>
               <div className="p-3 rounded-xl bg-slate-100 dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-center">
                 <span className="text-[11px] text-slate-700 dark:text-slate-300 block font-bold">Class Average</span>
-                <span className="text-base font-black text-indigo-600 dark:text-indigo-400">{viewMoreSubject.average_mark}%</span>
+                <span className="text-base font-black text-indigo-600 dark:text-indigo-400">{viewMoreSubject.average_mark == null ? 'No marks yet' : `${viewMoreSubject.average_mark}%`}</span>
               </div>
               <div className="p-3 rounded-xl bg-slate-100 dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-center">
                 <span className="text-[11px] text-slate-700 dark:text-slate-300 block font-bold">CAPS Status</span>

@@ -1,4 +1,6 @@
 const db = require('../../../../db/db');
+const fs = require('fs');
+const path = require('path');
 const aiTutor = require('../../services/aiTutorService');
 const emailService = require('../../services/emailService');
 const NotificationService = require('../../services/notificationService');
@@ -91,8 +93,20 @@ exports.uploadResource = async (req, res) => {
         return res.status(400).json({ error: 'Please upload a PDF document or provide a file URL.' });
     }
 
+    if (req.file) {
+        const header = Buffer.alloc(5);
+        const handle = fs.openSync(req.file.path, 'r');
+        fs.readSync(handle, header, 0, 5, 0);
+        fs.closeSync(handle);
+        if (header.toString('utf8') !== '%PDF-') {
+            fs.unlink(req.file.path, () => {});
+            return res.status(400).json({ error: 'Only PDF textbooks are accepted.' });
+        }
+    }
+
     const filePath = req.file ? `/uploads/textbooks/${req.file.filename}` : req.body.file_url;
-    const fileName = req.file ? req.file.originalname : (req.body.file_name || `${title}.pdf`);
+    const rawName = req.file ? (req.file.originalname || req.file.filename) : (req.body.file_name || `${title}.pdf`);
+    const fileName = path.basename(String(rawName)).replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'textbook.pdf';
     const fileSize = req.file ? `${(req.file.size / (1024 * 1024)).toFixed(2)} MB` : '1.5 MB';
 
     try {

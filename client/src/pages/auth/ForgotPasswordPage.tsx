@@ -54,7 +54,7 @@ export const ForgotPasswordPage: React.FC = () => {
         setOtp(''); // Strict zero-trust: User must manually enter the 4 digits from their email
         setTimeLeft(300);
         setTimerActive(true);
-        setMessage('Opened from your recovery email. Please enter the 4-digit code sent to your inbox:');
+        setMessage('Opened from your recovery email. Please enter the 10-digit code sent to your inbox:');
       }
     }
   }, [searchParams]);
@@ -89,7 +89,7 @@ export const ForgotPasswordPage: React.FC = () => {
       if (res.email) setEmail(res.email);
       // Keep OTP input empty so user enters it manually from their email
       setOtp('');
-      setMessage(res.message || 'A 4-digit security code has been sent to your email. Please check your inbox or spam folder (valid for 5 minutes).');
+      setMessage(res.message || 'A 10-digit security code has been sent to your email. Please check your inbox or spam folder (valid for 5 minutes).');
       setStep('verify');
       setTimeLeft(300);
       setTimerActive(true);
@@ -112,7 +112,7 @@ export const ForgotPasswordPage: React.FC = () => {
       const res = await authService.forgotPassword({ email: email.trim() });
       if (res.email) setEmail(res.email);
       setOtp(''); // User must enter the fresh code manually
-      setMessage(res.message || 'A fresh 4-digit code has been dispatched to your email (valid for 5 minutes).');
+      setMessage(res.message || 'A fresh 10-digit code has been dispatched to your email (valid for 5 minutes).');
       setTimeLeft(300);
       setTimerActive(true);
     } catch (err: any) {
@@ -127,8 +127,8 @@ export const ForgotPasswordPage: React.FC = () => {
     e.preventDefault();
     setError(null);
 
-    if (!otp || otp.trim().length < 4) {
-      setError('Please enter the 4-digit OTP code received in your email.');
+    if (!otp || otp.trim().length !== 10) {
+      setError('Please enter the 10-digit code received in your email.');
       return;
     }
 
@@ -200,7 +200,7 @@ export const ForgotPasswordPage: React.FC = () => {
           </h2>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
             {step === 'request' && 'Enter your registered email to receive a 5-minute recovery code'}
-            {step === 'verify' && 'Enter the 4-digit code sent to your email (5-minute limit)'}
+            {step === 'verify' && 'Enter the 10-digit code sent to your email (5-minute limit)'}
             {step === 'reset' && 'Create your new password. Take your time to set a secure password.'}
           </p>
         </div>
@@ -369,11 +369,11 @@ export const ForgotPasswordPage: React.FC = () => {
                   type="text"
                   value={otp}
                   onChange={(e) => {
-                    setOtp(e.target.value.replace(/\D/g, '').slice(0, 4));
+                    setOtp(e.target.value.replace(/\D/g, '').slice(0, 10));
                     if (error) setError(null);
                   }}
-                  placeholder="Enter 4-digit code"
-                  maxLength={4}
+                  placeholder="Enter 10-digit code"
+                  maxLength={10}
                   required
                   autoFocus
                   className={`w-full rounded-xl bg-slate-50 dark:bg-slate-900 border pl-10 pr-4 py-2.5 text-lg font-mono tracking-widest text-center text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold ${
@@ -401,7 +401,7 @@ export const ForgotPasswordPage: React.FC = () => {
 
             <button
               type="submit"
-              disabled={loading || timeLeft === 0 || otp.length < 4}
+              disabled={loading || timeLeft === 0 || otp.length !== 10}
               className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 px-4 text-xs tracking-wide shadow-md transition-all disabled:opacity-40 cursor-pointer"
             >
               {loading ? (

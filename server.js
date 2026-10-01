@@ -1,4 +1,8 @@
 require('dotenv').config();
+if (!process.env.JWT_SECRET || !String(process.env.JWT_SECRET).trim()) {
+  console.error('[SERVER] JWT_SECRET is not set. Refusing to start.');
+  process.exit(1);
+}
 const dns = require('dns');
 if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder('ipv4first');
@@ -57,9 +61,10 @@ ensureDir(appUploadDir);
 
 // Initialize all database tables, multi-parent, and notification schemas on server startup (local/dedicated server only)
 const initializeAllDatabaseTables = require('./db/init_full_schema');
-const { fixAllUserPasswords } = require('./db/fix_all_user_passwords');
 const createAiConversationsTables = require('./db/create_ai_conversations_tables');
 const emailService = require('./public/src/services/emailService');
+const gelezaEarlyWarningJob = require('./public/src/services/gelezaEarlyWarningJob');
+const feeReminderJob = require('./public/src/services/feeReminderJob');
 
 if (!process.env.VERCEL) {
   (async () => {
@@ -72,7 +77,6 @@ if (!process.env.VERCEL) {
       await migrateParentApplicationsTwins();
       await NotificationService.initSchema();
       await createAiConversationsTables();
-      await fixAllUserPasswords();
       const migrateSportsCoachEvents = require('./db/migrate_sports_coach_events');
       await migrateSportsCoachEvents();
       const { migrateSchoolOnboardingAndCleanRoster } = require('./db/migrate_school_onboarding_and_clean_roster');
@@ -83,6 +87,9 @@ if (!process.env.VERCEL) {
       }
       // Pre-warm and verify email delivery transport in background
       emailService.verifyConnection().catch(() => {});
+      // Start automated daily background risk audit for student performance
+      gelezaEarlyWarningJob.startPeriodicRiskAudit();
+      feeReminderJob.startPeriodicFeeReminders();
     } catch (err) {
       console.error('[DB BOOTSTRAP] Initialization error:', err.message);
     }
@@ -136,8 +143,21 @@ const uploadChatMessage = multer({
 
 // Security Middleware
 app.use(helmet({
-  contentSecurityPolicy: false, // Flexible for local dev and embedded icons
-  crossOriginEmbedderPolicy: false
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+      imgSrc: ["'self'", 'data:', 'blob:', 'https://images.unsplash.com'],
+      connectSrc: ["'self'"],
+      mediaSrc: ["'self'", 'blob:'],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      frameAncestors: ["'self'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
 }));
 
 // Rate Limiters (configured with validate.xForwardedForHeader = false for reverse proxy compatibility)
@@ -167,7 +187,23 @@ app.use('/api/register', authLimiter);
 app.use('/api/', apiLimiter);
 
 // General Middleware
-app.use(cors({ origin: '*', credentials: true }));
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:4000,http://127.0.0.1:4000')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+if (process.env.APP_URL) allowedOrigins.push(process.env.APP_URL.trim());
+if (process.env.CLIENT_URL) allowedOrigins.push(process.env.CLIENT_URL.trim());
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(null, false);
+  },
+  credentials: true,
+}));
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(normalizePayload);
@@ -178,9 +214,10 @@ if (fs.existsSync(clientDistPath)) {
   app.use(express.static(clientDistPath));
 }
 
-app.use(express.static('public'));
+app.use('/uploads', authenticateToken);
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/uploads', express.static('uploads'));
+app.use(express.static('public'));
 
 // Smart resolver for /uploads/messages/ when subfolder was omitted in database URL
 app.get('/uploads/messages/:filename', (req, res, next) => {
@@ -418,8 +455,7 @@ app.all('/api/init-db', async (req, res) => {
   try {
     await initializeAllDatabaseTables();
     await initApplicationTables();
-    await fixAllUserPasswords();
-    res.json({ success: true, message: 'Database schema, default schools, and users initialized successfully.' });
+    res.json({ success: true, message: 'Database schema initialized. Existing user passwords were not changed.' });
   } catch (err) {
     console.error('[INIT-DB ERROR]:', err);
     res.status(500).json({ success: false, error: err.message });
