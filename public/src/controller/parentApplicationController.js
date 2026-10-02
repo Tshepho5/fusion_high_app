@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { resolveSchoolId } = require('../services/schoolScope');
 const bcrypt = require('bcryptjs');
 const emailService = require('../services/emailService');
 const { validateSAID } = require('./saIDvalidations');
@@ -39,7 +40,7 @@ async function ensureParentAppSchema() {
             CREATE TABLE IF NOT EXISTS parent_portal_applications (
                 id SERIAL PRIMARY KEY,
                 application_number VARCHAR(50) UNIQUE NOT NULL,
-                school_id VARCHAR(100) DEFAULT '1',
+                school_id VARCHAR(100),
                 parent_name VARCHAR(255) NOT NULL,
                 parent_surname VARCHAR(255) NOT NULL,
                 parent_id_number VARCHAR(20) NOT NULL,
@@ -194,7 +195,10 @@ exports.submitParentApplication = async (req, res) => {
     const primaryChild = validatedChildren[0] || {};
 
     const normalizedEmail = parent_email.trim().toLowerCase();
-    const targetSchoolId = parseInt(school_id || 1, 10);
+    const targetSchoolId = parseInt(school_id, 10);
+    if (!Number.isInteger(targetSchoolId) || targetSchoolId <= 0) {
+        return res.status(400).json({ error: 'Choose the school this application is for.' });
+    }
 
     try {
         await ensureParentAppSchema();
@@ -459,7 +463,7 @@ exports.submitParentApplication = async (req, res) => {
  * 2. Get Parent Applications for Admin Review (Protected - Admin)
  */
 exports.getSchoolParentApplications = async (req, res) => {
-    const adminSchoolId = parseInt(req.user?.school_id || req.headers['x-school-id'] || 1, 10);
+    const adminSchoolId = resolveSchoolId(req);
     const isSuperAdmin = Boolean(req.user?.is_superadmin);
 
     try {
@@ -478,6 +482,9 @@ exports.getSchoolParentApplications = async (req, res) => {
 
         const params = [];
         if (!isSuperAdmin) {
+            if (!adminSchoolId) {
+                return res.status(403).json({ error: 'This account is not attached to a school.' });
+            }
             params.push(String(adminSchoolId));
             query += ` WHERE pa.school_id::text = $1::text`;
         }
@@ -551,7 +558,10 @@ exports.getSchoolParentApplications = async (req, res) => {
 exports.decideParentApplication = async (req, res) => {
     const { id } = req.params;
     const { decision, admin_notes } = req.body; // decision: 'approve' | 'reject'
-    const adminUserId = req.user?.id || 1;
+    const adminUserId = req.user && req.user.id;
+    if (!adminUserId) {
+        return res.status(401).json({ error: 'Unauthorized: User identity unverified.' });
+    }
 
     if (!['approve', 'reject'].includes(decision)) {
         return res.status(400).json({ error: "Invalid decision. Must be 'approve' or 'reject'." });
@@ -789,7 +799,7 @@ exports.verifyEnrolledChild = async (req, res) => {
                 stream: child.stream,
                 class_name: child.class_name || `Grade ${child.grade}A`,
                 school_name: child.school_name || 'Fusion High School',
-                school_id: child.school_id || 1,
+                school_id: child.school_id || null,
                 already_linked: !!child.parent_id
             },
             message: `Enrolled student verified: ${child.full_name} ${child.surname} (Grade ${child.grade}, Ref: ${child.learner_number}).`

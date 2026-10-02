@@ -1,7 +1,11 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://fusion_high_db_user:hmYNReP72H9Nne5px8hbNbCWVts1xgpD@dpg-da3haqdg1s2s73dkactg-a.oregon-postgres.render.com/fusion_high_db';
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error('Set DATABASE_URL before running this script.');
+  process.exit(1);
+}
 
 const pool = new Pool({
   connectionString,

@@ -112,7 +112,7 @@ const requireRole = (roles) => async (req, res, next) => {
             );
             if (childRes.rows.length > 0) {
                 roleName = 'learner';
-                req.user.school_id = childRes.rows[0].school_id || 1;
+                req.user.school_id = childRes.rows[0].school_id || null;
             }
         }
 
@@ -122,12 +122,12 @@ const requireRole = (roles) => async (req, res, next) => {
         }
 
         if (!roleName) {
-            roleName = 'learner'; // default fallback for student portal
+            return res.status(403).json({ error: 'This account has no role on Geleza SA.' });
         }
 
         req.user.role = roleName;
         if (row) {
-            req.user.school_id = row.school_id || req.user.school_id || 1;
+            req.user.school_id = row.school_id || req.user.school_id || null;
             req.user.is_superadmin = Boolean(row.is_superadmin);
         }
 

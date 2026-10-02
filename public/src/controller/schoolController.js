@@ -1,9 +1,49 @@
 const db = require('../../../db/db');
+const { resolveSchoolId } = require('../services/schoolScope');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const emailService = require('../services/emailService');
 const { isControlLocked } = require('./systemController');
 const paymentHold = require('../services/paymentHold');
 const { ensureSchoolModuleColumns, linkSchoolModules } = require('../services/schoolModules');
+const { rejectNameDigits } = require('../services/lettersOnly');
+
+function hideBankNumbers(row) {
+  if (!row) return row;
+  const copy = { ...row };
+  copy.has_bank_account = Boolean(paymentHold.realBank(row));
+  delete copy.account_number;
+  delete copy.branch_code;
+  return copy;
+}
+
+async function viewerFromRequest(req) {
+  const header = req.headers.authorization || '';
+  const bearer = header.startsWith('Bearer ') ? header.slice(7) : '';
+  if (!bearer || bearer === 'null' || bearer === 'undefined' || !process.env.JWT_SECRET) return null;
+  try {
+    const decoded = jwt.verify(bearer, process.env.JWT_SECRET);
+    const result = await db.query('SELECT id, school_id, is_superadmin FROM users WHERE id = $1', [decoded.id]);
+    return result.rows[0] || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function ensureGradeClasses(schoolId) {
+  await db.query('ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id INTEGER');
+  for (let grade = 8; grade <= 12; grade += 1) {
+    const name = `Grade ${grade} · School ${schoolId}`;
+    await db.query(
+      `INSERT INTO classes (name, grade, stream, school_id)
+       SELECT $1, $2, 'General', $3
+       WHERE NOT EXISTS (
+         SELECT 1 FROM classes WHERE school_id = $3 AND grade = $2 AND stream = 'General'
+       )`,
+      [name, grade, schoolId]
+    );
+  }
+}
 
 /**
  * Returns schools whose principal registration has been approved.
@@ -30,7 +70,7 @@ exports.getAllSchools = async (req, res) => {
       ORDER BY s.id ASC;
     `;
     const result = await db.query(query);
-    return res.json(result.rows || []);
+    return res.json((result.rows || []).map(hideBankNumbers));
   } catch (err) {
     console.error('Error fetching schools:', err.message);
     res.status(500).json({ error: 'The school list could not be loaded.' });
@@ -44,8 +84,11 @@ exports.getAllSchools = async (req, res) => {
 exports.getCurrentSchool = async (req, res) => {
   try {
     await ensureSchoolModuleColumns();
-    const requestedId = req.query.school_id || req.headers['x-school-id'] || req.user?.school_id || 1;
+    const viewer = await viewerFromRequest(req);
     const requestedSlug = req.query.slug || req.headers['x-school-slug'];
+    let requestedId = req.query.school_id || req.headers['x-school-id'];
+    if (viewer && !viewer.is_superadmin) requestedId = viewer.school_id;
+    else if (viewer && viewer.is_superadmin && !requestedId) requestedId = viewer.school_id;
 
     let query = `
       SELECT 
@@ -71,18 +114,16 @@ exports.getCurrentSchool = async (req, res) => {
       params = [requestedSlug];
     } else {
       const parsedId = parseInt(requestedId, 10);
-      if (!isNaN(parsedId) && parsedId > 0) {
-        query += `AND (s.id = $1::integer OR s.id = 1) ORDER BY (s.id = $1::integer) DESC LIMIT 1;`;
-        params = [parsedId];
-      } else {
-        query += `AND (s.slug = $1::text OR s.id = 1) ORDER BY (s.slug = $1::text) DESC LIMIT 1;`;
-        params = [String(requestedId)];
+      if (!Number.isInteger(parsedId) || parsedId <= 0) {
+        return res.status(404).json({ error: 'No school is registered yet. A principal registers the school first.' });
       }
+      query += `AND s.id = $1::integer LIMIT 1;`;
+      params = [parsedId];
     }
 
     const result = await db.query(query, params);
     if (result.rows && result.rows.length > 0) {
-      return res.json(result.rows[0]);
+      return res.json(hideBankNumbers(result.rows[0]));
     }
     return res.status(404).json({ error: 'No school is registered yet. A principal registers the school first.' });
   } catch (err) {
@@ -96,8 +137,11 @@ exports.getCurrentSchool = async (req, res) => {
  */
 exports.checkLanguageOffer = async (req, res) => {
   try {
-    const schoolId = parseInt(req.query.school_id || 1, 10);
+    const schoolId = parseInt(req.query.school_id, 10);
     const requestedLanguage = (req.query.language || '').trim();
+    if (!Number.isInteger(schoolId) || schoolId <= 0) {
+      return res.status(400).json({ error: 'Choose a school before checking the language.' });
+    }
 
     if (!requestedLanguage) {
       return res.status(400).json({ error: 'Language parameter is required.' });
@@ -206,7 +250,7 @@ exports.getSchoolBySlug = async (req, res) => {
  */
 exports.updateSchoolBranding = async (req, res) => {
   try {
-    const schoolId = parseInt(req.params.id || req.user?.school_id || 1, 10);
+    const schoolId = parseInt(req.params.id || resolveSchoolId(req), 10);
     const {
       primary_color, secondary_color, accent_color, motto,
       logo_url, badge_url, contact_email, contact_phone, principal_name,
@@ -529,6 +573,7 @@ exports.reviewSchoolApplication = async (req, res) => {
       ]);
 
       const newSchool = schoolInsert.rows[0];
+      await ensureGradeClasses(newSchool.id);
 
       // 3. Create or Update Principal user account
       const passHash = app.password_hash;
@@ -667,6 +712,73 @@ exports.updateSchoolModules = async (req, res) => {
   } catch (err) {
     console.error('Error saving school modules:', err.message);
     res.status(500).json({ error: 'The school modules could not be saved.' });
+  }
+};
+
+exports.getSchoolBank = async (req, res) => {
+  try {
+    const schoolId = parseInt(req.params.id, 10);
+    if (!schoolId) return res.status(400).json({ error: 'A school is required.' });
+    if (!req.user?.is_superadmin && Number(req.user?.school_id) !== schoolId) {
+      return res.status(403).json({ error: 'You can only view the bank account for your own school.' });
+    }
+    const result = await db.query(
+      `SELECT id, bank_name, account_holder, account_number, branch_code, account_type
+       FROM schools WHERE id = $1`,
+      [schoolId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'School not found.' });
+    const row = result.rows[0];
+    res.json({ ...row, has_bank_account: Boolean(paymentHold.realBank(row)) });
+  } catch (err) {
+    console.error('Error loading school bank:', err.message);
+    res.status(500).json({ error: 'The school bank account could not be loaded.' });
+  }
+};
+
+exports.updateSchoolBank = async (req, res) => {
+  try {
+    const schoolId = parseInt(req.params.id, 10);
+    if (!schoolId) return res.status(400).json({ error: 'A school is required.' });
+    if (!req.user?.is_superadmin && Number(req.user?.school_id) !== schoolId) {
+      return res.status(403).json({ error: 'You can only save the bank account for your own school.' });
+    }
+    const bankName = String(req.body.bank_name || '').trim();
+    const accountHolder = String(req.body.account_holder || '').trim();
+    const accountNumber = String(req.body.account_number || '').replace(/\D/g, '');
+    const branchCode = String(req.body.branch_code || '').replace(/\D/g, '');
+    const accountType = String(req.body.account_type || 'Cheque').trim();
+    if (rejectNameDigits(res, bankName, accountHolder)) return;
+    if (!bankName || !accountHolder) {
+      return res.status(400).json({ error: 'The bank name and account holder are required.' });
+    }
+    if (accountNumber.length < 6 || accountNumber.length > 16) {
+      return res.status(400).json({ error: 'Enter the school account number using digits only.' });
+    }
+    if (branchCode.length < 4 || branchCode.length > 8) {
+      return res.status(400).json({ error: 'Enter the branch code using digits only.' });
+    }
+    if (paymentHold.realBank({
+      bank_name: bankName,
+      account_holder: accountHolder,
+      account_number: accountNumber,
+      branch_code: branchCode
+    }) == null && (accountNumber === '62849102841' || accountNumber === '20491823901')) {
+      return res.status(400).json({ error: 'That account number is a placeholder. Enter the school’s own bank account.' });
+    }
+    const updated = await db.query(
+      `UPDATE schools
+       SET bank_name = $1, account_holder = $2, account_number = $3, branch_code = $4, account_type = $5
+       WHERE id = $6
+       RETURNING id, bank_name, account_holder, account_number, branch_code, account_type`,
+      [bankName, accountHolder, accountNumber, branchCode, accountType, schoolId]
+    );
+    if (updated.rows.length === 0) return res.status(404).json({ error: 'School not found.' });
+    const row = updated.rows[0];
+    res.json({ success: true, school: { ...row, has_bank_account: Boolean(paymentHold.realBank(row)) } });
+  } catch (err) {
+    console.error('Error saving school bank:', err.message);
+    res.status(500).json({ error: 'The school bank account could not be saved.' });
   }
 };
 

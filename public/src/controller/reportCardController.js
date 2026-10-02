@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { resolveSchoolId } = require('../services/schoolScope');
 const emailService = require('../services/emailService');
 const { assertChildAccess } = require('../services/familyAccess');
 const aiAdvisorService = require('../services/aiAdvisorService');
@@ -81,8 +82,11 @@ exports.getGradeTemplateMarks = async (req, res) => {
     const className = (req.query.class_name || req.query.class || req.query.className || '').trim();
     const termNum = parseInt(String(req.query.term || '3').replace(/[^0-9]/g, ''), 10) || 3;
     const academicYear = parseInt(req.query.academic_year || req.query.academicYear || '2026', 10);
-    const rawSchoolId = req.query.school_id || req.headers['x-school-id'] || req.user?.school_id || 1;
-    const schoolId = parseInt(rawSchoolId, 10) || 1;
+    const rawSchoolId = resolveSchoolId(req);
+    const schoolId = parseInt(rawSchoolId, 10);
+    if (!Number.isInteger(schoolId)) {
+      return res.status(403).json({ error: 'This account is not linked to a school.' });
+    }
 
     // 1. Fetch School Information safely
     let schoolInfo = {
@@ -504,7 +508,7 @@ exports.getGradeTemplateMarks = async (req, res) => {
 exports.saveGradeReportCardTemplate = async (req, res) => {
   try {
     const { grade, term = 3, academic_year = 2026, school_id, learners_reports } = req.body;
-    const targetSchoolId = school_id || req.user?.school_id || 1;
+    const targetSchoolId = resolveSchoolId(req);
     const tNum = parseInt(term, 10);
     const yr = parseInt(academic_year, 10);
 
@@ -663,7 +667,7 @@ exports.saveGradeReportCardTemplate = async (req, res) => {
 exports.publishGradeReportCards = async (req, res) => {
   try {
     const { grade = 10, term = 3, academic_year = 2026, school_id } = req.body;
-    const targetSchoolId = school_id || req.user?.school_id || 1;
+    const targetSchoolId = resolveSchoolId(req);
     const tNum = parseInt(term, 10);
     const yr = parseInt(academic_year, 10);
 
@@ -1130,8 +1134,11 @@ exports.getTeacherSubmissionsOverview = async (req, res) => {
     const termNum = parseInt(String(req.query.term || '3').replace(/[^0-9]/g, ''), 10) || 3;
     const className = (req.query.class_name || req.query.class || '').trim();
     const stream = (req.query.stream || '').trim();
-    const rawSchoolId = req.query.school_id || req.headers['x-school-id'] || req.user?.school_id || 1;
-    const schoolId = parseInt(rawSchoolId, 10) || 1;
+    const rawSchoolId = resolveSchoolId(req);
+    const schoolId = parseInt(rawSchoolId, 10);
+    if (!Number.isInteger(schoolId)) {
+      return res.status(403).json({ error: 'This account is not linked to a school.' });
+    }
 
     // 1. Fetch total enrolled learners for this grade and class
     let learnersQ = `SELECT id, subjects FROM children WHERE grade = $1 AND (school_id = $2 OR $2 IS NULL)`;
@@ -1235,8 +1242,11 @@ exports.transferTeacherMarksToTemplate = async (req, res) => {
     const className = (req.body.class_name || req.body.class || req.body.className || '').trim();
     const stream = (req.body.stream || '').trim();
     const academicYear = parseInt(req.body.academic_year || req.body.academicYear || '2026', 10);
-    const rawSchoolId = req.body.school_id || req.headers['x-school-id'] || req.user?.school_id || 1;
-    const schoolId = parseInt(rawSchoolId, 10) || 1;
+    const rawSchoolId = resolveSchoolId(req);
+    const schoolId = parseInt(rawSchoolId, 10);
+    if (!Number.isInteger(schoolId)) {
+      return res.status(403).json({ error: 'This account is not linked to a school.' });
+    }
 
     // 1. Fetch learners
     const params = [schoolId, grade];

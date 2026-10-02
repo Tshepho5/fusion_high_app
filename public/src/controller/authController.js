@@ -236,7 +236,10 @@ exports.registerUser = async (req, res) => {
         learner_number, children_to_link, school_id 
     } = req.body;
 
-    const targetSchoolId = parseInt(school_id || req.headers['x-school-id'] || 1, 10);
+    const targetSchoolId = parseInt(school_id || req.headers['x-school-id'], 10);
+    if (!Number.isInteger(targetSchoolId) || targetSchoolId <= 0) {
+        return res.status(400).json({ error: 'Choose the school this registration is for.' });
+    }
     let schoolData = { id: targetSchoolId, name: 'Fusion High School', slug: 'fusion-high' };
     try {
         const sRes = await db.query('SELECT id, name, slug, domain FROM schools WHERE id = $1', [targetSchoolId]);
@@ -547,7 +550,7 @@ exports.login = async (req, res) => {
         const selectCols = `
             u.id, u.email, u.password_hash, u.id_number::text as id_number, u.phone::text as phone, u.full_name, u.surname, 
             u.is_superadmin,
-            COALESCE(u.school_id, c.school_id, 1) as school_id,
+            COALESCE(u.school_id, c.school_id) as school_id,
             COALESCE(r.name, u.role_id::text, 'learner') as role_name,
             c.id as child_id, c.learner_number::text as learner_number, c.grade, c.stream,
             s.name as school_name, s.slug as school_slug, s.domain as school_domain, s.emis_number,
@@ -562,14 +565,9 @@ exports.login = async (req, res) => {
                  FROM users u
                  LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                  LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
-                 LEFT JOIN schools s ON (s.id::text = COALESCE(u.school_id, c.school_id, 1)::text)
+                 LEFT JOIN schools s ON (s.id::text = COALESCE(u.school_id, c.school_id)::text)
                  WHERE LOWER(u.email::text) = LOWER($1)
-                    OR (c.learner_number IS NOT NULL AND LOWER(c.learner_number::text) = LOWER(SPLIT_PART($1, '@', 1)))
-                    OR (LOWER(SPLIT_PART(u.email::text, '@', 1)) = LOWER(SPLIT_PART($1, '@', 1)))
-                    OR (LOWER($1) IN ('admin@fusionhigh.co.za', 'admin@fusion.high') AND LOWER(COALESCE(r.name, u.role_id::text, '')) = 'admin')
-                 ORDER BY (CASE WHEN LOWER(u.email::text) = LOWER($1) THEN 0 
-                                WHEN (c.learner_number IS NOT NULL AND LOWER(c.learner_number::text) = LOWER(SPLIT_PART($1, '@', 1))) THEN 1
-                                ELSE 2 END), u.id ASC
+                 ORDER BY u.id ASC
                  LIMIT 1`,
                 [rawIdentifier]
             );
@@ -580,90 +578,16 @@ exports.login = async (req, res) => {
                  FROM users u
                  LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                  LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
-                 LEFT JOIN schools s ON (s.id::text = COALESCE(u.school_id, c.school_id, 1)::text)
+                 LEFT JOIN schools s ON (s.id::text = COALESCE(u.school_id, c.school_id)::text)
                  WHERE (c.learner_number IS NOT NULL AND (c.learner_number::text = $1 OR REGEXP_REPLACE(c.learner_number::text, '[^a-zA-Z0-9]', '', 'g') = $2))
                     OR (u.id_number IS NOT NULL AND (TRIM(u.id_number::text) = $1 OR REGEXP_REPLACE(u.id_number::text, '[^0-9]', '', 'g') = $2))
-                    OR (LOWER(SPLIT_PART(u.email::text, '@', 1)) = LOWER($1) OR REGEXP_REPLACE(SPLIT_PART(u.email::text, '@', 1), '[^a-zA-Z0-9]', '', 'g') = $2)
                     OR (u.phone IS NOT NULL AND (TRIM(u.phone::text) = $1 OR REGEXP_REPLACE(u.phone::text, '[^0-9]', '', 'g') = $2))
-                    OR (LOWER(u.email::text) LIKE LOWER($1 || '@%'))
-                    OR (c.id::text = $1)
-                    OR (u.id::text = $1)
-                 ORDER BY (CASE WHEN (c.learner_number IS NOT NULL AND c.learner_number::text = $1) THEN 0 
-                                WHEN (LOWER(SPLIT_PART(u.email::text, '@', 1)) = LOWER($1)) THEN 1
-                                WHEN (u.id_number IS NOT NULL AND TRIM(u.id_number::text) = $1) THEN 2
-                                ELSE 3 END), u.id ASC
+                 ORDER BY (CASE WHEN (c.learner_number IS NOT NULL AND c.learner_number::text = $1) THEN 0
+                                WHEN (u.id_number IS NOT NULL AND TRIM(u.id_number::text) = $1) THEN 1
+                                ELSE 2 END), u.id ASC
                  LIMIT 1`,
                 [rawIdentifier, cleanId]
             );
-        }
-
-        // Fallback: If learner exists in children table without linked learner_user_id
-        if (result.rows.length === 0) {
-            const cleanId = rawIdentifier.replace(/[^a-zA-Z0-9]/g, '');
-            const childRes = await db.query(
-                `SELECT c.* FROM children c 
-                 WHERE c.learner_number::text = $1 
-                    OR REGEXP_REPLACE(c.learner_number::text, '[^a-zA-Z0-9]', '', 'g') = $2
-                    OR c.id::text = $1 
-                 LIMIT 1`,
-                [rawIdentifier, cleanId]
-            );
-
-            if (childRes.rows.length > 0) {
-                const child = childRes.rows[0];
-                // Check if user exists by email pattern or name
-                const userEmail = `${child.learner_number}@fusion.high`;
-                let userCheck = await db.query('SELECT * FROM users WHERE LOWER(email::text) = LOWER($1) OR LOWER(SPLIT_PART(email::text, \'@\', 1)) = LOWER($2)', [userEmail, child.learner_number]);
-
-                if (userCheck.rows.length === 0) {
-                    // Create auth record for this enrolled learner with default password from ID/dob
-                    const defaultPw = child.learner_number;
-                    const hashedPw = await bcrypt.hash(defaultPw, 10);
-                    let roleId = 3;
-                    try {
-                        const roleRes = await db.query("SELECT id FROM roles WHERE LOWER(name) = 'learner' LIMIT 1");
-                        if (roleRes.rows.length > 0) roleId = roleRes.rows[0].id;
-                    } catch (e) {}
-
-                    const newUserRes = await db.query(
-                        `INSERT INTO users (email, password_hash, role_id, full_name, surname, country, race, school_id)
-                         VALUES ($1, $2, $3, $4, $5, 'South Africa', 'Black', $6) RETURNING *`,
-                        [userEmail, hashedPw, roleId, child.full_name, child.surname, child.school_id || 1]
-                    );
-                    const newUser = newUserRes.rows[0];
-                    await db.query('UPDATE children SET learner_user_id = $1 WHERE id::text = $2::text', [newUser.id, child.id]);
-
-                    result = {
-                        rows: [{
-                            id: newUser.id,
-                            email: newUser.email,
-                            password_hash: newUser.password_hash,
-                            id_number: null,
-                            full_name: newUser.full_name,
-                            surname: newUser.surname,
-                            role_name: 'learner',
-                            child_id: child.id,
-                            learner_number: child.learner_number,
-                            grade: child.grade,
-                            stream: child.stream,
-                            school_id: child.school_id || 1
-                        }]
-                    };
-                } else {
-                    await db.query('UPDATE children SET learner_user_id = $1 WHERE id::text = $2::text', [userCheck.rows[0].id, child.id]);
-                    result = await db.query(
-                        `SELECT u.id, u.email, u.password_hash, u.id_number::text as id_number, u.full_name, u.surname, 
-                                COALESCE(r.name, u.role_id::text, 'learner') as role_name,
-                                c.id as child_id, c.learner_number::text as learner_number, c.grade, c.stream,
-                                COALESCE(u.school_id, c.school_id, 1) as school_id
-                         FROM users u
-                         LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
-                         LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
-                         WHERE u.id::text = $1::text`,
-                        [userCheck.rows[0].id]
-                    );
-                }
-            }
         }
 
         if (result.rows.length === 0) {

@@ -2,12 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { useSchool } from '../../context/SchoolContext';
-import { CosmicCanvasBackground } from '../../components/landing/CosmicCanvasBackground';
-import { ParticleLogoIntro } from '../../components/landing/ParticleLogoIntro';
 import { AboutUsModal } from '../../components/landing/AboutUsModal';
 import { TermsAgreementModal } from '../../components/common/TermsAgreementModal';
-import { StarArrivalAppIcon } from '../../components/landing/StarArrivalAppIcon';
 import { FusionAppIcon } from '../../components/common/FusionAppIcon';
+import { GelezaSplashWaves } from '../../components/landing/GelezaSplashWaves';
 import { GetStartedCircularMenu } from '../../components/landing/GetStartedCircularMenu';
 import {
   Sun,
@@ -18,27 +16,17 @@ import {
   Building2,
   Lock,
   ShieldAlert,
-  LogIn,
-  Sparkles
+  LogIn
 } from 'lucide-react';
 import { HelpSupportModal } from '../../components/common/HelpSupportModal';
 import { SchoolRegistrationModal } from '../../components/landing/SchoolRegistrationModal';
 import { systemControlService } from '../../services/api';
 import { intakeClosed, intakeReason } from '../../utils/admissionGate';
 
-// Sequence phases:
-// 1. 'icon_arrival': Exactly 5 seconds while the app icon travels from deep space
-// 2. 'typing_welcome': Welcome message types out letter-by-letter
-// 3. 'ready': Welcome done, "Get Started" radial circular menu activates
-type SequencePhase = 'icon_arrival' | 'typing_welcome' | 'ready';
-
-const TARGET_WELCOME = 'Welcome to Geleza SA';
-
 export const LandingPage: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { currentSchool, schoolsList, setSchoolById } = useSchool();
 
-  const [showIntro, setShowIntro] = useState<boolean>(false);
   const [isAboutOpen, setIsAboutOpen] = useState<boolean>(false);
   const [isTermsOpen, setIsTermsOpen] = useState<boolean>(false);
   const [isFaqOpen, setIsFaqOpen] = useState<boolean>(false);
@@ -58,72 +46,11 @@ export const LandingPage: React.FC = () => {
 
   const schoolIntakeClosed = intakeClosed(schoolRegLock);
 
-  // Animation sequence states
-  const [phase, setPhase] = useState<SequencePhase>('icon_arrival');
-  const [welcomeText, setWelcomeText] = useState<string>('');
-
-  // 1. App icon done after 5 seconds -> transition to typing welcome message
-  const handleArrivalComplete = () => {
-    setPhase('typing_welcome');
-  };
-
-  // Icon replayed -> reset entire sequence
-  const handleIconReplay = () => {
-    setPhase('icon_arrival');
-    setWelcomeText('');
-  };
-
-  // Instant skip for convenience/accessibility
-  const handleSkipAnimation = () => {
-    setPhase('ready');
-    setWelcomeText(TARGET_WELCOME);
-  };
-
-  // 2. Typewriter for Welcome Message
-  useEffect(() => {
-    if (phase !== 'typing_welcome') return;
-    setWelcomeText('');
-    let idx = 0;
-    const timer = setInterval(() => {
-      idx++;
-      setWelcomeText(TARGET_WELCOME.slice(0, idx));
-      if (idx >= TARGET_WELCOME.length) {
-        clearInterval(timer);
-        setTimeout(() => {
-          setPhase('ready');
-        }, 180);
-      }
-    }, 45);
-
-    return () => clearInterval(timer);
-  }, [phase]);
-
-  const handleIntroComplete = () => {
-    setShowIntro(false);
-  };
-
   return (
     <div
-      className="min-h-screen text-slate-800 dark:text-slate-100 flex flex-col justify-between selection:bg-blue-600 selection:text-white relative overflow-hidden transition-colors duration-300 bg-slate-50 dark:bg-[#070b14]"
+      className="min-h-screen text-slate-900 dark:text-white flex flex-col justify-between selection:bg-cyan-600 selection:text-white relative overflow-hidden transition-colors duration-300 bg-[#f4f8fb] dark:bg-[#070b14]"
     >
-      {/* 1. Official Landing Page Background Art */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat -z-30 pointer-events-none transform scale-100 transition-transform duration-1000 ease-out"
-        style={{
-          backgroundImage: "url('/assets/landing-bg.png'), url('/assets/Landing%20page.png')",
-          backgroundAttachment: 'fixed',
-        }}
-      />
-
-      {/* 2. Adaptive Optical Contrast Scrim & Ambient Vignette (adapts cleanly to light & dark mode) */}
-      <div className="absolute inset-0 bg-gradient-to-b from-white/90 via-sky-50/80 to-white/90 dark:from-slate-950/85 dark:via-slate-950/75 dark:to-slate-950/90 backdrop-blur-[1.5px] -z-20 pointer-events-none transition-colors duration-300" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.4)_0%,rgba(241,245,249,0.85)_100%)] dark:bg-[radial-gradient(ellipse_at_center,rgba(15,23,42,0.4)_0%,rgba(2,6,23,0.85)_100%)] -z-20 pointer-events-none transition-colors duration-300" />
-
-      {/* 3. Dynamic Ambient Starlight & Constellation Canvas */}
-      <CosmicCanvasBackground particleCount={35} interactive={true} />
-
-      {/* 4-Second Particle Logo Assembly Intro Animation (on replay) */}
-      {showIntro && <ParticleLogoIntro onComplete={handleIntroComplete} />}
+      <GelezaSplashWaves />
 
       {/* Modals */}
       <AboutUsModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
@@ -180,7 +107,7 @@ export const LandingPage: React.FC = () => {
       )}
 
       {/* Global Header (Adapts smoothly to light & dark mode) */}
-      <header className="relative z-30 px-4 md:px-8 py-3.5 bg-white/90 dark:bg-slate-950/85 border-b border-slate-200/80 dark:border-white/10 backdrop-blur-xl shadow-xs dark:shadow-lg transition-colors duration-300">
+      <header className="relative z-30 px-4 md:px-8 py-3.5 bg-transparent transition-colors duration-300">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           {/* Logo & Platform Name */}
           <Link to="/" className="flex items-center gap-3.5 group">
@@ -245,113 +172,22 @@ export const LandingPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Slogan Ticker right under Header: Smooth Right-to-Left Infinite Animation */}
-      <div className="relative z-20 w-full overflow-hidden py-2 border-b backdrop-blur-md transition-colors duration-300 bg-white/85 dark:bg-slate-950/85 border-slate-200/80 dark:border-cyan-500/20 text-slate-800 dark:text-cyan-300 shadow-xs">
-        <div className="flex w-full overflow-hidden select-none">
-          <div className="flex shrink-0 animate-marquee items-center gap-10 whitespace-nowrap text-xs sm:text-sm font-extrabold tracking-widest uppercase">
-            <span className="flex items-center gap-2 text-cyan-800 dark:text-cyan-300">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+      <main className="flex-1 relative z-10 flex flex-col justify-center items-center px-4 sm:px-6 py-6 max-w-5xl mx-auto w-full text-center">
+        <div className="space-y-8 w-full flex flex-col items-center">
+          <div className="space-y-3">
+            <h1 className="font-display text-5xl sm:text-7xl md:text-8xl font-medium tracking-tight text-slate-900 dark:text-white">
+              Geleza SA
+            </h1>
+            <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.35em] text-cyan-800/80 dark:text-cyan-200/80">
               Geleza Smart, The Future Is Thine
-            </span>
-            <span className="text-slate-400 dark:text-cyan-600/50">•</span>
-            <span className="flex items-center gap-2 text-cyan-800 dark:text-cyan-300">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-              Geleza Smart, The Future Is Thine
-            </span>
-            <span className="text-slate-400 dark:text-cyan-600/50">•</span>
-            <span className="flex items-center gap-2 text-cyan-800 dark:text-cyan-300">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-              Geleza Smart, The Future Is Thine
-            </span>
-            <span className="text-slate-400 dark:text-cyan-600/50">•</span>
-            <span className="flex items-center gap-2 text-cyan-800 dark:text-cyan-300">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-              Geleza Smart, The Future Is Thine
-            </span>
-            <span className="text-slate-400 dark:text-cyan-600/50">•</span>
+            </p>
           </div>
-          <div aria-hidden="true" className="flex shrink-0 animate-marquee items-center gap-10 whitespace-nowrap text-xs sm:text-sm font-extrabold tracking-widest uppercase">
-            <span className="flex items-center gap-2 text-cyan-800 dark:text-cyan-300">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-              Geleza Smart, The Future Is Thine
-            </span>
-            <span className="text-slate-400 dark:text-cyan-600/50">•</span>
-            <span className="flex items-center gap-2 text-cyan-800 dark:text-cyan-300">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-              Geleza Smart, The Future Is Thine
-            </span>
-            <span className="text-slate-400 dark:text-cyan-600/50">•</span>
-            <span className="flex items-center gap-2 text-cyan-800 dark:text-cyan-300">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-              Geleza Smart, The Future Is Thine
-            </span>
-            <span className="text-slate-400 dark:text-cyan-600/50">•</span>
-            <span className="flex items-center gap-2 text-cyan-800 dark:text-cyan-300">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-              Geleza Smart, The Future Is Thine
-            </span>
-            <span className="text-slate-400 dark:text-cyan-600/50">•</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Centered Hero */}
-      <main className="flex-1 relative z-10 flex flex-col justify-center items-center px-4 sm:px-6 py-8 md:py-12 max-w-4xl mx-auto w-full text-center">
-        <div className="space-y-6 animate-fade-in w-full flex flex-col items-center">
-          
-          {/* Official Fusion High Vector App Icon with 5-Second Star Arrival Animation */}
-          <div className="space-y-4 flex flex-col items-center justify-center">
-            <StarArrivalAppIcon
-              className="w-28 h-28 sm:w-36 sm:h-36"
-              onArrivalComplete={handleArrivalComplete}
-              onReplay={handleIconReplay}
-            />
-
-            {/* Welcome Message Badge */}
-            <div
-              className={`inline-flex items-center px-4 py-1.5 rounded-full bg-white/90 dark:bg-slate-950/85 border border-cyan-500/40 text-xs font-semibold text-slate-800 dark:text-slate-200 shadow-md dark:shadow-[0_4px_20px_rgba(0,0,0,0.6)] backdrop-blur-md transition-all duration-500 ${
-                phase === 'icon_arrival'
-                  ? 'opacity-0 scale-90 pointer-events-none'
-                  : 'opacity-100 scale-100'
-              }`}
-            >
-              <span className="text-cyan-800 dark:text-cyan-300 font-bold tracking-wide">
-                {welcomeText}
-                {phase === 'typing_welcome' && (
-                  <span className="inline-block w-1 h-3 bg-cyan-600 dark:bg-cyan-400 ml-1 animate-pulse align-middle" />
-                )}
-              </span>
-            </div>
-          </div>
-
-          {/* Glowing Circular "Get Started" Action Menu */}
-          <div
-            className={`w-full flex flex-col items-center justify-center pt-2 transition-all duration-700 ease-out ${
-              phase === 'ready'
-                ? 'opacity-100 pointer-events-auto'
-                : 'opacity-0 translate-y-8 scale-90 pointer-events-none'
-            }`}
-          >
-            <GetStartedCircularMenu className="pt-2" />
-          </div>
-
-          {/* Discreet Skip Option during intro animation */}
-          {phase !== 'ready' && (
-            <button
-              type="button"
-              onClick={handleSkipAnimation}
-              className="text-[11px] font-mono text-slate-600 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors pt-2 underline underline-offset-4 cursor-pointer drop-shadow-xs bg-white/60 dark:bg-slate-950/40 px-3 py-1 rounded-full backdrop-blur-sm border border-slate-200 dark:border-white/5"
-              title="Skip intro animation"
-            >
-              Skip intro animation →
-            </button>
-          )}
-
+          <GetStartedCircularMenu />
         </div>
       </main>
 
       {/* Clean Minimal 1-Line Footer (Adapts cleanly to light and dark modes) */}
-      <footer className="py-4 px-4 border-t border-slate-200/80 dark:border-white/10 bg-white/95 dark:bg-[#060912] text-xs text-slate-600 dark:text-slate-400 w-full relative z-20 transition-colors duration-300 shadow-xs">
+      <footer className="py-4 px-4 bg-transparent text-xs text-slate-600 dark:text-slate-400 w-full relative z-20 transition-colors duration-300">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-center sm:text-left text-slate-600 dark:text-slate-400 font-medium">
             &copy; {new Date().getFullYear()} Geleza SA Academic Network.

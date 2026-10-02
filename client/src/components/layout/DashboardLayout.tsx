@@ -109,7 +109,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
         <main
           key={activeTab}
-          className={`flex-1 overflow-y-auto min-h-0 custom-scrollbar ${activeTab === 'messages' ? 'p-2 md:p-4 pb-24 md:pb-28' : 'p-4 md:p-8 py-6 pb-28 md:pb-32'
+          className={`flex-1 overflow-y-auto min-h-0 custom-scrollbar ${activeTab === 'messages' ? 'p-2 md:p-4 pb-32 xl:pb-36' : 'p-4 md:p-8 py-6 pb-32 xl:pb-36'
             } max-w-7xl 2xl:max-w-[1600px] min-[1800px]:max-w-[1760px] w-full mx-auto animate-fade-in flex flex-col`}
         >
           {isTabTransitioning ? (

@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { resolveSchoolId } = require('../services/schoolScope');
 const { db: firestore } = require('../../../db/firebase');
 const FirebaseStorageService = require('../services/firebaseStorageService');
 const bcrypt = require('bcryptjs');
@@ -198,7 +199,7 @@ exports.submitApplication = async (req, res) => {
     }
 
     // Resolve School Tenant ID (Default: 1 - Fusion High, or 2..12 for partner schools)
-    const schoolId = parseInt(body.school_id || req.headers['x-school-id'] || 1, 10);
+    const schoolId = parseInt(body.school_id || req.headers['x-school-id'], 10);
     let targetSchool = null;
     try {
       const sRes = await db.query('SELECT * FROM schools WHERE id = $1', [schoolId]);
@@ -208,8 +209,7 @@ exports.submitApplication = async (req, res) => {
     } catch (_) {}
 
     if (!targetSchool) {
-      const fallbackRes = await db.query('SELECT * FROM schools LIMIT 1');
-      targetSchool = fallbackRes.rows[0];
+      return res.status(400).json({ success: false, error: 'Choose the school this application is for.' });
     }
 
     const schoolSlug = targetSchool.slug || 'fusion-high';
@@ -1053,7 +1053,7 @@ exports.reviewApplication = async (req, res) => {
       const learnerInitialPw = (app.id_number && app.id_number.trim().length >= 6) ? generateLearnerPasswordFromID(app.id_number.trim()) : '123456';
       const defaultPassword = learnerInitialPw;
       const hashedPassword = await bcrypt.hash(defaultPassword, 10);
-      const schoolId = app.school_id || 1;
+      const schoolId = app.school_id;
 
       // (a) Create or link Parent User Account
       let parentUserId = null;
@@ -1307,7 +1307,7 @@ exports.confirmSchoolReceipt = async (req, res) => {
         message: 'The application fee is recorded against the school bank account. The learner is still placed in a class only after the registration fee is recorded.'
       });
     }
-    req.body.school_confirmed = true;
+    req.schoolReceiptConfirmed = true;
     return exports.payRegistrationFeeAndFinalize(req, res);
   } catch (err) {
     console.error('Error confirming school receipt:', err.message);
@@ -1412,7 +1412,7 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
     const schoolBankRes = await db.query('SELECT * FROM schools WHERE id = $1', [app.school_id]);
     const regPreview = parseFloat(app.registration_fee_amount) || 1500.00;
     const hold = paymentHold.describe(payment_method, schoolBankRes.rows[0], regPreview, app.application_number);
-    if (!req.body.school_confirmed) {
+    if (req.schoolReceiptConfirmed !== true) {
       await db.query(`
         UPDATE applications SET payment_method = $1, payment_reference = $2, updated_at = NOW() WHERE id = $3
       `, [hold.method, payment_reference || `PAY-REG-${Date.now().toString().slice(-8)}`, app.id]);
@@ -1488,7 +1488,7 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
       const newParentRes = await db.query(
         `INSERT INTO users (full_name, surname, email, password_hash, phone, id_number, role_id, school_id, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING id`,
-        [app.primary_parent_name, app.primary_parent_surname, parentEmailClean, hashedParentPw, app.primary_parent_phone || null, app.primary_parent_id_number || null, parentRoleId, app.school_id || 1]
+        [app.primary_parent_name, app.primary_parent_surname, parentEmailClean, hashedParentPw, app.primary_parent_phone || null, app.primary_parent_id_number || null, parentRoleId, app.school_id]
       );
       parentUserId = newParentRes.rows[0].id;
     }
@@ -1508,7 +1508,7 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
       const newLearnerRes = await db.query(
         `INSERT INTO users (full_name, surname, email, password_hash, phone, id_number, role_id, school_id, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING id`,
-        [app.first_name, app.surname, learnerEmail, hashedLearnerPw, app.phone || null, app.id_number || null, learnerRoleId, app.school_id || 1]
+        [app.first_name, app.surname, learnerEmail, hashedLearnerPw, app.phone || null, app.id_number || null, learnerRoleId, app.school_id]
       );
       learnerUserId = newLearnerRes.rows[0].id;
     }

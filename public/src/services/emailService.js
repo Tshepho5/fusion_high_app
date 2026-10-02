@@ -2091,7 +2091,7 @@ const emailService = {
             To ensure the fast processing and administrative verification of your application, please settle the non-refundable application fee of <strong style="color: #34d399; font-size: 15px;">R${Number(feeAmount).toFixed(2)}</strong> within <strong>7 days</strong> (Due date: <strong>${dueDateStr}</strong>).
           </p>
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
-            <tr><td style="padding: 5px 0; color: #94a3b8; width: 140px;">Bank Name:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'First National Bank (FNB)'}</td></tr>
+            <tr><td style="padding: 5px 0; color: #94a3b8; width: 140px;">Bank Name:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'Not connected yet'}</td></tr>
             <tr><td style="padding: 5px 0; color: #94a3b8;">Account Holder:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.account_holder || schoolName}</td></tr>
             <tr><td style="padding: 5px 0; color: #94a3b8;">Account Number:</td><td style="color: #34d399; font-family: monospace; font-weight: 700;">${bankDetails.account_number || 'Not connected yet'}</td></tr>
             <tr><td style="padding: 5px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-family: monospace;">${bankDetails.branch_code || 'Not connected yet'}</td></tr>
@@ -2178,7 +2178,7 @@ const emailService = {
             The application fee payment of <strong style="color: #34d399; font-size: 15px;">R${Number(feeAmount).toFixed(2)}</strong> is due on <strong>${dueDateStr}</strong>. Please ensure payment is completed so the admissions committee can process and verify the application without cancellation.
           </p>
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
-            <tr><td style="padding: 4px 0; color: #94a3b8; width: 140px;">Bank:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'First National Bank'}</td></tr>
+            <tr><td style="padding: 4px 0; color: #94a3b8; width: 140px;">Bank:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'Not connected yet'}</td></tr>
             <tr><td style="padding: 4px 0; color: #94a3b8;">Account:</td><td style="color: #34d399; font-family: monospace; font-weight: 700;">${bankDetails.account_number || 'Not connected yet'}</td></tr>
             <tr><td style="padding: 4px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-family: monospace;">${bankDetails.branch_code || 'Not connected yet'}</td></tr>
             <tr><td style="padding: 4px 0; color: #94a3b8;">Account Holder:</td><td style="color: #ffffff;">${bankDetails.account_holder || schoolName}</td></tr>
@@ -3005,7 +3005,7 @@ Object.assign(emailService.templates, {
           For fast processing, an application fee of <strong style="color: #10b981; font-size: 16px;">R${parseFloat(feeAmount).toFixed(2)}</strong> must be paid within <strong style="color: #f59e0b;">7 days</strong> (Deadline: <strong>${dueDateStr || 'Within 7 calendar days'}</strong>).
         </p>
         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1; border-top: 1px dashed #334155; padding-top: 12px;">
-          <tr><td style="padding: 5px 0; color: #94a3b8; width: 140px;">Bank Name:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'First National Bank (FNB)'}</td></tr>
+          <tr><td style="padding: 5px 0; color: #94a3b8; width: 140px;">Bank Name:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'Not connected yet'}</td></tr>
           <tr><td style="padding: 5px 0; color: #94a3b8;">Account Name:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.account_holder || schoolName}</td></tr>
           <tr><td style="padding: 5px 0; color: #94a3b8;">Account Number:</td><td style="color: #38bdf8; font-weight: 800; font-family: monospace;">${bankDetails.account_number || 'Not connected yet'}</td></tr>
           <tr><td style="padding: 5px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-weight: 600;">${bankDetails.branch_code || 'Not connected yet'}</td></tr>

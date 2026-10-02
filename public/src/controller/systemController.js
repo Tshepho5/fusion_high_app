@@ -2,6 +2,7 @@ const db = require('../../../db/db');
 const bcrypt = require('bcryptjs');
 const emailService = require('../services/emailService');
 const { rejectNameDigits } = require('../services/lettersOnly');
+const { resolveSchoolId } = require('../services/schoolScope');
 
 let portalSchemaReady = false;
 
@@ -208,7 +209,6 @@ exports.createTestingUser = async (req, res) => {
       full_name,
       surname,
       role = 'teacher',
-      school_id = 1,
       password,
       phone,
       send_email = true
@@ -221,6 +221,7 @@ exports.createTestingUser = async (req, res) => {
       return res.status(400).json({ error: 'Tester full name is required.' });
     }
     if (rejectNameDigits(res, full_name, surname)) return;
+    const school_id = resolveSchoolId(req);
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanFirstName = full_name.trim();

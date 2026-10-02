@@ -17,7 +17,6 @@ import { SportsExtracurriculars } from '../../components/common/SportsExtracurri
 import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
 import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
 import { ParentMoreHub } from './ParentMoreHub';
-import { LearnerNavigationBar } from '../../components/learner/LearnerNavigationBar';
 import { ModulePageHeader } from '../../components/layout/WorkspaceChrome';
 
 const CHILD_SCOPED_TABS = new Set(['children', 'marks', 'reports', 'attendance', 'timetable', 'finance']);
@@ -83,15 +82,6 @@ export const ParentDashboard: React.FC = () => {
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
-      customBottomDock={
-        <div className="fixed bottom-4 inset-x-0 z-[60] flex justify-center px-2 sm:px-4 pointer-events-none">
-          <LearnerNavigationBar
-            activeTab={activeTab}
-            onSelectTab={handleSelectTab}
-            className="pointer-events-auto w-full max-w-xl xl:max-w-4xl 2xl:max-w-5xl"
-          />
-        </div>
-      }
     >
       {!['overview', 'more', 'messages', 'calendar', 'profile'].includes(activeTab) && (
         <ModulePageHeader

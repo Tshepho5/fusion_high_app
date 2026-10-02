@@ -1,4 +1,5 @@
 const db = require('../../../../db/db');
+const { resolveSchoolId } = require('../../services/schoolScope');
 const emailService = require('../../services/emailService');
 const NotificationService = require('../../services/notificationService');
 
@@ -9,7 +10,7 @@ exports.getAttendanceRoster = async (req, res) => {
     const classId = req.query.class_id || req.query.classId || req.query.class || req.query.grade;
     const date = req.query.date || new Date().toISOString().split('T')[0];
     const subject = (req.query.subject || req.query.subject_name || '').trim();
-    const schoolId = req.user?.school_id || 1;
+    const schoolId = resolveSchoolId(req);
 
     if (!classId && !req.query.grade) {
         return res.status(400).json({ error: 'Class or grade parameter is required.' });

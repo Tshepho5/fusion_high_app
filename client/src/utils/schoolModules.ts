@@ -109,6 +109,43 @@ export function readModuleList(value: unknown): string[] | null {
   return null;
 }
 
+const PARENT_ALWAYS = new Set(['overview', 'home', 'children', 'profile', 'settings', 'more']);
+
+const PARENT_FROM_LEARNER: Record<string, string> = {
+  reports: 'reports',
+  performance: 'performance',
+  timetable: 'timetable',
+  finance: 'finance',
+  bursaries: 'bursaries',
+  sports: 'sports',
+  calendar: 'calendar',
+  announcements: 'announcements',
+  messages: 'messages',
+  'inter-school': 'inter-school',
+  assignments: 'assignments',
+  textbooks: 'textbooks',
+  discover: 'discover',
+};
+
+const PARENT_FROM_TEACHER: Record<string, string> = {
+  attendance: 'attendance',
+  ptc: 'ptc',
+  conduct: 'conduct',
+};
+
+export function parentModuleAllowed(
+  moduleId: string,
+  learnerSelected: unknown,
+  teacherSelected: unknown
+): boolean {
+  if (PARENT_ALWAYS.has(moduleId)) return true;
+  const learnerId = PARENT_FROM_LEARNER[moduleId];
+  if (learnerId) return moduleAllowed('learner', learnerId, learnerSelected, teacherSelected);
+  const teacherId = PARENT_FROM_TEACHER[moduleId];
+  if (teacherId) return moduleAllowed('teacher', teacherId, teacherSelected);
+  return false;
+}
+
 export function moduleAllowed(
   role: 'teacher' | 'learner',
   moduleId: string,

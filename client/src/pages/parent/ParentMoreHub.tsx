@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { useSchool } from '../../context/SchoolContext';
+import { parentModuleAllowed } from '../../utils/schoolModules';
 import {
   Users,
   CreditCard,
@@ -40,6 +42,7 @@ interface ModuleItem {
 }
 
 export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) => {
+  const { currentSchool } = useSchool();
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [viewMode, setViewMode] = useState<MoreViewMode>(() => {
@@ -206,7 +209,11 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
   ];
 
   const filteredModules = useMemo(() => {
-    let result = allModules;
+    let result = allModules.filter((item) => parentModuleAllowed(
+      item.id,
+      currentSchool.learner_modules,
+      currentSchool.teacher_modules
+    ));
     if (selectedCategory !== 'all') {
       result = result.filter((m) => m.category === selectedCategory);
     }
@@ -217,7 +224,7 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
       );
     }
     return result;
-  }, [allModules, selectedCategory, searchQuery]);
+  }, [allModules, selectedCategory, searchQuery, currentSchool.learner_modules, currentSchool.teacher_modules]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto w-full pb-20 animate-fade-in">

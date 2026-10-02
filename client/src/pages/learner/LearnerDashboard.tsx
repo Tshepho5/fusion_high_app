@@ -22,7 +22,6 @@ import { LearnerAssignments } from '../../components/learner/LearnerAssignments'
 import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
 import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
 import { FusionArcadeHub } from '../../components/learner/FusionArcadeHub';
-import { LearnerNavigationBar } from '../../components/learner/LearnerNavigationBar';
 import { ModulePageHeader } from '../../components/layout/WorkspaceChrome';
 import { LearnerMoreHub } from './LearnerMoreHub';
 import { LearnerDiscoverHub } from './LearnerDiscoverHub';
@@ -168,15 +167,6 @@ export const LearnerDashboard: React.FC = () => {
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
-      customBottomDock={
-        <div className="fixed bottom-4 inset-x-0 z-[60] flex justify-center px-2 sm:px-4 pointer-events-none">
-          <LearnerNavigationBar
-            activeTab={activeTab}
-            onSelectTab={handleSelectTab}
-            className="pointer-events-auto w-full max-w-xl xl:max-w-4xl 2xl:max-w-5xl"
-          />
-        </div>
-      }
     >
       {isSubModule && (
         <ModulePageHeader

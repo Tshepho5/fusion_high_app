@@ -22,7 +22,6 @@ import { TextbookAssetTracker } from '../../components/common/TextbookAssetTrack
 import { EducatorLeaveReliefManager } from '../../components/admin/EducatorLeaveReliefManager';
 import { TeacherAssignments } from '../../components/teacher/TeacherAssignments';
 import { GelezaEarlyWarningRadar } from '../../components/teacher/GelezaEarlyWarningRadar';
-import { TeacherNavigationBar } from '../../components/teacher/TeacherNavigationBar';
 import { ModulePageHeader } from '../../components/layout/WorkspaceChrome';
 import { TeacherMoreHub } from './TeacherMoreHub';
 import { TeacherDiscoverHub } from './TeacherDiscoverHub';
@@ -150,15 +149,6 @@ export const TeacherDashboard: React.FC = () => {
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
-      customBottomDock={
-        <div className="fixed bottom-4 inset-x-0 z-[60] flex justify-center px-2 sm:px-4 pointer-events-none">
-          <TeacherNavigationBar
-            activeTab={activeTab}
-            onSelectTab={handleSelectTab}
-            className="pointer-events-auto w-full max-w-xl xl:max-w-4xl 2xl:max-w-5xl"
-          />
-        </div>
-      }
     >
 
       {isSubModule && (

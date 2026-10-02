@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { resolveSchoolId } = require('../services/schoolScope');
 const aiTutorService = require('../services/aiTutorService');
 const curriculumService = require('../services/curriculumService');
 
@@ -20,16 +21,15 @@ exports.getEnrolledSubjectsWithSyllabus = async (req, res) => {
         let grade = 10;
         let stream = 'Science';
         let customSubjects = null;
-        let schoolId = 1;
+        let schoolId = null;
 
         if (childRes.rows.length > 0) {
             const child = childRes.rows[0];
             grade = child.grade || 10;
             stream = child.stream || 'Science';
             customSubjects = child.subjects;
-            schoolId = child.school_id || 1;
+            schoolId = child.school_id || null;
         } else {
-            // Fallback: check users table
             const userRes = await db.query('SELECT school_id FROM users WHERE id = $1', [learnerUserId]);
             if (userRes.rows.length > 0 && userRes.rows[0].school_id) {
                 schoolId = userRes.rows[0].school_id;
@@ -56,11 +56,13 @@ exports.getEnrolledSubjectsWithSyllabus = async (req, res) => {
         });
 
         // Fetch school name
-        let schoolName = 'Fusion High School';
-        try {
-            const sRes = await db.query('SELECT name FROM schools WHERE id = $1', [schoolId]);
-            if (sRes.rows.length > 0) schoolName = sRes.rows[0].name;
-        } catch (_) {}
+        let schoolName = 'Geleza SA';
+        if (schoolId) {
+            try {
+                const sRes = await db.query('SELECT name FROM schools WHERE id = $1', [schoolId]);
+                if (sRes.rows.length > 0) schoolName = sRes.rows[0].name;
+            } catch (_) {}
+        }
 
         res.json({
             grade,

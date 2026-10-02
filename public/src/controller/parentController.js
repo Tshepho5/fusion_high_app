@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { resolveSchoolId } = require('../services/schoolScope');
 const bcrypt = require('bcryptjs');
 const emailService = require('../services/emailService');
 const NotificationService = require('../services/notificationService');
@@ -432,12 +433,18 @@ exports.linkSibling = async (req, res) => {
     const gradeInt = parseInt(grade, 10) || 8;
     const streamVal = gradeInt >= 10 ? (stream || 'Science') : 'General';
     const homeLangVal = home_language.trim();
-    const targetSchoolId = parseInt(school_id || req.user.school_id || 1, 10);
+    const targetSchoolId = resolveSchoolId(req);
+    if (!targetSchoolId) {
+        return res.status(400).json({ error: 'This account is not attached to a school, so a sibling cannot be added here.' });
+    }
 
     try {
         // 0. Language Compatibility Check for Target School
         const schoolRes = await db.query('SELECT * FROM schools WHERE id = $1', [targetSchoolId]);
-        const school = schoolRes.rows[0] || { name: 'Fusion High School' };
+        if (schoolRes.rows.length === 0) {
+            return res.status(404).json({ error: 'That school was not found.' });
+        }
+        const school = schoolRes.rows[0];
 
         let offeredLangs = [];
         if (Array.isArray(school.offered_languages)) {
@@ -466,7 +473,6 @@ exports.linkSibling = async (req, res) => {
 
         const method = paymentHold.normaliseMethod(payment_method);
         const siblingHold = paymentHold.describe(method, school, 1500, '');
-        if (true) {
             if (cleanIdNum.length !== 13) {
                 return res.status(400).json({ error: 'A 13-digit South African ID is required before an EFT sibling application can be held.' });
             }
@@ -558,190 +564,6 @@ exports.linkSibling = async (req, res) => {
                 application_number: applicationNumber,
                 message: siblingHold.message
             });
-        }
-
-        // 1. Generate official sequential Learner Number
-        const lrnNumber = await generateOfficialLearnerNumber();
-
-        // 2. Generate password drawn from learner ID number (1st digit, skip 2, take next: indices 0,3,6,9,12)
-        const generatedPassword = generateLearnerPasswordFromID(cleanIdNum);
-        const learnerEmail = `${lrnNumber.toLowerCase().replace(/[\s-]/g, '')}@fusion.high`;
-        const childPwHash = await bcrypt.hash(generatedPassword, 10);
-
-        // 3. Allocate CAPS curriculum subjects
-        const officialSubjects = curriculumService.getSubjectsForGradeAndStream(gradeInt, streamVal, homeLangVal);
-
-        // 4. Class allocation — a class with space, not the first class in the grade
-        const applicationService = require('../services/applicationService');
-        const allocatedClass = await applicationService.allocateAvailableClass(gradeInt, streamVal);
-        if (!allocatedClass) {
-            return res.status(409).json({ error: `Grade ${gradeInt} has no class with space. The sibling was not enrolled.` });
-        }
-        const assignedClassId = allocatedClass.id;
-        const assignedClassName = allocatedClass.name;
-
-        // 5. Learner role ID
-        const roleRes = await db.query("SELECT id FROM roles WHERE LOWER(name) = 'learner'");
-        const learnerRoleId = roleRes.rows[0]?.id || 3;
-
-        // 6. Application fee and payment details
-        // Unpaid EFT already returned above. This path has received the fee.
-        const appFeeAmount = 250.00;
-        const regFeeAmount = 1500.00;
-        const receiptNo = `REC-SIB-${Date.now().toString().slice(-6)}`;
-        const payRef = req.body.payment_reference || `PAY-SIB-${Date.now().toString().slice(-8)}`;
-
-        const bankingInfo = {
-            bank_name: school.bank_name || 'First National Bank (FNB)',
-            account_holder: school.account_holder || school.name,
-            account_number: school.account_number || '62849102841',
-            branch_code: school.branch_code || '250655',
-            account_type: school.account_type || 'Cheque / Current',
-            reference: lrnNumber
-        };
-
-        // 7. Database transaction
-        const result = await withTransaction(async (client) => {
-            // Check if learner user account already exists with this email or ID
-            let learnerUserId;
-            const existingChildUser = await client.query(
-                'SELECT id FROM users WHERE LOWER(email) = LOWER($1) OR (id_number = $2 AND $2 != \'\')',
-                [learnerEmail, cleanIdNum]
-            );
-
-            if (existingChildUser.rows.length === 0) {
-                const newUserRes = await client.query(
-                    `INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, school_id)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-                    [learnerEmail, childPwHash, learnerRoleId, cleanFirstName, cleanSurname, cleanIdNum || null, dob || null, gender, targetSchoolId]
-                );
-                learnerUserId = newUserRes.rows[0].id;
-            } else {
-                learnerUserId = existingChildUser.rows[0].id;
-                await client.query('UPDATE users SET password_hash = $1 WHERE id = $2', [childPwHash, learnerUserId]);
-            }
-
-            // Check if child record already exists for this learner user
-            let newChild;
-            const existingChildRec = await client.query(
-                `SELECT * FROM children WHERE learner_user_id = $1 OR (learner_number = $2 AND $2 != '')`,
-                [learnerUserId, lrnNumber]
-            );
-
-            if (existingChildRec.rows.length > 0) {
-                newChild = existingChildRec.rows[0];
-                await client.query(
-                    `UPDATE children SET parent_id = COALESCE(parent_id, $1), grade = $2, stream = $3, subjects = $4, class_id = $5 WHERE id = $6`,
-                    [parentId, gradeInt, streamVal, officialSubjects, assignedClassId, newChild.id]
-                );
-            } else {
-                const childRes = await client.query(
-                    `INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, stream, subjects, class_id, home_language, school_id)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-                     RETURNING *`,
-                    [learnerUserId, cleanFirstName, cleanSurname, parentId, lrnNumber, gradeInt, streamVal, officialSubjects, assignedClassId, homeLangVal, targetSchoolId]
-                );
-                newChild = childRes.rows[0];
-            }
-
-            // Insert into parent_children junction table
-            await client.query(
-                `INSERT INTO parent_children (parent_id, child_id, relationship, is_primary)
-                 VALUES ($1, $2, 'Parent', true)
-                 ON CONFLICT (parent_id, child_id) DO NOTHING`,
-                [parentId, newChild.id]
-            );
-
-            // Fetch parent email & name
-            const parentRes = await client.query('SELECT email, full_name, surname FROM users WHERE id = $1', [parentId]);
-            const parent = parentRes.rows[0];
-
-            return {
-                child: newChild,
-                parent,
-                credentials: {
-                    learner_name: `${cleanFirstName} ${cleanSurname}`,
-                    learner_number: newChild.learner_number || lrnNumber,
-                    learner_email: `${(newChild.learner_number || lrnNumber).toLowerCase().replace(/[\s-]/g, '')}@fusion.high`,
-                    generated_password: generatedPassword,
-                    grade: gradeInt,
-                    stream: streamVal,
-                    subjects: officialSubjects,
-                    class_name: assignedClassName
-                }
-            };
-        });
-
-        const parentFullName = `${result.parent.full_name || ''} ${result.parent.surname || ''}`.trim() || 'Parent / Guardian';
-        const parentEmail = result.parent.email;
-
-        // 8. Record fee payment in application_payments if paid immediately
-        if (isPaidImmediately) {
-            try {
-                await db.query(`
-                    INSERT INTO application_payments (
-                        application_id, fee_type, amount, payment_method, payment_reference, receipt_number, payer_name, payer_email, status, created_at
-                    ) VALUES (NULL, 'application_fee', $1, $2, $3, $4, $5, $6, 'completed', NOW())
-                `, [appFeeAmount, payment_method, payRef, receiptNo, parentFullName, parentEmail]);
-            } catch (payErr) {
-                console.warn('Could not record sibling application fee payment:', payErr.message);
-            }
-        }
-
-        // 9. Dispatch Comprehensive Notification Emails to Parent
-        if (parentEmail) {
-            try {
-                // (a) Payment Receipt or EFT Banking Details Email
-                if (isPaidImmediately) {
-                    await emailService.sendApplicationFeePaymentReceived({
-                        parentEmail,
-                        parentName: parentFullName,
-                        learnerName: `${cleanFirstName} ${cleanSurname}`,
-                        schoolName: school.name,
-                        applicationNumber: lrnNumber,
-                        amountPaid: appFeeAmount,
-                        receiptNumber: receiptNo
-                    });
-                    await emailService.sendRegistrationSuccessWithAllocation({
-                        parentEmail,
-                        parentName: parentFullName,
-                        learnerName: `${cleanFirstName} ${cleanSurname}`,
-                        schoolName: school.name,
-                        learnerNumber: lrnNumber,
-                        grade: gradeInt,
-                        stream: streamVal,
-                        assignedClass: assignedClassName,
-                        subjects: officialSubjects,
-                        parentEmail,
-                        parentPassword: null,
-                        learnerEmail,
-                        learnerPassword: generatedPassword,
-                        portalUrl: `${req.protocol}://${req.get('host')}/login`
-                    });
-                }
-
-                console.log(`[LINK SIBLING EMAIL] Sent confirmation & credentials to ${parentEmail} for ${cleanFirstName}`);
-            } catch (e) {
-                console.warn('[SIBLING EMAIL ERROR]:', e.message);
-            }
-        }
-
-        // 10. In-app notification
-        NotificationService.sendToUsers({
-            userIds: [parentId],
-            title: `Sibling Enrolled: ${cleanFirstName} ${cleanSurname}`,
-            message: `${cleanFirstName} ${cleanSurname} has been enrolled into Grade ${gradeInt} (${assignedClassName}) with ${officialSubjects.length} CAPS subjects.`,
-            type: 'admission',
-            targetTab: 'children'
-        }).catch(e => console.warn('[SIBLING NOTIFY]:', e.message));
-
-        res.status(201).json({
-            success: true,
-            message: `Sibling ${cleanFirstName} ${cleanSurname} successfully enrolled in Grade ${gradeInt} and linked to your family profile!`,
-            child: result.child,
-            credentials: result.credentials
-        });
-
     } catch (err) {
         console.error('Error linking sibling:', err);
         res.status(500).json({ error: 'Failed to link sibling: ' + err.message });

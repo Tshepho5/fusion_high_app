@@ -1,4 +1,5 @@
 const db = require('../../../../db/db');
+const { resolveSchoolId } = require('../../services/schoolScope');
 const NotificationService = require('../../services/notificationService');
 const academicMlService = require('../../services/academicMlService');
 
@@ -10,7 +11,7 @@ const academicMlService = require('../../services/academicMlService');
 exports.getMyLearners = async (req, res) => {
     try {
         const teacherId = req.user ? req.user.id : null;
-        const schoolId = req.user?.school_id || 1;
+        const schoolId = resolveSchoolId(req);
         const requestedSubject = (req.query.subject || req.query.subject_name || '').trim();
 
         // 1. Fetch teacher's teaching workload assignments
@@ -147,7 +148,7 @@ exports.getClassList = async (req, res) => {
     const classParam = (req.query.class || req.query.class_id || req.query.className || '').toString().trim();
     const gradeParam = req.query.grade || (classParam ? classParam.replace(/[^0-9]/g, '') : null);
     const subjectParam = (req.query.subject || '').toString().trim();
-    const schoolId = req.user?.school_id || 1;
+    const schoolId = resolveSchoolId(req);
     const termParam = (req.query.term || '').trim();
     const assessmentParam = (req.query.assessment_name || req.query.assessmentTitle || '').trim();
 

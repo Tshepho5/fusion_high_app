@@ -112,7 +112,7 @@ export const GelezaEarlyWarningRadar: React.FC<GelezaEarlyWarningRadarProps> = (
   const fetchRadarData = async () => {
     try {
       setLoading(true);
-      const schoolId = localStorage.getItem('active_school_id') || '1';
+      const schoolId = localStorage.getItem('active_school_id') || 'current';
       const gradeQuery = selectedGrade !== 'all' ? `?grade=${selectedGrade}` : '';
       const res = await api.get(`/api/ai-advisor/geleza/school/${schoolId}/early-warning${gradeQuery}`);
 
@@ -156,12 +156,12 @@ export const GelezaEarlyWarningRadar: React.FC<GelezaEarlyWarningRadarProps> = (
   const handleEvaluateCohort = async () => {
     try {
       setEvaluating(true);
-      const schoolId = localStorage.getItem('active_school_id') || '1';
+      const schoolId = localStorage.getItem('active_school_id');
       const payload: any = {
-        school_id: parseInt(schoolId, 10),
         academic_year: 2026,
         term: 1
       };
+      if (schoolId) payload.school_id = parseInt(schoolId, 10);
       if (selectedGrade !== 'all') {
         payload.grade = parseInt(selectedGrade, 10);
       }

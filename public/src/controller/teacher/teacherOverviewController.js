@@ -1,4 +1,5 @@
 const db = require('../../../../db/db');
+const { resolveSchoolId } = require('../../services/schoolScope');
 
 /**
  * Safely parse a timetable slot name / time range into a clean period number (1 to 12).
@@ -129,7 +130,7 @@ exports.getOverviewStats = async (req, res) => {
         const teacherName = `${emp.full_name || req.user.full_name || ''} ${emp.surname || req.user.surname || ''}`.trim();
         const subjectsList = emp.subjects || [];
         const gradesList = emp.grades_taught || [];
-        const schoolId = req.user?.school_id || 1;
+        const schoolId = resolveSchoolId(req);
 
         const [learnersRes, announcementsRes, assignmentsRes] = await Promise.all([
             db.query(
@@ -170,7 +171,7 @@ exports.getTeacherOverviewStats = exports.getOverviewStats;
 exports.getMySubjectsOverview = async (req, res) => {
     try {
         const teacherId = req.user.id;
-        const schoolId = req.user?.school_id || 1;
+        const schoolId = resolveSchoolId(req);
         const teacherEmail = (req.user?.email || '').toLowerCase().trim();
 
         const [taRes, empRes, userRes, ttTeacherRes, classTeacherRes] = await Promise.all([

@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { resolveSchoolId } = require('../services/schoolScope');
 const emailService = require('../services/emailService');
 
 // Ensure timetables table is initialized with grade, stream, status, and school_id columns
@@ -40,7 +41,7 @@ const getSchoolIdFromReq = (req) => {
     if (req.user && !req.user.is_superadmin && req.user.school_id) {
         return parseInt(req.user.school_id, 10);
     }
-    const raw = req.body?.school_id || req.query?.school_id || req.headers?.['x-school-id'] || req.user?.school_id || 1;
+    const raw = resolveSchoolId(req);
     const parsed = parseInt(raw, 10);
     return isNaN(parsed) ? 1 : parsed;
 };
@@ -837,7 +838,7 @@ exports.publishToTeachers = async (req, res) => {
  */
 exports.getTeacherTimetables = async (req, res) => {
     const teacherId = req.user.id;
-    const schoolId = req.user.school_id || 1;
+    const schoolId = resolveSchoolId(req);
     try {
         const [empRes, userRes] = await Promise.all([
             db.query('SELECT grades_taught, subjects FROM employees WHERE user_id = $1', [teacherId]),
@@ -923,7 +924,7 @@ exports.getTeacherTimetables = async (req, res) => {
 exports.teacherPublishToLearners = async (req, res) => {
     const { timetable_id, timetable_data } = req.body;
     const teacherId = req.user.id;
-    const schoolId = req.user.school_id || 1;
+    const schoolId = resolveSchoolId(req);
 
     try {
         let tt;
@@ -1050,7 +1051,7 @@ exports.getLearnerTimetable = async (req, res) => {
     try {
         const learnerUser = req.user.id;
         const childRes = await db.query('SELECT grade, stream, school_id FROM children WHERE learner_user_id = $1', [learnerUser]);
-        const schoolId = childRes.rows[0]?.school_id || req.user.school_id || 1;
+        const schoolId = childRes.rows[0]?.school_id || resolveSchoolId(req);
         const grade = childRes.rows[0]?.grade || 10;
 
         const { rows } = await db.query(
@@ -1074,7 +1075,7 @@ exports.getChildTimetable = async (req, res) => {
     const childId = req.query.child_id || req.query.childId;
     try {
         let grade = 10;
-        let schoolId = req.user.school_id || 1;
+        let schoolId = resolveSchoolId(req);
         if (childId) {
             const childRes = await db.query('SELECT grade, school_id FROM children WHERE id = $1', [childId]);
             if (childRes.rows[0]) {

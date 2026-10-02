@@ -653,6 +653,9 @@ export const schoolRegistrationService = {
     api.post(`/api/schools/applications/${id}/decision`, { decision, reason, executive_notes }).then(res => res.data),
   updateModules: (schoolId: number, teacher_modules: string[], learner_modules: string[]) =>
     api.put(`/api/schools/${schoolId}/modules`, { teacher_modules, learner_modules }).then(res => res.data),
+  getBank: (schoolId: number) => api.get(`/api/schools/${schoolId}/banking`).then(res => res.data),
+  updateBank: (schoolId: number, data: { bank_name: string; account_holder: string; account_number: string; branch_code: string; account_type?: string }) =>
+    api.put(`/api/schools/${schoolId}/banking`, data).then(res => res.data),
 };
 
 // Dynamic Class & Staff Invitation API

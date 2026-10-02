@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { resolveSchoolId } = require('../services/schoolScope');
 const emailService = require('../services/emailService');
 const applicationService = require('../services/applicationService');
 const { rejectNameDigits } = require('../services/lettersOnly');
@@ -8,14 +9,7 @@ const { rejectNameDigits } = require('../services/lettersOnly');
  * Dedicated school admins can only view their own school.
  * Master Admin (superadmin) can query and switch between all schools.
  */
-const getTargetSchoolId = (req) => {
-    if (req.user && !req.user.is_superadmin && req.user.school_id) {
-        return parseInt(req.user.school_id, 10);
-    }
-    const raw = req.query.school_id || req.headers['x-school-id'] || req.user?.school_id || 1;
-    const parsed = parseInt(raw, 10);
-    return isNaN(parsed) ? 1 : parsed;
-};
+const getTargetSchoolId = (req) => resolveSchoolId(req);
 
 /**
  * Fetches statistics for the admin dashboard filtered strictly by the active school.
@@ -2152,7 +2146,7 @@ exports.updateUserProfile = async (req, res) => {
                 // Dispatch email and in-app notifications if subjects were added
                 if (addedSubjects.length > 0) {
                     try {
-                        const schoolRes = await db.query('SELECT name FROM schools WHERE id = $1', [existingUser.school_id || 1]);
+                        const schoolRes = await db.query('SELECT name FROM schools WHERE id = $1', [existingUser.school_id]);
                         const schoolName = schoolRes.rows[0]?.name || 'Fusion High School';
 
                         await emailService.sendTeacherSubjectAssignment({

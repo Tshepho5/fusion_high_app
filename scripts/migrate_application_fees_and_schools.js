@@ -9,10 +9,10 @@ async function migrate() {
     ALTER TABLE schools ADD COLUMN IF NOT EXISTS offered_languages TEXT[] DEFAULT '{"English", "Sepedi", "isiZulu"}';
     ALTER TABLE schools ADD COLUMN IF NOT EXISTS offered_subjects TEXT[] DEFAULT '{}';
     ALTER TABLE schools ADD COLUMN IF NOT EXISTS offered_streams TEXT[] DEFAULT '{"General", "Science", "Commerce"}';
-    ALTER TABLE schools ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100) DEFAULT 'First National Bank (FNB)';
+    ALTER TABLE schools ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100);
     ALTER TABLE schools ADD COLUMN IF NOT EXISTS account_holder VARCHAR(255);
-    ALTER TABLE schools ADD COLUMN IF NOT EXISTS account_number VARCHAR(50) DEFAULT '62849102841';
-    ALTER TABLE schools ADD COLUMN IF NOT EXISTS branch_code VARCHAR(20) DEFAULT '250655';
+    ALTER TABLE schools ADD COLUMN IF NOT EXISTS account_number VARCHAR(50);
+    ALTER TABLE schools ADD COLUMN IF NOT EXISTS branch_code VARCHAR(20);
     ALTER TABLE schools ADD COLUMN IF NOT EXISTS account_type VARCHAR(50) DEFAULT 'Cheque / Current';
     ALTER TABLE schools ADD COLUMN IF NOT EXISTS application_fee NUMERIC(10,2) DEFAULT 250.00;
     ALTER TABLE schools ADD COLUMN IF NOT EXISTS registration_fee NUMERIC(10,2) DEFAULT 1500.00;
@@ -21,35 +21,31 @@ async function migrate() {
 
   // 2. Set diverse official language offerings and banking details for all 13 schools
   const schoolUpdates = [
-    { id: 1, languages: ['English', 'Sepedi', 'isiZulu', 'Afrikaans'], bank: 'First National Bank (FNB)', acc: '62849102841', branch: '250655', holder: 'Geleza SA Central Fund' },
-    { id: 2, languages: ['Sepedi', 'English', 'Setswana'], bank: 'Standard Bank', acc: '02849102948', branch: '051001', holder: 'Mountainview Senior Secondary' },
-    { id: 3, languages: ['Sepedi', 'English', 'Sesotho'], bank: 'Nedbank', acc: '1192840192', branch: '198765', holder: 'Makgoka High School Trust' },
-    { id: 4, languages: ['Sepedi', 'English', 'isiNdebele'], bank: 'ABSA Bank', acc: '4089201948', branch: '632005', holder: 'Turfloop High Admissions' },
-    { id: 5, languages: ['Sepedi', 'English', 'siSwati'], bank: 'Capitec Bank', acc: '1829401928', branch: '470010', holder: 'Hwiti Secondary School' },
-    { id: 6, languages: ['Sepedi', 'English'], bank: 'First National Bank (FNB)', acc: '62991029481', branch: '250655', holder: 'Ngwana Mohube Secondary' },
-    { id: 7, languages: ['English', 'Afrikaans', 'isiZulu', 'Sepedi'], bank: 'First National Bank (FNB)', acc: '62740192841', branch: '250655', holder: 'Fusion Secondary School Lotus' },
-    { id: 8, languages: ['isiZulu', 'English', 'isiXhosa'], bank: 'Standard Bank', acc: '03849102911', branch: '051001', holder: 'Saulridge Secondary School' },
-    { id: 9, languages: ['isiXhosa', 'English', 'isiZulu', 'Sesotho'], bank: 'Nedbank', acc: '1184910293', branch: '198765', holder: 'Phelindaba Secondary School' },
-    { id: 10, languages: ['Xitsonga', 'Tshivenda', 'English', 'Sepedi'], bank: 'ABSA Bank', acc: '4078910291', branch: '632005', holder: 'Flavius Mareka Secondary' },
-    { id: 11, languages: ['Tshivenda', 'Xitsonga', 'English', 'isiZulu'], bank: 'Capitec Bank', acc: '1784910294', branch: '470010', holder: 'Dr. W.F. Nkomo Secondary' },
-    { id: 12, languages: ['isiNdebele', 'siSwati', 'English', 'Sepedi'], bank: 'Standard Bank', acc: '04849102933', branch: '051001', holder: 'Hofmeyr Secondary School' },
-    { id: 13, languages: ['Sepedi', 'English', 'Setswana'], bank: 'First National Bank (FNB)', acc: '62984019284', branch: '250655', holder: 'Bochum High School' }
+    { id: 1, languages: ['English', 'Sepedi', 'isiZulu', 'Afrikaans'] },
+    { id: 2, languages: ['Sepedi', 'English', 'Setswana'] },
+    { id: 3, languages: ['Sepedi', 'English', 'Sesotho'] },
+    { id: 4, languages: ['Sepedi', 'English', 'isiNdebele'] },
+    { id: 5, languages: ['Sepedi', 'English', 'siSwati'] },
+    { id: 6, languages: ['Sepedi', 'English'] },
+    { id: 7, languages: ['English', 'Afrikaans', 'isiZulu', 'Sepedi'] },
+    { id: 8, languages: ['isiZulu', 'English', 'isiXhosa'] },
+    { id: 9, languages: ['isiXhosa', 'English', 'isiZulu', 'Sesotho'] },
+    { id: 10, languages: ['Xitsonga', 'Tshivenda', 'English', 'Sepedi'] },
+    { id: 11, languages: ['Tshivenda', 'Xitsonga', 'English', 'isiZulu'] },
+    { id: 12, languages: ['isiNdebele', 'siSwati', 'English', 'Sepedi'] },
+    { id: 13, languages: ['Sepedi', 'English', 'Setswana'] }
   ];
 
   for (const s of schoolUpdates) {
     await db.query(`
       UPDATE schools SET
         offered_languages = $1,
-        bank_name = $2,
-        account_number = $3,
-        branch_code = $4,
-        account_holder = $5,
         application_fee = 250.00,
         registration_fee = 1500.00
-      WHERE id = $6
-    `, [s.languages, s.bank, s.acc, s.branch, s.holder, s.id]);
+      WHERE id = $2
+    `, [s.languages, s.id]);
   }
-  console.log('✓ All 13 schools updated with calibrated language offerings and banking details.');
+  console.log('✓ All 13 schools updated with their language offerings.');
 
   // 3. Upgrade applications table
   await db.query(`

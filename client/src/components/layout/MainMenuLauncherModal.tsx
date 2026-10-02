@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSchool } from '../../context/SchoolContext';
-import { moduleAllowed } from '../../utils/schoolModules';
+import { moduleAllowed, parentModuleAllowed } from '../../utils/schoolModules';
 import { FusionAIIcon } from '../common/FusionAIIcon';
 import {
   LayoutDashboard,
@@ -148,6 +148,9 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
 
   const modules = useMemo(() => {
     const list = getRoleModules();
+    if (role === 'parent') {
+      return list.filter((module) => parentModuleAllowed(module.id, currentSchool.learner_modules, currentSchool.teacher_modules));
+    }
     if (role !== 'teacher' && role !== 'learner') return list;
     const selected = role === 'teacher' ? currentSchool.teacher_modules : currentSchool.learner_modules;
     const partner = role === 'learner' ? currentSchool.teacher_modules : undefined;

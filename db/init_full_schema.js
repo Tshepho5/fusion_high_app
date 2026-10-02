@@ -1256,34 +1256,11 @@ async function initializeAllDatabaseTables(customClient) {
           END IF;
         END $$;
 
-        -- Ensure initial records have school_id = 1
-        DO $$
-        BEGIN
-          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'departments') THEN
-            UPDATE departments SET school_id = 1 WHERE school_id IS NULL;
-          END IF;
-          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'classes') THEN
-            UPDATE classes SET school_id = 1 WHERE school_id IS NULL;
-          END IF;
-          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'subjects') THEN
-            UPDATE subjects SET school_id = 1 WHERE school_id IS NULL;
-          END IF;
-          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
-            UPDATE users SET school_id = 1 WHERE school_id IS NULL;
-          END IF;
-          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'children') THEN
-            UPDATE children SET school_id = 1 WHERE school_id IS NULL;
-          END IF;
-          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'employees') THEN
-            UPDATE employees SET school_id = 1 WHERE school_id IS NULL;
-          END IF;
-        END $$;
-
         -- Ensure parent_portal_applications table and all columns exist
         CREATE TABLE IF NOT EXISTS parent_portal_applications (
           id SERIAL PRIMARY KEY,
           application_number VARCHAR(50) UNIQUE NOT NULL,
-          school_id VARCHAR(100) DEFAULT '1',
+          school_id VARCHAR(100),
           parent_name VARCHAR(255) NOT NULL,
           parent_surname VARCHAR(255) NOT NULL,
           parent_id_number VARCHAR(20) NOT NULL,

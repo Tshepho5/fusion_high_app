@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { resolveSchoolId } = require('../services/schoolScope');
 const NotificationService = require('../services/notificationService');
 
 /**
@@ -365,7 +366,7 @@ exports.addEventToCalendar = async (req, res) => {
     }
 
     const event = evRes.rows[0];
-    const userSchoolId = req.user.school_id || 1;
+    const userSchoolId = resolveSchoolId(req);
 
     // If already on calendar, return existing record
     if (event.added_to_calendar && event.calendar_event_id) {
