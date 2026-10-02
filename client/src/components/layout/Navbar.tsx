@@ -31,7 +31,20 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
   const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState<number>(0);
+  const [deviceOnline, setDeviceOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const mark = (online: boolean) => setDeviceOnline(online);
+    const onOnline = () => mark(true);
+    const onOffline = () => mark(false);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
 
   // Sync unread messages from Message Hub
   useEffect(() => {
@@ -144,8 +157,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
               <span className="text-xs font-bold text-slate-900 dark:text-white leading-none truncate max-w-[130px]">
                 {user?.full_name || 'My Profile'}
               </span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium capitalize mt-0.5">
-                {role === 'learner' ? `Grade ${user?.grade || user?.academic?.grade || '12'}` : (role || 'User')}
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium capitalize mt-0.5 flex items-center gap-1.5">
+                <span>{role === 'learner' ? `Grade ${user?.grade || user?.academic?.grade || '12'}` : (role || 'User')}</span>
+                <span className={`w-1.5 h-1.5 rounded-full ${deviceOnline ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                <span className={deviceOnline ? 'text-emerald-600 dark:text-emerald-400 normal-case' : 'normal-case'}>
+                  {deviceOnline ? 'Online' : 'Offline'}
+                </span>
               </span>
             </div>
             <ChevronDown className={`w-3.5 h-3.5 text-slate-400 hidden sm:block ml-0.5 transition-transform duration-200 ${showProfileMenu ? 'rotate-180 text-cyan-500' : ''}`} />

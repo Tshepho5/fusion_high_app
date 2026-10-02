@@ -231,6 +231,45 @@ class NotificationService {
         });
       }
 
+      const alertType = String(type || '').toLowerCase();
+      if (alertType === 'chat' || alertType === 'message' || alertType === 'email' || alertType === 'mail') {
+        setImmediate(async () => {
+          try {
+            const userRes = await db.query(
+              `SELECT u.email, u.full_name, u.surname, COALESCE(pu.email, pc_u.email) AS parent_email
+               FROM users u
+               LEFT JOIN children c ON c.learner_user_id = u.id
+               LEFT JOIN users pu ON c.parent_id = pu.id
+               LEFT JOIN parent_children pc ON pc.child_id = c.id
+               LEFT JOIN users pc_u ON pc.parent_id = pc_u.id
+               WHERE u.id = ANY($1::int[])`,
+              [uniqueIds]
+            );
+            const sent = new Set();
+            const safe = String(message || '').replace(/[&<>]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+            for (const person of userRes.rows) {
+              let targetEmail = String(person.email || '').trim();
+              if (targetEmail.endsWith('@fusion.high') || targetEmail.endsWith('@fusionhigh.co.za')) {
+                const parentEmail = String(person.parent_email || '').trim();
+                if (!parentEmail.includes('@') || parentEmail.endsWith('@fusion.high') || parentEmail.endsWith('@fusionhigh.co.za')) continue;
+                targetEmail = parentEmail;
+              }
+              const key = targetEmail.toLowerCase();
+              if (!targetEmail.includes('@') || sent.has(key)) continue;
+              sent.add(key);
+              const name = `${person.full_name || ''} ${person.surname || ''}`.trim() || 'Geleza SA';
+              emailService.sendAsync(
+                targetEmail,
+                title || 'New Geleza SA message',
+                `<p>Hello ${name},</p><p>${safe}</p><p>Open Geleza SA to reply. This notice uses the same alert as your phone or laptop.</p>`
+              );
+            }
+          } catch (mailErr) {
+            console.warn('[CHAT EMAIL] Dispatch warning:', mailErr.message);
+          }
+        });
+      }
+
       setImmediate(() => {
         WebPushService.notifyUsers({
           userIds: uniqueIds,

@@ -135,11 +135,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Initialize timer
     resetTimer();
 
-    // Send heartbeat periodically to maintain online status while user is active in the app
-    userService.heartbeat().catch(() => {});
-    const heartbeatInterval = setInterval(() => {
+    // Keep this phone or laptop showing as online, and catch up the moment it reconnects.
+    const markOnline = () => {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
       userService.heartbeat().catch(() => {});
-    }, 25000);
+      import('../services/soundNotificationService')
+        .then(({ soundNotificationService }) => soundNotificationService.checkNow())
+        .catch(() => {});
+    };
+    markOnline();
+    const heartbeatInterval = setInterval(markOnline, 15000);
+    window.addEventListener('online', markOnline);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') markOnline();
+    };
+    document.addEventListener('visibilitychange', onVisible);
 
     // Activity events to detect user interaction
     const activityEvents = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
@@ -157,6 +167,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => {
       clearTimeout(timeoutId);
       clearInterval(heartbeatInterval);
+      window.removeEventListener('online', markOnline);
+      document.removeEventListener('visibilitychange', onVisible);
       activityEvents.forEach((event) => {
         window.removeEventListener(event, resetTimer);
       });

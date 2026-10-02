@@ -25,7 +25,6 @@ import { FusionArcadeHub } from '../../components/learner/FusionArcadeHub';
 import { ModulePageHeader } from '../../components/layout/WorkspaceChrome';
 import { LearnerMoreHub } from './LearnerMoreHub';
 import { LearnerDiscoverHub } from './LearnerDiscoverHub';
-import { LearnerCalendarHub } from './LearnerCalendarHub';
 import { useSchool } from '../../context/SchoolContext';
 import { moduleAllowed } from '../../utils/schoolModules';
 
@@ -36,6 +35,7 @@ export const LearnerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>(() =>
     moduleAllowed('learner', initialTab, currentSchool.learner_modules, currentSchool.teacher_modules) ? initialTab : 'overview'
   );
+  const [tabHistory, setTabHistory] = useState<string[]>([]);
 
   useEffect(() => {
     refreshSchools();
@@ -68,6 +68,9 @@ export const LearnerDashboard: React.FC = () => {
       setSearchParams({ tab: 'overview' });
       return;
     }
+    if (tabId !== activeTab) {
+      setTabHistory((prev) => [...prev, activeTab].slice(-24));
+    }
     setActiveTab(tabId);
     if (subjectName) {
       setSearchParams({ tab: tabId, subject: subjectName });
@@ -87,7 +90,7 @@ export const LearnerDashboard: React.FC = () => {
       case 'overview':
         return 'Home & Enrolled Subjects';
       case 'subjects':
-        return 'My Subjects Workspace';
+        return 'My Subjects';
       case 'performance':
         return 'Subject Academic Performance';
       case 'ai-tutor':
@@ -113,8 +116,9 @@ export const LearnerDashboard: React.FC = () => {
       case 'reports':
         return 'Official CAPS Term Report Card';
       case 'calendar':
+        return 'School Calendar';
       case 'timetable':
-        return 'Class Timetable & School Calendar';
+        return 'Weekly Class Timetable';
       case 'discover':
         return 'Discover Learning Innovation';
       case 'more':
@@ -132,48 +136,80 @@ export const LearnerDashboard: React.FC = () => {
     }
   };
 
-  const isSubModule =
-    activeTab !== 'overview' &&
-    activeTab !== 'home' &&
-    activeTab !== 'calendar' &&
-    activeTab !== 'profile' &&
-    activeTab !== 'messages' &&
-    activeTab !== 'more';
-
-  // Determine intelligent backtrack target
-  const getBacktrackConfig = () => {
-    if (activeTab === 'subjects') {
-      return { target: 'overview', label: 'Back to Subjects', parentLabel: 'Home' };
-    }
-    if (activeTab === 'discover') {
-      return { target: 'more', label: 'Back to More Modules', parentLabel: 'More Modules' };
-    }
-    if (activeTab === 'ai-tutor' || activeTab === 'career-advisor' || activeTab === 'arcade' || activeTab === 'inter-school') {
-      return { target: 'discover', label: 'Back to Discover', parentLabel: 'Discover' };
-    }
-    if (activeTab === 'timetable') {
-      return { target: 'calendar', label: 'Back to Calendar', parentLabel: 'Calendar' };
-    }
-    if (activeTab === 'announcements') {
-      return { target: 'messages', label: 'Back to Messages', parentLabel: 'Messages' };
-    }
-    return { target: 'more', label: 'Back to More Modules', parentLabel: 'More Modules' };
+  const placeName = (tabId: string) => {
+    const names: Record<string, string> = {
+      overview: 'Home',
+      home: 'Home',
+      more: 'Menu',
+      discover: 'Discover',
+      subjects: 'Subjects',
+      performance: 'Marks',
+      'ai-tutor': 'AI Tutor',
+      'career-advisor': 'Career Advisor',
+      bursaries: 'Bursaries',
+      finance: 'Fees',
+      'exam-seating': 'Exam Seating',
+      sports: 'Sports',
+      'inter-school': 'Olympiads',
+      textbooks: 'Textbooks',
+      assignments: 'Homework',
+      arcade: 'Arcade',
+      reports: 'Reports',
+      calendar: 'Calendar',
+      timetable: 'Timetable',
+      announcements: 'Notices',
+      messages: 'Messages',
+      settings: 'Settings',
+      profile: 'Profile',
+    };
+    return names[tabId] || 'Menu';
   };
 
-  const backtrack = getBacktrackConfig();
+  const fallbackTarget = () => {
+    if (activeTab === 'subjects' || activeTab === 'more' || activeTab === 'discover') return 'overview';
+    return 'more';
+  };
+
+  const previousTab = tabHistory[tabHistory.length - 1];
+  const resolvedBack = previousTab && previousTab !== activeTab ? previousTab : fallbackTarget();
+  const backTarget = resolvedBack === activeTab ? 'overview' : resolvedBack;
+
+  const openTab = (tabId: string) => {
+    if (!moduleAllowed('learner', tabId, currentSchool.learner_modules, currentSchool.teacher_modules)) {
+      setActiveTab('overview');
+      setSearchParams({ tab: 'overview' });
+      return;
+    }
+    setActiveTab(tabId);
+    setSearchParams({ tab: tabId });
+  };
+
+  const handleBack = () => {
+    setTabHistory((prev) => (prev.length ? prev.slice(0, -1) : prev));
+    openTab(backTarget);
+  };
+
+  const showBack = activeTab !== 'overview' && activeTab !== 'home' && activeTab !== 'messages';
+  const openSubjectName = searchParams.get('subject');
+  const insideSubject = activeTab === 'subjects' && Boolean(openSubjectName);
+  const pageTitle = insideSubject ? openSubjectName! : getTabTitle();
+
+  const leaveSubject = () => {
+    setSearchParams({ tab: 'subjects' });
+  };
 
   return (
     <DashboardLayout
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
-      title={getTabTitle()}
+      title={pageTitle}
     >
-      {isSubModule && (
+      {showBack && (
         <ModulePageHeader
-          title={getTabTitle()}
-          parentLabel={backtrack.parentLabel}
-          backLabel={backtrack.label}
-          onBack={() => handleSelectTab(backtrack.target)}
+          title={pageTitle}
+          parentLabel={insideSubject ? 'Subjects' : placeName(backTarget)}
+          backLabel={insideSubject ? 'Back to Subjects' : `Back to ${placeName(backTarget)}`}
+          onBack={insideSubject ? leaveSubject : handleBack}
         />
       )}
 
@@ -186,9 +222,7 @@ export const LearnerDashboard: React.FC = () => {
         </ErrorBoundary>
       )}
 
-      {activeTab === 'calendar' && (
-        <LearnerCalendarHub initialSubTab="timetable" />
-      )}
+      {activeTab === 'calendar' && <SchoolCalendar />}
 
       {activeTab === 'profile' && (
         <LearnerProfile />
@@ -202,7 +236,7 @@ export const LearnerDashboard: React.FC = () => {
       )}
 
       {activeTab === 'messages' && (
-        <LearnerMessages />
+        <LearnerMessages onBack={handleBack} />
       )}
 
       {activeTab === 'more' && (

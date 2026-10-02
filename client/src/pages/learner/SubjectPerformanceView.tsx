@@ -84,9 +84,6 @@ export const SubjectPerformanceView: React.FC = () => {
             <TrendingUp className="w-6 h-6 text-emerald-400" />
             <span>Subject Academic Performance & Analytics</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Official curriculum subject mark breakdowns, term rankings, and CAPS achievement levels.
-          </p>
         </div>
 
         <select

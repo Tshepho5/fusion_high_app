@@ -106,9 +106,6 @@ export const ParentAttendance: React.FC<ParentAttendanceProps> = ({ onNavigateTa
           <CalendarCheck className="w-6 h-6 text-emerald-400" />
           Child Attendance & Punctuality Records
         </h2>
-        <p className="text-xs text-slate-400 mt-1">
-          Monitor your children's daily class presence, arrival times, and absentee logs.
-        </p>
       </div>
 
       {error && (

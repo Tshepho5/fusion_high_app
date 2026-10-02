@@ -369,7 +369,12 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
   useEffect(() => {
     fetchContacts();
     const interval = setInterval(fetchContacts, 12000);
-    return () => clearInterval(interval);
+    const refreshOnline = () => fetchContacts();
+    window.addEventListener('online', refreshOnline);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', refreshOnline);
+    };
   }, []);
 
   const fetchConversation = (contactId: number) => {
@@ -700,11 +705,11 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
                 window.history.back();
               }
             }}
-            className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 hover:border-emerald-500/50 text-slate-700 dark:text-slate-200 hover:text-emerald-500 dark:hover:text-white transition-all flex items-center gap-1.5 text-xs font-bold shadow-xs cursor-pointer group active:scale-95 shrink-0"
+            className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-cyan-500/15 dark:bg-white/5 dark:hover:bg-cyan-500/15 border border-slate-200 dark:border-white/10 hover:border-cyan-500/50 text-slate-700 dark:text-slate-200 hover:text-cyan-700 dark:hover:text-[#18E2EC] transition-all flex items-center gap-1.5 text-xs font-bold shadow-xs cursor-pointer group active:scale-95 shrink-0"
             title="Back to previous page"
             aria-label="Back to previous page"
           >
-            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5 text-emerald-500" />
+            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5 text-cyan-600 dark:text-[#18E2EC]" />
             <span className="hidden sm:inline">Back</span>
           </button>
 
@@ -899,6 +904,11 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
                         <h4 className={`text-xs font-bold truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>
                           {contact.full_name} {contact.surname}
                         </h4>
+                        <span className={`ml-2 shrink-0 text-[10px] font-semibold ${contact.is_online ? (isLight ? 'text-emerald-700' : 'text-emerald-400') : 'text-slate-400'}`}>
+                          {contact.is_online
+                            ? (contact.presence_device === 'phone' ? 'Online · phone' : contact.presence_device === 'laptop' ? 'Online · laptop' : 'Online')
+                            : 'Offline'}
+                        </span>
                         {contact.last_activity && (
                           <span className="text-[10px] text-slate-400 font-mono">
                             {new Date(contact.last_activity).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -971,9 +981,9 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
                       <span>{selectedContact.tag_name || selectedContact.email}</span>
                       <span>•</span>
                       {selectedContact.is_online ? (
-                        <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                        <span className={`font-semibold flex items-center gap-1 ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                          Online
+                          {selectedContact.presence_device === 'phone' ? 'Online · phone' : selectedContact.presence_device === 'laptop' ? 'Online · laptop' : 'Online'}
                         </span>
                       ) : (
                         <span className="text-slate-400 font-medium flex items-center gap-1">

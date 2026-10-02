@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 
 interface FusionAppIconProps {
   className?: string;
@@ -16,6 +16,11 @@ export const FusionAppIcon: React.FC<FusionAppIconProps> = ({
   alt = 'G~SA App Logo',
 }) => {
   const style = size ? { width: size, height: size } : undefined;
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const rimId = `gsa-rim-${uid}`;
+  const blueId = `gsa-blue-${uid}`;
+  const bgId = `gsa-bg-${uid}`;
+  const glowId = `gsa-core-${uid}`;
 
   return (
     <svg
@@ -27,22 +32,22 @@ export const FusionAppIcon: React.FC<FusionAppIconProps> = ({
       aria-label={alt}
     >
       <defs>
-        <linearGradient id="gsa-rim-exact" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={rimId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#1b3558" />
           <stop offset="50%" stopColor="#12253e" />
           <stop offset="100%" stopColor="#1a3556" />
         </linearGradient>
-        <linearGradient id="gsa-blue-exact" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={blueId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#3cb2ff" />
           <stop offset="50%" stopColor="#31a4f5" />
           <stop offset="100%" stopColor="#248ed8" />
         </linearGradient>
-        <linearGradient id="gsa-bg-exact" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={bgId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#0c1726" />
           <stop offset="50%" stopColor="#060c14" />
           <stop offset="100%" stopColor="#020408" />
         </linearGradient>
-        <radialGradient id="gsa-core-glow" cx="50%" cy="45%" r="50%">
+        <radialGradient id={glowId} cx="50%" cy="45%" r="50%">
           <stop offset="0%" stopColor="#1e3a63" stopOpacity="0.4" />
           <stop offset="100%" stopColor="#000000" stopOpacity="0" />
         </radialGradient>
@@ -56,8 +61,8 @@ export const FusionAppIcon: React.FC<FusionAppIconProps> = ({
         height="523"
         rx="112"
         ry="112"
-        fill="url(#gsa-bg-exact)"
-        stroke="url(#gsa-rim-exact)"
+        fill={`url(#${bgId})`}
+        stroke={`url(#${rimId})`}
         strokeWidth="18"
       />
       <rect
@@ -67,7 +72,7 @@ export const FusionAppIcon: React.FC<FusionAppIconProps> = ({
         height="523"
         rx="112"
         ry="112"
-        fill="url(#gsa-core-glow)"
+        fill={`url(#${glowId})`}
       />
       <rect
         x="22"
@@ -83,7 +88,7 @@ export const FusionAppIcon: React.FC<FusionAppIconProps> = ({
       />
 
       {/* G ~ S A Letterforms */}
-      <g fill="url(#gsa-blue-exact)" fillRule="evenodd">
+      <g fill={`url(#${blueId})`} fillRule="evenodd">
         {/* Letter "G" */}
         <path d="M 138,177 L 119,182 L 102,190 L 92,197 L 74,216 L 65,232 L 60,247 L 58,257 L 59,291 L 65,310 L 75,328 L 85,339 L 99,350 L 118,359 L 138,364 L 157,365 L 180,362 L 193,358 L 203,353 L 212,347 L 215,343 L 215,263 L 152,262 L 150,264 L 150,285 L 151,286 L 179,286 L 180,287 L 180,332 L 176,336 L 165,340 L 146,340 L 136,337 L 123,330 L 115,323 L 106,311 L 102,303 L 97,284 L 96,265 L 98,250 L 101,240 L 107,228 L 115,217 L 127,207 L 137,202 L 148,199 L 165,199 L 176,202 L 189,210 L 204,228 L 209,228 L 210,227 L 210,192 L 199,185 L 178,178 L 165,176 Z" />
         

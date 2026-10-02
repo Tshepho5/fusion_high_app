@@ -25,6 +25,7 @@ export const ParentDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'overview';
   const [activeTab, setActiveTab] = useState<string>(initialTab);
+  const [tabHistory, setTabHistory] = useState<Array<{ tab: string; child: string }>>([]);
   const selectedChildId = searchParams.get('child') || searchParams.get('child_id') || '';
 
   useEffect(() => {
@@ -45,6 +46,9 @@ export const ParentDashboard: React.FC = () => {
       }
     }
 
+    if (tabId !== activeTab) {
+      setTabHistory((prev) => [...prev, { tab: activeTab, child: selectedChildId }].slice(-24));
+    }
     setActiveTab(tabId);
     const nextParams: Record<string, string> = { tab: tabId };
     if (nextChild && CHILD_SCOPED_TABS.has(tabId)) {
@@ -52,6 +56,55 @@ export const ParentDashboard: React.FC = () => {
     }
     setSearchParams(nextParams);
   };
+
+  const placeName = (tabId: string) => {
+    const names: Record<string, string> = {
+      overview: 'Home',
+      home: 'Home',
+      more: 'Menu',
+      children: 'Children',
+      marks: 'Marks',
+      finance: 'Fees',
+      bursaries: 'Bursaries',
+      reports: 'Reports',
+      ptc: 'Consultations',
+      consultations: 'Consultations',
+      'inter-school': 'Olympiads',
+      sports: 'Sports',
+      timetable: 'Timetable',
+      calendar: 'Calendar',
+      attendance: 'Attendance',
+      announcements: 'Notices',
+      messages: 'Messages',
+      settings: 'Settings',
+      profile: 'Profile',
+    };
+    return names[tabId] || 'Menu';
+  };
+
+  const fallbackTarget = () => {
+    if (activeTab === 'more' || activeTab === 'children' || activeTab === 'marks') return 'overview';
+    return 'more';
+  };
+
+  const previous = tabHistory[tabHistory.length - 1];
+  const resolvedBack = previous && previous.tab !== activeTab ? previous.tab : fallbackTarget();
+  const backTarget = resolvedBack === activeTab ? 'overview' : resolvedBack;
+
+  const openTab = (tabId: string, childId: string) => {
+    setActiveTab(tabId);
+    const nextParams: Record<string, string> = { tab: tabId };
+    if (childId && CHILD_SCOPED_TABS.has(tabId)) nextParams.child = childId;
+    setSearchParams(nextParams);
+  };
+
+  const handleBack = () => {
+    const childId = previous?.child || selectedChildId;
+    setTabHistory((prev) => (prev.length ? prev.slice(0, -1) : prev));
+    openTab(backTarget, childId);
+  };
+
+  const showBack = activeTab !== 'overview' && activeTab !== 'messages';
 
   const getTabTitle = () => {
     switch (activeTab) {
@@ -83,12 +136,12 @@ export const ParentDashboard: React.FC = () => {
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
     >
-      {!['overview', 'more', 'messages', 'calendar', 'profile'].includes(activeTab) && (
+      {showBack && (
         <ModulePageHeader
           title={getTabTitle()}
-          parentLabel="Family desk"
-          backLabel="Back to Home"
-          onBack={() => handleSelectTab('overview')}
+          parentLabel={placeName(backTarget)}
+          backLabel={`Back to ${placeName(backTarget)}`}
+          onBack={handleBack}
         />
       )}
 
@@ -109,7 +162,7 @@ export const ParentDashboard: React.FC = () => {
       {activeTab === 'calendar' && <SchoolCalendar />}
       {activeTab === 'attendance' && <ParentAttendance childId={selectedChildId} onNavigateTab={handleSelectTab} />}
       {activeTab === 'announcements' && <AnnouncementsFeed />}
-      {activeTab === 'messages' && <LearnerMessages />}
+      {activeTab === 'messages' && <LearnerMessages onBack={handleBack} />}
       {activeTab === 'profile' && <LearnerProfile />}
       {activeTab === 'settings' && <LearnerSettings />}
     </DashboardLayout>

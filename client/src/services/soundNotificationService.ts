@@ -28,6 +28,7 @@ class SoundNotificationService {
   private isInitialized: boolean = false;
   private currentUserId: string | number | null = null;
   private pushSubscribed: boolean = false;
+  private recentAlerts: Map<string, number> = new Map();
 
   /**
    * Initializes notification audio context & permission check
@@ -48,8 +49,17 @@ class SoundNotificationService {
             window.location.assign(url);
           }
         }
+        if (event.data?.type === 'device-alert') {
+          this.showSystemNotification(event.data.title || 'Geleza SA', {
+            body: event.data.body || 'You have a new message.',
+            tag: event.data.tag,
+            type: event.data.targetTab === 'announcements' ? 'announcement' : 'message',
+            targetTab: event.data.targetTab,
+          });
+        }
       });
     }
+    window.addEventListener('online', () => this.checkNow());
 
     // Start background sync
     this.checkNow();
@@ -135,13 +145,18 @@ class SoundNotificationService {
     options: {
       body: string;
       tag?: string;
-      type?: 'message' | 'announcement';
+      type?: 'message' | 'announcement' | 'email';
       targetTab?: string;
     }
   ) {
-    if (this.pushSubscribed) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden' && this.pushSubscribed) return;
     if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') return;
     if (!('serviceWorker' in navigator)) return;
+    const bucket = options.type || 'message';
+    const now = Date.now();
+    if (now - (this.recentAlerts.get(bucket) || 0) < 8000) return;
+    this.recentAlerts.set(bucket, now);
     const tab = options.targetTab || (options.type === 'announcement' ? 'announcements' : 'messages');
     const role = (localStorage.getItem('userRole') || '').toLowerCase();
     const dashboard = ['learner', 'teacher', 'parent', 'admin'].includes(role) ? role : '';

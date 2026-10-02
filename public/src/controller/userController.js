@@ -422,13 +422,21 @@ exports.uploadMessageAttachment = async (req, res) => {
 exports.heartbeat = async (req, res) => {
     try {
         const userId = req.user.id;
+        const agent = String(req.headers['user-agent'] || '');
+        const device = /Mobile|Android|iPhone|iPad|iPod/i.test(agent) ? 'phone' : 'laptop';
+        await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS presence_device VARCHAR(20)`).catch(() => {});
         await db.query(
-            `UPDATE users SET last_seen_at = NOW(), is_online = TRUE WHERE id = $1`,
-            [userId]
-        ).catch(() => {});
-        res.json({ success: true, timestamp: new Date() });
+            `UPDATE users SET last_seen_at = NOW(), is_online = TRUE, presence_device = $2 WHERE id = $1`,
+            [userId, device]
+        ).catch(async () => {
+            await db.query(
+                `UPDATE users SET last_seen_at = NOW(), is_online = TRUE WHERE id = $1`,
+                [userId]
+            ).catch(() => {});
+        });
+        res.json({ success: true, is_online: true, device, timestamp: new Date() });
     } catch (err) {
-        res.json({ success: true, timestamp: new Date() });
+        res.json({ success: true, is_online: true, timestamp: new Date() });
     }
 };
 
@@ -583,11 +591,15 @@ exports.getCommunicationContacts = async (req, res) => {
                 WHERE table_name = 'users' AND column_name IN ('last_seen_at', 'is_online')
             `);
             hasPresenceCols = (colCheck.rows.length >= 2);
+            if (hasPresenceCols) {
+                await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS presence_device VARCHAR(20)`).catch(() => {});
+            }
             if (!hasPresenceCols) {
                 try {
                     await db.query(`
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
                         ALTER TABLE users ADD COLUMN IF NOT EXISTS is_online BOOLEAN DEFAULT FALSE;
+                        ALTER TABLE users ADD COLUMN IF NOT EXISTS presence_device VARCHAR(20);
                     `);
                     hasPresenceCols = true;
                 } catch (_) {
@@ -604,12 +616,14 @@ exports.getCommunicationContacts = async (req, res) => {
                 ELSE false 
             END AS is_online,
             u.last_seen_at,
+            COALESCE(u.presence_device, '') AS presence_device,
         ` : `
             false AS is_online,
             NULL::timestamp AS last_seen_at,
+            '' AS presence_device,
         `;
 
-        const groupByPresence = hasPresenceCols ? `, u.last_seen_at, u.is_online` : ``;
+        const groupByPresence = hasPresenceCols ? `, u.last_seen_at, u.is_online, u.presence_device` : ``;
 
         if (role === 'teacher') {
             query = `

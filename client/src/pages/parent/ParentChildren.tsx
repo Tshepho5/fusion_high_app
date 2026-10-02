@@ -447,9 +447,6 @@ export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId }) => {
             <GraduationCap className="w-6 h-6 text-amber-400" />
             Academic Performance & AI Predictor
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Real-time assessment scores, AI performance trajectory, and multi-subject mastery records.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5 self-start sm:self-auto">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { learnerService } from '../../services/api';
@@ -7,7 +7,6 @@ import { Badge } from '../../components/common/Badge';
 import { OfflineNotesModal } from '../../components/learner/OfflineNotesModal';
 import { SubjectPastPapers } from '../../components/subject/SubjectPastPapers';
 import { SubjectFocusTimer } from '../../components/subject/SubjectFocusTimer';
-import { FusionAIIcon } from '../../components/common/FusionAIIcon';
 import { LearnerAITutor } from './LearnerAITutor';
 import { LearnerAssignments } from '../../components/learner/LearnerAssignments';
 import { FusionArcadeHub } from '../../components/learner/FusionArcadeHub';
@@ -18,18 +17,13 @@ import {
   AlertCircle,
   FileText,
   Download,
-  BarChart2,
   Bell,
   CheckCircle2,
   Clock,
-  Layers,
   Users,
   ChevronRight,
   WifiOff,
-  Flame,
-  FileCheck,
-  Sparkles,
-  Gamepad2
+  Sparkles
 } from 'lucide-react';
 
 interface LearnerSubjectsProps {
@@ -74,6 +68,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
   const [loadingSubjects, setLoadingSubjects] = useState(true);
   const [loadingContent, setLoadingContent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const subjectsRef = useRef<any[]>([]);
 
   const handleUpdateLanguage = async (newLang: string) => {
     setUpdatingLanguage(true);
@@ -85,7 +80,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
       setLanguageMessage(`Official Home Language saved as ${newLang}! Your stream subjects and AI Tutor are permanently synchronized.`);
       
       if (res.subjects && Array.isArray(res.subjects)) {
-        setSubjects(res.subjects.map((subName: string) => ({
+        const mapped = res.subjects.map((subName: string) => ({
           name: subName,
           code: (subName.substring(0, 4) + (learnerEnrolledGrade || 10)).toUpperCase().replace(/[^A-Z0-9]/g, ''),
           grade: learnerEnrolledGrade,
@@ -95,13 +90,16 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
           assignments_due: 0,
           classmates_count: 32,
           resources_count: 4
-        })));
+        }));
+        subjectsRef.current = mapped;
+        setSubjects(mapped);
       }
 
       try {
         const updatedData = await learnerService.getMySubjectsOverview();
         const list = Array.isArray(updatedData) ? updatedData : updatedData.subjects || [];
         if (list.length > 0) {
+          subjectsRef.current = list;
           setSubjects(list);
         }
       } catch (_) {}
@@ -114,11 +112,46 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
     }
   };
 
+  const rememberSubjects = (list: any[]) => {
+    subjectsRef.current = list;
+    setSubjects(list);
+  };
+
+  const applySubjectFromUrl = (list: any[], targetSubParam: string | null, targetViewParam: string | null) => {
+    if (!targetSubParam) {
+      setSelectedSubject(null);
+      return;
+    }
+    const match = list.find((s: any) =>
+      (s.name || s.subject || '').toLowerCase() === targetSubParam.toLowerCase()
+    );
+    const next = match || {
+      name: targetSubParam,
+      subject: targetSubParam,
+      grade: list[0]?.grade || learnerEnrolledGrade
+    };
+    setSelectedSubject((current: any) => {
+      const currentName = (current?.name || current?.subject || '').toLowerCase();
+      const nextName = (next.name || next.subject || '').toLowerCase();
+      if (current && currentName === nextName) return current;
+      return next;
+    });
+    if (targetViewParam === 'past-papers' || targetViewParam === 'resources') {
+      setActiveTab(targetViewParam);
+    }
+  };
+
   useEffect(() => {
-    setLoadingSubjects(true);
     setError(null);
     const targetSubParam = searchParams.get('subject');
     const targetViewParam = searchParams.get('view');
+
+    if (subjectsRef.current.length > 0) {
+      applySubjectFromUrl(subjectsRef.current, targetSubParam, targetViewParam);
+      return;
+    }
+
+    setLoadingSubjects(true);
 
     const defaultLearnerSubjects = [
       { name: 'Mathematics', code: `MATH${learnerEnrolledGrade}`, grade: learnerEnrolledGrade, teacher: 'Subject Specialist', curriculum_progress: 50, progress: 75, assignments_due: 0, classmates_count: 32, resources_count: 4 },
@@ -136,39 +169,22 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
           setShowLanguagePicker(true);
         }
         const list = Array.isArray(data) ? data : data.subjects || [];
-        setSubjects(list.length > 0 ? list : defaultLearnerSubjects);
-
-        if (targetSubParam) {
-          const match = (list.length > 0 ? list : defaultLearnerSubjects).find((s: any) => 
-            (s.name || s.subject || '').toLowerCase() === targetSubParam.toLowerCase()
-          );
-          if (match) {
-            setSelectedSubject(match);
-          } else {
-            const fallbackGrade = list[0]?.grade || learnerEnrolledGrade;
-            setSelectedSubject({ name: targetSubParam, subject: targetSubParam, grade: fallbackGrade });
-          }
-          if (targetViewParam === 'past-papers' || targetViewParam === 'resources') {
-            setActiveTab(targetViewParam);
-          }
-        }
+        const resolved = list.length > 0 ? list : defaultLearnerSubjects;
+        rememberSubjects(resolved);
+        applySubjectFromUrl(resolved, targetSubParam, targetViewParam);
       })
       .catch((err) => {
         console.error('Error fetching subjects from database:', err);
         learnerService.getSubjects()
           .then((subData) => {
             const list = Array.isArray(subData) ? subData : subData.subjects || [];
-            setSubjects(list.length > 0 ? list : defaultLearnerSubjects);
-            if (targetSubParam) {
-              const match = (list.length > 0 ? list : defaultLearnerSubjects).find((s: any) => 
-                (s.name || s.subject || '').toLowerCase() === targetSubParam.toLowerCase()
-              );
-              if (match) setSelectedSubject(match);
-            }
+            const resolved = list.length > 0 ? list : defaultLearnerSubjects;
+            rememberSubjects(resolved);
+            applySubjectFromUrl(resolved, targetSubParam, targetViewParam);
           })
           .catch(() => {
-            // Provide standard CAPS enrolled subjects rather than blank error
-            setSubjects(defaultLearnerSubjects);
+            rememberSubjects(defaultLearnerSubjects);
+            applySubjectFromUrl(defaultLearnerSubjects, targetSubParam, targetViewParam);
           });
       })
       .finally(() => setLoadingSubjects(false));
@@ -214,206 +230,115 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
 
   const selectedSubName = selectedSubject?.name || selectedSubject?.subject || 'Subject';
   const selectedGrade = Number(selectedSubject?.grade) || learnerEnrolledGrade;
+  const rawMark = selectedSubject?.progress ?? selectedSubject?.curriculum_progress;
+  const hasMark = rawMark !== undefined && rawMark !== null && rawMark !== '' && Number.isFinite(Number(rawMark));
+  const markLabel = hasMark ? `${Number(rawMark)}%` : 'No mark yet';
+  const openWorkCount = assignments.filter((item) => {
+    const isDone = item.status === 'graded' || item.status === 'completed' || item.score !== undefined;
+    return !isDone;
+  }).length;
+  const dueCount = Number(selectedSubject?.assignments_due) > 0
+    ? Number(selectedSubject.assignments_due)
+    : openWorkCount;
+  const primaryView = activeTab === 'topics' || activeTab === 'homework' || activeTab === 'grades';
+
+  const showPrimary = (tab: 'topics' | 'homework' | 'grades') => {
+    setActiveTab(tab);
+    const subject = searchParams.get('subject');
+    if (subject && searchParams.get('view')) {
+      setSearchParams({ tab: 'subjects', subject });
+    }
+  };
+
+  const showTool = (tab: 'past-papers' | 'resources' | 'ai-tutor' | 'focus-timer' | 'arcade') => {
+    if (tab === 'ai-tutor') {
+      setTutorTopic({ id: 'general', name: selectedSubName });
+    }
+    setActiveTab(tab);
+    if (tab === 'past-papers' || tab === 'resources') {
+      setSearchParams({ tab: 'subjects', subject: selectedSubName, view: tab });
+    }
+  };
+
+  const openSubject = (sub: any, view: 'topics' | 'resources' | 'grades' | 'ai-tutor' = 'topics') => {
+    const name = sub.name || sub.subject || 'Subject';
+    setSelectedSubject(sub);
+    setSearchQuery('');
+    if (view === 'ai-tutor') {
+      setTutorTopic({ id: 'general', name });
+      setActiveTab('ai-tutor');
+      setSearchParams({ tab: 'subjects', subject: name });
+      return;
+    }
+    if (view === 'resources') {
+      setActiveTab('resources');
+      setSearchParams({ tab: 'subjects', subject: name, view: 'resources' });
+      return;
+    }
+    setActiveTab(view === 'grades' ? 'grades' : 'topics');
+    setSearchParams({ tab: 'subjects', subject: name });
+  };
+
+  const purposeClass = (active: boolean) =>
+    `text-left rounded-2xl border px-3 py-4 sm:px-4 transition-colors cursor-pointer ${
+      active
+        ? 'bg-white dark:bg-[#142230] border-cyan-400 shadow-sm'
+        : 'bg-white/80 dark:bg-white/[0.04] border-slate-200 dark:border-white/10 hover:border-cyan-400/50'
+    }`;
 
   return (
     <div className="space-y-6">
-      {/* If Inside a Selected Subject (e.g. Mathematics) */}
       {selectedSubject ? (
-        <div className="space-y-6 animate-fade-in">
-          {/* Top Navigation Bar with Back Button */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-dark border border-white/10 p-4 rounded-2xl shadow-lg">
-            <button
-              onClick={() => {
-                setSelectedSubject(null);
-                setSearchQuery('');
-                setSearchParams({ tab: 'subjects' });
-              }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-bold text-xs border border-white/10 transition-all self-start sm:self-auto"
-            >
-              <ArrowLeft className="w-4 h-4 text-cyan-400" />
-              <span>Back to Subjects</span>
-            </button>
-
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <span className="cursor-pointer hover:underline" onClick={() => setSelectedSubject(null)}>My Subjects</span>
-              <span>/</span>
-              <strong className="text-white">{selectedSubName}</strong>
-            </div>
-          </div>
-
-          {/* Subject Detail Header Banner */}
-          <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 md:p-8 shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
-            
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+        <div className="max-w-3xl mx-auto space-y-8 animate-fade-in">
+          {primaryView ? (
+            <div className="space-y-6">
               <div className="space-y-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge variant="cyan" size="sm">Grade {selectedGrade}</Badge>
-                  <Badge variant="indigo" size="sm">{selectedSubject?.code || 'Syllabus'}</Badge>
-                  {selectedSubject?.assignments_due > 0 && (
-                    <span className="inline-flex items-center gap-1 text-[10px] px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold border border-rose-500/40 animate-pulse">
-                      <Bell className="w-3 h-3 text-rose-400" />
-                      {selectedSubject.assignments_due} Work Due
-                    </span>
-                  )}
-                </div>
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold font-display text-white tracking-tight">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Grade {selectedGrade}
+                  {selectedSubject?.teacher ? ` · ${selectedSubject.teacher}` : ''}
+                </p>
+                <h2 className="text-3xl sm:text-4xl font-extrabold font-display tracking-tight text-[#1C252C] dark:text-white">
                   {selectedSubName}
                 </h2>
-                {selectedSubject?.teacher && (
-                  <p className="text-xs md:text-sm text-slate-400">
-                    {selectedSubject.teacher}
+                <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 max-w-xl">
+                  Learn the lessons, hand in the work, and check your mark.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <button type="button" onClick={() => showPrimary('topics')} className={purposeClass(activeTab === 'topics')}>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Learn</p>
+                  <p className="mt-1 text-base sm:text-lg font-bold text-[#1C252C] dark:text-white">Lessons</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {topics.length > 0 ? `${topics.length} chapters` : 'Syllabus'}
                   </p>
-                )}
-              </div>
-
-              {/* Action Buttons & Quick Stats */}
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-3 p-3 rounded-2xl bg-surface-darker/80 border border-white/10">
-                  <div className="text-center px-2">
-                    <p className="text-[10px] text-slate-400 uppercase font-semibold">Average</p>
-                    <p className="text-base font-extrabold text-emerald-400">{selectedSubject?.progress || 75}%</p>
-                  </div>
-                  <div className="w-[1px] h-8 bg-white/10" />
-                  <div className="text-center px-2">
-                    <p className="text-[10px] text-slate-400 uppercase font-semibold">Resources</p>
-                    <p className="text-base font-extrabold text-purple-400">{resources.length}</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setIsOfflineNotesOpen(true)}
-                  className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-surface-darker hover:bg-white/10 text-emerald-300 font-bold text-xs border border-emerald-500/30 transition-all"
-                  title="Open Offline Study Notes"
-                >
-                  <WifiOff className="w-4 h-4 text-emerald-400" />
-                  <span>Offline Notes</span>
                 </button>
-
-                <button
-                  onClick={() => {
-                    setTutorTopic({ id: 'general', name: selectedSubName });
-                    setActiveTab('ai-tutor');
-                  }}
-                  className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-brand-600 via-cyan-600 to-indigo-600 hover:from-brand-500 hover:to-cyan-500 text-white font-extrabold text-xs shadow-glow-indigo transition-all transform hover:-translate-y-0.5"
-                >
-                  <FusionAIIcon className="w-4 h-4 text-cyan-200" variant="pulse" />
-                  <span>AI Subject Assist</span>
+                <button type="button" onClick={() => showPrimary('homework')} className={purposeClass(activeTab === 'homework')}>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Do</p>
+                  <p className="mt-1 text-base sm:text-lg font-bold text-[#1C252C] dark:text-white">Work due</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {dueCount > 0 ? `${dueCount} to hand in` : 'Nothing due'}
+                  </p>
+                </button>
+                <button type="button" onClick={() => showPrimary('grades')} className={purposeClass(activeTab === 'grades')}>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Check</p>
+                  <p className="mt-1 text-base sm:text-lg font-bold text-[#1C252C] dark:text-white">My mark</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{markLabel}</p>
                 </button>
               </div>
             </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => showPrimary('topics')}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-cyan-700 dark:hover:text-cyan-300 cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to {selectedSubName}</span>
+            </button>
+          )}
 
-            {/* Sub-Navigation Tabs Inside Subject */}
-            <div className="flex items-center gap-2 border-t border-white/10 pt-6 mt-6 overflow-x-auto">
-              <button
-                onClick={() => setActiveTab('topics')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                  activeTab === 'topics'
-                    ? 'bg-brand-600 text-white shadow-glow-indigo'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>Chapters & Lessons ({topics.length})</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setTutorTopic({ id: 'general', name: selectedSubName });
-                  setActiveTab('ai-tutor');
-                }}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                  activeTab === 'ai-tutor'
-                    ? 'bg-gradient-to-r from-brand-600 via-cyan-600 to-indigo-600 text-white shadow-glow-indigo'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <FusionAIIcon className="w-3.5 h-3.5 text-cyan-300" variant="pulse" />
-                <span>AI Study Tutor & Quizzes</span>
-                <span className="px-1.5 py-0.5 rounded-full bg-cyan-400/20 text-cyan-300 text-[9px] font-extrabold border border-cyan-400/30">AI</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('past-papers')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                  activeTab === 'past-papers'
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-glow-purple'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5 text-purple-400" />
-                <span>CAPS Past Papers & Question Bank</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('focus-timer')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                  activeTab === 'focus-timer'
-                    ? 'bg-gradient-to-r from-amber-600 to-rose-600 text-white shadow-glow-amber'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <Flame className="w-3.5 h-3.5 text-amber-400" />
-                <span>Study Streak & Focus Timer</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('resources')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                  activeTab === 'resources'
-                    ? 'bg-purple-600 text-white shadow-glow-purple'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Resources ({resources.length})</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('homework')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                  activeTab === 'homework'
-                    ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-glow-indigo'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5 text-brand-400" />
-                <span>Homework & Submissions</span>
-                <span className="px-1.5 py-0.5 rounded-full bg-brand-400/20 text-brand-300 text-[9px] font-extrabold border border-brand-400/30">AI Live</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('grades')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                  activeTab === 'grades'
-                    ? 'bg-emerald-600 text-white shadow-glow-emerald'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <BarChart2 className="w-3.5 h-3.5" />
-                <span>Grades & Tasks</span>
-                {selectedSubject?.assignments_due > 0 && (
-                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                )}
-              </button>
-
-              <button
-                onClick={() => setActiveTab('arcade')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                  activeTab === 'arcade'
-                    ? 'bg-gradient-to-r from-amber-600 to-brand-600 text-white shadow-glow-indigo'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <Gamepad2 className="w-3.5 h-3.5 text-amber-400" />
-                <span>Subject Games & 1v1 Battle</span>
-                <span className="px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[9px] font-extrabold border border-amber-400/30">XP</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Content Pane for Active Tab */}
-          <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 shadow-xl">
+          <div>
             {loadingContent ? (
               <LoadingSpinner size="md" text={`Loading ${selectedSubName} curriculum details...`} />
             ) : activeTab === 'arcade' ? (
@@ -452,40 +377,10 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                 grade={selectedGrade}
               />
             ) : activeTab === 'resources' ? (
-              /* Resources Tab */
-              <div className="space-y-6">
-                {/* Grade-Specific Past Papers Quick-Access Banner */}
-                <div className="p-5 rounded-2xl bg-gradient-to-r from-purple-900/40 via-indigo-900/30 to-brand-900/30 border border-purple-500/30 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-mono font-bold uppercase border border-purple-500/40 flex items-center gap-1">
-                        <BookOpen className="w-3 h-3 text-purple-400" />
-                        CAPS DBE ARCHIVE
-                      </span>
-                      <Badge variant="indigo" size="sm">Grade {selectedGrade}</Badge>
-                    </div>
-                    <h4 className="text-base font-bold text-white">
-                      {selectedSubName} Grade {selectedGrade} Official Past Papers & Question Bank
-                    </h4>
-                    <p className="text-xs text-slate-300">
-                      Practice official DBE exam papers, view step-by-step marking memorandums, or practice with AI Tutor.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setActiveTab('past-papers')}
-                    className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-glow-purple transition-all shrink-0"
-                  >
-                    <FileText className="w-4 h-4" />
-                    <span>View Interactive Question Papers</span>
-                  </button>
-                </div>
-
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-purple-400" />
-                    Grade {selectedGrade} Study Guides, Textbooks & Past Exam Papers
-                  </h4>
-                  <span className="text-[11px] text-slate-400">{resources.length} files available</span>
+                  <h3 className="text-lg font-bold text-[#1C252C] dark:text-white">Notes and files</h3>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">{resources.length} files</span>
                 </div>
 
                 {resources.length > 0 ? (
@@ -569,14 +464,10 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                 )}
               </div>
             ) : activeTab === 'grades' ? (
-              /* Grades & Assessments Tab */
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                    <BarChart2 className="w-4 h-4 text-emerald-400" />
-                    Assessment Grades & Assigned Homework
-                  </h4>
-                  <Badge variant="emerald" size="sm">Average: {selectedSubject?.progress || 75}%</Badge>
+                <div className="flex items-end justify-between gap-3">
+                  <h3 className="text-lg font-bold text-[#1C252C] dark:text-white">My mark</h3>
+                  <p className="text-2xl font-extrabold text-[#1C252C] dark:text-white">{markLabel}</p>
                 </div>
 
                 {assignments.length > 0 ? (
@@ -604,13 +495,11 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
 
                           <div className="flex items-center gap-3 self-end sm:self-auto">
                             {isDone ? (
-                              <Badge variant="emerald" size="sm">
-                                Mark: {item.score || 85}%
-                              </Badge>
+                              <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-300">
+                                {item.score !== undefined && item.score !== null ? `${item.score}%` : 'Marked'}
+                              </span>
                             ) : (
-                              <Badge variant="rose" size="sm">
-                                Work Due
-                              </Badge>
+                              <span className="text-sm font-semibold text-rose-600 dark:text-rose-300">Due</span>
                             )}
                           </div>
                         </div>
@@ -618,10 +507,12 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                     })}
                   </div>
                 ) : (
-                  <div className="p-12 text-center rounded-2xl bg-surface-darker border border-white/5 space-y-2">
-                    <CheckCircle2 className="w-10 h-10 text-emerald-500/50 mx-auto" />
-                    <p className="text-sm text-white font-bold">All caught up for {selectedSubName}!</p>
-                    <p className="text-xs text-slate-400">Current recorded grade average is <strong className="text-emerald-400">{selectedSubject?.progress || 75}%</strong>.</p>
+                  <div className="py-8">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      {hasMark
+                        ? `Your mark for ${selectedSubName} is ${markLabel}. Task marks will appear here once they are recorded.`
+                        : `No mark recorded for ${selectedSubName} yet.`}
+                    </p>
                   </div>
                 )}
               </div>
@@ -637,7 +528,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={`Search curriculum chapters or topics in ${selectedSubName}...`}
+                    placeholder={`Find a lesson in ${selectedSubName}`}
                     className="w-full rounded-xl bg-surface-darker border border-white/10 pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
                 </div>
@@ -650,48 +541,52 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                       return (
                         <div
                           key={topicId}
-                          className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-surface-darker border border-white/5 hover:border-brand-500/30 transition-all gap-3"
+                          className="group flex items-center justify-between gap-3 py-3 border-b border-slate-200/80 dark:border-white/10"
                         >
-                          <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-brand-500/10 text-brand-400 flex items-center justify-center font-mono text-xs font-bold mt-0.5">
-                              {index + 1}
-                            </div>
-                            <div>
-                              <h4 className="text-xs font-bold text-white group-hover:text-brand-300 transition-colors">
+                          <div className="flex items-start gap-3 min-w-0">
+                            <span className="mt-0.5 w-6 text-sm font-semibold text-slate-400">{index + 1}</span>
+                            <div className="min-w-0">
+                              <h4 className="text-base font-semibold text-[#1C252C] dark:text-white truncate">
                                 {topicName}
                               </h4>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-[10px] text-slate-400">{topic.term || 'Term Module'}</span>
-                                <span className="text-[10px] text-slate-600">•</span>
-                                <span className="text-[10px] text-slate-400">{topic.week || 'Chapter Module'}</span>
-                              </div>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                {topic.term || 'This term'}
+                              </p>
                             </div>
                           </div>
-
-                          <div className="flex items-center gap-2 self-end sm:self-auto">
-                            <button
-                              onClick={() => {
-                                setTutorTopic({ id: topicId, name: topicName });
-                                setActiveTab('ai-tutor');
-                              }}
-                              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-600/20 hover:bg-brand-600 text-brand-300 hover:text-white font-bold text-xs border border-brand-500/30 transition-all"
-                            >
-                              <FusionAIIcon className="w-3.5 h-3.5 text-cyan-300" />
-                              <span>AI Study & Quiz</span>
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTutorTopic({ id: topicId, name: topicName });
+                              setActiveTab('ai-tutor');
+                            }}
+                            className="shrink-0 text-sm font-semibold text-cyan-700 dark:text-cyan-300 hover:underline cursor-pointer"
+                          >
+                            Study
+                          </button>
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <div className="p-12 text-center rounded-2xl bg-surface-darker border border-white/5">
-                    <p className="text-xs text-slate-400">No specific topics listed. You can click <strong>AI Subject Assist</strong> to ask any question about {selectedSubName} directly.</p>
+                  <div className="py-10 text-center">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">No lessons posted for {selectedSubName} yet. You can still ask a question or open past papers.</p>
                   </div>
                 )}
               </div>
             )}
           </div>
+
+          {primaryView && (
+            <div className="flex flex-wrap gap-x-5 gap-y-2 pt-1">
+              <button type="button" onClick={() => showTool('past-papers')} className="text-sm font-semibold text-slate-500 hover:text-cyan-700 dark:text-slate-400 dark:hover:text-cyan-300 cursor-pointer">Past papers</button>
+              <button type="button" onClick={() => showTool('resources')} className="text-sm font-semibold text-slate-500 hover:text-cyan-700 dark:text-slate-400 dark:hover:text-cyan-300 cursor-pointer">Notes and files</button>
+              <button type="button" onClick={() => showTool('ai-tutor')} className="text-sm font-semibold text-slate-500 hover:text-cyan-700 dark:text-slate-400 dark:hover:text-cyan-300 cursor-pointer">Ask AI</button>
+              <button type="button" onClick={() => setIsOfflineNotesOpen(true)} className="text-sm font-semibold text-slate-500 hover:text-cyan-700 dark:text-slate-400 dark:hover:text-cyan-300 cursor-pointer">Offline notes</button>
+              <button type="button" onClick={() => showTool('focus-timer')} className="text-sm font-semibold text-slate-500 hover:text-cyan-700 dark:text-slate-400 dark:hover:text-cyan-300 cursor-pointer">Focus timer</button>
+              <button type="button" onClick={() => showTool('arcade')} className="text-sm font-semibold text-slate-500 hover:text-cyan-700 dark:text-slate-400 dark:hover:text-cyan-300 cursor-pointer">Games</button>
+            </div>
+          )}
         </div>
       ) : (
         /* Main Subjects Grid Page (When No Specific Subject is Selected) */
@@ -703,9 +598,6 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                 <BookOpen className="w-6 h-6 text-brand-400" />
                 My Subjects
               </h2>
-              <p className="text-xs text-slate-400 mt-1">
-                Click any subject link below to open its dedicated curriculum chapters, download study resources, check grades, and access AI tutoring.
-              </p>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -827,10 +719,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
 
                       {/* Clickable Subject Title Link */}
                       <div
-                        onClick={() => {
-                          setSelectedSubject(sub);
-                          setActiveTab('topics');
-                        }}
+                        onClick={() => openSubject(sub)}
                         className="cursor-pointer space-y-1"
                       >
                         <h3 className="text-xl font-bold font-display text-white group-hover:text-cyan-300 transition-colors flex items-center justify-between">
@@ -858,47 +747,12 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                     {/* Primary Link Button into Subject */}
                     <div className="space-y-2 pt-2 border-t border-white/5">
                       <button
-                        onClick={() => {
-                          setSelectedSubject(sub);
-                          setActiveTab('topics');
-                        }}
-                        className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-brand-600 via-brand-500 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-extrabold text-xs shadow-glow-indigo transition-all flex items-center justify-center gap-2"
+                        onClick={() => openSubject(sub)}
+                        className="w-full py-3 px-4 rounded-xl bg-[#1C252C] hover:bg-[#24303a] text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
                       >
-                        <BookOpen className="w-4 h-4" />
-                        <span>Open {subName} Workspace</span>
+                        <span>Open {subName}</span>
+                        <ChevronRight className="w-4 h-4" />
                       </button>
-
-                      <div className="grid grid-cols-3 gap-2">
-                        <button
-                          onClick={() => {
-                            setSelectedSubject(sub);
-                            setActiveTab('resources');
-                          }}
-                          className="py-1.5 px-2 rounded-lg bg-surface-darker hover:bg-white/10 text-purple-300 text-[10px] font-bold border border-white/5 text-center truncate"
-                        >
-                          Resources
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedSubject(sub);
-                            setActiveTab('grades');
-                          }}
-                          className="py-1.5 px-2 rounded-lg bg-surface-darker hover:bg-white/10 text-emerald-300 text-[10px] font-bold border border-white/5 text-center truncate"
-                        >
-                          Grades
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedSubject(sub);
-                            setTutorTopic({ id: 'general', name: subName });
-                            setActiveTab('ai-tutor');
-                          }}
-                          className="py-1.5 px-2 rounded-lg bg-surface-darker hover:bg-brand-600/30 text-cyan-300 hover:text-white text-[10px] font-bold border border-white/5 text-center truncate flex items-center justify-center gap-1"
-                        >
-                          <FusionAIIcon className="w-3 h-3 text-cyan-400" />
-                          <span>AI Tutor</span>
-                        </button>
-                      </div>
                     </div>
                   </div>
                 );

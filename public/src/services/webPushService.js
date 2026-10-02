@@ -9,6 +9,7 @@ function alertKind(type, targetTab) {
   const kind = String(type || '').toLowerCase();
   const tab = String(targetTab || '').toLowerCase();
   if (kind === 'chat' || kind === 'message' || tab === 'messages') return 'message';
+  if (kind === 'email' || kind === 'mail') return 'email';
   if (kind === 'announcement' || tab === 'announcements') return 'announcement';
   return null;
 }
@@ -166,7 +167,7 @@ class WebPushService {
     });
 
     const body = String(message || '').trim().slice(0, 180) || 'Open Geleza SA to read it.';
-    const heading = String(title || (kind === 'message' ? 'New message' : 'School announcement')).slice(0, 120);
+    const heading = String(title || (kind === 'message' ? 'New message' : kind === 'email' ? 'New email' : 'School announcement')).slice(0, 120);
     const tab = kind === 'message' ? 'messages' : 'announcements';
 
     const queue = subs.rows.slice();

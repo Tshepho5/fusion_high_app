@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { FusionAppIcon } from '../../components/common/FusionAppIcon';
+import { GelezaSplashWaves } from '../../components/landing/GelezaSplashWaves';
+import { CAMPUS_WEATHER_FALLBACK, cachedForecast, projectWeather, startCampusForecast, type CampusWeather, type ForecastPayload } from '../../utils/campusWeather';
 import {
   Lock,
   Mail,
@@ -13,12 +15,10 @@ import {
   Check,
   Sun,
   Moon,
-  UserPlus,
   AlertCircle,
-  ShieldCheck,
-  ShieldAlert
+  ShieldCheck
 } from 'lucide-react';
-import { systemControlService } from '../../services/api';
+import { authService } from '../../services/api';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -34,7 +34,29 @@ export const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [regLocked, setRegLocked] = useState(false);
+  const [accountReady, setAccountReady] = useState(false);
+  const [checkingAccount, setCheckingAccount] = useState(false);
+  const forecastRef = useRef<ForecastPayload | null>(cachedForecast());
+  const [weather, setWeather] = useState<CampusWeather>(() => {
+    const cached = forecastRef.current;
+    return cached ? projectWeather(cached) : CAMPUS_WEATHER_FALLBACK;
+  });
+
+  useEffect(() => {
+    const apply = (payload: ForecastPayload) => {
+      forecastRef.current = payload;
+      setWeather(projectWeather(payload));
+    };
+    let stop = startCampusForecast(apply);
+    const timer = window.setInterval(() => {
+      stop();
+      stop = startCampusForecast(apply);
+    }, 10 * 60 * 1000);
+    return () => {
+      stop();
+      window.clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -44,36 +66,53 @@ export const LoginPage: React.FC = () => {
         setError('This account is already signed in on another device or tab. Sign out there before signing in here.');
       }
     } catch (_) {}
-
-    // Check registration lock status
-    systemControlService.getPortalLocks().then((res: any) => {
-      const controls = res?.controls || res;
-      let regControl = null;
-      if (Array.isArray(controls)) {
-        regControl = controls.find((c: any) => c.control_id === 'user_registration' || c.id === 'user_registration');
-      } else if (controls && typeof controls === 'object') {
-        regControl = controls.user_registration;
-      }
-      if (regControl && regControl.is_locked) {
-        setRegLocked(true);
-      }
-    }).catch(e => console.warn('Could not check registration lock status:', e));
   }, []);
+
+  const confirmAccount = async (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setAccountReady(false);
+      setFieldErrors((prev) => ({ ...prev, identifier: 'Please enter your email or learner ID.' }));
+      setError('Enter the email or learner ID before the password.');
+      return false;
+    }
+    setCheckingAccount(true);
+    try {
+      const result = await authService.checkLoginAccount(trimmed);
+      if (result?.exists) {
+        setAccountReady(true);
+        setFieldErrors((prev) => {
+          const next = { ...prev };
+          delete next.identifier;
+          return next;
+        });
+        setError((current) => (current && current.toLowerCase().includes('password') ? current : null));
+        return true;
+      }
+      setAccountReady(false);
+      const message = result?.error || 'No account uses this email or learner ID. Correct it before entering a password.';
+      setFieldErrors({ identifier: message });
+      setError(message);
+      return false;
+    } catch (err: any) {
+      setAccountReady(false);
+      const message = err.response?.data?.error || 'The account check could not be completed. Try again.';
+      setFieldErrors({ identifier: message });
+      setError(message);
+      return false;
+    } finally {
+      setCheckingAccount(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newFieldErrors: Record<string, string> = {};
+    const known = accountReady || await confirmAccount(identifier);
+    if (!known) return;
 
-    if (!identifier.trim()) {
-      newFieldErrors.identifier = 'Please enter your email or learner ID.';
-    }
     if (!password.trim()) {
-      newFieldErrors.password = 'Please enter your password.';
-    }
-
-    if (Object.keys(newFieldErrors).length > 0) {
-      setFieldErrors(newFieldErrors);
-      setError('Please resolve the errors highlighted below.');
+      setFieldErrors((prev) => ({ ...prev, password: 'Please enter your password.' }));
+      setError('The account was found. Enter the password for this account.');
       return;
     }
 
@@ -94,41 +133,30 @@ export const LoginPage: React.FC = () => {
       navigate(`/dashboard/${role || 'learner'}`);
     } catch (err: any) {
       console.error('Login error:', err);
+      const code = err.response?.data?.code;
       const msg =
         err.response?.data?.error ||
         err.response?.data?.message ||
-        'Invalid credentials. Please verify your details.';
-      setError(msg);
-      setFieldErrors({
-        identifier: 'Please verify your registered email or learner ID.',
-        password: 'Password may be incorrect or account is unauthorized.'
-      });
+        'Sign-in could not be completed. Try again.';
+      if (code === 'account_not_found') {
+        setAccountReady(false);
+        setFieldErrors({ identifier: msg });
+        setError(msg);
+      } else if (code === 'password_incorrect') {
+        setAccountReady(true);
+        setFieldErrors({ password: msg });
+        setError('The email or learner ID is recognised. The password is incorrect.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen relative flex flex-col justify-between overflow-x-hidden select-none font-sans">
-      {/* ================= 1. FULLSCREEN PHOTO BACKGROUND ================= */}
-      <div className="fixed inset-0 z-0">
-        <img
-          src="/assets/fusion-login-bg.jpg"
-          alt="Fusion High School Campus & Learners"
-          className="w-full h-full object-cover object-center scale-[1.01] transition-transform duration-1000"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src = '/assets/landing-bg.png';
-          }}
-        />
-        {/* Dynamic Film Overlay: crystal bright in light mode, cinematic evening in dark mode */}
-        <div
-          className={`absolute inset-0 transition-colors duration-500 ${
-            isLight
-              ? 'bg-gradient-to-b from-sky-950/20 via-black/10 to-black/35 backdrop-blur-[0.5px]'
-              : 'bg-gradient-to-b from-slate-950/65 via-black/50 to-black/80 backdrop-blur-[1.5px]'
-          }`}
-        />
-      </div>
+    <div className="min-h-screen relative flex flex-col justify-between overflow-x-hidden select-none font-sans bg-[#f6f1e6] dark:bg-[#07080d]">
+      <GelezaSplashWaves weather={weather} />
 
       {/* ================= 2. TOP HEADER (REMAINS VISIBLE) ================= */}
       <header className="relative z-30 flex items-center justify-between px-4 sm:px-8 md:px-12 pt-5 pb-3 max-w-7xl mx-auto w-full">
@@ -195,7 +223,7 @@ export const LoginPage: React.FC = () => {
             className={`absolute -inset-2 rounded-[38px] blur-2xl pointer-events-none opacity-50 transition-colors duration-500 ${
               isLight
                 ? 'bg-gradient-to-r from-sky-400/20 via-blue-500/15 to-amber-300/20'
-                : 'bg-gradient-to-r from-cyan-500/25 via-blue-600/20 to-purple-600/25'
+                : 'bg-gradient-to-r from-[#18E2EC]/20 via-sky-500/10 to-[#13C8D9]/20'
             }`}
           />
 
@@ -207,6 +235,16 @@ export const LoginPage: React.FC = () => {
                 : 'bg-slate-950/20 hover:bg-slate-950/30 border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.45)] ring-1 ring-white/10 text-white'
             }`}
           >
+            <div
+              className={`login-card-rim ${
+                fieldErrors.identifier
+                  ? 'login-card-rim--stopped'
+                  : accountReady
+                    ? 'login-card-rim--lap'
+                    : 'login-card-rim--quiet'
+              } ${isLight ? 'login-card-rim--light' : 'login-card-rim--dark'}`}
+              aria-hidden="true"
+            />
             {/* Header: Crest Icon & Portal Title */}
             <div className="text-center flex flex-col items-center space-y-1.5">
               <div className="relative group flex items-center justify-center my-1">
@@ -284,13 +322,17 @@ export const LoginPage: React.FC = () => {
                     value={identifier}
                     onChange={(e) => {
                       setIdentifier(e.target.value);
-                      if (fieldErrors.identifier) {
-                        setFieldErrors(prev => {
-                          const updated = { ...prev };
-                          delete updated.identifier;
-                          return updated;
-                        });
-                      }
+                      setAccountReady(false);
+                      setError(null);
+                      setFieldErrors((prev) => {
+                        const updated = { ...prev };
+                        delete updated.identifier;
+                        delete updated.password;
+                        return updated;
+                      });
+                    }}
+                    onBlur={() => {
+                      if (identifier.trim()) confirmAccount(identifier);
                     }}
                     placeholder="Enter email or learner ID (e.g. 1001)"
                     required
@@ -329,7 +371,9 @@ export const LoginPage: React.FC = () => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
+                    disabled={!accountReady || checkingAccount}
                     onChange={(e) => {
+                      if (!accountReady) return;
                       setPassword(e.target.value);
                       if (fieldErrors.password) {
                         setFieldErrors(prev => {
@@ -339,10 +383,10 @@ export const LoginPage: React.FC = () => {
                         });
                       }
                     }}
-                    placeholder="Enter your password"
+                    placeholder={accountReady ? 'Enter your password' : 'Correct the email or learner ID first'}
                     required
                     autoComplete="current-password"
-                    className={`w-full pl-11 pr-12 py-3.5 rounded-2xl text-xs sm:text-sm font-bold backdrop-blur-md border transition-all focus:outline-none focus:ring-2 shadow-xs ${
+                    className={`w-full h-[52px] pl-11 pr-12 rounded-2xl text-xs sm:text-sm font-bold backdrop-blur-md border transition-colors focus:outline-none focus:ring-2 shadow-xs disabled:cursor-not-allowed disabled:opacity-60 ${
                       fieldErrors.password
                         ? 'border-rose-500 ring-2 ring-rose-500/20'
                         : isLight
@@ -350,19 +394,20 @@ export const LoginPage: React.FC = () => {
                         : 'bg-black/35 hover:bg-black/45 focus:bg-black/55 border-white/25 text-white placeholder:text-slate-400 focus:ring-cyan-400 focus:border-cyan-300'
                     }`}
                   />
-                  {/* View Password Toggle Icon (Fixed position inside placeholder) */}
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className={`absolute right-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer transition-colors ${
+                    disabled={!accountReady}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => setShowPassword((current) => !current)}
+                    className={`absolute top-0 right-1 z-10 flex h-[52px] w-10 items-center justify-center rounded-lg ${
                       isLight
-                        ? 'text-[#0F172A] hover:text-[#0F172A] hover:bg-white/70'
+                        ? 'text-[#0F172A] hover:bg-white/70'
                         : 'text-slate-300 hover:text-white hover:bg-white/10'
-                    }`}
+                    } disabled:cursor-not-allowed disabled:opacity-40`}
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                     title={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+                    {showPassword ? <EyeOff className="h-4 w-4 shrink-0" /> : <Eye className="h-4 w-4 shrink-0" />}
                   </button>
                 </div>
                 {fieldErrors.password && (
@@ -417,9 +462,11 @@ export const LoginPage: React.FC = () => {
                 type="submit"
                 disabled={loading}
                 className={`w-full py-3.5 px-6 rounded-full font-black text-sm transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 mt-2 border shadow-lg ${
+                  accountReady && !fieldErrors.identifier ? 'login-sign-in-pulse' : ''
+                } ${
                   isLight
-                    ? 'bg-blue-600 hover:bg-blue-700 text-always-white border-blue-500/40 shadow-blue-600/30'
-                    : 'bg-gradient-to-r from-cyan-400 via-sky-500 to-blue-600 hover:from-cyan-300 hover:to-sky-400 text-slate-950 border-cyan-200 shadow-cyan-500/40'
+                    ? 'login-sign-in--light bg-blue-600 hover:bg-blue-700 text-always-white border-blue-500/40 shadow-blue-600/30'
+                    : 'login-sign-in--dark bg-gradient-to-r from-[#18E2EC] to-[#13C8D9] hover:from-[#5eecf4] hover:to-[#18E2EC] text-slate-950 border-[#18E2EC]/60 shadow-[#13C8D9]/40'
                 }`}
               >
                 {loading ? (
@@ -433,53 +480,6 @@ export const LoginPage: React.FC = () => {
                 )}
               </button>
             </form>
-
-            {/* OR Divider */}
-            <div className="relative my-5 text-center">
-              <div className="absolute inset-0 flex items-center">
-                <div className={`w-full border-t ${isLight ? 'border-slate-300/80' : 'border-white/20'}`} />
-              </div>
-              <span
-                className={`relative px-3 text-[10px] font-black uppercase tracking-widest rounded-full border backdrop-blur-md ${
-                  isLight
-                    ? 'bg-white/80 text-[#0F172A] border-white/80'
-                    : 'bg-black/50 text-cyan-300 border-white/20'
-                }`}
-              >
-                OR
-              </span>
-            </div>
-
-            {/* Secondary Register Pill Button (Indicates lock state if executive locked) */}
-            <Link
-              to="/register"
-              className={`w-full py-3 px-6 rounded-full border backdrop-blur-md font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.98] ${
-                regLocked
-                  ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-300'
-                  : isLight
-                  ? 'bg-white/55 hover:bg-white/70 border-white/70 text-[#0F172A]'
-                  : 'bg-black/35 hover:bg-black/50 border-white/25 text-white'
-              }`}
-            >
-              {regLocked ? (
-                <>
-                  <Lock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>
-                    New Registration &bull; <strong className="text-amber-400">Locked by Executive</strong>
-                  </span>
-                </>
-              ) : (
-                <>
-                  <UserPlus className={`w-3.5 h-3.5 ${isLight ? 'text-[#0F172A]' : 'text-cyan-300'}`} />
-                  <span>
-                    Need a new account?{' '}
-                    <span className={`underline font-extrabold ml-0.5 ${isLight ? 'text-[#1D4ED8]' : 'text-cyan-300'}`}>
-                      Apply / Register Here
-                    </span>
-                  </span>
-                </>
-              )}
-            </Link>
           </div>
         </div>
       </main>

@@ -270,7 +270,7 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   viewMode === 'grid'
                     ? 'bg-cyan-500 text-slate-950 font-bold shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    : 'text-slate-600 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#18E2EC]'
                 }`}
                 title="Detailed Cards"
               >
@@ -282,7 +282,7 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   viewMode === 'compact'
                     ? 'bg-cyan-500 text-slate-950 font-bold shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    : 'text-slate-600 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#18E2EC]'
                 }`}
                 title="Compact App Tiles"
               >
@@ -294,7 +294,7 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   viewMode === 'list'
                     ? 'bg-cyan-500 text-slate-950 font-bold shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    : 'text-slate-600 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#18E2EC]'
                 }`}
                 title="List View"
               >
@@ -314,7 +314,7 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 selectedCategory === cat.id
                   ? 'bg-cyan-500 text-slate-950 shadow-xs'
-                  : 'bg-slate-100 dark:bg-[#121F2C] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5 border border-slate-200/80 dark:border-[#1A2C3D]'
+                  : 'bg-slate-100 dark:bg-[#121F2C] text-slate-700 dark:text-slate-300 hover:text-cyan-700 dark:hover:text-[#18E2EC] hover:bg-cyan-500/10 hover:border-cyan-500/50 border border-slate-200/80 dark:border-[#1A2C3D]'
               }`}
             >
               {cat.label}
@@ -336,8 +336,8 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
                 className="card-interactive p-4 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-cyan-500/50 dark:hover:border-cyan-400/50 hover:bg-slate-50/50 dark:hover:bg-[#132230] transition-all duration-300 cursor-pointer flex items-center justify-between gap-3 shadow-sm group hover:-translate-y-0.5 relative"
               >
                 <div className="flex items-center gap-3.5 min-w-0 pr-8">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-[#152535] border border-slate-200/70 dark:border-[#1B2E3D] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-xs">
-                    <IconComp className="w-6 h-6 text-slate-800 dark:text-[#18E2EC]" />
+                  <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-cyan-500/25 transition-transform shadow-xs">
+                    <IconComp className="w-6 h-6 text-cyan-700 dark:text-[#18E2EC]" />
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors leading-snug line-clamp-2">
@@ -389,8 +389,8 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
                 >
                   <Star className={`w-3 h-3 ${isFav ? 'fill-amber-400' : ''}`} />
                 </button>
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-[#152535] border border-slate-200/70 dark:border-[#1B2E3D] flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
-                  <IconComp className="w-6 h-6 text-slate-800 dark:text-[#18E2EC]" />
+                <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center group-hover:scale-110 group-hover:bg-cyan-500/25 transition-transform shadow-xs">
+                  <IconComp className="w-6 h-6 text-cyan-700 dark:text-[#18E2EC]" />
                 </div>
                 <span className="text-[11px] font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2 leading-tight">
                   {item.title}
@@ -415,8 +415,8 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
                 className="card-interactive p-3.5 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-cyan-500/50 dark:hover:border-cyan-400/50 hover:bg-slate-50/50 dark:hover:bg-[#132230] transition-all duration-300 cursor-pointer flex items-center justify-between gap-3 group shadow-sm"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-[#152535] border border-slate-200/70 dark:border-[#1B2E3D] flex items-center justify-center shrink-0 shadow-xs">
-                    <IconComp className="w-5 h-5 text-slate-800 dark:text-[#18E2EC]" />
+                  <div className="w-10 h-10 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center shrink-0 shadow-xs">
+                    <IconComp className="w-5 h-5 text-cyan-700 dark:text-[#18E2EC]" />
                   </div>
                   <div className="min-w-0">
                     <span className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors truncate block">

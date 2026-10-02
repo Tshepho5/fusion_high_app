@@ -591,7 +591,10 @@ exports.login = async (req, res) => {
         }
 
         if (result.rows.length === 0) {
-            return res.status(401).json({ error: 'Invalid credentials. No account found matching this Learner Number or Email.' });
+            return res.status(401).json({
+                error: 'No account uses this email or learner ID. Correct it before entering a password.',
+                code: 'account_not_found'
+            });
         }
 
         const user = result.rows[0];
@@ -604,7 +607,10 @@ exports.login = async (req, res) => {
         }
 
         if (!isValid) {
-            return res.status(401).json({ error: 'Invalid password. Please check your credentials.' });
+            return res.status(401).json({
+                error: 'The password is incorrect for this account.',
+                code: 'password_incorrect'
+            });
         }
 
         const isSuperAdmin = Boolean(user.is_superadmin);
@@ -687,6 +693,50 @@ exports.login = async (req, res) => {
     } catch (err) {
         console.error('Login error:', err);
         res.status(500).json({ error: 'Login error: ' + err.message });
+    }
+};
+
+/**
+ * Confirms that a login email or learner ID belongs to an account before a password is accepted.
+ */
+exports.checkLoginAccount = async (req, res) => {
+    const rawIdentifier = (req.body.email || req.body.identifier || req.body.learnerNumber || '').toString().trim();
+    if (!rawIdentifier) {
+        return res.status(400).json({ exists: false, error: 'Enter your email or learner ID first.' });
+    }
+
+    try {
+        let result;
+        if (rawIdentifier.includes('@')) {
+            result = await db.query(
+                'SELECT id FROM users WHERE LOWER(email::text) = LOWER($1) LIMIT 1',
+                [rawIdentifier]
+            );
+        } else {
+            const cleanId = rawIdentifier.replace(/[^a-zA-Z0-9]/g, '');
+            result = await db.query(
+                `SELECT u.id
+                 FROM users u
+                 LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
+                 WHERE (c.learner_number IS NOT NULL AND (c.learner_number::text = $1 OR REGEXP_REPLACE(c.learner_number::text, '[^a-zA-Z0-9]', '', 'g') = $2))
+                    OR (u.id_number IS NOT NULL AND (TRIM(u.id_number::text) = $1 OR REGEXP_REPLACE(u.id_number::text, '[^0-9]', '', 'g') = $2))
+                    OR (u.phone IS NOT NULL AND (TRIM(u.phone::text) = $1 OR REGEXP_REPLACE(u.phone::text, '[^0-9]', '', 'g') = $2))
+                 LIMIT 1`,
+                [rawIdentifier, cleanId]
+            );
+        }
+
+        if (result.rows.length === 0) {
+            const label = rawIdentifier.includes('@') ? 'email' : 'learner ID';
+            return res.json({
+                exists: false,
+                error: `No account uses this ${label}. Correct it before entering a password.`
+            });
+        }
+        return res.json({ exists: true });
+    } catch (err) {
+        console.error('Login account check error:', err);
+        return res.status(500).json({ exists: false, error: 'The account check could not be completed. Try again.' });
     }
 };
 
@@ -922,17 +972,21 @@ exports.forgotPassword = async (req, res) => {
             ? `${parts[0].slice(0, 2)}***@${parts[1]}` 
             : `${parts[0].slice(0, 1)}***@${parts[1]}`;
 
-        // Dispatch email immediately in background with zero UI latency
         console.log(`[AUTH] Dispatching secure recovery code to destination email: ${masked} for user ID ${user.id}`);
-        emailService.send(targetDeliveryEmail, tpl.subject, tpl.body).then((sendResult) => {
-            if (sendResult?.success) {
-                console.log(`[AUTH FORGOT PW SUCCESS] Recovery code delivered to destination email.`);
-            } else {
-                console.warn(`[AUTH FORGOT PW NOTICE] SMTP delivery status: ${sendResult?.error || 'dispatched'}`);
-            }
-        }).catch(err => {
-            console.error('[AUTH FORGOT PW EMAIL ERROR]:', err.message);
-        });
+        let sendResult;
+        try {
+            sendResult = await emailService.send(targetDeliveryEmail, tpl.subject, tpl.body);
+        } catch (mailErr) {
+            console.error('[AUTH FORGOT PW EMAIL ERROR]:', mailErr.message);
+            sendResult = { success: false, error: mailErr.message };
+        }
+        if (!sendResult?.success || sendResult.skipped) {
+            console.warn(`[AUTH FORGOT PW NOTICE] Recovery email was not delivered.`);
+            return res.status(503).json({
+                error: sendResult?.reason || sendResult?.error || 'The verification code could not be emailed. Try again in a moment.'
+            });
+        }
+        console.log(`[AUTH FORGOT PW SUCCESS] Recovery code delivered to destination email.`);
 
         res.status(200).json({ 
             message: `A 10-digit reset code has been sent to your registered email (${masked}). Please check your Inbox and Spam/Junk folder (valid for 5 minutes).`,

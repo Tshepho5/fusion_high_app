@@ -348,8 +348,8 @@ const emailService = {
 
     let targetRecipient = to.trim().toLowerCase();
 
-    // If destination is an internal learner portal username (@fusion.high or @gelezasa.co.za), automatically resolve the linked Parent's personal email
-    if (targetRecipient.endsWith('@fusion.high') || targetRecipient.endsWith('@gelezasa.co.za')) {
+    // Portal-only learner logins have no mailbox. School addresses such as @gelezasa.co.za are real inboxes and must be delivered.
+    if (targetRecipient.endsWith('@fusion.high') || targetRecipient.endsWith('@fusionhigh.co.za')) {
       try {
         const db = require('../../../db/db');
         const parentRes = await db.query(`
@@ -357,21 +357,21 @@ const emailService = {
           FROM users u
           LEFT JOIN children c ON c.learner_user_id::text = u.id::text
           LEFT JOIN users pu ON c.parent_id::text = pu.id::text
-          WHERE LOWER(u.email::text) = $1 AND pu.email IS NOT NULL AND pu.email NOT LIKE '%@fusion.high%' AND pu.email NOT LIKE '%@gelezasa.co.za%'
+          WHERE LOWER(u.email::text) = $1 AND pu.email IS NOT NULL AND pu.email NOT LIKE '%@fusion.high%' AND pu.email NOT LIKE '%@fusionhigh.co.za%'
           LIMIT 1
         `, [targetRecipient]);
 
         if (parentRes.rows.length > 0 && parentRes.rows[0].parent_email) {
-          const parentPersonalEmail = parentRes.rows[0].parent_email.trim();
-          console.log(`[EMAIL ROUTING] Resolved learner portal account [${targetRecipient}] to Parent personal email [${parentPersonalEmail}]`);
+          const parentPersonalEmail = parentRes.rows[0].parent_email.trim().toLowerCase();
+          console.log(`[EMAIL ROUTING] Resolved learner portal account to the linked parent inbox.`);
           targetRecipient = parentPersonalEmail;
         } else {
-          console.log(`[EMAIL NOTICE] Learner identifier [${targetRecipient}] is for portal sign-in only. No linked parent email was found; skipping external email.`);
-          return { success: true, skipped: true, reason: 'Learner account is for portal login only.' };
+          console.log(`[EMAIL NOTICE] Portal login has no linked mailbox, so the message was not sent.`);
+          return { success: false, skipped: true, reason: 'This portal login has no email inbox. Add a real email address first.' };
         }
       } catch (lookupErr) {
         console.warn('[EMAIL ROUTING] Parent email lookup notice:', lookupErr.message);
-        return { success: true, skipped: true, reason: 'Learner login identifier only.' };
+        return { success: false, skipped: true, reason: 'This portal login has no email inbox.' };
       }
     }
 

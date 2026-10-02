@@ -1690,5 +1690,190 @@ input.login-glowing-input-light::placeholder {
   );
 }
 
+/* =========================================================================
+   LOGIN — card rim. The campus scene is the same component as the landing page.
+   ========================================================================= */
+
+@property --login-rim-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes login-rim-drift {
+  from {
+    --login-rim-angle: 0deg;
+  }
+  to {
+    --login-rim-angle: 360deg;
+  }
+}
+
+@keyframes login-rim-lap {
+  from {
+    --login-rim-angle: 0deg;
+  }
+  to {
+    --login-rim-angle: 360deg;
+  }
+}
+
+@keyframes login-sign-in-pulse-light {
+  0% {
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.3);
+  }
+  42% {
+    box-shadow:
+      0 0 0 2px rgba(24, 226, 236, 0.9),
+      0 0 26px rgba(24, 226, 236, 0.5),
+      0 10px 24px rgba(37, 99, 235, 0.28);
+  }
+  100% {
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.3);
+  }
+}
+
+@keyframes login-sign-in-pulse-dark {
+  0% {
+    box-shadow: 0 10px 24px rgba(19, 200, 217, 0.35);
+  }
+  42% {
+    box-shadow:
+      0 0 0 2px #18e2ec,
+      0 0 32px rgba(24, 226, 236, 0.7),
+      0 12px 28px rgba(19, 200, 217, 0.45);
+  }
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(24, 226, 236, 0.45),
+      0 10px 26px rgba(19, 200, 217, 0.4);
+  }
+}
+
+.login-card-rim {
+  position: absolute;
+  inset: 0;
+  border-radius: 32px;
+  pointer-events: none;
+  z-index: 40;
+}
+
+@supports ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+  .login-card-rim {
+    padding: 1.5px;
+    background: conic-gradient(
+      from var(--login-rim-angle),
+      rgba(24, 226, 236, 0) 0deg,
+      rgba(24, 226, 236, 0) 286deg,
+      rgba(24, 226, 236, 0.18) 318deg,
+      #18e2ec 342deg,
+      #13c8d9 354deg,
+      rgba(24, 226, 236, 0) 360deg
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+  }
+
+  .login-card-rim--light.login-card-rim--quiet {
+    opacity: 0.32;
+    animation: login-rim-drift 56s linear infinite;
+  }
+
+  .login-card-rim--dark.login-card-rim--quiet {
+    opacity: 0.5;
+    animation: login-rim-drift 56s linear infinite;
+  }
+
+  .login-card-rim--light.login-card-rim--lap {
+    opacity: 0.88;
+    animation: login-rim-lap 1.9s cubic-bezier(0.22, 0.7, 0.2, 1) 1 forwards;
+  }
+
+  .login-card-rim--dark.login-card-rim--lap {
+    opacity: 1;
+    animation: login-rim-lap 1.9s cubic-bezier(0.22, 0.7, 0.2, 1) 1 forwards;
+  }
+
+  .login-card-rim--stopped {
+    opacity: 0;
+    animation: none;
+  }
+}
+
+.login-sign-in-pulse {
+  transition-property: transform, background-color, border-color, color, opacity;
+}
+
+.login-sign-in-pulse.login-sign-in--light {
+  animation: login-sign-in-pulse-light 1.15s ease-out 1;
+}
+
+.login-sign-in-pulse.login-sign-in--dark {
+  animation: login-sign-in-pulse-dark 1.15s ease-out 1 forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-card-rim--quiet,
+  .login-card-rim--lap,
+  .login-card-rim--stopped {
+    animation: none !important;
+  }
+
+  @supports ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+    .login-card-rim--light.login-card-rim--quiet,
+    .login-card-rim--dark.login-card-rim--quiet,
+    .login-card-rim--light.login-card-rim--lap,
+    .login-card-rim--dark.login-card-rim--lap {
+      animation: none !important;
+      --login-rim-angle: 0deg;
+      background: #18e2ec;
+    }
+
+    .login-card-rim--light.login-card-rim--quiet {
+      opacity: 0.34;
+    }
+
+    .login-card-rim--dark.login-card-rim--quiet {
+      opacity: 0.48;
+    }
+
+    .login-card-rim--light.login-card-rim--lap {
+      opacity: 0.62;
+    }
+
+    .login-card-rim--dark.login-card-rim--lap {
+      opacity: 0.8;
+    }
+
+    .login-card-rim--stopped {
+      opacity: 0;
+      background: transparent;
+    }
+  }
+
+  .login-sign-in-pulse.login-sign-in--light,
+  .login-sign-in-pulse.login-sign-in--dark {
+    animation: none;
+  }
+
+  .login-sign-in-pulse.login-sign-in--light {
+    box-shadow:
+      0 0 0 1px rgba(24, 226, 236, 0.4),
+      0 10px 22px rgba(37, 99, 235, 0.28);
+  }
+
+  .login-sign-in-pulse.login-sign-in--dark {
+    box-shadow:
+      0 0 0 1px rgba(24, 226, 236, 0.55),
+      0 10px 24px rgba(19, 200, 217, 0.4);
+  }
+}
+
 
 

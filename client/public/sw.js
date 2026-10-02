@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geleza-sa-cache-v2.4';
+const CACHE_NAME = 'geleza-sa-cache-v2.5';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/favicon.svg',
@@ -128,8 +128,21 @@ function readPushData(event) {
 
 self.addEventListener('push', (event) => {
   const data = readPushData(event);
-  event.waitUntil(
-    self.registration.showNotification(data.title, {
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const openWindow = windows.find((client) => client.visibilityState === 'visible');
+    if (openWindow) {
+      openWindow.postMessage({
+        type: 'device-alert',
+        title: data.title,
+        body: data.body,
+        tag: data.tag,
+        url: data.url,
+        targetTab: data.targetTab,
+      });
+      return;
+    }
+    await self.registration.showNotification(data.title, {
       body: data.body,
       icon: '/assets/icon-192.png',
       badge: '/assets/icon-192.png',
@@ -137,8 +150,8 @@ self.addEventListener('push', (event) => {
       renotify: true,
       silent: false,
       data: { url: data.url, targetTab: data.targetTab }
-    })
-  );
+    });
+  })());
 });
 
 self.addEventListener('notificationclick', (event) => {
