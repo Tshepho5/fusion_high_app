@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { clearAuthSession, readAuthValue } from '../utils/authStorage';
 
 const getApiBaseUrl = (): string => {
   if (typeof window !== 'undefined') {
@@ -26,11 +27,11 @@ const api = axios.create({
 
 // Attach JWT token and Active School Tenant ID automatically
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = readAuthValue('token', [localStorage, sessionStorage]);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  const activeSchoolId = localStorage.getItem('active_school_id');
+  const activeSchoolId = readAuthValue('active_school_id', [localStorage, sessionStorage]);
   if (activeSchoolId) {
     config.headers['x-school-id'] = activeSchoolId;
   }
@@ -62,9 +63,7 @@ api.interceptors.response.use(
       if (!window.location.pathname.startsWith('/login') && 
           !window.location.pathname.startsWith('/register') &&
           !window.location.pathname.startsWith('/forgot-password')) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('user');
+        clearAuthSession([localStorage, sessionStorage]);
         window.location.href = '/login';
       }
     }

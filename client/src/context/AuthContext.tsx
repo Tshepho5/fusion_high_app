@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { authService, userService } from '../services/api';
+import { clearAuthSession, readAuthValue, storeHoldingToken, writeAuthSession } from '../utils/authStorage';
 
 export type UserRole = 'learner' | 'teacher' | 'admin' | 'parent' | null;
 
@@ -22,7 +23,7 @@ interface AuthContextType {
   role: UserRole;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: { email?: string; learnerNumber?: string; password: string }) => Promise<any>;
+  login: (credentials: { email?: string; learnerNumber?: string; password: string }, options?: { remember?: boolean }) => Promise<any>;
   logout: () => void;
   updateUser: (updatedData: Partial<User>) => void;
   refreshUser: () => Promise<void>;
@@ -30,13 +31,20 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function readStoredUser(): User | null {
+  const saved = readAuthValue('user', [localStorage, sessionStorage]);
+  if (!saved) return null;
+  try {
+    return JSON.parse(saved);
+  } catch {
+    return null;
+  }
+}
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
-  const [role, setRole] = useState<UserRole>((localStorage.getItem('userRole') as UserRole) || null);
-  const [user, setUserState] = useState<User | null>(() => {
-    const saved = localStorage.getItem('user');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [token, setToken] = useState<string | null>(() => readAuthValue('token', [localStorage, sessionStorage]));
+  const [role, setRole] = useState<UserRole>((readAuthValue('userRole', [localStorage, sessionStorage]) as UserRole) || null);
+  const [user, setUserState] = useState<User | null>(readStoredUser);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [sessionPrompt, setSessionPrompt] = useState<null | 'idle' | 'logout'>(null);
   const promptKind = useRef<null | 'idle' | 'logout'>(null);
@@ -51,10 +59,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const data = await userService.getProfile();
       const profileUser = data.user || data;
       setUserState(profileUser);
-      localStorage.setItem('user', JSON.stringify(profileUser));
+      const holder = storeHoldingToken(localStorage, sessionStorage);
+      try {
+        holder.setItem('user', JSON.stringify(profileUser));
+        if (profileUser.role) {
+          holder.setItem('userRole', String(profileUser.role).toLowerCase());
+        }
+      } catch (_) {}
       if (profileUser.role) {
         setRole(profileUser.role.toLowerCase() as UserRole);
-        localStorage.setItem('userRole', profileUser.role.toLowerCase());
       }
     } catch (err) {
       console.warn('Failed to refresh user profile:', err);
@@ -121,39 +134,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [token]);
 
-  const login = async (credentials: { email?: string; learnerNumber?: string; password: string }) => {
+  const login = async (
+    credentials: { email?: string; learnerNumber?: string; password: string },
+    options?: { remember?: boolean }
+  ) => {
     setIsLoading(true);
     try {
       const data = await authService.login(credentials);
       const userToken = data.token;
-      const userRole = (data.role || 'learner').toLowerCase() as UserRole;
+      const rawRole = data.role || data.user?.role;
+      if (!rawRole || !userToken) {
+        const missing = new Error('This account has no portal role assigned. Ask the school office to finish setup.');
+        (missing as any).response = { status: 403, data: { error: missing.message } };
+        throw missing;
+      }
+      const userRole = String(rawRole).toLowerCase() as UserRole;
       const userData = data.user || { id: data.id, role: userRole, email: credentials.email };
+      const remember = options?.remember !== false;
+      const schoolId = data.school?.id || data.school_id || userData.school_id;
 
       setToken(userToken);
       setRole(userRole);
       setUserState(userData);
 
-      localStorage.setItem('token', userToken);
-      if (userRole) {
-        localStorage.setItem('userRole', userRole);
-      }
-      localStorage.setItem('user', JSON.stringify(userData));
+      writeAuthSession({
+        remember,
+        persistent: localStorage,
+        session: sessionStorage,
+        entries: {
+          token: userToken,
+          userRole,
+          user: JSON.stringify(userData),
+          active_school_profile: data.school ? JSON.stringify(data.school) : '',
+          active_school_id: schoolId ? String(schoolId) : '',
+        },
+      });
 
       // Trigger immediate presence heartbeat on login
       userService.heartbeat().catch(() => {});
 
-      // Auto-sync school profile to school context and CSS root
       if (data.school) {
-        localStorage.setItem('active_school_profile', JSON.stringify(data.school));
-        localStorage.setItem('active_school_id', String(data.school.id));
         const root = document.documentElement;
         root.style.setProperty('--school-primary', data.school.primary_color || '#4f46e5');
         root.style.setProperty('--school-secondary', data.school.secondary_color || '#06b6d4');
         root.style.setProperty('--school-accent', data.school.accent_color || '#f59e0b');
         root.setAttribute('data-school-slug', data.school.slug || 'fusion-high');
-      } else if (data.school_id || userData.school_id) {
-        const sid = String(data.school_id || userData.school_id);
-        localStorage.setItem('active_school_id', sid);
       }
 
       return { data, role: userRole };
@@ -174,11 +199,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setToken(null);
     setRole(null);
     setUserState(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('user');
-    localStorage.removeItem('active_school_profile');
-    localStorage.removeItem('active_school_id');
+    clearAuthSession([localStorage, sessionStorage]);
     window.location.href = '/login';
   };
 

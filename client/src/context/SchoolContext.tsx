@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from 'axios';
+import { readAuthValue, storeHoldingToken } from '../utils/authStorage';
 
 export interface SchoolProfile {
   id: number;
@@ -56,6 +57,23 @@ interface SchoolContextType {
 
 const SchoolContext = createContext<SchoolContextType | undefined>(undefined);
 
+function rememberSchool(profile: SchoolProfile | null) {
+  if (!profile) {
+    try {
+      localStorage.removeItem('active_school_profile');
+      localStorage.removeItem('active_school_id');
+      sessionStorage.removeItem('active_school_profile');
+      sessionStorage.removeItem('active_school_id');
+    } catch (_) {}
+    return;
+  }
+  try {
+    const holder = storeHoldingToken(localStorage, sessionStorage);
+    holder.setItem('active_school_profile', JSON.stringify(profile));
+    holder.setItem('active_school_id', String(profile.id));
+  } catch (_) {}
+}
+
 export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [schoolsList, setSchoolsList] = useState<SchoolProfile[]>([]);
   const [currentSchool, setCurrentSchoolState] = useState<SchoolProfile>(DEFAULT_SCHOOL);
@@ -67,16 +85,14 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const res = await axios.get('/api/schools');
       if (Array.isArray(res.data) && res.data.length > 0) {
         setSchoolsList(res.data);
-        const savedId = localStorage.getItem('active_school_id');
+        const savedId = readAuthValue('active_school_id', [localStorage, sessionStorage]);
         const matched = res.data.find((s: SchoolProfile) => String(s.id) === savedId || s.slug === savedId) || res.data[0];
         setCurrentSchoolState(matched);
-        localStorage.setItem('active_school_profile', JSON.stringify(matched));
-        localStorage.setItem('active_school_id', String(matched.id));
+        rememberSchool(matched);
       } else {
         setSchoolsList([]);
         setCurrentSchoolState(DEFAULT_SCHOOL);
-        localStorage.removeItem('active_school_profile');
-        localStorage.removeItem('active_school_id');
+        rememberSchool(null);
       }
     } catch (err) {
       console.warn('Could not fetch schools list, using fallback defaults:', err);
@@ -104,8 +120,7 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const found = schoolsList.find(s => s.id === id);
     if (found) {
       setCurrentSchoolState(found);
-      localStorage.setItem('active_school_profile', JSON.stringify(found));
-      localStorage.setItem('active_school_id', String(found.id));
+      rememberSchool(found);
       axios.defaults.headers.common['x-school-id'] = String(found.id);
     }
   };
@@ -114,8 +129,7 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const found = schoolsList.find(s => s.slug === slug);
     if (found) {
       setCurrentSchoolState(found);
-      localStorage.setItem('active_school_profile', JSON.stringify(found));
-      localStorage.setItem('active_school_id', String(found.id));
+      rememberSchool(found);
       axios.defaults.headers.common['x-school-id'] = String(found.id);
     }
   };

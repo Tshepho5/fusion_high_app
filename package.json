@@ -8,7 +8,7 @@
     "dev:client": "npm --prefix client run dev",
     "build:client": "npm --prefix client install && npm --prefix client run build",
     "build": "npm run build:client",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test tests/auth_improvements.test.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

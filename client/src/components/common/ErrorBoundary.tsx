@@ -116,9 +116,10 @@ export class ErrorBoundary extends Component<Props, State> {
                 type="button"
                 onClick={() => {
                   try {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('userRole');
-                    localStorage.removeItem('user');
+                    ['token', 'userRole', 'user', 'active_school_profile', 'active_school_id'].forEach((key) => {
+                      localStorage.removeItem(key);
+                      sessionStorage.removeItem(key);
+                    });
                   } catch (_) {}
                   window.location.href = '/';
                 }}
@@ -131,7 +132,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
             {/* Error Details for Debugging */}
             {this.state.error && (
-              <details open className="mt-4 text-left rounded-2xl bg-black/50 border border-white/10 p-3.5 text-[11px] text-rose-300 font-mono overflow-auto max-h-80 select-text">
+              <details className="mt-4 text-left rounded-2xl bg-black/50 border border-white/10 p-3.5 text-[11px] text-rose-300 font-mono overflow-auto max-h-80 select-text">
                 <summary className="cursor-pointer text-slate-400 hover:text-slate-200 select-none pb-1 font-sans font-bold text-xs flex items-center justify-between">
                   <span>Technical Details</span>
                   <span className="text-[10px] text-slate-500 font-mono">React Trace</span>

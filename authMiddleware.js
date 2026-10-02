@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const db = require('./db/db');
+const { resolveVerifiedRole } = require('./utils/resolveVerifiedRole');
 
 const SESSION_COOKIE = 'geleza_session';
 
@@ -102,7 +103,7 @@ const requireRole = (roles) => async (req, res, next) => {
         );
 
         let row = roleRes.rows[0];
-        let roleName = row ? (row.role_name || '').toLowerCase() : null;
+        let matchedChild = false;
 
         // If user wasn't found in users by id, check if req.user.id is in children table
         if (!row) {
@@ -111,18 +112,19 @@ const requireRole = (roles) => async (req, res, next) => {
                 [String(req.user.id)]
             );
             if (childRes.rows.length > 0) {
-                roleName = 'learner';
+                matchedChild = true;
                 req.user.school_id = childRes.rows[0].school_id || 1;
             }
         }
 
-        // Final fallback to verified token role if present
-        if (!roleName && req.user.role) {
-            roleName = String(req.user.role).toLowerCase();
-        }
+        const roleName = resolveVerifiedRole({
+            dbRole: row ? row.role_name : null,
+            tokenRole: req.user.role,
+            matchedChild,
+        });
 
         if (!roleName) {
-            roleName = 'learner'; // default fallback for student portal
+            return res.status(403).json({ error: 'Forbidden: Account role could not be verified.' });
         }
 
         req.user.role = roleName;
@@ -147,4 +149,4 @@ const requireRole = (roles) => async (req, res, next) => {
  */
 const isAdmin = requireRole('admin');
 
-module.exports = { auth, authenticateToken: auth, isAdmin, requireRole, attachSessionCookie, clearSessionCookie };
+module.exports = { auth, authenticateToken: auth, isAdmin, requireRole, attachSessionCookie, clearSessionCookie, resolveVerifiedRole };

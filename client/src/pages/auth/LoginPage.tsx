@@ -15,10 +15,10 @@ import {
   Moon,
   UserPlus,
   AlertCircle,
-  ShieldCheck,
-  ShieldAlert
+  ShieldCheck
 } from 'lucide-react';
 import { systemControlService } from '../../services/api';
+import { describeLoginFailure } from '../../utils/loginFeedback';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -86,26 +86,31 @@ export const LoginPage: React.FC = () => {
         password,
       };
 
-      const { role } = await login(credentials);
-      navigate(`/dashboard/${role || 'learner'}`);
+      const { role } = await login(credentials, { remember: rememberMe });
+      if (!role) {
+        setError('This account has no portal role assigned. Ask the school office to finish setup.');
+        return;
+      }
+      navigate(`/dashboard/${role}`);
     } catch (err: any) {
       console.error('Login error:', err);
-      const msg =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        'Invalid credentials. Please verify your details.';
-      setError(msg);
-      setFieldErrors({
-        identifier: 'Please verify your registered email or learner ID.',
-        password: 'Password may be incorrect or account is unauthorized.'
-      });
+      const failure = describeLoginFailure(err);
+      setError(failure.message);
+      setFieldErrors(
+        failure.blameFields
+          ? {
+              identifier: 'Please verify your registered email or learner ID.',
+              password: 'Password may be incorrect or account is unauthorized.',
+            }
+          : {}
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen relative flex flex-col justify-between overflow-x-hidden select-none font-sans">
+    <div className="min-h-screen relative flex flex-col justify-between overflow-x-hidden font-sans">
       {/* ================= 1. FULLSCREEN PHOTO BACKGROUND ================= */}
       <div className="fixed inset-0 z-0">
         <img
@@ -166,7 +171,8 @@ export const LoginPage: React.FC = () => {
               ? 'bg-white/80 hover:bg-white text-slate-900 border-white/70 shadow-black/10'
               : 'bg-black/40 hover:bg-black/60 text-white border-white/25 shadow-black/30'
           }`}
-          title="Toggle Theme"
+          title={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
+          aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
         >
           {isLight ? (
             <>
@@ -251,7 +257,10 @@ export const LoginPage: React.FC = () => {
 
             {/* Error Message */}
             {error && (
-              <div className="mt-4 p-3 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-700 dark:text-rose-200 text-xs flex items-center gap-2.5 backdrop-blur-md shadow-sm animate-fade-in">
+              <div
+                role="alert"
+                className="mt-4 p-3 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-700 dark:text-rose-200 text-xs flex items-center gap-2.5 backdrop-blur-md shadow-sm animate-fade-in"
+              >
                 <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" />
                 <span className="font-bold leading-snug">
                   {typeof error === 'string' ? error : (error as any)?.message || String(error)}
@@ -260,10 +269,11 @@ export const LoginPage: React.FC = () => {
             )}
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <form noValidate onSubmit={handleSubmit} className="mt-6 space-y-4">
               {/* Email / Learner ID Input */}
               <div className="space-y-1.5">
                 <label
+                  htmlFor="login-identifier"
                   className={`text-xs font-bold flex items-center gap-1.5 ${
                     isLight ? 'text-[#0F172A]' : 'text-slate-100 drop-shadow-sm'
                   }`}
@@ -276,8 +286,12 @@ export const LoginPage: React.FC = () => {
                     <Mail className="w-4 h-4" />
                   </div>
                   <input
+                    id="login-identifier"
+                    name="username"
                     type="text"
                     value={identifier}
+                    aria-invalid={fieldErrors.identifier ? true : undefined}
+                    aria-describedby={fieldErrors.identifier ? 'login-identifier-error' : undefined}
                     onChange={(e) => {
                       setIdentifier(e.target.value);
                       if (fieldErrors.identifier) {
@@ -301,7 +315,7 @@ export const LoginPage: React.FC = () => {
                   />
                 </div>
                 {fieldErrors.identifier && (
-                  <p className="text-[11px] text-rose-500 dark:text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                  <p id="login-identifier-error" className="text-[11px] text-rose-500 dark:text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     <span>{fieldErrors.identifier}</span>
                   </p>
@@ -311,6 +325,7 @@ export const LoginPage: React.FC = () => {
               {/* Password Input */}
               <div className="space-y-1.5">
                 <label
+                  htmlFor="login-password"
                   className={`text-xs font-bold flex items-center gap-1.5 ${
                     isLight ? 'text-[#0F172A]' : 'text-slate-100 drop-shadow-sm'
                   }`}
@@ -323,8 +338,12 @@ export const LoginPage: React.FC = () => {
                     <Lock className="w-4 h-4" />
                   </div>
                   <input
+                    id="login-password"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
+                    aria-invalid={fieldErrors.password ? true : undefined}
+                    aria-describedby={fieldErrors.password ? 'login-password-error' : undefined}
                     onChange={(e) => {
                       setPassword(e.target.value);
                       if (fieldErrors.password) {
@@ -349,8 +368,9 @@ export const LoginPage: React.FC = () => {
                   {/* View Password Toggle Icon (Fixed position inside placeholder) */}
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className={`absolute right-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer transition-colors ${
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 flex items-center justify-center rounded-lg cursor-pointer transition-colors ${
                       isLight
                         ? 'text-[#0F172A] hover:text-[#0F172A] hover:bg-white/70'
                         : 'text-slate-300 hover:text-white hover:bg-white/10'
@@ -362,7 +382,7 @@ export const LoginPage: React.FC = () => {
                   </button>
                 </div>
                 {fieldErrors.password && (
-                  <p className="text-[11px] text-rose-500 dark:text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                  <p id="login-password-error" className="text-[11px] text-rose-500 dark:text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     <span>{fieldErrors.password}</span>
                   </p>
@@ -371,10 +391,17 @@ export const LoginPage: React.FC = () => {
 
               {/* Remember Me & Forgot Password Row */}
               <div className="flex items-center justify-between pt-1 px-1 text-xs">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <button
-                    type="button"
-                    onClick={() => setRememberMe(!rememberMe)}
+                <label htmlFor="remember-me" className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    id="remember-me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    aria-describedby="remember-me-hint"
+                    className="sr-only"
+                  />
+                  <span
+                    aria-hidden="true"
                     className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${
                       rememberMe
                         ? isLight
@@ -386,13 +413,13 @@ export const LoginPage: React.FC = () => {
                     }`}
                   >
                     {rememberMe && <Check className="w-3 h-3 stroke-[3]" />}
-                  </button>
+                  </span>
                   <span
                     className={`font-bold text-[11px] ${
                       isLight ? 'text-[#0F172A]' : 'text-white drop-shadow-sm'
                     }`}
                   >
-                    Remember Me
+                    Remember me
                   </span>
                 </label>
 
@@ -407,11 +434,20 @@ export const LoginPage: React.FC = () => {
                   Forgot Password?
                 </Link>
               </div>
+              <p
+                id="remember-me-hint"
+                className={`px-1 text-[11px] font-semibold ${isLight ? 'text-slate-700' : 'text-slate-200'}`}
+              >
+                {rememberMe
+                  ? 'Stay signed in on this device.'
+                  : 'Sign out when you close this browser.'}
+              </p>
 
               {/* Submit Button: Always present, active, and prominent */}
               <button
                 type="submit"
                 disabled={loading}
+                aria-busy={loading}
                 className={`w-full py-3.5 px-6 rounded-full font-black text-sm transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 mt-2 border shadow-lg ${
                   isLight
                     ? 'bg-blue-600 hover:bg-blue-700 text-always-white border-blue-500/40 shadow-blue-600/30'
@@ -447,35 +483,32 @@ export const LoginPage: React.FC = () => {
             </div>
 
             {/* Secondary Register Pill Button (Indicates lock state if executive locked) */}
-            <Link
-              to="/register"
-              className={`w-full py-3 px-6 rounded-full border backdrop-blur-md font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.98] ${
-                regLocked
-                  ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-300'
-                  : isLight
-                  ? 'bg-white/55 hover:bg-white/70 border-white/70 text-[#0F172A]'
-                  : 'bg-black/35 hover:bg-black/50 border-white/25 text-white'
-              }`}
-            >
-              {regLocked ? (
-                <>
-                  <Lock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>
-                    New Registration &bull; <strong className="text-amber-400">Locked by Executive</strong>
+            {regLocked ? (
+              <div
+                role="status"
+                className="w-full py-3 px-6 rounded-full border backdrop-blur-md font-bold text-xs flex items-center justify-center gap-2 shadow-xs bg-amber-500/10 border-amber-500/30 text-amber-200"
+              >
+                <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <span>New registration is locked by the school office.</span>
+              </div>
+            ) : (
+              <Link
+                to="/register"
+                className={`w-full py-3 px-6 rounded-full border backdrop-blur-md font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.98] ${
+                  isLight
+                    ? 'bg-white/55 hover:bg-white/70 border-white/70 text-[#0F172A]'
+                    : 'bg-black/35 hover:bg-black/50 border-white/25 text-white'
+                }`}
+              >
+                <UserPlus className={`w-3.5 h-3.5 ${isLight ? 'text-[#0F172A]' : 'text-cyan-300'}`} />
+                <span>
+                  Need a new account?{' '}
+                  <span className={`underline font-extrabold ml-0.5 ${isLight ? 'text-[#1D4ED8]' : 'text-cyan-300'}`}>
+                    Apply / Register Here
                   </span>
-                </>
-              ) : (
-                <>
-                  <UserPlus className={`w-3.5 h-3.5 ${isLight ? 'text-[#0F172A]' : 'text-cyan-300'}`} />
-                  <span>
-                    Need a new account?{' '}
-                    <span className={`underline font-extrabold ml-0.5 ${isLight ? 'text-[#1D4ED8]' : 'text-cyan-300'}`}>
-                      Apply / Register Here
-                    </span>
-                  </span>
-                </>
-              )}
-            </Link>
+                </span>
+              </Link>
+            )}
           </div>
         </div>
       </main>
