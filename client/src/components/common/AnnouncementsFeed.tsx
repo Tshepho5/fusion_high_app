@@ -741,9 +741,6 @@ export const AnnouncementsFeed: React.FC = () => {
             <Megaphone className="w-6 h-6 text-brand-400" />
             <span>School Notices & Broadcasts</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Official announcements, term circulars, and high-priority administrative alerts.
-          </p>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">

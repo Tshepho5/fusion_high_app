@@ -44,10 +44,6 @@ export const NotificationDropdown: React.FC = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const prevCountRef = useRef<number | null>(null);
 
-  const playNotificationChime = () => {
-    soundNotificationService.playAnnouncementSound();
-  };
-
   const fetchUnreadCount = async () => {
     try {
       const res = await notificationService.getNotifications(1);
@@ -98,9 +94,6 @@ export const NotificationDropdown: React.FC = () => {
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const unreadDocs = snapshot.docs.filter(doc => !doc.data().is_read);
         const currentUnread = unreadDocs.length;
-        if (prevCountRef.current !== null && currentUnread > prevCountRef.current) {
-          playNotificationChime();
-        }
         prevCountRef.current = currentUnread;
         setUnreadCount(currentUnread);
       }, (err) => {

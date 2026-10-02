@@ -73,7 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/80 dark:border-[#1B2E3D] bg-white/95 dark:bg-[#09131F]/95 px-4 md:px-8 backdrop-blur-md transition-colors">
+    <header className="sticky top-0 z-30 flex h-16 min-w-0 items-center justify-between gap-2 border-b border-slate-200/80 dark:border-[#1B2E3D] bg-white/95 dark:bg-[#09131F]/95 px-3 sm:px-4 md:px-8 backdrop-blur-md transition-colors">
       {/* Left: Branding & App Icon (Brings user back to Home page when clicked) */}
       <div className="flex items-center gap-3">
         <button

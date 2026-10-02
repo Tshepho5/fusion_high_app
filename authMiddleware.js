@@ -32,6 +32,15 @@ function attachSessionCookie(res, token) {
     if (token) res.cookie(SESSION_COOKIE, token, sessionCookieOptions());
 }
 
+let sessionColumnReady = false;
+
+async function ensureActiveSessionColumn() {
+    if (sessionColumnReady) return;
+    await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS active_session_id TEXT');
+    await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS session_seen_at TIMESTAMP');
+    sessionColumnReady = true;
+}
+
 function clearSessionCookie(res) {
     res.clearCookie(SESSION_COOKIE, {
         path: '/',
@@ -58,13 +67,35 @@ const auth = (req, res, next) => {
         return res.status(500).json({ error: 'Server signing secret is not configured.' });
     }
 
-    jwt.verify(token, secret, (err, user) => {
+    jwt.verify(token, secret, async (err, user) => {
         if (err) {
             return res.status(403).json({ error: 'Invalid or expired token' });
         }
-        req.user = user;
-        attachSessionCookie(res, token);
-        next();
+        try {
+            await ensureActiveSessionColumn();
+            const sessionRes = await db.query(
+                'SELECT active_session_id FROM users WHERE id::text = $1::text',
+                [String(user.id)]
+            );
+            const activeSessionId = sessionRes.rows[0]?.active_session_id;
+            if (!user.sid || !activeSessionId || activeSessionId !== user.sid) {
+                clearSessionCookie(res);
+                return res.status(401).json({
+                    error: 'This account is already signed in on another device or tab.',
+                    code: 'session_replaced'
+                });
+            }
+            db.query(
+                'UPDATE users SET session_seen_at = NOW(), last_seen_at = NOW(), is_online = TRUE WHERE id::text = $1::text',
+                [String(user.id)]
+            ).catch(() => {});
+            req.user = user;
+            attachSessionCookie(res, token);
+            next();
+        } catch (sessionErr) {
+            console.error('[AUTH SESSION]', sessionErr.message);
+            return res.status(500).json({ error: 'Could not confirm this sign-in.' });
+        }
     });
 };
 
@@ -147,4 +178,4 @@ const requireRole = (roles) => async (req, res, next) => {
  */
 const isAdmin = requireRole('admin');
 
-module.exports = { auth, authenticateToken: auth, isAdmin, requireRole, attachSessionCookie, clearSessionCookie };
+module.exports = { auth, authenticateToken: auth, isAdmin, requireRole, attachSessionCookie, clearSessionCookie, ensureActiveSessionColumn };

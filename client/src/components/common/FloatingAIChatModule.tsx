@@ -160,15 +160,15 @@ export const FloatingAIChatModule: React.FC<FloatingAIChatModuleProps> = ({ onSe
           <button
             type="button"
             onClick={() => handleToggleExpand(true)}
-            className="flex items-center gap-1 pl-2 pr-1.5 py-2.5 rounded-l-xl bg-slate-900/90 hover:bg-slate-800 border-l border-y border-cyan-500/40 shadow-lg text-cyan-300 backdrop-blur-md transition-all duration-200 hover:pl-2.5 group cursor-pointer active:scale-95"
+            className="flex items-center gap-1 pl-2 pr-1.5 py-2.5 rounded-l-xl bg-white/95 dark:bg-slate-900/90 hover:bg-slate-100 dark:hover:bg-slate-800 border-l border-y border-cyan-500/40 shadow-lg text-cyan-700 dark:text-cyan-300 backdrop-blur-md transition-all duration-200 hover:pl-2.5 group cursor-pointer active:scale-95"
             title="Open Geleza SA AI Assistant"
           >
             {/* Subtle, sleek chevron */}
-            <ChevronLeft className="w-4 h-4 text-cyan-400 group-hover:-translate-x-0.5 transition-transform" />
+            <ChevronLeft className="w-4 h-4 text-cyan-700 dark:text-cyan-400 group-hover:-translate-x-0.5 transition-transform" />
 
             <div className="flex flex-col items-center gap-1">
-              <Sparkles className="w-3 h-3 text-cyan-400" />
-              <span className="text-[9px] font-bold tracking-wider uppercase [writing-mode:vertical-rl] rotate-180 text-cyan-300">
+              <Sparkles className="w-3 h-3 text-cyan-700 dark:text-cyan-400" />
+              <span className="text-[9px] font-bold tracking-wider uppercase [writing-mode:vertical-rl] rotate-180 text-cyan-700 dark:text-cyan-300">
                 AI Chat
               </span>
             </div>

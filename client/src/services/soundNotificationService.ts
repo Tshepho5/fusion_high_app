@@ -1,8 +1,7 @@
 /**
- * Sound & Background Notification Service for Geleza SA
- * Handles real-time audio chimes for messages & announcements,
- * system OS notifications when the user is away or the app is minimized,
- * and tracks unread message & announcement counts globally.
+ * Phone notification service for Geleza SA.
+ * Message Hub and announcement alerts use the phone's own notification sound
+ * and still appear when the app is closed.
  */
 import { userService, notificationService } from './api';
 import { db as firestoreDb } from '../firebase';
@@ -10,8 +9,16 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 type NotificationListener = (counts: { messages: number; announcements: number }) => void;
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = window.atob(base64);
+  const output = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i += 1) output[i] = raw.charCodeAt(i);
+  return output;
+}
+
 class SoundNotificationService {
-  private audioCtx: AudioContext | null = null;
   private unreadMessages: number = 0;
   private unreadAnnouncements: number = 0;
   private prevMessages: number | null = null;
@@ -20,29 +27,7 @@ class SoundNotificationService {
   private pollInterval: any = null;
   private isInitialized: boolean = false;
   private currentUserId: string | number | null = null;
-
-  constructor() {
-    // Unlock AudioContext on first user interaction anywhere
-    if (typeof window !== 'undefined') {
-      const unlockAudio = () => {
-        try {
-          const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-          if (AudioContextClass) {
-            if (!this.audioCtx) {
-              this.audioCtx = new AudioContextClass();
-            }
-            if (this.audioCtx && this.audioCtx.state === 'suspended') {
-              this.audioCtx.resume();
-            }
-          }
-        } catch (_) {}
-      };
-
-      window.addEventListener('click', unlockAudio, { once: false, passive: true });
-      window.addEventListener('keydown', unlockAudio, { once: false, passive: true });
-      window.addEventListener('touchstart', unlockAudio, { once: false, passive: true });
-    }
-  }
+  private pushSubscribed: boolean = false;
 
   /**
    * Initializes notification audio context & permission check
@@ -54,8 +39,17 @@ class SoundNotificationService {
     if (this.isInitialized) return;
     this.isInitialized = true;
 
-    // Gracefully request notification permission if not yet decided
-    this.requestPermission();
+    this.ensurePhoneNotifications();
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        const url = event.data?.url;
+        if (event.data?.type === 'open-notification' && typeof url === 'string' && url.startsWith('/')) {
+          if (window.location.pathname + window.location.search !== url) {
+            window.location.assign(url);
+          }
+        }
+      });
+    }
 
     // Start background sync
     this.checkNow();
@@ -75,83 +69,66 @@ class SoundNotificationService {
   }
 
   public requestPermission() {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      if (Notification.permission === 'default') {
-        Notification.requestPermission().catch(() => {});
+    this.ensurePhoneNotifications();
+  }
+
+  public async release() {
+    this.pushSubscribed = false;
+    if (!('serviceWorker' in navigator)) return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const subscription = await reg.pushManager.getSubscription();
+      if (!subscription) return;
+      await notificationService.unsubscribePush(subscription.endpoint).catch(() => {});
+      await subscription.unsubscribe();
+    } catch (_) {}
+  }
+
+  private async ensurePhoneNotifications() {
+    if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    let permission = Notification.permission;
+    if (permission === 'default') {
+      try {
+        permission = await Notification.requestPermission();
+      } catch (_) {
+        return;
+      }
+    }
+    if (permission !== 'granted') return;
+    try {
+      await this.subscribePhone(false);
+      this.pushSubscribed = true;
+    } catch (_) {
+      try {
+        await this.subscribePhone(true);
+        this.pushSubscribed = true;
+      } catch (_) {
+        this.pushSubscribed = false;
       }
     }
   }
 
-  /**
-   * Synthesize a crisp melodic double-tone chime for incoming chat messages (E5 -> B5)
-   */
-  public playMessageSound() {
-    try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextClass) return;
-      const ctx = this.audioCtx || new AudioContextClass();
-      this.audioCtx = ctx;
-      if (ctx.state === 'suspended') ctx.resume();
-
-      const now = ctx.currentTime;
-      // Tone 1: E5
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(659.25, now);
-      gain1.gain.setValueAtTime(0.09, now);
-      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
-      osc1.connect(gain1);
-      gain1.connect(ctx.destination);
-      osc1.start(now);
-      osc1.stop(now + 0.13);
-
-      // Tone 2: B5 (higher pitch chime)
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(987.77, now + 0.1);
-      gain2.gain.setValueAtTime(0.12, now + 0.1);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.start(now + 0.1);
-      osc2.stop(now + 0.35);
-    } catch (_) {}
+  private async subscribePhone(replaceExisting: boolean) {
+    const reg = await navigator.serviceWorker.ready;
+    const keyRes = await notificationService.getPushPublicKey();
+    if (!keyRes?.publicKey) throw new Error('Missing push key');
+    if (replaceExisting) {
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) await existing.unsubscribe();
+    }
+    let subscription = replaceExisting ? null : await reg.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(keyRes.publicKey),
+      });
+    }
+    await notificationService.subscribePush(subscription.toJSON());
   }
 
   /**
-   * Synthesize a resonant 3-tone chime for important school announcements (C5 -> G5 -> C6)
-   */
-  public playAnnouncementSound() {
-    try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextClass) return;
-      const ctx = this.audioCtx || new AudioContextClass();
-      this.audioCtx = ctx;
-      if (ctx.state === 'suspended') ctx.resume();
-
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(523.25, now); // C5
-      osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.14); // G5
-      osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.28); // C6
-
-      gain.gain.setValueAtTime(0.12, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.45);
-    } catch (_) {}
-  }
-
-  /**
-   * Triggers an operating system desktop / mobile notification when user is in another tab or background
+   * Shows a phone notification using the device's own notification sound.
+   * When the phone is already subscribed, the server delivers this while the app is closed.
    */
   public showSystemNotification(
     title: string,
@@ -162,50 +139,24 @@ class SoundNotificationService {
       targetTab?: string;
     }
   ) {
-    // Play sound always
-    if (options.type === 'announcement') {
-      this.playAnnouncementSound();
-    } else {
-      this.playMessageSound();
-    }
-
-    // If browser supports notifications & user granted permission
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-      try {
-        const notif = new Notification(title, {
-          body: options.body,
-          icon: '/assets/icon-192.png',
-          badge: '/assets/icon-192.png',
-          tag: options.tag || 'geleza-sa-alert',
-          silent: false, // Ensure system sound/vibrate triggers
-          // @ts-ignore
-          vibrate: [200, 100, 200]
-        });
-
-        notif.onclick = () => {
-          window.focus();
-          if (options.targetTab) {
-            window.dispatchEvent(new CustomEvent('navigate-tab', { detail: { tab: options.targetTab } }));
-          }
-          notif.close();
-        };
-      } catch (err) {
-        // Fallback to service worker notification if direct Notification constructor fails on mobile
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-          navigator.serviceWorker.ready.then((reg) => {
-            reg.showNotification(title, {
-              body: options.body,
-              icon: '/assets/icon-192.png',
-              badge: '/assets/icon-192.png',
-              tag: options.tag || 'geleza-sa-alert',
-              // @ts-ignore
-              vibrate: [200, 100, 200],
-              data: { targetTab: options.targetTab }
-            });
-          }).catch(() => {});
-        }
-      }
-    }
+    if (this.pushSubscribed) return;
+    if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') return;
+    if (!('serviceWorker' in navigator)) return;
+    const tab = options.targetTab || (options.type === 'announcement' ? 'announcements' : 'messages');
+    const role = (localStorage.getItem('userRole') || '').toLowerCase();
+    const dashboard = ['learner', 'teacher', 'parent', 'admin'].includes(role) ? role : '';
+    const url = dashboard ? `/dashboard/${dashboard}?tab=${tab}` : `/?tab=${tab}`;
+    navigator.serviceWorker.ready.then((reg) => {
+      reg.showNotification(title, {
+        body: options.body,
+        icon: '/assets/icon-192.png',
+        badge: '/assets/icon-192.png',
+        tag: options.tag || `geleza-${tab}`,
+        renotify: true,
+        silent: false,
+        data: { url, targetTab: tab },
+      } as NotificationOptions);
+    }).catch(() => {});
   }
 
   /**

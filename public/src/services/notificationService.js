@@ -1,6 +1,7 @@
 const db = require('../../../db/db');
 const { db: firestore } = require('../../../db/firebase');
 const emailService = require('./emailService');
+const WebPushService = require('./webPushService');
 
 /**
  * Service for managing user notifications and dispatching targeted school alerts.
@@ -229,6 +230,19 @@ class NotificationService {
           }
         });
       }
+
+      setImmediate(() => {
+        WebPushService.notifyUsers({
+          userIds: uniqueIds,
+          notificationIds: result.rows.map((row) => row.id),
+          title,
+          message,
+          type,
+          targetTab,
+        }).catch((pushErr) => {
+          console.warn('[WEB PUSH] Dispatch warning:', pushErr.message);
+        });
+      });
 
       return result.rowCount;
     } catch (err) {

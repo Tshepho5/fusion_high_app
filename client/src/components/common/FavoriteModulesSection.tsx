@@ -929,14 +929,8 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
 
                 {/* Top Info */}
                 <div className="flex items-start gap-2.5">
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
-                      mod.iconBg || 'bg-cyan-500/15 border-cyan-500/30'
-                    }`}
-                  >
-                    <IconComp
-                      className={`w-4.5 h-4.5 ${mod.color || 'text-cyan-600 dark:text-cyan-400'}`}
-                    />
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border bg-cyan-500/15 border-cyan-500/30">
+                    <IconComp className="w-4.5 h-4.5 text-cyan-700 dark:text-[#18E2EC]" />
                   </div>
                   <div className="pr-6">
                     <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors line-clamp-2">
@@ -1069,14 +1063,8 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
-                            mod.iconBg || 'bg-cyan-500/15 border-cyan-500/30'
-                          }`}
-                        >
-                          <IconComp
-                            className={`w-4.5 h-4.5 ${mod.color || 'text-cyan-600 dark:text-cyan-400'}`}
-                          />
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border bg-cyan-500/15 border-cyan-500/30">
+                          <IconComp className="w-4.5 h-4.5 text-cyan-700 dark:text-[#18E2EC]" />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">

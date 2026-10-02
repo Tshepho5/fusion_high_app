@@ -598,9 +598,6 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
             <h2 className="text-xl md:text-3xl font-extrabold font-display text-white tracking-tight">
               My Subjects & CAPS Workload
             </h2>
-            <p className="text-xs md:text-sm text-slate-400 max-w-2xl mt-1.5 leading-relaxed">
-              Assigned CAPS learning areas, class registers, past question papers, mark recording, and syllabus pacing.
-            </p>
           </div>
 
           <div className="flex items-center gap-2 self-start md:self-auto">

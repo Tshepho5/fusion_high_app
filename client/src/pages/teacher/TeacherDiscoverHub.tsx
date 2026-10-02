@@ -1,84 +1,41 @@
-import React, { useState } from 'react';
-import { TeacherResources } from './TeacherResources';
-import { TeacherAITools } from './TeacherAITools';
-import { InterSchoolCompetitions } from '../../components/common/InterSchoolCompetitions';
-import {
-  Sparkles,
-  Layers,
-  Trophy,
-  Compass,
-} from 'lucide-react';
+import React from 'react';
+import { Sparkles, Layers, Trophy } from 'lucide-react';
 
 interface TeacherDiscoverHubProps {
   onNavigateTab: (tabId: string, params?: any) => void;
-  initialSubTab?: 'resources' | 'ai-tools' | 'inter-school';
 }
 
-export const TeacherDiscoverHub: React.FC<TeacherDiscoverHubProps> = ({
-  onNavigateTab,
-  initialSubTab = 'resources',
-}) => {
-  const [subTab, setSubTab] = useState<'resources' | 'ai-tools' | 'inter-school'>(initialSubTab);
+const discoverModules = [
+  { id: 'resources', title: 'Past Papers & Vault', icon: Layers },
+  { id: 'ai-tools', title: 'AI Lesson Studio', icon: Sparkles },
+  { id: 'inter-school', title: 'Olympiads & Derbies', icon: Trophy },
+];
 
+export const TeacherDiscoverHub: React.FC<TeacherDiscoverHubProps> = ({ onNavigateTab }) => {
   return (
-    <div className="space-y-6 animate-fade-in text-slate-900 dark:text-slate-100 pb-16">
-      {/* Discover Header with Integrated Sub-Tab Switcher */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 shadow-sm relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 dark:text-cyan-300 text-xs font-semibold">
-            <Compass className="w-3.5 h-3.5" />
-            <span>Curriculum & Discovery Hub</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-black font-display text-slate-900 dark:text-white tracking-tight">
-            Discover Teaching Innovation
-          </h1>
-        </div>
-
-        {/* Sub-Tab Navigation Bar */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-surface-darker rounded-2xl border border-slate-200 dark:border-white/10 shrink-0 self-start sm:self-center">
-          <button
-            onClick={() => setSubTab('resources')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              subTab === 'resources'
-                ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-indigo-500/30'
-                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Past Papers & Vault</span>
-          </button>
-
-          <button
-            onClick={() => setSubTab('ai-tools')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              subTab === 'ai-tools'
-                ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-md shadow-pink-500/30'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>AI Studio</span>
-          </button>
-
-          <button
-            onClick={() => setSubTab('inter-school')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              subTab === 'inter-school'
-                ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/30'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Trophy className="w-3.5 h-3.5" />
-            <span>Olympiads & Derbies</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Sub-Tab Content Rendering */}
-      <div>
-        {subTab === 'resources' && <TeacherResources onNavigateTab={onNavigateTab} />}
-        {subTab === 'ai-tools' && <TeacherAITools />}
-        {subTab === 'inter-school' && <InterSchoolCompetitions />}
+    <div className="space-y-4 animate-fade-in text-slate-900 dark:text-slate-100 pb-16">
+      <h1 className="text-xl sm:text-2xl font-black font-display text-slate-900 dark:text-white tracking-tight">
+        Discover
+      </h1>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {discoverModules.map((mod) => {
+          const Icon = mod.icon;
+          return (
+            <button
+              key={mod.id}
+              type="button"
+              onClick={() => onNavigateTab(mod.id)}
+              className="group p-4 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-cyan-500/60 hover:bg-cyan-500/5 dark:hover:bg-[#132230] transition-all cursor-pointer flex items-center gap-3 text-left shadow-sm hover:-translate-y-0.5"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <Icon className="w-5 h-5 text-cyan-700 dark:text-[#18E2EC]" />
+              </div>
+              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-700 dark:group-hover:text-[#18E2EC] transition-colors leading-snug">
+                {mod.title}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

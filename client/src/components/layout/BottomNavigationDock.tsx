@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { FusionChatbotMascot } from '../common/FusionChatbotMascot';
-import { HelpSupportModal } from '../common/HelpSupportModal';
 
 interface BottomNavigationDockProps {
   activeTab: string;
@@ -21,7 +19,6 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
   activeTab,
   onSelectTab,
 }) => {
-  const [chatOpen, setChatOpen] = useState(false);
   const size = useMenuSize();
   const onModulesPage = activeTab === 'more';
 
@@ -37,7 +34,7 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
           >
             <span className="flex h-full w-full items-center justify-center rounded-full bg-[#070B14] text-center">
               {onModulesPage ? (
-                <span className="text-[11px] xl:text-xs font-black leading-tight text-white">
+                <span className="text-[11px] xl:text-xs font-black leading-tight text-white text-always-white">
                   Tap to<br />close
                 </span>
               ) : (
@@ -47,28 +44,8 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
               )}
             </span>
           </button>
-
-          <button
-            type="button"
-            aria-label="AI chat"
-            title="AI chat"
-            onClick={(event) => {
-              event.stopPropagation();
-              setChatOpen(true);
-            }}
-            className="absolute -right-1 -top-2 z-[6] cursor-pointer"
-          >
-            <FusionChatbotMascot size={size >= 110 ? 34 : 28} />
-          </button>
         </div>
       </div>
-
-      <HelpSupportModal
-        isOpen={chatOpen}
-        onClose={() => setChatOpen(false)}
-        defaultTab="ai-support"
-        onSelectTab={onSelectTab}
-      />
     </>
   );
 };

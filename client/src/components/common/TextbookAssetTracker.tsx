@@ -70,6 +70,7 @@ export const TextbookAssetTracker: React.FC<TextbookAssetTrackerProps> = ({ forc
     condition_on_issue: 'Good'
   });
 
+  const [scanningOverdue, setScanningOverdue] = useState<boolean>(false);
   const [returnForm, setReturnForm] = useState({
     condition_on_return: 'Good',
     replacement_fee: 0
@@ -274,8 +275,6 @@ export const TextbookAssetTracker: React.FC<TextbookAssetTrackerProps> = ({ forc
     return title.includes(query) || subject.includes(query) || barcode.includes(query) || isbn.includes(query);
   });
 
-  const [scanningOverdue, setScanningOverdue] = useState<boolean>(false);
-
   const handleAutoBillOverdue = async () => {
     setScanningOverdue(true);
     setError(null);
@@ -300,9 +299,6 @@ export const TextbookAssetTracker: React.FC<TextbookAssetTrackerProps> = ({ forc
             <BookOpen className="w-6 h-6 text-brand-400" />
             <span>Textbook Inventory</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Monitor CAPS book stock, classroom distributions, and learner barcode tracking.
-          </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">

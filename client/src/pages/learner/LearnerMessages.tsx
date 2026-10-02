@@ -291,8 +291,6 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const prevMessageCountRef = useRef<number>(0);
-  const initialLoadDoneRef = useRef<boolean>(false);
 
   // Play outgoing message sent chime (soft modern "pop" chime)
   const playSendChime = () => {
@@ -316,39 +314,6 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + 0.1);
-    } catch (_) {}
-  };
-
-  // Play incoming message received chime (melodic double-bell chime)
-  const playReceiveChime = () => {
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = audioCtxRef.current || new AudioCtx();
-      audioCtxRef.current = ctx;
-      if (ctx.state === 'suspended') ctx.resume();
-
-      const now = ctx.currentTime;
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(659.25, now);
-      gain1.gain.setValueAtTime(0.07, now);
-      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-      osc1.connect(gain1);
-      gain1.connect(ctx.destination);
-      osc1.start(now);
-      osc1.stop(now + 0.12);
-
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(987.77, now + 0.09);
-      gain2.gain.setValueAtTime(0.09, now + 0.09);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.start(now + 0.09);
-      osc2.stop(now + 0.25);
     } catch (_) {}
   };
 
@@ -415,15 +380,6 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
           (m: any, index: number, self: any[]) => index === self.findIndex((o: any) => o.id === m.id)
         );
 
-        if (initialLoadDoneRef.current && uniqueMsgs.length > prevMessageCountRef.current) {
-          const lastMsg = uniqueMsgs[uniqueMsgs.length - 1];
-          if (lastMsg && lastMsg.sender_id !== user?.id) {
-            playReceiveChime();
-          }
-        }
-        initialLoadDoneRef.current = true;
-        prevMessageCountRef.current = uniqueMsgs.length;
-
         setConversation(uniqueMsgs);
         setTimeout(() => scrollToBottom(false), 50);
       })
@@ -434,8 +390,6 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
 
   useEffect(() => {
     if (selectedContact?.id) {
-      initialLoadDoneRef.current = false;
-      prevMessageCountRef.current = 0;
       fetchConversation(selectedContact.id);
       const interval = setInterval(() => {
         const currentTargetId = selectedContactRef.current?.id || selectedContact?.id;

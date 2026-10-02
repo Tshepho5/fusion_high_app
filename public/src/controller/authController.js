@@ -3,7 +3,7 @@ const db = require('../../../db/db');
 const { db: firestore } = require('../../../db/firebase');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { attachSessionCookie } = require('../../../authMiddleware');
+const { attachSessionCookie, ensureActiveSessionColumn } = require('../../../authMiddleware');
 const emailService = require('../services/emailService');
 const { validateSAID } = require('./saIDvalidations');
 const curriculumService = require('../services/curriculumService');
@@ -609,13 +609,34 @@ exports.login = async (req, res) => {
 
         const isSuperAdmin = Boolean(user.is_superadmin);
 
+        await ensureActiveSessionColumn();
+        const liveSession = await db.query(
+            'SELECT active_session_id, session_seen_at FROM users WHERE id = $1',
+            [user.id]
+        );
+        const openSession = liveSession.rows[0];
+        const seenAt = openSession?.session_seen_at ? new Date(openSession.session_seen_at).getTime() : 0;
+        const sessionStillOpen = Boolean(openSession?.active_session_id) && (Date.now() - seenAt) < 60000;
+        if (sessionStillOpen) {
+            return res.status(409).json({
+                error: 'This account is already signed in on another device or tab. Sign out there before signing in here.',
+                code: 'session_in_use'
+            });
+        }
+
+        const sessionId = crypto.randomUUID();
+        await db.query(
+            'UPDATE users SET active_session_id = $1, session_seen_at = NOW(), last_seen_at = NOW(), is_online = TRUE WHERE id = $2',
+            [sessionId, user.id]
+        );
+
         const signingSecret = process.env.JWT_SECRET;
         if (!signingSecret) {
             return res.status(500).json({ error: 'Server signing secret is not configured.' });
         }
 
         const token = jwt.sign(
-            { id: user.id, role: user.role_name, email: user.email, full_name: user.full_name, school_id: user.school_id, is_superadmin: isSuperAdmin },
+            { id: user.id, role: user.role_name, email: user.email, full_name: user.full_name, school_id: user.school_id, is_superadmin: isSuperAdmin, sid: sessionId },
             signingSecret,
             { expiresIn: '7d' }
         );
@@ -681,9 +702,71 @@ exports.forgotPassword = async (req, res) => {
         if (!queryInput) return res.status(400).json({ error: 'Email address, Learner Number, Phone, or ID Number is required.' });
         const cleanInput = queryInput.toLowerCase();
         const numericOnly = queryInput.replace(/\D/g, '');
+        const channel = String(req.body.channel || 'email').toLowerCase() === 'whatsapp' ? 'whatsapp' : 'email';
 
         let userLookup;
-        if (cleanInput.includes('@')) {
+        if (channel === 'whatsapp') {
+            const whatsapp = require('../services/whatsappService');
+            await whatsapp.ensureSchema();
+            const phone = whatsapp.normalise(queryInput);
+            if (!phone) {
+                return res.status(400).json({ error: 'Enter the full mobile number saved on the account. Use 10 digits starting with 0.' });
+            }
+            const phoneTail = phone.slice(2);
+            userLookup = await db.query(`
+                SELECT u.id, u.email, u.full_name, u.surname, COALESCE(r.name, u.role_id::text, 'learner') as role_name, 
+                       u.id_number::text as id_number, u.phone::text as phone, c.learner_number::text as learner_number,
+                       COALESCE(pu.email, pc_u.email) as parent_user_email
+                FROM users u
+                LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
+                LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
+                LEFT JOIN users pu ON (c.parent_id::text = pu.id::text)
+                LEFT JOIN parent_children pc ON (pc.child_id::text = c.id::text)
+                LEFT JOIN users pc_u ON (pc.parent_id::text = pc_u.id::text)
+                WHERE (
+                    u.phone IS NOT NULL
+                    AND LENGTH(REGEXP_REPLACE(u.phone::text, '[^0-9]', '', 'g')) >= 9
+                    AND RIGHT(REGEXP_REPLACE(u.phone::text, '[^0-9]', '', 'g'), 9) = $1
+                )
+                OR EXISTS (
+                    SELECT 1 FROM employees e
+                    WHERE e.user_id::text = u.id::text
+                      AND e.phone IS NOT NULL
+                      AND LENGTH(REGEXP_REPLACE(e.phone::text, '[^0-9]', '', 'g')) >= 9
+                      AND RIGHT(REGEXP_REPLACE(e.phone::text, '[^0-9]', '', 'g'), 9) = $1
+                )
+                OR EXISTS (
+                    SELECT 1 FROM whatsapp_contacts wc
+                    WHERE RIGHT(REGEXP_REPLACE(wc.phone, '[^0-9]', '', 'g'), 9) = $1
+                      AND (
+                        wc.user_id::text = u.id::text
+                        OR (wc.email IS NOT NULL AND LOWER(wc.email) = LOWER(TRIM(u.email::text)))
+                      )
+                )
+                OR EXISTS (
+                    SELECT 1 FROM applications a
+                    WHERE (
+                        (a.primary_parent_email IS NOT NULL AND LOWER(TRIM(a.primary_parent_email)) = LOWER(TRIM(u.email::text)))
+                        OR (a.email IS NOT NULL AND LOWER(TRIM(a.email)) = LOWER(TRIM(u.email::text)))
+                        OR (a.secondary_parent_email IS NOT NULL AND LOWER(TRIM(a.secondary_parent_email)) = LOWER(TRIM(u.email::text)))
+                    )
+                    AND (
+                        (a.primary_parent_phone IS NOT NULL AND LENGTH(REGEXP_REPLACE(a.primary_parent_phone, '[^0-9]', '', 'g')) >= 9 AND RIGHT(REGEXP_REPLACE(a.primary_parent_phone, '[^0-9]', '', 'g'), 9) = $1)
+                        OR (a.phone IS NOT NULL AND LENGTH(REGEXP_REPLACE(a.phone, '[^0-9]', '', 'g')) >= 9 AND RIGHT(REGEXP_REPLACE(a.phone, '[^0-9]', '', 'g'), 9) = $1)
+                        OR (a.secondary_parent_phone IS NOT NULL AND LENGTH(REGEXP_REPLACE(a.secondary_parent_phone, '[^0-9]', '', 'g')) >= 9 AND RIGHT(REGEXP_REPLACE(a.secondary_parent_phone, '[^0-9]', '', 'g'), 9) = $1)
+                    )
+                )
+                ORDER BY (CASE WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'parent' THEN 1 WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN 2 WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'admin' THEN 3 ELSE 4 END) ASC
+                LIMIT 1
+            `, [phoneTail]);
+
+            if (userLookup.rows.length === 0) {
+                return res.status(404).json({
+                    error: 'This number is not saved on a Geleza SA account, so no code was sent. Check the number, or reset the password by email.'
+                });
+            }
+            req.whatsappResetPhone = phone;
+        } else if (cleanInput.includes('@')) {
             // Strict Email Lookup: Account MUST exist with this exact email in users table
             userLookup = await db.query(`
                 SELECT u.id, u.email, u.full_name, u.surname, COALESCE(r.name, u.role_id::text, 'learner') as role_name, 
@@ -753,7 +836,7 @@ exports.forgotPassword = async (req, res) => {
             targetDeliveryEmail = user.email.trim();
         }
 
-        if (!targetDeliveryEmail || !targetDeliveryEmail.includes('@')) {
+        if (channel !== 'whatsapp' && (!targetDeliveryEmail || !targetDeliveryEmail.includes('@'))) {
             return res.status(400).json({ 
                 error: 'No valid recovery email address is registered on this account in the database. Please contact school administration for password reset assistance.' 
             });
@@ -771,7 +854,9 @@ exports.forgotPassword = async (req, res) => {
             await db.query(
                 `INSERT INTO notifications (user_id, title, message, type)
                  VALUES ($1, $2, $3, 'security')`,
-                [user.id, 'Password Reset Code', 'A password reset code was sent to your email. It is valid for 5 minutes.']
+                [user.id, 'Password Reset Code', channel === 'whatsapp'
+                    ? 'A password reset code was sent to your WhatsApp. It is valid for 5 minutes.'
+                    : 'A password reset code was sent to your email. It is valid for 5 minutes.']
             );
         } catch (nErr) {}
 
@@ -810,6 +895,25 @@ exports.forgotPassword = async (req, res) => {
             baseUrl = 'https://fusion-high-app.web.app';
         }
 
+        if (channel === 'whatsapp') {
+            const whatsapp = require('../services/whatsappService');
+            const sent = await whatsapp.sendOtp(req.whatsappResetPhone, otp);
+            const localPhone = `0${req.whatsappResetPhone.slice(2)}`;
+            const maskedPhone = `${localPhone.slice(0, 3)} *** ${localPhone.slice(-4)}`;
+            if (!sent.sent) {
+                return res.status(503).json({
+                    error: sent.reason || 'The recovery code could not be delivered on WhatsApp. Choose email, or try again when WhatsApp delivery is connected.'
+                });
+            }
+            return res.status(200).json({
+                message: `A 10-digit reset code has been sent to your WhatsApp (${maskedPhone}). It is valid for 5 minutes.`,
+                email: user.email,
+                channel: 'whatsapp',
+                delivery_phone: maskedPhone,
+                expires_in: 300
+            });
+        }
+
         const tpl = emailService.templates.forgotPassword(otp, targetDeliveryEmail, baseUrl);
         
         // Create a helpful masked email (e.g. ts***@gmail.com)
@@ -833,6 +937,7 @@ exports.forgotPassword = async (req, res) => {
         res.status(200).json({ 
             message: `A 10-digit reset code has been sent to your registered email (${masked}). Please check your Inbox and Spam/Junk folder (valid for 5 minutes).`,
             email: user.email,
+            channel: 'email',
             delivery_email: masked,
             expires_in: 300
         });

@@ -18,12 +18,15 @@ import {
 } from 'lucide-react';
 
 export const ForgotPasswordPage: React.FC = () => {
+  const whatsappRecoveryEnabled = false;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   // Distinct steps: 'request' -> 'verify' (with 2-minute timer) -> 'reset' (no timer, view password toggles)
   const [step, setStep] = useState<'request' | 'verify' | 'reset'>('request');
+  const [channel, setChannel] = useState<'email' | 'whatsapp'>('email');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [verifiedOtp, setVerifiedOtp] = useState('');
 
@@ -82,14 +85,24 @@ export const ForgotPasswordPage: React.FC = () => {
   // Step 1: Request OTP (Dispatches email, NEVER auto-fills in the form, user must type it from email)
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+    if (channel === 'whatsapp' && !/^0\d{9}$/.test(phone) && !/^27\d{9}$/.test(phone)) {
+      setError('Enter the full mobile number saved on the account. Use 10 digits starting with 0.');
+      return;
+    }
+    setLoading(true);
     try {
-      const res = await authService.forgotPassword({ email: email.trim() });
+      const res = await authService.forgotPassword(
+        channel === 'whatsapp'
+          ? { identifier: phone.trim(), channel: 'whatsapp' }
+          : { email: email.trim(), channel: 'email' }
+      );
       if (res.email) setEmail(res.email);
-      // Keep OTP input empty so user enters it manually from their email
+      // Keep OTP input empty so the user types the code from the message
       setOtp('');
-      setMessage(res.message || 'A 10-digit security code has been sent to your email. Please check your inbox or spam folder (valid for 5 minutes).');
+      setMessage(res.message || (channel === 'whatsapp'
+        ? 'A 10-digit security code has been sent to your WhatsApp (valid for 5 minutes).'
+        : 'A 10-digit security code has been sent to your email. Please check your inbox or spam folder (valid for 5 minutes).'));
       setStep('verify');
       setTimeLeft(300);
       setTimerActive(true);
@@ -102,17 +115,27 @@ export const ForgotPasswordPage: React.FC = () => {
 
   // Resend OTP Code (Restarts 5-minute countdown, leaves input for manual entry)
   const handleResendOtp = async () => {
-    if (!email) {
+    if (channel === 'whatsapp' && !/^0\d{9}$/.test(phone) && !/^27\d{9}$/.test(phone)) {
+      setError('Enter the full mobile number saved on the account. Use 10 digits starting with 0.');
+      return;
+    }
+    if (channel !== 'whatsapp' && !email.trim()) {
       setError('Please enter your email, learner number, or ID number.');
       return;
     }
     setResending(true);
     setError(null);
     try {
-      const res = await authService.forgotPassword({ email: email.trim() });
+      const res = await authService.forgotPassword(
+        channel === 'whatsapp'
+          ? { identifier: phone.trim(), channel: 'whatsapp' }
+          : { email: email.trim(), channel: 'email' }
+      );
       if (res.email) setEmail(res.email);
       setOtp(''); // User must enter the fresh code manually
-      setMessage(res.message || 'A fresh 10-digit code has been dispatched to your email (valid for 5 minutes).');
+      setMessage(res.message || (channel === 'whatsapp'
+        ? 'A fresh 10-digit code has been sent to your WhatsApp (valid for 5 minutes).'
+        : 'A fresh 10-digit code has been dispatched to your email (valid for 5 minutes).'));
       setTimeLeft(300);
       setTimerActive(true);
     } catch (err: any) {
@@ -128,7 +151,9 @@ export const ForgotPasswordPage: React.FC = () => {
     setError(null);
 
     if (!otp || otp.trim().length !== 10) {
-      setError('Please enter the 10-digit code received in your email.');
+      setError(channel === 'whatsapp'
+        ? 'Please enter the 10-digit code received on WhatsApp.'
+        : 'Please enter the 10-digit code received in your email.');
       return;
     }
 
@@ -199,8 +224,12 @@ export const ForgotPasswordPage: React.FC = () => {
             {step === 'reset' ? 'Create New Password' : 'Account Recovery'}
           </h2>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-            {step === 'request' && 'Enter your registered email to receive a 5-minute recovery code'}
-            {step === 'verify' && 'Enter the 10-digit code sent to your email (5-minute limit)'}
+            {step === 'request' && (whatsappRecoveryEnabled
+              ? 'Choose email or WhatsApp to receive a 5-minute recovery code'
+              : 'Enter your registered email to receive a 5-minute recovery code')}
+            {step === 'verify' && (channel === 'whatsapp'
+              ? 'Enter the 10-digit code sent to your WhatsApp (5-minute limit)'
+              : 'Enter the 10-digit code sent to your email (5-minute limit)')}
             {step === 'reset' && 'Create your new password. Take your time to set a secure password.'}
           </p>
         </div>
@@ -212,7 +241,7 @@ export const ForgotPasswordPage: React.FC = () => {
               ? 'bg-blue-600 text-white shadow-sm'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
           }`}>
-            <span>1. Email</span>
+            <span>1. Choose</span>
           </div>
 
           <div className="w-4 h-[1px] bg-slate-300 dark:bg-slate-700" />
@@ -267,6 +296,64 @@ export const ForgotPasswordPage: React.FC = () => {
         {/* ========================================================================= */}
         {step === 'request' && (
           <form onSubmit={handleRequestOtp} className="space-y-4">
+            {whatsappRecoveryEnabled && (
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => { setChannel('email'); setError(null); }}
+                className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors cursor-pointer ${
+                  channel === 'email'
+                    ? 'bg-blue-600 border-blue-600 text-white'
+                    : 'bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                Email
+              </button>
+              <button
+                type="button"
+                onClick={() => { setChannel('whatsapp'); setError(null); }}
+                className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors cursor-pointer ${
+                  channel === 'whatsapp'
+                    ? 'bg-[#128C7E] border-[#128C7E] text-white text-always-white'
+                    : 'bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                WhatsApp
+              </button>
+            </div>
+            )}
+            {whatsappRecoveryEnabled && channel === 'whatsapp' ? (
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                WhatsApp mobile number
+              </label>
+              <div className="relative">
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  spellCheck={false}
+                  value={phone}
+                  onChange={(e) => {
+                    setPhone(e.target.value.replace(/\D/g, '').slice(0, 11));
+                    if (error) setError(null);
+                  }}
+                  placeholder="e.g. 0821234567"
+                  required
+                  className={`w-full rounded-xl bg-slate-50 dark:bg-slate-900 border px-4 py-3 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#128C7E] focus:border-[#128C7E] ${
+                    error && step === 'request' ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-slate-300 dark:border-slate-700'
+                  }`}
+                />
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">The recovery code is sent to this number on WhatsApp.</p>
+              {error && step === 'request' && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{typeof error === 'string' ? error : (error as any)?.message || String(error)}</span>
+                </p>
+              )}
+            </div>
+            ) : (
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                 Registered Email, Learner Number, or ID Number
@@ -296,6 +383,7 @@ export const ForgotPasswordPage: React.FC = () => {
                 </p>
               )}
             </div>
+            )}
 
             <button
               type="submit"
@@ -338,9 +426,15 @@ export const ForgotPasswordPage: React.FC = () => {
             </div>
 
             {/* Spam Folder Guidance Tip */}
-            <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-blue-800 dark:text-blue-300 text-[11px] flex items-center gap-2">
-              <span>💡 <strong>Tip:</strong> If you don't see the email immediately, please check your <strong>Spam / Junk</strong> folder.</span>
-            </div>
+            {channel === 'whatsapp' ? (
+              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-[11px]">
+                Open WhatsApp and enter the 10-digit code from Geleza SA.
+              </div>
+            ) : (
+              <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-blue-800 dark:text-blue-300 text-[11px] flex items-center gap-2">
+                <span>💡 <strong>Tip:</strong> If you don't see the email immediately, please check your <strong>Spam / Junk</strong> folder.</span>
+              </div>
+            )}
 
             {/* OTP Code with 5-Minute Countdown Timer */}
             <div>
@@ -421,7 +515,7 @@ export const ForgotPasswordPage: React.FC = () => {
                 onClick={() => setStep('request')}
                 className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
               >
-                ← Change Email
+                ← {channel === 'whatsapp' ? 'Change number' : 'Change email'}
               </button>
 
               <button

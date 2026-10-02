@@ -282,9 +282,6 @@ export const GelezaEarlyWarningRadar: React.FC<GelezaEarlyWarningRadarProps> = (
             <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               Early-Warning Academic Radar
             </h1>
-            <p className="text-slate-600 dark:text-slate-300 text-sm md:text-base max-w-2xl leading-relaxed">
-              Projected exam marks and support tiers from attendance, study time, past scores, tutoring, resources, and parent involvement.
-            </p>
           </div>
 
           {/* Action Buttons */}

@@ -248,9 +248,6 @@ export const ParentTeacherConsultations: React.FC = () => {
             <MessageSquare className="w-6 h-6 text-brand-400" />
             Educator Consultation Scheduler
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Book 20-minute dedicated academic review sessions with subject teachers with automated email confirmations.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">

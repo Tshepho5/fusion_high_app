@@ -39,6 +39,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [sessionPrompt, setSessionPrompt] = useState<null | 'idle' | 'logout'>(null);
+  const [tabBlocked, setTabBlocked] = useState(false);
   const promptKind = useRef<null | 'idle' | 'logout'>(null);
   const resetIdleTimer = useRef<() => void>(() => {});
 
@@ -68,7 +69,49 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       refreshUser();
     } else {
       setIsLoading(false);
+      setTabBlocked(false);
     }
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    const tabId = sessionStorage.getItem('geleza_tab_id') || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
+    sessionStorage.setItem('geleza_tab_id', tabId);
+    const lockKey = 'geleza_active_tab';
+    const readLock = () => {
+      try {
+        return JSON.parse(localStorage.getItem(lockKey) || 'null');
+      } catch (_) {
+        return null;
+      }
+    };
+    const claimTab = () => {
+      const current = readLock();
+      const heldByAnother = current && current.tabId !== tabId && Date.now() - Number(current.ts || 0) < 8000;
+      if (heldByAnother) {
+        setTabBlocked(true);
+        return;
+      }
+      localStorage.setItem(lockKey, JSON.stringify({ tabId, ts: Date.now() }));
+      setTabBlocked(false);
+    };
+    claimTab();
+    const timer = window.setInterval(claimTab, 3000);
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === 'token' && event.newValue && event.newValue !== token) {
+        try { sessionStorage.setItem('logout_reason', 'session'); } catch (_) {}
+        window.location.href = '/login';
+        return;
+      }
+      if (event.key === lockKey) claimTab();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('storage', onStorage);
+      const current = readLock();
+      if (current?.tabId === tabId) localStorage.removeItem(lockKey);
+    };
   }, [token]);
 
   // After 3 minutes without interaction, ask whether to stay or sign in again.
@@ -162,14 +205,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const finishLogout = () => {
+  const finishLogout = async () => {
     promptKind.current = null;
     setSessionPrompt(null);
     try {
       sessionStorage.removeItem('logout_reason');
     } catch (_) {}
     try {
-      userService.updateLogoutStatus().catch(() => {});
+      userService.updateLogoutStatus(true).catch(() => {});
+    } catch (_) {}
+    try {
+      const { soundNotificationService } = await import('../services/soundNotificationService');
+      await soundNotificationService.release();
     } catch (_) {}
     setToken(null);
     setRole(null);
@@ -179,6 +226,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem('user');
     localStorage.removeItem('active_school_profile');
     localStorage.removeItem('active_school_id');
+    localStorage.removeItem('geleza_active_tab');
     window.location.href = '/login';
   };
 
@@ -215,6 +263,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }}
     >
       {children}
+      {tabBlocked && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+            <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">Already open</h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              This account is already signed in on another tab. Close that tab before using Geleza SA here.
+            </p>
+          </div>
+        </div>
+      )}
       {sessionPrompt && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
           <div

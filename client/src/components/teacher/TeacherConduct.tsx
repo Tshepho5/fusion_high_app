@@ -148,9 +148,6 @@ export const TeacherConduct: React.FC = () => {
             <ShieldCheck className="w-6 h-6 text-brand-400" />
             <span>Merit & Disciplinary Management</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Reward positive learner achievements with merit badges & XP, or record disciplinary incident notices with automatic parent notifications.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">

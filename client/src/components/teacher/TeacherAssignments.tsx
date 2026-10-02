@@ -495,9 +495,6 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
             <BookOpen className="w-6 h-6 text-brand-400" />
             <span>Assignments & AI Assessments Portal</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Track published homework tasks, inspect AI assessments sent to learners, review grading status, and adjust marks.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">

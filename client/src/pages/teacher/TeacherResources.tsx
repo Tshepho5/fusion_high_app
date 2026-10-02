@@ -404,9 +404,6 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
               <h3 className="text-base sm:text-lg font-bold font-display text-white flex items-center gap-2">
                 <span>My Assigned CAPS Subjects & Learning Vaults</span>
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Select an assigned subject below to access, filter, and upload curriculum resources and past exam papers.
-              </p>
             </div>
             <span className="self-start sm:self-auto text-xs font-mono text-cyan-400 font-bold px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20">
               {assignedSubjects.length} Subject{assignedSubjects.length === 1 ? '' : 's'} Assigned

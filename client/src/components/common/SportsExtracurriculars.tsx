@@ -273,9 +273,6 @@ export const SportsExtracurriculars: React.FC = () => {
             </div>
             <span>Sports & Extracurriculars</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Official sports codes, match fixture arrangements, coach schedules, and school notifications.
-          </p>
         </div>
 
         {isStaff && (

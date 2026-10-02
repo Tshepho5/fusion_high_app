@@ -25,7 +25,6 @@ import { GelezaEarlyWarningRadar } from '../../components/teacher/GelezaEarlyWar
 import { ModulePageHeader } from '../../components/layout/WorkspaceChrome';
 import { TeacherMoreHub } from './TeacherMoreHub';
 import { TeacherDiscoverHub } from './TeacherDiscoverHub';
-import { TeacherCalendarHub } from './TeacherCalendarHub';
 import { useSchool } from '../../context/SchoolContext';
 import { moduleAllowed } from '../../utils/schoolModules';
 
@@ -36,6 +35,7 @@ export const TeacherDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>(() =>
     moduleAllowed('teacher', initialTab, currentSchool.teacher_modules) ? initialTab : 'overview'
   );
+  const [tabHistory, setTabHistory] = useState<string[]>([]);
 
   useEffect(() => {
     refreshSchools();
@@ -58,6 +58,9 @@ export const TeacherDashboard: React.FC = () => {
       setActiveTab('overview');
       setSearchParams({ tab: 'overview' });
       return;
+    }
+    if (tabId !== activeTab) {
+      setTabHistory((prev) => [...prev, activeTab].slice(-24));
     }
     setActiveTab(tabId);
     const newParams: any = { tab: tabId };
@@ -86,8 +89,9 @@ export const TeacherDashboard: React.FC = () => {
       case 'ai-tools':
         return 'AI Lesson & Test Builder';
       case 'calendar':
+        return 'Academic Calendar';
       case 'timetable':
-        return 'Educator Timetable & Academic Calendar';
+        return 'Educator Timetable';
       case 'more':
         return 'More Modules & Educator Functions';
       case 'ptc':
@@ -126,23 +130,72 @@ export const TeacherDashboard: React.FC = () => {
     }
   };
 
-  const isSubModule = activeTab !== 'overview' && activeTab !== 'home' && activeTab !== 'calendar' && activeTab !== 'profile' && activeTab !== 'discover' && activeTab !== 'messages' && activeTab !== 'more';
-
-  // Determine intelligent backtrack target
-  const getBacktrackConfig = () => {
-    if (activeTab === 'subjects' || activeTab === 'classes' || activeTab === 'workload') {
-      return { target: 'overview', label: 'Back to Subjects', parentLabel: 'Home' };
-    }
-    if (activeTab === 'resources' || activeTab === 'ai-tools' || activeTab === 'inter-school') {
-      return { target: 'discover', label: 'Back to Discover', parentLabel: 'Discover' };
-    }
-    if (activeTab === 'announcements' || activeTab === 'ptc') {
-      return { target: 'messages', label: 'Back to Messages', parentLabel: 'Messages' };
-    }
-    return { target: 'more', label: 'Back to More Modules', parentLabel: 'More Modules' };
+  const placeName = (tabId: string) => {
+    const names: Record<string, string> = {
+      overview: 'Home',
+      home: 'Home',
+      more: 'Menu',
+      discover: 'Discover',
+      subjects: 'Subjects',
+      classes: 'Subjects',
+      workload: 'Subjects',
+      resources: 'Past Papers',
+      'ai-tools': 'AI Studio',
+      calendar: 'Calendar',
+      timetable: 'Timetable',
+      messages: 'Messages',
+      announcements: 'Notices',
+      ptc: 'Consultations',
+      consultations: 'Consultations',
+      'inter-school': 'Olympiads',
+      conduct: 'Conduct',
+      'my-leave': 'Leave',
+      'exam-seating': 'Exam Seating',
+      sports: 'Sports',
+      textbooks: 'Textbooks',
+      attendance: 'Attendance',
+      assessments: 'Marksheets',
+      'early-warning': 'Early Warning',
+      assignments: 'Homework',
+      settings: 'Settings',
+      profile: 'Profile',
+    };
+    return names[tabId] || 'Menu';
   };
 
-  const backtrack = getBacktrackConfig();
+  const fallbackTarget = () => {
+    if (
+      activeTab === 'subjects' ||
+      activeTab === 'classes' ||
+      activeTab === 'workload' ||
+      activeTab === 'more' ||
+      activeTab === 'discover'
+    ) {
+      return 'overview';
+    }
+    return 'more';
+  };
+
+  const previousTab = tabHistory[tabHistory.length - 1];
+  const resolvedBack = previousTab && previousTab !== activeTab ? previousTab : fallbackTarget();
+  const backTarget = resolvedBack === activeTab ? 'overview' : resolvedBack;
+
+  const openTab = (tabId: string) => {
+    if (!moduleAllowed('teacher', tabId, currentSchool.teacher_modules)) {
+      setActiveTab('overview');
+      setSearchParams({ tab: 'overview' });
+      return;
+    }
+    setActiveTab(tabId);
+    setSearchParams({ tab: tabId });
+  };
+
+  const handleBack = () => {
+    setTabHistory((prev) => (prev.length ? prev.slice(0, -1) : prev));
+    openTab(backTarget);
+  };
+
+  const showBack = activeTab !== 'overview' && activeTab !== 'home' && activeTab !== 'messages';
 
   return (
     <DashboardLayout
@@ -151,12 +204,12 @@ export const TeacherDashboard: React.FC = () => {
       title={getTabTitle()}
     >
 
-      {isSubModule && (
+      {showBack && (
         <ModulePageHeader
           title={getTabTitle()}
-          parentLabel={backtrack.parentLabel}
-          backLabel={backtrack.label}
-          onBack={() => handleSelectTab(backtrack.target)}
+          parentLabel={placeName(backTarget)}
+          backLabel={`Back to ${placeName(backTarget)}`}
+          onBack={handleBack}
         />
       )}
 
@@ -167,9 +220,7 @@ export const TeacherDashboard: React.FC = () => {
         <TeacherOverview onNavigateTab={handleSelectTab} />
       )}
 
-      {activeTab === 'calendar' && (
-        <TeacherCalendarHub initialSubTab="timetable" />
-      )}
+      {activeTab === 'calendar' && <SchoolCalendar />}
 
       {activeTab === 'profile' && (
         <LearnerProfile />
@@ -180,7 +231,7 @@ export const TeacherDashboard: React.FC = () => {
       )}
 
       {activeTab === 'messages' && (
-        <LearnerMessages onBack={() => handleSelectTab('overview')} />
+        <LearnerMessages onBack={handleBack} />
       )}
 
       {activeTab === 'more' && (

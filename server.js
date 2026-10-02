@@ -76,6 +76,8 @@ if (!process.env.VERCEL) {
       const { migrateParentApplicationsTwins } = require('./db/migrate_parent_applications_twins');
       await migrateParentApplicationsTwins();
       await NotificationService.initSchema();
+      const WebPushService = require('./public/src/services/webPushService');
+      await WebPushService.init();
       await createAiConversationsTables();
       const migrateSportsCoachEvents = require('./db/migrate_sports_coach_events');
       await migrateSportsCoachEvents();
@@ -345,7 +347,51 @@ app.get('/api/documentation/download', (req, res) => {
   }
 });
 
+app.get('/api/campus-weather', async (req, res) => {
+  const lat = Number(req.query.lat);
+  const lon = Number(req.query.lon);
+  const latitude = Number.isFinite(lat) && lat >= -90 && lat <= 90 ? lat : -26.2041;
+  const longitude = Number.isFinite(lon) && lon >= -180 && lon <= 180 ? lon : 28.0473;
+  try {
+    const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,weather_code,cloud_cover,precipitation&timezone=auto&forecast_days=2`;
+    const response = await fetch(forecastUrl);
+    if (!response.ok) {
+      res.status(502).json({ error: 'Weather is unavailable.' });
+      return;
+    }
+    const data = await response.json();
+    const nearCampus = Math.abs(latitude + 26.2041) < 0.35 && Math.abs(longitude - 28.0473) < 0.35;
+    let place = nearCampus ? 'Johannesburg' : 'Your area';
+    if (!nearCampus) {
+      try {
+        const geo = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+        if (geo.ok) {
+          const body = await geo.json();
+          place = body.city || body.locality || body.principalSubdivision || place;
+        }
+      } catch {
+        /* The forecast still stands without a place name. */
+      }
+    }
+    const times = Array.isArray(data?.hourly?.time) ? data.hourly.time : [];
+    res.json({
+      place,
+      utcOffsetSeconds: Number(data?.utc_offset_seconds) || 2 * 3600,
+      hours: times.map((time, index) => ({
+        time,
+        code: Number(data.hourly.weather_code?.[index] ?? 0),
+        cover: Number(data.hourly.cloud_cover?.[index] ?? 0),
+        rain: Number(data.hourly.precipitation?.[index] ?? 0),
+        temp: Number(data.hourly.temperature_2m?.[index] ?? 0),
+      })),
+    });
+  } catch {
+    res.status(502).json({ error: 'Weather is unavailable.' });
+  }
+});
+
 // Auth & Profile
+app.use('/api/whatsapp', require('./public/src/routes/whatsappRoutes'));
 app.use('/api', authRoutes);
 app.use('/api/auth', authRoutes);
 app.get('/api/profile', authenticateToken, userController.getProfile);
@@ -397,6 +443,7 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/finance', require('./public/src/routes/financeRoutes'));
 app.use('/api/bursaries', require('./public/src/routes/bursaryRoutes'));
 app.use('/api/assignments', require('./public/src/routes/assignmentRoutes'));
+app.use('/api/notifications', notificationRoutes);
 app.use('/api', otherRoutes); // For progress, announcements etc.
 
 // Admin Routes (now imported from adminRoutes.js)

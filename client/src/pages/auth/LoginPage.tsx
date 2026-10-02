@@ -38,7 +38,11 @@ export const LoginPage: React.FC = () => {
 
   useEffect(() => {
     try {
+      const reason = sessionStorage.getItem('logout_reason');
       sessionStorage.removeItem('logout_reason');
+      if (reason === 'session') {
+        setError('This account is already signed in on another device or tab. Sign out there before signing in here.');
+      }
     } catch (_) {}
 
     // Check registration lock status

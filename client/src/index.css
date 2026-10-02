@@ -4,6 +4,11 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body, #root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 .slogan-script-text {
   font-family: 'Caveat', 'Dancing Script', cursive;
 }
@@ -454,8 +459,95 @@ html[data-theme="light"] .text-indigo-300:not([data-theme-preserve="true"] *):no
 
 .theme-light .text-brand-400:not([data-theme-preserve="true"] *):not(button[class*="bg-brand-6"] *),
 html[data-theme="light"] .text-brand-400:not([data-theme-preserve="true"] *):not(button[class*="bg-brand-6"] *),
-.light .text-brand-400:not([data-theme-preserve="true"] *):not(button[class*="bg-brand-6"] *) {
+.light .text-brand-400:not([data-theme-preserve="true"] *):not(button[class*="bg-brand-6"] *),
+.theme-light .text-brand-300:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-brand-6"] *):not(button[class*="bg-indigo-6"] *):not(button[class*="bg-gradient-to-"] *),
+html[data-theme="light"] .text-brand-300:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-brand-6"] *):not(button[class*="bg-indigo-6"] *):not(button[class*="bg-gradient-to-"] *),
+.light .text-brand-300:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-brand-6"] *):not(button[class*="bg-indigo-6"] *):not(button[class*="bg-gradient-to-"] *),
+.theme-light .text-brand-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-brand-6"] *):not(button[class*="bg-gradient-to-"] *),
+html[data-theme="light"] .text-brand-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-brand-6"] *):not(button[class*="bg-gradient-to-"] *),
+.light .text-brand-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-brand-6"] *):not(button[class*="bg-gradient-to-"] *) {
   color: #4338CA !important;
+}
+
+/* Pale accent text that was chosen for dark panels becomes readable once those panels turn light */
+.theme-light .text-cyan-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-cyan-6"] *):not(button[class*="bg-gradient-to-"] *),
+html[data-theme="light"] .text-cyan-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-cyan-6"] *):not(button[class*="bg-gradient-to-"] *),
+.light .text-cyan-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-cyan-6"] *):not(button[class*="bg-gradient-to-"] *),
+.theme-light .text-cyan-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-cyan-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-cyan-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+.theme-light .text-sky-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-sky-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-sky-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.theme-light .text-teal-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-teal-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-teal-200:not([data-theme-preserve="true"] *):not(.text-always-white) {
+  color: #0E7490 !important;
+}
+
+.theme-light .text-indigo-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-indigo-6"] *),
+html[data-theme="light"] .text-indigo-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-indigo-6"] *),
+.light .text-indigo-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-indigo-6"] *),
+.theme-light .text-indigo-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-indigo-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-indigo-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+.theme-light .text-violet-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-violet-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-violet-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.theme-light .text-violet-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-violet-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-violet-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+.theme-light .text-purple-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-purple-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-purple-200:not([data-theme-preserve="true"] *):not(.text-always-white) {
+  color: #5B21B6 !important;
+}
+
+.theme-light .text-emerald-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-emerald-6"] *),
+html[data-theme="light"] .text-emerald-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-emerald-6"] *),
+.light .text-emerald-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-emerald-6"] *),
+.theme-light .text-emerald-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-emerald-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-emerald-100:not([data-theme-preserve="true"] *):not(.text-always-white) {
+  color: #047857 !important;
+}
+
+.theme-light .text-rose-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-rose-6"] *),
+html[data-theme="light"] .text-rose-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-rose-6"] *),
+.light .text-rose-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-rose-6"] *),
+.theme-light .text-pink-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-pink-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-pink-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.theme-light .text-fuchsia-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-fuchsia-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-fuchsia-200:not([data-theme-preserve="true"] *):not(.text-always-white) {
+  color: #9D174D !important;
+}
+
+.theme-light .text-amber-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-amber-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-amber-200:not([data-theme-preserve="true"] *):not(.text-always-white) {
+  color: #B45309 !important;
+}
+
+/* Panels painted only in a dark colour follow the light theme, while scrims stay dark */
+.theme-light .bg-slate-900:not([data-theme-preserve="true"]),
+html[data-theme="light"] .bg-slate-900:not([data-theme-preserve="true"]),
+.light .bg-slate-900:not([data-theme-preserve="true"]),
+.theme-light .bg-slate-800:not([data-theme-preserve="true"]),
+html[data-theme="light"] .bg-slate-800:not([data-theme-preserve="true"]),
+.light .bg-slate-800:not([data-theme-preserve="true"]),
+.theme-light .bg-slate-900\/90:not([data-theme-preserve="true"]),
+html[data-theme="light"] .bg-slate-900\/90:not([data-theme-preserve="true"]),
+.light .bg-slate-900\/90:not([data-theme-preserve="true"]),
+.theme-light .bg-slate-900\/95:not([data-theme-preserve="true"]),
+html[data-theme="light"] .bg-slate-900\/95:not([data-theme-preserve="true"]),
+.light .bg-slate-900\/95:not([data-theme-preserve="true"]),
+.theme-light .bg-slate-800\/90:not([data-theme-preserve="true"]),
+html[data-theme="light"] .bg-slate-800\/90:not([data-theme-preserve="true"]),
+.light .bg-slate-800\/90:not([data-theme-preserve="true"]) {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
 }
 
 .theme-light .text-purple-400:not([data-theme-preserve="true"] *),
@@ -1033,6 +1125,24 @@ main a[class*="rounded-3xl"][class*="bg-surface-dark"]:hover {
 
 .animate-fade-in {
   animation: fadeIn 0.2s ease-out forwards;
+}
+
+@keyframes tabPreview {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-tab-preview {
+  animation: tabPreview 0.35s ease-out;
+}
+
+@keyframes tabEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-tab-enter {
+  animation: tabEnter 0.4s ease-out;
 }
 
 /* Waving Hand Animation */

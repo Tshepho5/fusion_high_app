@@ -408,9 +408,6 @@ export const TeacherAssessments: React.FC = () => {
             <FileSpreadsheet className="w-6 h-6 text-brand-400" />
             <span>Learner Assessment & Performance Matrix</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Display class marks and student performance grouped into Formal Assessments, Term Reports, and In-App AI Activities.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">

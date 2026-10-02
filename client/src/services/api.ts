@@ -58,13 +58,18 @@ api.interceptors.response.use(
       }
     }
 
-    if (error.response && error.response.status === 401) {
+    if (error.response && (error.response.status === 401 || error.response.data?.code === 'session_replaced')) {
+      const replaced = error.response.data?.code === 'session_replaced' || error.response.status === 401;
+      if (replaced && error.response.data?.code === 'session_replaced') {
+        try { sessionStorage.setItem('logout_reason', 'session'); } catch (_) {}
+      }
       if (!window.location.pathname.startsWith('/login') && 
           !window.location.pathname.startsWith('/register') &&
           !window.location.pathname.startsWith('/forgot-password')) {
         localStorage.removeItem('token');
         localStorage.removeItem('userRole');
         localStorage.removeItem('user');
+        localStorage.removeItem('geleza_active_tab');
         window.location.href = '/login';
       }
     }
@@ -105,8 +110,8 @@ export const authService = {
     api.post('/api/check-email', { email }).then(res => res.data),
   verifyLearner: (data: { learner_number?: string; first_name?: string; surname?: string; id_number?: string; grade?: number | string; stream?: string }) => 
     api.post('/api/verify-learner', data).then(res => res.data),
-  forgotPassword: (data: { email?: string; identifier?: string }) => 
-    api.post('/api/forgot-password', { email: data.email || data.identifier, identifier: data.identifier || data.email }).then(res => res.data),
+  forgotPassword: (data: { email?: string; identifier?: string; channel?: 'email' | 'whatsapp' }) => 
+    api.post('/api/forgot-password', { email: data.email || data.identifier, identifier: data.identifier || data.email, channel: data.channel || 'email' }).then(res => res.data),
   verifyOtp: (data: { email?: string; identifier?: string; otp?: string; code?: string }) => 
     api.post('/api/verify-otp', { email: data.email || data.identifier, identifier: data.identifier || data.email, code: data.code || data.otp, otp: data.otp || data.code }).then(res => res.data),
   resetPassword: (data: { email?: string; identifier?: string; otp?: string; code?: string; newPassword?: string; new_password?: string }) => 
@@ -159,7 +164,7 @@ export const userService = {
   markMessagesAsRead: (payload: { sender_id: string | number }) => 
     api.post('/api/messages/read', payload).then(res => res.data),
   heartbeat: () => api.post('/api/user/heartbeat').then(res => res.data),
-  updateLogoutStatus: () => api.post('/api/user/logout-status').then(res => res.data),
+  updateLogoutStatus: (endSession = false) => api.post('/api/user/logout-status', endSession ? { endSession: true } : {}).then(res => res.data),
 };
 
 // Learner Portal APIs (children, subjects, attendance, progress, announcements, textbooks)
@@ -290,6 +295,11 @@ export const notificationService = {
   getUnreadCount: () => api.get('/api/notifications/unread-count').then(res => res.data),
   markAsRead: (id: string | number) => api.put(`/api/notifications/${id}/read`).then(res => res.data),
   markAllAsRead: () => api.put('/api/notifications/read-all').then(res => res.data),
+  getPushPublicKey: () => api.get('/api/notifications/push/public-key').then(res => res.data),
+  subscribePush: (subscription: PushSubscriptionJSON) =>
+    api.post('/api/notifications/push/subscribe', { subscription }).then(res => res.data),
+  unsubscribePush: (endpoint?: string) =>
+    api.delete('/api/notifications/push/subscribe', { data: { endpoint } }).then(res => res.data),
 };
 
 // Admin Management APIs

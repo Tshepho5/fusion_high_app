@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geleza-sa-cache-v2.3';
+const CACHE_NAME = 'geleza-sa-cache-v2.4';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/favicon.svg',
@@ -100,5 +100,59 @@ self.addEventListener('fetch', (event) => {
         if (offlinePage) return offlinePage;
         return caches.match('/');
       })
+  );
+});
+
+function readPushData(event) {
+  const fallback = {
+    title: 'Geleza SA',
+    body: 'You have a new notification.',
+    tag: 'geleza-sa-alert',
+    url: '/',
+    targetTab: ''
+  };
+  if (!event.data) return fallback;
+  try {
+    const data = event.data.json();
+    return {
+      title: data.title || fallback.title,
+      body: data.body || fallback.body,
+      tag: data.tag || fallback.tag,
+      url: typeof data.url === 'string' && data.url.startsWith('/') ? data.url : fallback.url,
+      targetTab: data.targetTab || ''
+    };
+  } catch (_) {
+    return fallback;
+  }
+}
+
+self.addEventListener('push', (event) => {
+  const data = readPushData(event);
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/assets/icon-192.png',
+      badge: '/assets/icon-192.png',
+      tag: data.tag,
+      renotify: true,
+      silent: false,
+      data: { url: data.url, targetTab: data.targetTab }
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ('focus' in client) {
+          client.postMessage({ type: 'open-notification', url });
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+    })
   );
 });

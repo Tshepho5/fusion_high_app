@@ -293,19 +293,16 @@ export const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ initialCla
             <CalendarCheck className="w-6 h-6 text-brand-400" />
             Class Attendance Register & Logs
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Capture live roll-call with holographic QR scanning, send automatic parent confirmations, and track daily records.
-          </p>
         </div>
 
         {/* SubTab Toggle Switch */}
         <div className="flex items-center p-1 rounded-2xl bg-surface-dark border border-white/10 shrink-0">
           <button
             onClick={() => setActiveSubTab('register')}
-            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer ${
               activeSubTab === 'register'
-                ? 'bg-gradient-to-r from-brand-600 to-cyan-600 text-white shadow-glow-cyan'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#13C8D9] text-slate-950 shadow-sm'
+                : 'text-slate-600 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#18E2EC]'
             }`}
           >
             <CalendarCheck className="w-4 h-4" />
@@ -314,10 +311,10 @@ export const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ initialCla
 
           <button
             onClick={() => setActiveSubTab('history')}
-            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer ${
               activeSubTab === 'history'
-                ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-glow-indigo'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#13C8D9] text-slate-950 shadow-sm'
+                : 'text-slate-600 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#18E2EC]'
             }`}
           >
             <History className="w-4 h-4" />

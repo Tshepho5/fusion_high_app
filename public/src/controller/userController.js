@@ -440,8 +440,11 @@ exports.updateLogoutStatus = async (req, res) => {
         const { clearSessionCookie } = require('../../../authMiddleware');
         clearSessionCookie(res);
         const userId = req.user.id;
+        const endSession = req.body?.endSession === true;
         await db.query(
-            `UPDATE users SET is_online = FALSE, last_seen_at = (NOW() - INTERVAL '2 minutes') WHERE id = $1`,
+            endSession
+                ? `UPDATE users SET is_online = FALSE, last_seen_at = (NOW() - INTERVAL '2 minutes'), active_session_id = NULL, session_seen_at = NULL WHERE id = $1`
+                : `UPDATE users SET is_online = FALSE, last_seen_at = (NOW() - INTERVAL '2 minutes') WHERE id = $1`,
             [userId]
         ).catch(() => {});
         res.json({ success: true, is_online: false });

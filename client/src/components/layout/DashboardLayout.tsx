@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Navbar } from './Navbar';
 import { CommandPalette } from '../common/CommandPalette';
 import { BottomNavigationDock } from './BottomNavigationDock';
-import { FloatingAIChatModule } from '../common/FloatingAIChatModule';
-import { LoadingSpinner } from '../common/LoadingSpinner';
+import { TabPreviewSkeleton } from '../common/TabPreviewSkeleton';
 import { ErrorBoundary } from '../common/ErrorBoundary';
 
 interface DashboardLayoutProps {
@@ -29,13 +28,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const [isTabTransitioning, setIsTabTransitioning] = useState(false);
   const prevTabRef = useRef(activeTab);
 
+  const mainRef = useRef<HTMLElement>(null);
+
   useEffect(() => {
     if (prevTabRef.current !== activeTab) {
       prevTabRef.current = activeTab;
       setIsTabTransitioning(true);
+      mainRef.current?.scrollTo({ top: 0 });
       const timer = setTimeout(() => {
         setIsTabTransitioning(false);
-      }, 240);
+      }, 720);
       return () => clearTimeout(timer);
     }
   }, [activeTab]);
@@ -61,7 +63,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-[#CBDDE3] via-[#DBE7EC] to-[#EBF2F5] dark:from-[#060D14] dark:via-[#09131F] dark:to-[#0B1520] text-slate-900 dark:text-slate-100 selection:bg-cyan-500 selection:text-white relative transition-colors duration-300">
       {/* SVG Fluid Waves Backdrop Layer */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-90 dark:opacity-80" aria-hidden="true">
-        <svg className="w-full h-full object-cover min-w-[1440px] min-h-[900px]" viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <svg className="w-full h-full" viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="reactWaveGradTop" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#13C8D9" stopOpacity="0.22" />
@@ -108,16 +110,19 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         />
 
         <main
+          ref={mainRef}
           key={activeTab}
           className={`flex-1 overflow-y-auto min-h-0 custom-scrollbar ${activeTab === 'messages' ? 'p-2 md:p-4 pb-32 xl:pb-36' : 'p-4 md:p-8 py-6 pb-32 xl:pb-36'
-            } max-w-7xl 2xl:max-w-[1600px] min-[1800px]:max-w-[1760px] w-full mx-auto animate-fade-in flex flex-col`}
+            } max-w-7xl 2xl:max-w-[1600px] min-[1800px]:max-w-[1760px] w-full mx-auto flex flex-col`}
         >
           {isTabTransitioning ? (
-            <LoadingSpinner text={`Loading ${title || 'Workspace'}...`} />
+            <TabPreviewSkeleton tab={activeTab} title={title} />
           ) : (
-            <ErrorBoundary fallbackTitle={`Error Loading ${title || 'Module'}`}>
-              {children}
-            </ErrorBoundary>
+            <div className="animate-tab-enter">
+              <ErrorBoundary fallbackTitle={`Error Loading ${title || 'Module'}`}>
+                {children}
+              </ErrorBoundary>
+            </div>
           )}
         </main>
 
@@ -132,9 +137,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             />
           )
         )}
-
-        {/* 🤖 Movable Circular 24/7 AI Chat Module on all Dashboards */}
-        <FloatingAIChatModule onSelectTab={onSelectTab} />
       </div>
     </div>
   );

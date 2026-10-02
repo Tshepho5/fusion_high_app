@@ -171,9 +171,9 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
       )}
 
       {/* Circular Orbit & Action Buttons Container */}
-      <div className="relative z-40 mx-auto h-[250px] w-[440px] max-w-[100vw]">
+      <div className="relative z-40 mx-auto h-[250px] w-full max-w-[440px]">
         {isOpen && (
-          <div className="pointer-events-none absolute bottom-5 left-1/2 h-[200px] w-[400px] max-w-[92vw] -translate-x-1/2 rounded-t-full border-2 border-b-0 border-dashed border-cyan-400/70" />
+          <div className="pointer-events-none absolute bottom-5 left-1/2 h-[200px] w-[min(400px,100%)] -translate-x-1/2 rounded-t-full border-2 border-b-0 border-dashed border-cyan-400/70" />
         )}
 
         {/* Circular Glowing Action Buttons */}

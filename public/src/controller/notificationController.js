@@ -1,4 +1,5 @@
 const NotificationService = require('../services/notificationService');
+const WebPushService = require('../services/webPushService');
 
 /**
  * Controller for retrieving and updating user notifications.
@@ -54,6 +55,35 @@ exports.markAsRead = async (req, res) => {
   } catch (err) {
     console.error('Error marking notification as read:', err);
     res.status(500).json({ success: false, error: 'Failed to update notification.' });
+  }
+};
+
+exports.getPushPublicKey = async (req, res) => {
+  try {
+    const publicKey = await WebPushService.getPublicKey();
+    res.json({ success: true, publicKey });
+  } catch (err) {
+    console.error('Error reading push key:', err.message);
+    res.status(503).json({ success: false, error: 'Phone notifications are not available right now.' });
+  }
+};
+
+exports.subscribePush = async (req, res) => {
+  try {
+    const subscription = req.body?.subscription || req.body;
+    await WebPushService.saveSubscription(req.user.id, subscription, req.get('user-agent'));
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: 'Could not save this phone for notifications.' });
+  }
+};
+
+exports.unsubscribePush = async (req, res) => {
+  try {
+    await WebPushService.removeSubscription(req.user.id, req.body?.endpoint);
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ success: true });
   }
 };
 

@@ -3232,4 +3232,28 @@ emailService.sendRegistrationSuccessWithAllocation = async (params) => {
   return await emailService.send(params.parentEmail, template.subject, template.body);
 };
 
+const whatsappNotices = {
+  sendApplicationCorrection: 'application_correction',
+  sendApplicationAccepted: 'application_accepted',
+  sendApplicationWaitlisted: 'application_waitlisted',
+  sendApplicationUnsuccessful: 'application_rejected',
+  sendApplicationReceivedWithBanking: 'application_received',
+  sendApplicationFeePaymentReceived: 'fee_received',
+  sendApplicationFeeReminder: 'fee_reminder',
+  sendApplicationApprovedWithFeeNotice: 'approved_fee',
+  sendRegistrationSuccessWithAllocation: 'registration_success'
+};
+
+Object.entries(whatsappNotices).forEach(([method, kind]) => {
+  const original = emailService[method];
+  emailService[method] = async (params) => {
+    const result = await original.call(emailService, params);
+    const whatsapp = require('./whatsappService');
+    whatsapp.mirrorEmail(kind, params || {}).catch((err) => {
+      console.warn('[WHATSAPP]', err.message);
+    });
+    return result;
+  };
+});
+
 module.exports = emailService;
