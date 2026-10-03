@@ -746,6 +746,7 @@ exports.decideParentApplication = async (req, res) => {
  * When the application is already approved, also sync matching parent user contact fields.
  */
 exports.correctParentApplication = async (req, res) => {
+    const { logApplicationCorrection } = require('../services/auditLog');
     const { id } = req.params;
     const adminUserId = req.user && req.user.id;
     if (!adminUserId) {
@@ -837,6 +838,33 @@ exports.correctParentApplication = async (req, res) => {
         const row = updated.rows[0];
         let userSynced = false;
 
+        const beforeSnapshot = {
+            parent_email: app.parent_email,
+            parent_phone: app.parent_phone,
+            parent_name: app.parent_name,
+            parent_surname: app.parent_surname,
+            parent_id_number: app.parent_id_number,
+            physical_address: app.physical_address,
+            child_first_name: app.child_first_name,
+            child_surname: app.child_surname,
+            child_id_number: app.child_id_number,
+            child_grade: app.child_grade,
+            status: app.status
+        };
+        const afterSnapshot = {
+            parent_email: row.parent_email,
+            parent_phone: row.parent_phone,
+            parent_name: row.parent_name,
+            parent_surname: row.parent_surname,
+            parent_id_number: row.parent_id_number,
+            physical_address: row.physical_address,
+            child_first_name: row.child_first_name,
+            child_surname: row.child_surname,
+            child_id_number: row.child_id_number,
+            child_grade: row.child_grade,
+            status: row.status
+        };
+
         // Sync approved applications to the parent user account when email/phone/name/ID change
         if (app.status === 'approved' && (fields.parent_email || fields.parent_phone || fields.parent_name || fields.parent_surname || fields.parent_id_number || fields.physical_address)) {
             const lookupEmail = app.parent_email;
@@ -910,6 +938,22 @@ exports.correctParentApplication = async (req, res) => {
             } catch (_) {}
         }
 
+        try {
+            await logApplicationCorrection({
+                applicationId: row.id,
+                applicationNumber: row.application_number,
+                supportTicketId: body.support_ticket_id || null,
+                adminUserId,
+                schoolId: row.school_id || adminSchoolId,
+                beforeSnapshot,
+                afterSnapshot,
+                changedFields: Object.keys(fields),
+                userSynced
+            });
+        } catch (auditErr) {
+            console.warn('Application correction audit log skipped:', auditErr.message);
+        }
+
         res.json({
             success: true,
             message: `Application ${row.application_number} corrected successfully.${userSynced ? ' Linked parent account was also updated.' : ''}`,
@@ -930,7 +974,8 @@ exports.correctParentApplication = async (req, res) => {
                 status: row.status
             },
             corrected_fields: Object.keys(fields),
-            user_synced: userSynced
+            user_synced: userSynced,
+            audited: true
         });
     } catch (err) {
         console.error('correctParentApplication error:', err);

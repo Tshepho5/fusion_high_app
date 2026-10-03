@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controller/adminController');
+const learnerImportController = require('../controller/learnerImportController');
 const timetableController = require('../controller/timetableController');
 const { auth, isAdmin } = require('../../../authMiddleware.js');
 
@@ -36,6 +37,9 @@ router.post('/register-parent', auth, isAdmin, adminController.createParent);
 // Learner Management (matching children table in schema.sql)
 router.get('/learners', auth, isAdmin, adminController.getAllLearners);
 router.post('/learners', auth, isAdmin, adminController.createLearner);
+// SA-SAMS / Excel CSV import (Menu 16.3 Learner Info → save as CSV)
+router.post('/learners/import/preview', auth, isAdmin, learnerImportController.previewLearnerImport);
+router.post('/learners/import', auth, isAdmin, learnerImportController.commitLearnerImport);
 
 // Dynamic Class & Stream Management (Add/Remove/Assign Class Teachers)
 router.get('/classes', auth, isAdmin, adminController.getClasses);

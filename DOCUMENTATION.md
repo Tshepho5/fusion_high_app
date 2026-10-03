@@ -1,17 +1,21 @@
-# Fusion High School Management & Learning Platform
+# Geleza SA — School Management & Learning Platform
 ## Comprehensive System Architecture & Technical Documentation
+
+**Product brand:** Geleza SA (“Geleza Smart, The Future Is Thine.”)  
+**Codebase / hosting project name:** Fusion High App 2.1 (`fusion-high-app`)  
+**Stakeholder docs:** `docs/geleza-sa-project-guide/` (executive brief + full module PDF)
 
 ---
 
 ## 1. Executive Summary & Platform Overview
 
-**Fusion High School** is an enterprise-grade School Information System (SIS) and Learning Management Platform (LMS) specifically designed for the **South African Curriculum Assessment Policy Statements (CAPS)** ecosystem spanning **Grades 8 through 12**.
+**Geleza SA** is an enterprise-grade School Information System (SIS) and Learning Management Platform (LMS) specifically designed for the **South African Curriculum Assessment Policy Statements (CAPS)** ecosystem spanning **Grades 8 through 12**.
 
 The platform provides a unified, real-time operating environment for four primary user groups:
 - **Learners**: Interactive subject hubs, real-time DBE past papers & memoranda, AI Voice Tutoring in official South African languages, homework submissions, gamified XP progression, APS university admission score simulation, and interactive digital report cards.
 - **Teachers**: Workload management, automated CAPS mark recording and weightings, real-time period/subject attendance tracking with automated parent notification emails, AI lesson planning and test paper generation, relief timetable swaps, and textbook inventory management.
 - **Parents**: Real-time multi-child academic monitoring, period-by-period attendance oversight, official CAPS term report cards, instant direct messaging (with voice notes, pictures, and PDF sharing), and Parent-Teacher Conference slot bookings.
-- **School Administrators**: School-wide metadata and staff role assignment, automatic timetable conflict resolution and publishing, admissions management powered by neural document OCR and Home Affairs ID verification, conduct and disciplinary tracking, and Matric analytical projectors.
+- **School Administrators**: School-wide metadata and staff role assignment, automatic timetable conflict resolution and publishing, admissions management powered by neural document OCR and Home Affairs ID verification, conduct and disciplinary tracking, Matric analytical projectors, and a **User Support Desk** for correcting mistaken application/contact details.
 
 ---
 

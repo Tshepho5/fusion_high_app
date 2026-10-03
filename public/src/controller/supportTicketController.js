@@ -1,34 +1,15 @@
 const db = require('../../../db/db');
 const { resolveSchoolId } = require('../services/schoolScope');
 const emailService = require('../services/emailService');
-
-const TICKET_CATEGORIES = [
-    'wrong_email',
-    'wrong_phone',
-    'wrong_id_number',
-    'wrong_learner_details',
-    'wrong_parent_details',
-    'application_correction',
-    'login_access',
-    'account_profile',
-    'fees_payments',
-    'technical',
-    'other'
-];
-
-const CATEGORY_LABELS = {
-    wrong_email: 'Wrong email address',
-    wrong_phone: 'Wrong phone number',
-    wrong_id_number: 'Wrong ID number',
-    wrong_learner_details: 'Wrong learner / child details',
-    wrong_parent_details: 'Wrong parent / guardian details',
-    application_correction: 'Application form correction',
-    login_access: 'Login or account access',
-    account_profile: 'Profile / personal details',
-    fees_payments: 'Fees or payments',
-    technical: 'Technical / app issue',
-    other: 'Other support request'
-};
+const {
+    TICKET_CATEGORIES,
+    CATEGORY_LABELS,
+    normalizeCategory,
+    generateTicketNumber,
+    validateSupportTicketInput,
+    computeSlaDueAt,
+    slaStatus
+} = require('../services/supportTicketValidation');
 
 let schemaReady = false;
 
@@ -58,7 +39,9 @@ async function ensureSupportSchema() {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             resolved_at TIMESTAMP,
-            resolved_by INTEGER
+            resolved_by INTEGER,
+            sla_due_at TIMESTAMP,
+            claimed_at TIMESTAMP
         );
 
         CREATE INDEX IF NOT EXISTS idx_support_tickets_school_status
@@ -68,18 +51,10 @@ async function ensureSupportSchema() {
         CREATE INDEX IF NOT EXISTS idx_support_tickets_created
             ON support_tickets(created_at DESC);
     `);
+    // Additive columns for older databases
+    await db.query(`ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS sla_due_at TIMESTAMP`);
+    await db.query(`ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMP`);
     schemaReady = true;
-}
-
-function generateTicketNumber() {
-    const year = new Date().getFullYear();
-    const rand = Math.floor(100000 + Math.random() * 900000);
-    return `GSA-SUP-${year}-${rand}`;
-}
-
-function normalizeCategory(raw) {
-    const c = String(raw || 'other').trim().toLowerCase().replace(/\s+/g, '_');
-    return TICKET_CATEGORIES.includes(c) ? c : 'other';
 }
 
 /**
@@ -90,13 +65,20 @@ exports.submitSupportTicket = async (req, res) => {
         await ensureSupportSchema();
 
         const body = req.body || {};
-        const requester_name = String(body.requester_name || body.name || '').trim();
-        const requester_email = String(body.requester_email || body.email || '').trim().toLowerCase();
-        let requester_phone = String(body.requester_phone || body.phone || '').trim() || null;
-        const subject = String(body.subject || '').trim();
-        const description = String(body.description || body.message || '').trim();
-        const category = normalizeCategory(body.category);
-        let related_application_number = String(body.related_application_number || body.application_number || '').trim() || null;
+        const validated = validateSupportTicketInput(body);
+        if (!validated.ok) {
+            return res.status(400).json({ error: validated.error });
+        }
+        const {
+            requester_name,
+            requester_email,
+            requester_phone,
+            subject,
+            description,
+            category,
+            related_application_number,
+            priority
+        } = validated.value;
         const related_application_type = String(body.related_application_type || 'parent_portal').trim() || null;
         let school_id = parseInt(body.school_id, 10);
         if (!Number.isInteger(school_id) || school_id <= 0) school_id = null;
@@ -105,35 +87,6 @@ exports.submitSupportTicket = async (req, res) => {
         if (user?.school_id && !school_id) {
             const own = parseInt(user.school_id, 10);
             if (Number.isInteger(own) && own > 0) school_id = own;
-        }
-
-        if (!requester_name || requester_name.length < 2) {
-            return res.status(400).json({ error: 'Please provide your full name.' });
-        }
-        if (!/^[a-zA-ZÀ-ÿ\s'-]+$/.test(requester_name) || /\d/.test(requester_name)) {
-            return res.status(400).json({ error: 'Full name may only contain letters (no numbers).' });
-        }
-        if (!requester_email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(requester_email)) {
-            return res.status(400).json({ error: 'Please provide a valid contact email so we can reply.' });
-        }
-        if (requester_phone) {
-            const digits = requester_phone.replace(/\D/g, '');
-            if (!/^\d{10}$/.test(digits)) {
-                return res.status(400).json({ error: 'Phone must be exactly 10 digits if provided.' });
-            }
-            requester_phone = digits;
-        }
-        if (related_application_number) {
-            related_application_number = related_application_number.toUpperCase();
-            if (!/^[A-Z]{2,5}-\d{4}-\d{4,6}$/.test(related_application_number)) {
-                return res.status(400).json({ error: 'Application reference format is invalid. Example: PAR-2026-48192.' });
-            }
-        }
-        if (!subject || subject.length < 4) {
-            return res.status(400).json({ error: 'Please provide a short subject for your request.' });
-        }
-        if (!description || description.length < 10) {
-            return res.status(400).json({ error: 'Please describe the problem in a bit more detail (at least 10 characters).' });
         }
 
         // Prefer school from linked application number when provided
@@ -161,15 +114,17 @@ exports.submitSupportTicket = async (req, res) => {
             ticketNumber = generateTicketNumber();
         }
 
+        const slaDue = computeSlaDueAt(priority);
+
         const insert = await db.query(
             `INSERT INTO support_tickets (
                 ticket_number, school_id, requester_user_id, requester_role,
                 requester_name, requester_email, requester_phone,
                 category, subject, description,
                 related_application_number, related_application_type,
-                status, priority
+                status, priority, sla_due_at
              ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'open', $13
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'open', $13, $14
              ) RETURNING *`,
             [
                 ticketNumber,
@@ -184,7 +139,8 @@ exports.submitSupportTicket = async (req, res) => {
                 description,
                 related_application_number,
                 related_application_type,
-                body.priority === 'high' || body.priority === 'urgent' ? body.priority : 'normal'
+                priority,
+                slaDue
             ]
         );
 
@@ -333,7 +289,8 @@ exports.getAdminSupportTickets = async (req, res) => {
             categories: CATEGORY_LABELS,
             tickets: result.rows.map((t) => ({
                 ...t,
-                category_label: CATEGORY_LABELS[t.category] || t.category
+                category_label: CATEGORY_LABELS[t.category] || t.category,
+                sla_status: slaStatus(t.sla_due_at)
             }))
         });
     } catch (err) {
@@ -349,7 +306,7 @@ exports.updateSupportTicket = async (req, res) => {
     try {
         await ensureSupportSchema();
         const { id } = req.params;
-        const { status, admin_notes, resolution_notes, priority } = req.body || {};
+        const { status, admin_notes, resolution_notes, priority, assigned_to, claim } = req.body || {};
         const isSuper = Boolean(req.user?.is_superadmin);
         const schoolId = resolveSchoolId(req);
 
@@ -369,40 +326,53 @@ exports.updateSupportTicket = async (req, res) => {
             ? status
             : ticket.status;
         const isResolved = nextStatus === 'resolved' || nextStatus === 'closed';
+        const nextPriority = priority && ['low', 'normal', 'high', 'urgent'].includes(priority)
+            ? priority
+            : ticket.priority;
+        const assignee = claim === true
+            ? req.user.id
+            : (assigned_to !== undefined ? (assigned_to || null) : (ticket.assigned_to || req.user.id));
+        const shouldClaim = claim === true || (nextStatus === 'in_progress' && !ticket.claimed_at);
 
         const updated = await db.query(
             `UPDATE support_tickets SET
                 status = $1,
                 admin_notes = COALESCE($2, admin_notes),
                 resolution_notes = COALESCE($3, resolution_notes),
-                priority = COALESCE($4, priority),
-                assigned_to = COALESCE(assigned_to, $5),
+                priority = $4,
+                assigned_to = $5,
+                claimed_at = CASE WHEN $8 THEN COALESCE(claimed_at, NOW()) ELSE claimed_at END,
+                sla_due_at = COALESCE(sla_due_at, $9),
                 resolved_at = CASE WHEN $6 THEN COALESCE(resolved_at, NOW()) ELSE resolved_at END,
-                resolved_by = CASE WHEN $6 THEN COALESCE(resolved_by, $5) ELSE resolved_by END,
+                resolved_by = CASE WHEN $6 THEN COALESCE(resolved_by, $7) ELSE resolved_by END,
                 updated_at = NOW()
-             WHERE id = $7
+             WHERE id = $10
              RETURNING *`,
             [
                 nextStatus,
                 admin_notes !== undefined ? admin_notes : null,
                 resolution_notes !== undefined ? resolution_notes : null,
-                priority && ['low', 'normal', 'high', 'urgent'].includes(priority) ? priority : null,
-                req.user.id,
+                nextPriority,
+                assignee,
                 isResolved,
+                req.user.id,
+                shouldClaim,
+                computeSlaDueAt(nextPriority, ticket.created_at || new Date()),
                 id
             ]
         );
 
         const row = updated.rows[0];
+        const noteForEmail = resolution_notes !== undefined ? resolution_notes : row.resolution_notes;
 
-        if (isResolved && row.requester_email && resolution_notes) {
+        if (isResolved && row.requester_email && (noteForEmail || status)) {
             try {
                 const html = `
                   <div style="font-family:Segoe UI,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0B1F33">
                     <h2 style="margin:0 0 8px">Your support request was updated</h2>
                     <p><strong>Ticket:</strong> ${row.ticket_number}</p>
                     <p><strong>Status:</strong> ${nextStatus}</p>
-                    <p style="white-space:pre-wrap;background:#f1f5f9;padding:12px;border-radius:8px">${String(resolution_notes).replace(/</g, '&lt;')}</p>
+                    <p style="white-space:pre-wrap;background:#f1f5f9;padding:12px;border-radius:8px">${String(noteForEmail || 'Your request has been marked ' + nextStatus + '.').replace(/</g, '&lt;')}</p>
                   </div>`;
                 emailService.send(row.requester_email, `[Geleza SA] Ticket ${row.ticket_number} ${nextStatus}`, html)
                     .catch((e) => console.warn('Ticket resolve email:', e.message));
@@ -414,7 +384,8 @@ exports.updateSupportTicket = async (req, res) => {
             message: `Ticket ${row.ticket_number} updated.`,
             ticket: {
                 ...row,
-                category_label: CATEGORY_LABELS[row.category] || row.category
+                category_label: CATEGORY_LABELS[row.category] || row.category,
+                sla_status: slaStatus(row.sla_due_at)
             }
         });
     } catch (err) {

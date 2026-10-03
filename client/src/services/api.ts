@@ -328,6 +328,13 @@ export const adminService = {
   createParent: (payload: any) => api.post('/api/admin/parents', payload).then(res => res.data),
   getLearners: () => api.get('/api/admin/learners').then(res => res.data),
   createLearner: (payload: any) => api.post('/api/admin/learners', payload).then(res => res.data),
+  previewLearnerImport: (payload: { csv_text: string; mapping?: Record<string, string> }) =>
+    api.post('/api/admin/learners/import/preview', payload).then(res => res.data),
+  commitLearnerImport: (payload: {
+    learners: Array<Record<string, unknown>>;
+    default_password?: string;
+    skip_duplicates?: boolean;
+  }) => api.post('/api/admin/learners/import', payload).then(res => res.data),
   getSchoolMetadata: () => api.get('/api/admin/metadata').then(res => res.data),
   getTimetables: () => api.get('/api/admin/timetables').then(res => res.data),
   generateTimetable: (payload: any) => api.post('/api/admin/generate-timetable', payload).then(res => res.data),

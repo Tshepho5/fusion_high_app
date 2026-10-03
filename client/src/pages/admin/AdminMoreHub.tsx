@@ -120,6 +120,13 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
       badge: 'Staff & Learners',
     },
     {
+      id: 'import-learners',
+      title: 'Import Learners (SA-SAMS CSV)',
+      category: 'governance',
+      icon: FileSpreadsheet,
+      badge: 'New · CSV',
+    },
+    {
       id: 'support-desk',
       title: 'User Support Desk',
       category: 'governance',

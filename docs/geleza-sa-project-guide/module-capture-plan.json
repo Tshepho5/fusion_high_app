@@ -1,0 +1,68 @@
+{
+  "learner": {
+    "email": "learner.walters@gelezasa.co.za",
+    "dashboard": "/dashboard/learner",
+    "modules": [
+      { "tab": "subjects", "file": "L01-subjects.png", "title": "My Enrolled Subjects Workspace" },
+      { "tab": "reports", "file": "L02-reports.png", "title": "CAPS Term Report Cards" },
+      { "tab": "assignments", "file": "L03-assignments.png", "title": "Homework & Digital Assignments" },
+      { "tab": "ai-tutor", "file": "L04-ai-tutor.png", "title": "CAPS AI Study Tutor" },
+      { "tab": "timetable", "file": "L05-timetable.png", "title": "Weekly Class Timetable" },
+      { "tab": "calendar", "file": "L06-calendar.png", "title": "School Calendar" },
+      { "tab": "messages", "file": "L07-messages.png", "title": "Message Hub" },
+      { "tab": "bursaries", "file": "L08-bursaries.png", "title": "NSFAS & Bursary Finder" },
+      { "tab": "finance", "file": "L09-finance.png", "title": "School Fee Statements" },
+      { "tab": "sports", "file": "L10-sports.png", "title": "Sports & Extracurriculars" },
+      { "tab": "settings", "file": "L11-settings.png", "title": "App & Technical Settings" },
+      { "tab": "exam-seating", "file": "L12-exam-seating.png", "title": "Exam Seating & Candidate Slips" }
+    ]
+  },
+  "parent": {
+    "email": "parent.walters@gelezasa.co.za",
+    "dashboard": "/dashboard/parent",
+    "modules": [
+      { "tab": "children", "file": "P01-children.png", "title": "My Children & Marks" },
+      { "tab": "reports", "file": "P02-reports.png", "title": "CAPS Report Cards" },
+      { "tab": "attendance", "file": "P03-attendance.png", "title": "Attendance Records" },
+      { "tab": "timetable", "file": "P04-timetable.png", "title": "Student Timetable" },
+      { "tab": "finance", "file": "P05-finance.png", "title": "School Fees & Statements" },
+      { "tab": "ptc", "file": "P06-ptc.png", "title": "Parent-Teacher Consultations" },
+      { "tab": "messages", "file": "P07-messages.png", "title": "Message Hub" },
+      { "tab": "calendar", "file": "P08-calendar.png", "title": "School Calendar" },
+      { "tab": "bursaries", "file": "P09-bursaries.png", "title": "NSFAS & Bursary Hub" },
+      { "tab": "settings", "file": "P10-settings.png", "title": "Portal Settings" }
+    ]
+  },
+  "teacher": {
+    "email": "teacher.science@gelezasa.co.za",
+    "dashboard": "/dashboard/teacher",
+    "modules": [
+      { "tab": "assessments", "file": "T01-assessments.png", "title": "SBA Marksheets & Grading" },
+      { "tab": "attendance", "file": "T02-attendance.png", "title": "Class Attendance Register" },
+      { "tab": "assignments", "file": "T03-assignments.png", "title": "Homework & Assignment Hub" },
+      { "tab": "ai-tools", "file": "T04-ai-tools.png", "title": "AI Lesson & Test Paper Studio" },
+      { "tab": "early-warning", "file": "T05-early-warning.png", "title": "AI Early-Warning Radar" },
+      { "tab": "timetable", "file": "T06-timetable.png", "title": "Educator Timetable" },
+      { "tab": "messages", "file": "T07-messages.png", "title": "Message Hub" },
+      { "tab": "conduct", "file": "T08-conduct.png", "title": "Merit & Disciplinary Conduct" },
+      { "tab": "ptc", "file": "T09-ptc.png", "title": "Parent-Teacher Consultations" },
+      { "tab": "settings", "file": "T10-settings.png", "title": "App Settings" }
+    ]
+  },
+  "principal": {
+    "email": "principal@makgoka.co.za",
+    "dashboard": "/dashboard/admin",
+    "modules": [
+      { "tab": "marks", "file": "A01-marks.png", "title": "CAPS Mark Audits" },
+      { "tab": "reports", "file": "A02-reports.png", "title": "CAPS Report Card Studio" },
+      { "tab": "classes-streams", "file": "A03-classes.png", "title": "Dynamic Classes & Homerooms" },
+      { "tab": "timetable", "file": "A04-timetable.png", "title": "Timetable Allocations" },
+      { "tab": "finance", "file": "A05-finance.png", "title": "School Fees & Invoicing" },
+      { "tab": "announcements", "file": "A06-announcements.png", "title": "Official Broadcasts" },
+      { "tab": "exam-seating", "file": "A07-exam-seating.png", "title": "Exam Seating Master" },
+      { "tab": "staff-invites", "file": "A08-staff-invites.png", "title": "Faculty & Coach Invites" },
+      { "tab": "calendar", "file": "A09-calendar.png", "title": "School Calendar" },
+      { "tab": "settings", "file": "A10-settings.png", "title": "Technical Settings" }
+    ]
+  }
+}

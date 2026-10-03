@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { learnerService } from '../../services/api';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Badge } from '../../components/common/Badge';
+import { EmptyState } from '../../components/common/EmptyState';
 import { OfflineNotesModal } from '../../components/learner/OfflineNotesModal';
 import { SubjectPastPapers } from '../../components/subject/SubjectPastPapers';
 import { SubjectFocusTimer } from '../../components/subject/SubjectFocusTimer';
@@ -494,13 +495,15 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                     })}
                   </div>
                 ) : (
-                  <div className="py-8">
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      {hasMark
-                        ? `Your mark for ${selectedSubName} is ${markLabel}. Task marks will appear here once they are recorded.`
-                        : `No mark recorded for ${selectedSubName} yet.`}
-                    </p>
-                  </div>
+                  <EmptyState
+                    className="py-4"
+                    title={hasMark ? 'Waiting for task-level marks' : 'No verified marks yet'}
+                    description={
+                      hasMark
+                        ? `Your overall mark for ${selectedSubName} is ${markLabel}. Individual task marks will appear here once your teacher records and the school publishes them in Geleza SA.`
+                        : `Geleza SA does not show placeholder scores. Marks for ${selectedSubName} will appear here after your school uploads verified SBA or term results.`
+                    }
+                  />
                 )}
               </div>
             ) : (

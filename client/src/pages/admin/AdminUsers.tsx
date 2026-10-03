@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { adminService, parentApplicationService } from '../../services/api';
 import { useSchool } from '../../context/SchoolContext';
 import { useAuth } from '../../context/AuthContext';
@@ -35,7 +36,8 @@ import {
   UserCheck2,
   XCircle,
   Clock,
-  Pencil
+  Pencil,
+  FileSpreadsheet
 } from 'lucide-react';
 
 const SA_OFFICIAL_LANGUAGES = [
@@ -127,6 +129,7 @@ interface SchoolMetadata {
 }
 
 export const AdminUsers: React.FC = () => {
+  const [, setSearchParams] = useSearchParams();
   const { currentSchool, schoolsList } = useSchool();
   const { user: currentUser } = useAuth();
   const isSuperAdmin = Boolean(currentUser?.is_superadmin);
@@ -789,6 +792,15 @@ export const AdminUsers: React.FC = () => {
           >
             <GraduationCap className="w-4 h-4 text-white" />
             <span>+ Enroll Learner</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSearchParams({ tab: 'import-learners' })}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-200 font-bold text-xs border border-cyan-500/30 transition-colors"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Import SA-SAMS CSV</span>
           </button>
         </div>
       </div>

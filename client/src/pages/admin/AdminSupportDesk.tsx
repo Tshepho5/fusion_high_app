@@ -94,7 +94,7 @@ export const AdminSupportDesk: React.FC = () => {
     setSelected({ ...t, _matchedAppId: matched?.id, _matchedAppNumber: matched?.application_number });
   };
 
-  const handleUpdateStatus = async (status: string) => {
+  const handleUpdateStatus = async (status: string, extras: Record<string, unknown> = {}) => {
     if (!selected) return;
     setSaving(true);
     setError(null);
@@ -102,7 +102,8 @@ export const AdminSupportDesk: React.FC = () => {
       const res = await supportService.updateTicket(selected.id, {
         status,
         admin_notes: adminNotes || undefined,
-        resolution_notes: resolution || undefined
+        resolution_notes: resolution || undefined,
+        ...extras
       });
       setSuccess(res.message || `Ticket marked ${status}.`);
       setSelected(null);
@@ -241,6 +242,7 @@ export const AdminSupportDesk: React.FC = () => {
               <th className="pb-3 px-3 pt-3">Subject</th>
               <th className="pb-3 px-3 pt-3">App Ref</th>
               <th className="pb-3 px-3 pt-3">Status</th>
+              <th className="pb-3 px-3 pt-3">SLA</th>
               <th className="pb-3 px-3 pt-3 text-right">Action</th>
             </tr>
           </thead>
@@ -270,6 +272,31 @@ export const AdminSupportDesk: React.FC = () => {
                   <Badge variant={statusBadge(t.status) as any} size="sm">
                     {String(t.status || '').replace('_', ' ').toUpperCase()}
                   </Badge>
+                </td>
+                <td className="py-3 px-3">
+                  <Badge
+                    variant={
+                      t.sla_status === 'breached'
+                        ? 'rose'
+                        : t.sla_status === 'due_soon'
+                          ? 'amber'
+                          : 'emerald'
+                    }
+                    size="sm"
+                  >
+                    {t.sla_status === 'breached'
+                      ? 'BREACHED'
+                      : t.sla_status === 'due_soon'
+                        ? 'DUE SOON'
+                        : t.sla_due_at
+                          ? 'ON TRACK'
+                          : '—'}
+                  </Badge>
+                  {t.sla_due_at && (
+                    <p className="text-[10px] text-slate-500 mt-0.5">
+                      Due {new Date(t.sla_due_at).toLocaleString()}
+                    </p>
+                  )}
                 </td>
                 <td className="py-3 px-3 text-right">
                   <button
@@ -388,10 +415,10 @@ export const AdminSupportDesk: React.FC = () => {
               <button
                 type="button"
                 disabled={saving}
-                onClick={() => handleUpdateStatus('in_progress')}
+                onClick={() => handleUpdateStatus('in_progress', { claim: true })}
                 className="px-3 py-2 rounded-xl bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold text-[11px]"
               >
-                Mark in progress
+                Claim & mark in progress
               </button>
               <button
                 type="button"

@@ -182,6 +182,15 @@ const apiLimiter = rateLimit({
   validate: { xForwardedForHeader: false, default: false }
 });
 
+const supportLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20, // Contact Admin / support submissions
+  message: { error: 'Too many support requests from this IP. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false, default: false }
+});
+
 app.use('/api/login', authLimiter);
 app.use('/api/webauthn/login', authLimiter);
 app.use('/api/auth/webauthn/login', authLimiter);
@@ -189,6 +198,8 @@ app.use('/api/forgot-password', authLimiter);
 app.use('/api/verify-otp', authLimiter);
 app.use('/api/reset-password', authLimiter);
 app.use('/api/register', authLimiter);
+// Limit only public support submissions (not admin inbox GETs)
+app.post('/api/support/tickets', supportLimiter);
 app.use('/api/', apiLimiter);
 
 // General Middleware
@@ -196,7 +207,7 @@ const productionOrigins = [
   'https://fusion-high-app.web.app',
   'https://fusion-high-app.firebaseapp.com',
 ];
-const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:4000,http://127.0.0.1:4000')
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4000,http://127.0.0.1:4000')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -626,7 +637,12 @@ if (!process.env.VERCEL && require.main === module) {
   });
 
   httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running successfully!`);
+    try {
+      const logger = require('./public/src/services/logger');
+      logger.info('Server running', { port: PORT, env: process.env.NODE_ENV || 'development' });
+    } catch (_) {
+      console.log(`Server running successfully!`);
+    }
     console.log(`- Listening on 0.0.0.0:${PORT}`);
     console.log(`- HTTP Local:     http://localhost:${PORT}`);
   });
