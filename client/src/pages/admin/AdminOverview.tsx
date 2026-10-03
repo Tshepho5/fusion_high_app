@@ -7,7 +7,6 @@ import { FavoriteModulesSection } from '../../components/common/FavoriteModulesS
 import { HomeGreeting } from '../../components/layout/WorkspaceChrome';
 import { MasterAdminExecutiveHub } from '../../components/admin/MasterAdminExecutiveHub';
 import { SchoolModulePreferences } from '../../components/admin/SchoolModulePreferences';
-import { SchoolBankAccount } from '../../components/admin/SchoolBankAccount';
 import {
   Users,
   GraduationCap,
@@ -438,7 +437,6 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
     <div className="space-y-8 animate-fade-in text-slate-900 dark:text-slate-100 pb-16">
       <HomeGreeting />
       <SchoolModulePreferences />
-      <SchoolBankAccount />
 
       {/* ========================================================================= */}
       {/* 1. SCHOOL CURRICULUM SUBJECTS & GRADE EXPLORATION                         */}
