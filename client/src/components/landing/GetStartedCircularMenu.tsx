@@ -258,7 +258,7 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="absolute left-1/2 bottom-0 z-50 flex h-[52px] w-[210px] -translate-x-1/2 items-center justify-center rounded-full border-2 border-cyan-400/50 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 font-display text-sm font-extrabold tracking-wide text-white shadow-[0_0_30px_rgba(37,99,235,0.65),0_10px_25px_rgba(0,0,0,0.5)] sm:text-base"
+          className="get-started-trigger absolute left-1/2 bottom-0 z-50 flex h-[52px] w-[210px] -translate-x-1/2 items-center justify-center rounded-full border-2 border-cyan-400/50 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 font-display text-sm font-extrabold tracking-wide text-white shadow-[0_0_30px_rgba(37,99,235,0.65),0_10px_25px_rgba(0,0,0,0.5)] sm:text-base"
           aria-expanded={isOpen}
           aria-label="Get Started"
         >

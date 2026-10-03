@@ -965,8 +965,16 @@ button, [role="button"], a, input[type="button"], input[type="submit"] {
   transition: transform 0.1s ease, box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 
-button:active:not(:disabled), [role="button"]:active:not(:disabled), a:active {
+button:active:not(:disabled):not(.get-started-trigger), [role="button"]:active:not(:disabled), a:active {
   transform: scale(0.98);
+}
+
+button.get-started-trigger,
+button.get-started-trigger:hover,
+button.get-started-trigger:focus,
+button.get-started-trigger:active {
+  transform: translateX(-50%);
+  transition: box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 
 /* =========================================================================
