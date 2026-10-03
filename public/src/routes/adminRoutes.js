@@ -86,10 +86,17 @@ router.get('/admissions/:id', auth, isAdmin, adminController.getAdmissionById);
 router.post('/admissions/:id/ocr-inspect', auth, isAdmin, adminController.inspectAdmissionDocOCR);
 router.patch('/admissions/:id', auth, isAdmin, adminController.updateAdmissionStatus);
 
-// Parent Portal Applications (Admin Review & Decision)
+// Parent Portal Applications (Admin Review, Correction & Decision)
 const parentAppController = require('../controller/parentApplicationController');
 router.get('/parent-applications', auth, isAdmin, parentAppController.getSchoolParentApplications);
+router.patch('/parent-applications/:id', auth, isAdmin, parentAppController.correctParentApplication);
+router.put('/parent-applications/:id', auth, isAdmin, parentAppController.correctParentApplication);
 router.post('/parent-applications/:id/decide', auth, isAdmin, parentAppController.decideParentApplication);
+
+// User Support Desk (school admin + Geleza SA)
+const supportTicketController = require('../controller/supportTicketController');
+router.get('/support-tickets', auth, isAdmin, supportTicketController.getAdminSupportTickets);
+router.patch('/support-tickets/:id', auth, isAdmin, supportTicketController.updateSupportTicket);
 
 module.exports = router;
 

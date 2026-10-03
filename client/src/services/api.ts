@@ -349,6 +349,10 @@ export const adminService = {
   getAdmissionById: (id: string | number) => api.get(`/api/admin/admissions/${id}`).then(res => res.data),
   inspectAdmissionOCR: (id: string | number, documentId?: number) => api.post(`/api/admin/admissions/${id}/ocr-inspect`, { documentId }).then(res => res.data),
   updateAdmissionStatus: (id: string | number, payload: any) => api.patch(`/api/admin/admissions/${id}`, payload).then(res => res.data),
+  getSupportTickets: (params?: { status?: string; school_id?: string | number }) =>
+    api.get('/api/admin/support-tickets', { params }).then(res => res.data),
+  updateSupportTicket: (id: string | number, payload: { status?: string; admin_notes?: string; resolution_notes?: string; priority?: string }) =>
+    api.patch(`/api/admin/support-tickets/${id}`, payload).then(res => res.data),
   reviewApplicationDecision: (id: string | number, payload: { status: string; admin_notes?: string; assigned_class_id?: number }) =>
     api.post(`/api/applications/${id}/decision`, payload).then(res => res.data),
   getAcademicOverview: (params?: any) => api.get('/api/admin/academics/overview', { params }).then(res => res.data),
@@ -643,15 +647,38 @@ export const commandCenterService = {
 // Parent Portal Applications & Child Linkage API
 export const parentApplicationService = {
   submit: (data: any) => api.post('/api/parent-applications', data).then(res => res.data),
-  getAll: () => api.get('/api/parent-applications').then(res => res.data),
+  getAll: () => api.get('/api/admin/parent-applications').then(res => res.data),
+  correct: (id: number | string, payload: Record<string, any>) =>
+    api.patch(`/api/admin/parent-applications/${id}`, payload).then(res => res.data),
   decide: (id: number | string, decision: 'approve' | 'reject', admin_notes?: string) =>
-    api.post(`/api/parent-applications/${id}/decide`, { decision, admin_notes }).then(res => res.data),
+    api.post(`/api/admin/parent-applications/${id}/decide`, { decision, admin_notes }).then(res => res.data),
   linkEnrolledChild: (data: { targetID?: string; targetFirstName?: string; targetSurname?: string; id_number?: string; first_name?: string; surname?: string; learner_number?: string }) =>
     api.post('/api/parent/activate-child', {
       targetID: data.targetID || data.id_number || data.learner_number,
       targetFirstName: data.targetFirstName || data.first_name,
       targetSurname: data.targetSurname || data.surname
     }).then(res => res.data),
+};
+
+/** User / guest support requests for application & account corrections */
+export const supportService = {
+  submit: (payload: {
+    requester_name: string;
+    requester_email: string;
+    requester_phone?: string;
+    category: string;
+    subject: string;
+    description: string;
+    school_id?: number | string;
+    related_application_number?: string;
+    related_application_type?: string;
+    requester_role?: string;
+  }) => api.post('/api/support/tickets', payload).then(res => res.data),
+  getMine: () => api.get('/api/support/tickets/mine').then(res => res.data),
+  getAdminTickets: (params?: { status?: string }) =>
+    api.get('/api/admin/support-tickets', { params }).then(res => res.data),
+  updateTicket: (id: number | string, payload: { status?: string; admin_notes?: string; resolution_notes?: string; priority?: string }) =>
+    api.patch(`/api/admin/support-tickets/${id}`, payload).then(res => res.data),
 };
 
 // Behavioral & Environmental Hybrid Machine Learning API

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { AdminOverview } from './AdminOverview';
 import { AdminUsers } from './AdminUsers';
+import { AdminSupportDesk } from './AdminSupportDesk';
 import { AdminTimetable } from './AdminTimetable';
 import { AnnouncementsFeed } from '../../components/common/AnnouncementsFeed';
 import { SchoolCalendar } from '../../components/common/SchoolCalendar';
@@ -85,6 +86,8 @@ export const AdminDashboard: React.FC = () => {
         return 'Administrative Operations & Module Directory';
       case 'users':
         return 'User Directory & Role Permissions';
+      case 'support-desk':
+        return 'User Support Desk & Application Corrections';
       case 'subjects':
         return 'School Curriculum & Subject Registers';
       case 'reports':
@@ -193,6 +196,7 @@ export const AdminDashboard: React.FC = () => {
       {activeTab === 'inter-school' && <InterSchoolCompetitions />}
       {activeTab === 'consultations' && <ParentTeacherConsultations />}
       {activeTab === 'users' && <AdminUsers />}
+      {activeTab === 'support-desk' && <AdminSupportDesk />}
       {activeTab === 'subjects' && (
         <SchoolSubjectsManager onOpenReportCardStudio={(g, s) => handleSelectTab('reports')} />
       )}

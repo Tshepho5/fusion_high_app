@@ -449,6 +449,7 @@ app.use('/api', otherRoutes); // For progress, announcements etc.
 
 // Admin Routes (now imported from adminRoutes.js)
 app.use('/api/admin', require('./public/src/routes/adminRoutes.js'));
+app.use('/api/support', require('./public/src/routes/supportRoutes.js'));
 app.use('/api/schools', require('./public/src/routes/schoolRoutes'));
 app.use('/api/inter-school', require('./public/src/routes/interSchoolRoutes'));
 app.use('/api/consultations', require('./public/src/routes/consultationRoutes'));

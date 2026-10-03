@@ -26,6 +26,7 @@ import {
   Swords,
   Megaphone,
   ShieldCheck,
+  LifeBuoy,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -117,6 +118,13 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
       category: 'governance',
       icon: Users,
       badge: 'Staff & Learners',
+    },
+    {
+      id: 'support-desk',
+      title: 'User Support Desk',
+      category: 'governance',
+      icon: LifeBuoy,
+      badge: 'Corrections',
     },
     {
       id: 'leave-relief',

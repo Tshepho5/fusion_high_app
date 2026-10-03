@@ -741,6 +741,204 @@ exports.decideParentApplication = async (req, res) => {
 };
 
 /**
+ * School admin / Geleza SA: correct mistaken fields on a parent portal application
+ * (email, phone, ID, names, learner details, address) before or after review.
+ * When the application is already approved, also sync matching parent user contact fields.
+ */
+exports.correctParentApplication = async (req, res) => {
+    const { id } = req.params;
+    const adminUserId = req.user && req.user.id;
+    if (!adminUserId) {
+        return res.status(401).json({ error: 'Unauthorized: User identity unverified.' });
+    }
+
+    const isSuperAdmin = Boolean(req.user?.is_superadmin);
+    const adminSchoolId = resolveSchoolId(req);
+
+    try {
+        await ensureParentAppSchema();
+        const appRes = await db.query('SELECT * FROM parent_portal_applications WHERE id = $1 LIMIT 1', [id]);
+        if (appRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Parent application record not found.' });
+        }
+
+        const app = appRes.rows[0];
+        if (!isSuperAdmin) {
+            if (!adminSchoolId || String(app.school_id || '') !== String(adminSchoolId)) {
+                return res.status(403).json({ error: 'You can only correct applications for your school.' });
+            }
+        }
+
+        const body = req.body || {};
+        const fields = {};
+        const setClauses = [];
+        const params = [];
+
+        const textFields = [
+            'parent_name', 'parent_surname', 'parent_id_number', 'parent_email', 'parent_phone',
+            'physical_address', 'parent_type', 'gender', 'child_first_name', 'child_surname',
+            'child_id_number', 'child_stream'
+        ];
+
+        for (const key of textFields) {
+            if (body[key] !== undefined && body[key] !== null) {
+                let val = String(body[key]).trim();
+                if (key === 'parent_email') val = val.toLowerCase();
+                if (key === 'parent_id_number' || key === 'child_id_number') val = val.replace(/\D/g, '');
+                fields[key] = val;
+                params.push(val);
+                setClauses.push(`${key} = $${params.length}`);
+            }
+        }
+
+        if (body.child_grade !== undefined && body.child_grade !== null && body.child_grade !== '') {
+            const grade = parseInt(body.child_grade, 10);
+            if (Number.isInteger(grade)) {
+                fields.child_grade = grade;
+                params.push(grade);
+                setClauses.push(`child_grade = $${params.length}`);
+            }
+        }
+
+        if (body.children_details !== undefined) {
+            const details = typeof body.children_details === 'string'
+                ? body.children_details
+                : JSON.stringify(body.children_details || []);
+            fields.children_details = details;
+            params.push(details);
+            setClauses.push(`children_details = $${params.length}::jsonb`);
+        }
+
+        if (setClauses.length === 0 && body.admin_notes === undefined) {
+            return res.status(400).json({ error: 'No correction fields were provided.' });
+        }
+
+        if (fields.parent_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.parent_email)) {
+            return res.status(400).json({ error: 'Corrected parent email is not valid.' });
+        }
+        if (fields.parent_id_number && fields.parent_id_number.length !== 13) {
+            return res.status(400).json({ error: 'Parent ID number must be 13 digits.' });
+        }
+
+        const noteSuffix = `\n[Correction ${new Date().toISOString().slice(0, 10)} by admin ${adminUserId}] Updated: ${Object.keys(fields).join(', ') || 'notes'}`;
+        const baseNotes = body.admin_notes !== undefined ? String(body.admin_notes) : (app.admin_notes || '');
+        params.push(baseNotes + noteSuffix);
+        setClauses.push(`admin_notes = $${params.length}`);
+
+        params.push(id);
+        const updated = await db.query(
+            `UPDATE parent_portal_applications
+             SET ${setClauses.join(', ')}
+             WHERE id = $${params.length}
+             RETURNING *`,
+            params
+        );
+
+        const row = updated.rows[0];
+        let userSynced = false;
+
+        // Sync approved applications to the parent user account when email/phone/name/ID change
+        if (app.status === 'approved' && (fields.parent_email || fields.parent_phone || fields.parent_name || fields.parent_surname || fields.parent_id_number || fields.physical_address)) {
+            const lookupEmail = app.parent_email;
+            const userRes = await db.query(
+                'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+                [lookupEmail]
+            );
+            if (userRes.rows.length > 0) {
+                const uid = userRes.rows[0].id;
+                await db.query(
+                    `UPDATE users SET
+                        email = COALESCE($1, email),
+                        phone = COALESCE($2, phone),
+                        full_name = COALESCE($3, full_name),
+                        surname = COALESCE($4, surname),
+                        id_number = COALESCE($5, id_number),
+                        physical_address = COALESCE($6, physical_address)
+                     WHERE id = $7`,
+                    [
+                        fields.parent_email || null,
+                        fields.parent_phone || null,
+                        fields.parent_name || null,
+                        fields.parent_surname || null,
+                        fields.parent_id_number || null,
+                        fields.physical_address || null,
+                        uid
+                    ]
+                );
+                userSynced = true;
+            }
+        }
+
+        // Optionally mark linked support ticket as in progress / resolved
+        if (body.support_ticket_id) {
+            try {
+                await db.query(
+                    `UPDATE support_tickets SET
+                        status = COALESCE($1, status),
+                        admin_notes = COALESCE($2, admin_notes),
+                        corrected_fields = $3::jsonb,
+                        updated_at = NOW(),
+                        assigned_to = COALESCE(assigned_to, $4)
+                     WHERE id = $5`,
+                    [
+                        body.ticket_status || 'in_progress',
+                        body.ticket_resolution || `Corrected application ${row.application_number}: ${Object.keys(fields).join(', ')}`,
+                        JSON.stringify(fields),
+                        adminUserId,
+                        body.support_ticket_id
+                    ]
+                );
+            } catch (ticketErr) {
+                console.warn('Linked ticket update skipped:', ticketErr.message);
+            }
+        }
+
+        // Notify parent at the (new) email when contact details changed
+        const notifyEmail = fields.parent_email || row.parent_email;
+        if (notifyEmail && (fields.parent_email || fields.parent_phone)) {
+            try {
+                const html = `
+                  <div style="font-family:Segoe UI,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0B1F33">
+                    <h2 style="margin:0 0 8px">Your application details were corrected</h2>
+                    <p>School administration updated your Parent Portal application <strong>${row.application_number}</strong>.</p>
+                    <p><strong>Email on file:</strong> ${row.parent_email}</p>
+                    <p><strong>Phone on file:</strong> ${row.parent_phone || '—'}</p>
+                    <p style="color:#64748b;font-size:13px">If you did not request this change, contact your school office immediately.</p>
+                  </div>`;
+                emailService.send(notifyEmail, `[Geleza SA] Application ${row.application_number} details updated`, html)
+                    .catch((e) => console.warn('Correction notify email:', e.message));
+            } catch (_) {}
+        }
+
+        res.json({
+            success: true,
+            message: `Application ${row.application_number} corrected successfully.${userSynced ? ' Linked parent account was also updated.' : ''}`,
+            application: {
+                id: row.id,
+                application_number: row.application_number,
+                parent_name: row.parent_name,
+                parent_surname: row.parent_surname,
+                parent_email: row.parent_email,
+                parent_phone: row.parent_phone,
+                parent_id_number: row.parent_id_number,
+                physical_address: row.physical_address,
+                child_first_name: row.child_first_name,
+                child_surname: row.child_surname,
+                child_id_number: row.child_id_number,
+                child_grade: row.child_grade,
+                child_stream: row.child_stream,
+                status: row.status
+            },
+            corrected_fields: Object.keys(fields),
+            user_synced: userSynced
+        });
+    } catch (err) {
+        console.error('correctParentApplication error:', err);
+        res.status(500).json({ error: err.message || 'Failed to correct parent application.' });
+    }
+};
+
+/**
  * Verify whether a child is already enrolled in a specific school (Scenario 3)
  */
 exports.verifyEnrolledChild = async (req, res) => {

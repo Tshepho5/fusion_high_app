@@ -34,7 +34,8 @@ import {
   Unlock,
   UserCheck2,
   XCircle,
-  Clock
+  Clock,
+  Pencil
 } from 'lucide-react';
 
 const SA_OFFICIAL_LANGUAGES = [
@@ -138,6 +139,20 @@ export const AdminUsers: React.FC = () => {
   const [parents, setParents] = useState<ParentRecord[]>([]);
   const [parentApplications, setParentApplications] = useState<any[]>([]);
   const [decidingAppId, setDecidingAppId] = useState<number | null>(null);
+  const [editingParentApp, setEditingParentApp] = useState<any | null>(null);
+  const [parentAppCorrection, setParentAppCorrection] = useState({
+    parent_email: '',
+    parent_phone: '',
+    parent_name: '',
+    parent_surname: '',
+    parent_id_number: '',
+    physical_address: '',
+    child_first_name: '',
+    child_surname: '',
+    child_id_number: '',
+    child_grade: ''
+  });
+  const [savingParentCorrection, setSavingParentCorrection] = useState(false);
   const [admissions, setAdmissions] = useState<any[]>([]);
   const [schoolAdmins, setSchoolAdmins] = useState<any[]>([]);
   
@@ -661,6 +676,39 @@ export const AdminUsers: React.FC = () => {
       setError(err.response?.data?.error || `Failed to ${decision} application.`);
     } finally {
       setDecidingAppId(null);
+    }
+  };
+
+  const openParentAppCorrection = (pa: any) => {
+    setEditingParentApp(pa);
+    setParentAppCorrection({
+      parent_email: pa.parent_email || '',
+      parent_phone: pa.parent_phone || '',
+      parent_name: pa.parent_name || '',
+      parent_surname: pa.parent_surname || '',
+      parent_id_number: pa.parent_id_number || '',
+      physical_address: pa.physical_address || '',
+      child_first_name: pa.child_first_name || '',
+      child_surname: pa.child_surname || '',
+      child_id_number: pa.child_id_number || '',
+      child_grade: pa.child_grade != null ? String(pa.child_grade) : ''
+    });
+  };
+
+  const handleSaveParentAppCorrection = async () => {
+    if (!editingParentApp) return;
+    setSavingParentCorrection(true);
+    setError(null);
+    try {
+      const res = await parentApplicationService.correct(editingParentApp.id, parentAppCorrection);
+      setActionSuccess(res.message || 'Application details corrected.');
+      setEditingParentApp(null);
+      fetchData();
+      setTimeout(() => setActionSuccess(null), 5000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to correct application.');
+    } finally {
+      setSavingParentCorrection(false);
     }
   };
 
@@ -1300,36 +1348,46 @@ export const AdminUsers: React.FC = () => {
                       {pa.created_at ? new Date(pa.created_at).toLocaleDateString() : 'Recent'}
                     </td>
                     <td className="py-3.5 px-3 text-right">
-                      {pa.status === 'pending' ? (
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleDecideParentApplication(pa.id, 'approve')}
-                            disabled={decidingAppId === pa.id}
-                            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1.5 transition-all hover:scale-105 disabled:opacity-50"
-                            title="Accept application, create parent account, link child & dispatch welcome email"
-                          >
-                            <UserCheck2 className="w-3.5 h-3.5 text-emerald-200" />
-                            <span>{decidingAppId === pa.id ? 'Processing...' : 'Accept & Link'}</span>
-                          </button>
+                      <div className="flex items-center justify-end gap-2 flex-wrap">
+                        <button
+                          onClick={() => openParentAppCorrection(pa)}
+                          className="px-2.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/25 font-bold text-[11px] flex items-center gap-1"
+                          title="Correct mistaken email, phone, ID or learner details"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Correct</span>
+                        </button>
+                        {pa.status === 'pending' ? (
+                          <>
+                            <button
+                              onClick={() => handleDecideParentApplication(pa.id, 'approve')}
+                              disabled={decidingAppId === pa.id}
+                              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1.5 transition-all hover:scale-105 disabled:opacity-50"
+                              title="Accept application, create parent account, link child & dispatch welcome email"
+                            >
+                              <UserCheck2 className="w-3.5 h-3.5 text-emerald-200" />
+                              <span>{decidingAppId === pa.id ? 'Processing...' : 'Accept & Link'}</span>
+                            </button>
 
-                          <button
-                            onClick={() => {
-                              const reason = window.prompt('Enter reason for rejection (will be sent to parent email):', 'Could not verify student enrollment records.');
-                              if (reason) handleDecideParentApplication(pa.id, 'reject', reason);
-                            }}
-                            disabled={decidingAppId === pa.id}
-                            className="px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold text-[11px] flex items-center gap-1 transition-all"
-                            title="Reject application and send notice"
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                            <span>Reject</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-[11px] text-slate-500 font-mono italic">
-                          {pa.status === 'approved' ? 'Active Account' : 'Rejected'}
-                        </span>
-                      )}
+                            <button
+                              onClick={() => {
+                                const reason = window.prompt('Enter reason for rejection (will be sent to parent email):', 'Could not verify student enrollment records.');
+                                if (reason) handleDecideParentApplication(pa.id, 'reject', reason);
+                              }}
+                              disabled={decidingAppId === pa.id}
+                              className="px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold text-[11px] flex items-center gap-1 transition-all"
+                              title="Reject application and send notice"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              <span>Reject</span>
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-[11px] text-slate-500 font-mono italic">
+                            {pa.status === 'approved' ? 'Active Account' : 'Rejected'}
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -2220,6 +2278,62 @@ export const AdminUsers: React.FC = () => {
           </form>
         </Modal>
       )}
+
+      <Modal
+        isOpen={!!editingParentApp}
+        onClose={() => setEditingParentApp(null)}
+        title={editingParentApp ? `Correct ${editingParentApp.application_number}` : 'Correct application'}
+      >
+        {editingParentApp && (
+          <div className="space-y-3 text-xs">
+            <p className="text-slate-400 leading-relaxed">
+              Fix mistakes the parent made on this application (email, phone, ID, names). If the application is already approved, the linked parent account contact details are updated too.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-2">
+              {(
+                [
+                  ['parent_email', 'Parent email'],
+                  ['parent_phone', 'Parent phone'],
+                  ['parent_name', 'Parent first name'],
+                  ['parent_surname', 'Parent surname'],
+                  ['parent_id_number', 'Parent ID number'],
+                  ['physical_address', 'Physical address'],
+                  ['child_first_name', 'Learner first name'],
+                  ['child_surname', 'Learner surname'],
+                  ['child_id_number', 'Learner ID'],
+                  ['child_grade', 'Grade']
+                ] as const
+              ).map(([key, label]) => (
+                <label key={key} className="block space-y-1">
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider">{label}</span>
+                  <input
+                    value={(parentAppCorrection as any)[key]}
+                    onChange={(e) => setParentAppCorrection((prev) => ({ ...prev, [key]: e.target.value }))}
+                    className="w-full px-2.5 py-2 rounded-lg bg-surface-darker border border-white/10 text-white focus:outline-none focus:border-cyan-500/40"
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setEditingParentApp(null)}
+                className="px-4 py-2 rounded-xl bg-white/5 text-slate-300 font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={savingParentCorrection}
+                onClick={handleSaveParentAppCorrection}
+                className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold disabled:opacity-50"
+              >
+                {savingParentCorrection ? 'Saving…' : 'Save corrections'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
