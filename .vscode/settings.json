@@ -1,3 +1,5 @@
 {
-    "cmake.sourceDirectory": "C:/FUSION_HIGH_APP_1/FUSION_HIGH_APP_2.1/flutter_app/linux"
+    "cmake.sourceDirectory": "C:/FUSION_HIGH_APP_1/FUSION_HIGH_APP_2.1/flutter_app/linux",
+    "css.lint.unknownAtRules": "ignore",
+    "scss.lint.unknownAtRules": "ignore"
 }

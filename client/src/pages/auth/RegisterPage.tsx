@@ -778,7 +778,7 @@ export const RegisterPage: React.FC = () => {
   if (isTeacherFlow) {
     if (teacherLoading) {
       return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+        <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
           <div className="text-center space-y-4 animate-fade-in">
             <div className="w-12 h-12 border-3 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto" />
             <h3 className="text-base font-bold text-white">Verifying Educator Invitation</h3>
@@ -790,8 +790,8 @@ export const RegisterPage: React.FC = () => {
 
     if (teacherError && !teacherInvite) {
       return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-          <div className="max-w-md w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 text-center space-y-6 shadow-2xl">
+        <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+          <div className="max-w-md w-full portal-glass rounded-3xl border border-slate-800 p-8 text-center space-y-6 shadow-2xl">
             <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center mx-auto text-rose-400">
               <AlertCircle className="w-7 h-7" />
             </div>
@@ -826,8 +826,8 @@ export const RegisterPage: React.FC = () => {
     // Phase: Application submitted / under review
     if (teacherAppSubmitted || teacherInvite?.status === 'applied') {
       return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-          <div className="max-w-lg w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 text-center space-y-6 shadow-2xl animate-fade-in relative">
+        <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+          <div className="max-w-lg w-full portal-glass rounded-3xl border border-slate-800 p-8 text-center space-y-6 shadow-2xl animate-fade-in relative">
             <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 flex items-center justify-center mx-auto shadow-glow-cyan">
               <GraduationCap className="w-9 h-9" />
             </div>
@@ -885,8 +885,8 @@ export const RegisterPage: React.FC = () => {
     // Phase: Registered / Active
     if (teacherRegistered || teacherInvite?.status === 'registered' || teacherInvite?.status === 'accepted') {
       return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-          <div className="max-w-md w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 text-center space-y-6 shadow-2xl animate-fade-in">
+        <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+          <div className="max-w-md w-full portal-glass rounded-3xl border border-slate-800 p-8 text-center space-y-6 shadow-2xl animate-fade-in">
             <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-9 h-9" />
             </div>
@@ -916,8 +916,8 @@ export const RegisterPage: React.FC = () => {
     if (teacherInvite?.status === 'approved' || stepParam === 'register') {
       if (teacherInvite?.isRegLocked) {
         return (
-          <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-            <div className="max-w-md w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 text-center space-y-5">
+          <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+            <div className="max-w-md w-full portal-glass rounded-3xl border border-slate-800 p-8 text-center space-y-5">
               <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
                 <Lock className="w-7 h-7" />
               </div>
@@ -934,8 +934,8 @@ export const RegisterPage: React.FC = () => {
       }
 
       return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-          <div className="max-w-md w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 space-y-6 shadow-2xl">
+        <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+          <div className="max-w-md w-full portal-glass rounded-3xl border border-slate-800 p-8 space-y-6 shadow-2xl">
             <div className="text-center space-y-2">
               <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mx-auto text-cyan-400">
                 <Lock className="w-6 h-6" />
@@ -1019,8 +1019,8 @@ export const RegisterPage: React.FC = () => {
     // Phase: Application (Status is 'pending')
     if (teacherInvite?.isAppLocked) {
       return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-          <div className="max-w-md w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 text-center space-y-5">
+        <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+          <div className="max-w-md w-full portal-glass rounded-3xl border border-slate-800 p-8 text-center space-y-5">
             <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
               <Lock className="w-7 h-7" />
             </div>
@@ -1037,8 +1037,8 @@ export const RegisterPage: React.FC = () => {
     }
 
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl w-full mx-auto rounded-3xl bg-slate-900 border border-slate-800 p-6 sm:p-8 space-y-6 shadow-2xl">
+      <div className="relative z-10 min-h-screen flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-2xl w-full mx-auto portal-glass rounded-3xl border border-slate-800 p-6 sm:p-8 space-y-6 shadow-2xl">
           <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
             <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
               <GraduationCap className="w-6 h-6" />
@@ -1286,8 +1286,8 @@ export const RegisterPage: React.FC = () => {
 
   if (success && submittedApp) {
     return (
-      <div className="min-h-screen bg-surface-darker flex items-center justify-center p-4">
-        <div className="max-w-lg w-full rounded-3xl bg-surface-dark border border-white/10 p-8 text-center space-y-6 shadow-2xl animate-fade-in relative overflow-hidden">
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-lg w-full portal-glass rounded-3xl border border-white/10 p-8 text-center space-y-6 shadow-2xl animate-fade-in relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
           
           <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto shadow-glow-amber">
@@ -1356,12 +1356,12 @@ export const RegisterPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-surface-darker flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="relative z-10 min-h-screen flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 overflow-hidden">
       {/* Background Glows */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-xl text-center space-y-3 relative z-10">
+      <div className="portal-hero sm:mx-auto sm:w-full sm:max-w-xl text-center space-y-3 relative z-10" data-theme-preserve="true">
         <Link to="/" className="inline-flex items-center gap-3 group">
           <div
             className="w-14 h-14 rounded-2xl p-1 border shadow-glow-indigo group-hover:scale-105 transition-transform backdrop-blur-md flex items-center justify-center"
@@ -1421,7 +1421,7 @@ export const RegisterPage: React.FC = () => {
       <SchoolRegistrationModal isOpen={isSchoolModalOpen} onClose={() => setIsSchoolModalOpen(false)} />
 
       <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-xl relative z-10">
-        <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 sm:p-8 shadow-2xl space-y-6">
+        <div className="portal-glass rounded-3xl border border-white/10 p-6 sm:p-8 shadow-2xl space-y-6">
           
           {/* Multi-Step Indicator */}
           <div className="flex items-center justify-between border-b border-white/10 pb-4">

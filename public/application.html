@@ -1,13 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Online Learner Admissions | Fusion High School</title>
-  <link rel="stylesheet" href="/css/application.css">
+  <script>
+    (function () {
+      var saved = localStorage.getItem('app_theme');
+      var theme = saved === 'light' || saved === 'dark'
+        ? saved
+        : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.classList.remove('light', 'dark');
+      document.documentElement.classList.add(theme);
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="/css/application.css?v=4">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎓</text></svg>">
 </head>
 <body>
+  <button type="button" class="theme-toggle" id="theme-toggle">Light Mode</button>
 
   <div class="portal-container">
     <!-- Header -->
@@ -72,7 +84,7 @@
         </div>
 
         <!-- Target High School Selection Card -->
-        <div class="form-group full-width school-select-card" style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 14px; padding: 18px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+        <div class="form-group full-width school-select-card panel-tint panel-tint-accent">
           <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
             <label for="school_id" style="font-weight: 800; color: #38bdf8; font-size: 14px; margin-bottom: 0;">
               🏛️ Select Target High School (Mankweng & Polokwane) <span class="required">*</span>
@@ -112,7 +124,7 @@
         <input type="hidden" id="existing_learner_id" name="existing_learner_id" value="">
 
         <!-- Enrolled Learner Status Toggle (Scenario 3: Parent not in system, Learner is in system) -->
-        <div class="form-group full-width" style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+        <div class="form-group full-width panel-tint panel-tint-indigo">
           <label style="font-weight: 700; color: #cbd5e1; font-size: 14px; margin-bottom: 8px; display: block;">
             👨‍👧 Learner Enrollment Status at this School
           </label>
@@ -585,7 +597,7 @@
         </div>
 
         <!-- ================= APPLICATION FEE PAYMENT SELECTION ================= -->
-        <div class="form-group full-width" style="background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 14px; padding: 22px; margin-top: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+        <div class="form-group full-width panel-tint panel-tint-success">
           <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
             <h3 style="color: #34d399; font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; margin: 0;">
               💳 Application Fee Processing (R250.00)
@@ -603,7 +615,7 @@
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;" class="payment-method-grid">
             <!-- Option A: Pay Now -->
-            <label id="payment-choice-card-now" style="background: rgba(30, 41, 59, 0.7); border: 2px solid #6366f1; border-radius: 12px; padding: 14px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; transition: all 0.2s ease;">
+            <label id="payment-choice-card-now" class="payment-choice-card payment-choice-card--active">
               <div style="display: flex; align-items: center; gap: 10px;">
                 <input type="radio" name="payment_choice_radio" id="pay_choice_now" value="pay_now" checked style="accent-color: #6366f1;">
                 <span style="font-weight: 700; color: #fff; font-size: 13px;">💳 Pay Online Immediately</span>
@@ -614,7 +626,7 @@
             </label>
 
             <!-- Option B: Pay Later via EFT (7 days) -->
-            <label id="payment-choice-card-later" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 14px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; transition: all 0.2s ease;">
+            <label id="payment-choice-card-later" class="payment-choice-card">
               <div style="display: flex; align-items: center; gap: 10px;">
                 <input type="radio" name="payment_choice_radio" id="pay_choice_later" value="eft_later" style="accent-color: #6366f1;">
                 <span style="font-weight: 700; color: #fff; font-size: 13px;">🏦 Pay via School Bank Account (7 Days)</span>
@@ -698,5 +710,24 @@
 
   <script src="/src/controller/saIDvalidations.js"></script>
   <script src="/js/application.js"></script>
+  <script>
+    (function () {
+      var button = document.getElementById('theme-toggle');
+      function paint() {
+        var light = document.documentElement.classList.contains('light');
+        if (button) button.textContent = light ? 'Dark Mode' : 'Light Mode';
+      }
+      paint();
+      if (!button) return;
+      button.addEventListener('click', function () {
+        var next = document.documentElement.classList.contains('light') ? 'dark' : 'light';
+        document.documentElement.classList.remove('light', 'dark');
+        document.documentElement.classList.add(next);
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('app_theme', next);
+        paint();
+      });
+    })();
+  </script>
 </body>
 </html>

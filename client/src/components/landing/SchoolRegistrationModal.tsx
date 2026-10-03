@@ -434,11 +434,11 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-950/85 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-3xl my-auto bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="portal-scene fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/20 dark:bg-black/40 backdrop-blur-sm animate-fade-in overflow-y-auto">
+      <div className="portal-glass relative w-full max-w-3xl my-auto border rounded-3xl overflow-hidden flex flex-col max-h-[92vh]">
 
         {/* Modal Top Banner */}
-        <div className="px-6 py-5 bg-gradient-to-r from-blue-900/40 via-cyan-900/30 to-slate-900 border-b border-slate-800 flex items-center justify-between">
+        <div className="px-6 py-5 border-b border-slate-900/10 dark:border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
               <Building2 className="w-5 h-5" />
@@ -465,7 +465,7 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
 
         {/* Step Indicator Progress Bar */}
         {step < 5 && (
-          <div className="grid grid-cols-4 bg-slate-950/50 border-b border-slate-800 text-center py-2 px-3 text-xs font-semibold">
+          <div className="grid grid-cols-4 border-b border-slate-900/10 dark:border-white/10 text-center py-2 px-3 text-xs font-semibold">
             <div className={`flex items-center justify-center gap-1.5 ${step === 1 ? 'text-cyan-400 font-bold' : step > 1 ? 'text-emerald-400' : 'text-slate-500'}`}>
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step === 1 ? 'bg-cyan-500 text-slate-950 font-black' : step > 1 ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>1</span>
               <span className="hidden sm:inline">DBE Identity</span>
@@ -1107,13 +1107,13 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
 
         {/* Modal Bottom Footer Navigation */}
         {step < 5 && (
-          <div className="px-6 py-4 bg-slate-950/80 border-t border-slate-800 flex items-center justify-between">
+          <div className="px-6 py-4 border-t border-slate-900/10 dark:border-white/10 flex items-center justify-between">
             {step > 1 ? (
               <button
                 type="button"
                 onClick={handlePrev}
                 disabled={loading}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-white/70 hover:bg-white dark:bg-white/10 dark:hover:bg-white/20 text-slate-900 dark:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-slate-900/10 dark:border-white/15"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Back</span>

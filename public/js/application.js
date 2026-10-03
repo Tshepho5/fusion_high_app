@@ -215,11 +215,19 @@ function initSchoolSelector() {
 function initPaymentChoices() {
   const hidden = document.getElementById('payment_method_input');
   const payNow = document.getElementById('pay_now_input');
+  const cardNow = document.getElementById('payment-choice-card-now');
+  const cardLater = document.getElementById('payment-choice-card-later');
   if (payNow) payNow.value = 'false';
+  const paintChoice = (value) => {
+    if (cardNow) cardNow.classList.toggle('payment-choice-card--active', value === 'pay_now');
+    if (cardLater) cardLater.classList.toggle('payment-choice-card--active', value === 'eft_later');
+  };
   document.querySelectorAll('input[name="payment_choice_radio"]').forEach((radio) => {
     radio.addEventListener('change', () => {
       if (hidden && radio.checked) hidden.value = radio.value;
+      if (radio.checked) paintChoice(radio.value);
     });
+    if (radio.checked) paintChoice(radio.value);
   });
 }
 

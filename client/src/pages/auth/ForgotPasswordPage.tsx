@@ -196,11 +196,8 @@ export const ForgotPasswordPage: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-100 dark:bg-[#070B14] text-slate-900 dark:text-slate-100 selection:bg-blue-600 selection:text-white justify-center items-center p-4 sm:p-6 relative overflow-hidden transition-colors duration-300">
-      {/* Ambient Radial Glow */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="w-full max-w-md rounded-3xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xl animate-fade-in relative z-10 transition-colors duration-300">
+    <div className="flex min-h-screen justify-center items-center p-4 sm:p-6 relative">
+      <div className="portal-glass w-full max-w-md rounded-[32px] border p-6 sm:p-8 animate-fade-in relative z-10">
         
         {/* Brand Header */}
         <div className="text-center mb-6">
