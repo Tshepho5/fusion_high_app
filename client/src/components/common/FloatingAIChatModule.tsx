@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { HelpSupportModal } from './HelpSupportModal';
 import { GelezaAIMascot, GELEZA_AI } from './GelezaAIMascot';
 import { useAuth } from '../../context/AuthContext';
+
+/** Hide the FAB on landing + auth screens so it does not cover CTAs / Sign In */
+const HIDDEN_PATHS = ['/', '/login', '/register', '/forgot-password'];
 
 const FAB_SIZE = 72;
 const MARGIN = 16;
@@ -31,7 +34,13 @@ interface FloatingAIChatModuleProps {
 
 export const FloatingAIChatModule: React.FC<FloatingAIChatModuleProps> = ({ onSelectTab }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, role } = useAuth();
+  const hideOnAuthPage = HIDDEN_PATHS.some((path) =>
+    path === '/'
+      ? location.pathname === '/'
+      : location.pathname === path || location.pathname.startsWith(`${path}/`)
+  );
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [pos, setPos] = useState(() => {
@@ -111,6 +120,12 @@ export const FloatingAIChatModule: React.FC<FloatingAIChatModuleProps> = ({ onSe
       setIsOpen(true);
     }
   };
+
+  useEffect(() => {
+    if (hideOnAuthPage && isOpen) setIsOpen(false);
+  }, [hideOnAuthPage, isOpen]);
+
+  if (hideOnAuthPage) return null;
 
   return (
     <>

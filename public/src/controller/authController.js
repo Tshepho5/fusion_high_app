@@ -41,20 +41,9 @@ exports.issueLoginSession = async (user, res, rawIdentifier) => {
     const isSuperAdmin = Boolean(user.is_superadmin);
 
     await ensureActiveSessionColumn();
-    const liveSession = await db.query(
-        'SELECT active_session_id, session_seen_at FROM users WHERE id = $1',
-        [user.id]
-    );
-    const openSession = liveSession.rows[0];
-    const seenAt = openSession?.session_seen_at ? new Date(openSession.session_seen_at).getTime() : 0;
-    const sessionStillOpen = Boolean(openSession?.active_session_id) && (Date.now() - seenAt) < 60000;
-    if (sessionStillOpen) {
-        return res.status(409).json({
-            error: 'This account is already signed in on another device or tab. Sign out there before signing in here.',
-            code: 'session_in_use'
-        });
-    }
 
+    // Always issue a fresh session — this device takes over and the previous
+    // device/tab is signed out on its next API call (active_session_id mismatch).
     const sessionId = crypto.randomUUID();
     await db.query(
         'UPDATE users SET active_session_id = $1, session_seen_at = NOW(), last_seen_at = NOW(), is_online = TRUE WHERE id = $2',

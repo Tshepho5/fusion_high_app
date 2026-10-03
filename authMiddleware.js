@@ -81,7 +81,7 @@ const auth = (req, res, next) => {
             if (!user.sid || !activeSessionId || activeSessionId !== user.sid) {
                 clearSessionCookie(res);
                 return res.status(401).json({
-                    error: 'This account is already signed in on another device or tab.',
+                    error: 'You were signed out because this account signed in on another device or tab.',
                     code: 'session_replaced'
                 });
             }

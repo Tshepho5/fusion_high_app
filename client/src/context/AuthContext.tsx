@@ -86,13 +86,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return null;
       }
     };
+    // This tab claims the local lock; another tab with the same account is signed out
+    // when its token is replaced or when the server session id no longer matches.
     const claimTab = () => {
-      const current = readLock();
-      const heldByAnother = current && current.tabId !== tabId && Date.now() - Number(current.ts || 0) < 8000;
-      if (heldByAnother) {
-        setTabBlocked(true);
-        return;
-      }
       localStorage.setItem(lockKey, JSON.stringify({ tabId, ts: Date.now() }));
       setTabBlocked(false);
     };
@@ -104,7 +100,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         window.location.href = '/login';
         return;
       }
-      if (event.key === lockKey) claimTab();
+      if (event.key === lockKey) {
+        const current = readLock();
+        if (current && current.tabId !== tabId) {
+          // Another tab took over — leave this one signed out locally.
+          try { sessionStorage.setItem('logout_reason', 'session'); } catch (_) {}
+          localStorage.removeItem('token');
+          localStorage.removeItem('userRole');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+        }
+      }
     };
     window.addEventListener('storage', onStorage);
     return () => {
