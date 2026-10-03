@@ -113,11 +113,11 @@ export const authService = {
   verifyLearner: (data: { learner_number?: string; first_name?: string; surname?: string; id_number?: string; grade?: number | string; stream?: string }) => 
     api.post('/api/verify-learner', data).then(res => res.data),
   forgotPassword: (data: { email?: string; identifier?: string; channel?: 'email' | 'whatsapp' }) => 
-    api.post('/api/forgot-password', { email: data.email || data.identifier, identifier: data.identifier || data.email, channel: data.channel || 'email' }).then(res => res.data),
+    api.post('/api/forgot-password', { email: data.email || data.identifier, identifier: data.identifier || data.email, channel: data.channel || 'email' }, { timeout: 45000 }).then(res => res.data),
   verifyOtp: (data: { email?: string; identifier?: string; otp?: string; code?: string }) => 
-    api.post('/api/verify-otp', { email: data.email || data.identifier, identifier: data.identifier || data.email, code: data.code || data.otp, otp: data.otp || data.code }).then(res => res.data),
+    api.post('/api/verify-otp', { email: data.email || data.identifier, identifier: data.identifier || data.email, code: data.code || data.otp, otp: data.otp || data.code }, { timeout: 45000 }).then(res => res.data),
   resetPassword: (data: { email?: string; identifier?: string; otp?: string; code?: string; newPassword?: string; new_password?: string }) => 
-    api.post('/api/reset-password', { email: data.email || data.identifier, identifier: data.identifier || data.email, code: data.code || data.otp, otp: data.otp || data.code, new_password: data.newPassword || data.new_password, newPassword: data.newPassword || data.new_password }).then(res => res.data),
+    api.post('/api/reset-password', { email: data.email || data.identifier, identifier: data.identifier || data.email, code: data.code || data.otp, otp: data.otp || data.code, new_password: data.newPassword || data.new_password, newPassword: data.newPassword || data.new_password }, { timeout: 45000 }).then(res => res.data),
   fingerprintStatus: () => api.get('/api/webauthn/status').then(res => res.data),
   fingerprintRegisterOptions: () => api.post('/api/webauthn/register/options').then(res => res.data),
   fingerprintRegisterVerify: (payload: { challengeId: string; response: unknown }) =>

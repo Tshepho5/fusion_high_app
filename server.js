@@ -504,7 +504,11 @@ app.get('/api/health', async (req, res) => {
   } catch (e) {
     dbStatus = 'error: ' + e.message;
   }
-  res.status(200).json({ status: 'healthy', database: dbStatus, uptime: process.uptime() });
+  let emailRelay = false;
+  try {
+    emailRelay = await require('./public/src/services/emailService').relayReady();
+  } catch (_) {}
+  res.status(200).json({ status: 'healthy', database: dbStatus, emailRelay, uptime: process.uptime() });
 });
 
 // Database schema auto-bootstrap endpoint (safe & idempotent)

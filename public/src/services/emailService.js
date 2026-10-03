@@ -253,11 +253,32 @@ function relayConfirmed(status, data) {
   return text.trim().length > 0 && text.length < 500;
 }
 
-async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = 'Geleza SA' }) {
+let relayUrlCache = { value: '', at: 0 };
+
+async function resolveGoogleScriptUrl() {
+  const fromEnv = String(process.env.GOOGLE_SCRIPT_EMAIL_URL || '').trim();
+  if (fromEnv.startsWith('https://script.google.com/')) return fromEnv;
+  if (relayUrlCache.value && Date.now() - relayUrlCache.at < 10 * 60 * 1000) return relayUrlCache.value;
+  try {
+    const { db: firestore } = require('../../../db/firebase');
+    if (!firestore) return '';
+    const snap = await firestore.collection('config').doc('email').get();
+    const url = snap.exists ? String(snap.data().googleScriptUrl || '').trim() : '';
+    if (url.startsWith('https://script.google.com/')) {
+      relayUrlCache = { value: url, at: Date.now() };
+      return url;
+    }
+  } catch (err) {
+    console.warn('[EMAIL] Hosted relay settings could not be read.');
+  }
+  return '';
+}
+
+async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = 'Geleza SA', googleScriptUrl = '' }) {
   const errors = [];
   const resendKey = process.env.RESEND_API_KEY;
   const brevoKey = process.env.BREVO_API_KEY;
-  const googleScriptUrl = process.env.GOOGLE_SCRIPT_EMAIL_URL;
+  if (!googleScriptUrl) googleScriptUrl = await resolveGoogleScriptUrl();
 
   if (googleScriptUrl) {
     try {
@@ -361,6 +382,8 @@ const emailService = {
   /**
    * Pre-verifies and warms up the SMTP transporter on server startup.
    */
+  relayReady: async () => Boolean(await resolveGoogleScriptUrl()),
+
   verifyConnection: async () => {
     try {
       const transporter = getTransporter();
@@ -432,7 +455,8 @@ const emailService = {
     const senderPass = getSmtpPass();
 
     // 1. High-Priority HTTPS REST API Delivery (Port 443, immune to cloud host SMTP port blocks)
-    if (process.env.GOOGLE_SCRIPT_EMAIL_URL || process.env.RESEND_API_KEY || process.env.BREVO_API_KEY) {
+    const googleScriptUrl = await resolveGoogleScriptUrl();
+    if (googleScriptUrl || process.env.RESEND_API_KEY || process.env.BREVO_API_KEY) {
       try {
         const httpResult = await sendViaHttpsRest({
           to: targetRecipient,
@@ -440,7 +464,8 @@ const emailService = {
           html: body,
           text,
           replyTo: replyTo || senderUser,
-          fromName: 'Geleza SA'
+          fromName: 'Geleza SA',
+          googleScriptUrl
         });
         console.log(`[EMAIL DISPATCH SUCCESS] Delivered via ${httpResult.provider} HTTPS API to ${targetRecipient}`);
         return { success: true, provider: httpResult.provider, recipient: targetRecipient };
