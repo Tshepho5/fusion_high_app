@@ -218,9 +218,9 @@ function getTransporter() {
     requireTLS: true,
     auth: { user, pass },
     tls: { rejectUnauthorized: false },
-    connectionTimeout: 20000,
-    greetingTimeout: 15000,
-    socketTimeout: 25000
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 10000
   });
 }
 
@@ -292,7 +292,7 @@ async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = '
         fromName
       });
       const first = await axios.post(googleScriptUrl, payload, {
-        timeout: 20000,
+        timeout: 45000,
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         maxRedirects: 0,
         validateStatus: () => true
@@ -301,7 +301,7 @@ async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = '
       let data = first.data;
       if (status >= 300 && status < 400 && first.headers.location) {
         const second = await axios.get(first.headers.location, {
-          timeout: 20000,
+          timeout: 45000,
           maxRedirects: 0,
           validateStatus: () => true
         });
@@ -342,7 +342,12 @@ async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = '
       if (resp.status >= 200 && resp.status < 300) {
         return { success: true, provider: 'resend' };
       }
-      errors.push(`Resend HTTP ${resp.status}`);
+      let detail = '';
+      try {
+        const parsed = JSON.parse(resp.body || '{}');
+        detail = parsed.message ? ` ${String(parsed.message).slice(0, 180)}` : '';
+      } catch (_) {}
+      errors.push(`Resend HTTP ${resp.status}${detail}`);
     } catch (err) {
       errors.push(`Resend: ${err.message}`);
     }
@@ -467,10 +472,17 @@ const emailService = {
           fromName: 'Geleza SA',
           googleScriptUrl
         });
-        console.log(`[EMAIL DISPATCH SUCCESS] Delivered via ${httpResult.provider} HTTPS API to ${targetRecipient}`);
+        console.log(`[EMAIL DISPATCH SUCCESS] Delivered via ${httpResult.provider} HTTPS API`);
         return { success: true, provider: httpResult.provider, recipient: targetRecipient };
       } catch (httpErr) {
-        console.warn(`[EMAIL NOTICE] HTTPS API dispatch attempt notice (${httpErr.message}). Retrying via SMTP...`);
+        const safeNotice = String(httpErr.message || '')
+          .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[redacted]')
+          .replace(/https?:\/\/\S+/gi, '[url]')
+          .slice(0, 300);
+        console.warn(`[EMAIL NOTICE] HTTPS API dispatch attempt notice (${safeNotice}).`);
+        if (process.env.RENDER && googleScriptUrl) {
+          return { success: false, error: 'The verification email could not be sent. Try again in a moment.' };
+        }
       }
     }
 
@@ -486,7 +498,7 @@ const emailService = {
         replyTo: replyTo || senderUser
       });
 
-      console.log(`[EMAIL DISPATCH SUCCESS] SMTP delivered to ${targetRecipient}: ${info.messageId}`);
+      console.log(`[EMAIL DISPATCH SUCCESS] SMTP delivered.`);
       return { success: true, messageId: info.messageId, recipient: targetRecipient };
     } catch (nodemailerErr) {
       console.warn(`[EMAIL NOTICE] SMTP port 587 notice for ${targetRecipient} (${nodemailerErr.message}).`);
@@ -502,7 +514,7 @@ const emailService = {
           replyTo: replyTo || senderUser,
           fromName: 'Geleza SA'
         });
-        console.log(`[EMAIL DISPATCH SUCCESS] Direct TLS 465 delivered to ${targetRecipient}: ${result.messageId}`);
+        console.log(`[EMAIL DISPATCH SUCCESS] Direct TLS 465 delivered.`);
         return { success: true, messageId: result.messageId, recipient: targetRecipient };
       } catch (tlsErr) {
         console.warn(`[EMAIL NOTICE] All outbound SMTP ports (587, 465) blocked by hosting provider: ${tlsErr.message}`);
@@ -3297,29 +3309,5 @@ emailService.sendRegistrationSuccessWithAllocation = async (params) => {
   const template = emailService.templates.registrationSuccessWithAllocation(params);
   return await emailService.send(params.parentEmail, template.subject, template.body);
 };
-
-const whatsappNotices = {
-  sendApplicationCorrection: 'application_correction',
-  sendApplicationAccepted: 'application_accepted',
-  sendApplicationWaitlisted: 'application_waitlisted',
-  sendApplicationUnsuccessful: 'application_rejected',
-  sendApplicationReceivedWithBanking: 'application_received',
-  sendApplicationFeePaymentReceived: 'fee_received',
-  sendApplicationFeeReminder: 'fee_reminder',
-  sendApplicationApprovedWithFeeNotice: 'approved_fee',
-  sendRegistrationSuccessWithAllocation: 'registration_success'
-};
-
-Object.entries(whatsappNotices).forEach(([method, kind]) => {
-  const original = emailService[method];
-  emailService[method] = async (params) => {
-    const result = await original.call(emailService, params);
-    const whatsapp = require('./whatsappService');
-    whatsapp.mirrorEmail(kind, params || {}).catch((err) => {
-      console.warn('[WHATSAPP]', err.message);
-    });
-    return result;
-  };
-});
 
 module.exports = emailService;

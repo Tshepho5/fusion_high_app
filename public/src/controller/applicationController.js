@@ -571,19 +571,6 @@ exports.submitApplication = async (req, res) => {
 
     const bankingInfo = hold.banking_details;
     const paymentUrl = `${baseUrl}/application.html?appRef=${applicationNumber}&pay=true`;
-    const whatsappOptIn = ['yes', 'true', 'on', true].includes(body.whatsapp_opt_in);
-    if (whatsappOptIn) {
-      try {
-        const whatsapp = require('../services/whatsappService');
-        await whatsapp.saveContact({
-          email: body.primary_parent_email,
-          phone: body.whatsapp_number || body.primary_parent_phone
-        });
-      } catch (whatsappErr) {
-        console.warn('[WHATSAPP CONTACT]', whatsappErr.message);
-      }
-    }
-
     await emailService.sendApplicationReceivedWithBanking({
       parentEmail: body.primary_parent_email,
       parentName: primaryParentFullName,

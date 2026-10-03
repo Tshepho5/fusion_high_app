@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { WhatsAppContactCard } from '../../components/common/WhatsAppContactCard';
 import { FingerprintSignInCard } from '../../components/settings/FingerprintSignInCard';
 import { useTheme, AppTheme, AppFont } from '../../context/ThemeContext';
 import {
@@ -209,7 +208,6 @@ export const LearnerSettings: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <FingerprintSignInCard />
-        <WhatsAppContactCard />
 
         {/* 1. VISUAL THEME & ACCENT */}
         <div className="rounded-3xl bg-surface-dark border border-white/10 p-5 md:p-6 shadow-sm space-y-5">

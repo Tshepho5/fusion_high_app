@@ -393,7 +393,6 @@ app.get('/api/campus-weather', async (req, res) => {
 });
 
 // Auth & Profile
-app.use('/api/whatsapp', require('./public/src/routes/whatsappRoutes'));
 app.use('/api', authRoutes);
 app.use('/api/auth', authRoutes);
 app.get('/api/profile', authenticateToken, userController.getProfile);

@@ -605,7 +605,7 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
                 </span>
               </div>
               <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                Instant assistance, frequently asked questions, and WhatsApp help on 076 606 4212
+                Instant assistance and frequently asked questions
               </p>
             </div>
           </div>

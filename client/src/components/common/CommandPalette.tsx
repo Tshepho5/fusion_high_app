@@ -306,7 +306,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           icon: MessageSquare,
           iconColor: 'text-emerald-400',
           action: () => onNavigateTab('messages'),
-          keywords: ['chat', 'whatsapp', 'messages']
+          keywords: ['chat', 'messages']
         }
       );
     }

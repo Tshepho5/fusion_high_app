@@ -765,71 +765,8 @@ exports.forgotPassword = async (req, res) => {
         if (!queryInput) return res.status(400).json({ error: 'Email address, Learner Number, Phone, or ID Number is required.' });
         const cleanInput = queryInput.toLowerCase();
         const numericOnly = queryInput.replace(/\D/g, '');
-        const channel = String(req.body.channel || 'email').toLowerCase() === 'whatsapp' ? 'whatsapp' : 'email';
-
         let userLookup;
-        if (channel === 'whatsapp') {
-            const whatsapp = require('../services/whatsappService');
-            await whatsapp.ensureSchema();
-            const phone = whatsapp.normalise(queryInput);
-            if (!phone) {
-                return res.status(400).json({ error: 'Enter the full mobile number saved on the account. Use 10 digits starting with 0.' });
-            }
-            const phoneTail = phone.slice(2);
-            userLookup = await db.query(`
-                SELECT u.id, u.email, u.full_name, u.surname, COALESCE(r.name, u.role_id::text, 'learner') as role_name, 
-                       u.id_number::text as id_number, u.phone::text as phone, c.learner_number::text as learner_number,
-                       COALESCE(pu.email, pc_u.email) as parent_user_email
-                FROM users u
-                LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
-                LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
-                LEFT JOIN users pu ON (c.parent_id::text = pu.id::text)
-                LEFT JOIN parent_children pc ON (pc.child_id::text = c.id::text)
-                LEFT JOIN users pc_u ON (pc.parent_id::text = pc_u.id::text)
-                WHERE (
-                    u.phone IS NOT NULL
-                    AND LENGTH(REGEXP_REPLACE(u.phone::text, '[^0-9]', '', 'g')) >= 9
-                    AND RIGHT(REGEXP_REPLACE(u.phone::text, '[^0-9]', '', 'g'), 9) = $1
-                )
-                OR EXISTS (
-                    SELECT 1 FROM employees e
-                    WHERE e.user_id::text = u.id::text
-                      AND e.phone IS NOT NULL
-                      AND LENGTH(REGEXP_REPLACE(e.phone::text, '[^0-9]', '', 'g')) >= 9
-                      AND RIGHT(REGEXP_REPLACE(e.phone::text, '[^0-9]', '', 'g'), 9) = $1
-                )
-                OR EXISTS (
-                    SELECT 1 FROM whatsapp_contacts wc
-                    WHERE RIGHT(REGEXP_REPLACE(wc.phone, '[^0-9]', '', 'g'), 9) = $1
-                      AND (
-                        wc.user_id::text = u.id::text
-                        OR (wc.email IS NOT NULL AND LOWER(wc.email) = LOWER(TRIM(u.email::text)))
-                      )
-                )
-                OR EXISTS (
-                    SELECT 1 FROM applications a
-                    WHERE (
-                        (a.primary_parent_email IS NOT NULL AND LOWER(TRIM(a.primary_parent_email)) = LOWER(TRIM(u.email::text)))
-                        OR (a.email IS NOT NULL AND LOWER(TRIM(a.email)) = LOWER(TRIM(u.email::text)))
-                        OR (a.secondary_parent_email IS NOT NULL AND LOWER(TRIM(a.secondary_parent_email)) = LOWER(TRIM(u.email::text)))
-                    )
-                    AND (
-                        (a.primary_parent_phone IS NOT NULL AND LENGTH(REGEXP_REPLACE(a.primary_parent_phone, '[^0-9]', '', 'g')) >= 9 AND RIGHT(REGEXP_REPLACE(a.primary_parent_phone, '[^0-9]', '', 'g'), 9) = $1)
-                        OR (a.phone IS NOT NULL AND LENGTH(REGEXP_REPLACE(a.phone, '[^0-9]', '', 'g')) >= 9 AND RIGHT(REGEXP_REPLACE(a.phone, '[^0-9]', '', 'g'), 9) = $1)
-                        OR (a.secondary_parent_phone IS NOT NULL AND LENGTH(REGEXP_REPLACE(a.secondary_parent_phone, '[^0-9]', '', 'g')) >= 9 AND RIGHT(REGEXP_REPLACE(a.secondary_parent_phone, '[^0-9]', '', 'g'), 9) = $1)
-                    )
-                )
-                ORDER BY (CASE WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'parent' THEN 1 WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN 2 WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'admin' THEN 3 ELSE 4 END) ASC
-                LIMIT 1
-            `, [phoneTail]);
-
-            if (userLookup.rows.length === 0) {
-                return res.status(404).json({
-                    error: 'This number is not saved on a Geleza SA account, so no code was sent. Check the number, or reset the password by email.'
-                });
-            }
-            req.whatsappResetPhone = phone;
-        } else if (cleanInput.includes('@')) {
+        if (cleanInput.includes('@')) {
             // Strict Email Lookup: Account MUST exist with this exact email in users table
             userLookup = await db.query(`
                 SELECT u.id, u.email, u.full_name, u.surname, COALESCE(r.name, u.role_id::text, 'learner') as role_name, 
@@ -899,7 +836,7 @@ exports.forgotPassword = async (req, res) => {
             targetDeliveryEmail = user.email.trim();
         }
 
-        if (channel !== 'whatsapp' && (!targetDeliveryEmail || !targetDeliveryEmail.includes('@'))) {
+        if (!targetDeliveryEmail || !targetDeliveryEmail.includes('@')) {
             return res.status(400).json({ 
                 error: 'No valid recovery email address is registered on this account in the database. Please contact school administration for password reset assistance.' 
             });
@@ -912,7 +849,7 @@ exports.forgotPassword = async (req, res) => {
             [otp, user.id]
         );
 
-        // A forgotten password is delivered by email or WhatsApp only.
+        // A forgotten password is delivered by email only.
         // It must not create an announcement or a bell notice.
 
         // Keep the reset record in Firestore without delaying the inbox send.
@@ -949,25 +886,6 @@ exports.forgotPassword = async (req, res) => {
         }
         if (!baseUrl) {
             baseUrl = 'https://fusion-high-app.web.app';
-        }
-
-        if (channel === 'whatsapp') {
-            const whatsapp = require('../services/whatsappService');
-            const sent = await whatsapp.sendOtp(req.whatsappResetPhone, otp);
-            const localPhone = `0${req.whatsappResetPhone.slice(2)}`;
-            const maskedPhone = `${localPhone.slice(0, 3)} *** ${localPhone.slice(-4)}`;
-            if (!sent.sent) {
-                return res.status(503).json({
-                    error: sent.reason || 'The recovery code could not be delivered on WhatsApp. Choose email, or try again when WhatsApp delivery is connected.'
-                });
-            }
-            return res.status(200).json({
-                message: `A 10-digit reset code has been sent to your WhatsApp (${maskedPhone}). It is valid for 5 minutes.`,
-                email: user.email,
-                channel: 'whatsapp',
-                delivery_phone: maskedPhone,
-                expires_in: 300
-            });
         }
 
         const tpl = emailService.templates.forgotPassword(otp, targetDeliveryEmail, baseUrl);
