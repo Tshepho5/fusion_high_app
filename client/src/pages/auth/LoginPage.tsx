@@ -16,13 +16,15 @@ import {
   Sun,
   Moon,
   AlertCircle,
-  ShieldCheck
+  ShieldCheck,
+  Fingerprint
 } from 'lucide-react';
+import { startAuthentication, browserSupportsWebAuthn, platformAuthenticatorIsAvailable } from '@simplewebauthn/browser';
 import { authService } from '../../services/api';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, establishSession } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   const isLight = theme === 'light';
@@ -36,6 +38,9 @@ export const LoginPage: React.FC = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [accountReady, setAccountReady] = useState(false);
   const [checkingAccount, setCheckingAccount] = useState(false);
+  const [fingerprintSupported, setFingerprintSupported] = useState(false);
+  const [fingerprintAvailable, setFingerprintAvailable] = useState(false);
+  const [fingerprintBusy, setFingerprintBusy] = useState(false);
   const forecastRef = useRef<ForecastPayload | null>(cachedForecast());
   const [weather, setWeather] = useState<CampusWeather>(() => {
     const cached = forecastRef.current;
@@ -55,6 +60,22 @@ export const LoginPage: React.FC = () => {
     return () => {
       stop();
       window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!browserSupportsWebAuthn()) return;
+    setFingerprintSupported(true);
+    platformAuthenticatorIsAvailable()
+      .then((ready) => {
+        if (!cancelled) setFingerprintAvailable(ready);
+      })
+      .catch(() => {
+        if (!cancelled) setFingerprintAvailable(false);
+      });
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -151,6 +172,31 @@ export const LoginPage: React.FC = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFingerprintLogin = async () => {
+    setFingerprintBusy(true);
+    setError(null);
+    setFieldErrors({});
+    try {
+      const started = await authService.fingerprintLoginOptions();
+      const assertion = await startAuthentication({ optionsJSON: started.options });
+      const data = await authService.fingerprintLoginVerify({
+        challengeId: started.challengeId,
+        response: assertion,
+      });
+      const { role } = await establishSession(data);
+      navigate(`/dashboard/${role || 'learner'}`);
+    } catch (err: any) {
+      const cancelled = err?.name === 'NotAllowedError' || err?.code === 'ERROR_CEREMONY_ABORTED';
+      const message = cancelled
+        ? 'Fingerprint sign-in was cancelled. Email and password are still here.'
+        : err?.response?.data?.error ||
+          'Fingerprint sign-in is not turned on for this device. Sign in with email and password, then enable the scanner in Settings.';
+      setError(message);
+    } finally {
+      setFingerprintBusy(false);
     }
   };
 
@@ -479,6 +525,32 @@ export const LoginPage: React.FC = () => {
                   </>
                 )}
               </button>
+
+              {fingerprintSupported && !fingerprintAvailable && (
+                <p className={`text-[11px] text-center font-semibold ${isLight ? 'text-slate-700' : 'text-white/80'}`}>
+                  Turn on this device’s fingerprint scanner in its settings to use fingerprint sign-in.
+                </p>
+              )}
+
+              {fingerprintAvailable && (
+                <button
+                  type="button"
+                  onClick={handleFingerprintLogin}
+                  disabled={loading || fingerprintBusy}
+                  className={`w-full py-3 px-6 rounded-full font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 border ${
+                    isLight
+                      ? 'bg-white/80 text-slate-900 border-white/70 hover:bg-white'
+                      : 'bg-black/35 text-white border-white/25 hover:bg-black/50'
+                  }`}
+                >
+                  {fingerprintBusy ? (
+                    <div className={`w-4 h-4 border-2 border-t-transparent rounded-full animate-spin ${isLight ? 'border-slate-900' : 'border-white'}`} />
+                  ) : (
+                    <Fingerprint className="w-4 h-4" />
+                  )}
+                  <span>Sign in with fingerprint</span>
+                </button>
+              )}
             </form>
           </div>
         </div>

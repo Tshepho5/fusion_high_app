@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { WhatsAppContactCard } from '../../components/common/WhatsAppContactCard';
+import { FingerprintSignInCard } from '../../components/settings/FingerprintSignInCard';
 import { useTheme, AppTheme, AppFont } from '../../context/ThemeContext';
 import {
   Sliders,
@@ -207,6 +208,7 @@ export const LearnerSettings: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <FingerprintSignInCard />
         <WhatsAppContactCard />
 
         {/* 1. VISUAL THEME & ACCENT */}

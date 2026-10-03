@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controller/authController');
+const webauthnController = require('../controller/webauthnController');
 const parentAppController = require('../controller/parentApplicationController');
 
 const { auth: authMiddleware } = require('../../../authMiddleware');
@@ -16,6 +17,8 @@ router.get('/verify-learner', authController.verifyLearner);
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/verify-otp', authController.verifyOTP);
 router.post('/reset-password', authController.resetPassword);
+router.post('/webauthn/login/options', webauthnController.loginOptions);
+router.post('/webauthn/login/verify', webauthnController.loginVerify);
 
 // Parent Portal Access Application (Public)
 router.post('/parent-applications', parentAppController.submitParentApplication);
@@ -23,5 +26,9 @@ router.post('/parent-applications/verify-child', parentAppController.verifyEnrol
 
 // Protected routes
 router.post('/change-password', authMiddleware, authController.changePassword);
+router.get('/webauthn/status', authMiddleware, webauthnController.status);
+router.post('/webauthn/register/options', authMiddleware, webauthnController.registerOptions);
+router.post('/webauthn/register/verify', authMiddleware, webauthnController.registerVerify);
+router.post('/webauthn/disable', authMiddleware, webauthnController.disable);
 
 module.exports = router;

@@ -10,6 +10,113 @@ const curriculumService = require('../services/curriculumService');
 const { isControlLocked } = require('./systemController');
 const { rejectNameDigits } = require('../services/lettersOnly');
 
+const SESSION_SELECT_COLS = `
+            u.id, u.email, u.password_hash, u.id_number::text as id_number, u.phone::text as phone, u.full_name, u.surname,
+            u.is_superadmin,
+            COALESCE(u.school_id, c.school_id) as school_id,
+            COALESCE(r.name, u.role_id::text, 'learner') as role_name,
+            c.id as child_id, c.learner_number::text as learner_number, c.grade, c.stream,
+            s.name as school_name, s.slug as school_slug, s.domain as school_domain, s.emis_number,
+            s.circuit, s.district, s.province, s.physical_address, s.contact_email, s.contact_phone,
+            s.principal_name, s.logo_url, s.badge_url, s.primary_color, s.secondary_color, s.accent_color,
+            s.motto, s.curriculum_type
+        `;
+
+const SESSION_USER_JOINS = `
+                 FROM users u
+                 LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
+                 LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
+                 LEFT JOIN schools s ON (s.id::text = COALESCE(u.school_id, c.school_id)::text)
+`;
+
+exports.loadSessionUser = async (userId) => {
+    const result = await db.query(
+        `SELECT ${SESSION_SELECT_COLS} ${SESSION_USER_JOINS} WHERE u.id::text = $1 ORDER BY u.id ASC LIMIT 1`,
+        [String(userId)]
+    );
+    return result.rows[0] || null;
+};
+
+exports.issueLoginSession = async (user, res, rawIdentifier) => {
+    const isSuperAdmin = Boolean(user.is_superadmin);
+
+    await ensureActiveSessionColumn();
+    const liveSession = await db.query(
+        'SELECT active_session_id, session_seen_at FROM users WHERE id = $1',
+        [user.id]
+    );
+    const openSession = liveSession.rows[0];
+    const seenAt = openSession?.session_seen_at ? new Date(openSession.session_seen_at).getTime() : 0;
+    const sessionStillOpen = Boolean(openSession?.active_session_id) && (Date.now() - seenAt) < 60000;
+    if (sessionStillOpen) {
+        return res.status(409).json({
+            error: 'This account is already signed in on another device or tab. Sign out there before signing in here.',
+            code: 'session_in_use'
+        });
+    }
+
+    const sessionId = crypto.randomUUID();
+    await db.query(
+        'UPDATE users SET active_session_id = $1, session_seen_at = NOW(), last_seen_at = NOW(), is_online = TRUE WHERE id = $2',
+        [sessionId, user.id]
+    );
+
+    const signingSecret = process.env.JWT_SECRET;
+    if (!signingSecret) {
+        return res.status(500).json({ error: 'Server signing secret is not configured.' });
+    }
+
+    const token = jwt.sign(
+        { id: user.id, role: user.role_name, email: user.email, full_name: user.full_name, school_id: user.school_id, is_superadmin: isSuperAdmin, sid: sessionId },
+        signingSecret,
+        { expiresIn: '7d' }
+    );
+    attachSessionCookie(res, token);
+
+    const schoolObj = user.school_id ? {
+        id: user.school_id,
+        name: user.school_name,
+        slug: user.school_slug,
+        domain: user.school_domain,
+        emis_number: user.emis_number,
+        circuit: user.circuit,
+        district: user.district,
+        province: user.province,
+        physical_address: user.physical_address,
+        contact_email: user.contact_email,
+        contact_phone: user.contact_phone,
+        principal_name: user.principal_name,
+        logo_url: user.logo_url,
+        badge_url: user.badge_url,
+        primary_color: user.primary_color || '#4f46e5',
+        secondary_color: user.secondary_color || '#06b6d4',
+        accent_color: user.accent_color || '#f59e0b',
+        motto: user.motto,
+        curriculum_type: user.curriculum_type,
+        is_active: true
+    } : null;
+
+    return res.json({
+        token,
+        role: user.role_name,
+        school_id: user.school_id,
+        school: schoolObj,
+        user: {
+            id: user.id,
+            email: user.email,
+            full_name: `${user.full_name || ''} ${user.surname || ''}`.trim(),
+            role: user.role_name,
+            school_id: user.school_id,
+            school_name: user.school_name,
+            school_slug: user.school_slug,
+            is_superadmin: isSuperAdmin,
+            learner_number: user.learner_number || (user.role_name === 'learner' ? rawIdentifier : undefined),
+            grade: user.grade,
+            stream: user.stream
+        }
+    });
+};
+
 const validatePassword = (password) => {
     if (!password) return "Password is required.";
     if (typeof password !== 'string') return "Invalid password format.";
@@ -547,25 +654,10 @@ exports.login = async (req, res) => {
     try {
         // Separate lookup for email vs learner number/ID to prevent accidental regex collision
         let result;
-        const selectCols = `
-            u.id, u.email, u.password_hash, u.id_number::text as id_number, u.phone::text as phone, u.full_name, u.surname, 
-            u.is_superadmin,
-            COALESCE(u.school_id, c.school_id) as school_id,
-            COALESCE(r.name, u.role_id::text, 'learner') as role_name,
-            c.id as child_id, c.learner_number::text as learner_number, c.grade, c.stream,
-            s.name as school_name, s.slug as school_slug, s.domain as school_domain, s.emis_number,
-            s.circuit, s.district, s.province, s.physical_address, s.contact_email, s.contact_phone,
-            s.principal_name, s.logo_url, s.badge_url, s.primary_color, s.secondary_color, s.accent_color,
-            s.motto, s.curriculum_type
-        `;
-
         if (rawIdentifier.includes('@')) {
             result = await db.query(
-                `SELECT ${selectCols}
-                 FROM users u
-                 LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
-                 LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
-                 LEFT JOIN schools s ON (s.id::text = COALESCE(u.school_id, c.school_id)::text)
+                `SELECT ${SESSION_SELECT_COLS}
+                 ${SESSION_USER_JOINS}
                  WHERE LOWER(u.email::text) = LOWER($1)
                  ORDER BY u.id ASC
                  LIMIT 1`,
@@ -574,11 +666,8 @@ exports.login = async (req, res) => {
         } else {
             const cleanId = rawIdentifier.replace(/[^a-zA-Z0-9]/g, '');
             result = await db.query(
-                `SELECT ${selectCols}
-                 FROM users u
-                 LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
-                 LEFT JOIN children c ON (c.learner_user_id::text = u.id::text)
-                 LEFT JOIN schools s ON (s.id::text = COALESCE(u.school_id, c.school_id)::text)
+                `SELECT ${SESSION_SELECT_COLS}
+                 ${SESSION_USER_JOINS}
                  WHERE (c.learner_number IS NOT NULL AND (c.learner_number::text = $1 OR REGEXP_REPLACE(c.learner_number::text, '[^a-zA-Z0-9]', '', 'g') = $2))
                     OR (u.id_number IS NOT NULL AND (TRIM(u.id_number::text) = $1 OR REGEXP_REPLACE(u.id_number::text, '[^0-9]', '', 'g') = $2))
                     OR (u.phone IS NOT NULL AND (TRIM(u.phone::text) = $1 OR REGEXP_REPLACE(u.phone::text, '[^0-9]', '', 'g') = $2))
@@ -613,83 +702,7 @@ exports.login = async (req, res) => {
             });
         }
 
-        const isSuperAdmin = Boolean(user.is_superadmin);
-
-        await ensureActiveSessionColumn();
-        const liveSession = await db.query(
-            'SELECT active_session_id, session_seen_at FROM users WHERE id = $1',
-            [user.id]
-        );
-        const openSession = liveSession.rows[0];
-        const seenAt = openSession?.session_seen_at ? new Date(openSession.session_seen_at).getTime() : 0;
-        const sessionStillOpen = Boolean(openSession?.active_session_id) && (Date.now() - seenAt) < 60000;
-        if (sessionStillOpen) {
-            return res.status(409).json({
-                error: 'This account is already signed in on another device or tab. Sign out there before signing in here.',
-                code: 'session_in_use'
-            });
-        }
-
-        const sessionId = crypto.randomUUID();
-        await db.query(
-            'UPDATE users SET active_session_id = $1, session_seen_at = NOW(), last_seen_at = NOW(), is_online = TRUE WHERE id = $2',
-            [sessionId, user.id]
-        );
-
-        const signingSecret = process.env.JWT_SECRET;
-        if (!signingSecret) {
-            return res.status(500).json({ error: 'Server signing secret is not configured.' });
-        }
-
-        const token = jwt.sign(
-            { id: user.id, role: user.role_name, email: user.email, full_name: user.full_name, school_id: user.school_id, is_superadmin: isSuperAdmin, sid: sessionId },
-            signingSecret,
-            { expiresIn: '7d' }
-        );
-        attachSessionCookie(res, token);
-
-        const schoolObj = user.school_id ? {
-            id: user.school_id,
-            name: user.school_name,
-            slug: user.school_slug,
-            domain: user.school_domain,
-            emis_number: user.emis_number,
-            circuit: user.circuit,
-            district: user.district,
-            province: user.province,
-            physical_address: user.physical_address,
-            contact_email: user.contact_email,
-            contact_phone: user.contact_phone,
-            principal_name: user.principal_name,
-            logo_url: user.logo_url,
-            badge_url: user.badge_url,
-            primary_color: user.primary_color || '#4f46e5',
-            secondary_color: user.secondary_color || '#06b6d4',
-            accent_color: user.accent_color || '#f59e0b',
-            motto: user.motto,
-            curriculum_type: user.curriculum_type,
-            is_active: true
-        } : null;
-
-        res.json({
-            token,
-            role: user.role_name,
-            school_id: user.school_id,
-            school: schoolObj,
-            user: {
-                id: user.id,
-                email: user.email,
-                full_name: `${user.full_name || ''} ${user.surname || ''}`.trim(),
-                role: user.role_name,
-                school_id: user.school_id,
-                school_name: user.school_name,
-                school_slug: user.school_slug,
-                is_superadmin: isSuperAdmin,
-                learner_number: user.learner_number || (user.role_name === 'learner' ? rawIdentifier : undefined),
-                grade: user.grade,
-                stream: user.stream
-            }
-        });
+        return exports.issueLoginSession(user, res, rawIdentifier);
     } catch (err) {
         console.error('Login error:', err);
         res.status(500).json({ error: 'Login error: ' + err.message });

@@ -23,6 +23,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: { email?: string; learnerNumber?: string; password: string }) => Promise<any>;
+  establishSession: (data: any) => Promise<any>;
   logout: () => void;
   updateUser: (updatedData: Partial<User>) => void;
   refreshUser: () => Promise<void>;
@@ -176,42 +177,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [token]);
 
+  const establishSession = async (data: any) => {
+    const userToken = data.token;
+    const userRole = (data.role || 'learner').toLowerCase() as UserRole;
+    const userData = data.user || { id: data.id, role: userRole, email: data.email };
+
+    setToken(userToken);
+    setRole(userRole);
+    setUserState(userData);
+
+    localStorage.setItem('token', userToken);
+    if (userRole) {
+      localStorage.setItem('userRole', userRole);
+    }
+    localStorage.setItem('user', JSON.stringify(userData));
+
+    userService.heartbeat().catch(() => {});
+
+    if (data.school) {
+      localStorage.setItem('active_school_profile', JSON.stringify(data.school));
+      localStorage.setItem('active_school_id', String(data.school.id));
+      const root = document.documentElement;
+      root.style.setProperty('--school-primary', data.school.primary_color || '#4f46e5');
+      root.style.setProperty('--school-secondary', data.school.secondary_color || '#06b6d4');
+      root.style.setProperty('--school-accent', data.school.accent_color || '#f59e0b');
+      root.setAttribute('data-school-slug', data.school.slug || 'fusion-high');
+    } else if (data.school_id || userData.school_id) {
+      const sid = String(data.school_id || userData.school_id);
+      localStorage.setItem('active_school_id', sid);
+    }
+
+    return { data, role: userRole };
+  };
+
   const login = async (credentials: { email?: string; learnerNumber?: string; password: string }) => {
     setIsLoading(true);
     try {
       const data = await authService.login(credentials);
-      const userToken = data.token;
-      const userRole = (data.role || 'learner').toLowerCase() as UserRole;
-      const userData = data.user || { id: data.id, role: userRole, email: credentials.email };
-
-      setToken(userToken);
-      setRole(userRole);
-      setUserState(userData);
-
-      localStorage.setItem('token', userToken);
-      if (userRole) {
-        localStorage.setItem('userRole', userRole);
-      }
-      localStorage.setItem('user', JSON.stringify(userData));
-
-      // Trigger immediate presence heartbeat on login
-      userService.heartbeat().catch(() => {});
-
-      // Auto-sync school profile to school context and CSS root
-      if (data.school) {
-        localStorage.setItem('active_school_profile', JSON.stringify(data.school));
-        localStorage.setItem('active_school_id', String(data.school.id));
-        const root = document.documentElement;
-        root.style.setProperty('--school-primary', data.school.primary_color || '#4f46e5');
-        root.style.setProperty('--school-secondary', data.school.secondary_color || '#06b6d4');
-        root.style.setProperty('--school-accent', data.school.accent_color || '#f59e0b');
-        root.setAttribute('data-school-slug', data.school.slug || 'fusion-high');
-      } else if (data.school_id || userData.school_id) {
-        const sid = String(data.school_id || userData.school_id);
-        localStorage.setItem('active_school_id', sid);
-      }
-
-      return { data, role: userRole };
+      return await establishSession(data);
     } finally {
       setIsLoading(false);
     }
@@ -269,6 +272,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isAuthenticated: !!token,
         isLoading,
         login,
+        establishSession,
         logout,
         updateUser,
         refreshUser,

@@ -121,15 +121,17 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
   ];
 
   const getItemTransform = (index: number, total: number) => {
-    if (!isOpen) return 'translate(-50%, 24px) scale(0)';
+    if (!isOpen) return 'translate(-50%, 12px) scale(0)';
     if (total === 4) {
+      const side = 'clamp(78px, 22vw, 132px)';
+      const rise = 'clamp(40px, 11vw, 64px)';
       const spots = [
-        'translate(calc(-50% - 168px), -16px) scale(1)',
-        'translate(calc(-50% - 72px), -112px) scale(1)',
-        'translate(calc(-50% + 72px), -112px) scale(1)',
-        'translate(calc(-50% + 168px), -16px) scale(1)'
+        `translate(calc(-50% - ${side}), -28px) scale(1)`,
+        `translate(calc(-50% - ${rise}), -118px) scale(1)`,
+        `translate(calc(-50% + ${rise}), -118px) scale(1)`,
+        `translate(calc(-50% + ${side}), -28px) scale(1)`
       ];
-      return spots[index] || 'translate(-50%, -108px) scale(1)';
+      return spots[index] || 'translate(-50%, -118px) scale(1)';
     }
     if (total === 1) return 'translate(-50%, -108px) scale(1)';
     if (total === 2) {
@@ -206,7 +208,7 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
       {/* Circular Orbit & Action Buttons Container */}
       <div className="relative z-40 mx-auto h-[250px] w-full max-w-[440px]">
         {isOpen && (
-          <div className="pointer-events-none absolute bottom-5 left-1/2 h-[200px] w-[min(400px,100%)] -translate-x-1/2 rounded-t-full border-2 border-b-0 border-dashed border-cyan-400/70" />
+          <div className="pointer-events-none absolute bottom-[52px] left-1/2 h-[168px] w-[min(300px,86%)] -translate-x-1/2 rounded-t-full border-2 border-b-0 border-dashed border-cyan-400/70" />
         )}
 
         {/* Circular Glowing Action Buttons */}
@@ -239,7 +241,7 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
             <div
               key={item.id}
               style={{ transform: transformStyle }}
-              className={`absolute left-1/2 bottom-16 transition-all duration-400 ease-out z-40 ${
+              className={`absolute left-1/2 bottom-[52px] transition-all duration-400 ease-out z-40 ${
                 isOpen
                   ? 'opacity-100 pointer-events-auto'
                   : 'opacity-0 pointer-events-none'
@@ -256,7 +258,7 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="absolute left-1/2 bottom-0 -translate-x-1/2 z-50 flex w-[210px] h-[52px] items-center justify-center rounded-full font-display font-extrabold text-sm sm:text-base tracking-wide border-2 whitespace-nowrap bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white border-cyan-400/50 shadow-[0_0_30px_rgba(37,99,235,0.65),0_10px_25px_rgba(0,0,0,0.5)]"
+          className="absolute left-1/2 bottom-0 z-50 flex h-[52px] w-[210px] -translate-x-1/2 items-center justify-center rounded-full border-2 border-cyan-400/50 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 font-display text-sm font-extrabold tracking-wide text-white shadow-[0_0_30px_rgba(37,99,235,0.65),0_10px_25px_rgba(0,0,0,0.5)] sm:text-base"
           aria-expanded={isOpen}
           aria-label="Get Started"
         >

@@ -118,6 +118,15 @@ export const authService = {
     api.post('/api/verify-otp', { email: data.email || data.identifier, identifier: data.identifier || data.email, code: data.code || data.otp, otp: data.otp || data.code }).then(res => res.data),
   resetPassword: (data: { email?: string; identifier?: string; otp?: string; code?: string; newPassword?: string; new_password?: string }) => 
     api.post('/api/reset-password', { email: data.email || data.identifier, identifier: data.identifier || data.email, code: data.code || data.otp, otp: data.otp || data.code, new_password: data.newPassword || data.new_password, newPassword: data.newPassword || data.new_password }).then(res => res.data),
+  fingerprintStatus: () => api.get('/api/webauthn/status').then(res => res.data),
+  fingerprintRegisterOptions: () => api.post('/api/webauthn/register/options').then(res => res.data),
+  fingerprintRegisterVerify: (payload: { challengeId: string; response: unknown }) =>
+    api.post('/api/webauthn/register/verify', payload).then(res => res.data),
+  fingerprintDisable: (credentialId?: string) =>
+    api.post('/api/webauthn/disable', credentialId ? { credentialId } : {}).then(res => res.data),
+  fingerprintLoginOptions: () => api.post('/api/webauthn/login/options').then(res => res.data),
+  fingerprintLoginVerify: (payload: { challengeId: string; response: unknown }) =>
+    api.post('/api/webauthn/login/verify', payload).then(res => res.data),
 };
 
 // User Profile & Messages APIs (users, messages tables)

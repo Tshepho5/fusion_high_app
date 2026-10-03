@@ -183,6 +183,8 @@ const apiLimiter = rateLimit({
 });
 
 app.use('/api/login', authLimiter);
+app.use('/api/webauthn/login', authLimiter);
+app.use('/api/auth/webauthn/login', authLimiter);
 app.use('/api/forgot-password', authLimiter);
 app.use('/api/verify-otp', authLimiter);
 app.use('/api/reset-password', authLimiter);
