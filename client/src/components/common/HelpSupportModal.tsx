@@ -251,77 +251,100 @@ export const AnimatedSupportMascot: React.FC<{
   );
 };
 
-// Comprehensive School FAQs Data
+/** Official FAQ reference — Geleza SA Support Documentation (GSA-DOC-FAQ-001) */
 const FAQ_CATEGORIES = [
   {
     id: 'general',
-    name: 'General & Navigation',
+    name: 'Section A — Platform overview',
     icon: LifeBuoy,
     faqs: [
       {
-        q: 'What is Geleza SA Portal?',
-        a: 'Geleza SA (G~SA) Portal is the official digital school management platform. It manages South African CAPS curriculum delivery, SBA marksheet auditing, daily attendance roll-call, term report cards, digital assignments, and 24/7 AI tutoring tools.'
+        q: 'What is Geleza SA?',
+        a: 'Geleza SA (Geleza South Africa) is a digital school management and learning platform for South African secondary schools. It supports CAPS-aligned administration, including attendance, assessments, report cards, communications, fees (where enabled), and authorised study tools for Grades 8–12.'
       },
       {
-        q: 'How do I change between Dark and Light themes?',
-        a: 'Click your profile picture in the top-right corner to toggle between Dark Mode and Light Mode.'
+        q: 'Who may use Geleza SA?',
+        a: 'Access is limited to authorised users of a registered school: administrators, educators, enrolled learners, and parents or legal guardians linked to those learners. Unauthorised use is prohibited under the Geleza SA Terms and Conditions.'
       },
       {
-        q: 'How do I switch the module view (Standard Grid, Compact App Tiles, List View)?',
-        a: 'On your dashboard, locate the 3 view selector icons directly to the right of the "Functions & Quick Tools" title. Click any icon to instantly switch your layout.'
+        q: 'How do I change between dark and light appearance?',
+        a: 'Open Settings from your portal and use the Dark Mode control under App Settings. Your preference is saved for subsequent sessions on that device.'
+      },
+      {
+        q: 'Where can I read the official policies?',
+        a: 'The About Geleza SA document and the Terms and Conditions are available from the public website (About Us and Terms pages). Registered users may also open Help & Support for FAQs and the AI assistant.'
       }
     ]
   },
   {
     id: 'learner',
-    name: 'Learner & Academics',
+    name: 'Section B — Learners',
     icon: GraduationCap,
     faqs: [
       {
-        q: 'How do I access single-subject curriculum workspaces?',
-        a: 'Click on any subject card in your horizontal subjects carousel at the top of the Learner Dashboard. The system will open that exact subject\'s chapter notes, past papers, and AI practice worksheets.'
+        q: 'How do I open a subject workspace?',
+        a: 'From the learner home or Subjects module, select the relevant subject. You will see subject resources, past papers, and related study tools that your school has made available.'
       },
       {
-        q: 'Where do I find my Term Average and Learner Number?',
-        a: 'Your academic metadata (Current Grade, Learner Number, Stream, Term Average, and Attendance Rate) is located inside the "My Profile" tab in your bottom navigation dock.'
+        q: 'Where do I find my learner number and profile details?',
+        a: 'Open My Profile. Your learner number, grade, and contact details appear there. Official marks appear only after your school uploads verified assessment data.'
       },
       {
-        q: 'How does the AI Tutor work?',
-        a: 'The AI Tutor is available 24/7 in your AI Tools and Study Studio. You can ask step-by-step math solutions, physics calculations, or essay drafting tips aligned with the South African CAPS curriculum.'
+        q: 'Why do my marks show as pending?',
+        a: 'Geleza SA does not invent placeholder marks. Term marks and averages are displayed only after educators or administrators upload verified SBA or term results for your school.'
+      },
+      {
+        q: 'How does the Geleza SA AI Assistant work?',
+        a: 'The Geleza SA AI Assistant provides CAPS-oriented study guidance when enabled for your account. It is a support tool for understanding and revision; formal assessments must still be completed according to your school’s academic integrity rules.'
       }
     ]
   },
   {
     id: 'parent',
-    name: 'Parent & Guardian Portal',
+    name: 'Section C — Parents and guardians',
     icon: Users,
     faqs: [
       {
-        q: 'How do I link my child to my parent account?',
-        a: 'Navigate to "My Account & Link Child" in your Parent Portal. Enter your child\'s official Learner Number (e.g. 2026-FHS-001) and their 13-digit South African National ID number.'
+        q: 'How do I link a learner to my parent account?',
+        a: 'In the Parent Portal, open the linked-learners or account-linking module. Enter the learner’s official learner number issued by the school and the learner’s 13-digit South African identity number. Linking is confirmed only when the details match school records.'
       },
       {
-        q: 'Where can I download my child\'s official CAPS Report Card?',
-        a: 'Open the "CAPS Report Cards" module in your Parent Portal to view term averages, subject level codes (1–7), teacher comments, and print/download the official transcript.'
+        q: 'Where can I view a CAPS report card?',
+        a: 'Open the CAPS Report Cards module (where enabled by the school). Report cards show subject results and CAPS achievement levels only when the school has published them for the relevant term.'
       },
       {
-        q: 'How do I book a Parent-Teacher Conference (PTC)?',
-        a: 'Click the "Parent-Teacher Conferences" module, select your child\'s subject educator, pick an available 15-minute slot, and confirm your appointment.'
+        q: 'How do I arrange a parent–teacher consultation?',
+        a: 'Open Parent–Teacher Consultations, select the educator and an available timeslot, and confirm the booking. Availability is controlled by the school’s published schedule.'
       }
     ]
   },
   {
     id: 'finance',
-    name: 'School Fees & Bursaries',
+    name: 'Section D — Fees and bursaries',
     icon: CreditCard,
     faqs: [
       {
-        q: 'How do I view and pay school fee invoices?',
-        a: 'Click the "School Fee Statements" module in your portal to view your statement balance, download tax invoices, and pay online.'
+        q: 'How do I view school fee statements?',
+        a: 'Open the School Fees module (where enabled). Statements, balances, and payment instructions are determined by your school. Geleza SA displays the records the school has authorised for your account.'
       },
       {
-        q: 'Where can Grade 12 learners find NSFAS and tertiary bursaries?',
-        a: 'Open the "Tertiary Bursaries Catalog" module on your dashboard to see active university funding, eligibility criteria, and direct application links.'
+        q: 'Where can Grade 12 learners find bursary information?',
+        a: 'Open the Bursaries or tertiary funding catalogue module on your dashboard (where enabled) to review funding opportunities, eligibility notes, and any application links published by Geleza SA or your school.'
+      }
+    ]
+  },
+  {
+    id: 'access',
+    name: 'Section E — Access and sessions',
+    icon: ShieldCheck,
+    faqs: [
+      {
+        q: 'Can I sign in on a new device if I am already signed in elsewhere?',
+        a: 'Yes. Signing in on a new device replaces the previous active session. The earlier device or tab is signed out automatically for account security.'
+      },
+      {
+        q: 'What should I do if I forget my password?',
+        a: 'Use Forgot Password on the sign-in page and follow the email recovery steps. For unknown learner numbers or enrolment issues, contact your school administration.'
       }
     ]
   }
@@ -411,14 +434,14 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-extrabold font-display tracking-wide">
-                  Geleza SA Support Hub & 24/7 AI Guide
+                  Geleza SA Support Documentation
                 </h2>
-                <span className="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-[10px] font-bold text-cyan-400">
-                  Geleza SA
+                <span className="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-[10px] font-bold text-cyan-400 font-mono">
+                  GSA-DOC-FAQ-001
                 </span>
               </div>
               <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                Instant assistance and frequently asked questions
+                Official FAQs and AI assistance for registered Geleza SA users
               </p>
             </div>
           </div>
@@ -482,7 +505,7 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search frequently asked questions (e.g. report card, link child, timetable)..."
+                  placeholder="Search documentation (e.g. report card, link learner, session, fees)..."
                   className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs focus:outline-none focus:border-indigo-500 ${
                     isLight
                       ? 'bg-slate-100 border-slate-300 text-slate-900 placeholder-slate-400'
