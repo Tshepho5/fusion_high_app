@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { LogIn, GraduationCap, UserPlus, X, ChevronUp, Lock, ShieldAlert } from 'lucide-react';
+import { LogIn, GraduationCap, UserPlus, Lock, ShieldAlert, Building2 } from 'lucide-react';
 import { systemControlService } from '../../services/api';
 import { intakeClosed, intakeReason } from '../../utils/admissionGate';
 
 interface GetStartedCircularMenuProps {
   className?: string;
+  onRegisterSchool?: () => void;
 }
 
 export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
-  className = ''
+  className = '',
+  onRegisterSchool
 }) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [portalControls, setPortalControls] = useState<Record<string, any>>({});
@@ -47,6 +49,8 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
     };
   }, [isOpen]);
 
+  const isSchoolLocked = intakeClosed(portalControls.school_registration);
+  const schoolReason = intakeReason(portalControls.school_registration, 'School registration is currently closed.');
   const isApplyLocked = intakeClosed(portalControls.parent_application);
   const isRegisterLocked = intakeClosed(portalControls.parent_registration) || intakeClosed(portalControls.user_registration);
   const applyReason = intakeReason(portalControls.parent_application, 'New family applications are closed.');
@@ -84,6 +88,22 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
       pillBg: isApplyLocked ? 'bg-slate-950/80 border-slate-500/40 text-slate-200' : 'bg-emerald-950/80 border-emerald-500/40 text-emerald-200 group-hover:text-white group-hover:border-emerald-400',
     },
     {
+      id: 'school',
+      title: isSchoolLocked ? 'School closed' : 'Register School',
+      subtitle: 'New campus',
+      to: '',
+      isExternal: false,
+      closed: isSchoolLocked,
+      closedMessage: schoolReason,
+      action: 'school' as const,
+      icon: isSchoolLocked ? Lock : Building2,
+      gradient: isSchoolLocked ? 'from-slate-600 to-slate-700' : 'from-[#8a6424] to-[#c6a15b]',
+      border: isSchoolLocked ? 'border-slate-400' : 'border-[#e7c56a]',
+      glow: isSchoolLocked ? 'shadow-[0_0_20px_rgba(15,23,42,0.45)]' : 'shadow-[0_0_30px_rgba(198,161,91,0.7),0_10px_25px_rgba(0,0,0,0.6)]',
+      hoverGlow: 'hover:shadow-[0_0_55px_rgba(231,197,106,0.95),0_20px_35px_rgba(0,0,0,0.85)]',
+      pillBg: isSchoolLocked ? 'bg-slate-950/80 border-slate-500/40 text-slate-200' : 'bg-[#2a2112]/80 border-[#c6a15b]/40 text-[#f6e6b4] group-hover:text-white group-hover:border-[#e7c56a]',
+    },
+    {
       id: 'register',
       title: isRegisterLocked ? 'Registration closed' : 'Registration',
       subtitle: 'Parent & Staff',
@@ -102,6 +122,15 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
 
   const getItemTransform = (index: number, total: number) => {
     if (!isOpen) return 'translate(-50%, 24px) scale(0)';
+    if (total === 4) {
+      const spots = [
+        'translate(calc(-50% - 168px), -16px) scale(1)',
+        'translate(calc(-50% - 72px), -112px) scale(1)',
+        'translate(calc(-50% + 72px), -112px) scale(1)',
+        'translate(calc(-50% + 168px), -16px) scale(1)'
+      ];
+      return spots[index] || 'translate(-50%, -108px) scale(1)';
+    }
     if (total === 1) return 'translate(-50%, -108px) scale(1)';
     if (total === 2) {
       return index === 0
@@ -113,12 +142,16 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
     return 'translate(calc(-50% + 168px), -28px) scale(1)';
   };
 
-  const openItem = (item: { closed?: boolean; closedMessage?: string; to: string; isExternal: boolean }) => {
+  const openItem = (item: { closed?: boolean; closedMessage?: string; to: string; isExternal: boolean; action?: 'school' }) => {
     if (item.closed) {
       setLockedAlert(item.closedMessage || 'This intake is closed.');
       return;
     }
     setIsOpen(false);
+    if (item.action === 'school') {
+      onRegisterSchool?.();
+      return;
+    }
     window.location.assign(item.to);
   };
 
@@ -223,25 +256,11 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className={`absolute left-1/2 bottom-0 -translate-x-1/2 z-50 flex items-center gap-2.5 px-8 py-3.5 rounded-full font-display font-extrabold text-sm sm:text-base tracking-wide transition-all duration-300 active:scale-95 border-2 whitespace-nowrap ${
-            isOpen
-              ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-400 shadow-[0_0_35px_rgba(244,63,94,0.7)]'
-              : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white border-cyan-400/50 shadow-[0_0_30px_rgba(37,99,235,0.65),0_10px_25px_rgba(0,0,0,0.5)] hover:shadow-[0_0_45px_rgba(6,182,212,0.85)] hover:scale-105'
-          }`}
+          className="absolute left-1/2 bottom-0 -translate-x-1/2 z-50 flex w-[210px] h-[52px] items-center justify-center rounded-full font-display font-extrabold text-sm sm:text-base tracking-wide border-2 whitespace-nowrap bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white border-cyan-400/50 shadow-[0_0_30px_rgba(37,99,235,0.65),0_10px_25px_rgba(0,0,0,0.5)]"
           aria-expanded={isOpen}
           aria-label="Get Started"
         >
-          {isOpen && (
-            <div className="w-5 h-5 rounded-full flex items-center justify-center">
-              <X className="w-5 h-5 text-white" />
-            </div>
-          )}
-
-          <span>{isOpen ? 'Close Actions' : 'Get Started'}</span>
-
-          {!isOpen && (
-            <ChevronUp className="w-4 h-4 text-cyan-200/80 animate-bounce" />
-          )}
+          <span>Get Started</span>
         </button>
       </div>
     </div>

@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { authService } from '../../services/api';
 import { FusionAIIcon } from '../../components/common/FusionAIIcon';
 import {
   Mail,
-  KeyRound,
   ArrowRight,
   CheckCircle,
   Lock,
@@ -28,6 +27,7 @@ export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
+  const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [verifiedOtp, setVerifiedOtp] = useState('');
 
   // Password fields and visibility toggles
@@ -54,10 +54,10 @@ export const ForgotPasswordPage: React.FC = () => {
       setEmail(urlEmail);
       if (urlStep === 'verify') {
         setStep('verify');
-        setOtp(''); // Strict zero-trust: User must manually enter the 4 digits from their email
+        setOtp('');
         setTimeLeft(300);
         setTimerActive(true);
-        setMessage('Opened from your recovery email. Please enter the 10-digit code sent to your inbox:');
+        setMessage(null);
       }
     }
   }, [searchParams]);
@@ -98,11 +98,8 @@ export const ForgotPasswordPage: React.FC = () => {
           : { email: email.trim(), channel: 'email' }
       );
       if (res.email) setEmail(res.email);
-      // Keep OTP input empty so the user types the code from the message
       setOtp('');
-      setMessage(res.message || (channel === 'whatsapp'
-        ? 'A 10-digit security code has been sent to your WhatsApp (valid for 5 minutes).'
-        : 'A 10-digit security code has been sent to your email. Please check your inbox or spam folder (valid for 5 minutes).'));
+      setMessage(null);
       setStep('verify');
       setTimeLeft(300);
       setTimerActive(true);
@@ -132,10 +129,8 @@ export const ForgotPasswordPage: React.FC = () => {
           : { email: email.trim(), channel: 'email' }
       );
       if (res.email) setEmail(res.email);
-      setOtp(''); // User must enter the fresh code manually
-      setMessage(res.message || (channel === 'whatsapp'
-        ? 'A fresh 10-digit code has been sent to your WhatsApp (valid for 5 minutes).'
-        : 'A fresh 10-digit code has been dispatched to your email (valid for 5 minutes).'));
+      setOtp('');
+      setMessage(null);
       setTimeLeft(300);
       setTimerActive(true);
     } catch (err: any) {
@@ -208,6 +203,19 @@ export const ForgotPasswordPage: React.FC = () => {
     }
   };
 
+  const focusOtp = (index: number) => {
+    const box = otpRefs.current[Math.max(0, Math.min(index, 9))];
+    box?.focus();
+    box?.select();
+  };
+
+  const writeOtp = (value: string, focusIndex?: number) => {
+    const clean = value.replace(/\D/g, '').slice(0, 10);
+    setOtp(clean);
+    if (error) setError(null);
+    window.setTimeout(() => focusOtp(focusIndex ?? Math.min(clean.length, 9)), 0);
+  };
+
   return (
     <div className="flex min-h-screen bg-slate-100 dark:bg-[#070B14] text-slate-900 dark:text-slate-100 selection:bg-blue-600 selection:text-white justify-center items-center p-4 sm:p-6 relative overflow-hidden transition-colors duration-300">
       {/* Ambient Radial Glow */}
@@ -227,9 +235,7 @@ export const ForgotPasswordPage: React.FC = () => {
             {step === 'request' && (whatsappRecoveryEnabled
               ? 'Choose email or WhatsApp to receive a 5-minute recovery code'
               : 'Enter your registered email to receive a 5-minute recovery code')}
-            {step === 'verify' && (channel === 'whatsapp'
-              ? 'Enter the 10-digit code sent to your WhatsApp (5-minute limit)'
-              : 'Enter the 10-digit code sent to your email (5-minute limit)')}
+            {step === 'verify' && 'Enter the 10-digit code'}
             {step === 'reset' && 'Create your new password. Take your time to set a secure password.'}
           </p>
         </div>
@@ -284,7 +290,7 @@ export const ForgotPasswordPage: React.FC = () => {
           </div>
         )}
 
-        {message && (
+        {message && step !== 'verify' && (
           <div className="mb-6 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs flex items-center gap-3 animate-fade-in">
             <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span>{message}</span>
@@ -407,42 +413,8 @@ export const ForgotPasswordPage: React.FC = () => {
         {/* ========================================================================= */}
         {step === 'verify' && (
           <form onSubmit={handleVerifyOtp} className="space-y-4 animate-fade-in">
-            {/* Target Account Email */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
-                Account Email
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Mail className="w-4 h-4" />
-                </div>
-                <input
-                  type="email"
-                  value={email}
-                  disabled
-                  className="w-full rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 pl-10 pr-4 py-2.5 text-xs text-slate-700 dark:text-slate-300 font-mono"
-                />
-              </div>
-            </div>
-
-            {/* Spam Folder Guidance Tip */}
-            {channel === 'whatsapp' ? (
-              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-[11px]">
-                Open WhatsApp and enter the 10-digit code from Geleza SA.
-              </div>
-            ) : (
-              <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-blue-800 dark:text-blue-300 text-[11px] flex items-center gap-2">
-                <span>💡 <strong>Tip:</strong> If you don't see the email immediately, please check your <strong>Spam / Junk</strong> folder.</span>
-              </div>
-            )}
-
-            {/* OTP Code with 5-Minute Countdown Timer */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  4-Digit OTP Code
-                </label>
-                
+              <div className="flex items-center justify-end mb-2">
                 <div className={`inline-flex items-center gap-1.5 text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${
                   timeLeft > 60
                     ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/30'
@@ -451,29 +423,62 @@ export const ForgotPasswordPage: React.FC = () => {
                     : 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/30'
                 }`}>
                   <Clock className="w-3 h-3" />
-                  <span>{timeLeft > 0 ? `Expires: ${formatTime(timeLeft)}` : 'Expired'}</span>
+                  <span>{timeLeft > 0 ? formatTime(timeLeft) : 'Expired'}</span>
                 </div>
               </div>
 
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <KeyRound className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  value={otp}
-                  onChange={(e) => {
-                    setOtp(e.target.value.replace(/\D/g, '').slice(0, 10));
-                    if (error) setError(null);
-                  }}
-                  placeholder="Enter 10-digit code"
-                  maxLength={10}
-                  required
-                  autoFocus
-                  className={`w-full rounded-xl bg-slate-50 dark:bg-slate-900 border pl-10 pr-4 py-2.5 text-lg font-mono tracking-widest text-center text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold ${
-                    error && step === 'verify' ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-slate-300 dark:border-slate-700'
-                  }`}
-                />
+              <div className="flex justify-between gap-1" role="group" aria-label="10-digit code">
+                {Array.from({ length: 10 }, (_, index) => (
+                  <input
+                    key={index}
+                    ref={(el) => { otpRefs.current[index] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete={index === 0 ? 'one-time-code' : 'off'}
+                    aria-label={`Digit ${index + 1}`}
+                    value={otp[index] || ''}
+                    autoFocus={index === 0}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, '');
+                      if (!raw) return;
+                      const boxes = Array.from({ length: 10 }, (_, i) => otp[i] || '');
+                      raw.split('').forEach((digit, offset) => {
+                        if (index + offset < 10) boxes[index + offset] = digit;
+                      });
+                      setOtp(boxes.join('').replace(/\D/g, '').slice(0, 10));
+                      if (error) setError(null);
+                      window.setTimeout(() => focusOtp(Math.min(index + raw.length, 9)), 0);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Backspace') {
+                        e.preventDefault();
+                        const boxes = Array.from({ length: 10 }, (_, i) => otp[i] || '');
+                        if (boxes[index]) {
+                          boxes[index] = '';
+                          setOtp(boxes.join(''));
+                        } else if (index > 0) {
+                          boxes[index - 1] = '';
+                          setOtp(boxes.join(''));
+                          focusOtp(index - 1);
+                        }
+                        if (error) setError(null);
+                      } else if (e.key === 'ArrowLeft' && index > 0) {
+                        e.preventDefault();
+                        focusOtp(index - 1);
+                      } else if (e.key === 'ArrowRight' && index < 9) {
+                        e.preventDefault();
+                        focusOtp(index + 1);
+                      }
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      writeOtp(e.clipboardData.getData('text'));
+                    }}
+                    className={`w-0 flex-1 min-w-0 h-11 rounded-lg border bg-slate-50 dark:bg-slate-900 text-center text-base font-bold font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      error && step === 'verify' ? 'border-rose-500' : 'border-slate-300 dark:border-slate-700'
+                    }`}
+                  />
+                ))}
               </div>
               {error && step === 'verify' && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1 animate-fade-in">

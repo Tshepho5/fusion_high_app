@@ -428,7 +428,9 @@ class NotificationService {
     const result = await db.query(`
       SELECT id, title, message, type, target_tab, metadata, is_read, created_at
       FROM notifications
-      WHERE user_id = $1 AND (type IS NULL OR type NOT IN ('chat', 'message'))
+      WHERE user_id = $1
+        AND (type IS NULL OR LOWER(type) NOT IN ('chat', 'message', 'security'))
+        AND (title IS NULL OR title NOT ILIKE 'Password Reset%')
       ORDER BY created_at DESC
       LIMIT $2
     `, [userId, limit]);
@@ -442,7 +444,9 @@ class NotificationService {
     const result = await db.query(`
       SELECT COUNT(*)::int AS unread_count
       FROM notifications
-      WHERE user_id = $1 AND is_read = FALSE AND (type IS NULL OR type NOT IN ('chat', 'message'))
+      WHERE user_id = $1 AND is_read = FALSE
+        AND (type IS NULL OR LOWER(type) NOT IN ('chat', 'message', 'security'))
+        AND (title IS NULL OR title NOT ILIKE 'Password Reset%')
     `, [userId]);
     return result.rows[0]?.unread_count || 0;
   }

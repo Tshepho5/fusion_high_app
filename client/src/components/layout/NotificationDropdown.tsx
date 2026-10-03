@@ -70,9 +70,11 @@ export const NotificationDropdown: React.FC = () => {
       const res = await notificationService.getNotifications(35);
       if (res && Array.isArray(res.notifications)) {
         // Reserve Bell exclusively for announcements, alerts, and circulars (exclude chat messages)
-        const announcementsOnly = res.notifications.filter(
-          (n: NotificationItem) => n.type !== 'chat' && n.type !== 'message'
-        );
+        const announcementsOnly = res.notifications.filter((n: NotificationItem) => {
+          const type = (n.type || '').toLowerCase();
+          const title = (n.title || '').toLowerCase();
+          return type !== 'chat' && type !== 'message' && type !== 'security' && !title.startsWith('password reset');
+        });
         setNotifications(announcementsOnly);
         setUnreadCount(res.unreadCount || 0);
       }

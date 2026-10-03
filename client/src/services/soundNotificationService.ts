@@ -229,7 +229,9 @@ class SoundNotificationService {
       onSnapshot(notifQ, (snapshot) => {
         const unreadDocs = snapshot.docs.filter((doc) => {
           const data = doc.data();
-          return !data.is_read && data.type !== 'chat' && data.type !== 'message';
+          const type = String(data.type || '').toLowerCase();
+          const title = String(data.title || '').toLowerCase();
+          return !data.is_read && type !== 'chat' && type !== 'message' && type !== 'security' && !title.startsWith('password reset');
         });
         const currentUnread = unreadDocs.length;
         if (this.prevAnnouncements !== null && currentUnread > this.prevAnnouncements) {

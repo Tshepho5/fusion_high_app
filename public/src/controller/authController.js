@@ -899,30 +899,23 @@ exports.forgotPassword = async (req, res) => {
             [otp, user.id]
         );
 
-        // Record high priority in-app notification with reset code
-        try {
-            await db.query(
-                `INSERT INTO notifications (user_id, title, message, type)
-                 VALUES ($1, $2, $3, 'security')`,
-                [user.id, 'Password Reset Code', channel === 'whatsapp'
-                    ? 'A password reset code was sent to your WhatsApp. It is valid for 5 minutes.'
-                    : 'A password reset code was sent to your email. It is valid for 5 minutes.']
-            );
-        } catch (nErr) {}
+        // A forgotten password is delivered by email or WhatsApp only.
+        // It must not create an announcement or a bell notice.
 
-        // Mirror OTP reset code to Firebase Firestore
+        // Keep the reset record in Firestore without delaying the inbox send.
         if (firestore) {
-            try {
-                await firestore.collection('password_resets').doc(String(user.id)).set({
-                    user_id: user.id,
-                    email: user.email,
-                    target_email: targetDeliveryEmail,
-                    created_at: new Date(),
-                    expires_at: new Date(Date.now() + 5 * 60 * 1000)
+            const resetRecord = {
+                user_id: user.id,
+                email: user.email,
+                target_email: targetDeliveryEmail,
+                created_at: new Date(),
+                expires_at: new Date(Date.now() + 5 * 60 * 1000)
+            };
+            setImmediate(() => {
+                firestore.collection('password_resets').doc(String(user.id)).set(resetRecord).catch((fbErr) => {
+                    console.warn('[FIREBASE OTP SYNC NOTICE]:', fbErr.message);
                 });
-            } catch (fbErr) {
-                console.warn('[FIREBASE OTP SYNC NOTICE]:', fbErr.message);
-            }
+            });
         }
 
         // Dynamically determine baseUrl safely
@@ -975,7 +968,7 @@ exports.forgotPassword = async (req, res) => {
         console.log(`[AUTH] Dispatching secure recovery code to destination email: ${masked} for user ID ${user.id}`);
         let sendResult;
         try {
-            sendResult = await emailService.send(targetDeliveryEmail, tpl.subject, tpl.body);
+            sendResult = await emailService.send(targetDeliveryEmail, tpl.subject, tpl.body, null, tpl.text);
         } catch (mailErr) {
             console.error('[AUTH FORGOT PW EMAIL ERROR]:', mailErr.message);
             sendResult = { success: false, error: mailErr.message };

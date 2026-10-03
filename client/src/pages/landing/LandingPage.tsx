@@ -11,7 +11,6 @@ import {
   Sun,
   Moon,
   HelpCircle,
-  Building2,
   Lock,
   ShieldAlert,
   LogIn
@@ -157,23 +156,6 @@ export const LandingPage: React.FC = () => {
 
           {/* Header Controls */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Controlled School Registration CTA: Only appears when NOT locked by admin */}
-            <button
-              onClick={() => {
-                if (schoolIntakeClosed) setShowLockedModal(true);
-                else setIsSchoolRegisterOpen(true);
-              }}
-              className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full font-bold text-xs border transition-all hover:scale-105 active:scale-95 cursor-pointer ${
-                schoolIntakeClosed
-                  ? 'bg-slate-200 text-slate-700 border-slate-300 dark:bg-white/10 dark:text-slate-200 dark:border-white/15'
-                  : 'bg-gradient-to-r from-[#8a6424] to-[#c6a15b] hover:from-[#6e4e18] hover:to-[#e7c56a] text-white text-always-white shadow-[0_0_15px_rgba(198,161,91,0.35)] border-[#e7c56a]/40'
-              }`}
-              title={schoolIntakeClosed ? 'School applications are closed' : 'Register School'}
-            >
-              {schoolIntakeClosed ? <Lock className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
-              <span>{schoolIntakeClosed ? 'School applications closed' : 'Register School'}</span>
-            </button>
-
             <button
               onClick={toggleTheme}
               className="p-2 rounded-lg text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white bg-slate-100 hover:bg-slate-200/80 dark:bg-white/10 dark:hover:bg-white/15 transition-all border border-slate-200 dark:border-white/15 backdrop-blur-md shadow-xs cursor-pointer"
@@ -208,7 +190,12 @@ export const LandingPage: React.FC = () => {
                 : `${weather.label} · ${weather.temperature}°C · ${weather.place}${weather.upcoming ? ` · ${weather.upcoming}` : ''}`}
             </p>
           </div>
-          <GetStartedCircularMenu />
+          <GetStartedCircularMenu
+            onRegisterSchool={() => {
+              if (schoolIntakeClosed) setShowLockedModal(true);
+              else setIsSchoolRegisterOpen(true);
+            }}
+          />
         </div>
       </main>
 

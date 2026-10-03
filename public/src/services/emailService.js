@@ -78,8 +78,8 @@ function sendViaDirectTls({ user, pass, to, subject, html, replyTo, fromName = '
       finish(err, true);
     });
 
-    socket.setTimeout(8000, () => {
-      finish(new Error('SMTP Connection timeout after 8s'), true);
+    socket.setTimeout(20000, () => {
+      finish(new Error('SMTP Connection timeout after 20s'), true);
     });
   });
 }
@@ -218,107 +218,143 @@ function getTransporter() {
     requireTLS: true,
     auth: { user, pass },
     tls: { rejectUnauthorized: false },
-    connectionTimeout: 3000,
-    greetingTimeout: 3000,
-    socketTimeout: 5000
+    connectionTimeout: 20000,
+    greetingTimeout: 15000,
+    socketTimeout: 25000
   });
 }
 
-function sendViaHttpsRest({ to, subject, html, replyTo, fromName = 'Geleza SA' }) {
+function httpsJson(url, { method = 'POST', headers = {}, body = '' } = {}) {
+  const https = require('https');
   return new Promise((resolve, reject) => {
-    const resendKey = process.env.RESEND_API_KEY;
-    const brevoKey = process.env.BREVO_API_KEY;
-    const googleScriptUrl = process.env.GOOGLE_SCRIPT_EMAIL_URL;
+    const req = https.request(url, { method, headers }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => resolve({ status: res.statusCode || 0, body: data }));
+    });
+    req.on('error', reject);
+    req.setTimeout(15000, () => {
+      req.destroy(new Error('HTTPS email provider timed out'));
+    });
+    if (body) req.write(body);
+    req.end();
+  });
+}
 
-    // 1. Google Apps Script HTTPS Web App (Free personal Gmail relay, zero funding, zero domain required)
-    if (googleScriptUrl) {
+function relayConfirmed(status, data) {
+  if (status < 200 || status >= 300) return false;
+  const text = typeof data === 'string' ? data : JSON.stringify(data ?? '');
+  if (/<html|<!doctype/i.test(text)) return false;
+  if (/exception|unauthorized|not found/i.test(text) && !/"success"\s*:\s*true/i.test(text)) return false;
+  if (data && typeof data === 'object') {
+    if (data.success === false || data.ok === false || data.sent === false) return false;
+    if (data.success === true || data.ok === true || data.sent === true) return true;
+  }
+  return text.trim().length > 0 && text.length < 500;
+}
+
+async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = 'Geleza SA' }) {
+  const errors = [];
+  const resendKey = process.env.RESEND_API_KEY;
+  const brevoKey = process.env.BREVO_API_KEY;
+  const googleScriptUrl = process.env.GOOGLE_SCRIPT_EMAIL_URL;
+
+  if (googleScriptUrl) {
+    try {
       const axios = require('axios');
-      const postPayload = JSON.stringify({
+      const payload = JSON.stringify({
         to,
         subject,
         html,
+        text,
         replyTo: replyTo || getSmtpUser(),
         fromName
       });
-      return axios.post(googleScriptUrl, postPayload, {
-        timeout: 10000,
+      const first = await axios.post(googleScriptUrl, payload, {
+        timeout: 20000,
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        maxRedirects: 5
-      }).then((resp) => {
-        resolve({ success: true, provider: 'google-apps-script', response: resp.data });
-      }).catch((err) => {
-        reject(new Error(`Google Apps Script Relay Error: ${err.message}`));
+        maxRedirects: 0,
+        validateStatus: () => true
       });
+      let status = first.status;
+      let data = first.data;
+      if (status >= 300 && status < 400 && first.headers.location) {
+        const second = await axios.get(first.headers.location, {
+          timeout: 20000,
+          maxRedirects: 0,
+          validateStatus: () => true
+        });
+        status = second.status;
+        data = second.data;
+      }
+      const parsed = typeof data === 'string'
+        ? (() => { try { return JSON.parse(data); } catch { return data; } })()
+        : data;
+      if (parsed && parsed.success === true) {
+        return { success: true, provider: 'google-apps-script' };
+      }
+      const reason = parsed && parsed.error ? String(parsed.error) : `HTTP ${status}`;
+      errors.push(`Google Apps Script: ${reason}`);
+    } catch (err) {
+      errors.push(`Google Apps Script: ${err.message}`);
     }
+  }
 
-    if (resendKey) {
-      const https = require('https');
+  if (resendKey) {
+    try {
       const payload = JSON.stringify({
         from: `${fromName} <onboarding@resend.dev>`,
         to: [to],
-        subject: subject,
-        html: html,
+        subject,
+        html,
+        text: text || undefined,
         reply_to: replyTo
       });
-      const req = https.request('https://api.resend.com/emails', {
-        method: 'POST',
+      const resp = await httpsJson('https://api.resend.com/emails', {
         headers: {
-          'Authorization': `Bearer ${resendKey}`,
+          Authorization: `Bearer ${resendKey}`,
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(payload)
-        }
-      }, (res) => {
-        let d = '';
-        res.on('data', c => d += c);
-        res.on('end', () => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve({ success: true, provider: 'resend', response: d });
-          } else {
-            reject(new Error(`Resend HTTP ${res.statusCode}: ${d}`));
-          }
-        });
+        },
+        body: payload
       });
-      req.on('error', reject);
-      req.write(payload);
-      req.end();
-      return;
+      if (resp.status >= 200 && resp.status < 300) {
+        return { success: true, provider: 'resend' };
+      }
+      errors.push(`Resend HTTP ${resp.status}`);
+    } catch (err) {
+      errors.push(`Resend: ${err.message}`);
     }
+  }
 
-    if (brevoKey) {
-      const https = require('https');
+  if (brevoKey) {
+    try {
       const payload = JSON.stringify({
         sender: { name: fromName, email: getSmtpUser() },
         to: [{ email: to }],
-        subject: subject,
+        subject,
         htmlContent: html,
+        textContent: text || undefined,
         replyTo: { email: replyTo || getSmtpUser() }
       });
-      const req = https.request('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
+      const resp = await httpsJson('https://api.brevo.com/v3/smtp/email', {
         headers: {
           'api-key': brevoKey,
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(payload)
-        }
-      }, (res) => {
-        let d = '';
-        res.on('data', c => d += c);
-        res.on('end', () => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve({ success: true, provider: 'brevo', response: d });
-          } else {
-            reject(new Error(`Brevo HTTP ${res.statusCode}: ${d}`));
-          }
-        });
+        },
+        body: payload
       });
-      req.on('error', reject);
-      req.write(payload);
-      req.end();
-      return;
+      if (resp.status >= 200 && resp.status < 300) {
+        return { success: true, provider: 'brevo' };
+      }
+      errors.push(`Brevo HTTP ${resp.status}`);
+    } catch (err) {
+      errors.push(`Brevo: ${err.message}`);
     }
+  }
 
-    reject(new Error('No HTTPS Email Provider Key configured (RESEND_API_KEY or BREVO_API_KEY)'));
-  });
+  throw new Error(errors.join(' ') || 'No HTTPS email provider confirmed delivery.');
 }
 
 const emailService = {
@@ -340,7 +376,7 @@ const emailService = {
   /**
    * High-speed email sender with automatic fast failover and HTTPS cloud bypass.
    */
-  send: async (to, subject, body, replyTo = null) => {
+  send: async (to, subject, body, replyTo = null, text = null) => {
     if (!to || typeof to !== 'string' || !to.includes('@')) {
       console.error('[EMAIL ERROR] Invalid recipient email address:', to);
       return { success: false, error: `Invalid recipient email address: '${to}'` };
@@ -375,20 +411,22 @@ const emailService = {
       }
     }
 
-    // Mirror email into Firestore 'mail' collection for Firebase Trigger Email extension
-    try {
-      const { db: firestore } = require('../../../db/firebase');
-      if (firestore) {
-        await firestore.collection('mail').add({
+    // Queue a Firestore copy without delaying the inbox send. The Trigger Email extension is not installed, so SMTP is the delivery path.
+    setImmediate(() => {
+      try {
+        const { db: firestore } = require('../../../db/firebase');
+        if (!firestore) return;
+        firestore.collection('mail').add({
           to: [targetRecipient],
           message: {
             subject: subject,
-            html: body
+            html: body,
+            text: text || undefined
           },
           created_at: new Date()
-        });
-      }
-    } catch (fbMailErr) {}
+        }).catch(() => {});
+      } catch (_) {}
+    });
 
     const senderUser = getSmtpUser();
     const senderPass = getSmtpPass();
@@ -400,6 +438,7 @@ const emailService = {
           to: targetRecipient,
           subject,
           html: body,
+          text,
           replyTo: replyTo || senderUser,
           fromName: 'Geleza SA'
         });
@@ -417,6 +456,7 @@ const emailService = {
         from: `"Geleza SA" <${senderUser}>`,
         to: targetRecipient,
         subject: subject,
+        text: text || undefined,
         html: body,
         replyTo: replyTo || senderUser
       });
@@ -829,7 +869,7 @@ const emailService = {
           </span>
           <div style="margin-top: 10px; display: inline-block; padding: 4px 12px; border-radius: 20px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);">
             <span style="font-size: 11px; color: #f87171; font-weight: 700; letter-spacing: 0.2px;">
-              ⏱️ VALID FOR 2 MINUTES
+              VALID FOR 5 MINUTES
             </span>
           </div>
         </div>
@@ -840,11 +880,12 @@ const emailService = {
       `;
 
       return {
-        subject: `Verification Code: ${otp} (Valid for 2 Minutes) - Password Reset`,
+        subject: `Geleza SA password reset code: ${otp}`,
+        text: `Your Geleza SA password reset code is ${otp}. It is valid for 5 minutes.\n\nEnter it here: ${resetLink}\n\nIf you did not ask to reset your password, you can ignore this email.`,
         body: createBaseEmailTemplate({
-          preheader: `Your verification code is ${otp}. Valid for 2 minutes. Click to enter your OTP code.`,
+          preheader: `Your verification code is ${otp}. It is valid for 5 minutes.`,
           title,
-          subtitle: 'One-time security recovery code (2-minute limit)',
+          subtitle: 'One-time security recovery code (5-minute limit)',
           contentHtml,
           ctaText: 'Verify OTP & Reset Password',
           ctaLink: resetLink
