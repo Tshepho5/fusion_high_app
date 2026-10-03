@@ -104,7 +104,8 @@ export const ParentDashboard: React.FC = () => {
     openTab(backTarget, childId);
   };
 
-  const showBack = activeTab !== 'overview' && activeTab !== 'messages';
+  // Back button on every module (including Messages / Menu); Home has no back
+  const showBack = activeTab !== 'overview';
 
   const getTabTitle = () => {
     switch (activeTab) {

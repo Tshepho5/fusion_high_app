@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geleza-sa-cache-v2.2';
+const CACHE_NAME = 'geleza-sa-cache-v2.6';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

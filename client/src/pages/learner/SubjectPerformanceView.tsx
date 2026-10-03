@@ -4,41 +4,50 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import {
   TrendingUp,
   Award,
-  BookOpen,
-  Calendar,
-  CheckCircle2,
-  AlertCircle,
-  FileSpreadsheet,
-  ArrowUpRight,
-  GraduationCap,
-  Sparkles
+  Hourglass,
+  GraduationCap
 } from 'lucide-react';
+
+/** Only treat explicit numeric values as real marks — never invent placeholders. */
+function readMark(sub: any): number | null {
+  const candidates = [
+    sub?.term_mark,
+    sub?.mark,
+    sub?.percentage,
+    sub?.final_mark,
+    sub?.average,
+    sub?.overall_average,
+    // progress / curriculum_progress are course completion, not SBA marks — ignore them
+  ];
+  for (const c of candidates) {
+    if (c === null || c === undefined || c === '') continue;
+    const n = Number(c);
+    if (Number.isFinite(n) && n >= 0 && n <= 100) return n;
+  }
+  return null;
+}
+
+/** Average only from real uploaded subject marks — never from API placeholder totals. */
+function readOverallAverage(subjects: any[]): number | null {
+  const marks = subjects.map(readMark).filter((m): m is number => m !== null);
+  if (marks.length === 0) return null;
+  return Math.round(marks.reduce((a, b) => a + b, 0) / marks.length);
+}
 
 export const SubjectPerformanceView: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [subjects, setSubjects] = useState<any[]>([]);
-  const [performanceData, setPerformanceData] = useState<any>(null);
   const [selectedTerm, setSelectedTerm] = useState<string>('Term 3, 2026');
 
   useEffect(() => {
     const fetchPerformance = async () => {
       try {
-        const [overviewRes, subRes] = await Promise.allSettled([
-          learnerService.getGradesOverview().catch(() => learnerService.getProgress()),
-          learnerService.getMySubjectsOverview().catch(() => learnerService.getSubjects())
-        ]);
-
-        if (overviewRes.status === 'fulfilled') {
-          setPerformanceData(overviewRes.value);
-        }
-
-        if (subRes.status === 'fulfilled') {
-          const val = subRes.value;
-          let list = [];
-          if (val && Array.isArray(val.subjects)) list = val.subjects;
-          else if (Array.isArray(val)) list = val;
-          setSubjects(list);
-        }
+        const subRes = await learnerService.getMySubjectsOverview().catch(() => learnerService.getSubjects());
+        const val = subRes;
+        let list: any[] = [];
+        if (val && Array.isArray(val.subjects)) list = val.subjects;
+        else if (Array.isArray(val)) list = val;
+        setSubjects(list);
       } catch (err) {
         console.error('Failed to load performance metrics', err);
       } finally {
@@ -52,17 +61,10 @@ export const SubjectPerformanceView: React.FC = () => {
     return <LoadingSpinner text="Compiling academic performance report..." />;
   }
 
-  // Database-backed subject structure fallback if no records yet
-  const displaySubjects = subjects.length > 0 ? subjects : [
-    { name: 'Mathematics', code: 'MATH10', grade: 10, progress: 82, teacher: 'Thapelo Leshabane', termMarks: [78, 82], level: 7 },
-    { name: 'Physical Sciences', code: 'PHYS10', grade: 10, progress: 75, teacher: 'Thabang Maetane', termMarks: [70, 75], level: 6 },
-    { name: 'Life Sciences', code: 'LFSC10', grade: 10, progress: 90, teacher: 'Minenhle Dlungwane', termMarks: [85, 90], level: 7 },
-    { name: 'English FAL', code: 'EFAL10', grade: 10, progress: 88, teacher: 'Bontle Mothopeng', termMarks: [84, 88], level: 7 },
-    { name: 'Geography', code: 'GEOG10', grade: 10, progress: 70, teacher: 'Subject Educator', termMarks: [68, 70], level: 5 },
-    { name: 'Life Orientation', code: 'LFOR10', grade: 10, progress: 95, teacher: 'Subject Educator', termMarks: [92, 95], level: 7 }
-  ];
-
-  const overallAverage = performanceData?.overall_average || performanceData?.average || 83;
+  const overallAverage = readOverallAverage(subjects);
+  const subjectsWithMarks = subjects.filter((s) => readMark(s) !== null);
+  const distinctionCount = subjectsWithMarks.filter((s) => (readMark(s) as number) >= 80).length;
+  const hasAnyMarks = subjectsWithMarks.length > 0;
 
   const getCapsRatingLevel = (mark: number) => {
     if (mark >= 80) return { level: 7, label: 'Outstanding Achievement', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' };
@@ -76,8 +78,6 @@ export const SubjectPerformanceView: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-5xl mx-auto text-slate-100 pb-12">
-      
-      {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
         <div>
           <h2 className="text-xl md:text-2xl font-bold font-display text-white tracking-tight flex items-center gap-2.5">
@@ -98,82 +98,119 @@ export const SubjectPerformanceView: React.FC = () => {
         </select>
       </div>
 
-      {/* Top Academic Ribbon */}
+      {!hasAnyMarks && (
+        <div className="p-5 rounded-3xl bg-surface-dark border border-amber-500/25 flex items-start gap-3">
+          <Hourglass className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="text-sm font-bold text-white">Marks not available yet</p>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Official subject marks will appear here after your school is registered and educators upload verified
+              SBA / term results. No placeholder scores are shown.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-5 rounded-3xl bg-surface-dark border border-white/10 shadow-sm space-y-1">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Overall Average</span>
-          <p className="text-3xl font-extrabold text-emerald-400">{overallAverage}%</p>
-          <span className="text-[10px] text-emerald-300 font-medium">CAPS Level 7 Distinction Range</span>
+          <p className={`text-3xl font-extrabold ${overallAverage !== null ? 'text-emerald-400' : 'text-slate-500'}`}>
+            {overallAverage !== null ? `${overallAverage}%` : '—'}
+          </p>
         </div>
 
         <div className="p-5 rounded-3xl bg-surface-dark border border-white/10 shadow-sm space-y-1">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total Enrolled Subjects</span>
-          <p className="text-3xl font-extrabold text-white">{displaySubjects.length}</p>
-          <span className="text-[10px] text-indigo-400 font-medium">All CAPS SBA Requirements Met</span>
+          <p className="text-3xl font-extrabold text-white">{subjects.length}</p>
+          <span className="text-[10px] text-indigo-400 font-medium">
+            {subjects.length > 0 ? 'Enrolled subjects on record' : 'No subjects linked yet'}
+          </span>
         </div>
 
         <div className="p-5 rounded-3xl bg-surface-dark border border-white/10 shadow-sm space-y-1">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Distinction Count (&gt;80%)</span>
-          <p className="text-3xl font-extrabold text-cyan-400">
-            {displaySubjects.filter(s => (s.progress || s.curriculum_progress || 75) >= 80).length} Subjects
+          <p className={`text-3xl font-extrabold ${hasAnyMarks ? 'text-cyan-400' : 'text-slate-500'}`}>
+            {hasAnyMarks ? `${distinctionCount} Subjects` : '—'}
           </p>
-          <span className="text-[10px] text-cyan-300 font-medium">Bachelor Degree Pass Track</span>
+          <span className="text-[10px] text-slate-400 font-medium">
+            {hasAnyMarks ? 'Based on uploaded term marks' : 'Awaiting school upload'}
+          </span>
         </div>
       </div>
 
-      {/* Subject by Subject Performance Breakdown Cards */}
       <div className="space-y-4">
         <h3 className="text-sm font-bold font-display text-white flex items-center gap-2">
           <Award className="w-4 h-4 text-indigo-400" />
           <span>Subject Marks & CAPS Achievement Scale</span>
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {displaySubjects.map((sub, idx) => {
-            const mark = sub.progress || sub.curriculum_progress || 75;
-            const rating = getCapsRatingLevel(mark);
-            const name = sub.name || sub.subject_name || 'Subject';
+        {subjects.length === 0 ? (
+          <div className="p-8 rounded-3xl bg-surface-dark border border-white/10 text-center space-y-2">
+            <GraduationCap className="w-8 h-8 text-slate-500 mx-auto" />
+            <p className="text-sm font-bold text-white">No subject enrolments yet</p>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
+              Subjects and marks will show here once your school completes registration and assigns your class subjects.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {subjects.map((sub, idx) => {
+              const mark = readMark(sub);
+              const rating = mark !== null ? getCapsRatingLevel(mark) : null;
+              const name = sub.name || sub.subject_name || 'Subject';
 
-            return (
-              <div
-                key={idx}
-                className="p-5 rounded-3xl bg-surface-dark border border-white/10 shadow-sm space-y-3.5 hover:border-white/20 transition-all"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <span className="text-[11px] font-semibold text-slate-400">{sub.code || `SUBJ${sub.grade || 10}`}</span>
-                    <h4 className="text-base font-bold text-white">{name}</h4>
-                    <p className="text-xs text-slate-400 mt-0.5">{sub.teacher || 'Subject Teacher'}</p>
+              return (
+                <div
+                  key={sub.id || sub.code || idx}
+                  className="p-5 rounded-3xl bg-surface-dark border border-white/10 shadow-sm space-y-3.5 hover:border-white/20 transition-all"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span className="text-[11px] font-semibold text-slate-400">{sub.code || `SUBJ${sub.grade || ''}`}</span>
+                      <h4 className="text-base font-bold text-white">{name}</h4>
+                      <p className="text-xs text-slate-400 mt-0.5">{sub.teacher || sub.teacher_name || 'To Be Assigned'}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-2xl font-black ${mark !== null ? 'text-white' : 'text-slate-500'}`}>
+                        {mark !== null ? `${mark}%` : '—'}
+                      </span>
+                      <p className="text-[10px] text-slate-400 font-semibold">
+                        {mark !== null ? 'Term Mark' : 'Pending'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-2xl font-black text-white">{mark}%</span>
-                    <p className="text-[10px] text-slate-400 font-semibold">Term Mark</p>
+
+                  <div className="space-y-1.5">
+                    <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          mark !== null ? 'bg-gradient-to-r from-indigo-500 to-emerald-400' : 'bg-slate-700'
+                        }`}
+                        style={{ width: mark !== null ? `${mark}%` : '0%' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 text-xs">
+                    {rating ? (
+                      <span className={`px-3 py-1 rounded-xl text-xs font-bold border ${rating.color}`}>
+                        Level {rating.level} • {rating.label}
+                      </span>
+                    ) : (
+                      <span className="px-3 py-1 rounded-xl text-xs font-bold border border-amber-500/25 bg-amber-500/10 text-amber-300">
+                        Awaiting school marks
+                      </span>
+                    )}
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      {mark !== null ? 'SBA Verified' : 'Not uploaded'}
+                    </span>
                   </div>
                 </div>
-
-                {/* Progress Bar */}
-                <div className="space-y-1.5">
-                  <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full transition-all duration-500"
-                      style={{ width: `${mark}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Rating Level Pill */}
-                <div className="flex items-center justify-between pt-1 text-xs">
-                  <span className={`px-3 py-1 rounded-xl text-xs font-bold border ${rating.color}`}>
-                    Level {rating.level} • {rating.label}
-                  </span>
-                  <span className="text-[11px] text-slate-400 font-medium">SBA Verified</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
-
     </div>
   );
 };

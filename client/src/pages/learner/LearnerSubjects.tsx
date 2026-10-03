@@ -84,12 +84,8 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
           name: subName,
           code: (subName.substring(0, 4) + (learnerEnrolledGrade || 10)).toUpperCase().replace(/[^A-Z0-9]/g, ''),
           grade: learnerEnrolledGrade,
-          teacher: 'Subject Specialist',
-          curriculum_progress: 60,
-          progress: 75,
+          teacher: 'To Be Assigned',
           assignments_due: 0,
-          classmates_count: 32,
-          resources_count: 4
         }));
         subjectsRef.current = mapped;
         setSubjects(mapped);
@@ -153,13 +149,6 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
 
     setLoadingSubjects(true);
 
-    const defaultLearnerSubjects = [
-      { name: 'Mathematics', code: `MATH${learnerEnrolledGrade}`, grade: learnerEnrolledGrade, teacher: 'Subject Specialist', curriculum_progress: 50, progress: 75, assignments_due: 0, classmates_count: 32, resources_count: 4 },
-      { name: 'Physical Sciences', code: `PHYS${learnerEnrolledGrade}`, grade: learnerEnrolledGrade, teacher: 'Subject Specialist', curriculum_progress: 45, progress: 72, assignments_due: 0, classmates_count: 32, resources_count: 3 },
-      { name: 'Life Sciences', code: `LIFE${learnerEnrolledGrade}`, grade: learnerEnrolledGrade, teacher: 'Subject Specialist', curriculum_progress: 60, progress: 78, assignments_due: 0, classmates_count: 32, resources_count: 5 },
-      { name: 'English FAL', code: `ENGL${learnerEnrolledGrade}`, grade: learnerEnrolledGrade, teacher: 'Subject Specialist', curriculum_progress: 70, progress: 80, assignments_due: 0, classmates_count: 32, resources_count: 6 }
-    ];
-
     learnerService.getMySubjectsOverview()
       .then((data) => {
         if (data.home_language) {
@@ -169,22 +158,20 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
           setShowLanguagePicker(true);
         }
         const list = Array.isArray(data) ? data : data.subjects || [];
-        const resolved = list.length > 0 ? list : defaultLearnerSubjects;
-        rememberSubjects(resolved);
-        applySubjectFromUrl(resolved, targetSubParam, targetViewParam);
+        rememberSubjects(list);
+        applySubjectFromUrl(list, targetSubParam, targetViewParam);
       })
       .catch((err) => {
         console.error('Error fetching subjects from database:', err);
         learnerService.getSubjects()
           .then((subData) => {
             const list = Array.isArray(subData) ? subData : subData.subjects || [];
-            const resolved = list.length > 0 ? list : defaultLearnerSubjects;
-            rememberSubjects(resolved);
-            applySubjectFromUrl(resolved, targetSubParam, targetViewParam);
+            rememberSubjects(list);
+            applySubjectFromUrl(list, targetSubParam, targetViewParam);
           })
           .catch(() => {
-            rememberSubjects(defaultLearnerSubjects);
-            applySubjectFromUrl(defaultLearnerSubjects, targetSubParam, targetViewParam);
+            rememberSubjects([]);
+            applySubjectFromUrl([], targetSubParam, targetViewParam);
           });
       })
       .finally(() => setLoadingSubjects(false));
@@ -712,7 +699,9 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                             </span>
                           )}
                           <Badge variant="emerald" size="sm">
-                            Avg: {sub.progress || 75}%
+                            {sub.term_mark != null || sub.mark != null || sub.percentage != null
+                              ? `Avg: ${sub.term_mark ?? sub.mark ?? sub.percentage}%`
+                              : 'Marks pending'}
                           </Badge>
                         </div>
                       </div>

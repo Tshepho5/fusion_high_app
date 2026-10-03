@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { SchoolProvider } from './context/SchoolContext';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { PwaInstallPrompt } from './components/common/PwaInstallPrompt';
+import { FloatingAIChatModule } from './components/common/FloatingAIChatModule';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { PortalFormScene } from './components/auth/PortalFormScene';
 
@@ -163,6 +164,8 @@ export const App: React.FC = () => {
             </ErrorBoundary>
           </Suspense>
           <PwaInstallPrompt />
+          {/* Global Geleza SA AI — bottom-right, draggable, available on every page */}
+          <FloatingAIChatModule />
         </Router>
       </AuthProvider>
     </SchoolProvider>

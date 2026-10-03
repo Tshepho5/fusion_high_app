@@ -38,13 +38,11 @@ interface ModulePageHeaderProps {
 }
 
 export const ModulePageHeader: React.FC<ModulePageHeaderProps> = ({
-  title,
-  parentLabel,
   backLabel,
   onBack,
 }) => {
   return (
-    <header className="mb-4 flex items-center justify-between gap-3 animate-fade-in">
+    <header className="mb-4 flex items-center animate-fade-in">
       <button
         type="button"
         onClick={onBack}
@@ -54,11 +52,6 @@ export const ModulePageHeader: React.FC<ModulePageHeaderProps> = ({
         <ArrowLeft className="w-3.5 h-3.5" />
         <span>{backLabel}</span>
       </button>
-      <p className="hidden sm:block text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-700 dark:text-cyan-300 truncate">
-        {parentLabel}
-        <span className="mx-2 text-slate-300 dark:text-slate-600">/</span>
-        <span className="text-slate-500 dark:text-slate-400 normal-case tracking-normal font-bold">{title}</span>
-      </p>
     </header>
   );
 };

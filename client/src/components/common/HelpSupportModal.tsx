@@ -1,12 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   HelpCircle,
   X,
   Search,
-  MessageSquare,
   Bot,
-  Send,
-  Sparkles,
   ChevronDown,
   ChevronUp,
   Headphones,
@@ -16,48 +13,25 @@ import {
   Users,
   CreditCard,
   LifeBuoy,
-  Phone,
-  Mail,
   Clock,
+  Sparkles,
+  Smile,
   ThumbsUp,
-  RotateCcw,
   Compass,
   CheckCircle2,
   Lightbulb,
-  Smile,
-  ExternalLink
+  Phone,
+  Mail
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { learnerService } from '../../services/api';
-import { FusionChatbotMascot } from './FusionChatbotMascot';
+import { GelezaAIChatPanel } from './GelezaAIChatPanel';
+import { GELEZA_AI } from './GelezaAIMascot';
 
 interface HelpSupportModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultTab?: 'faq' | 'ai-support';
   onSelectTab?: (tab: string) => void;
-}
-
-interface ChatMessage {
-  id: string;
-  sender: 'ai' | 'user';
-  text: string;
-  timestamp: string;
-  suggestions?: string[];
-  actionLinks?: Array<{ label: string; tab: string }>;
-}
-
-function parseActionLinks(text: string): { cleanedText: string; actionLinks: Array<{ label: string; tab: string }> } {
-  if (!text) return { cleanedText: '', actionLinks: [] };
-  const links: Array<{ label: string; tab: string }> = [];
-  const linkRegex = /\[([^\]]+)\]\(action:([a-zA-Z0-9_-]+)\)/g;
-  let match;
-  while ((match = linkRegex.exec(text)) !== null) {
-    links.push({ label: match[1].trim(), tab: match[2].trim() });
-  }
-  const cleanedText = text.replace(linkRegex, '').replace(/\n\s*\n\s*\n/g, '\n\n').trim();
-  return { cleanedText, actionLinks: links };
 }
 
 /**
@@ -359,7 +333,6 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
   defaultTab = 'faq',
   onSelectTab
 }) => {
-  const { user, role } = useAuth();
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
@@ -367,214 +340,54 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFaq, setExpandedFaq] = useState<string | null>('general-0');
 
-  // Multi-Turn Persistent AI Chat State across sessions
-  const storageKey = `fusion_ai_chat_history_${user?.id || 'guest'}_${role || 'user'}`;
-
-  const [inputMessage, setInputMessage] = useState('');
-  const [isAiThinking, setIsAiThinking] = useState(false);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch (_) {}
-    return [
-      {
-        id: 'welcome-1',
-        sender: 'ai',
-        text: `Hello ${user?.full_name || 'there'}! 👋 I am your 24/7 Geleza SA AI Assistant. I have calibrated my tools for your ${((user as any)?.role || role || 'user').toUpperCase()} profile. How can I assist you with your tasks or modules today?`,
-        timestamp: 'Just now',
-        suggestions: ((user as any)?.role === 'teacher' || role === 'teacher')
-          ? [
-              'How do I enter SBA marks?',
-              'Take class attendance register',
-              'Open AI Lesson Plan Studio',
-              'View timetable & room allocations'
-            ]
-          : ((user as any)?.role === 'admin' || role === 'admin')
-          ? [
-              'System-wide attendance overview',
-              'Learner enrollment and admissions',
-              'Publish official school announcements',
-              'Open security settings'
-            ]
-          : ((user as any)?.role === 'parent' || role === 'parent')
-          ? [
-              'How do I link a child?',
-              'View my child\'s CAPS report card',
-              'Check attendance alerts',
-              'School fees and payments'
-            ]
-          : [
-              'Where is my weekly timetable?',
-              'How do I view CAPS report cards?',
-              'Open past papers & resources',
-              'Check homework & assignments'
-            ],
-        actionLinks: ((user as any)?.role === 'teacher' || role === 'teacher')
-          ? [
-              { label: 'Marksheets', tab: 'assessments' },
-              { label: 'Timetable', tab: 'timetable' }
-            ]
-          : ((user as any)?.role === 'admin' || role === 'admin')
-          ? [
-              { label: 'Marks Audit', tab: 'marks' },
-              { label: 'Admissions', tab: 'admissions' }
-            ]
-          : [
-              { label: 'Timetable', tab: 'timetable' },
-              { label: 'Report Cards', tab: 'reports' }
-            ]
-      }
-    ];
-  });
-  const chatBottomRef = useRef<HTMLDivElement>(null);
-
-  // Sync chat message records to localStorage
-  useEffect(() => {
-    try {
-      if (chatMessages && chatMessages.length > 0) {
-        localStorage.setItem(storageKey, JSON.stringify(chatMessages));
-      }
-    } catch (_) {}
-  }, [chatMessages, storageKey]);
-
   useEffect(() => {
     if (defaultTab) setActiveTab(defaultTab);
   }, [defaultTab, isOpen]);
 
-  useEffect(() => {
-    if (activeTab === 'ai-support') {
-      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [chatMessages, activeTab]);
-
-  const handleClearChat = () => {
-    const freshWelcome: ChatMessage = {
-      id: `welcome-${Date.now()}`,
-      sender: 'ai',
-      text: `Chat session refreshed! How can I assist you right now, ${user?.full_name || 'there'}?`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      suggestions: [
-        'Where is my weekly timetable?',
-        'How do I view CAPS report cards?',
-        'Explain a difficult subject concept',
-        'Open technical settings'
-      ],
-      actionLinks: [
-        { label: 'Open Timetable', tab: 'timetable' },
-        { label: 'View Report Cards', tab: 'reports' }
-      ]
-    };
-    setChatMessages([freshWelcome]);
-    try {
-      localStorage.removeItem(storageKey);
-    } catch (_) {}
-  };
-
   if (!isOpen) return null;
 
-  const handleSendAiMessage = async (overrideText?: string) => {
-    const textToSend = (overrideText || inputMessage).trim();
-    if (!textToSend || isAiThinking) return;
-
-    const userMsg: ChatMessage = {
-      id: `user-${Date.now()}`,
-      sender: 'user',
-      text: textToSend,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    setChatMessages((prev) => [...prev, userMsg]);
-    if (!overrideText) setInputMessage('');
-    setIsAiThinking(true);
-
-    try {
-      const res = await learnerService.askTutor({
-        question: textToSend,
-        subject: 'General School System & Academic Help',
-        grade: user?.grade || 10,
-        stream: (user as any)?.stream || 'General',
-        role: role || (user as any)?.role || 'learner',
-        fullName: user?.full_name || (user as any)?.name || '',
-        conversationHistory: chatMessages.slice(-8)
-      });
-
-      const rawReply = res?.reply || res?.answer || res?.response || res?.text || '';
-      const responseSuggestions = res?.suggestions || [];
-      const responseActionLinks = res?.actionLinks || [];
-
-      // Parse markdown action links from text
-      const parsed = parseActionLinks(rawReply);
-      const combinedActionLinks = [
-        ...(Array.isArray(responseActionLinks) ? responseActionLinks : []),
-        ...parsed.actionLinks
-      ];
-
-      // Remove duplicate tabs
-      const uniqueActionLinks = combinedActionLinks.filter(
-        (v, i, a) => a.findIndex(t => t.tab === v.tab) === i
-      );
-
-      const aiMsg: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        text: parsed.cleanedText || rawReply,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        suggestions: responseSuggestions.length > 0 ? responseSuggestions : undefined,
-        actionLinks: uniqueActionLinks.length > 0 ? uniqueActionLinks : undefined
-      };
-
-      setChatMessages((prev) => [...prev, aiMsg]);
-    } catch (err) {
-      console.warn('[AI ASSISTANT WARN]', err);
-      let fallbackText = `I'm right here with you! You can access all your academic marks, subjects, weekly timetables, assignments, and fee statements from the main dashboard.`;
-      let fallbackLinks: Array<{ label: string; tab: string }> = [];
-
-      const lower = textToSend.toLowerCase();
-      if (lower.includes('report') || lower.includes('mark') || lower.includes('grade')) {
-        fallbackText = `To view your CAPS report card, open the "CAPS Report Cards" module on your dashboard. It displays official DBE Levels 1–7 and term marks.`;
-        fallbackLinks = [{ label: 'View CAPS Report Cards', tab: 'reports' }];
-      } else if (lower.includes('timetable') || lower.includes('schedule') || lower.includes('period')) {
-        fallbackText = `You can check your full weekly period schedule, classroom allocations, and subject educator timetable right here:`;
-        fallbackLinks = [{ label: 'Open Timetable', tab: 'timetable' }];
-      } else if (lower.includes('password') || lower.includes('login') || lower.includes('setting') || lower.includes('theme')) {
-        fallbackText = `You can update your security credentials, password, notification preferences, and color themes in "Technical Settings".`;
-        fallbackLinks = [{ label: 'Open Technical Settings', tab: 'settings' }];
-      } else if (lower.includes('fee') || lower.includes('payment') || lower.includes('finance')) {
-        fallbackText = `School fee balances, statements, and online payment details are managed in the School Fees module.`;
-        fallbackLinks = [{ label: 'Open Fee Management', tab: 'finance' }];
-      } else if (lower.includes('assignment') || lower.includes('homework')) {
-        fallbackText = `You can view pending homework, download study guidelines, and submit completed tasks in Assignments.`;
-        fallbackLinks = [{ label: 'Go to Assignments', tab: 'assignments' }];
-      } else if (lower.includes('parent') || lower.includes('link')) {
-        fallbackText = `Parents can link learners in the Parent Portal using the learner's official number (e.g. 2026-FHS-001) and their 13-digit National ID number.`;
-      }
-
-      const aiMsg: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        text: fallbackText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        actionLinks: fallbackLinks.length > 0 ? fallbackLinks : undefined,
-        suggestions: ['Where is my weekly timetable?', 'How do I view CAPS report cards?', 'Open technical settings']
-      };
-      setChatMessages((prev) => [...prev, aiMsg]);
-    } finally {
-      setIsAiThinking(false);
-    }
-  };
-
-  const quickPrompts = [
-    'How do I view my CAPS report card?',
-    'How do parents link a child?',
-    'Where is my weekly timetable?',
-    'How do I contact my subject educator?'
-  ];
+  // Dedicated phone-style AI assistant shell (matches Geleza SA mockups)
+  if (activeTab === 'ai-support') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-md animate-fade-in overflow-hidden">
+        <div
+          className={`relative w-full max-w-md h-[92vh] max-h-[820px] rounded-[2rem] border shadow-2xl flex flex-col overflow-hidden ${
+            isLight ? 'bg-white border-[#13C8D9]/25' : 'bg-[#0B1F33] border-[#13C8D9]/30'
+          }`}
+        >
+          <div
+            className={`flex items-center justify-between px-3 py-2 border-b shrink-0 ${
+              isLight ? 'border-[#0B1F33]/08 bg-white/90' : 'border-white/10 bg-black/30'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => setActiveTab('faq')}
+              className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-colors ${
+                isLight
+                  ? 'border-[#0B1F33]/15 text-[#0B1F33] hover:bg-[#0B1F33]/05'
+                  : 'border-white/15 text-white/80 hover:bg-white/10'
+              }`}
+            >
+              FAQs
+            </button>
+            <span className="text-[11px] font-bold" style={{ color: GELEZA_AI.cyan }}>
+              Geleza SA AI
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              className={`p-2 rounded-xl ${isLight ? 'text-[#0B1F33]/50 hover:bg-[#0B1F33]/06' : 'text-white/50 hover:bg-white/10'}`}
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <GelezaAIChatPanel onSelectTab={onSelectTab} onClose={onClose} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-fade-in overflow-hidden">
@@ -644,9 +457,7 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
           <button
             onClick={() => setActiveTab('ai-support')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-              activeTab === 'ai-support'
-                ? 'bg-gradient-to-r from-brand-600 to-cyan-500 text-white shadow-glow-indigo'
-                : isLight
+              isLight
                 ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
@@ -770,203 +581,6 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
                   <span>Chat with AI Mascot</span>
                 </button>
               </div>
-
-            </div>
-          )}
-
-          {/* TAB 2: 24/7 AI HELP & SUPPORT CHAT TOOL */}
-          {activeTab === 'ai-support' && (
-            <div
-              className={`flex-1 flex flex-col min-h-0 ${
-                isLight ? 'bg-slate-50' : 'bg-surface-darker/60'
-              }`}
-            >
-              {/* Mascot Header Ribbon */}
-              <div
-                className={`p-3 border-b flex items-center justify-between gap-4 shrink-0 px-5 ${
-                  isLight ? 'bg-white border-slate-200' : 'bg-surface-dark border-white/5'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <FusionChatbotMascot size={46} isHovered={true} />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-extrabold tracking-wide">Fusion AI Guide</span>
-                      <span className="flex h-2 w-2 relative">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                      </span>
-                    </div>
-                    <span className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      {isAiThinking ? 'Analyzing CAPS & Fusion School Data...' : 'Always online • Ready to assist'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleClearChat}
-                    title="Start a fresh conversation session"
-                    className={`px-3 py-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-xs ${
-                      isLight
-                        ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
-                        : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    <RotateCcw className="w-3 h-3 text-cyan-400" />
-                    <span>New Session</span>
-                  </button>
-
-                  <div className="hidden sm:flex flex-col text-right">
-                    <span className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      School Support Office
-                    </span>
-                    <span className="text-xs font-bold text-cyan-500">support@fusionhigh.co.za</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Chat Messages Feed */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 custom-scrollbar min-h-0">
-                {chatMessages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex items-start gap-2.5 max-w-[85%] ${
-                      msg.sender === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'
-                    }`}
-                  >
-                    {/* Avatar */}
-                    {msg.sender === 'ai' ? (
-                      <div className="shrink-0 drop-shadow-sm rounded-full overflow-hidden">
-                        <FusionChatbotMascot size={32} />
-                      </div>
-                    ) : (
-                      <div className="w-8 h-8 rounded-xl bg-indigo-600 border border-white/20 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
-                        {user?.full_name?.charAt(0) || 'U'}
-                      </div>
-                    )}
-
-                    {/* Speech Bubble */}
-                    <div
-                      className={`p-3.5 rounded-2xl text-xs leading-relaxed ${
-                        msg.sender === 'user'
-                          ? 'bg-indigo-600 text-white rounded-tr-none shadow-md'
-                          : isLight
-                          ? 'bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm'
-                          : 'bg-surface-dark border border-white/10 text-slate-200 rounded-tl-none shadow-sm'
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap">{msg.text}</p>
-
-                      {/* Interactive Module Navigation Links */}
-                      {msg.actionLinks && msg.actionLinks.length > 0 && (
-                        <div className="mt-3 pt-2.5 border-t border-slate-200/50 dark:border-white/10 flex flex-wrap gap-2">
-                          {msg.actionLinks.map((action, aIdx) => (
-                            <button
-                              key={aIdx}
-                              onClick={() => {
-                                if (onSelectTab) {
-                                  onSelectTab(action.tab);
-                                  onClose();
-                                }
-                              }}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-500 hover:from-brand-500 hover:to-cyan-400 text-white font-bold text-[11px] shadow-sm hover:shadow-glow-cyan transition-all transform hover:-translate-y-0.5 cursor-pointer"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              <span>{action.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Interactive Suggestion Chips */}
-                      {msg.suggestions && msg.suggestions.length > 0 && (
-                        <div className="mt-3 pt-2 border-t border-dashed border-slate-200/40 dark:border-white/5 flex flex-wrap gap-1.5">
-                          {msg.suggestions.map((sugg, sIdx) => (
-                            <button
-                              key={sIdx}
-                              onClick={() => handleSendAiMessage(sugg)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-cyan-300 hover:text-white text-[10.5px] font-medium transition-colors cursor-pointer"
-                            >
-                              <Sparkles className="w-2.5 h-2.5 text-cyan-400" />
-                              <span>{sugg}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      <span className="block text-[9px] text-slate-400 mt-1.5 text-right font-mono">
-                        {msg.timestamp}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-
-                {isAiThinking && (
-                  <div className="flex items-center gap-2 text-xs text-cyan-500 animate-pulse p-2">
-                    <Bot className="w-4 h-4" />
-                    <span>Fusion AI is thinking and preparing your answer...</span>
-                  </div>
-                )}
-
-                <div ref={chatBottomRef} />
-              </div>
-
-              {/* Quick Prompt Chips */}
-              <div
-                className={`px-4 py-2 border-t flex items-center gap-1.5 overflow-x-auto shrink-0 scrollbar-none ${
-                  isLight ? 'bg-slate-100 border-slate-200' : 'bg-surface-dark border-white/5'
-                }`}
-              >
-                <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-cyan-500" />
-                  Suggestions:
-                </span>
-                {quickPrompts.map((prompt, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSendAiMessage(prompt)}
-                    className={`px-2.5 py-1 rounded-xl border text-[11px] font-medium shrink-0 transition-colors ${
-                      isLight
-                        ? 'bg-white hover:bg-slate-200 border-slate-300 text-slate-700'
-                        : 'bg-surface-darker hover:bg-white/10 border-white/10 text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
-
-              {/* Input Area */}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSendAiMessage();
-                }}
-                className={`p-3 sm:p-4 border-t flex items-center gap-2 shrink-0 ${
-                  isLight ? 'bg-white border-slate-200' : 'bg-surface-darker border-white/10'
-                }`}
-              >
-                <input
-                  type="text"
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Ask any question about Fusion High School or the portal..."
-                  className={`flex-1 px-4 py-2.5 rounded-2xl border text-xs focus:outline-none focus:border-cyan-500 ${
-                    isLight
-                      ? 'bg-slate-100 border-slate-300 text-slate-900 placeholder-slate-400'
-                      : 'bg-surface-dark border border-white/10 text-white placeholder-slate-500'
-                  }`}
-                />
-                <button
-                  type="submit"
-                  disabled={!inputMessage.trim() || isAiThinking}
-                  className="p-2.5 sm:px-4 sm:py-2.5 rounded-2xl bg-gradient-to-r from-brand-600 to-cyan-500 hover:from-brand-500 hover:to-cyan-400 text-white font-bold text-xs shadow-glow-indigo transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
-                >
-                  <Send className="w-4 h-4" />
-                  <span className="hidden sm:inline">Send</span>
-                </button>
-              </form>
 
             </div>
           )}

@@ -195,7 +195,8 @@ export const TeacherDashboard: React.FC = () => {
     openTab(backTarget);
   };
 
-  const showBack = activeTab !== 'overview' && activeTab !== 'home' && activeTab !== 'messages';
+  // Back button on every module (including Messages / Menu); Home has no back
+  const showBack = activeTab !== 'overview' && activeTab !== 'home';
 
   return (
     <DashboardLayout

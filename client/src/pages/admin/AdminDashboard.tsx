@@ -119,17 +119,14 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const isSubModule =
-    activeTab !== 'overview' &&
-    activeTab !== 'home' &&
-    activeTab !== 'calendar' &&
-    activeTab !== 'profile' &&
-    activeTab !== 'discover' &&
-    activeTab !== 'messages' &&
-    activeTab !== 'more';
+  // Back button on every module; Home has no back
+  const showBack = activeTab !== 'overview' && activeTab !== 'home';
 
   // Determine intelligent backtrack target
   const getBacktrackConfig = () => {
+    if (activeTab === 'more') {
+      return { target: 'overview', label: 'Back to Home', parentLabel: 'Home' };
+    }
     if (activeTab === 'command-center' || activeTab === 'inter-school' || activeTab === 'bursaries') {
       return { target: 'discover', label: 'Back to Discover', parentLabel: 'Discover' };
     }
@@ -138,6 +135,9 @@ export const AdminDashboard: React.FC = () => {
     }
     if (activeTab === 'timetable') {
       return { target: 'calendar', label: 'Back to Calendar', parentLabel: 'Calendar' };
+    }
+    if (activeTab === 'calendar' || activeTab === 'profile' || activeTab === 'discover' || activeTab === 'messages') {
+      return { target: 'overview', label: 'Back to Home', parentLabel: 'Home' };
     }
     return { target: 'more', label: 'Back to Menu', parentLabel: 'Menu' };
   };
@@ -150,7 +150,7 @@ export const AdminDashboard: React.FC = () => {
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
     >
-      {isSubModule && (
+      {showBack && (
         <ModulePageHeader
           title={getTabTitle()}
           parentLabel={backtrack.parentLabel}

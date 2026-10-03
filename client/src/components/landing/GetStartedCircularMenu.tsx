@@ -58,21 +58,6 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
 
   const items = [
     {
-      id: 'signin',
-      title: 'Sign In',
-      subtitle: 'Portal Login',
-      to: '/login',
-      isExternal: false,
-      closed: false,
-      closedMessage: '',
-      icon: LogIn,
-      gradient: 'from-indigo-600 to-blue-600',
-      border: 'border-indigo-400',
-      glow: 'shadow-[0_0_30px_rgba(99,102,241,0.7),0_10px_25px_rgba(0,0,0,0.6)]',
-      hoverGlow: 'hover:shadow-[0_0_55px_rgba(99,102,241,0.95),0_20px_35px_rgba(0,0,0,0.85)]',
-      pillBg: 'bg-indigo-950/80 border-indigo-500/40 text-indigo-200 group-hover:text-white group-hover:border-indigo-400',
-    },
-    {
       id: 'apply',
       title: isApplyLocked ? 'Apply closed' : 'Apply',
       subtitle: '2026 Admissions',
@@ -122,23 +107,13 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
 
   const getItemTransform = (index: number, total: number) => {
     if (!isOpen) return 'translate(-50%, 12px) scale(0)';
-    if (total === 4) {
-      const side = 'clamp(78px, 22vw, 132px)';
-      const rise = 'clamp(40px, 11vw, 64px)';
-      const spots = [
-        `translate(calc(-50% - ${side}), -28px) scale(1)`,
-        `translate(calc(-50% - ${rise}), -118px) scale(1)`,
-        `translate(calc(-50% + ${rise}), -118px) scale(1)`,
-        `translate(calc(-50% + ${side}), -28px) scale(1)`
-      ];
-      return spots[index] || 'translate(-50%, -118px) scale(1)';
-    }
     if (total === 1) return 'translate(-50%, -108px) scale(1)';
     if (total === 2) {
       return index === 0
         ? 'translate(calc(-50% - 150px), -36px) scale(1)'
         : 'translate(calc(-50% + 150px), -36px) scale(1)';
     }
+    // Three items: Apply left, Register School top, Registration right
     if (index === 0) return 'translate(calc(-50% - 168px), -28px) scale(1)';
     if (index === 1) return 'translate(-50%, -118px) scale(1)';
     return 'translate(calc(-50% + 168px), -28px) scale(1)';
@@ -265,6 +240,17 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
           <span>Get Started</span>
         </button>
       </div>
+
+      <p className="relative z-40 mt-3 text-center text-xs sm:text-sm text-white/90 drop-shadow-[0_1px_8px_rgba(0,0,0,0.75)]">
+        Already have an account?{' '}
+        <Link
+          to="/login"
+          className="font-bold text-cyan-300 underline underline-offset-2 hover:text-cyan-200 transition-colors"
+          onClick={() => setIsOpen(false)}
+        >
+          Login
+        </Link>
+      </p>
     </div>
   );
 };
