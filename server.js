@@ -481,10 +481,23 @@ app.post('/api/teacher/timetable/swap-request', authenticateToken, timetableSwap
 app.get('/api/teacher/timetable/swap-requests', authenticateToken, timetableSwapController.getSwapRequests);
 app.post('/api/teacher/timetable/swap-requests/:id/respond', authenticateToken, timetableSwapController.respondToSwapRequest);
 
-// Universal 24/7 AI Chat Assistant Endpoint (Available to all authenticated roles)
-app.post('/api/ai/chat', authenticateToken, aiTutorController.sendChatMessage);
-app.get('/api/ai/life-sciences/topics', authenticateToken, aiTutorController.getLifeSciencesTopics);
-app.post('/api/ai/life-sciences/evaluate', authenticateToken, aiTutorController.evaluateLifeSciencesAnswer);
+// Universal 24/7 AI Chat Assistant Endpoint (Available to all authenticated roles & visitors)
+const optionalTokenAuth = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token || token === 'null' || token === 'undefined') {
+    req.user = { id: null, role: 'visitor' };
+    return next();
+  }
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    req.user = (!err && user) ? user : { id: null, role: 'visitor' };
+    next();
+  });
+};
+
+app.post('/api/ai/chat', optionalTokenAuth, aiTutorController.sendChatMessage);
+app.get('/api/ai/life-sciences/topics', optionalTokenAuth, aiTutorController.getLifeSciencesTopics);
+app.post('/api/ai/life-sciences/evaluate', optionalTokenAuth, aiTutorController.evaluateLifeSciencesAnswer);
 
 // Import and use route modules
 app.use('/api/teacher', teacherRoutes);

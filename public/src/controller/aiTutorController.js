@@ -158,7 +158,6 @@ exports.startNewConversation = async (req, res) => {
 exports.sendChatMessage = async (req, res) => {
     try {
         const userId = req.user ? req.user.id : null;
-        const userRole = (req.user && req.user.role) || role || 'visitor';
         const {
             subject,
             grade,
@@ -172,6 +171,7 @@ exports.sendChatMessage = async (req, res) => {
             conversationHistory,
             previous_questions
         } = req.body;
+        const userRole = (req.user && req.user.role) || reqRole || 'learner';
 
         if (!message || !message.trim()) {
             return res.status(400).json({ error: 'Please provide a message or question.' });
@@ -198,7 +198,7 @@ exports.sendChatMessage = async (req, res) => {
 
         const tutorResponse = await aiTutorService.chatWithSubjectTutor({
             learnerUserId: userId,
-            role: role || userRole,
+            role: userRole,
             fullName: userDisplayName,
             subject: subject || 'General School & Academics',
             grade: grade || 10,

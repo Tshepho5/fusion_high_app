@@ -99,7 +99,7 @@ async function callAI(prompt, isJson = false, modelOverride = null) {
 
   const modelCandidates = modelOverride
     ? [modelOverride]
-    : ['gemini-3.8-flash', 'gemini-3.8-flash-lite', 'gemini-flash-latest'];
+    : ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.1-pro-preview', 'gemini-flash-latest'];
   let lastError = null;
 
   for (const targetModel of modelCandidates) {
@@ -649,7 +649,7 @@ function generateCAPSLocalFallback(prompt, explicitSubject, explicitGrade, expli
 }
 
 async function safeAICall(prompt, isJson = false, retries = 1) {
-  const models = ['gemini-3.8-flash', 'gemini-3.8-flash-lite', 'gemini-flash-latest'];
+  const models = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.1-pro-preview', 'gemini-flash-latest'];
 
   for (const m of models) {
     try {
