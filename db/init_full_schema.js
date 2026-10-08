@@ -579,29 +579,56 @@ async function initializeAllDatabaseTables(customClient) {
       CREATE TABLE IF NOT EXISTS textbook_inventory (
         id SERIAL PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
-        isbn VARCHAR(50),
+        subject VARCHAR(150) NOT NULL,
         grade INTEGER NOT NULL,
-        subject VARCHAR(100) NOT NULL,
+        publisher VARCHAR(150) DEFAULT 'CAPS Approved Publisher',
+        isbn VARCHAR(50),
+        barcode VARCHAR(50),
+        total_copies INTEGER DEFAULT 50,
+        available_copies INTEGER DEFAULT 50,
+        unit_cost_zar NUMERIC(10, 2) DEFAULT 250.00,
+        school_id INTEGER DEFAULT 1,
         stream VARCHAR(50) DEFAULT 'General',
-        total_copies INTEGER NOT NULL DEFAULT 0,
-        available_copies INTEGER NOT NULL DEFAULT 0,
-        barcode_prefix VARCHAR(50),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS publisher VARCHAR(150) DEFAULT 'CAPS Approved Publisher';
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS barcode VARCHAR(50);
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS unit_cost_zar NUMERIC(10, 2) DEFAULT 250.00;
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS total_copies INTEGER DEFAULT 50;
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS available_copies INTEGER DEFAULT 50;
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS stream VARCHAR(50) DEFAULT 'General';
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS isbn VARCHAR(50);
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS barcode_prefix VARCHAR(50);
 
       CREATE TABLE IF NOT EXISTS textbook_allocations (
         id SERIAL PRIMARY KEY,
         inventory_id INTEGER NOT NULL REFERENCES textbook_inventory(id) ON DELETE CASCADE,
         child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
-        copy_barcode VARCHAR(100) NOT NULL,
-        status VARCHAR(30) DEFAULT 'issued',
-        issue_date DATE DEFAULT CURRENT_DATE,
-        return_due_date DATE,
+        issued_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        copy_barcode VARCHAR(100),
+        issued_date DATE DEFAULT CURRENT_DATE,
+        expected_return_date DATE DEFAULT (CURRENT_DATE + INTERVAL '120 days'),
         returned_date DATE,
         condition_on_issue VARCHAR(50) DEFAULT 'Good',
         condition_on_return VARCHAR(50),
-        notes TEXT
+        replacement_fee NUMERIC(10, 2) DEFAULT 0.00,
+        status VARCHAR(30) DEFAULT 'issued',
+        school_id INTEGER DEFAULT 1,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS issued_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS issued_date DATE DEFAULT CURRENT_DATE;
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS expected_return_date DATE DEFAULT (CURRENT_DATE + INTERVAL '120 days');
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS returned_date DATE;
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS condition_on_issue VARCHAR(50) DEFAULT 'Good';
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS condition_on_return VARCHAR(50);
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS replacement_fee NUMERIC(10, 2) DEFAULT 0.00;
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS status VARCHAR(30) DEFAULT 'issued';
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS copy_barcode VARCHAR(100);
 
       -- 7. Exam Sessions & Seating Allocations
       CREATE TABLE IF NOT EXISTS exam_sessions (

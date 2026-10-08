@@ -2,6 +2,95 @@ const db = require('../../../db/db');
 const NotificationService = require('../services/notificationService');
 const emailService = require('../services/emailService');
 
+let schemaVerified = false;
+
+/**
+ * Self-healing schema helper: guarantees all columns exist in textbook_inventory & textbook_allocations
+ */
+async function ensureTextbookSchema() {
+  if (schemaVerified) return;
+  try {
+    // 1. Ensure tables exist
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS textbook_inventory (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        subject VARCHAR(150) NOT NULL,
+        grade INTEGER NOT NULL,
+        publisher VARCHAR(150) DEFAULT 'CAPS Approved Publisher',
+        isbn VARCHAR(50),
+        barcode VARCHAR(50),
+        total_copies INTEGER DEFAULT 50,
+        available_copies INTEGER DEFAULT 50,
+        unit_cost_zar NUMERIC(10, 2) DEFAULT 250.00,
+        school_id INTEGER DEFAULT 1,
+        stream VARCHAR(50) DEFAULT 'General',
+        barcode_prefix VARCHAR(50),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS textbook_allocations (
+        id SERIAL PRIMARY KEY,
+        inventory_id INTEGER NOT NULL REFERENCES textbook_inventory(id) ON DELETE CASCADE,
+        child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+        issued_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        copy_barcode VARCHAR(100),
+        issued_date DATE DEFAULT CURRENT_DATE,
+        expected_return_date DATE DEFAULT (CURRENT_DATE + INTERVAL '120 days'),
+        returned_date DATE,
+        condition_on_issue VARCHAR(30) DEFAULT 'Good',
+        condition_on_return VARCHAR(30),
+        replacement_fee NUMERIC(10, 2) DEFAULT 0.00,
+        status VARCHAR(30) DEFAULT 'issued',
+        school_id INTEGER DEFAULT 1,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // 2. Safely add any missing columns to existing tables
+    await db.query(`
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS publisher VARCHAR(150) DEFAULT 'CAPS Approved Publisher';
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS barcode VARCHAR(50);
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS unit_cost_zar NUMERIC(10, 2) DEFAULT 250.00;
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS total_copies INTEGER DEFAULT 50;
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS available_copies INTEGER DEFAULT 50;
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS stream VARCHAR(50) DEFAULT 'General';
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS isbn VARCHAR(50);
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS barcode_prefix VARCHAR(50);
+
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS issued_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS issued_date DATE DEFAULT CURRENT_DATE;
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS expected_return_date DATE DEFAULT (CURRENT_DATE + INTERVAL '120 days');
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS returned_date DATE;
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS condition_on_issue VARCHAR(30) DEFAULT 'Good';
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS condition_on_return VARCHAR(30);
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS replacement_fee NUMERIC(10, 2) DEFAULT 0.00;
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS status VARCHAR(30) DEFAULT 'issued';
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS copy_barcode VARCHAR(100);
+    `);
+
+    try {
+      await db.query(`ALTER TABLE textbook_allocations ALTER COLUMN copy_barcode DROP NOT NULL;`);
+    } catch (_) {}
+
+    try {
+      await db.query(`
+        UPDATE textbook_allocations SET issued_date = issue_date WHERE issued_date IS NULL AND issue_date IS NOT NULL;
+        UPDATE textbook_allocations SET expected_return_date = return_due_date WHERE expected_return_date IS NULL AND return_due_date IS NOT NULL;
+      `);
+    } catch (_) {}
+
+    schemaVerified = true;
+  } catch (err) {
+    console.warn('[TEXTBOOK SCHEMA VERIFICATION]', err.message);
+  }
+}
+
+// Auto-run schema check in background
+ensureTextbookSchema().catch(() => {});
+
 /**
  * Get All Textbook Inventory
  */
@@ -9,26 +98,7 @@ exports.getInventory = async (req, res) => {
   try {
     const { grade, subject } = req.query;
 
-    // Self-healing check: ensure textbook_inventory table exists
-    try {
-      await db.query(`
-        CREATE TABLE IF NOT EXISTS textbook_inventory (
-          id SERIAL PRIMARY KEY,
-          title VARCHAR(255) NOT NULL,
-          subject VARCHAR(150) NOT NULL,
-          grade INTEGER NOT NULL,
-          publisher VARCHAR(150) DEFAULT 'CAPS Approved Publisher',
-          isbn VARCHAR(50),
-          barcode VARCHAR(50),
-          total_copies INTEGER DEFAULT 50,
-          available_copies INTEGER DEFAULT 50,
-          unit_cost_zar NUMERIC(10, 2) DEFAULT 250.00,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-    } catch (tblErr) {
-      console.warn('[TEXTBOOK TABLE VERIFY]', tblErr.message);
-    }
+    await ensureTextbookSchema();
 
     let query = `
       SELECT 
@@ -36,14 +106,14 @@ exports.getInventory = async (req, res) => {
         t.title,
         t.subject,
         t.grade,
-        COALESCE(t.publisher, 'CAPS Publisher') as publisher,
-        t.isbn,
-        t.barcode,
+        COALESCE(t.publisher, 'CAPS Approved Publisher') as publisher,
+        COALESCE(t.isbn, '') as isbn,
+        COALESCE(t.barcode, t.barcode_prefix, 'TB-' || t.grade || '-' || t.id) as barcode,
         COALESCE(t.total_copies, 50) as total_copies,
         COALESCE(t.available_copies, 50) as available_copies,
         COALESCE(t.unit_cost_zar, 250.00) as unit_cost_zar,
-        t.created_at,
-        (SELECT COUNT(*) FROM textbook_allocations a WHERE a.inventory_id = t.id AND a.status = 'issued') AS currently_issued_count,
+        COALESCE(t.created_at, NOW()) as created_at,
+        COALESCE((SELECT COUNT(*) FROM textbook_allocations a WHERE a.inventory_id = t.id AND a.status = 'issued'), 0) AS currently_issued_count,
         NULL as file_path
       FROM textbook_inventory t
       WHERE 1=1
@@ -67,7 +137,7 @@ exports.getInventory = async (req, res) => {
         tb.subject,
         tb.grade,
         COALESCE(u.full_name || ' (Educator Upload)', 'Teacher Resource') as publisher,
-        NULL as isbn,
+        '' as isbn,
         CONCAT('TB-DIG-', tb.id) as barcode,
         50 as total_copies,
         50 as available_copies,
@@ -105,17 +175,22 @@ exports.getInventory = async (req, res) => {
  */
 exports.addInventory = async (req, res) => {
   try {
+    await ensureTextbookSchema();
     const { title, subject, grade, publisher, isbn, barcode, total_copies = 50, unit_cost_zar = 250.00 } = req.body;
 
     if (!title || !subject || !grade) {
       return res.status(400).json({ error: 'Title, subject, and grade are required.' });
     }
 
+    const copies = parseInt(total_copies, 10) || 50;
+    const cost = parseFloat(unit_cost_zar) || 250.00;
+    const cleanBarcode = barcode ? barcode.trim() : `TB-${grade}-${Date.now().toString().slice(-6)}`;
+
     const result = await db.query(`
       INSERT INTO textbook_inventory (title, subject, grade, publisher, isbn, barcode, total_copies, available_copies, unit_cost_zar)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8)
       RETURNING *;
-    `, [title, subject, parseInt(grade, 10), publisher || 'CAPS Approved Publisher', isbn || null, barcode || null, parseInt(total_copies, 10), parseFloat(unit_cost_zar)]);
+    `, [title.trim(), subject.trim(), parseInt(grade, 10), (publisher || 'CAPS Approved Publisher').trim(), isbn ? isbn.trim() : null, cleanBarcode, copies, cost]);
 
     res.status(201).json({
       success: true,
@@ -133,6 +208,7 @@ exports.addInventory = async (req, res) => {
  */
 exports.issueTextbook = async (req, res) => {
   try {
+    await ensureTextbookSchema();
     const teacherId = req.user.id;
     const { inventory_id, child_id, condition_on_issue = 'Good' } = req.body;
 
@@ -159,11 +235,12 @@ exports.issueTextbook = async (req, res) => {
       return res.status(400).json({ error: 'This learner already has an issued copy of this textbook.' });
     }
 
+    const copyBarcode = `${inv.barcode || 'TB'}-${Date.now().toString().slice(-4)}`;
     const allocRes = await db.query(`
-      INSERT INTO textbook_allocations (inventory_id, child_id, issued_by_user_id, condition_on_issue, status)
-      VALUES ($1, $2, $3, $4, 'issued')
+      INSERT INTO textbook_allocations (inventory_id, child_id, issued_by_user_id, copy_barcode, condition_on_issue, status)
+      VALUES ($1, $2, $3, $4, $5, 'issued')
       RETURNING *;
-    `, [inventory_id, child_id, teacherId, condition_on_issue]);
+    `, [inventory_id, child_id, teacherId, copyBarcode, condition_on_issue]);
 
     // Decrement available copies
     await db.query('UPDATE textbook_inventory SET available_copies = available_copies - 1 WHERE id = $1', [inventory_id]);
@@ -200,11 +277,12 @@ exports.issueTextbook = async (req, res) => {
  */
 exports.returnTextbook = async (req, res) => {
   try {
+    await ensureTextbookSchema();
     const { id } = req.params;
     const { condition_on_return = 'Good', replacement_fee = 0 } = req.body;
 
     const allocRes = await db.query(`
-      SELECT a.*, t.title, t.unit_cost_zar, c.full_name AS learner_name, c.surname AS learner_surname, c.parent_id, c.learner_user_id
+      SELECT a.*, t.title, COALESCE(t.unit_cost_zar, 250.00) as unit_cost_zar, c.full_name AS learner_name, c.surname AS learner_surname, c.parent_id, c.learner_user_id
       FROM textbook_allocations a
       JOIN textbook_inventory t ON a.inventory_id = t.id
       JOIN children c ON a.child_id = c.id
@@ -242,11 +320,11 @@ exports.returnTextbook = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Textbook returned recorded (${condition_on_return}).${finalFee > 0 ? ` Replacement fee: R${finalFee.toFixed(2)}` : ''}`
+      message: `Textbook return recorded (${condition_on_return}).${finalFee > 0 ? ` Replacement fee: R${finalFee.toFixed(2)}` : ''}`
     });
   } catch (err) {
     console.error('Error returning textbook:', err);
-    res.status(500).json({ error: 'Failed to record textbook return.' });
+    res.status(500).json({ error: 'Failed to record textbook return: ' + err.message });
   }
 };
 
@@ -255,6 +333,7 @@ exports.returnTextbook = async (req, res) => {
  */
 exports.getLearnerAllocations = async (req, res) => {
   try {
+    await ensureTextbookSchema();
     const userId = req.user.id;
 
     const childRes = await db.query('SELECT id, full_name, surname, grade FROM children WHERE learner_user_id = $1', [userId]);
@@ -264,19 +343,32 @@ exports.getLearnerAllocations = async (req, res) => {
 
     const query = `
       SELECT 
-        a.id, a.issued_date, a.expected_return_date, a.returned_date, a.condition_on_issue, a.condition_on_return, a.replacement_fee, a.status,
-        t.title, t.subject, t.grade, t.publisher, t.isbn, t.barcode, t.unit_cost_zar
+        a.id, 
+        COALESCE(a.issued_date, a.created_at::date, CURRENT_DATE) as issued_date, 
+        COALESCE(a.expected_return_date, CURRENT_DATE + INTERVAL '120 days') as expected_return_date, 
+        a.returned_date, 
+        COALESCE(a.condition_on_issue, 'Good') as condition_on_issue, 
+        a.condition_on_return, 
+        COALESCE(a.replacement_fee, 0.00) as replacement_fee, 
+        COALESCE(a.status, 'issued') as status,
+        t.title, 
+        t.subject, 
+        t.grade, 
+        COALESCE(t.publisher, 'CAPS Approved Publisher') as publisher, 
+        COALESCE(t.isbn, '') as isbn, 
+        COALESCE(t.barcode, t.barcode_prefix, 'N/A') as barcode, 
+        COALESCE(t.unit_cost_zar, 250.00) as unit_cost_zar
       FROM textbook_allocations a
       JOIN textbook_inventory t ON a.inventory_id = t.id
       WHERE a.child_id = $1
-      ORDER BY a.status = 'issued' DESC, a.issued_date DESC;
+      ORDER BY a.status = 'issued' DESC, a.id DESC;
     `;
 
     const { rows } = await db.query(query, [childId]);
     res.json(rows);
   } catch (err) {
     console.error('Error fetching learner textbooks:', err);
-    res.status(500).json({ error: 'Failed to retrieve issued textbooks.' });
+    res.status(500).json({ error: 'Failed to retrieve issued textbooks: ' + err.message });
   }
 };
 
@@ -285,23 +377,26 @@ exports.getLearnerAllocations = async (req, res) => {
  */
 exports.autoBillOverdue = async (req, res) => {
   try {
+    await ensureTextbookSchema();
     const overdueRes = await db.query(`
-      SELECT a.id as allocation_id, a.child_id, a.status, a.issued_date,
-             t.id as inventory_id, t.title as textbook_title, t.unit_cost_zar,
+      SELECT a.id as allocation_id, a.child_id, a.status, 
+             COALESCE(a.issued_date, a.created_at::date, CURRENT_DATE) as issued_date,
+             t.id as inventory_id, t.title as textbook_title, 
+             COALESCE(t.unit_cost_zar, 250.00) as unit_cost_zar,
              c.full_name as learner_name, c.surname as learner_surname, c.grade, c.parent_id,
              u_p.email as parent_email, CONCAT(u_p.full_name, ' ', u_p.surname) as parent_name
       FROM textbook_allocations a
       JOIN textbook_inventory t ON a.inventory_id = t.id
       JOIN children c ON a.child_id = c.id
       LEFT JOIN users u_p ON c.parent_id = u_p.id
-      WHERE a.status = 'issued' OR (a.status IN ('lost', 'damaged') AND a.replacement_fee > 0);
+      WHERE a.status = 'issued' OR (a.status IN ('lost', 'damaged') AND COALESCE(a.replacement_fee, 0) > 0);
     `);
 
     let billedCount = 0;
     const billedItems = [];
 
     for (const item of overdueRes.rows) {
-      const unitCost = parseFloat(item.unit_cost_zar) || 350.00;
+      const unitCost = parseFloat(item.unit_cost_zar) || 250.00;
       const invoiceNumber = `INV-TBK-${item.allocation_id}-${Date.now().toString().slice(-4)}`;
       const learnerFullName = `${item.learner_name} ${item.learner_surname}`;
 
