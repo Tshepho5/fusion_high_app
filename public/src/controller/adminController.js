@@ -2626,8 +2626,9 @@ exports.getMultiSchoolCommandCenterStats = async (req, res) => {
                         'phone', u.phone
                     ))
                     FROM users u
-                    JOIN roles r ON (u.role_id::text = r.id::text OR r.name = 'admin')
-                    WHERE u.school_id::text = s.id::text AND r.name = 'admin' AND (u.is_superadmin IS FALSE OR u.is_superadmin IS NULL)
+                    WHERE u.school_id::text = s.id::text 
+                      AND (u.role_id::text IN ('1', 'admin') OR EXISTS (SELECT 1 FROM roles r WHERE r.id::text = u.role_id::text AND LOWER(r.name) = 'admin'))
+                      AND (u.is_superadmin IS FALSE OR u.is_superadmin IS NULL)
                 ), '[]'::json) AS subadmins
             FROM schools s
             WHERE s.is_active = TRUE

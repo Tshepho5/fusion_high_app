@@ -31,11 +31,15 @@ let columnsReady = false;
 
 async function ensureSchoolModuleColumns() {
   if (columnsReady) return;
-  await db.query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS teacher_modules JSONB');
-  await db.query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS learner_modules JSONB');
-  await db.query('ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS teacher_modules JSONB');
-  await db.query('ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS learner_modules JSONB');
-  columnsReady = true;
+  try {
+    await db.query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS teacher_modules JSONB');
+    await db.query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS learner_modules JSONB');
+    await db.query('ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS teacher_modules JSONB');
+    await db.query('ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS learner_modules JSONB');
+    columnsReady = true;
+  } catch (err) {
+    console.warn('[SCHOOL MODULES] ensureSchoolModuleColumns warning:', err.message);
+  }
 }
 
 function cleanModuleList(value, allowed) {

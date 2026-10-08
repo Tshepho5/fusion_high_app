@@ -162,6 +162,10 @@ const requireRole = (roles) => async (req, res, next) => {
             req.user.is_superadmin = Boolean(row.is_superadmin);
         }
 
+        if (req.user.is_superadmin || roleName === 'superadmin') {
+            return next();
+        }
+
         if (!allowedRoles.includes(roleName)) {
             return res.status(403).json({ error: `Forbidden: Insufficient permissions for role '${roleName}'.` });
         }

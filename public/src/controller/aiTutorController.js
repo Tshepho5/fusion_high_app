@@ -157,8 +157,8 @@ exports.startNewConversation = async (req, res) => {
  */
 exports.sendChatMessage = async (req, res) => {
     try {
-        const userId = req.user.id;
-        const userRole = req.user.role || 'learner';
+        const userId = req.user ? req.user.id : null;
+        const userRole = (req.user && req.user.role) || role || 'visitor';
         const {
             subject,
             grade,
@@ -167,7 +167,7 @@ exports.sendChatMessage = async (req, res) => {
             message,
             conversationId,
             language,
-            role,
+            role: reqRole,
             fullName,
             conversationHistory,
             previous_questions
@@ -178,21 +178,23 @@ exports.sendChatMessage = async (req, res) => {
         }
 
         // Fetch user & school name
-        let schoolName = 'Fusion High School';
-        let userDisplayName = fullName || req.user.full_name || req.user.name || '';
-        try {
-            const userRes = await db.query(
-                `SELECT u.full_name, s.name as school_name 
-                 FROM users u 
-                 LEFT JOIN schools s ON u.school_id = s.id 
-                 WHERE u.id = $1`,
-                [userId]
-            );
-            if (userRes.rows.length > 0) {
-                if (userRes.rows[0].school_name) schoolName = userRes.rows[0].school_name;
-                if (!userDisplayName && userRes.rows[0].full_name) userDisplayName = userRes.rows[0].full_name;
-            }
-        } catch (_) {}
+        let schoolName = 'Geleza SA';
+        let userDisplayName = fullName || (req.user && (req.user.full_name || req.user.name)) || '';
+        if (userId) {
+            try {
+                const userRes = await db.query(
+                    `SELECT u.full_name, s.name as school_name 
+                     FROM users u 
+                     LEFT JOIN schools s ON u.school_id = s.id 
+                     WHERE u.id = $1`,
+                    [userId]
+                );
+                if (userRes.rows.length > 0) {
+                    if (userRes.rows[0].school_name) schoolName = userRes.rows[0].school_name;
+                    if (!userDisplayName && userRes.rows[0].full_name) userDisplayName = userRes.rows[0].full_name;
+                }
+            } catch (_) {}
+        }
 
         const tutorResponse = await aiTutorService.chatWithSubjectTutor({
             learnerUserId: userId,

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 export interface SchoolProfile {
   id: number;
@@ -67,7 +67,7 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const fetchSchools = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('/api/schools');
+      const res = await api.get('/api/schools');
       if (Array.isArray(res.data) && res.data.length > 0) {
         setSchoolsList(res.data);
         const savedId = localStorage.getItem('active_school_id');
@@ -109,7 +109,7 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setCurrentSchoolState(found);
       localStorage.setItem('active_school_profile', JSON.stringify(found));
       localStorage.setItem('active_school_id', String(found.id));
-      axios.defaults.headers.common['x-school-id'] = String(found.id);
+      api.defaults.headers.common['x-school-id'] = String(found.id);
     }
   };
 
@@ -119,7 +119,7 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setCurrentSchoolState(found);
       localStorage.setItem('active_school_profile', JSON.stringify(found));
       localStorage.setItem('active_school_id', String(found.id));
-      axios.defaults.headers.common['x-school-id'] = String(found.id);
+      api.defaults.headers.common['x-school-id'] = String(found.id);
     }
   };
 

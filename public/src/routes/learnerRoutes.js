@@ -4,9 +4,28 @@ const learnerController = require('../controller/learnerController');
 const aiTutorController = require('../controller/aiTutorController');
 const { auth, requireRole } = require('../../../authMiddleware');
 
-// Universal Role AI Tutor & 24/7 Chat Engine (Open to all authenticated roles: learner, teacher, admin, parent)
-router.post('/ai-tutor/chat', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.sendChatMessage);
-router.post('/ask-tutor', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.sendChatMessage);
+const jwt = require('jsonwebtoken');
+
+const optionalAuth = (req, res, next) => {
+    try {
+        const authHeader = req.headers['authorization'];
+        const bearer = authHeader && authHeader.split(' ')[1];
+        const token = (bearer && bearer !== 'null' && bearer !== 'undefined') ? bearer : null;
+        if (!token || !process.env.JWT_SECRET) {
+            req.user = { id: null, role: 'visitor', full_name: 'Visitor' };
+            return next();
+        }
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
+    } catch (_) {
+        req.user = { id: null, role: 'visitor', full_name: 'Visitor' };
+    }
+    return next();
+};
+
+// Universal Role AI Tutor & 24/7 Chat Engine (Open to all visitors, learners, teachers, admins, parents, superadmins)
+router.post('/ai-tutor/chat', optionalAuth, aiTutorController.sendChatMessage);
+router.post('/ask-tutor', optionalAuth, aiTutorController.sendChatMessage);
 router.get('/ai-tutor/subjects', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.getEnrolledSubjectsWithSyllabus);
 router.get('/ai-tutor/conversations', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.getConversations);
 router.get('/ai-tutor/conversations/:id', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.getConversationDetails);

@@ -99,7 +99,7 @@ async function callAI(prompt, isJson = false, modelOverride = null) {
 
   const modelCandidates = modelOverride
     ? [modelOverride]
-    : ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.5-flash'];
+    : ['gemini-3.8-flash', 'gemini-3.8-flash-lite', 'gemini-flash-latest'];
   let lastError = null;
 
   for (const targetModel of modelCandidates) {
@@ -649,7 +649,7 @@ function generateCAPSLocalFallback(prompt, explicitSubject, explicitGrade, expli
 }
 
 async function safeAICall(prompt, isJson = false, retries = 1) {
-  const models = ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.5-flash'];
+  const models = ['gemini-3.8-flash', 'gemini-3.8-flash-lite', 'gemini-flash-latest'];
 
   for (const m of models) {
     try {
@@ -666,10 +666,14 @@ async function safeAICall(prompt, isJson = false, retries = 1) {
   }
 
   try {
-    return generateCAPSLocalFallback(prompt);
+    const fb = generateCAPSLocalFallback(prompt);
+    if (!isJson && (!fb || !fb.text)) {
+      return { text: typeof fb === 'string' ? fb : "I'm right here with you! Let's work through this problem step-by-step. What specific equation, concept, or subject question are you tackling?" };
+    }
+    return fb;
   } catch (fallbackErr) {
     console.error('[AI FALLBACK ERROR]', fallbackErr);
-    return { error: 'Failed to generate content.' };
+    return isJson ? { error: 'Failed to generate content.' } : { text: "I'm here to help with your CAPS school studies! What topic would you like to review?" };
   }
 }
 
