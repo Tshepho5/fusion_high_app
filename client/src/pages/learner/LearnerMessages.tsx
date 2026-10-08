@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import api, { userService } from '../../services/api';
+import api, { userService, getApiBaseUrl } from '../../services/api';
 import { Badge } from '../../components/common/Badge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
@@ -132,14 +132,29 @@ const voiceMimeForExtension = (path: string) => {
 const voicePathCandidates = (audioUrl: string) => {
   if (!audioUrl) return [];
   if (audioUrl.startsWith('blob:') || audioUrl.startsWith('data:')) return [audioUrl];
+  const baseUrl = getApiBaseUrl();
   const path = audioUrl.startsWith('http://') || audioUrl.startsWith('https://')
     ? audioUrl
     : (audioUrl.startsWith('/') ? audioUrl : `/${audioUrl}`);
-  const candidates = [path];
-  if (path.includes('/uploads/messages/') && !path.includes('/voice/')) {
-    candidates.push(path.replace('/uploads/messages/', '/uploads/messages/voice/'));
+  
+  const candidates: string[] = [];
+  if (path.startsWith('http')) {
+    candidates.push(path);
+  } else {
+    if (baseUrl) {
+      candidates.push(`${baseUrl}${path}`);
+    }
+    candidates.push(path);
   }
-  return candidates;
+
+  // Also check nested /voice/ subfolder if omitted in database URL
+  const extra: string[] = [];
+  for (const c of candidates) {
+    if (c.includes('/uploads/messages/') && !c.includes('/voice/')) {
+      extra.push(c.replace('/uploads/messages/', '/uploads/messages/voice/'));
+    }
+  }
+  return [...candidates, ...extra];
 };
 
 // Audio Voice Note Player Component
@@ -173,6 +188,8 @@ const VoiceNotePlayer: React.FC<{
         if (!cancelled) setPlayableSrc(candidates[0]);
         return;
       }
+
+      // Try blob load first (with session token & CORS)
       for (const path of candidates) {
         try {
           const res = await api.get(path, { responseType: 'blob' });
@@ -192,7 +209,16 @@ const VoiceNotePlayer: React.FC<{
           return;
         } catch (_) {}
       }
-      if (!cancelled) setLoadError(true);
+
+      // Fallback: use direct stream URL for HTML5 media pipeline
+      const fallbackUrl = candidates[0].startsWith('http')
+        ? candidates[0]
+        : `${getApiBaseUrl()}${candidates[0].startsWith('/') ? candidates[0] : '/' + candidates[0]}`;
+
+      if (!cancelled) {
+        setPlayableSrc(fallbackUrl);
+        setLoadError(false);
+      }
     };
 
     load();
@@ -211,11 +237,19 @@ const VoiceNotePlayer: React.FC<{
       return;
     }
     try {
+      setLoadError(false);
       await audio.play();
       setIsPlaying(true);
-    } catch (_) {
-      setIsPlaying(false);
-      setLoadError(true);
+    } catch (err) {
+      console.warn('Direct play failed, attempting audio.load():', err);
+      try {
+        audio.load();
+        await audio.play();
+        setIsPlaying(true);
+      } catch (_) {
+        setIsPlaying(false);
+        setLoadError(true);
+      }
     }
   };
 
@@ -248,19 +282,33 @@ const VoiceNotePlayer: React.FC<{
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
+  const handleRetry = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLoadError(false);
+    if (audioRef.current) {
+      audioRef.current.load();
+      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setLoadError(true));
+    }
+  };
+
   return (
     <div className="flex items-center gap-2.5 py-1.5 px-1 min-w-[200px] sm:min-w-[240px]">
       <audio
         ref={audioRef}
         src={playableSrc || undefined}
+        crossOrigin="anonymous"
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleEnded}
+        onError={() => {
+          // If already playing or load error
+          if (!playableSrc) setLoadError(true);
+        }}
         onLoadedMetadata={() => {
           if (audioRef.current?.duration && !isNaN(audioRef.current.duration) && isFinite(audioRef.current.duration)) {
             setAudioDuration(audioRef.current.duration);
           }
         }}
-        preload="auto"
+        preload="metadata"
       />
       <button
         type="button"
@@ -268,7 +316,7 @@ const VoiceNotePlayer: React.FC<{
         className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-95 shadow-md ${
           isMe ? 'bg-white text-emerald-800' : 'bg-brand-500 text-white'
         }`}
-        title={loadError ? 'Voice note could not be played' : isPlaying ? 'Pause' : 'Play voice note'}
+        title={loadError ? 'Tap to retry voice note playback' : isPlaying ? 'Pause' : 'Play voice note'}
         disabled={!playableSrc}
       >
         {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
@@ -294,7 +342,18 @@ const VoiceNotePlayer: React.FC<{
             {formatTime(audioDuration || duration || 0)}
           </span>
         </div>
-        {loadError && <p className="text-[10px] text-rose-300">This voice note could not be played.</p>}
+        {loadError && (
+          <div className="flex items-center gap-1.5 text-[10px] text-rose-300">
+            <span>This voice note could not be played.</span>
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="underline font-bold text-cyan-300 hover:text-white"
+            >
+              Retry
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -398,7 +457,9 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
     }
   };
 
-  const fetchContacts = () => {
+  const retryTimeoutRef = useRef<any>(null);
+
+  const fetchContacts = (retryCount = 0) => {
     userService.getContacts()
       .then((res) => {
         const raw = Array.isArray(res) ? res : res.contacts || [];
@@ -425,7 +486,14 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
         console.error('Failed to load communication contacts:', err);
         setContacts((prev) => {
           if (prev.length === 0) {
-            setError(err?.response?.data?.error || 'Could not connect to messaging service.');
+            if (retryCount < 3) {
+              if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+              retryTimeoutRef.current = setTimeout(() => {
+                fetchContacts(retryCount + 1);
+              }, 2500);
+            } else {
+              setError(err?.response?.data?.error || 'Could not connect to messaging service.');
+            }
           }
           return prev;
         });
@@ -776,11 +844,17 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
 
       {error && (
         <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{typeof error === 'string' ? error : (error as any)?.message || String(error)}</span>
+            <button
+              onClick={() => { setError(null); fetchContacts(); }}
+              className="px-2.5 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 font-bold text-[11px] border border-rose-500/30 transition-all flex items-center gap-1 cursor-pointer"
+            >
+              <span>Reconnect</span>
+            </button>
           </div>
-          <button onClick={() => setError(null)} className="text-rose-400 hover:text-white">
+          <button onClick={() => setError(null)} className="text-rose-400 hover:text-white shrink-0">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -987,9 +1061,16 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
                 );
               })
             ) : (
-              <div className="p-8 text-center text-slate-500 text-xs">
+              <div className="p-8 text-center text-slate-500 text-xs flex flex-col items-center">
                 <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-40" />
                 <p>No contacts found</p>
+                <button
+                  type="button"
+                  onClick={() => fetchContacts()}
+                  className="mt-3 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Refresh Contacts
+                </button>
               </div>
             )}
           </div>

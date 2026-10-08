@@ -251,12 +251,25 @@ exports.issueTextbook = async (req, res) => {
       const child = childRes.rows[0];
       const userIds = [child.learner_user_id, child.parent_id].filter(Boolean);
       if (userIds.length > 0) {
+        const sanitizedTitle = (inv.title || 'Textbook').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const textbookFileName = `${sanitizedTitle}_Grade_${inv.grade || 10}.pdf`;
         NotificationService.sendToUsers({
           userIds,
           title: '📚 Textbook Issued',
-          message: `"${inv.title}" has been issued to ${child.full_name} ${child.surname}. Please ensure safe custody throughout the term.`,
+          message: `"${inv.title}" has been issued to ${child.full_name} ${child.surname}. You can view, read, and download the full textbook directly from this notification.`,
           type: 'textbook',
-          targetTab: 'textbooks'
+          targetTab: 'textbooks',
+          metadata: {
+            inventory_id: inv.id,
+            title: inv.title,
+            subject: inv.subject,
+            grade: inv.grade,
+            file_name: textbookFileName,
+            file_path: `/api/resources/download?file=${encodeURIComponent(textbookFileName)}`,
+            download_url: `/api/resources/download?file=${encodeURIComponent(textbookFileName)}`,
+            view_url: `/api/resources/download?file=${encodeURIComponent(textbookFileName)}&view=true`,
+            resource_type: 'textbook'
+          }
         }).catch(e => console.error('Textbook issue notification error:', e));
       }
     }

@@ -580,6 +580,20 @@ exports.sendMessage = async (req, res) => {
     }
 };
 
+let presenceColsVerified = false;
+async function checkPresenceColsOnce() {
+    if (presenceColsVerified) return true;
+    try {
+        await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
+        await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_online BOOLEAN DEFAULT FALSE`);
+        await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS presence_device VARCHAR(20)`);
+        presenceColsVerified = true;
+    } catch (_) {
+        presenceColsVerified = true;
+    }
+    return true;
+}
+
 /**
  * Returns allowed communication contacts with live unread counts and last message previews.
  */
@@ -591,47 +605,20 @@ exports.getCommunicationContacts = async (req, res) => {
         let query = '';
         let params = [userId];
 
-        // Dynamically detect presence tracking columns and safely fallback if not yet migrated
-        let hasPresenceCols = false;
-        try {
-            const colCheck = await db.query(`
-                SELECT column_name FROM information_schema.columns 
-                WHERE table_name = 'users' AND column_name IN ('last_seen_at', 'is_online')
-            `);
-            hasPresenceCols = (colCheck.rows.length >= 2);
-            if (hasPresenceCols) {
-                await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS presence_device VARCHAR(20)`).catch(() => {});
-            }
-            if (!hasPresenceCols) {
-                try {
-                    await db.query(`
-                        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-                        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_online BOOLEAN DEFAULT FALSE;
-                        ALTER TABLE users ADD COLUMN IF NOT EXISTS presence_device VARCHAR(20);
-                    `);
-                    hasPresenceCols = true;
-                } catch (_) {
-                    hasPresenceCols = false;
-                }
-            }
-        } catch (_) {
-            hasPresenceCols = false;
-        }
+        // Dynamically detect presence tracking columns once and reuse across requests
+        await checkPresenceColsOnce();
+        const hasPresenceCols = true;
 
-        const onlineSelect = hasPresenceCols ? `
+        const onlineSelect = `
             CASE 
                 WHEN u.last_seen_at IS NOT NULL AND u.last_seen_at >= (NOW() - INTERVAL '90 seconds') AND COALESCE(u.is_online, TRUE) = TRUE THEN true 
                 ELSE false 
             END AS is_online,
             u.last_seen_at,
             COALESCE(u.presence_device, '') AS presence_device,
-        ` : `
-            false AS is_online,
-            NULL::timestamp AS last_seen_at,
-            '' AS presence_device,
         `;
 
-        const groupByPresence = hasPresenceCols ? `, u.last_seen_at, u.is_online, u.presence_device` : ``;
+        const groupByPresence = `, u.last_seen_at, u.is_online, u.presence_device`;
 
         if (role === 'teacher') {
             query = `

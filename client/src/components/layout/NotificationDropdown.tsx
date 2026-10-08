@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { notificationService } from '../../services/api';
+import { notificationService, getApiBaseUrl } from '../../services/api';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db as firestoreDb } from '../../firebase';
 import {
@@ -17,7 +17,9 @@ import {
   ShieldAlert,
   ExternalLink,
   Clock,
-  Inbox
+  Inbox,
+  Download,
+  Eye
 } from 'lucide-react';
 
 interface NotificationItem {
@@ -30,6 +32,96 @@ interface NotificationItem {
   is_read: boolean;
   created_at: string;
 }
+
+interface MaterialAccess {
+  isMaterial: boolean;
+  title: string;
+  fileName: string;
+  viewUrl: string;
+  downloadUrl: string;
+  badgeLabel: string;
+}
+
+const getMaterialAccess = (notif: NotificationItem): MaterialAccess => {
+  const type = (notif.type || '').toLowerCase();
+  const title = (notif.title || '').trim();
+  const message = (notif.message || '').trim();
+  let meta: any = notif.metadata || {};
+  if (typeof meta === 'string') {
+    try { meta = JSON.parse(meta); } catch { meta = {}; }
+  }
+
+  const isTextbookType = type === 'textbook';
+  const isPastPaperType = type === 'past_paper';
+  const isResourceType = type === 'resource';
+  const textIndicatesMaterial = 
+    /textbook|learning material|study guide|past paper|revision worksheet|curriculum resource/i.test(title) ||
+    /textbook|issued to|uploaded a new (caps textbook|past exam|study guide|learning resource)/i.test(message) ||
+    Boolean(meta.file_path || meta.file_url || meta.file_name || meta.resource_id || meta.inventory_id);
+
+  const isMaterial = isTextbookType || isPastPaperType || isResourceType || textIndicatesMaterial;
+  if (!isMaterial) {
+    return { isMaterial: false, title: '', fileName: '', viewUrl: '', downloadUrl: '', badgeLabel: '' };
+  }
+
+  const baseUrl = getApiBaseUrl();
+
+  let badgeLabel = 'Textbook';
+  if (isPastPaperType || /past paper|exam/i.test(title)) badgeLabel = 'Past Paper';
+  else if (/study guide/i.test(title)) badgeLabel = 'Study Guide';
+  else if (/worksheet/i.test(title)) badgeLabel = 'Worksheet';
+  else if (isTextbookType || /textbook/i.test(title)) badgeLabel = 'Textbook';
+  else badgeLabel = 'Learning Material';
+
+  let rawName = meta.file_name;
+  if (!rawName) {
+    if (meta.file_path) rawName = meta.file_path.split('/').pop();
+    else if (meta.title) rawName = `${meta.title.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
+    else {
+      const cleanTitle = title.replace(/^(New\s+|📚\s*|CAPS\s*)/i, '').replace(/:\s*.+$/, '').trim();
+      rawName = `${cleanTitle.replace(/[^a-zA-Z0-9_-]/g, '_') || 'Learning_Material'}.pdf`;
+    }
+  }
+  if (!rawName.toLowerCase().endsWith('.pdf') && !rawName.includes('.')) {
+    rawName += '.pdf';
+  }
+
+  let viewUrl = '';
+  let downloadUrl = '';
+
+  if (meta.view_url) {
+    viewUrl = meta.view_url.startsWith('http') ? meta.view_url : `${baseUrl}${meta.view_url}`;
+  }
+  if (meta.download_url) {
+    downloadUrl = meta.download_url.startsWith('http') ? meta.download_url : `${baseUrl}${meta.download_url}`;
+  }
+
+  if (!viewUrl || !downloadUrl) {
+    if (meta.file_path && meta.file_path.startsWith('/')) {
+      const full = meta.file_path.startsWith('http') ? meta.file_path : `${baseUrl}${meta.file_path}`;
+      const sep = full.includes('?') ? '&' : '?';
+      if (!viewUrl) viewUrl = `${full}${sep}view=true`;
+      if (!downloadUrl) downloadUrl = full;
+    } else if (meta.resource_id) {
+      if (!viewUrl) viewUrl = `${baseUrl}/api/resources/${meta.resource_id}/download?view=true`;
+      if (!downloadUrl) downloadUrl = `${baseUrl}/api/resources/${meta.resource_id}/download`;
+    } else {
+      if (!viewUrl) viewUrl = `${baseUrl}/api/resources/download?file=${encodeURIComponent(rawName)}&view=true`;
+      if (!downloadUrl) downloadUrl = `${baseUrl}/api/resources/download?file=${encodeURIComponent(rawName)}`;
+    }
+  }
+
+  const displayTitle = meta.title || title.replace(/^[📚\s]+/, '');
+
+  return {
+    isMaterial: true,
+    title: displayTitle,
+    fileName: rawName,
+    viewUrl,
+    downloadUrl,
+    badgeLabel
+  };
+};
 
 import { soundNotificationService } from '../../services/soundNotificationService';
 
@@ -154,6 +246,29 @@ export const NotificationDropdown: React.FC = () => {
     } catch (err) {
       console.error('Error marking all as read:', err);
     }
+  };
+
+  const handleOpenMaterial = (e: React.MouseEvent, notif: NotificationItem, material: MaterialAccess) => {
+    e.stopPropagation();
+    if (!notif.is_read) {
+      handleMarkAsRead(notif.id);
+    }
+    window.open(material.viewUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleDownloadMaterial = (e: React.MouseEvent, notif: NotificationItem, material: MaterialAccess) => {
+    e.stopPropagation();
+    if (!notif.is_read) {
+      handleMarkAsRead(notif.id);
+    }
+    const link = document.createElement('a');
+    link.href = material.downloadUrl;
+    link.download = material.fileName;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const resolveAlertDestination = (notif: NotificationItem) => {
@@ -331,7 +446,9 @@ export const NotificationDropdown: React.FC = () => {
                 <span className="text-[11px]">Loading notifications...</span>
               </div>
             ) : filteredNotifications.length > 0 ? (
-              filteredNotifications.map((notif) => (
+              filteredNotifications.map((notif) => {
+                const material = getMaterialAccess(notif);
+                return (
                 <div
                   key={notif.id}
                   onClick={() => handleNotificationClick(notif)}
@@ -368,6 +485,38 @@ export const NotificationDropdown: React.FC = () => {
                       {notif.message}
                     </p>
 
+                    {/* Dedicated Textbook & Learning Material Access Bar */}
+                    {material.isMaterial && (
+                      <div className="mt-2.5 p-2 rounded-xl bg-cyan-950/40 border border-cyan-500/30 flex items-center justify-between gap-2 shadow-sm">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <BookOpen className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                          <span className="text-[10px] font-semibold text-cyan-200 truncate">
+                            {material.badgeLabel}: {material.fileName}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenMaterial(e, notif, material)}
+                            className="px-2 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 hover:text-white text-[10px] font-bold border border-cyan-500/40 flex items-center gap-1 transition-all cursor-pointer"
+                            title="Open and read document in new tab"
+                          >
+                            <Eye className="w-3 h-3" />
+                            <span>Open</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDownloadMaterial(e, notif, material)}
+                            className="px-2 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-white text-[10px] font-bold border border-emerald-500/40 flex items-center gap-1 transition-all cursor-pointer"
+                            title="Download document to device"
+                          >
+                            <Download className="w-3 h-3" />
+                            <span>Download</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between mt-2 pt-1 border-t border-white/5">
                       <span className="text-[10px] font-bold text-brand-400 group-hover:underline flex items-center gap-1">
                         <span>Go to {resolveAlertDestination(notif).tab}</span>
@@ -391,7 +540,8 @@ export const NotificationDropdown: React.FC = () => {
                     <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-brand-400 ring-2 ring-brand-500/20 shadow-glow-cyan" />
                   )}
                 </div>
-              ))
+                );
+              })
             ) : (
               <div className="p-8 text-center text-slate-500 flex flex-col items-center gap-2">
                 <Inbox className="w-8 h-8 text-slate-600 stroke-[1.5]" />

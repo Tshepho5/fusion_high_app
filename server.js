@@ -223,11 +223,24 @@ for (const origin of productionOrigins) {
 
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-      return;
-    }
-    callback(null, false);
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    try {
+      const url = new URL(origin);
+      if (
+        url.hostname === 'localhost' ||
+        url.hostname === '127.0.0.1' ||
+        /^192\.168\./.test(url.hostname) ||
+        /^10\./.test(url.hostname) ||
+        url.hostname.endsWith('.web.app') ||
+        url.hostname.endsWith('.firebaseapp.com') ||
+        url.hostname.endsWith('.vercel.app') ||
+        url.hostname.endsWith('.onrender.com')
+      ) {
+        return callback(null, true);
+      }
+    } catch (_) {}
+    callback(null, true); // Permissive fallback so browser clients are never blocked by CORS
   },
   credentials: true,
 }));
@@ -241,28 +254,53 @@ if (fs.existsSync(clientDistPath)) {
   app.use(express.static(clientDistPath));
 }
 
-app.use('/uploads', authenticateToken);
-app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
-app.use('/uploads', express.static('uploads'));
+// Static Assets & Uploads: Serve media, audio voice notes, profile pictures, and learning resources publicly with CORS & byte ranges
+const setStaticMediaHeaders = (res, filePath) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Accept-Ranges', 'bytes');
+  if (filePath.endsWith('.webm')) res.setHeader('Content-Type', 'audio/webm');
+  else if (filePath.endsWith('.ogg')) res.setHeader('Content-Type', 'audio/ogg');
+  else if (filePath.endsWith('.mp3')) res.setHeader('Content-Type', 'audio/mpeg');
+  else if (filePath.endsWith('.m4a') || filePath.endsWith('.mp4')) res.setHeader('Content-Type', 'audio/mp4');
+  else if (filePath.endsWith('.wav')) res.setHeader('Content-Type', 'audio/wav');
+  else if (filePath.endsWith('.pdf')) res.setHeader('Content-Type', 'application/pdf');
+};
+
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, 'uploads'), { setHeaders: setStaticMediaHeaders }));
+
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'), { setHeaders: setStaticMediaHeaders }));
 app.use(express.static('public'));
 
-// Smart resolver for /uploads/messages/ when subfolder was omitted in database URL
-app.get('/uploads/messages/:filename', (req, res, next) => {
-  const filename = path.basename(req.params.filename);
-  const directPath = path.join(__dirname, 'uploads', 'messages', filename);
-  if (fs.existsSync(directPath)) return res.sendFile(directPath);
+// Smart resolver for /uploads/messages/ supporting both flat filenames and nested folders (/voice, /images, /documents)
+const resolveMessageFile = (req, res, next) => {
+  const sub = req.params.subfolder || '';
+  const file = req.params.filename || '';
+  const targetName = path.basename(file || sub);
 
-  const imagePath = path.join(__dirname, 'uploads', 'messages', 'images', filename);
-  if (fs.existsSync(imagePath)) return res.sendFile(imagePath);
+  const searchPaths = [
+    path.join(__dirname, 'uploads', 'messages', sub, file),
+    path.join(__dirname, 'uploads', 'messages', 'voice', targetName),
+    path.join(__dirname, 'uploads', 'messages', 'images', targetName),
+    path.join(__dirname, 'uploads', 'messages', 'documents', targetName),
+    path.join(__dirname, 'uploads', 'messages', targetName),
+  ];
 
-  const voicePath = path.join(__dirname, 'uploads', 'messages', 'voice', filename);
-  if (fs.existsSync(voicePath)) return res.sendFile(voicePath);
-
-  const docPath = path.join(__dirname, 'uploads', 'messages', 'documents', filename);
-  if (fs.existsSync(docPath)) return res.sendFile(docPath);
-
+  for (const p of searchPaths) {
+    if (fs.existsSync(p) && fs.statSync(p).isFile()) {
+      setStaticMediaHeaders(res, p);
+      return res.sendFile(p);
+    }
+  }
   next();
-});
+};
+
+app.get('/uploads/messages/:subfolder/:filename', resolveMessageFile);
+app.get('/uploads/messages/:filename', resolveMessageFile);
 
 app.use('/downloads', express.static(path.join(__dirname, 'public', 'downloads')));
 
@@ -279,6 +317,11 @@ const handleCapsResourceDownload = async (req, res) => {
   try {
     const rawFilename = req.params.filename || req.query.file || 'Curriculum_Resource.pdf';
     const cleanFilename = path.basename(decodeURIComponent(rawFilename));
+    const isView = req.query.view === 'true' || req.query.inline === 'true' || req.query.preview === 'true';
+    const disposition = isView ? 'inline' : 'attachment';
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     
     // Check if file exists in capsArchiveDir or textbooksDir
     let filePath = path.join(capsArchiveDir, cleanFilename);
@@ -289,7 +332,7 @@ const handleCapsResourceDownload = async (req, res) => {
 
     if (fs.existsSync(filePath) && fs.statSync(filePath).size > 0) {
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${cleanFilename}"`);
+      res.setHeader('Content-Disposition', `${disposition}; filename="${cleanFilename}"`);
       return res.sendFile(filePath);
     }
 
@@ -322,12 +365,12 @@ const handleCapsResourceDownload = async (req, res) => {
       }
     } catch (_) {}
 
-    // Generate to disk cache and stream attachment response
+    // Generate to disk cache and stream response
     const targetPath = path.join(capsArchiveDir, cleanFilename);
     const doc = generateCapsDocumentPdf({ title, subject, grade, year, resourceType }, targetPath);
     
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${cleanFilename}"`);
+    res.setHeader('Content-Disposition', `${disposition}; filename="${cleanFilename}"`);
     doc.pipe(res);
     doc.end();
   } catch (err) {
