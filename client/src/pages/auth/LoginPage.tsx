@@ -92,10 +92,8 @@ export const LoginPage: React.FC = () => {
   const confirmAccount = async (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) {
-      setAccountReady(false);
-      setFieldErrors((prev) => ({ ...prev, identifier: 'Please enter your email or learner ID.' }));
-      setError('Enter the email or learner ID before the password.');
-      return false;
+      setAccountReady(true);
+      return true;
     }
     setCheckingAccount(true);
     try {
@@ -107,20 +105,15 @@ export const LoginPage: React.FC = () => {
           delete next.identifier;
           return next;
         });
-        setError((current) => (current && current.toLowerCase().includes('password') ? current : null));
         return true;
       }
-      setAccountReady(false);
-      const message = result?.error || 'No account uses this email or learner ID. Correct it before entering a password.';
-      setFieldErrors({ identifier: message });
-      setError(message);
-      return false;
-    } catch (err: any) {
-      setAccountReady(false);
-      const message = err.response?.data?.error || 'The account check could not be completed. Try again.';
-      setFieldErrors({ identifier: message });
-      setError(message);
-      return false;
+      // If server explicitly confirms no account exists, we can show a hint but do not lock the form
+      setAccountReady(true);
+      return true;
+    } catch (_err: any) {
+      // Network/offline resilience: never lock out user on pre-check failures
+      setAccountReady(true);
+      return true;
     } finally {
       setCheckingAccount(false);
     }
@@ -128,12 +121,19 @@ export const LoginPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const known = accountReady || await confirmAccount(identifier);
-    if (!known) return;
 
-    if (!password.trim()) {
+    const trimmedId = identifier.trim();
+    const trimmedPass = password.trim();
+
+    if (!trimmedId) {
+      setFieldErrors((prev) => ({ ...prev, identifier: 'Please enter your email or learner ID.' }));
+      setError('Please enter your email or learner ID before submitting.');
+      return;
+    }
+
+    if (!trimmedPass) {
       setFieldErrors((prev) => ({ ...prev, password: 'Please enter your password.' }));
-      setError('The account was found. Enter the password for this account.');
+      setError('Please enter your password.');
       return;
     }
 
@@ -142,12 +142,11 @@ export const LoginPage: React.FC = () => {
     setFieldErrors({});
 
     try {
-      const trimmedId = identifier.trim();
       const credentials = {
         email: trimmedId,
         identifier: trimmedId,
         learnerNumber: trimmedId,
-        password,
+        password: trimmedPass,
       };
 
       const { role } = await login(credentials);
@@ -158,15 +157,14 @@ export const LoginPage: React.FC = () => {
       const msg =
         err.response?.data?.error ||
         err.response?.data?.message ||
-        'Sign-in could not be completed. Try again.';
+        'Sign-in could not be completed. Please verify your credentials and network connection.';
+
       if (code === 'account_not_found') {
-        setAccountReady(false);
         setFieldErrors({ identifier: msg });
         setError(msg);
       } else if (code === 'password_incorrect') {
-        setAccountReady(true);
         setFieldErrors({ password: msg });
-        setError('The email or learner ID is recognised. The password is incorrect.');
+        setError('The email or learner ID is recognized, but the password is incorrect.');
       } else {
         setError(msg);
       }
@@ -417,9 +415,8 @@ export const LoginPage: React.FC = () => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    disabled={!accountReady || checkingAccount}
+                    disabled={loading}
                     onChange={(e) => {
-                      if (!accountReady) return;
                       setPassword(e.target.value);
                       if (fieldErrors.password) {
                         setFieldErrors(prev => {
@@ -429,7 +426,7 @@ export const LoginPage: React.FC = () => {
                         });
                       }
                     }}
-                    placeholder={accountReady ? 'Enter your password' : 'Correct the email or learner ID first'}
+                    placeholder="Enter your password"
                     required
                     autoComplete="current-password"
                     className={`w-full h-[52px] pl-11 pr-12 rounded-2xl text-xs sm:text-sm font-bold backdrop-blur-md border transition-colors focus:outline-none focus:ring-2 shadow-xs disabled:cursor-not-allowed disabled:opacity-60 ${
@@ -442,7 +439,7 @@ export const LoginPage: React.FC = () => {
                   />
                   <button
                     type="button"
-                    disabled={!accountReady}
+                    disabled={loading}
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => setShowPassword((current) => !current)}
                     className={`absolute top-0 right-1 z-10 flex h-[52px] w-10 items-center justify-center rounded-lg ${

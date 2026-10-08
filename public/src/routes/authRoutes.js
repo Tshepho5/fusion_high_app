@@ -10,6 +10,8 @@ const { auth: authMiddleware } = require('../../../authMiddleware');
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.post('/check-login-account', authController.checkLoginAccount);
+router.post('/check-account', authController.checkLoginAccount);
+router.get('/check-account', authController.checkLoginAccount);
 router.get('/check-email', authController.checkEmail);
 router.post('/check-email', authController.checkEmail);
 router.post('/verify-learner', authController.verifyLearner);
