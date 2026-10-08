@@ -707,8 +707,8 @@ export const schoolRegistrationService = {
   apply: (data: any) => api.post('/api/schools/apply', data).then(res => res.data),
   getAllApplications: (status?: string) => 
     api.get(`/api/schools/applications/all${status ? `?status=${status}` : ''}`).then(res => res.data),
-  reviewApplication: (id: number | string, decision: 'approve' | 'decline', reason?: string, executive_notes?: string) =>
-    api.post(`/api/schools/applications/${id}/decision`, { decision, reason, executive_notes }).then(res => res.data),
+  reviewApplication: (id: number | string, decision: 'approve' | 'decline', reason?: string, executive_notes?: string, temporary_password?: string) =>
+    api.post(`/api/schools/applications/${id}/decision`, { decision, reason, executive_notes, temporary_password }).then(res => res.data),
   updateModules: (schoolId: number, teacher_modules: string[], learner_modules: string[]) =>
     api.put(`/api/schools/${schoolId}/modules`, { teacher_modules, learner_modules }).then(res => res.data),
   getBank: (schoolId: number) => api.get(`/api/schools/${schoolId}/banking`).then(res => res.data),

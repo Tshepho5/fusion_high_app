@@ -576,9 +576,11 @@ exports.reviewSchoolApplication = async (req, res) => {
       await ensureGradeClasses(newSchool.id);
 
       // 3. Create or Update Principal user account
-      const passHash = app.password_hash;
+      let passHash = app.password_hash;
+      let tempPassword = undefined;
       if (!passHash) {
-        return res.status(400).json({ error: 'This application has no principal password. Ask the principal to register again.' });
+        tempPassword = req.body.temporary_password || `Geleza@${app.emis_number || '2026'}`;
+        passHash = await bcrypt.hash(tempPassword, 10);
       }
 
       const userInsert = await db.query(`
@@ -634,7 +636,7 @@ exports.reviewSchoolApplication = async (req, res) => {
         principalName: `${app.principal_first_name} ${app.principal_surname}`,
         schoolName: app.school_name,
         emisNumber: app.emis_number,
-        temporaryPassword: undefined,
+        temporaryPassword: tempPassword,
         loginUrl: `${baseUrl}/login`
       }).catch(err => {
         console.warn('[EMAIL NOTIFY] Could not send approval email:', err.message);

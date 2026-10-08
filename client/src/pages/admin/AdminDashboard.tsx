@@ -22,6 +22,7 @@ import { ReportCardStudio } from '../../components/admin/ReportCardStudio';
 import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
 import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
 import { MultiSchoolCommandCenter } from '../../components/admin/MultiSchoolCommandCenter';
+import { SchoolAdmissionsManager } from '../../components/admin/SchoolAdmissionsManager';
 import { InterSchoolCompetitions } from '../../components/common/InterSchoolCompetitions';
 import { ParentTeacherConsultations } from '../../components/parent/ParentTeacherConsultations';
 import { DynamicClassesManager } from '../../components/admin/DynamicClassesManager';
@@ -77,6 +78,9 @@ export const AdminDashboard: React.FC = () => {
         return 'Inter-School Derbies, Sports & Academic Olympiads';
       case 'bursaries':
         return 'National Tertiary Bursaries Catalog';
+      case 'school-admissions':
+      case 'school-applications':
+        return 'School Admissions & Campus Registrations';
       case 'messages':
         return 'Institutional Messaging Center';
       case 'announcements':
@@ -195,6 +199,9 @@ export const AdminDashboard: React.FC = () => {
       {/* ========================================================================= */}
       {/* 2. SUB-MODULE VIEWS (Direct URL / More Hub Access with Full Persistence)   */}
       {/* ========================================================================= */}
+      {(activeTab === 'school-admissions' || activeTab === 'school-applications') && (
+        <SchoolAdmissionsManager onNavigateTab={handleSelectTab} />
+      )}
       {activeTab === 'command-center' && <MultiSchoolCommandCenter />}
       {activeTab === 'inter-school' && <InterSchoolCompetitions />}
       {activeTab === 'consultations' && <ParentTeacherConsultations />}

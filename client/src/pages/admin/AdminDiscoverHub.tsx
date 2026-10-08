@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MultiSchoolCommandCenter } from '../../components/admin/MultiSchoolCommandCenter';
+import { SchoolAdmissionsManager } from '../../components/admin/SchoolAdmissionsManager';
 import { InterSchoolCompetitions } from '../../components/common/InterSchoolCompetitions';
 import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
 import {
@@ -7,23 +8,26 @@ import {
   Building2,
   Swords,
   GraduationCap,
+  FileCheck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface AdminDiscoverHubProps {
   onNavigateTab: (tabId: string, params?: any) => void;
-  initialSubTab?: 'command-center' | 'inter-school' | 'bursaries';
+  initialSubTab?: 'admissions' | 'command-center' | 'inter-school' | 'bursaries';
 }
 
 export const AdminDiscoverHub: React.FC<AdminDiscoverHubProps> = ({
   onNavigateTab,
-  initialSubTab = 'command-center',
+  initialSubTab = 'admissions',
 }) => {
   const { user } = useAuth();
-  const isSuperAdmin = !!user?.is_superadmin;
+  const canManageSchools = !!user?.is_superadmin || user?.role === 'admin';
 
-  const [subTab, setSubTab] = useState<'command-center' | 'inter-school' | 'bursaries'>(
-    !isSuperAdmin && initialSubTab === 'command-center' ? 'inter-school' : initialSubTab
+  const [subTab, setSubTab] = useState<'admissions' | 'command-center' | 'inter-school' | 'bursaries'>(
+    !canManageSchools && (initialSubTab === 'admissions' || initialSubTab === 'command-center')
+      ? 'inter-school'
+      : initialSubTab
   );
 
   return (
@@ -41,19 +45,33 @@ export const AdminDiscoverHub: React.FC<AdminDiscoverHubProps> = ({
         </div>
 
         {/* Sub-Tab Navigation Bar */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-surface-darker rounded-2xl border border-slate-200 dark:border-white/10 shrink-0 self-start sm:self-center">
-          {isSuperAdmin && (
-            <button
-              onClick={() => setSubTab('command-center')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                subTab === 'command-center'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-indigo-500/30'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Building2 className="w-3.5 h-3.5" />
-              <span>Multi-School Command</span>
-            </button>
+        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-surface-darker rounded-2xl border border-slate-200 dark:border-white/10 shrink-0 self-start sm:self-center">
+          {canManageSchools && (
+            <>
+              <button
+                onClick={() => setSubTab('admissions')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  subTab === 'admissions'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/30'
+                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <FileCheck className="w-3.5 h-3.5" />
+                <span>School Admissions</span>
+              </button>
+
+              <button
+                onClick={() => setSubTab('command-center')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  subTab === 'command-center'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-indigo-500/30'
+                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Multi-Campus Command</span>
+              </button>
+            </>
           )}
 
           <button
@@ -84,7 +102,8 @@ export const AdminDiscoverHub: React.FC<AdminDiscoverHubProps> = ({
 
       {/* Sub-Tab Content Rendering */}
       <div>
-        {subTab === 'command-center' && isSuperAdmin && <MultiSchoolCommandCenter />}
+        {subTab === 'admissions' && canManageSchools && <SchoolAdmissionsManager onNavigateTab={onNavigateTab} />}
+        {subTab === 'command-center' && canManageSchools && <MultiSchoolCommandCenter />}
         {subTab === 'inter-school' && <InterSchoolCompetitions />}
         {subTab === 'bursaries' && <BursaryScholarshipHub />}
       </div>

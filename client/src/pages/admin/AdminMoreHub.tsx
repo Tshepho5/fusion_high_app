@@ -92,6 +92,13 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
   const allModules: ModuleItem[] = [
     // 1. Governance & Staff
     {
+      id: 'school-admissions',
+      title: 'School Admissions & Registrations',
+      category: 'governance' as const,
+      icon: Building2,
+      badge: 'Admissions',
+    },
+    {
       id: 'testers',
       title: 'Master Controls & Testers',
       category: 'governance' as const,
@@ -110,7 +117,7 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
       title: 'Multi-School Command',
       category: 'governance',
       icon: Building2,
-      badge: 'SuperAdmin',
+      badge: 'Multi-Campus',
     },
     {
       id: 'users',

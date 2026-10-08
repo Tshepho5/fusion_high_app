@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { adminService } from '../../services/api';
+import { adminService, schoolRegistrationService } from '../../services/api';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { AdminOverviewSkeleton } from '../../components/admin/AdminOverviewSkeleton';
 import { Modal } from '../../components/common/Modal';
@@ -189,19 +189,28 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
 
   // Raw API subjects state
   const [apiSubjects, setApiSubjects] = useState<any[]>([]);
+  const [pendingSchoolApps, setPendingSchoolApps] = useState<any[]>([]);
 
   useEffect(() => {
     setLoading(true);
     Promise.allSettled([
       adminService.getOverviewStats(),
-      adminService.getSubjectsSummary()
+      adminService.getSubjectsSummary(),
+      schoolRegistrationService.getAllApplications().catch(() => [])
     ])
-      .then(([statsRes, subjectsRes]) => {
+      .then(([statsRes, subjectsRes, appsRes]) => {
         if (statsRes.status === 'fulfilled') {
           setStats(statsRes.value);
         }
         if (subjectsRes.status === 'fulfilled' && subjectsRes.value?.subjects) {
           setApiSubjects(subjectsRes.value.subjects);
+        }
+        if (appsRes.status === 'fulfilled') {
+          const rows = Array.isArray(appsRes.value) ? appsRes.value : (appsRes.value?.applications || []);
+          setPendingSchoolApps(rows.filter((a: any) => {
+            const s = (a.status || '').toLowerCase();
+            return s === 'pending' || s === 'pending_review' || s === 'under_review' || s === 'awaiting_review';
+          }));
         }
       })
       .catch((err) => {
@@ -436,6 +445,39 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
   return (
     <div className="space-y-8 animate-fade-in text-slate-900 dark:text-slate-100 pb-16">
       <HomeGreeting />
+
+      {/* Pending School Admissions Alert Banner */}
+      {pendingSchoolApps.length > 0 && (
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/5 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-fade-in">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="p-2.5 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+              <Building2 className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                  Admissions Action Required
+                </span>
+                <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                  {pendingSchoolApps.length} School Registration{pendingSchoolApps.length > 1 ? 's' : ''} Awaiting Review
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                <strong className="text-slate-900 dark:text-white">{pendingSchoolApps[0].school_name}</strong> (Principal {pendingSchoolApps[0].principal_first_name || pendingSchoolApps[0].principal_name} {pendingSchoolApps[0].principal_surname}) registered their campus and is awaiting formal admission.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigateTab('school-admissions')}
+            className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow-md shadow-amber-500/20 flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer"
+          >
+            <span>Review & Admit School</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       <SchoolModulePreferences />
 
       {/* ========================================================================= */}
