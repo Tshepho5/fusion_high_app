@@ -217,8 +217,8 @@ exports.uploadResource = async (req, res) => {
                 fullContent: announcementContent,
                 type: resourceType === 'past_paper' ? 'past_paper' : 'resource',
                 targetTab: 'subjects',
-                sendToMessages: true,
-                sendEmail: true,
+                sendToMessages: false,
+                sendEmail: false,
                 metadata: {
                     resource_id: uploadedResource.id,
                     subject: subject,
@@ -678,25 +678,6 @@ exports.publishAssignment = async (req, res) => {
                     const tpl = emailService.templates.newAssignment(learnerFullName, subject, title);
                     await emailService.send(record.learner_email, tpl.subject, tpl.body);
                 } catch (e) {}
-            }
-
-            // Message notification to parent
-            if (record.parent_id) {
-                try {
-                    await db.query(
-                        `INSERT INTO messages (sender_id, recipient_id, child_id, subject, body, read_at, created_at)
-                         VALUES ($1, $2, $3, $4, $5, NULL, NOW())`,
-                        [
-                            teacherId,
-                            record.parent_id,
-                            record.child_id,
-                            `New Task Assigned: ${subject} (${title})`,
-                            `Dear Parent, a new ${subject} quiz/assignment "${title}" has been assigned to your child ${learnerFullName}. Please ensure they complete it before the due date.`
-                        ]
-                    );
-                } catch (msgErr) {
-                    console.error('Error sending parent task notification:', msgErr);
-                }
             }
         }
 

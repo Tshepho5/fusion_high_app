@@ -775,9 +775,16 @@ exports.contactTeacher = async (req, res) => {
             [parentId, teacher_user_id, childId, subject, message]
         );
 
-        // Send email notification
-        const tpl = emailService.templates.parentToTeacher(parent, teacherEmail, subject, message, childFullName);
-        await emailService.send(tpl.to, tpl.subject, tpl.body, tpl.replyTo);
+        // Send in-app notification to teacher (in-app alert only, no email)
+        if (teacher_user_id) {
+            await NotificationService.sendToUsers([teacher_user_id], {
+                title: `New Message from ${parent_name} ${parent_surname}`,
+                message: subject ? `${subject}: ${message.substring(0, 100)}` : message.substring(0, 100),
+                type: 'message',
+                category: 'message',
+                actionUrl: '/messages'
+            }).catch(e => console.error('Error sending in-app message notification to teacher:', e));
+        }
 
         res.json({ message: 'Your message has been sent successfully.' });
     } catch (err) {
@@ -794,7 +801,15 @@ exports.getMessages = async (req, res) => {
             FROM messages m
             LEFT JOIN users sender ON m.sender_id = sender.id
             LEFT JOIN users recipient ON m.recipient_id = recipient.id
-            WHERE m.sender_id = $1 OR m.recipient_id = $1
+            WHERE (m.sender_id = $1 OR m.recipient_id = $1)
+              AND (m.subject IS NULL OR (
+                  m.subject NOT ILIKE 'Attendance Notice%'
+                  AND m.subject NOT ILIKE 'New Assessment Mark%'
+                  AND m.subject NOT ILIKE 'Assessment Marks Published%'
+                  AND m.subject NOT ILIKE 'Important Academic Notice%'
+                  AND m.subject NOT ILIKE 'Textbook Allocated%'
+                  AND m.subject NOT ILIKE 'New Task Assigned%'
+              ))
             ORDER BY m.created_at DESC;
         `;
         const { rows } = await db.query(query, [userId]);

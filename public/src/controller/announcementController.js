@@ -52,8 +52,8 @@ exports.createAnnouncement = async (req, res) => {
             fullContent: content,
             type: 'announcement',
             targetTab: 'announcements',
-            sendToMessages: true,
-            sendEmail: true,
+            sendToMessages: false,
+            sendEmail: false,
             metadata: { 
                 announcement_id: result.rows[0].id,
                 targetAudience: role_target === 'all' ? 'All Portals' : (role_target === 'parent' ? 'Parents' : (role_target === 'learner' ? 'Learners' : 'Teachers'))

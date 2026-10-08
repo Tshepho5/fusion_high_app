@@ -368,7 +368,15 @@ exports.getMessages = async (req, res) => {
             LEFT JOIN users sender ON m.sender_id::text = sender.id::text
             LEFT JOIN users recipient ON m.recipient_id::text = recipient.id::text
             LEFT JOIN children c ON m.child_id::text = c.id::text
-            WHERE m.sender_id::text = $1::text OR m.recipient_id::text = $1::text
+            WHERE (m.sender_id::text = $1::text OR m.recipient_id::text = $1::text)
+              AND (m.subject IS NULL OR (
+                  m.subject NOT ILIKE 'Attendance Notice%'
+                  AND m.subject NOT ILIKE 'New Assessment Mark%'
+                  AND m.subject NOT ILIKE 'Assessment Marks Published%'
+                  AND m.subject NOT ILIKE 'Important Academic Notice%'
+                  AND m.subject NOT ILIKE 'Textbook Allocated%'
+                  AND m.subject NOT ILIKE 'New Task Assigned%'
+              ))
             ORDER BY m.created_at DESC;
         `;
         const { rows } = await db.query(query, [userId]);
@@ -784,8 +792,16 @@ exports.getConversationHistory = async (req, res) => {
             FROM messages m
             JOIN users sender ON m.sender_id::text = sender.id::text
             JOIN users recipient ON m.recipient_id::text = recipient.id::text
-            WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = $2::text)
-               OR (m.sender_id::text = $2::text AND m.recipient_id::text = $1::text)
+            WHERE ((m.sender_id::text = $1::text AND m.recipient_id::text = $2::text)
+               OR (m.sender_id::text = $2::text AND m.recipient_id::text = $1::text))
+              AND (m.subject IS NULL OR (
+                  m.subject NOT ILIKE 'Attendance Notice%'
+                  AND m.subject NOT ILIKE 'New Assessment Mark%'
+                  AND m.subject NOT ILIKE 'Assessment Marks Published%'
+                  AND m.subject NOT ILIKE 'Important Academic Notice%'
+                  AND m.subject NOT ILIKE 'Textbook Allocated%'
+                  AND m.subject NOT ILIKE 'New Task Assigned%'
+              ))
             ORDER BY m.id ASC, m.created_at ASC;
         `;
         const { rows } = await db.query(query, [userId, recipientId]);

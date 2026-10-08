@@ -3,6 +3,7 @@ const { resolveSchoolId } = require('../services/schoolScope');
 const emailService = require('../services/emailService');
 const applicationService = require('../services/applicationService');
 const { rejectNameDigits } = require('../services/lettersOnly');
+const NotificationService = require('../services/notificationService');
 
 /**
  * Resolves the target school tenant ID from query, header, or user token.
@@ -2389,11 +2390,14 @@ exports.sendFeeReminders = async (req, res) => {
                 const notifySubject = `[Fusion High] School Fees Reminder: ${inv.title} (Balance: R${inv.balance})`;
                 const notifyBody = `Dear ${inv.parent_name || 'Parent'},\n\nThis is a friendly reminder that an outstanding balance of R${inv.balance} is due on ${new Date(inv.due_date).toLocaleDateString()} for ${inv.learner_name} ${inv.learner_surname} (${inv.title}).\n\nPlease log in to your Parent Portal to view the itemized invoice or pay via school EFT.\n\nThank you,\nFinance Department\nFusion High School`;
 
-                await db.query(
-                    `INSERT INTO messages (sender_id, recipient_id, child_id, subject, body, created_at)
-                     VALUES (1, $1, $2, $3, $4, NOW())`,
-                    [inv.parent_id, inv.learner_id, notifySubject, notifyBody]
-                );
+                // Send in-app notification to Notification Icon (Bell)
+                await NotificationService.sendToUsers([inv.parent_id], {
+                    title: `School Fees Reminder: ${inv.title}`,
+                    message: `Outstanding balance of R${inv.balance} due on ${new Date(inv.due_date).toLocaleDateString()} for ${inv.learner_name} ${inv.learner_surname}.`,
+                    type: 'announcement',
+                    category: 'fee',
+                    actionUrl: '/dashboard/parent?tab=fees'
+                }).catch(e => console.warn('Fee reminder notification error:', e.message));
 
                 if (inv.parent_email) {
                     await emailService.sendEmail(
@@ -2466,16 +2470,7 @@ exports.sendSundayParentDigest = async (req, res) => {
                     feeBalance
                 });
 
-                // Also record in in-app messages and notifications
-                await db.query(`
-                    INSERT INTO messages (sender_id, recipient_id, child_id, subject, body, content, created_at)
-                    VALUES (1, $1, $2, $3, $4, $4, NOW())
-                `, [
-                    learner.parent_id,
-                    learner.learner_id,
-                    `[Fusion High] Weekly Academic Digest: ${learnerFullName}`,
-                    `Weekly Summary for ${learnerFullName} (Grade ${learner.grade}): Attendance: ${attendancePct}% | Outstanding Fees: R${feeBalance}. Upcoming formal tests and homework tasks are updated in your portal.`
-                ]);
+                // Record in in-app notifications (Notification Icon)
 
                 await db.query(`
                     INSERT INTO notifications (user_id, title, message, type, target_tab, created_at)
@@ -2824,15 +2819,7 @@ exports.updateUserProfile = async (req, res) => {
 
                 const workloadNotice = `Official CAPS Workload Update: You have been assigned the following subject(s): ${newlyAddedSubjects.join(', ')}. Your Teacher Dashboard and Class Registers have been updated accordingly.`;
                 
-                await db.query(`
-                    INSERT INTO messages (sender_id, recipient_id, subject, body, content, created_at)
-                    VALUES ($1, $2, $3, $4, $4, CURRENT_TIMESTAMP)
-                `, [
-                    req.user?.id || targetUserId,
-                    targetUserId,
-                    'CAPS Workload Assignment: ' + newlyAddedSubjects.join(', '),
-                    workloadNotice
-                ]);
+
 
                 try {
                     await db.query(`
@@ -2959,15 +2946,7 @@ exports.updateTeacherSubjects = async (req, res) => {
         if (newlyAddedSubjects.length > 0) {
             const workloadNotice = `Official CAPS Workload Update: You have been assigned the following subject(s): ${newlyAddedSubjects.join(', ')}. Your Teacher Dashboard and Class Registers have been updated accordingly.`;
 
-            await db.query(`
-                INSERT INTO messages (sender_id, recipient_id, subject, body, content, created_at)
-                VALUES ($1, $2, $3, $4, $4, CURRENT_TIMESTAMP)
-            `, [
-                req.user?.id || teacherUser.id,
-                teacherUser.id,
-                'CAPS Workload Assignment: ' + newlyAddedSubjects.join(', '),
-                workloadNotice
-            ]);
+
 
             try {
                 await db.query(`

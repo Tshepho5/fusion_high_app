@@ -10,7 +10,15 @@ exports.getMessages = async (req, res) => {
             FROM messages m
             LEFT JOIN users sender ON m.sender_id = sender.id
             LEFT JOIN users recipient ON m.recipient_id = recipient.id
-            WHERE m.sender_id = $1 OR m.recipient_id = $1
+            WHERE (m.sender_id = $1 OR m.recipient_id = $1)
+              AND (m.subject IS NULL OR (
+                  m.subject NOT ILIKE 'Attendance Notice%'
+                  AND m.subject NOT ILIKE 'New Assessment Mark%'
+                  AND m.subject NOT ILIKE 'Assessment Marks Published%'
+                  AND m.subject NOT ILIKE 'Important Academic Notice%'
+                  AND m.subject NOT ILIKE 'Textbook Allocated%'
+                  AND m.subject NOT ILIKE 'New Task Assigned%'
+              ))
             ORDER BY m.created_at DESC;
         `;
         const { rows } = await db.query(query, [userId]);
@@ -37,6 +45,23 @@ exports.replyToParent = async (req, res) => {
             `INSERT INTO messages (sender_id, recipient_id, child_id, subject, body, created_at) VALUES ($1, $2, $3, $4, $5, NOW())`,
             [teacherId, parentId, childId, subject, message]
         );
+
+        // Send in-app notification to parent (no external email)
+        try {
+            const NotificationService = require('../../services/notificationService');
+            const teacherRes = await db.query('SELECT full_name, surname FROM users WHERE id = $1', [teacherId]);
+            const teacherName = teacherRes.rows[0] ? `${teacherRes.rows[0].full_name} ${teacherRes.rows[0].surname}` : 'Teacher';
+            await NotificationService.sendToUsers([parentId], {
+                title: `New Message from ${teacherName}`,
+                message: subject ? `${subject}: ${message.substring(0, 100)}` : message.substring(0, 100),
+                type: 'message',
+                category: 'message',
+                actionUrl: '/messages'
+            });
+        } catch (notifErr) {
+            console.warn('In-app notification error on replyToParent:', notifErr.message);
+        }
+
         res.json({ message: 'Reply sent successfully.' });
     } catch (err) {
         console.error('Error replying to parent:', err);

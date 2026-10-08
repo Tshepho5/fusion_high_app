@@ -1,6 +1,7 @@
 const db = require('../../../db/db');
 const { resolveSchoolId } = require('../services/schoolScope');
 const emailService = require('../services/emailService');
+const NotificationService = require('../services/notificationService');
 
 // Ensure timetables table is initialized with grade, stream, status, and school_id columns
 async function ensureTimetablesTable() {
@@ -359,20 +360,19 @@ exports.generateSchoolWideTimetable = async (req, res) => {
             generatedSchedules.push(insertRes.rows[0]);
         }
 
-        // Notify all teachers of this school via in-app message and email
+        // Notify all teachers of this school via in-app Notification Icon
+        const teacherIds = allTeachers.map(t => t.id).filter(Boolean);
+        if (teacherIds.length > 0) {
+            await NotificationService.sendToUsers(teacherIds, {
+                title: 'School-Wide Timetable Generated (Grades 8 - 12)',
+                message: 'Principal / Administration has generated the 1-hour conflict-free master timetable for Grades 8 to 12. Please review your subject allocations in your Educator Portal.',
+                type: 'timetable',
+                category: 'timetable',
+                actionUrl: '/dashboard/teacher?tab=timetable'
+            }).catch(e => console.warn('Timetable notification error:', e.message));
+        }
+
         for (const teacher of allTeachers) {
-            try {
-                await db.query(
-                    `INSERT INTO messages (sender_id, recipient_id, subject, body, created_at)
-                     VALUES ($1, $2, $3, $4, NOW())`,
-                    [
-                        adminId,
-                        teacher.id,
-                        `School-Wide Timetable Generated (Grades 8 - 12)`,
-                        `Principal / Administration has generated the 1-hour conflict-free master timetable for Grades 8 to 12. Please review your subject allocations in your Educator Portal.`
-                    ]
-                );
-            } catch (e) {}
 
             if (teacher.email) {
                 emailService.sendTimetableDraftToTeacher({
@@ -777,15 +777,19 @@ exports.publishToTeachers = async (req, res) => {
         const notifySubject = `Educator Review Required: Grade ${grade} (${stream}) Timetable Draft`;
         const notifyBody = `Administration has generated the 1-hour weekly timetable draft for Grade ${grade} (${stream}). Please inspect your subject slots in your Educator Portal. Once all subject allocations are verified, you can release the schedule to your learners.`;
 
-        // Send in-app messages and real SMTP emails specifically to assigned teachers
+        // Send in-app notification to assigned teachers (Notification Icon)
+        const assignedTeacherIds = teachersRes.rows.map(t => t.id).filter(Boolean);
+        if (assignedTeacherIds.length > 0) {
+            await NotificationService.sendToUsers(assignedTeacherIds, {
+                title: notifySubject,
+                message: notifyBody,
+                type: 'timetable',
+                category: 'timetable',
+                actionUrl: `/dashboard/teacher?tab=timetable`
+            }).catch(e => console.warn('Timetable draft notification error:', e.message));
+        }
+
         for (const teacher of teachersRes.rows) {
-            try {
-                await db.query(
-                    `INSERT INTO messages (sender_id, recipient_id, subject, body, created_at)
-                     VALUES ($1, $2, $3, $4, NOW())`,
-                    [adminId, teacher.id, notifySubject, notifyBody]
-                );
-            } catch (e) {}
 
             if (teacher.email) {
                 emailService.sendTimetableDraftToTeacher({
@@ -967,45 +971,39 @@ exports.teacherPublishToLearners = async (req, res) => {
         const notifySubject = `Official Timetable Released: Grade ${grade} (${stream})`;
         const notifyBody = `Your subject educators have verified and officially published the 1-hour weekly class schedule for Grade ${grade} (${stream}). Check your Timetable tab for periods and room allocations.`;
 
-        // Send in-app messages and real SMTP emails to learners and parents
+        // Send in-app notification to learners and parents (Notification Icon)
+        const recipientUserIds = [
+            ...learnersRes.rows.map(r => r.learner_user_id).filter(Boolean),
+            ...learnersRes.rows.map(r => r.parent_id).filter(Boolean)
+        ];
+        if (recipientUserIds.length > 0) {
+            await NotificationService.sendToUsers(recipientUserIds, {
+                title: notifySubject,
+                message: notifyBody,
+                type: 'timetable',
+                category: 'timetable',
+                actionUrl: '/dashboard'
+            }).catch(e => console.warn('Timetable release notification error:', e.message));
+        }
+
         for (const record of learnersRes.rows) {
-            if (record.learner_user_id) {
-                try {
-                    await db.query(
-                        `INSERT INTO messages (sender_id, recipient_id, subject, body, created_at)
-                         VALUES ($1, $2, $3, $4, NOW())`,
-                        [teacherId, record.learner_user_id, notifySubject, notifyBody]
-                    );
-                } catch (e) {}
-
-                if (record.learner_email) {
-                    emailService.sendTimetableReleased({
-                        recipientName: `${record.full_name} ${record.surname || ''}`.trim(),
-                        email: record.learner_email,
-                        grade,
-                        stream,
-                        timetableName: tt.name
-                    }).catch(err => console.error(`[EMAIL ERROR] Timetable released email to learner ${record.learner_email}:`, err.message));
-                }
+            if (record.learner_user_id && record.learner_email) {
+                emailService.sendTimetableReleased({
+                    recipientName: `${record.full_name} ${record.surname || ''}`.trim(),
+                    email: record.learner_email,
+                    grade,
+                    stream,
+                    timetableName: tt.name
+                }).catch(err => console.error(`[EMAIL ERROR] Timetable released email to learner ${record.learner_email}:`, err.message));
             }
-            if (record.parent_id) {
-                try {
-                    await db.query(
-                        `INSERT INTO messages (sender_id, recipient_id, child_id, subject, body, created_at)
-                         VALUES ($1, $2, $3, $4, $5, NOW())`,
-                        [teacherId, record.parent_id, record.child_id, notifySubject, notifyBody]
-                    );
-                } catch (e) {}
-
-                if (record.parent_email) {
-                    emailService.sendTimetableReleased({
-                        recipientName: 'Parent / Guardian',
-                        email: record.parent_email,
-                        grade,
-                        stream,
-                        timetableName: tt.name
-                    }).catch(err => console.error(`[EMAIL ERROR] Timetable released email to parent ${record.parent_email}:`, err.message));
-                }
+            if (record.parent_id && record.parent_email) {
+                emailService.sendTimetableReleased({
+                    recipientName: 'Parent / Guardian',
+                    email: record.parent_email,
+                    grade,
+                    stream,
+                    timetableName: tt.name
+                }).catch(err => console.error(`[EMAIL ERROR] Timetable released email to parent ${record.parent_email}:`, err.message));
             }
         }
 
@@ -1185,14 +1183,15 @@ exports.deleteTimetable = async (req, res) => {
             const notifySubject = `Timetable Reset Notice: ${classSummary}`;
             const notifyBody = `Administration has deleted and reset the timetable for ${classSummary} (${stream}). A new conflict-free schedule will be published shortly.`;
 
-            for (const teacher of teachersRes.rows) {
-                try {
-                    await db.query(
-                        `INSERT INTO messages (sender_id, recipient_id, subject, body, created_at)
-                         VALUES ($1, $2, $3, $4, NOW())`,
-                        [adminId, teacher.id, notifySubject, notifyBody]
-                    );
-                } catch (_) {}
+            const resetTeacherIds = teachersRes.rows.map(t => t.id).filter(Boolean);
+            if (resetTeacherIds.length > 0) {
+                await NotificationService.sendToUsers(resetTeacherIds, {
+                    title: notifySubject,
+                    message: notifyBody,
+                    type: 'timetable',
+                    category: 'timetable',
+                    actionUrl: '/dashboard/teacher?tab=timetable'
+                }).catch(e => console.warn('Timetable reset notification error:', e.message));
             }
         } catch (msgErr) {
             console.warn('Could not dispatch direct teacher messages:', msgErr.message);

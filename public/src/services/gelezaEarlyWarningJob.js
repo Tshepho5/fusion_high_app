@@ -291,7 +291,8 @@ class GelezaEarlyWarningJob {
                 prediction_id: savedPredictionId,
                 alert_type: 'academic_risk'
               },
-              sendToMessages: true
+              sendToMessages: false,
+              sendEmail: false
             });
 
             stats.alerts_dispatched++;

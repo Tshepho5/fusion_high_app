@@ -29,6 +29,102 @@ class SoundNotificationService {
   private currentUserId: string | number | null = null;
   private pushSubscribed: boolean = false;
   private recentAlerts: Map<string, number> = new Map();
+  private audioCtx: AudioContext | null = null;
+
+  /**
+   * Lazily acquires or resumes an active Web Audio context
+   */
+  private getAudioContext(): AudioContext | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return null;
+      if (!this.audioCtx) {
+        this.audioCtx = new AudioContextClass();
+      }
+      if (this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume().catch(() => {});
+      }
+      return this.audioCtx;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /**
+   * Unlocks the browser audio context on user interaction
+   */
+  public unlockAudio() {
+    try {
+      const ctx = this.getAudioContext();
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+    } catch (_) {}
+  }
+
+  /**
+   * Synthesizes and plays a smooth, modern 2-tone in-app chime for chat messages.
+   * D5 (587.33 Hz) -> A5 (880 Hz)
+   */
+  public playAppMessageSound() {
+    try {
+      const ctx = this.getAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      // Note 1
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(587.33, now);
+      gain1.gain.setValueAtTime(0.12, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.16);
+
+      // Note 2
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(880.0, now + 0.08);
+      gain2.gain.setValueAtTime(0.14, now + 0.08);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.30);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.08);
+      osc2.stop(now + 0.30);
+    } catch (_) {}
+  }
+
+  /**
+   * Synthesizes and plays a crisp 3-tone notification chime for important notices (bell).
+   * C5 (523.25 Hz) -> E5 (659.25 Hz) -> C6 (1046.5 Hz)
+   */
+  public playAppNotificationSound() {
+    try {
+      const ctx = this.getAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const freqs = [523.25, 659.25, 1046.5];
+
+      freqs.forEach((freq, idx) => {
+        const startTime = now + idx * 0.09;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0.16, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.25);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + 0.25);
+      });
+    } catch (_) {}
+  }
 
   /**
    * Initializes notification audio context & permission check
@@ -39,6 +135,12 @@ class SoundNotificationService {
     }
     if (this.isInitialized) return;
     this.isInitialized = true;
+
+    // Unlock audio context on first user click or keypress
+    if (typeof window !== 'undefined') {
+      window.addEventListener('click', () => this.unlockAudio(), { once: true, passive: true });
+      window.addEventListener('keydown', () => this.unlockAudio(), { once: true, passive: true });
+    }
 
     this.ensurePhoneNotifications();
     if ('serviceWorker' in navigator) {
@@ -185,6 +287,8 @@ class SoundNotificationService {
         const newMsgCount = Number(msgRes.count ?? msgRes.unreadCount ?? 0);
         if (this.prevMessages !== null && newMsgCount > this.prevMessages) {
           const delta = newMsgCount - this.prevMessages;
+          // Play in-app audio chime directly from app
+          this.playAppMessageSound();
           this.showSystemNotification('New Message Received - Message Hub', {
             body: delta === 1 ? 'You have received a new message in your Message Hub.' : `You have ${delta} new messages waiting in your Message Hub.`,
             type: 'message',
@@ -201,6 +305,8 @@ class SoundNotificationService {
       if (notifRes && notifRes.unreadCount !== undefined) {
         const newNotifCount = Number(notifRes.unreadCount);
         if (this.prevAnnouncements !== null && newNotifCount > this.prevAnnouncements) {
+          // Play in-app notification chime directly from app
+          this.playAppNotificationSound();
           this.showSystemNotification('Official School Announcement', {
             body: 'A new important notice from the school executive or teachers has been posted.',
             type: 'announcement',
@@ -221,7 +327,7 @@ class SoundNotificationService {
   private attachFirestoreListeners() {
     if (!this.currentUserId || !firestoreDb) return;
     try {
-      // Real-time listener for school announcements
+      // Real-time listener for school announcements (Notification Bell)
       const notifQ = query(
         collection(firestoreDb, 'notifications'),
         where('user_id', '==', Number(this.currentUserId))
@@ -235,6 +341,7 @@ class SoundNotificationService {
         });
         const currentUnread = unreadDocs.length;
         if (this.prevAnnouncements !== null && currentUnread > this.prevAnnouncements) {
+          this.playAppNotificationSound();
           this.showSystemNotification('Official School Announcement', {
             body: 'A new important notice from the school administration has been posted.',
             type: 'announcement',
@@ -244,6 +351,31 @@ class SoundNotificationService {
         }
         this.prevAnnouncements = currentUnread;
         this.unreadAnnouncements = currentUnread;
+        this.notifyListeners();
+      }, () => {});
+
+      // Real-time listener for chat messages (Message Hub)
+      const msgQ = query(
+        collection(firestoreDb, 'messages'),
+        where('recipient_id', '==', Number(this.currentUserId))
+      );
+      onSnapshot(msgQ, (snapshot) => {
+        const unreadDocs = snapshot.docs.filter((doc) => {
+          const data = doc.data();
+          return !data.is_read;
+        });
+        const currentMsgUnread = unreadDocs.length;
+        if (this.prevMessages !== null && currentMsgUnread > this.prevMessages) {
+          this.playAppMessageSound();
+          this.showSystemNotification('New Message Received - Message Hub', {
+            body: 'You have received a new message in your Message Hub.',
+            type: 'message',
+            targetTab: 'messages',
+            tag: 'chat-message-alert'
+          });
+        }
+        this.prevMessages = currentMsgUnread;
+        this.unreadMessages = currentMsgUnread;
         this.notifyListeners();
       }, () => {});
     } catch (_) {}

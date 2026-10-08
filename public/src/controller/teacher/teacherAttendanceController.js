@@ -206,18 +206,6 @@ exports.submitAttendance = async (req, res) => {
                                 targetTab: 'attendance',
                                 metadata: { child_id: childId, status, date: attendanceDate, subject }
                             }).catch(e => console.warn('[NOTIFICATION SERVICE ATTENDANCE NOTICE]:', e.message));
-
-                            await db.query(
-                                `INSERT INTO messages (sender_id, recipient_id, child_id, subject, body, content, read_at, created_at)
-                                 VALUES ($1, $2, $3, $4, $5, $5, NULL, NOW())`,
-                                [
-                                    teacherId || 1,
-                                    childInfo.parent_id,
-                                    childId,
-                                    `Attendance Notice: ${learnerFullName} marked ${statusText}`,
-                                    `Dear Parent, ${learnerFullName} was marked ${statusText} for ${subject} on ${attendanceDate} at ${scanTimeStr}.`
-                                ]
-                            ).catch(e => console.warn('[MESSAGES INSERT ERROR]:', e.message));
                         }
                     }
 

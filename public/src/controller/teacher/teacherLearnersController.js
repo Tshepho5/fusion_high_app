@@ -559,34 +559,11 @@ exports.saveClassMarks = async (req, res) => {
                 savedCount++;
 
                 // If published, notify learner and parent
-                if (isPublished) {
-                    const notifySubject = `New Assessment Mark: ${subject} (${pctScore}%)`;
-                    const notifyBody = `Your educator recorded a score of ${pctScore}% (${rawScore}/${maxMark}) on ${assessmentTitle} in ${subject}.`;
-
-                    if (learnerUserId) {
-                        try {
-                            await db.query(
-                                `INSERT INTO messages (sender_id, recipient_id, subject, body, read_at, created_at)
-                                 VALUES ($1, $2, $3, $4, NULL, NOW())`,
-                                [teacherId || 1, learnerUserId, notifySubject, notifyBody]
-                            );
-                        } catch (e) {}
-                    }
-
-                    if (parentId) {
-                        try {
-                            await db.query(
-                                `INSERT INTO messages (sender_id, recipient_id, child_id, subject, body, read_at, created_at)
-                                 VALUES ($1, $2, $3, $4, $5, NULL, NOW())`,
-                                [teacherId || 1, parentId, childId, notifySubject, `Your child ${learnerFullName} scored ${pctScore}% (${rawScore}/${maxMark}) on ${assessmentTitle} in ${subject}.`]
-                            );
-                        } catch (e) {}
-                    }
-                }
+                // When published, individual notification is dispatched via targeted notification service
             }
         }
 
-        // When published, post official announcement & send notification
+        // When published, post official announcement & send in-app notification to Notification Icon
         if (isPublished) {
             const markAnnouncementTitle = `Assessment Marks Published: ${subject} - ${assessmentTitle}`;
             const markAnnouncementContent = `Marks for ${assessmentTitle} in ${subject} (Grade ${grade}) have been finalized and recorded by your educator. Learners and parents can check their subject marks, percentage mastery, and academic progress in their portal.`;
@@ -612,7 +589,7 @@ exports.saveClassMarks = async (req, res) => {
                 type: 'marks',
                 targetTab: 'reports',
                 sendToMessages: false,
-                sendEmail: true,
+                sendEmail: false,
                 metadata: {
                     subject: subject,
                     grade: grade,
@@ -673,8 +650,8 @@ exports.recordMark = async (req, res) => {
                     targetTab: 'reports',
                     metadata: { child_id: child.id, subject },
                     authorId: req.user?.id || 1,
-                    sendToMessages: true,
-                    sendEmail: true
+                    sendToMessages: false,
+                    sendEmail: false
                 }).catch(err => console.error('[RECORD MARK LEARNER NOTIFICATION ERROR]', err));
             }
 
@@ -687,7 +664,7 @@ exports.recordMark = async (req, res) => {
                     targetTab: 'marks',
                     metadata: { child_id: child.id, subject },
                     authorId: req.user?.id || 1,
-                    sendToMessages: true,
+                    sendToMessages: false,
                     sendEmail: false
                 }).catch(err => console.error('[RECORD MARK PARENT NOTIFICATION ERROR]', err));
             }
