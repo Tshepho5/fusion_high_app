@@ -8,11 +8,10 @@ router.post('/apply', schoolController.applySchool);
 
 const canReviewSchoolRegistrations = (req, res, next) => {
   const isSuper = Boolean(req.user?.is_superadmin);
-  const role = (req.user?.role || '').toLowerCase();
-  if (isSuper || role === 'admin' || role === 'superadmin') {
+  if (isSuper) {
     return next();
   }
-  return res.status(403).json({ error: 'Only Geleza SA administrators can review school admissions and registrations.' });
+  return res.status(403).json({ error: 'Only Geleza SA platform administrators can review school admissions and registrations.' });
 };
 
 // Geleza SA and system administrators review principal registrations.

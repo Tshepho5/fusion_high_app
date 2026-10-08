@@ -283,13 +283,17 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
 
   const filteredModules = useMemo(() => {
     return allModules.filter((m) => {
+      // Platform-wide tools reserved exclusively for Geleza SA Platform Admin
+      if (!isSuperAdmin && (m.id === 'school-admissions' || m.id === 'testers' || m.id === 'command-center')) {
+        return false;
+      }
       const matchesCategory = selectedCategory === 'all' || m.category === selectedCategory;
       const matchesSearch =
         m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (m.badge && m.badge.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchesCategory && matchesSearch;
     });
-  }, [allModules, selectedCategory, searchQuery]);
+  }, [allModules, selectedCategory, searchQuery, isSuperAdmin]);
 
   return (
     <div className="space-y-6 animate-fade-in text-slate-900 dark:text-slate-100 pb-20">

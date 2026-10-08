@@ -22,7 +22,7 @@ export const AdminDiscoverHub: React.FC<AdminDiscoverHubProps> = ({
   initialSubTab = 'admissions',
 }) => {
   const { user } = useAuth();
-  const canManageSchools = !!user?.is_superadmin || user?.role === 'admin';
+  const canManageSchools = Boolean(user?.is_superadmin);
 
   const [subTab, setSubTab] = useState<'admissions' | 'command-center' | 'inter-school' | 'bursaries'>(
     !canManageSchools && (initialSubTab === 'admissions' || initialSubTab === 'command-center')

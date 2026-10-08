@@ -33,8 +33,12 @@ import { AdminMessagesHub } from './AdminMessagesHub';
 import { ModulePageHeader } from '../../components/layout/WorkspaceChrome';
 import { MasterAdminExecutiveHub } from '../../components/admin/MasterAdminExecutiveHub';
 import { SchoolPerformanceMetricsView } from '../../components/admin/SchoolPerformanceMetricsView';
+import { useAuth } from '../../context/AuthContext';
+import { ShieldAlert } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
+  const { user } = useAuth();
+  const isSuperAdmin = Boolean(user?.is_superadmin);
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'overview';
   const [activeTab, setActiveTab] = useState<string>(initialTab);
@@ -200,9 +204,47 @@ export const AdminDashboard: React.FC = () => {
       {/* 2. SUB-MODULE VIEWS (Direct URL / More Hub Access with Full Persistence)   */}
       {/* ========================================================================= */}
       {(activeTab === 'school-admissions' || activeTab === 'school-applications') && (
-        <SchoolAdmissionsManager onNavigateTab={handleSelectTab} />
+        isSuperAdmin ? (
+          <SchoolAdmissionsManager onNavigateTab={handleSelectTab} />
+        ) : (
+          <div className="p-8 text-center bg-white dark:bg-surface-dark rounded-3xl border border-slate-200 dark:border-white/10 space-y-4">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+              <ShieldAlert className="w-7 h-7" />
+            </div>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white">Geleza SA Platform Administrator Access Only</h2>
+            <p className="text-sm text-slate-500 max-w-md mx-auto">
+              School registration review and campus accreditation is managed exclusively by Geleza SA platform executives. School administrators focus on managing their registered institution.
+            </p>
+            <button
+              onClick={() => handleSelectTab('overview')}
+              className="px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-xs shadow-md"
+            >
+              Return to School Dashboard
+            </button>
+          </div>
+        )
       )}
-      {activeTab === 'command-center' && <MultiSchoolCommandCenter />}
+      {activeTab === 'command-center' && (
+        isSuperAdmin ? (
+          <MultiSchoolCommandCenter />
+        ) : (
+          <div className="p-8 text-center bg-white dark:bg-surface-dark rounded-3xl border border-slate-200 dark:border-white/10 space-y-4">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+              <ShieldAlert className="w-7 h-7" />
+            </div>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white">Geleza SA Platform Command Access Only</h2>
+            <p className="text-sm text-slate-500 max-w-md mx-auto">
+              Multi-school provincial cross-monitoring is reserved for Geleza SA platform leadership.
+            </p>
+            <button
+              onClick={() => handleSelectTab('overview')}
+              className="px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-xs shadow-md"
+            >
+              Return to School Dashboard
+            </button>
+          </div>
+        )
+      )}
       {activeTab === 'inter-school' && <InterSchoolCompetitions />}
       {activeTab === 'consultations' && <ParentTeacherConsultations />}
       {activeTab === 'users' && <AdminUsers />}
@@ -225,7 +267,25 @@ export const AdminDashboard: React.FC = () => {
       {activeTab === 'staff-invites' && <DynamicClassesManager initialTab="invites" />}
       {activeTab === 'announcements' && <AnnouncementsFeed />}
       {(activeTab === 'testers' || activeTab === 'portal-controls') && (
-        <MasterAdminExecutiveHub onNavigateTab={handleSelectTab} />
+        isSuperAdmin ? (
+          <MasterAdminExecutiveHub onNavigateTab={handleSelectTab} />
+        ) : (
+          <div className="p-8 text-center bg-white dark:bg-surface-dark rounded-3xl border border-slate-200 dark:border-white/10 space-y-4">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+              <ShieldAlert className="w-7 h-7" />
+            </div>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white">Platform Controls Restricted</h2>
+            <p className="text-sm text-slate-500 max-w-md mx-auto">
+              System access gates and platform controls are managed exclusively by Geleza SA platform administrators.
+            </p>
+            <button
+              onClick={() => handleSelectTab('overview')}
+              className="px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-xs shadow-md"
+            >
+              Return to School Dashboard
+            </button>
+          </div>
+        )
       )}
       {activeTab === 'metrics' && (
         <SchoolPerformanceMetricsView onNavigateTab={handleSelectTab} />

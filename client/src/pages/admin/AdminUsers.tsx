@@ -1733,7 +1733,7 @@ export const AdminUsers: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-3">
                       <Badge variant={adm.is_superadmin ? 'rose' : 'indigo'} size="sm">
-                        {adm.is_superadmin ? 'Main Executive Admin' : 'School SubAdmin'}
+                        {adm.is_superadmin ? 'Geleza SA Platform Superadmin' : 'School Admin / Principal'}
                       </Badge>
                     </td>
                     <td className="py-3.5 px-3">
