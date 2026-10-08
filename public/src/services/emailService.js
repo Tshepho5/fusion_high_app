@@ -2785,6 +2785,138 @@ const emailService = {
     return await emailService.send(colleagueEmail, subject, bodyHtml);
   },
 
+  sendTeacherApplicationReceivedNotice: async ({ colleagueEmail, colleagueName, schoolName, subjects = [], classes = [] }) => {
+    const subject = `[${schoolName}] Educator Registration Received — Pending Principal Approval`;
+    const subjectsStr = Array.isArray(subjects) && subjects.length > 0 ? subjects.join(', ') : 'Assigned Subjects';
+    const classesStr = Array.isArray(classes) && classes.length > 0 ? classes.join(', ') : 'Assigned Classes';
+
+    const bodyHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; color: #f8fafc;">
+        <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); padding: 28px 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff;">${schoolName}</h1>
+          <p style="margin: 6px 0 0 0; font-size: 13px; color: #bae6fd; font-weight: 500;">Educator Registration & Workload Submission</p>
+        </div>
+        <div style="padding: 28px 24px;">
+          <p style="margin: 0 0 16px 0; font-size: 15px;">Dear <strong>${colleagueName || 'Educator'}</strong>,</p>
+          <p style="margin: 0 0 16px 0; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+            Thank you for confirming your assigned workload and completing your registration for <strong>${schoolName}</strong> on Geleza SA.
+          </p>
+          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #334155; border-radius: 12px; padding: 18px; margin: 0 0 20px 0;">
+            <h3 style="margin: 0 0 10px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #38bdf8;">Confirmed Workload Allocation</h3>
+            <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Subjects:</strong> <span style="color: #f1f5f9;">${subjectsStr}</span></p>
+            <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Classes:</strong> <span style="color: #f1f5f9;">${classesStr}</span></p>
+            <p style="margin: 4px 0; font-size: 13px; color: #fbbf24;"><strong>Status:</strong> Pending Principal Approval</p>
+          </div>
+          <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;">
+            Your registration is currently under review by the School Principal. As soon as the Principal approves your application, your account will be activated and you will be able to log in.
+          </p>
+        </div>
+        <div style="background: #090d16; padding: 16px 24px; text-align: center; border-top: 1px solid #1e293b; font-size: 11px; color: #64748b;">
+          ${schoolName} &bull; Geleza SA Digital Campus
+        </div>
+      </div>
+    `;
+
+    return await emailService.send(colleagueEmail, subject, bodyHtml);
+  },
+
+  sendTeacherApplicationPrincipalNotice: async ({ principalEmail, principalName, colleagueName, schoolName, subjects = [], grades = [], classes = [], saceNumber, reviewUrl }) => {
+    const subject = `[Action Required] New Educator Registration Pending Approval — ${colleagueName}`;
+    const subjectsStr = Array.isArray(subjects) && subjects.length > 0 ? subjects.join(', ') : 'Curriculum Subjects';
+    const classesStr = Array.isArray(classes) && classes.length > 0 ? classes.join(', ') : 'Class Groups';
+    const gradesStr = Array.isArray(grades) && grades.length > 0 ? grades.map(g => `Grade ${g}`).join(', ') : 'FET Phase';
+
+    const bodyHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; color: #f8fafc;">
+        <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); padding: 28px 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff;">${schoolName}</h1>
+          <p style="margin: 6px 0 0 0; font-size: 13px; color: #bae6fd; font-weight: 500;">Educator Registration & Workload Approval Required</p>
+        </div>
+        <div style="padding: 28px 24px;">
+          <p style="margin: 0 0 16px 0; font-size: 15px;">Dear Principal <strong>${principalName || 'Principal'}</strong>,</p>
+          <p style="margin: 0 0 16px 0; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+            Educator <strong>${colleagueName}</strong> has confirmed their assigned workload and submitted their registration on Geleza SA. Your approval is required to activate their account.
+          </p>
+          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #334155; border-radius: 12px; padding: 18px; margin: 0 0 24px 0;">
+            <h3 style="margin: 0 0 10px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #38bdf8;">Submitted Workload Allocation</h3>
+            <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Assigned Subjects:</strong> <span style="color: #f1f5f9;">${subjectsStr}</span></p>
+            <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Assigned Grades:</strong> <span style="color: #f1f5f9;">${gradesStr}</span></p>
+            <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Assigned Classes:</strong> <span style="color: #f1f5f9;">${classesStr}</span></p>
+            ${saceNumber ? `<p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>SACE Number:</strong> <span style="color: #f1f5f9;">${saceNumber}</span></p>` : ''}
+          </div>
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${reviewUrl || 'https://gelezasa.co.za/dashboard/admin?tab=employees'}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-size: 14px; font-weight: 700; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);">
+              Review & Approve Educator
+            </a>
+          </div>
+        </div>
+        <div style="background: #090d16; padding: 16px 24px; text-align: center; border-top: 1px solid #1e293b; font-size: 11px; color: #64748b;">
+          ${schoolName} &bull; Geleza SA Digital Campus
+        </div>
+      </div>
+    `;
+
+    return await emailService.send(principalEmail, subject, bodyHtml);
+  },
+
+  sendTeacherApplicationApprovedNotice: async ({ colleagueEmail, colleagueName, principalName, schoolName, subjects = [], classes = [], loginUrl, registerUrl }) => {
+    const subject = `[${schoolName}] Educator Account Approved & Activated!`;
+    const subjectsStr = Array.isArray(subjects) && subjects.length > 0 ? subjects.join(', ') : '';
+    const classesStr = Array.isArray(classes) && classes.length > 0 ? classes.join(', ') : '';
+    const actionUrl = loginUrl || registerUrl || 'https://gelezasa.co.za/login';
+
+    const bodyHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; color: #f8fafc;">
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 28px 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff;">${schoolName}</h1>
+          <p style="margin: 6px 0 0 0; font-size: 13px; color: #d1fae5; font-weight: 500;">Educator Registration Approved & Activated</p>
+        </div>
+        <div style="padding: 28px 24px;">
+          <p style="margin: 0 0 16px 0; font-size: 15px;">Dear <strong>${colleagueName || 'Educator'}</strong>,</p>
+          <p style="margin: 0 0 16px 0; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+            Principal <strong>${principalName || 'The School Principal'}</strong> has officially approved your educator registration and workload assignment at <strong>${schoolName}</strong>!
+          </p>
+          ${subjectsStr ? `
+          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #334155; border-radius: 12px; padding: 18px; margin: 0 0 24px 0;">
+            <h3 style="margin: 0 0 10px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #34d399;">Active Curriculum Allocations</h3>
+            <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Assigned Subjects:</strong> <span style="color: #f1f5f9;">${subjectsStr}</span></p>
+            ${classesStr ? `<p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Assigned Classes:</strong> <span style="color: #f1f5f9;">${classesStr}</span></p>` : ''}
+          </div>` : ''}
+          <p style="margin: 0 0 24px 0; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+            Your account is now fully active. You can sign in using your registered email and password to access your Teacher Dashboard, class registers, and student marks:
+          </p>
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${actionUrl}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-size: 14px; font-weight: 700; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);">
+              Log In to Teacher Dashboard
+            </a>
+          </div>
+        </div>
+        <div style="background: #090d16; padding: 16px 24px; text-align: center; border-top: 1px solid #1e293b; font-size: 11px; color: #64748b;">
+          ${schoolName} &bull; Geleza SA Digital Campus
+        </div>
+      </div>
+    `;
+
+    return await emailService.send(colleagueEmail, subject, bodyHtml);
+  },
+
+  sendTeacherApplicationDeclinedNotice: async ({ colleagueEmail, colleagueName, schoolName, reason }) => {
+    const subject = `[${schoolName}] Educator Registration Update`;
+    const bodyHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; color: #f8fafc;">
+        <div style="padding: 28px 24px;">
+          <h2 style="margin: 0 0 16px 0; font-size: 18px; color: #ffffff;">${schoolName}</h2>
+          <p style="margin: 0 0 16px 0; font-size: 14px; color: #cbd5e1;">Dear <strong>${colleagueName || 'Educator'}</strong>,</p>
+          <p style="margin: 0 0 16px 0; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+            Thank you for your submission to join the faculty of ${schoolName}. The administration has indicated that your educator application cannot be approved at this time${reason ? `: ${reason}` : '.'}
+          </p>
+          <p style="margin: 0; font-size: 12px; color: #94a3b8;">If you believe this is an error, please contact your School Principal directly.</p>
+        </div>
+      </div>
+    `;
+    return await emailService.send(colleagueEmail, subject, bodyHtml);
+  },
+
   sendSchoolApplicationReceivedNotice: async ({ principalEmail, principalName, schoolName, emisNumber, applicationNumber }) => {
     const subject = `Official School Application Received [${applicationNumber}] - ${schoolName}`;
     const contentHtml = `

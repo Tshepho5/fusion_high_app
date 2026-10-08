@@ -287,6 +287,9 @@ export const RegisterPage: React.FC = () => {
         full_name: teacherAppForm.full_name.trim(),
         surname: teacherAppForm.surname.trim(),
         phone: teacherAppForm.phone.trim(),
+        id_number: teacherAppForm.id_number.trim(),
+        sace_number: teacherAppForm.sace_number.trim(),
+        qualifications: teacherAppForm.qualifications.trim(),
         confirmed_subjects: confirmedSubjects.length > 0 ? confirmedSubjects : (teacherInvite?.subjects_offered || []),
         confirmed_grades: confirmedGrades.length > 0 ? confirmedGrades : (teacherInvite?.assigned_grades || [10]),
         confirmed_classes: confirmedClasses.length > 0 ? confirmedClasses : (teacherInvite?.assigned_classes || [])
@@ -304,10 +307,11 @@ export const RegisterPage: React.FC = () => {
           navigate('/dashboard/teacher?tab=overview');
         }, 1200);
       } else {
-        setTeacherRegistered(true);
+        setTeacherAppSubmitted(true);
+        setTeacherInvite((prev: any) => ({ ...prev, status: 'applied' }));
       }
     } catch (err: any) {
-      setTeacherError(err.response?.data?.error || err.message || 'Failed to confirm subjects and activate teacher account.');
+      setTeacherError(err.response?.data?.error || err.message || 'Failed to confirm subjects and submit registration.');
     } finally {
       setTeacherSubmitting(false);
     }
@@ -917,6 +921,55 @@ export const RegisterPage: React.FC = () => {
       );
     }
 
+    // Phase: Submitted & Awaiting Principal Approval
+    if (teacherAppSubmitted || teacherInvite?.status === 'applied') {
+      return (
+        <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+          <div className="max-w-lg w-full portal-glass rounded-3xl border border-slate-800 p-8 text-center space-y-6 shadow-2xl animate-fade-in">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto shadow-glow-amber">
+              <Clock className="w-9 h-9" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-bold">
+                Workload Confirmed • Awaiting Principal Approval
+              </span>
+              <h2 className="text-2xl font-black text-white">Registration Submitted for Approval</h2>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Thank you, <strong className="text-white">{teacherAppForm.full_name || teacherInvite?.full_name} {teacherAppForm.surname || teacherInvite?.surname}</strong>. Your confirmed teaching allocations and registration details have been submitted to your School Principal for official approval.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 text-left text-xs space-y-2">
+              <p className="text-slate-400"><strong>School:</strong> <span className="text-white">{teacherInvite?.school_name}</span></p>
+              <p className="text-slate-400"><strong>Assigned Subjects:</strong> <span className="text-cyan-300 font-bold">{(confirmedSubjects.length > 0 ? confirmedSubjects : (teacherInvite?.subjects_offered || [])).join(', ') || 'Curriculum Subjects'}</span></p>
+              <p className="text-slate-400"><strong>Assigned Classes:</strong> <span className="text-white">{(confirmedClasses.length > 0 ? confirmedClasses : (teacherInvite?.assigned_classes || [])).join(', ') || 'Allocated Groups'}</span></p>
+              <p className="text-slate-400"><strong>Account Status:</strong> <span className="text-amber-400 font-bold">Pending Principal Approval</span></p>
+            </div>
+
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Once your School Principal approves your profile in the Admin Command Center, your account will be activated and you will receive an official activation email with direct login access.
+            </p>
+
+            <div className="pt-2 flex gap-3">
+              <button
+                onClick={() => navigate('/login')}
+                className="flex-1 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs transition-all cursor-pointer"
+              >
+                Sign In
+              </button>
+              <Link
+                to="/"
+                className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-all border border-white/10 flex items-center justify-center"
+              >
+                Back to Home
+              </Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     // Phase: Confirm Invitation, Review Assigned Subjects & Set Password
     return (
       <div className="relative z-10 min-h-screen flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
@@ -1116,12 +1169,12 @@ export const RegisterPage: React.FC = () => {
                 {teacherSubmitting ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                    <span>Activating Educator Portal...</span>
+                    <span>Submitting Registration for Approval...</span>
                   </>
                 ) : (
                   <>
                     <Check className="w-4 h-4 text-slate-950 stroke-[3]" />
-                    <span>Confirm Subjects & Activate Teacher Account</span>
+                    <span>Confirm Workload & Submit Registration for Approval</span>
                   </>
                 )}
               </button>

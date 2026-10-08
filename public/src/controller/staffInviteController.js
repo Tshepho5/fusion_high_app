@@ -241,7 +241,82 @@ exports.confirmTeacherInvite = async (req, res) => {
       ? confirmed_classes
       : (invite.assigned_classes || []);
 
-    // 1. Create or Update user in users table (role_id = 4 for teacher)
+    // Check if invite is already approved by the principal
+    const isPreApproved = invite.status === 'approved';
+
+    if (!isPreApproved) {
+      // Step: Teacher confirms workload & registers credentials -> Status becomes 'applied' pending Principal Approval
+      await db.query(`
+        UPDATE staff_invites 
+        SET status = 'applied',
+            full_name = $1,
+            surname = $2,
+            phone = $3,
+            id_number = $4,
+            sace_number = COALESCE($5, sace_number),
+            qualifications = COALESCE($6, qualifications),
+            confirmed_subjects = $7,
+            confirmed_grades = $8,
+            confirmed_classes = $9,
+            subjects_offered = $7,
+            assigned_grades = $8,
+            assigned_classes = $9,
+            password_hash = $10,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $11;
+      `, [
+        finalFullName, finalSurname, finalPhone || null, finalIdNumber || null,
+        finalSaceNumber || null, (req.body.qualifications || invite.qualifications || null),
+        activeSubjects, activeGrades, activeClasses,
+        passwordHash, invite.id
+      ]);
+
+      const schoolRes = await db.query('SELECT name, contact_email, principal_name FROM schools WHERE id = $1', [invite.school_id]);
+      const school = schoolRes.rows[0] || { name: 'Geleza SA Partner School' };
+      const baseUrl = req.headers.origin || req.headers.referer?.replace(/\/$/, '') || process.env.FRONTEND_URL || process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+
+      // Notify Principal by email & in-app notification
+      try {
+        emailService.sendTeacherApplicationPrincipalNotice({
+          principalEmail: school.contact_email || 'admin@gelezasa.co.za',
+          principalName: school.principal_name || 'Principal',
+          colleagueName: `${finalFullName} ${finalSurname}`,
+          schoolName: school.name,
+          subjects: activeSubjects,
+          grades: activeGrades,
+          classes: activeClasses,
+          saceNumber: finalSaceNumber,
+          reviewUrl: `${baseUrl}/dashboard/admin?tab=employees`
+        }).catch(e => console.warn('Could not send principal notice:', e.message));
+
+        emailService.sendTeacherApplicationReceivedNotice({
+          colleagueEmail: invite.email,
+          colleagueName: `${finalFullName} ${finalSurname}`,
+          schoolName: school.name,
+          subjects: activeSubjects,
+          classes: activeClasses
+        }).catch(e => console.warn('Could not send teacher application received notice:', e.message));
+
+        if (invite.invited_by) {
+          NotificationService.sendToUsers([invite.invited_by], {
+            title: 'Teacher Confirmed Workload & Registered',
+            message: `${finalFullName} ${finalSurname} has confirmed their assigned subjects (${activeSubjects.join(', ')}) and registered. Please review and approve their account.`,
+            type: 'announcement',
+            category: 'staff',
+            actionUrl: '/dashboard/admin?tab=employees'
+          }).catch(() => {});
+        }
+      } catch (err) {}
+
+      return res.json({
+        success: true,
+        status: 'applied',
+        requiresApproval: true,
+        message: 'Registration and workload confirmed successfully! Your registration is now pending review and approval by the School Principal.'
+      });
+    }
+
+    // IF ALREADY APPROVED: Immediately activate user account in users & employees
     const userRes = await db.query(`
       INSERT INTO users (
         email, password_hash, role_id, school_id, is_superadmin,
@@ -275,7 +350,7 @@ exports.confirmTeacherInvite = async (req, res) => {
         user_id, full_name, surname, department_id, school_id, phone, email,
         subjects, grades_taught, classes_taught
       )
-      VALUES ($1, $2, $3, 1, $4, $5, $6, $7, $8, $9)
+      VALUES ($1, $2, $3, 2, $4, $5, $6, $7, $8, $9)
       ON CONFLICT (user_id) DO UPDATE SET
         school_id = EXCLUDED.school_id,
         full_name = EXCLUDED.full_name,
@@ -350,7 +425,7 @@ exports.confirmTeacherInvite = async (req, res) => {
         message: `${finalFullName} ${finalSurname} has confirmed their invitation and activated their Educator account for ${activeSubjects.join(', ')}.`,
         type: 'announcement',
         category: 'staff',
-        actionUrl: '/dashboard/admin?tab=staff-invites'
+        actionUrl: '/dashboard/admin?tab=employees'
       }).catch(e => console.warn('Principal notification error:', e.message));
     }
 

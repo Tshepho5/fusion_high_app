@@ -185,6 +185,8 @@ export const AdminUsers: React.FC = () => {
   // Modals
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
   const [isInviteTeacherModalOpen, setIsInviteTeacherModalOpen] = useState(false);
+  const [staffInvites, setStaffInvites] = useState<any[]>([]);
+  const [approvingInviteId, setApprovingInviteId] = useState<number | null>(null);
   const [teacherInviteForm, setTeacherInviteForm] = useState({
     email: '',
     full_name: '',
@@ -312,7 +314,7 @@ export const AdminUsers: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [usersData, empData, lrnData, metaData, admData, parentsData, adminsData, parentAppsData] = await Promise.allSettled([
+      const [usersData, empData, lrnData, metaData, admData, parentsData, adminsData, parentAppsData, staffInvitesData] = await Promise.allSettled([
         adminService.getUsers(),
         adminService.getEmployees(),
         adminService.getLearners(),
@@ -320,7 +322,8 @@ export const AdminUsers: React.FC = () => {
         adminService.getAdmissions(),
         adminService.getParents(),
         isSuperAdmin ? adminService.getSchoolAdmins() : Promise.resolve({ admins: [] }),
-        parentApplicationService.getAll()
+        parentApplicationService.getAll(),
+        classStaffService.getStaffInvites()
       ]);
 
       if (usersData.status === 'fulfilled') setUsers(Array.isArray(usersData.value) ? usersData.value : []);
@@ -339,6 +342,9 @@ export const AdminUsers: React.FC = () => {
       if (parentAppsData.status === 'fulfilled') {
         const paList = parentAppsData.value?.applications || (Array.isArray(parentAppsData.value) ? parentAppsData.value : []);
         setParentApplications(paList);
+      }
+      if (staffInvitesData.status === 'fulfilled') {
+        setStaffInvites(Array.isArray(staffInvitesData.value) ? staffInvitesData.value : []);
       }
 
     } catch (err: any) {
@@ -436,14 +442,17 @@ export const AdminUsers: React.FC = () => {
     setSubmitting(true);
 
     try {
-      await adminService.createEmployee({
+      const res = await adminService.createEmployee({
         ...employeeForm,
         department_id: parseInt(employeeForm.department_id, 10),
         employee_role_id: parseInt(employeeForm.employee_role_id, 10),
         password: employeeForm.password || 'Teacher@2026'
       });
 
-      setActionSuccess(`Employee ${employeeForm.full_name} ${employeeForm.surname} registered successfully. Onboarding email sent.`);
+      if (res.inviteUrl) {
+        setGeneratedInviteUrl(res.inviteUrl);
+      }
+      setActionSuccess(res.message || `Employee ${employeeForm.full_name} ${employeeForm.surname} saved. Invitation email dispatched.`);
       setIsAddEmployeeModalOpen(false);
       setEmployeeForm({
         full_name: '',
@@ -462,12 +471,44 @@ export const AdminUsers: React.FC = () => {
         password: '',
       });
       fetchData();
-      setTimeout(() => setActionSuccess(null), 4000);
+      setTimeout(() => setActionSuccess(null), 6000);
     } catch (err: any) {
       console.error('Create employee error:', err);
       setError(err.response?.data?.error || 'Failed to create employee in database.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Staff Invite Approval / Decline Handlers
+  const handleApproveStaffInvite = async (id: number, name: string) => {
+    setApprovingInviteId(id);
+    setError(null);
+    try {
+      const res = await classStaffService.approveStaffInvite(id);
+      setActionSuccess(res.message || `Educator application for ${name} approved and activated!`);
+      fetchData();
+      setTimeout(() => setActionSuccess(null), 6000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to approve educator application.');
+    } finally {
+      setApprovingInviteId(null);
+    }
+  };
+
+  const handleDeclineStaffInvite = async (id: number) => {
+    const reason = window.prompt('Please provide a reason for declining this application (optional):');
+    if (reason === null) return;
+    setApprovingInviteId(id);
+    try {
+      await classStaffService.declineStaffInvite(id, reason);
+      setActionSuccess('Staff application marked as declined.');
+      fetchData();
+      setTimeout(() => setActionSuccess(null), 4000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to decline application.');
+    } finally {
+      setApprovingInviteId(null);
     }
   };
 
@@ -816,6 +857,26 @@ export const AdminUsers: React.FC = () => {
     });
   };
 
+  const toggleGradeForEmployee = (g: number) => {
+    setEmployeeForm(prev => {
+      const exists = prev.grades_taught.includes(g);
+      return {
+        ...prev,
+        grades_taught: exists ? prev.grades_taught.filter(item => item !== g) : [...prev.grades_taught, g]
+      };
+    });
+  };
+
+  const toggleClassForEmployee = (cls: string) => {
+    setEmployeeForm(prev => {
+      const exists = prev.classes_taught.includes(cls);
+      return {
+        ...prev,
+        classes_taught: exists ? prev.classes_taught.filter(item => item !== cls) : [...prev.classes_taught, cls]
+      };
+    });
+  };
+
   const toggleSubjectForLearner = (subName: string) => {
     setLearnerForm(prev => {
       const exists = prev.subjects.includes(subName);
@@ -941,6 +1002,11 @@ export const AdminUsers: React.FC = () => {
           >
             <Briefcase className="w-3.5 h-3.5" />
             <span>Employees & Teachers ({employees.length})</span>
+            {staffInvites.filter(si => si.status === 'applied').length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[10px] animate-pulse">
+                {staffInvites.filter(si => si.status === 'applied').length} Pending
+              </span>
+            )}
           </button>
 
           <button
@@ -1027,13 +1093,149 @@ export const AdminUsers: React.FC = () => {
         {loading ? (
           <LoadingSpinner text="Retrieving records from PostgreSQL database..." />
         ) : activeTab === 'employees' ? (
-          /* Employees Table */
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
-                  <th className="pb-3 px-3">Educator / Staff</th>
-                  <th className="pb-3 px-3">Designation & Department</th>
+          <div className="space-y-6">
+            {/* PENDING EDUCATOR REGISTRATIONS & WORKLOAD ALLOCATIONS SECTION */}
+            {staffInvites.filter(si => si.status === 'applied' || si.status === 'pending').length > 0 && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-950/40 border border-amber-500/30 space-y-3.5 shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center border border-amber-500/30">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
+                        <span>Pending Educator Registrations & Workload Allocations</span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold text-[10px] border border-amber-500/30">
+                          {staffInvites.filter(si => si.status === 'applied' || si.status === 'pending').length} Actions
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Review confirmed workload assignments and approve newly registered educators to activate their portal access.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {staffInvites
+                    .filter(si => si.status === 'applied' || si.status === 'pending')
+                    .map((invite) => {
+                      const isApplied = invite.status === 'applied';
+                      const subs = invite.confirmed_subjects?.length > 0
+                        ? invite.confirmed_subjects
+                        : (invite.subjects_offered || []);
+                      const grds = invite.confirmed_grades?.length > 0
+                        ? invite.confirmed_grades
+                        : (invite.assigned_grades || []);
+                      const clss = invite.confirmed_classes?.length > 0
+                        ? invite.confirmed_classes
+                        : (invite.assigned_classes || []);
+
+                      return (
+                        <div
+                          key={invite.id}
+                          className="p-3.5 rounded-xl bg-slate-950/70 border border-white/10 flex flex-col justify-between gap-3 hover:border-brand-500/40 transition-all"
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <h4 className="font-bold text-white text-sm">
+                                  {invite.full_name || 'Educator'} {invite.surname || ''}
+                                </h4>
+                                <p className="text-[11px] text-slate-400 font-mono">{invite.email}</p>
+                                {invite.phone && <p className="text-[10px] text-slate-500">Phone: {invite.phone}</p>}
+                              </div>
+                              <span
+                                className={`px-2 py-0.5 rounded-md font-bold text-[10px] shrink-0 border ${
+                                  isApplied
+                                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/30 animate-pulse'
+                                    : 'bg-cyan-500/10 text-cyan-300 border-cyan-500/20'
+                                }`}
+                              >
+                                {isApplied ? 'Workload Confirmed • Needs Approval' : 'Invite Sent (Pending Confirmation)'}
+                              </span>
+                            </div>
+
+                            {/* Workload preview */}
+                            <div className="p-2.5 rounded-lg bg-white/5 border border-white/5 space-y-1 text-[11px]">
+                              <div className="flex flex-wrap items-center gap-1">
+                                <span className="text-slate-400 font-semibold">Subjects:</span>
+                                {subs.length > 0 ? (
+                                  subs.map((s: string) => (
+                                    <span key={s} className="px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300 text-[10px] font-bold">
+                                      {s}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-slate-500">General</span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 pt-0.5">
+                                <span><strong>Grades:</strong> {grds.join(', ') || 'FET Phase'}</span>
+                                <span>&bull;</span>
+                                <span><strong>Classes:</strong> {clss.join(', ') || '10A'}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/5">
+                            {invite.invite_token && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const url = `${window.location.origin}/register?role=teacher&invite=${invite.invite_token}&email=${encodeURIComponent(invite.email)}`;
+                                  navigator.clipboard.writeText(url);
+                                  setActionSuccess(`Direct registration link copied for ${invite.email}`);
+                                  setTimeout(() => setActionSuccess(null), 3000);
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-[11px] cursor-pointer flex items-center gap-1"
+                                title="Copy confirmation link to share via WhatsApp or SMS"
+                              >
+                                <ExternalLink className="w-3 h-3 text-cyan-300" />
+                                <span>Copy Link</span>
+                              </button>
+                            )}
+
+                            <div className="flex items-center gap-2 ml-auto">
+                              <button
+                                type="button"
+                                onClick={() => handleDeclineStaffInvite(invite.id)}
+                                className="px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-bold text-[11px] cursor-pointer transition-colors"
+                              >
+                                Decline
+                              </button>
+                              <button
+                                type="button"
+                                disabled={approvingInviteId === invite.id}
+                                onClick={() => handleApproveStaffInvite(invite.id, `${invite.full_name || ''} ${invite.surname || ''}`.trim())}
+                                className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-[11px] shadow-sm cursor-pointer flex items-center gap-1 transition-all disabled:opacity-50"
+                              >
+                                {approvingInviteId === invite.id ? (
+                                  <span>Approving...</span>
+                                ) : (
+                                  <>
+                                    <Check className="w-3 h-3 text-white stroke-[3]" />
+                                    <span>Approve & Activate Teacher</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* Active Employees Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
+                    <th className="pb-3 px-3">Educator / Staff</th>
+                    <th className="pb-3 px-3">Designation & Department</th>
                   <th className="pb-3 px-3">Assigned Subjects</th>
                   <th className="pb-3 px-3">Grades & Classes</th>
                   <th className="pb-3 px-3">Profile Edit</th>
@@ -1110,6 +1312,7 @@ export const AdminUsers: React.FC = () => {
               <div className="p-8 text-center text-slate-400 text-xs">No employees found.</div>
             )}
           </div>
+        </div>
         ) : activeTab === 'parents' ? (
           /* Parents Table */
           <div className="overflow-x-auto">
@@ -2011,6 +2214,65 @@ export const AdminUsers: React.FC = () => {
             </div>
           </div>
 
+          {/* Assigned Grades */}
+          <div className="space-y-1.5">
+            <label className="block text-slate-300 font-bold">Assigned Grades (Click to Toggle)</label>
+            <div className="flex flex-wrap gap-2">
+              {[8, 9, 10, 11, 12].map(g => {
+                const isSelected = employeeForm.grades_taught.includes(g);
+                return (
+                  <button
+                    type="button"
+                    key={g}
+                    onClick={() => toggleGradeForEmployee(g)}
+                    className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white/5 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Grade {g}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Assigned Classes */}
+          <div className="space-y-1.5">
+            <label className="block text-slate-300 font-bold">Assigned Classes (Click to Toggle)</label>
+            <div className="flex flex-wrap gap-2">
+              {(metadata.classes.length > 0
+                ? metadata.classes.map(c => c.name)
+                : ['8A', '8B', '9A', '9B', '10A', '10B', '11A', '11B', '12A', '12B']
+              ).map(cls => {
+                const isSelected = employeeForm.classes_taught.includes(cls);
+                return (
+                  <button
+                    type="button"
+                    key={cls}
+                    onClick={() => toggleClassForEmployee(cls)}
+                    className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-white/5 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {cls}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Informational Workload Invitation Banner */}
+          <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs flex items-center gap-2.5">
+            <Mail className="w-4 h-4 shrink-0 text-cyan-400" />
+            <span>
+              An official workload invitation email will be dispatched to this educator with their assigned subjects and classes. The educator will review and confirm their workload, set their password, and submit their registration for your final approval.
+            </span>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-slate-300 font-bold mb-1">Hire Date</label>
@@ -2022,12 +2284,12 @@ export const AdminUsers: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-slate-300 font-bold mb-1">Initial Password</label>
+              <label className="block text-slate-300 font-bold mb-1">Initial Password (Optional Fallback)</label>
               <input
                 type="text"
                 value={employeeForm.password}
                 onChange={(e) => setEmployeeForm(prev => ({ ...prev, password: e.target.value }))}
-                placeholder="Default: Teacher@2026"
+                placeholder="Teacher will set password upon registration"
                 className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-brand-500"
               />
             </div>
@@ -2037,16 +2299,26 @@ export const AdminUsers: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsAddEmployeeModalOpen(false)}
-              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold transition-colors"
+              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-extrabold shadow-glow-indigo transition-all disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-extrabold shadow-glow-indigo transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
             >
-              {submitting ? 'Saving to Database...' : 'Register Employee'}
+              {submitting ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Dispatching Invitation...</span>
+                </>
+              ) : (
+                <>
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Assign Workload & Send Invitation</span>
+                </>
+              )}
             </button>
           </div>
         </form>

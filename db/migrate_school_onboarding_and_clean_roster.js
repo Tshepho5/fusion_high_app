@@ -99,6 +99,19 @@ async function migrateSchoolOnboardingAndCleanRoster() {
 
       ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS assigned_classes TEXT[] DEFAULT '{}';
       ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS sports_coached TEXT[] DEFAULT '{}';
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS id_number VARCHAR(50);
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS qualifications VARCHAR(255);
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS experience_years INTEGER;
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS confirmed_subjects TEXT[] DEFAULT '{}';
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS confirmed_grades INTEGER[] DEFAULT '{}';
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS confirmed_classes TEXT[] DEFAULT '{}';
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS approval_token VARCHAR(64);
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS approved_by INTEGER;
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP;
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS declined_reason TEXT;
+      ALTER TABLE staff_invites DROP CONSTRAINT IF EXISTS staff_invites_status_check;
     `);
 
     // 4. Ensure classes has school_id and room_number

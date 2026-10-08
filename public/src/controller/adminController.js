@@ -274,15 +274,104 @@ exports.createEmployee = async (req, res) => {
             return res.status(400).json({ error: 'A user with this email address already exists.' });
         }
 
-        // 2. Fetch teacher role id
+        // Format workload arrays
+        const subsArray = Array.isArray(subjects) ? subjects : (subjects ? subjects.split(',').map(s => s.trim()).filter(Boolean) : []);
+        const gradesArray = Array.isArray(grades_taught) ? grades_taught.map(Number) : (grades_taught ? grades_taught.split(',').map(g => parseInt(g.trim(), 10)).filter(Boolean) : [10, 11]);
+        const classesArray = Array.isArray(classes_taught) ? classes_taught : (classes_taught ? classes_taught.split(',').map(c => c.trim()).filter(Boolean) : ['10A']);
+
+        const isEducator = (employee_role_id ? parseInt(employee_role_id, 10) === 1 : true) || (subsArray.length > 0) || (classesArray.length > 0);
+
+        let baseUrl = typeof req.get === 'function' ? req.get('origin') : null;
+        if (!baseUrl && typeof req.get === 'function' && req.get('referer')) {
+            try {
+                const u = new URL(req.get('referer'));
+                baseUrl = `${u.protocol}//${u.host}`;
+            } catch (e) {}
+        }
+        if (!baseUrl) {
+            const host = (typeof req.get === 'function' && req.get('host')) || 'localhost:4000';
+            const protocol = req.protocol || 'http';
+            baseUrl = `${protocol}://${host}`;
+        }
+
+        const schoolRes = await db.query('SELECT name, principal_name FROM schools WHERE id = $1', [targetSchoolId]);
+        const schoolName = schoolRes.rows[0]?.name || 'Geleza SA Partner School';
+        const principalName = `${req.user?.full_name || schoolRes.rows[0]?.principal_name || 'The School Principal'}`;
+
+        // IF EDUCATOR / TEACHER: Create Staff Invite with Workload Assignment & send confirmation email!
+        if (isEducator) {
+            const token = require('crypto').randomBytes(24).toString('hex');
+
+            // Check if invite already exists
+            const existingInvite = await db.query('SELECT id FROM staff_invites WHERE school_id = $1 AND LOWER(email) = $2', [targetSchoolId, normalizedEmail]);
+            let inviteRecord;
+            if (existingInvite.rows.length > 0) {
+                const updRes = await db.query(`
+                    UPDATE staff_invites
+                    SET invite_token = $1, status = 'pending', role_type = 'teacher',
+                        full_name = $2, surname = $3, phone = $4, id_number = $5,
+                        subjects_offered = $6, assigned_grades = $7, assigned_classes = $8,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = $9
+                    RETURNING *;
+                `, [
+                    token, full_name.trim(), surname.trim(), phone ? phone.trim() : null,
+                    id_number ? id_number.trim() : null, subsArray, gradesArray, classesArray,
+                    existingInvite.rows[0].id
+                ]);
+                inviteRecord = updRes.rows[0];
+            } else {
+                const insRes = await db.query(`
+                    INSERT INTO staff_invites (
+                        school_id, invited_by, email, full_name, surname, role_type,
+                        subjects_offered, assigned_grades, assigned_classes, phone, id_number,
+                        status, invite_token
+                    )
+                    VALUES ($1, $2, $3, $4, $5, 'teacher', $6, $7, $8, $9, $10, 'pending', $11)
+                    RETURNING *;
+                `, [
+                    targetSchoolId, req.user?.id || null, normalizedEmail,
+                    full_name.trim(), surname.trim(), subsArray, gradesArray, classesArray,
+                    phone ? phone.trim() : null, id_number ? id_number.trim() : null, token
+                ]);
+                inviteRecord = insRes.rows[0];
+            }
+
+            const inviteUrl = `${baseUrl}/register?role=teacher&invite=${token}&email=${encodeURIComponent(normalizedEmail)}`;
+
+            // Send official workload assignment and invitation email to educator
+            try {
+                await emailService.sendStaffInvitationNotice({
+                    colleagueEmail: normalizedEmail,
+                    colleagueName: `${full_name.trim()} ${surname.trim()}`,
+                    principalName,
+                    schoolName,
+                    roleType: 'teacher',
+                    subjects: subsArray,
+                    grades: gradesArray,
+                    classes: classesArray,
+                    inviteUrl
+                });
+                console.log(`[EMAIL] Educator workload invitation dispatched to ${normalizedEmail}`);
+            } catch (mailErr) {
+                console.error('[EMAIL ERROR] Failed to send educator invitation:', mailErr);
+            }
+
+            return res.status(201).json({
+                success: true,
+                message: `Workload assigned and official invitation email sent to ${normalizedEmail}. The teacher will receive a confirmation link to confirm their assigned subjects (${subsArray.join(', ')}), set their password, and submit their registration for your approval.`,
+                inviteUrl,
+                invite: inviteRecord
+            });
+        }
+
+        // NON-TEACHER STAFF: Direct registration
         const roleRes = await db.query("SELECT id FROM roles WHERE name = 'teacher'");
         const roleId = roleRes.rows[0]?.id || 4;
 
-        // 3. Hash password
-        const initialPassword = password || 'Teacher@2026';
+        const initialPassword = password || 'Staff@2026';
         const hash = await bcrypt.hash(initialPassword, 10);
 
-        // 4. Begin transaction
         await db.query('BEGIN');
 
         let dobForDb = null;
@@ -310,11 +399,6 @@ exports.createEmployee = async (req, res) => {
         ]);
         const newUserId = userRes.rows[0].id;
 
-        // Format arrays
-        const subsArray = Array.isArray(subjects) ? subjects : (subjects ? subjects.split(',').map(s => s.trim()).filter(Boolean) : []);
-        const gradesArray = Array.isArray(grades_taught) ? grades_taught.map(Number) : (grades_taught ? grades_taught.split(',').map(g => parseInt(g.trim(), 10)).filter(Boolean) : [10, 11]);
-        const classesArray = Array.isArray(classes_taught) ? classes_taught : (classes_taught ? classes_taught.split(',').map(c => c.trim()).filter(Boolean) : ['10A']);
-
         const empInsertQuery = `
             INSERT INTO employees (user_id, employee_role_id, full_name, surname, department_id, subjects, grades_taught, classes_taught, phone, email, hired_date)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -322,10 +406,10 @@ exports.createEmployee = async (req, res) => {
         `;
         const empRes = await db.query(empInsertQuery, [
             newUserId,
-            employee_role_id ? parseInt(employee_role_id, 10) : 1, // 1 = teacher
+            employee_role_id ? parseInt(employee_role_id, 10) : 2,
             full_name.trim(),
             surname.trim(),
-            department_id ? parseInt(department_id, 10) : 2,       // 2 = Academic
+            department_id ? parseInt(department_id, 10) : 1,
             subsArray,
             gradesArray,
             classesArray,
@@ -336,8 +420,7 @@ exports.createEmployee = async (req, res) => {
 
         await db.query('COMMIT');
 
-        // Look up Department and Employee Role names for email summary
-        let deptName = 'Academic Department';
+        let deptName = 'Support Department';
         try {
             if (department_id) {
                 const dRes = await db.query('SELECT name FROM departments WHERE id = $1', [department_id]);
@@ -345,7 +428,7 @@ exports.createEmployee = async (req, res) => {
             }
         } catch (e) {}
 
-        let roleName = 'Educator / Teacher';
+        let roleName = 'Employee';
         try {
             if (employee_role_id) {
                 const rRes = await db.query('SELECT title FROM employee_roles WHERE id = $1', [employee_role_id]);
@@ -353,21 +436,7 @@ exports.createEmployee = async (req, res) => {
             }
         } catch (e) {}
 
-        // Send Welcome & Credentials Email to the newly added employee
         try {
-            let baseUrl = typeof req.get === 'function' ? req.get('origin') : null;
-            if (!baseUrl && typeof req.get === 'function' && req.get('referer')) {
-                try {
-                    const u = new URL(req.get('referer'));
-                    baseUrl = `${u.protocol}//${u.host}`;
-                } catch (e) {}
-            }
-            if (!baseUrl) {
-                const host = (typeof req.get === 'function' && req.get('host')) || 'localhost:4000';
-                const protocol = req.protocol || 'http';
-                baseUrl = `${protocol}://${host}`;
-            }
-
             await emailService.sendEmployeeWelcome({
                 name: full_name.trim(),
                 surname: surname.trim(),
@@ -380,29 +449,13 @@ exports.createEmployee = async (req, res) => {
                 classes: classesArray,
                 baseUrl
             });
-            console.log(`[EMAIL] Employee welcome email sent to ${normalizedEmail}`);
         } catch (mailErr) {
             console.error('[EMAIL ERROR] Failed to send employee welcome email:', mailErr);
         }
 
-        // Insert welcome system notification in notifications table for the new staff member
-        try {
-            await db.query(
-                `INSERT INTO notifications (user_id, title, message, type)
-                 VALUES ($1, $2, $3, 'system')`,
-                [
-                    newUserId,
-                    'Welcome to Fusion High School',
-                    `Welcome ${full_name} ${surname}! Your staff profile has been activated. Assigned subjects: ${subsArray.join(', ') || 'General'}.`
-                ]
-            );
-        } catch (notifErr) {
-            console.error('Error creating staff welcome notification:', notifErr);
-        }
-
         res.status(201).json({
             success: true,
-            message: `Employee ${full_name} ${surname} created successfully. An official onboarding email with login credentials and assigned workload has been sent to ${normalizedEmail}.`,
+            message: `Employee ${full_name} ${surname} created successfully. An onboarding email with login credentials has been sent to ${normalizedEmail}.`,
             user: userRes.rows[0],
             employee: empRes.rows[0]
         });
@@ -3518,41 +3571,171 @@ exports.approveStaffInvite = async (req, res) => {
     }
 
     const invite = inviteRes.rows[0];
-    const approvalToken = require('crypto').randomBytes(24).toString('hex');
-
-    await db.query(`
-      UPDATE staff_invites 
-      SET status = 'approved',
-          approval_token = $1,
-          approved_by = $2,
-          approved_at = CURRENT_TIMESTAMP
-      WHERE id = $3;
-    `, [approvalToken, req.user?.id || null, id]);
-
-    const schoolRes = await db.query('SELECT name FROM schools WHERE id = $1', [invite.school_id]);
+    const schoolRes = await db.query('SELECT name, principal_name FROM schools WHERE id = $1', [invite.school_id]);
     const schoolName = schoolRes.rows[0]?.name || 'Geleza SA Partner School';
-    const principalName = `${req.user?.full_name || 'The School Principal'}`;
-
+    const principalName = `${req.user?.full_name || schoolRes.rows[0]?.principal_name || 'The School Principal'}`;
     const baseUrl = req.headers.origin || req.headers.referer?.replace(/\/$/, '') || process.env.FRONTEND_URL || process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
-    const registerUrl = `${baseUrl}/register?role=teacher&step=register&token=${approvalToken}&email=${encodeURIComponent(invite.email)}`;
 
-    emailService.sendTeacherApplicationApprovedNotice({
-      colleagueEmail: invite.email,
-      colleagueName: invite.full_name ? `${invite.full_name} ${invite.surname || ''}`.trim() : 'Educator',
-      principalName,
-      schoolName,
-      roleType: invite.role_type,
-      registerUrl
-    }).catch(e => console.warn('Could not send teacher approval email:', e.message));
+    const activeSubjects = (invite.confirmed_subjects && invite.confirmed_subjects.length > 0)
+      ? invite.confirmed_subjects
+      : (invite.subjects_offered || []);
+    const activeGrades = (invite.confirmed_grades && invite.confirmed_grades.length > 0)
+      ? invite.confirmed_grades
+      : (invite.assigned_grades || [10]);
+    const activeClasses = (invite.confirmed_classes && invite.confirmed_classes.length > 0)
+      ? invite.confirmed_classes
+      : (invite.assigned_classes || []);
 
-    res.json({
-      success: true,
-      message: `Application for ${invite.full_name || invite.email} has been approved. Registration link dispatched.`,
-      status: 'approved'
-    });
+    const finalFullName = (invite.full_name || '').trim();
+    const finalSurname = (invite.surname || '').trim();
+
+    // IF TEACHER HAS ALREADY SUBMITTED REGISTRATION WITH PASSWORD:
+    if (invite.password_hash) {
+      // 1. Create or update user in users table (role_id = 4 for teacher)
+      const userRes = await db.query(`
+        INSERT INTO users (
+          email, password_hash, role_id, school_id, is_superadmin,
+          full_name, surname, id_number, phone, country
+        )
+        VALUES ($1, $2, 4, $3, FALSE, $4, $5, $6, $7, 'South Africa')
+        ON CONFLICT (email) DO UPDATE SET
+          password_hash = EXCLUDED.password_hash,
+          role_id = 4,
+          school_id = EXCLUDED.school_id,
+          full_name = EXCLUDED.full_name,
+          surname = EXCLUDED.surname,
+          id_number = COALESCE(EXCLUDED.id_number, users.id_number),
+          phone = COALESCE(EXCLUDED.phone, users.phone)
+        RETURNING id, email, full_name, surname, role_id, school_id;
+      `, [
+        invite.email.toLowerCase().trim(),
+        invite.password_hash,
+        invite.school_id,
+        finalFullName,
+        finalSurname,
+        invite.id_number || null,
+        invite.phone || null
+      ]);
+
+      const user = userRes.rows[0];
+
+      // 2. Create or update employee record
+      await db.query(`
+        INSERT INTO employees (
+          user_id, full_name, surname, department_id, school_id, phone, email,
+          subjects, grades_taught, classes_taught
+        )
+        VALUES ($1, $2, $3, 2, $4, $5, $6, $7, $8, $9)
+        ON CONFLICT (user_id) DO UPDATE SET
+          school_id = EXCLUDED.school_id,
+          full_name = EXCLUDED.full_name,
+          surname = EXCLUDED.surname,
+          email = EXCLUDED.email,
+          phone = EXCLUDED.phone,
+          subjects = EXCLUDED.subjects,
+          grades_taught = EXCLUDED.grades_taught,
+          classes_taught = EXCLUDED.classes_taught;
+      `, [
+        user.id, finalFullName, finalSurname,
+        invite.school_id, invite.phone || null, invite.email,
+        activeSubjects, activeGrades, activeClasses
+      ]);
+
+      // 3. Populate teacher_assignments table
+      for (const subj of activeSubjects) {
+        for (const grade of activeGrades) {
+          const matchingClasses = activeClasses.filter(c => {
+            const g = parseInt(String(c).replace(/\D/g, ''), 10);
+            return isNaN(g) || g === grade;
+          });
+          const classesToAssign = matchingClasses.length > 0 ? matchingClasses : [`${grade}A`];
+          for (const clsName of classesToAssign) {
+            const classLookup = await db.query(
+              'SELECT id FROM classes WHERE name = $1 AND school_id = $2 LIMIT 1',
+              [clsName, invite.school_id]
+            ).catch(() => ({ rows: [] }));
+            const classId = classLookup.rows[0]?.id || null;
+
+            await db.query(`
+              INSERT INTO teacher_assignments (teacher_id, subject_name, grade_level, class_name, class_id)
+              VALUES ($1, $2, $3, $4, $5)
+              ON CONFLICT (teacher_id, subject_name, grade_level, class_name) 
+              DO UPDATE SET class_id = EXCLUDED.class_id;
+            `, [user.id, subj, grade, clsName, classId]).catch(e => console.warn('Teacher assignment insert note:', e.message));
+          }
+        }
+      }
+
+      // 4. Update classes table homeroom or assigned teacher
+      if (activeClasses.length > 0) {
+        await db.query(`
+          UPDATE classes 
+          SET assigned_teacher_id = $1 
+          WHERE name = ANY($2) AND school_id = $3 AND assigned_teacher_id IS NULL;
+        `, [user.id, activeClasses, invite.school_id]).catch(() => {});
+      }
+
+      // 5. Update staff_invites status to approved
+      await db.query(`
+        UPDATE staff_invites 
+        SET status = 'approved',
+            approved_by = $1,
+            approved_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2;
+      `, [req.user?.id || null, id]);
+
+      // 6. Send official approval email to teacher with direct Login link
+      const loginUrl = `${baseUrl}/login`;
+      emailService.sendTeacherApplicationApprovedNotice({
+        colleagueEmail: invite.email,
+        colleagueName: finalFullName ? `${finalFullName} ${finalSurname}` : 'Educator',
+        principalName,
+        schoolName,
+        subjects: activeSubjects,
+        classes: activeClasses,
+        loginUrl
+      }).catch(e => console.warn('Could not send teacher approval email:', e.message));
+
+      return res.json({
+        success: true,
+        message: `Educator account for ${finalFullName} ${finalSurname} has been officially approved and activated! An activation confirmation email has been dispatched to ${invite.email}.`,
+        status: 'approved',
+        user
+      });
+    } else {
+      // Teacher hasn't registered password yet; mark approved & dispatch registration link
+      const approvalToken = require('crypto').randomBytes(24).toString('hex');
+      await db.query(`
+        UPDATE staff_invites 
+        SET status = 'approved',
+            approval_token = $1,
+            approved_by = $2,
+            approved_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $3;
+      `, [approvalToken, req.user?.id || null, id]);
+
+      const registerUrl = `${baseUrl}/register?role=teacher&step=register&token=${approvalToken}&email=${encodeURIComponent(invite.email)}`;
+      emailService.sendTeacherApplicationApprovedNotice({
+        colleagueEmail: invite.email,
+        colleagueName: finalFullName ? `${finalFullName} ${finalSurname}` : 'Educator',
+        principalName,
+        schoolName,
+        subjects: activeSubjects,
+        classes: activeClasses,
+        registerUrl
+      }).catch(e => console.warn('Could not send teacher approval email:', e.message));
+
+      return res.json({
+        success: true,
+        message: `Application for ${finalFullName || invite.email} has been approved. Registration link dispatched.`,
+        status: 'approved'
+      });
+    }
   } catch (err) {
     console.error('Error approving staff application:', err);
-    res.status(500).json({ error: 'Failed to approve staff application.' });
+    res.status(500).json({ error: 'Failed to approve staff application: ' + err.message });
   }
 };
 
