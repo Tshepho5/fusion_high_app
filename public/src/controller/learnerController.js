@@ -1835,13 +1835,24 @@ exports.getSubjectResources = async (req, res) => {
         const userId = req.user.id;
         const { subject, grade: queryGrade, resource_type, search } = req.query;
 
-        // Fetch learner's actual enrolled grade, stream, and home language if user is a learner
+        // Fetch learner's actual enrolled grade, stream, home language, and class_id
         let dbGrade = null;
         let homeLanguage = null;
+        let learnerClassId = null;
         if (req.user && req.user.role === 'learner') {
             const child = await getOrLinkLearnerChild(req.user);
             dbGrade = child?.grade;
             homeLanguage = child?.home_language;
+            learnerClassId = child?.class_id;
+        } else if (req.user && req.user.role === 'parent' && req.query.child_id) {
+            try {
+                const childRes = await db.query('SELECT grade, home_language, class_id FROM children WHERE id = $1', [req.query.child_id]);
+                if (childRes.rows[0]) {
+                    dbGrade = childRes.rows[0].grade;
+                    homeLanguage = childRes.rows[0].home_language;
+                    learnerClassId = childRes.rows[0].class_id;
+                }
+            } catch (e) {}
         }
 
         // Prioritize explicit query grade, then database enrolled grade, fallback to 10
@@ -1868,6 +1879,19 @@ exports.getSubjectResources = async (req, res) => {
         let params = [`%${mappedSubj}%`, targetGrade, rawSubj];
         let pIndex = 4;
 
+        // If user is a learner or parent, only show published resources
+        if (!req.user || (req.user.role !== 'teacher' && req.user.role !== 'admin')) {
+            whereClauses.push(`(t.is_published = TRUE OR t.is_published IS NULL)`);
+        }
+
+        // Class isolation: Learner sees class-specific resources OR grade-wide resources (class_id IS NULL)
+        const targetClassId = req.query.class_id ? parseInt(req.query.class_id, 10) : learnerClassId;
+        if (targetClassId) {
+            whereClauses.push(`(t.class_id IS NULL OR t.class_id = $${pIndex})`);
+            params.push(targetClassId);
+            pIndex++;
+        }
+
         if (resource_type && resource_type !== 'all') {
             whereClauses.push(`t.resource_type = $${pIndex}`);
             params.push(resource_type);
@@ -1875,7 +1899,7 @@ exports.getSubjectResources = async (req, res) => {
         }
 
         if (search) {
-            whereClauses.push(`(t.title ILIKE $${pIndex} OR t.file_name ILIKE $${pIndex} OR t.description ILIKE $${pIndex})`);
+            whereClauses.push(`(t.title ILIKE $${pIndex} OR t.file_name ILIKE $${pIndex} OR t.description ILIKE $${pIndex} OR c.name ILIKE $${pIndex})`);
             params.push(`%${search}%`);
             pIndex++;
         }
@@ -1886,6 +1910,9 @@ exports.getSubjectResources = async (req, res) => {
                 t.subject, 
                 t.grade, 
                 t.stream,
+                t.class_id,
+                c.name AS class_name,
+                COALESCE(t.is_published, true) AS is_published,
                 COALESCE(t.resource_type, 'past_paper') AS resource_type,
                 COALESCE(t.title, t.subject || ' Grade ' || COALESCE(t.grade, $2) || ' ' || COALESCE(t.resource_type, 'Resource')) AS title,
                 t.description,
@@ -1899,6 +1926,7 @@ exports.getSubjectResources = async (req, res) => {
                 COALESCE(u.surname, '(CAPS Archive)') AS teacher_surname
             FROM textbooks t
             LEFT JOIN users u ON t.teacher_id::text = u.id::text
+            LEFT JOIN classes c ON t.class_id = c.id
             WHERE ${whereClauses.join(' AND ')}
             ORDER BY t.year DESC NULLS LAST, t.upload_date DESC NULLS LAST, t.id DESC
             LIMIT 200

@@ -337,6 +337,7 @@ class NotificationService {
               ${grade ? `AND c.grade = ${parseInt(grade, 10)}` : ''}
               ${stream && stream !== 'All' && stream !== 'General' ? `AND (c.stream = '${stream}' OR c.stream IS NULL OR c.stream = 'General')` : ''}
               ${classId ? `AND c.class_id = ${parseInt(classId, 10)}` : ''}
+              ${subject && subject !== 'All' ? `AND (c.subjects IS NULL OR array_length(c.subjects, 1) IS NULL OR array_to_string(c.subjects, ',') ILIKE '%${subject.replace(/'/g, "''")}%')` : ''}
           `;
           const parentRes = await db.query(parentQuery);
           parentRes.rows.forEach(r => {
@@ -375,6 +376,10 @@ class NotificationService {
         if (classId) {
           params.push(parseInt(classId, 10));
           learnerQuery += ` AND c.class_id = $${params.length}`;
+        }
+        if (subject && subject !== 'All') {
+          params.push(`%${subject.toLowerCase()}%`);
+          learnerQuery += ` AND (c.subjects IS NULL OR array_length(c.subjects, 1) IS NULL OR array_to_string(c.subjects, ',') ILIKE $${params.length})`;
         }
 
         const { rows: matchedLearners } = await db.query(learnerQuery, params);

@@ -11,7 +11,7 @@ const recentQuestionsCache = new Map();
 exports.getMyTextbooks = async (req, res) => {
     try {
         const teacherId = req.user ? req.user.id : null;
-        const { subject, grade, resource_type, search } = req.query;
+        const { subject, grade, class_id, class_name, resource_type, search } = req.query;
 
         // Build query conditions
         let whereClauses = [];
@@ -31,6 +31,16 @@ exports.getMyTextbooks = async (req, res) => {
             pIndex++;
         }
 
+        if (class_id && class_id !== 'All' && class_id !== 'all') {
+            whereClauses.push(`(t.class_id = $${pIndex} OR t.class_id IS NULL)`);
+            params.push(parseInt(class_id, 10));
+            pIndex++;
+        } else if (class_name && class_name !== 'All' && class_name !== 'all') {
+            whereClauses.push(`(c.name ILIKE $${pIndex} OR t.class_id IS NULL)`);
+            params.push(`%${class_name}%`);
+            pIndex++;
+        }
+
         if (resource_type && resource_type !== 'All') {
             whereClauses.push(`t.resource_type = $${pIndex}`);
             params.push(resource_type);
@@ -38,7 +48,7 @@ exports.getMyTextbooks = async (req, res) => {
         }
 
         if (search) {
-            whereClauses.push(`(t.title ILIKE $${pIndex} OR t.file_name ILIKE $${pIndex} OR t.description ILIKE $${pIndex})`);
+            whereClauses.push(`(t.title ILIKE $${pIndex} OR t.file_name ILIKE $${pIndex} OR t.description ILIKE $${pIndex} OR c.name ILIKE $${pIndex})`);
             params.push(`%${search}%`);
             pIndex++;
         }
@@ -61,10 +71,14 @@ exports.getMyTextbooks = async (req, res) => {
                 t.file_path, 
                 COALESCE(t.upload_date, t.uploaded_at, NOW()) AS upload_date,
                 t.teacher_id,
+                t.class_id,
+                c.name AS class_name,
+                COALESCE(t.is_published, true) AS is_published,
                 COALESCE(u.full_name, 'Department of Basic Education') AS uploader_name,
                 COALESCE(u.surname, '(CAPS Archive)') AS uploader_surname
             FROM textbooks t
             LEFT JOIN users u ON t.teacher_id::text = u.id::text
+            LEFT JOIN classes c ON t.class_id = c.id
             ${whereSql}
             ORDER BY t.grade ASC, t.subject ASC, t.year DESC NULLS LAST, t.id DESC
             LIMIT 300
@@ -88,37 +102,52 @@ exports.uploadResource = async (req, res) => {
     const description = req.body.description || '';
     const term = req.body.term || 'Term 3';
     const year = parseInt(req.body.year || '2026', 10);
+    const isPublished = req.body.is_published !== undefined
+        ? (req.body.is_published === 'true' || req.body.is_published === true || req.body.is_published === 1 || req.body.is_published === '1')
+        : true;
 
-    if (!req.file && !req.body.file_url) {
-        return res.status(400).json({ error: 'Please upload a PDF document or provide a file URL.' });
+    // Resolve class_id and class_name
+    let classId = null;
+    let resolvedClassName = null;
+    if (req.body.class_id && req.body.class_id !== 'all' && req.body.class_id !== 'All' && !isNaN(parseInt(req.body.class_id, 10))) {
+        classId = parseInt(req.body.class_id, 10);
+        try {
+            const cRow = await db.query('SELECT name FROM classes WHERE id = $1', [classId]);
+            if (cRow.rows[0]) resolvedClassName = cRow.rows[0].name;
+        } catch (e) {}
+    } else if (req.body.class_name && req.body.class_name !== 'all' && req.body.class_name !== 'All') {
+        resolvedClassName = String(req.body.class_name).trim();
+        try {
+            const cRow = await db.query(
+                'SELECT id, name FROM classes WHERE (name ILIKE $1 OR name ILIKE $2) AND grade = $3 LIMIT 1',
+                [resolvedClassName, `%${resolvedClassName}%`, grade]
+            );
+            if (cRow.rows.length > 0) {
+                classId = cRow.rows[0].id;
+                resolvedClassName = cRow.rows[0].name;
+            }
+        } catch (e) {}
     }
 
-    if (req.file) {
-        const header = Buffer.alloc(5);
-        const handle = fs.openSync(req.file.path, 'r');
-        fs.readSync(handle, header, 0, 5, 0);
-        fs.closeSync(handle);
-        if (header.toString('utf8') !== '%PDF-') {
-            fs.unlink(req.file.path, () => {});
-            return res.status(400).json({ error: 'Only PDF textbooks are accepted.' });
-        }
+    if (!req.file && !req.body.file_url) {
+        return res.status(400).json({ error: 'Please upload a resource document or provide a file URL.' });
     }
 
     const filePath = req.file ? `/uploads/textbooks/${req.file.filename}` : req.body.file_url;
     const rawName = req.file ? (req.file.originalname || req.file.filename) : (req.body.file_name || `${title}.pdf`);
-    const fileName = path.basename(String(rawName)).replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'textbook.pdf';
+    const fileName = path.basename(String(rawName)).replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'resource.pdf';
     const fileSize = req.file ? `${(req.file.size / (1024 * 1024)).toFixed(2)} MB` : '1.5 MB';
 
     try {
         const insertRes = await db.query(`
             INSERT INTO textbooks (
                 subject, grade, stream, resource_type, title, description, 
-                term, year, file_path, file_name, file_size, teacher_id
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                term, year, file_path, file_name, file_size, teacher_id, class_id, is_published, upload_date
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
             RETURNING *
         `, [
             subject, grade, stream, resourceType, title, description,
-            term, year, filePath, fileName, fileSize, req.user.id
+            term, year, filePath, fileName, fileSize, req.user.id, classId, isPublished
         ]);
 
         const uploadedResource = insertRes.rows[0];
@@ -158,53 +187,89 @@ exports.uploadResource = async (req, res) => {
             exam_memo: 'Examination Memorandum'
         };
         const label = typeLabels[resourceType] || 'Learning Resource';
+        const classTag = resolvedClassName ? ` (Class ${resolvedClassName})` : '';
 
-        const announcementTitle = `New ${label}: ${title} (${subject})`;
-        const announcementContent = `${teacherName} uploaded a new ${label.toLowerCase()} for Grade ${grade} ${subject} (${term} ${year}): "${title}". Learners can view and download this file directly in their Subjects & Resources portal tab.`;
+        const announcementTitle = `New ${label}: ${title} (${subject}${classTag})`;
+        const announcementContent = `${teacherName} uploaded a new ${label.toLowerCase()} for Grade ${grade} ${subject}${classTag} (${term} ${year}): "${title}". Learners can view and download this file directly in their Subjects & Resources portal tab.`;
 
-        // Automatically create in-app announcement entry
-        try {
-            await db.query(`
-                INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, subject_target, created_at)
-                VALUES ($1, $2, 'learner', $3, $4, $5, $6, NOW())
-            `, [announcementTitle, announcementContent, req.user.id, grade, stream, subject]);
-        } catch (annErr) {
-            console.warn('[ANNOUNCEMENT INSERT NOTICE]', annErr.message);
-        }
-
-        // Automatically dispatch targeted in-app notifications and direct email broadcast to learners & parents
-        NotificationService.sendTargeted({
-            targetRole: 'learner',
-            grade: grade,
-            stream: stream,
-            subject: subject,
-            includeParents: true,
-            authorId: req.user.id,
-            title: announcementTitle,
-            message: announcementContent,
-            fullContent: announcementContent,
-            type: resourceType === 'past_paper' ? 'past_paper' : 'resource',
-            targetTab: 'subjects',
-            sendToMessages: true,
-            sendEmail: true,
-            metadata: {
-                resource_id: uploadedResource.id,
-                subject: subject,
-                grade: grade,
-                resource_type: resourceType,
-                file_path: filePath,
-                file_name: fileName
+        // If published, automatically create announcement and dispatch targeted notifications
+        if (isPublished) {
+            try {
+                await db.query(`
+                    INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, subject_target, class_target, created_at)
+                    VALUES ($1, $2, 'learner', $3, $4, $5, $6, $7, NOW())
+                `, [announcementTitle, announcementContent, req.user.id, grade, stream, subject, classId ? String(classId) : null]);
+            } catch (annErr) {
+                console.warn('[ANNOUNCEMENT INSERT NOTICE]', annErr.message);
             }
-        }).catch(err => console.error('[NOTIFICATION DISPATCH ERROR]', err));
+
+            // Automatically dispatch targeted in-app notifications and direct email broadcast to learners & parents
+            NotificationService.sendTargeted({
+                targetRole: 'learner',
+                grade: grade,
+                stream: stream,
+                subject: subject,
+                classId: classId,
+                includeParents: true,
+                authorId: req.user.id,
+                title: announcementTitle,
+                message: announcementContent,
+                fullContent: announcementContent,
+                type: resourceType === 'past_paper' ? 'past_paper' : 'resource',
+                targetTab: 'subjects',
+                sendToMessages: true,
+                sendEmail: true,
+                metadata: {
+                    resource_id: uploadedResource.id,
+                    subject: subject,
+                    grade: grade,
+                    class_id: classId,
+                    class_name: resolvedClassName,
+                    resource_type: resourceType,
+                    file_path: filePath,
+                    file_name: fileName
+                }
+            }).catch(err => console.error('[NOTIFICATION DISPATCH ERROR]', err));
+        }
 
         res.json({
             success: true,
-            message: `${label} uploaded successfully, announcement published, and notifications dispatched!`,
-            resource: uploadedResource
+            message: `${label} uploaded successfully${isPublished ? `, published to learners${classTag ? ' of ' + resolvedClassName : ''}, and notifications dispatched!` : ' and saved as draft.'}`,
+            resource: {
+                ...uploadedResource,
+                class_name: resolvedClassName,
+                is_published: isPublished
+            }
         });
     } catch (err) {
         console.error('Error uploading resource:', err);
         res.status(500).json({ error: 'Failed to save resource: ' + err.message });
+    }
+};
+
+exports.togglePublishResource = async (req, res) => {
+    const resourceId = parseInt(req.params.id, 10);
+    try {
+        const checkRes = await db.query(
+            'SELECT t.id, t.is_published, t.title, t.subject, t.grade, t.class_id, c.name as class_name FROM textbooks t LEFT JOIN classes c ON t.class_id = c.id WHERE t.id = $1 AND (t.teacher_id::text = $2::text OR EXISTS (SELECT 1 FROM users u JOIN roles r ON u.role_id::text = r.id::text WHERE u.id::text = $2::text AND LOWER(r.name) = \'admin\'))',
+            [resourceId, String(req.user.id)]
+        );
+        if (checkRes.rowCount === 0) {
+            return res.status(404).json({ error: 'Resource not found or unauthorized.' });
+        }
+        const current = checkRes.rows[0];
+        const newPub = req.body.is_published !== undefined ? Boolean(req.body.is_published) : !current.is_published;
+
+        await db.query('UPDATE textbooks SET is_published = $1 WHERE id = $2', [newPub, resourceId]);
+
+        res.json({
+            success: true,
+            is_published: newPub,
+            message: `Resource "${current.title}" ${newPub ? 'published to learners' : 'moved to draft (unpublished)'}.`
+        });
+    } catch (err) {
+        console.error('Error toggling resource publication:', err);
+        res.status(500).json({ error: err.message });
     }
 };
 

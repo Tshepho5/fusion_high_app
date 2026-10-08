@@ -294,9 +294,12 @@ export const teacherService = {
     api.post('/api/teacher/ai/generate-assignment-questions', payload).then(res => res.data),
   generateQuiz: (payload: any) =>
     api.post('/api/teacher/ai/generate-assignment-questions', payload).then(res => res.data),
-  getMyResources: () => api.get('/api/teacher/my-resources').then(res => res.data),
+  getMyResources: (params?: { subject?: string; grade?: number | string; class_id?: number | string; resource_type?: string; search?: string }) => 
+    api.get('/api/teacher/my-resources', { params }).then(res => res.data),
   uploadResource: (formData: FormData) => 
     api.post('/api/teacher/upload-resource', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(res => res.data),
+  togglePublishResource: (id: number | string, isPublished?: boolean) => 
+    api.patch(`/api/teacher/resources/${id}/publish`, { is_published: isPublished }).then(res => res.data),
   deleteResource: (id: number | string) => api.delete(`/api/teacher/resources/${id}`).then(res => res.data),
 };
 

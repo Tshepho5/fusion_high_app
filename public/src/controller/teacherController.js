@@ -38,6 +38,7 @@ module.exports = {
     uploadTextbook: textbookController.uploadTextbook,
     uploadResource: textbookController.uploadResource,
     deleteResource: textbookController.deleteResource,
+    togglePublishResource: textbookController.togglePublishResource,
     getTopicsFromTextbook: textbookController.getTopicsFromTextbook,
     generateAIQuestions: textbookController.generateAIQuestions,
     generateAILessonPlan: textbookController.generateAILessonPlan,
