@@ -8,6 +8,7 @@ import { EmptyState } from '../../components/common/EmptyState';
 import { OfflineNotesModal } from '../../components/learner/OfflineNotesModal';
 import { SubjectPastPapers } from '../../components/subject/SubjectPastPapers';
 import { SubjectFocusTimer } from '../../components/subject/SubjectFocusTimer';
+import { Subject3DCoverFlow } from '../../components/subject/Subject3DCoverFlow';
 import { LearnerAITutor } from './LearnerAITutor';
 import { LearnerAssignments } from '../../components/learner/LearnerAssignments';
 import { FusionArcadeHub } from '../../components/learner/FusionArcadeHub';
@@ -24,7 +25,9 @@ import {
   Users,
   ChevronRight,
   WifiOff,
-  Sparkles
+  Sparkles,
+  Layers,
+  LayoutGrid
 } from 'lucide-react';
 
 interface LearnerSubjectsProps {
@@ -70,6 +73,21 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
   const [loadingContent, setLoadingContent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const subjectsRef = useRef<any[]>([]);
+
+  const [subjectsViewMode, setSubjectsViewMode] = useState<'3d-flow' | 'grid'>(() => {
+    try {
+      const saved = localStorage.getItem('learner_subjects_view_mode');
+      if (saved === 'grid' || saved === '3d-flow') return saved;
+    } catch {}
+    return '3d-flow';
+  });
+
+  const handleSetSubjectsViewMode = (mode: '3d-flow' | 'grid') => {
+    setSubjectsViewMode(mode);
+    try {
+      localStorage.setItem('learner_subjects_view_mode', mode);
+    } catch {}
+  };
 
   const handleUpdateLanguage = async (newLang: string) => {
     setUpdatingLanguage(true);
@@ -600,7 +618,37 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                 My Subjects
               </h2>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* View Switcher: 3D Flow vs Grid */}
+              <div className="flex items-center p-1 rounded-2xl bg-surface-dark border border-white/10 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => handleSetSubjectsViewMode('3d-flow')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    subjectsViewMode === '3d-flow'
+                      ? 'bg-gradient-to-r from-brand-600 to-cyan-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                  title="3D Perspective Cover Flow View"
+                >
+                  <Layers className="w-3.5 h-3.5 text-cyan-300" />
+                  <span>3D Flow</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetSubjectsViewMode('grid')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    subjectsViewMode === 'grid'
+                      ? 'bg-gradient-to-r from-brand-600 to-cyan-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                  title="Standard Grid View"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5 text-brand-300" />
+                  <span>Grid</span>
+                </button>
+              </div>
+
               <button
                 onClick={() => setIsOfflineNotesOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-surface-dark border border-emerald-500/30 text-emerald-300 hover:bg-white/5 font-bold text-xs shadow-md transition-all"
@@ -688,79 +736,101 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
           {loadingSubjects ? (
             <LoadingSpinner text="Fetching assigned curriculum subjects..." />
           ) : subjects.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {subjects.map((sub, index) => {
-                const subName = sub.name || sub.subject || `Subject ${index + 1}`;
-                const subCode = sub.code || 'Syllabus';
-                const hasWorkDue = (sub.assignments_due && Number(sub.assignments_due) > 0);
+            subjectsViewMode === '3d-flow' ? (
+              <Subject3DCoverFlow
+                subjects={subjects}
+                role="learner"
+                onOpenSubject={(sub) => openSubject(sub)}
+                onAction={(action, sub) => {
+                  if (action === 'ai-tutor') {
+                    openSubject(sub, 'ai-tutor');
+                  } else if (action === 'resources' || action === 'past-papers') {
+                    openSubject(sub, 'resources');
+                  } else if (action === 'focus-timer') {
+                    openSubject(sub, 'topics');
+                    showTool('focus-timer');
+                  } else if (action === 'marks') {
+                    openSubject(sub, 'grades');
+                  }
+                }}
+                title="CAPS Curriculum 3D Flow"
+                subtitle="Interactive 3D Perspective Exploration • Tap any subject or swipe to rotate"
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {subjects.map((sub, index) => {
+                  const subName = sub.name || sub.subject || `Subject ${index + 1}`;
+                  const subCode = sub.code || 'Syllabus';
+                  const hasWorkDue = (sub.assignments_due && Number(sub.assignments_due) > 0);
 
-                return (
-                  <div
-                    key={sub.id || subName || index}
-                    className="group rounded-3xl bg-surface-dark border border-white/10 p-6 hover:border-brand-500/40 transition-all shadow-xl flex flex-col justify-between gap-5 relative overflow-hidden"
-                  >
-                    <div className="space-y-4">
-                      {/* Top Badges */}
-                      <div className="flex items-center justify-between">
-                        <Badge variant="indigo" size="sm">
-                          Grade {sub.grade || 10} • {subCode}
-                        </Badge>
-                        <div className="flex items-center gap-2">
-                          {hasWorkDue && (
-                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold border border-rose-500/40 animate-pulse">
-                              <Bell className="w-2.5 h-2.5 text-rose-400" />
-                              {sub.assignments_due} Work Due
-                            </span>
-                          )}
-                          <Badge variant="emerald" size="sm">
-                            {sub.term_mark != null || sub.mark != null || sub.percentage != null
-                              ? `Avg: ${sub.term_mark ?? sub.mark ?? sub.percentage}%`
-                              : 'Marks pending'}
+                  return (
+                    <div
+                      key={sub.id || subName || index}
+                      className="group rounded-3xl bg-surface-dark border border-white/10 p-6 hover:border-brand-500/40 transition-all shadow-xl flex flex-col justify-between gap-5 relative overflow-hidden"
+                    >
+                      <div className="space-y-4">
+                        {/* Top Badges */}
+                        <div className="flex items-center justify-between">
+                          <Badge variant="indigo" size="sm">
+                            Grade {sub.grade || 10} • {subCode}
                           </Badge>
+                          <div className="flex items-center gap-2">
+                            {hasWorkDue && (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold border border-rose-500/40 animate-pulse">
+                                <Bell className="w-2.5 h-2.5 text-rose-400" />
+                                {sub.assignments_due} Work Due
+                              </span>
+                            )}
+                            <Badge variant="emerald" size="sm">
+                              {sub.term_mark != null || sub.mark != null || sub.percentage != null
+                                ? `Avg: ${sub.term_mark ?? sub.mark ?? sub.percentage}%`
+                                : 'Marks pending'}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Clickable Subject Title Link */}
+                        <div
+                          onClick={() => openSubject(sub)}
+                          className="cursor-pointer space-y-1"
+                        >
+                          <h3 className="text-xl font-bold font-display text-white group-hover:text-cyan-300 transition-colors flex items-center justify-between">
+                            <span>{subName}</span>
+                            <ChevronRight className="w-5 h-5 text-slate-500 group-hover:text-cyan-400 transform group-hover:translate-x-1 transition-transform" />
+                          </h3>
+                          <p className="text-xs text-slate-400">
+                            Teacher: <strong className="text-slate-200">{sub.teacher || 'Subject Specialist'}</strong>
+                          </p>
+                        </div>
+
+                        {/* Classmates & Resources Pill */}
+                        <div className="flex items-center justify-between text-[11px] text-slate-400 bg-surface-darker p-2.5 rounded-xl border border-white/5">
+                          <span className="flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5 text-indigo-400" />
+                            {sub.classmates_count || 1} Learners
+                          </span>
+                          <span className="flex items-center gap-1.5 text-purple-300">
+                            <FileText className="w-3.5 h-3.5" />
+                            {sub.resources_count || 0} Resources
+                          </span>
                         </div>
                       </div>
 
-                      {/* Clickable Subject Title Link */}
-                      <div
-                        onClick={() => openSubject(sub)}
-                        className="cursor-pointer space-y-1"
-                      >
-                        <h3 className="text-xl font-bold font-display text-white group-hover:text-cyan-300 transition-colors flex items-center justify-between">
-                          <span>{subName}</span>
-                          <ChevronRight className="w-5 h-5 text-slate-500 group-hover:text-cyan-400 transform group-hover:translate-x-1 transition-transform" />
-                        </h3>
-                        <p className="text-xs text-slate-400">
-                          Teacher: <strong className="text-slate-200">{sub.teacher || 'Subject Specialist'}</strong>
-                        </p>
-                      </div>
-
-                      {/* Classmates & Resources Pill */}
-                      <div className="flex items-center justify-between text-[11px] text-slate-400 bg-surface-darker p-2.5 rounded-xl border border-white/5">
-                        <span className="flex items-center gap-1.5">
-                          <Users className="w-3.5 h-3.5 text-indigo-400" />
-                          {sub.classmates_count || 1} Learners
-                        </span>
-                        <span className="flex items-center gap-1.5 text-purple-300">
-                          <FileText className="w-3.5 h-3.5" />
-                          {sub.resources_count || 0} Resources
-                        </span>
+                      {/* Primary Link Button into Subject */}
+                      <div className="space-y-2 pt-2 border-t border-white/5">
+                        <button
+                          onClick={() => openSubject(sub)}
+                          className="w-full py-3 px-4 rounded-xl bg-[#1C252C] hover:bg-[#24303a] text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <span>Open {subName}</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
-
-                    {/* Primary Link Button into Subject */}
-                    <div className="space-y-2 pt-2 border-t border-white/5">
-                      <button
-                        onClick={() => openSubject(sub)}
-                        className="w-full py-3 px-4 rounded-xl bg-[#1C252C] hover:bg-[#24303a] text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        <span>Open {subName}</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )
           ) : (
             <div className="p-12 text-center text-slate-400 text-xs rounded-3xl bg-surface-dark border border-white/10">
               No enrolled subjects found in database.

@@ -67,8 +67,9 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSchool, SchoolProfile } from '../../context/SchoolContext';
+import { Subject3DCoverFlow } from '../../components/subject/Subject3DCoverFlow';
 
-export type SubjectViewMode = 'carousel' | 'grid' | 'compact' | 'list';
+export type SubjectViewMode = '3d-flow' | 'carousel' | 'grid' | 'compact' | 'list';
 
 /**
  * Returns clean list of offered subjects for any registered school.
@@ -1377,6 +1378,20 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
             <div className="flex items-center p-1 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 shadow-sm">
               <button
                 type="button"
+                onClick={() => handleSetSubjectsViewMode('3d-flow')}
+                className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                  subjectsViewMode === '3d-flow'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                }`}
+                title="3D Perspective Flow View"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[11px]">3D Flow</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => handleSetSubjectsViewMode('carousel')}
                 className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                   subjectsViewMode === 'carousel'
@@ -1499,6 +1514,26 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
           </div>
         ) : (
           <>
+            {/* View Mode: 3D Perspective Flow */}
+            {subjectsViewMode === '3d-flow' && (
+              <Subject3DCoverFlow
+                subjects={filteredSubjects}
+                role="principal"
+                onOpenSubject={(sub) => setViewMoreSubject(sub)}
+                onAction={(action, sub) => {
+                  if (action === 'marks') {
+                    onNavigateTab('marks', { subject: sub.name, grade: sub.grade });
+                  } else if (action === 'reports') {
+                    onNavigateTab('reports', { subject: sub.name, grade: sub.grade });
+                  } else {
+                    setViewMoreSubject(sub);
+                  }
+                }}
+                title="School Subjects 3D Intelligence Flow"
+                subtitle={`Interactive 3D Perspective Review for ${currentSchool?.name || 'Academic Network'} • Tap Expand to inspect educator allocation and curriculum metrics.`}
+              />
+            )}
+
             {/* View Mode 1: Horizontal Carousel */}
             {subjectsViewMode === 'carousel' && (
               <div

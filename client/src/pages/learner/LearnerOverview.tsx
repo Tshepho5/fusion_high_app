@@ -49,8 +49,9 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
 import { getSubjectMetadata } from '../../utils/subjectImages';
+import { Subject3DCoverFlow } from '../../components/subject/Subject3DCoverFlow';
 
-export type SubjectViewMode = 'carousel' | 'visual' | 'grid' | 'compact' | 'list';
+export type SubjectViewMode = '3d-flow' | 'carousel' | 'visual' | 'grid' | 'compact' | 'list';
 
 interface LearnerOverviewProps {
   onNavigateTab: (tabId: string, subjectName?: string) => void;
@@ -82,15 +83,15 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
   const [performance, setPerformance] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Subject Presentation Mode (Carousel / Visual Cards / Grid / Compact / List)
+  // Subject Presentation Mode (3D Flow / Carousel / Visual Cards / Grid / Compact / List)
   const [subjectViewMode, setSubjectViewMode] = useState<SubjectViewMode>(() => {
     try {
       const saved = localStorage.getItem('learner_subject_view_mode');
-      if (saved === 'carousel' || saved === 'visual' || saved === 'grid' || saved === 'compact' || saved === 'list') {
-        return saved;
+      if (saved === '3d-flow' || saved === 'carousel' || saved === 'visual' || saved === 'grid' || saved === 'compact' || saved === 'list') {
+        return saved as SubjectViewMode;
       }
     } catch {}
-    return 'carousel';
+    return '3d-flow';
   });
   const [subjectCategoryFilter, setSubjectCategoryFilter] = useState<string>('all');
   const [subjectSearchQuery, setSubjectSearchQuery] = useState<string>('');
@@ -303,9 +304,21 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
             </div>
           </div>
 
-          {/* View Mode Switcher (Carousel / Visual Hero Cards / Grid / Compact / List) */}
+          {/* View Mode Switcher (3D Flow / Carousel / Visual Hero Cards / Grid / Compact / List) */}
           <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
             <div className="flex items-center gap-1 p-1 bg-[#EDF4F7] dark:bg-[#0A121A] rounded-2xl border border-slate-200/90 dark:border-[#1B2E3D]">
+              <button
+                onClick={() => handleSetSubjectViewMode('3d-flow')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  subjectViewMode === '3d-flow'
+                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
+                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#18E2EC]'
+                }`}
+                title="3D Perspective Flow View"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">3D Flow</span>
+              </button>
               <button
                 onClick={() => handleSetSubjectViewMode('carousel')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -423,6 +436,32 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
             />
           </div>
         </div>
+
+        {/* ========================================================================= */}
+        {/* VIEW MODE: 3D PERSPECTIVE COVER FLOW (CINEMATIC ROTATING VIEW)           */}
+        {/* ========================================================================= */}
+        {subjectViewMode === '3d-flow' && (
+          <Subject3DCoverFlow
+            subjects={filteredSubjects}
+            role="learner"
+            onOpenSubject={(sub) => onNavigateTab('subjects', safeString(sub.name))}
+            onAction={(action, sub) => {
+              const name = safeString(sub.name);
+              const grade = safeNumber(sub.grade, 10);
+              if (action === 'resources' || action === 'past-papers') {
+                openResourcesModal(name, grade);
+              } else if (action === 'ai-tutor') {
+                onNavigateTab('ai-tutor');
+              } else if (action === 'marks') {
+                onNavigateTab('performance');
+              } else {
+                onNavigateTab('subjects', name);
+              }
+            }}
+            title="CAPS Curriculum 3D Flow"
+            subtitle="Interactive 3D Perspective Experience • Click Expand to enter subject workspace"
+          />
+        )}
 
         {/* ========================================================================= */}
         {/* VIEW MODE 0: HORIZONTAL SCROLLING CAROUSEL WITH PICTURE HERO CARDS       */}
