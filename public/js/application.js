@@ -109,8 +109,8 @@ async function guardAdmissionWindow() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  await guardAdmissionWindow();
   initSchoolSelector();
+  guardAdmissionWindow();
   initEnrolledLearnerLookup();
   initPaymentChoices();
   initRealtimeInputEnforcement();
@@ -139,15 +139,22 @@ function initSchoolSelector() {
 
   function updateSchoolDisplay() {
     const selectedOpt = schoolSelect.options[schoolSelect.selectedIndex];
-    if (!selectedOpt || !selectedOpt.value) return;
+    if (!selectedOpt || !selectedOpt.value) {
+      if (emisTag) emisTag.textContent = 'Awaiting school';
+      if (circuitText) circuitText.textContent = '📍 Geleza SA Approved Schools Network';
+      if (mottoText) mottoText.textContent = '';
+      if (brandBadge) brandBadge.textContent = '⚡ Geleza SA Admissions';
+      if (portalTitle) portalTitle.textContent = 'Learner Admission Application';
+      return;
+    }
     const schoolName = selectedOpt.textContent.split('(')[0].trim();
-    const emis = selectedOpt.getAttribute('data-emis') || '911220001';
-    const circuit = selectedOpt.getAttribute('data-circuit') || 'Polokwane Central Circuit';
-    const motto = selectedOpt.getAttribute('data-motto') || 'Innovate, Lead, Transform';
+    const emis = selectedOpt.getAttribute('data-emis') || '';
+    const circuit = selectedOpt.getAttribute('data-circuit') || '';
+    const motto = selectedOpt.getAttribute('data-motto') || '';
 
-    if (emisTag) emisTag.textContent = `EMIS ${emis}`;
-    if (circuitText) circuitText.textContent = `📍 Circuit: ${circuit} • Limpopo DBE`;
-    if (mottoText) mottoText.textContent = `"${motto}"`;
+    if (emisTag) emisTag.textContent = emis ? `EMIS ${emis}` : 'Registered School';
+    if (circuitText) circuitText.textContent = circuit ? `📍 Circuit: ${circuit}` : '📍 Geleza SA Approved School';
+    if (mottoText) mottoText.textContent = motto ? `"${motto}"` : '';
     if (brandBadge) brandBadge.textContent = `⚡ ${schoolName} Admissions`;
     if (portalTitle) portalTitle.textContent = `${schoolName} Learner Admissions`;
   }
@@ -174,13 +181,13 @@ function initSchoolSelector() {
     opt.value = '';
     opt.disabled = true;
     opt.selected = true;
-    opt.textContent = 'No school is registered yet';
+    opt.textContent = 'No approved school is registered yet';
     schoolSelect.appendChild(opt);
     if (emisTag) emisTag.textContent = 'Awaiting a principal';
-    if (circuitText) circuitText.textContent = 'A principal registers the school from the Geleza SA home page. It appears here after Geleza SA approves it.';
+    if (circuitText) circuitText.textContent = 'A principal registers the school from the Geleza SA portal. It appears here after Geleza SA approves it.';
     if (mottoText) mottoText.textContent = '';
-    if (brandBadge) brandBadge.textContent = 'Geleza SA Admissions';
-    if (portalTitle) portalTitle.textContent = 'Learner Admissions';
+    if (brandBadge) brandBadge.textContent = '⚡ Geleza SA Admissions';
+    if (portalTitle) portalTitle.textContent = 'Learner Admission Application';
   }
 
   showNoSchools();
