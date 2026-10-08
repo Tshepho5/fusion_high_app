@@ -591,40 +591,14 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
   // Dedicated phone-style AI assistant shell (matches Geleza SA mockups)
   if (activeTab === 'ai-support') {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-md animate-fade-in overflow-hidden">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/75 backdrop-blur-md animate-fade-in overflow-hidden">
         <div
-          className={`relative w-full max-w-md h-[92vh] max-h-[820px] rounded-[2rem] border shadow-2xl flex flex-col overflow-hidden ${
-            isLight ? 'bg-white border-[#13C8D9]/25' : 'bg-[#0B1F33] border-[#13C8D9]/30'
+          className={`relative w-full max-w-[430px] h-[94vh] max-h-[860px] rounded-[2.5rem] border-2 shadow-2xl flex flex-col overflow-hidden transition-all ${
+            isLight
+              ? 'bg-[#F8FAFC] border-cyan-400/40 shadow-cyan-500/10'
+              : 'bg-[#050D17] border-cyan-500/40 shadow-[0_0_50px_rgba(6,182,212,0.2)]'
           }`}
         >
-          <div
-            className={`flex items-center justify-between px-3 py-2 border-b shrink-0 ${
-              isLight ? 'border-[#0B1F33]/08 bg-white/90' : 'border-white/10 bg-black/30'
-            }`}
-          >
-            <button
-              type="button"
-              onClick={() => setActiveTab('faq')}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-colors ${
-                isLight
-                  ? 'border-[#0B1F33]/15 text-[#0B1F33] hover:bg-[#0B1F33]/05'
-                  : 'border-white/15 text-white/80 hover:bg-white/10'
-              }`}
-            >
-              FAQs
-            </button>
-            <span className="text-[11px] font-bold" style={{ color: GELEZA_AI.cyan }}>
-              Geleza SA AI
-            </span>
-            <button
-              type="button"
-              onClick={onClose}
-              className={`p-2 rounded-xl ${isLight ? 'text-[#0B1F33]/50 hover:bg-[#0B1F33]/06' : 'text-white/50 hover:bg-white/10'}`}
-              title="Close"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
           <GelezaAIChatPanel onSelectTab={onSelectTab} onClose={onClose} />
         </div>
       </div>
