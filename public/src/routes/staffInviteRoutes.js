@@ -6,5 +6,6 @@ const staffInviteController = require('../controller/staffInviteController');
 router.get('/verify', staffInviteController.verifyToken);
 router.post('/apply', staffInviteController.submitTeacherApplication);
 router.post('/register', staffInviteController.registerTeacherAccount);
+router.post('/confirm', staffInviteController.confirmTeacherInvite);
 
 module.exports = router;

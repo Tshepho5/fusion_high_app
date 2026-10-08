@@ -3472,6 +3472,8 @@ exports.createStaffInvite = async (req, res) => {
       schoolName,
       roleType: role_type,
       subjects: subjects_offered,
+      grades: assigned_grades,
+      classes: assigned_classes,
       sports: sports_coached,
       inviteUrl
     }).catch(e => console.warn('Could not send staff invite email:', e.message));
@@ -3479,6 +3481,7 @@ exports.createStaffInvite = async (req, res) => {
     res.status(201).json({
       success: true,
       invite,
+      inviteUrl,
       message: `Invitation successfully dispatched to ${cleanEmail}.`
     });
   } catch (err) {

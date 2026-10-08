@@ -2728,6 +2728,63 @@ const emailService = {
     return await emailService.send(params.email, template.subject, template.body);
   },
 
+  sendStaffInvitationNotice: async ({ colleagueEmail, colleagueName, principalName, schoolName, roleType, subjects = [], grades = [], classes = [], inviteUrl }) => {
+    const subject = `[${schoolName}] Educator Invitation & Assigned Subjects: ${subjects.length > 0 ? subjects.join(', ') : 'Faculty Allocation'}`;
+    const subjectsList = Array.isArray(subjects) && subjects.length > 0
+      ? subjects.map(s => `<li style="padding: 4px 0;"><strong style="color: #38bdf8;">${s}</strong></li>`).join('')
+      : '<li style="padding: 4px 0; color: #94a3b8;">General Faculty Allocation</li>';
+    const gradesStr = Array.isArray(grades) && grades.length > 0 ? grades.map(g => `Grade ${g}`).join(', ') : 'FET Phase';
+    const classesStr = Array.isArray(classes) && classes.length > 0 ? classes.join(', ') : 'Assigned Class Groups';
+
+    const bodyHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; color: #f8fafc;">
+        <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); padding: 28px 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">${schoolName}</h1>
+          <p style="margin: 6px 0 0 0; font-size: 13px; color: #bae6fd; font-weight: 500;">Official Educator Appointment & Subject Allocation</p>
+        </div>
+
+        <div style="padding: 28px 24px;">
+          <p style="margin: 0 0 16px 0; font-size: 15px; color: #f8fafc;">Dear <strong>${colleagueName || 'Educator'}</strong>,</p>
+          <p style="margin: 0 0 20px 0; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+            Principal <strong>${principalName || 'The School Principal'}</strong> has officially invited you to join the faculty of <strong>${schoolName}</strong> on the Geleza SA Digital Campus.
+          </p>
+
+          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #334155; border-radius: 12px; padding: 18px; margin: 0 0 24px 0;">
+            <h3 style="margin: 0 0 12px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #38bdf8;">Assigned Subjects & Teaching Allocations</h3>
+            <ul style="margin: 0 0 14px 0; padding-left: 20px; font-size: 13px; line-height: 1.6;">
+              ${subjectsList}
+            </ul>
+            <div style="border-top: 1px solid #334155; padding-top: 10px; font-size: 12px; color: #94a3b8; display: flex; flex-direction: column; gap: 4px;">
+              <p style="margin: 2px 0;"><strong>Assigned Grades:</strong> <span style="color: #f1f5f9;">${gradesStr}</span></p>
+              <p style="margin: 2px 0;"><strong>Assigned Classes:</strong> <span style="color: #f1f5f9;">${classesStr}</span></p>
+            </div>
+          </div>
+
+          <p style="margin: 0 0 24px 0; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+            Please click the button below to confirm your assigned subjects, set your account password, and immediately access your Teacher Dashboard:
+          </p>
+
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${inviteUrl}" style="display: inline-block; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-size: 14px; font-weight: 700; letter-spacing: -0.2px; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);">
+              Confirm Subjects & Activate Account
+            </a>
+          </div>
+
+          <p style="margin: 24px 0 0 0; font-size: 11px; color: #64748b; line-height: 1.5; word-break: break-all;">
+            If the button doesn't work, copy and paste this link into your browser:<br/>
+            <a href="${inviteUrl}" style="color: #38bdf8; text-decoration: underline;">${inviteUrl}</a>
+          </p>
+        </div>
+
+        <div style="background: #090d16; padding: 16px 24px; text-align: center; border-top: 1px solid #1e293b; font-size: 11px; color: #64748b;">
+          ${schoolName} &bull; Geleza SA Digital Campus Management
+        </div>
+      </div>
+    `;
+
+    return await emailService.send(colleagueEmail, subject, bodyHtml);
+  },
+
   sendSchoolApplicationReceivedNotice: async ({ principalEmail, principalName, schoolName, emisNumber, applicationNumber }) => {
     const subject = `Official School Application Received [${applicationNumber}] - ${schoolName}`;
     const contentHtml = `

@@ -745,6 +745,7 @@ export const classStaffService = {
   verifyToken: (token: string) => api.get(`/api/staff-invites/verify?token=${encodeURIComponent(token)}`).then(res => res.data),
   applyTeacher: (data: any) => api.post('/api/staff-invites/apply', data).then(res => res.data),
   registerTeacher: (data: any) => api.post('/api/staff-invites/register', data).then(res => res.data),
+  confirmTeacherInvite: (data: any) => api.post('/api/staff-invites/confirm', data).then(res => res.data),
 };
 
 // Geleza SA Executive & Admin Portal Access / Gatekeeper Controls & Tester QA Management

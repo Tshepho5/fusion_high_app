@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { adminService, parentApplicationService } from '../../services/api';
+import { adminService, parentApplicationService, classStaffService } from '../../services/api';
 import { useSchool } from '../../context/SchoolContext';
 import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/common/Badge';
@@ -37,7 +37,8 @@ import {
   XCircle,
   Clock,
   Pencil,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Copy
 } from 'lucide-react';
 
 const SA_OFFICIAL_LANGUAGES = [
@@ -183,6 +184,20 @@ export const AdminUsers: React.FC = () => {
 
   // Modals
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
+  const [isInviteTeacherModalOpen, setIsInviteTeacherModalOpen] = useState(false);
+  const [teacherInviteForm, setTeacherInviteForm] = useState({
+    email: '',
+    full_name: '',
+    surname: '',
+    subjects: ['Mathematics'] as string[],
+    grades: [10, 11] as number[],
+    classes: ['10A'] as string[]
+  });
+  const [generatedInviteUrl, setGeneratedInviteUrl] = useState<string | null>(null);
+  const [sendingTeacherInvite, setSendingTeacherInvite] = useState(false);
+  const [inviteModalError, setInviteModalError] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+
   const [isAddLearnerModalOpen, setIsAddLearnerModalOpen] = useState(false);
   const [isAddParentModalOpen, setIsAddParentModalOpen] = useState(false);
   const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
@@ -453,6 +468,72 @@ export const AdminUsers: React.FC = () => {
       setError(err.response?.data?.error || 'Failed to create employee in database.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Toggle helpers for Teacher Invitation
+  const toggleInviteSubject = (subName: string) => {
+    setTeacherInviteForm(prev => {
+      const exists = prev.subjects.includes(subName);
+      return {
+        ...prev,
+        subjects: exists ? prev.subjects.filter(s => s !== subName) : [...prev.subjects, subName]
+      };
+    });
+  };
+
+  const toggleInviteGrade = (grade: number) => {
+    setTeacherInviteForm(prev => {
+      const exists = prev.grades.includes(grade);
+      return {
+        ...prev,
+        grades: exists ? prev.grades.filter(g => g !== grade) : [...prev.grades, grade]
+      };
+    });
+  };
+
+  const toggleInviteClass = (className: string) => {
+    setTeacherInviteForm(prev => {
+      const exists = prev.classes.includes(className);
+      return {
+        ...prev,
+        classes: exists ? prev.classes.filter(c => c !== className) : [...prev.classes, className]
+      };
+    });
+  };
+
+  // Handle Send Teacher Invite via Email
+  const handleSendTeacherInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!teacherInviteForm.email.trim() || !teacherInviteForm.email.includes('@')) {
+      setInviteModalError('A valid colleague email address is required.');
+      return;
+    }
+    if (teacherInviteForm.subjects.length === 0) {
+      setInviteModalError('Please assign at least one subject to this teacher.');
+      return;
+    }
+    setInviteModalError(null);
+    setSendingTeacherInvite(true);
+    try {
+      const res = await classStaffService.createStaffInvite({
+        email: teacherInviteForm.email.trim(),
+        full_name: teacherInviteForm.full_name.trim() || undefined,
+        surname: teacherInviteForm.surname.trim() || undefined,
+        role_type: 'teacher',
+        subjects_offered: teacherInviteForm.subjects,
+        assigned_grades: teacherInviteForm.grades,
+        assigned_classes: teacherInviteForm.classes
+      });
+
+      const inviteLink = res.inviteUrl || `${window.location.origin}/register?role=teacher&invite=${res.invite?.invite_token || ''}`;
+      setGeneratedInviteUrl(inviteLink);
+      setActionSuccess(`Official invitation link generated and dispatched to ${teacherInviteForm.email}!`);
+      fetchData();
+    } catch (err: any) {
+      setInviteModalError(err.response?.data?.error || err.message || 'Failed to dispatch teacher invitation.');
+    } finally {
+      setSendingTeacherInvite(false);
     }
   };
 
@@ -771,11 +852,24 @@ export const AdminUsers: React.FC = () => {
           )}
 
           <button
-            onClick={() => setIsAddEmployeeModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-sm transition-all"
+            onClick={() => {
+              setInviteModalError(null);
+              setGeneratedInviteUrl(null);
+              setIsInviteTeacherModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-500 to-teal-400 hover:from-blue-500 hover:to-cyan-400 text-slate-950 font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer"
           >
-            <Briefcase className="w-4 h-4 text-white" />
-            <span>+ Add Employee / Teacher</span>
+            <Mail className="w-4 h-4 text-slate-950" />
+            <span>+ Invite Teacher by Email</span>
+          </button>
+
+          <button
+            onClick={() => setIsAddEmployeeModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-300 font-bold text-xs border border-white/10 transition-colors"
+            title="Manual registration without email invite"
+          >
+            <Briefcase className="w-3.5 h-3.5" />
+            <span>Manual Register</span>
           </button>
 
           <button
@@ -1544,6 +1638,237 @@ export const AdminUsers: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* ========================================================================= */}
+      {/* INVITE TEACHER BY EMAIL & ASSIGN SUBJECTS MODAL */}
+      {/* ========================================================================= */}
+      <Modal
+        isOpen={isInviteTeacherModalOpen}
+        onClose={() => {
+          setIsInviteTeacherModalOpen(false);
+          setGeneratedInviteUrl(null);
+        }}
+        title="Invite Teacher by Email & Assign Subjects"
+        maxWidth="2xl"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-200 text-xs flex items-center gap-2">
+            <Mail className="w-4 h-4 shrink-0 text-cyan-400" />
+            <span>
+              The teacher will receive an invitation link containing their assigned subjects, grades, and classes. They only need to confirm and set their password to see their assigned subjects in their dashboard.
+            </span>
+          </div>
+
+          {inviteModalError && (
+            <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2 animate-fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{inviteModalError}</span>
+            </div>
+          )}
+
+          {generatedInviteUrl ? (
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-left space-y-3 animate-fade-in">
+              <div className="flex items-center gap-2 text-emerald-300 font-bold">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>Invitation Dispatched & Ready to Share!</span>
+              </div>
+              <p className="text-[11px] text-slate-300">
+                An official invitation email has been sent to <strong className="text-white">{teacherInviteForm.email}</strong> with their assigned subjects and classes. You can also copy and send the direct link to the teacher via WhatsApp or SMS:
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={generatedInviteUrl}
+                  className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-[11px] outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(generatedInviteUrl);
+                    setCopiedLink(true);
+                    setTimeout(() => setCopiedLink(false), 3000);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs flex items-center gap-1.5 cursor-pointer transition-all"
+                >
+                  {copiedLink ? <Check className="w-3.5 h-3.5 text-slate-950" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
+                </button>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsInviteTeacherModalOpen(false);
+                    setGeneratedInviteUrl(null);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSendTeacherInvite} className="space-y-4">
+              {/* Teacher Email */}
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Teacher Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  value={teacherInviteForm.email}
+                  onChange={(e) => setTeacherInviteForm(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="e.g. s.ndlovu@school.co.za or personal@gmail.com"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-brand-500 font-mono"
+                />
+              </div>
+
+              {/* Optional Name */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">Teacher First Name (Optional)</label>
+                  <input
+                    type="text"
+                    value={teacherInviteForm.full_name}
+                    onChange={(e) => setTeacherInviteForm(prev => ({ ...prev, full_name: lettersOnly(e.target.value) }))}
+                    placeholder="e.g. Sipho"
+                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">Teacher Surname (Optional)</label>
+                  <input
+                    type="text"
+                    value={teacherInviteForm.surname}
+                    onChange={(e) => setTeacherInviteForm(prev => ({ ...prev, surname: lettersOnly(e.target.value) }))}
+                    placeholder="e.g. Ndlovu"
+                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+              </div>
+
+              {/* Assign Subjects */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-slate-300 font-bold">Assign Subjects to Teacher * (Click to Toggle)</label>
+                  <span className="text-[10px] text-cyan-300 font-bold">{teacherInviteForm.subjects.length} Selected</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 p-3 rounded-2xl bg-surface-darker border border-white/10 max-h-36 overflow-y-auto">
+                  {[
+                    'Mathematics', 'Physical Sciences', 'Life Sciences', 'Accounting',
+                    'Business Studies', 'Economics', 'Tourism', 'Mathematical Literacy',
+                    'English FAL', 'Sepedi Home Language', 'isiZulu Home Language', 'isiXhosa Home Language',
+                    'Afrikaans Home Language', 'Life Orientation', 'Natural Sciences', 'Social Sciences',
+                    'History', 'Geography', 'Technology'
+                  ].map(sub => {
+                    const isSelected = teacherInviteForm.subjects.includes(sub);
+                    return (
+                      <button
+                        type="button"
+                        key={sub}
+                        onClick={() => toggleInviteSubject(sub)}
+                        className={`text-[11px] px-2.5 py-1 rounded-lg font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                          isSelected
+                            ? 'bg-cyan-500 text-slate-950 font-bold shadow-xs'
+                            : 'bg-white/5 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {isSelected ? (
+                          <>
+                            <Check className="w-3 h-3 text-slate-950" />
+                            <span>{sub}</span>
+                          </>
+                        ) : (
+                          <span>+ {sub}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Assign Grades */}
+              <div className="space-y-1.5">
+                <label className="block text-slate-300 font-bold">Assign Grades (Click to Toggle)</label>
+                <div className="flex flex-wrap gap-2">
+                  {[8, 9, 10, 11, 12].map(g => {
+                    const isSelected = teacherInviteForm.grades.includes(g);
+                    return (
+                      <button
+                        type="button"
+                        key={g}
+                        onClick={() => toggleInviteGrade(g)}
+                        className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'bg-white/5 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Grade {g}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Assign Classes */}
+              <div className="space-y-1.5">
+                <label className="block text-slate-300 font-bold">Assign Classes (Click to Toggle)</label>
+                <div className="flex flex-wrap gap-2">
+                  {(metadata.classes.length > 0
+                    ? metadata.classes.map(c => c.name)
+                    : ['8A', '8B', '9A', '9B', '10A', '10B', '11A', '11B', '12A', '12B']
+                  ).map(cls => {
+                    const isSelected = teacherInviteForm.classes.includes(cls);
+                    return (
+                      <button
+                        type="button"
+                        key={cls}
+                        onClick={() => toggleInviteClass(cls)}
+                        className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-white/5 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {cls}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsInviteTeacherModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={sendingTeacherInvite}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-500 to-teal-400 hover:from-blue-500 hover:to-cyan-400 text-slate-950 font-black shadow-md transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                >
+                  {sendingTeacherInvite ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      <span>Sending Invitation...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>Send Teacher Invitation</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </Modal>
 
       {/* ========================================================================= */}
       {/* ADD EMPLOYEE MODAL (matches employees table in schema.sql) */}
