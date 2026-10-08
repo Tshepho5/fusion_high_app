@@ -42,12 +42,122 @@ import {
   Sparkles,
   Layers,
   Filter,
-  UserCheck
+  UserCheck,
+  MapPin,
+  School,
+  Globe,
+  RefreshCw,
+  ExternalLink,
+  Shield,
+  Tag,
+  Phone,
+  Mail,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useSchool } from '../../context/SchoolContext';
+import { useSchool, SchoolProfile } from '../../context/SchoolContext';
 
 export type SubjectViewMode = 'carousel' | 'grid' | 'compact' | 'list';
+
+/**
+ * Returns clean list of offered subjects for any registered school.
+ */
+export const getSchoolOfferedSubjects = (school: SchoolProfile): string[] => {
+  let list: string[] = [];
+  if (Array.isArray(school.offered_subjects)) {
+    list = school.offered_subjects.filter(Boolean);
+  } else if (typeof school.offered_subjects === 'string') {
+    try {
+      const parsed = JSON.parse(school.offered_subjects);
+      if (Array.isArray(parsed)) list = parsed.filter(Boolean);
+      else list = school.offered_subjects.split(',').map(s => s.trim()).filter(Boolean);
+    } catch {
+      list = school.offered_subjects.split(',').map(s => s.trim()).filter(Boolean);
+    }
+  }
+
+  if (list.length === 0) {
+    const streams = Array.isArray(school.offered_streams) ? school.offered_streams : [];
+    const base = ['Mathematics', 'English Home Language', 'Life Orientation'];
+    if (streams.some((s: string) => /science|stem/i.test(s))) {
+      base.push('Physical Sciences', 'Life Sciences', 'Information Technology');
+    }
+    if (streams.some((s: string) => /commerce|finance/i.test(s))) {
+      base.push('Accounting', 'Business Studies', 'Economics');
+    }
+    if (streams.some((s: string) => /technical|engineering/i.test(s))) {
+      base.push('Civil Technology', 'Engineering Graphics & Design (EGD)');
+    }
+    if (streams.some((s: string) => /humanities|arts/i.test(s))) {
+      base.push('Geography', 'History');
+    }
+    if (base.length === 3) {
+      base.push('Physical Sciences', 'Life Sciences', 'Accounting', 'Geography', 'Economics');
+    }
+    return base;
+  }
+  return list;
+};
+
+export const getSchoolOfferedStreams = (school: SchoolProfile): string[] => {
+  let list: string[] = [];
+  if (Array.isArray(school.offered_streams)) {
+    list = school.offered_streams.filter(Boolean);
+  } else if (typeof school.offered_streams === 'string') {
+    try {
+      const parsed = JSON.parse(school.offered_streams);
+      if (Array.isArray(parsed)) list = parsed.filter(Boolean);
+      else list = school.offered_streams.split(',').map(s => s.trim()).filter(Boolean);
+    } catch {
+      list = school.offered_streams.split(',').map(s => s.trim()).filter(Boolean);
+    }
+  }
+  return list.length > 0 ? list : ['General Academic (CAPS)', 'Science & STEM', 'Commerce'];
+};
+
+export const getSchoolOfferedLanguages = (school: SchoolProfile): string[] => {
+  let list: string[] = [];
+  if (Array.isArray(school.offered_languages)) {
+    list = school.offered_languages.filter(Boolean);
+  } else if (typeof school.offered_languages === 'string') {
+    try {
+      const parsed = JSON.parse(school.offered_languages);
+      if (Array.isArray(parsed)) list = parsed.filter(Boolean);
+      else list = school.offered_languages.split(',').map(s => s.trim()).filter(Boolean);
+    } catch {
+      list = school.offered_languages.split(',').map(s => s.trim()).filter(Boolean);
+    }
+  }
+  return list.length > 0 ? list : ['English (LOLT / Home Language)', 'Afrikaans FAL', 'Sepedi FAL'];
+};
+
+export const categorizeSchoolSubjects = (subjects: string[]) => {
+  const categories: Record<string, string[]> = {
+    'STEM & Sciences': [],
+    'Commerce & Management': [],
+    'Languages & Literacy': [],
+    'Humanities & Social': [],
+    'Technical & Vocational': []
+  };
+
+  subjects.forEach(sub => {
+    const s = sub.toLowerCase();
+    if (s.includes('math') || s.includes('physic') || s.includes('chem') || s.includes('natural science') || s.includes('tech science') || s.includes('life science') || s.includes('bio') || s.includes('information tech') || s.includes('cat') || s.includes('computer')) {
+      categories['STEM & Sciences'].push(sub);
+    } else if (s.includes('account') || s.includes('business') || s.includes('econom') || s.includes('ems') || s.includes('finance')) {
+      categories['Commerce & Management'].push(sub);
+    } else if (s.includes('english') || s.includes('afrikaans') || s.includes('zulu') || s.includes('xhosa') || s.includes('sepedi') || s.includes('sotho') || s.includes('tswana') || s.includes('venda') || s.includes('tsonga') || s.includes('swati') || s.includes('ndebele') || s.includes('language') || s.includes('fal') || s.includes('hl')) {
+      categories['Languages & Literacy'].push(sub);
+    } else if (s.includes('history') || s.includes('geograph') || s.includes('social science') || s.includes('tourism') || s.includes('life orient') || s.includes('religion')) {
+      categories['Humanities & Social'].push(sub);
+    } else {
+      categories['Technical & Vocational'].push(sub);
+    }
+  });
+
+  return categories;
+};
 
 /**
  * Returns a high-definition cover image reflecting the subject's academic field.
@@ -149,13 +259,14 @@ interface AdminOverviewProps {
 
 export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) => {
   const { user } = useAuth();
-  const { currentSchool } = useSchool();
+  const { currentSchool, schoolsList, setSchoolById, refreshSchools } = useSchool();
+  const isSuperAdmin = Boolean(user?.is_superadmin);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const metricsCarouselRef = useRef<HTMLDivElement>(null);
   const subjectsCarouselRef = useRef<HTMLDivElement>(null);
 
-  // Subject Exploration Controls
+  // Subject Exploration Controls (For School Admin)
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [subjectSearch, setSubjectSearch] = useState<string>('');
@@ -165,6 +276,30 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
 
   // Selected Subject for "View More" Command Center Modal
   const [viewMoreSubject, setViewMoreSubject] = useState<SchoolSubjectItem | null>(null);
+
+  // Registered Schools Exploration Controls (For Geleza SA Platform Admin)
+  const [schoolsViewMode, setSchoolsViewMode] = useState<SubjectViewMode>(() => {
+    return (localStorage.getItem('admin_schools_view_mode') as SubjectViewMode) || 'grid';
+  });
+  const [schoolSearchQuery, setSchoolSearchQuery] = useState<string>('');
+  const [selectedSchoolProvince, setSelectedSchoolProvince] = useState<string>('all');
+  const [selectedSchoolCircuit, setSelectedSchoolCircuit] = useState<string>('all');
+  const [selectedSchoolForCurriculum, setSelectedSchoolForCurriculum] = useState<SchoolProfile | null>(null);
+  const [isRefreshingSchools, setIsRefreshingSchools] = useState<boolean>(false);
+  const [expandedSchoolIds, setExpandedSchoolIds] = useState<Record<number, boolean>>({});
+
+  const toggleSchoolExpand = (schoolId: number) => {
+    setExpandedSchoolIds(prev => ({ ...prev, [schoolId]: !prev[schoolId] }));
+  };
+
+  const handleSetSchoolsViewMode = (mode: SubjectViewMode) => {
+    setSchoolsViewMode(mode);
+    try {
+      localStorage.setItem('admin_schools_view_mode', mode);
+    } catch {
+      // ignore
+    }
+  };
 
   const handleSetSubjectsViewMode = (mode: SubjectViewMode) => {
     setSubjectsViewMode(mode);
@@ -190,6 +325,23 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
   // Raw API subjects state
   const [apiSubjects, setApiSubjects] = useState<any[]>([]);
   const [pendingSchoolApps, setPendingSchoolApps] = useState<any[]>([]);
+
+  const handleRefreshSchools = async () => {
+    setIsRefreshingSchools(true);
+    try {
+      await refreshSchools();
+      const appsRes = await schoolRegistrationService.getAllApplications().catch(() => []);
+      const rows = Array.isArray(appsRes) ? appsRes : (appsRes?.applications || []);
+      setPendingSchoolApps(rows.filter((a: any) => {
+        const s = (a.status || '').toLowerCase();
+        return s === 'pending' || s === 'pending_review' || s === 'under_review' || s === 'awaiting_review';
+      }));
+    } catch (err) {
+      console.warn('Failed to refresh registered schools network:', err);
+    } finally {
+      setIsRefreshingSchools(false);
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -398,6 +550,47 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
     });
   }, [masterSubjects, selectedGrade, selectedCategory, subjectSearch]);
 
+  // Registered schools only (active verified partner campuses on Geleza SA)
+  const registeredSchools = useMemo(() => {
+    return (schoolsList || []).filter(s => s.is_active && s.id !== 0);
+  }, [schoolsList]);
+
+  const filteredRegisteredSchools = useMemo(() => {
+    return registeredSchools.filter(s => {
+      const q = schoolSearchQuery.toLowerCase().trim();
+      const offeredSubs = getSchoolOfferedSubjects(s).map(sub => sub.toLowerCase());
+      const matchesSearch = !q ||
+        s.name.toLowerCase().includes(q) ||
+        (s.emis_number || '').toLowerCase().includes(q) ||
+        (s.principal_name || '').toLowerCase().includes(q) ||
+        (s.circuit || '').toLowerCase().includes(q) ||
+        (s.district || '').toLowerCase().includes(q) ||
+        (s.province || '').toLowerCase().includes(q) ||
+        offeredSubs.some(sub => sub.includes(q));
+
+      const matchesProvince = selectedSchoolProvince === 'all' || s.province === selectedSchoolProvince;
+      const matchesCircuit = selectedSchoolCircuit === 'all' || s.circuit === selectedSchoolCircuit;
+
+      return matchesSearch && matchesProvince && matchesCircuit;
+    });
+  }, [registeredSchools, schoolSearchQuery, selectedSchoolProvince, selectedSchoolCircuit]);
+
+  const schoolProvinces = useMemo(() => {
+    const set = new Set<string>();
+    registeredSchools.forEach(s => {
+      if (s.province) set.add(s.province);
+    });
+    return Array.from(set);
+  }, [registeredSchools]);
+
+  const schoolCircuits = useMemo(() => {
+    const set = new Set<string>();
+    registeredSchools.forEach(s => {
+      if (s.circuit) set.add(s.circuit);
+    });
+    return Array.from(set);
+  }, [registeredSchools]);
+
   if (loading) return <AdminOverviewSkeleton />;
 
   const totalLearners = stats?.enrolled_learners !== undefined 
@@ -481,9 +674,524 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
       <SchoolModulePreferences />
 
       {/* ========================================================================= */}
-      {/* 1. SCHOOL CURRICULUM SUBJECTS & GRADE EXPLORATION                         */}
+      {/* 1. GELEZA SA SUPERADMIN vs SCHOOL ADMIN OVERVIEW SPACE                     */}
       {/* ========================================================================= */}
-      <section className="space-y-4 rounded-3xl bg-slate-100 dark:bg-surface-darker border border-slate-300 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden transition-colors">
+      {isSuperAdmin ? (
+        /* ========================================================================= */
+        /* GELEZA SA PLATFORM ADMIN: REGISTERED PARTNER SCHOOLS DIRECTORY            */
+        /* (In place of flat subjects: Only registered schools, with subjects inside)*/
+        /* ========================================================================= */
+        <section className="space-y-4 rounded-3xl bg-slate-100 dark:bg-surface-darker border border-slate-300 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden transition-colors">
+          {/* Header */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-300 text-xs font-bold">
+                <Building2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                <span>Geleza SA Executive Governance • Institutional Network</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black font-display text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+                <span>Registered Partner Schools Directory</span>
+                <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                  {registeredSchools.length} Verified {registeredSchools.length === 1 ? 'Campus' : 'Campuses'}
+                </span>
+              </h2>
+              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-3xl">
+                Accredited DBE institutions registered on Geleza SA. Each school card showcases the curriculum, academic streams, and all offered subjects taught on that campus. Newly approved schools automatically appear here.
+              </p>
+            </div>
+
+            {/* Controls: Search, View Mode, Refresh */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Search */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={schoolSearchQuery}
+                  onChange={(e) => setSchoolSearchQuery(e.target.value)}
+                  placeholder="Search school, EMIS, province, or subject..."
+                  className="pl-8 pr-3 py-1.5 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-all w-52 sm:w-64"
+                />
+              </div>
+
+              {/* View Mode Switcher */}
+              <div className="flex items-center p-1 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => handleSetSchoolsViewMode('grid')}
+                  className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                    schoolsViewMode === 'grid'
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                  }`}
+                  title="Grid View"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline text-[11px]">Grid</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSetSchoolsViewMode('compact')}
+                  className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                    schoolsViewMode === 'compact'
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                  }`}
+                  title="Compact View"
+                >
+                  <Grid3X3 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline text-[11px]">Compact</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSetSchoolsViewMode('list')}
+                  className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                    schoolsViewMode === 'list'
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                  }`}
+                  title="Detailed List View"
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline text-[11px]">List</span>
+                </button>
+              </div>
+
+              {/* Refresh Button */}
+              <button
+                type="button"
+                onClick={handleRefreshSchools}
+                disabled={isRefreshingSchools}
+                className="p-2 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 transition-all shadow-sm cursor-pointer"
+                title="Sync Schools Network"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingSchools ? 'animate-spin text-purple-600' : ''}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Filter Pills (Provinces & Circuits) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            <button
+              onClick={() => setSelectedSchoolProvince('all')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                selectedSchoolProvince === 'all'
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-purple-600 dark:hover:text-white'
+              }`}
+            >
+              All Provinces ({registeredSchools.length})
+            </button>
+            {schoolProvinces.map(prov => (
+              <button
+                key={prov}
+                onClick={() => setSelectedSchoolProvince(prov)}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                  selectedSchoolProvince === prov
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-purple-600 dark:hover:text-white'
+                }`}
+              >
+                {prov}
+              </button>
+            ))}
+          </div>
+
+          {/* Incoming Schools Alert (if pending applications exist) */}
+          {pendingSchoolApps.length > 0 && (
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping shrink-0" />
+                <span className="font-bold text-amber-900 dark:text-amber-200">
+                  {pendingSchoolApps.length} New Incoming School {pendingSchoolApps.length === 1 ? 'Registration' : 'Registrations'} Awaiting Geleza SA Accreditation
+                </span>
+                <span className="hidden md:inline text-slate-500 dark:text-slate-400">
+                  • Once approved, new schools will immediately appear in this space with their offered subjects.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigateTab('school-admissions')}
+                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-all shadow-sm flex items-center gap-1 shrink-0 self-start sm:self-auto cursor-pointer"
+              >
+                <span>Accredit Incoming Schools</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Registered Schools Output Rendering */}
+          {filteredRegisteredSchools.length === 0 ? (
+            <div className="p-8 sm:p-12 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 flex items-center justify-center mx-auto">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                {schoolSearchQuery ? 'No Registered Schools Match Filter' : 'No Schools Registered Yet'}
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto">
+                {schoolSearchQuery
+                  ? 'Try adjusting your search query, province filter, or subject name.'
+                  : 'Schools register through the public registration portal and appear here immediately once accredited by Geleza SA Executives.'}
+              </p>
+              {pendingSchoolApps.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('school-admissions')}
+                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-all shadow-md inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>Review {pendingSchoolApps.length} Pending School Applications</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* VIEW MODE 1: GRID VIEW */}
+              {schoolsViewMode === 'grid' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {filteredRegisteredSchools.map((school) => {
+                    const offeredSubjects = getSchoolOfferedSubjects(school);
+                    const offeredStreams = getSchoolOfferedStreams(school);
+                    const isExpanded = Boolean(expandedSchoolIds[school.id]);
+                    const displayedSubjects = isExpanded ? offeredSubjects : offeredSubjects.slice(0, 6);
+                    const remainingCount = offeredSubjects.length - 6;
+
+                    return (
+                      <div
+                        key={school.id}
+                        className="rounded-3xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-purple-500/40 transition-all shadow-sm hover:shadow-lg flex flex-col justify-between overflow-hidden group"
+                      >
+                        {/* School Card Top Banner */}
+                        <div
+                          className="p-5 border-b border-slate-200 dark:border-white/10 relative overflow-hidden"
+                          style={{
+                            background: `linear-gradient(135deg, ${school.primary_color || '#4f46e5'}20 0%, ${school.secondary_color || '#06b6d4'}15 100%)`
+                          }}
+                        >
+                          <div className="flex items-start justify-between gap-3 relative z-10">
+                            <div className="flex items-center gap-3">
+                              {/* Logo / Emblem */}
+                              <div
+                                className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-white text-lg shadow-md shrink-0 border border-white/20 overflow-hidden"
+                                style={{ backgroundColor: school.primary_color || '#4f46e5' }}
+                              >
+                                {school.logo_url ? (
+                                  <img src={school.logo_url} alt={school.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <span>{school.name.slice(0, 2).toUpperCase()}</span>
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <h3 className="text-base font-black text-slate-900 dark:text-white truncate">
+                                  {school.name}
+                                </h3>
+                                <p className="text-xs text-slate-600 dark:text-slate-300 italic truncate">
+                                  {school.motto || 'Excellence in Education'}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shrink-0 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              Active
+                            </span>
+                          </div>
+
+                          {/* Location & EMIS badges */}
+                          <div className="flex items-center gap-1.5 flex-wrap mt-3 pt-3 border-t border-black/5 dark:border-white/10 text-[11px] text-slate-600 dark:text-slate-300">
+                            {school.province && (
+                              <span className="px-2 py-0.5 rounded-md bg-white/80 dark:bg-black/30 border border-slate-300 dark:border-white/10 font-semibold flex items-center gap-1">
+                                <MapPin className="w-3 h-3 text-purple-500" />
+                                {school.province}
+                              </span>
+                            )}
+                            {school.circuit && (
+                              <span className="px-2 py-0.5 rounded-md bg-white/80 dark:bg-black/30 border border-slate-300 dark:border-white/10 font-semibold">
+                                Circuit: {school.circuit}
+                              </span>
+                            )}
+                            {school.emis_number && (
+                              <span className="px-2 py-0.5 rounded-md bg-white/80 dark:bg-black/30 border border-slate-300 dark:border-white/10 font-mono font-bold text-slate-700 dark:text-slate-300">
+                                EMIS: {school.emis_number}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* School Body: Macro Metrics */}
+                        <div className="p-5 space-y-4 flex-1">
+                          {/* 3 Metric Pills */}
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5 text-center">
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Learners</span>
+                              <span className="text-base font-extrabold font-mono text-slate-900 dark:text-white">
+                                {school.enrolled_learners_count || 0}
+                              </span>
+                            </div>
+                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5 text-center">
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Staff</span>
+                              <span className="text-base font-extrabold font-mono text-slate-900 dark:text-white">
+                                {school.staff_count || 0}
+                              </span>
+                            </div>
+                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5 text-center">
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Classes</span>
+                              <span className="text-base font-extrabold font-mono text-slate-900 dark:text-white">
+                                {school.classes_count || 0}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Principal & Curriculum */}
+                          <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-500 dark:text-slate-400">Principal:</span>
+                              <span className="font-bold text-slate-900 dark:text-white">
+                                {school.principal_name || 'Principal unassigned'}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-500 dark:text-slate-400">Curriculum:</span>
+                              <span className="font-bold text-purple-700 dark:text-purple-300">
+                                {school.curriculum_type || 'CAPS (DBE)'} ({school.grade_range || 'Grades 8 - 12'})
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Streams Badges */}
+                          <div className="space-y-1.5 pt-2 border-t border-slate-200 dark:border-white/10">
+                            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                              Academic Streams Offered:
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {offeredStreams.map((st, i) => (
+                                <span
+                                  key={i}
+                                  className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20"
+                                >
+                                  {st}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* ========================================================= */}
+                          {/* SUBJECTS THIS SCHOOL OFFERS (Crucial Request Implementation) */}
+                          {/* ========================================================= */}
+                          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                                <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+                                <span>Offered Subjects ({offeredSubjects.length})</span>
+                              </span>
+                              {offeredSubjects.length > 6 && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleSchoolExpand(school.id)}
+                                  className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-0.5 cursor-pointer"
+                                >
+                                  <span>{isExpanded ? 'Show Less' : `+${remainingCount} More`}</span>
+                                  {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Subjects Pills Grid */}
+                            <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto scrollbar-thin">
+                              {displayedSubjects.map((subName, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 shadow-2xs hover:border-indigo-500/40 transition-colors"
+                                >
+                                  {subName}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Card Footer Actions */}
+                        <div className="p-4 bg-slate-50 dark:bg-surface-darker border-t border-slate-200 dark:border-white/10 flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSchoolForCurriculum(school)}
+                            className="flex-1 py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-all shadow-md shadow-purple-600/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <BookOpen className="w-3.5 h-3.5" />
+                            <span>Inspect Curriculum</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSchoolById(school.id);
+                              onNavigateTab('users');
+                            }}
+                            className="py-2 px-3 rounded-xl bg-white dark:bg-surface-dark hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-300 dark:border-white/15 text-slate-700 dark:text-slate-300 font-bold text-xs transition-all flex items-center gap-1 cursor-pointer"
+                            title="Manage School Roster & Users"
+                          >
+                            <Users className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Roster</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* VIEW MODE 2: COMPACT TILES */}
+              {schoolsViewMode === 'compact' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {filteredRegisteredSchools.map((school) => {
+                    const offeredSubjects = getSchoolOfferedSubjects(school);
+                    return (
+                      <div
+                        key={school.id}
+                        onClick={() => setSelectedSchoolForCurriculum(school)}
+                        className="p-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-purple-500/50 transition-all shadow-sm hover:shadow-md cursor-pointer space-y-3 group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm"
+                            style={{ backgroundColor: school.primary_color || '#4f46e5' }}
+                          >
+                            {school.logo_url ? (
+                              <img src={school.logo_url} alt={school.name} className="w-full h-full object-cover rounded-xl" />
+                            ) : (
+                              school.name.slice(0, 2).toUpperCase()
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-xs font-black text-slate-900 dark:text-white truncate group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors">
+                              {school.name}
+                            </h4>
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400 block truncate">
+                              {school.province || 'National'} • {school.circuit || 'General'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-200 dark:border-white/10">
+                          <span className="font-bold text-slate-700 dark:text-slate-300">
+                            {school.enrolled_learners_count || 0} Learners
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md font-bold bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-[10px]">
+                            {offeredSubjects.length} Subjects
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* VIEW MODE 3: DETAILED LIST VIEW */}
+              {schoolsViewMode === 'list' && (
+                <div className="space-y-3">
+                  {filteredRegisteredSchools.map((school) => {
+                    const offeredSubjects = getSchoolOfferedSubjects(school);
+
+                    return (
+                      <div
+                        key={school.id}
+                        className="p-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-purple-500/50 transition-all shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 group"
+                      >
+                        <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+                          <div
+                            className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-base shrink-0 shadow-md"
+                            style={{ backgroundColor: school.primary_color || '#4f46e5' }}
+                          >
+                            {school.logo_url ? (
+                              <img src={school.logo_url} alt={school.name} className="w-full h-full object-cover rounded-2xl" />
+                            ) : (
+                              school.name.slice(0, 2).toUpperCase()
+                            )}
+                          </div>
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-sm font-black text-slate-900 dark:text-white truncate">
+                                {school.name}
+                              </h4>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                                Verified
+                              </span>
+                              <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
+                                EMIS: {school.emis_number || 'N/A'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">
+                              {school.province || 'National'} • Circuit: {school.circuit || 'General'} • Principal: {school.principal_name || 'Unassigned'}
+                            </p>
+                            {/* Offered subjects preview */}
+                            <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                                Subjects ({offeredSubjects.length}):
+                              </span>
+                              {offeredSubjects.slice(0, 5).map((sub, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-800 dark:text-slate-200"
+                                >
+                                  {sub}
+                                </span>
+                              ))}
+                              {offeredSubjects.length > 5 && (
+                                <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                                  +{offeredSubjects.length - 5} more
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between lg:justify-end gap-3 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-200 dark:border-white/10">
+                          <div className="text-right hidden sm:block">
+                            <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                              {school.enrolled_learners_count || 0} Learners
+                            </span>
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                              {school.staff_count || 0} Staff • {school.classes_count || 0} Classes
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedSchoolForCurriculum(school)}
+                              className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                            >
+                              <BookOpen className="w-3.5 h-3.5" />
+                              <span>Inspect Curriculum</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSchoolById(school.id);
+                                onNavigateTab('users');
+                              }}
+                              className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors cursor-pointer"
+                            >
+                              Roster
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      ) : (
+        /* ========================================================================= */
+        /* SCHOOL ADMIN / PRINCIPAL: SCHOOL CURRICULUM SUBJECTS & GRADE EXPLORATION  */
+        /* (Preserved view: school admin sees their own school's curriculum subjects)*/
+        /* ========================================================================= */
+        <section className="space-y-4 rounded-3xl bg-slate-100 dark:bg-surface-darker border border-slate-300 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden transition-colors">
         
         {/* Section Top Header with Title and View Mode Switcher */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -965,6 +1673,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
           </>
         )}
       </section>
+    )}
 
       {/* ========================================================================= */}
       {/* 3. FAVORITE MODULES SECTION (QUICK ACCESS FOR ADMIN)                     */}
@@ -1249,6 +1958,221 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
               </button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 6. GELEZA SA ACCREDITED SCHOOL CURRICULUM & SUBJECTS INSPECTOR MODAL      */}
+      {/* ========================================================================= */}
+      {selectedSchoolForCurriculum && (
+        <Modal
+          isOpen={!!selectedSchoolForCurriculum}
+          onClose={() => setSelectedSchoolForCurriculum(null)}
+          title={`Campus Curriculum & Offered Subjects • ${selectedSchoolForCurriculum.name}`}
+          maxWidth="4xl"
+        >
+          {(() => {
+            const school = selectedSchoolForCurriculum;
+            const allSubjects = getSchoolOfferedSubjects(school);
+            const allStreams = getSchoolOfferedStreams(school);
+            const allLanguages = getSchoolOfferedLanguages(school);
+            const categorized = categorizeSchoolSubjects(allSubjects);
+
+            return (
+              <div className="space-y-6 text-slate-900 dark:text-white">
+                {/* Header Brand Bar */}
+                <div
+                  className="p-5 -mt-2 -mx-2 sm:-mx-4 rounded-2xl relative overflow-hidden border border-slate-200 dark:border-white/10"
+                  style={{
+                    background: `linear-gradient(135deg, ${school.primary_color || '#4f46e5'}25 0%, ${school.secondary_color || '#06b6d4'}15 100%)`
+                  }}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+                    <div className="flex items-center gap-3.5">
+                      <div
+                        className="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-white text-xl shadow-md shrink-0 border border-white/20 overflow-hidden"
+                        style={{ backgroundColor: school.primary_color || '#4f46e5' }}
+                      >
+                        {school.logo_url ? (
+                          <img src={school.logo_url} alt={school.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{school.name.slice(0, 2).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                            {school.name}
+                          </h3>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                            Accredited Partner
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 italic">
+                          {school.motto || 'Excellence in Education'}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          {school.province || 'National'} • Circuit: {school.circuit || 'General'} • EMIS: <span className="font-mono">{school.emis_number || 'N/A'}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="text-xs text-slate-500 dark:text-slate-400 block">Enrolled Learners</span>
+                      <span className="text-2xl font-black font-mono text-purple-700 dark:text-purple-300">
+                        {school.enrolled_learners_count || 0}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Institutional & Curriculum Metadata */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Curriculum Framework</span>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                      {school.curriculum_type || 'CAPS (DBE)'}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Grade Range</span>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                      {school.grade_range || 'Grades 8 - 12'}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Principal / Lead</span>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white truncate block">
+                      {school.principal_name || 'Unassigned'}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Total Subjects</span>
+                    <span className="text-xs font-black font-mono text-indigo-600 dark:text-indigo-400">
+                      {allSubjects.length} Registered
+                    </span>
+                  </div>
+                </div>
+
+                {/* Offered Academic Streams */}
+                <div className="space-y-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 block flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-purple-500" />
+                    <span>Academic Streams Offered by {school.name}</span>
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {allStreams.map((stream, idx) => (
+                      <span
+                        key={idx}
+                        className="px-3 py-1 rounded-xl text-xs font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/30 flex items-center gap-1.5"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-purple-500" />
+                        <span>{stream}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Categorized Offered Subjects (The Core Highlight) */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-white/10">
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>Subjects Taught at this Campus ({allSubjects.length})</span>
+                    </span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                      DBE / CAPS Compliant
+                    </span>
+                  </div>
+
+                  <div className="space-y-4 max-h-80 overflow-y-auto pr-1 scrollbar-thin">
+                    {Object.entries(categorized).map(([catName, subs]) => {
+                      if (subs.length === 0) return null;
+                      return (
+                        <div key={catName} className="space-y-2">
+                          <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-purple-500" />
+                            <span>{catName}</span>
+                            <span className="text-[10px] text-slate-500 font-normal">({subs.length})</span>
+                          </h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {subs.map((sub, sIdx) => (
+                              <div
+                                key={sIdx}
+                                className="p-2.5 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/10 flex items-center justify-between gap-2 shadow-2xs"
+                              >
+                                <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                  {sub}
+                                </span>
+                                <span className="text-[10px] px-2 py-0.5 rounded-md font-mono bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 shrink-0">
+                                  CAPS Gr {school.grade_range || '8-12'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Languages of Instruction */}
+                <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-white/10">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-cyan-500" />
+                    <span>Languages of Learning and Teaching (LOLT) & Additional Languages</span>
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {allLanguages.map((lang, lIdx) => (
+                      <span
+                        key={lIdx}
+                        className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20"
+                      >
+                        {lang}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Modal Footer Actions */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-slate-200 dark:border-white/10">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSchoolById(school.id);
+                        setSelectedSchoolForCurriculum(null);
+                        onNavigateTab('users');
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      <span>Switch Context to {school.name}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedSchoolForCurriculum(null);
+                        onNavigateTab('command-center');
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 text-slate-800 dark:text-slate-200 font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Building2 className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Command Center</span>
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSchoolForCurriculum(null)}
+                    className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-900 dark:text-white font-bold text-xs transition-colors cursor-pointer self-end sm:self-auto"
+                  >
+                    Close Dossier
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </Modal>
       )}
 

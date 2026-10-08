@@ -23,6 +23,9 @@ export interface SchoolProfile {
   curriculum_type?: string;
   grade_range?: string;
   is_active: boolean;
+  offered_subjects?: string[] | string | null;
+  offered_streams?: string[] | string | null;
+  offered_languages?: string[] | string | null;
   teacher_modules?: string[] | null;
   learner_modules?: string[] | null;
   settings?: Record<string, any>;
