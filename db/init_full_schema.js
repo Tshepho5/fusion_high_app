@@ -789,9 +789,23 @@ async function initializeAllDatabaseTables(customClient) {
         period VARCHAR(50),
         relief_date DATE NOT NULL,
         notes TEXT,
-        status VARCHAR(30) DEFAULT 'assigned',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS total_days NUMERIC(4,1) DEFAULT 1.0;
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS document_url VARCHAR(255);
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS reviewed_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS admin_notes TEXT;
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS school_id INTEGER;
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS absent_teacher_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS relief_teacher_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS period_number INTEGER;
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS grade INTEGER;
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS classroom VARCHAR(50) DEFAULT 'Classroom';
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS subject VARCHAR(100);
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS lesson_instructions TEXT;
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS school_id INTEGER;
 
       -- 11. Parent-Teacher Conferences & Conduct Logs
       CREATE TABLE IF NOT EXISTS ptc_slots (

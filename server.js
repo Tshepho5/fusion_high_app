@@ -85,6 +85,8 @@ if (!process.env.VERCEL) {
       await migrateSchoolOnboardingAndCleanRoster();
       const migrateTextbookInventorySchema = require('./db/migrate_textbook_inventory_schema');
       await migrateTextbookInventorySchema();
+      const migrateLeaveAndExamSchema = require('./db/migrate_leave_and_exam_schema');
+      await migrateLeaveAndExamSchema();
       console.log('[DB BOOTSTRAP] All database tables, schemas, and security verified successfully.');
       if (firestore) {
         console.log('[FIREBASE BOOTSTRAP] Firebase Cloud Firestore & Admin SDK initialized and active.');
