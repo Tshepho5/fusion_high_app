@@ -27,13 +27,22 @@ import {
   Lock,
   Unlock,
   Key,
-  ShieldAlert
+  ShieldAlert,
+  Plus,
+  Trash2,
+  Layers,
+  SlidersHorizontal,
+  Save,
+  Check,
+  X
 } from 'lucide-react';
 import { commandCenterService, schoolRegistrationService, systemControlService } from '../../services/api';
 import { AdmissionWindowPanel } from './AdmissionWindowPanel';
+import { SchoolModulePreferences } from './SchoolModulePreferences';
 import { useSchool } from '../../context/SchoolContext';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Badge } from '../common/Badge';
+import { Modal } from '../common/Modal';
 
 interface SchoolStat {
   id: number;
@@ -58,6 +67,11 @@ interface SchoolStat {
   total_collected: string;
   avg_attendance_pct: string;
   subadmins: Array<{ id: number; name: string; email: string; phone: string }>;
+  offered_subjects?: string[] | string | null;
+  offered_streams?: string[] | string | null;
+  offered_languages?: string[] | string | null;
+  teacher_modules?: string[] | null;
+  learner_modules?: string[] | null;
 }
 
 interface MacroTotals {
@@ -70,7 +84,76 @@ interface MacroTotals {
   collection_rate_pct: number;
 }
 
-export const MultiSchoolCommandCenter: React.FC = () => {
+interface MultiSchoolCommandCenterProps {
+  onNavigateTab?: (tabId: string, params?: any) => void;
+}
+
+const CAPS_SUBJECT_GROUPS = [
+  {
+    category: 'STEM & Sciences',
+    subjects: [
+      'Mathematics',
+      'Mathematical Literacy',
+      'Physical Sciences',
+      'Life Sciences',
+      'Information Technology (IT)',
+      'Computer Applications Technology (CAT)',
+      'Technical Mathematics',
+      'Technical Sciences'
+    ]
+  },
+  {
+    category: 'Commerce & Management',
+    subjects: [
+      'Accounting',
+      'Business Studies',
+      'Economics'
+    ]
+  },
+  {
+    category: 'Languages & Literacy',
+    subjects: [
+      'English Home Language',
+      'English FAL',
+      'Afrikaans Home Language',
+      'Afrikaans FAL',
+      'Sepedi Home Language',
+      'Sepedi FAL',
+      'IsiZulu Home Language',
+      'IsiZulu FAL',
+      'IsiXhosa Home Language',
+      'IsiXhosa FAL',
+      'Sesotho Home Language',
+      'Setswana Home Language',
+      'Xitsonga Home Language',
+      'Tshivenda Home Language'
+    ]
+  },
+  {
+    category: 'Humanities & Social Sciences',
+    subjects: [
+      'Geography',
+      'History',
+      'Tourism',
+      'Religion Studies'
+    ]
+  },
+  {
+    category: 'Technical & Applied Sciences',
+    subjects: [
+      'Life Orientation',
+      'Engineering Graphics & Design (EGD)',
+      'Agricultural Sciences',
+      'Civil Technology',
+      'Electrical Technology',
+      'Mechanical Technology',
+      'Consumer Studies',
+      'Hospitality Studies'
+    ]
+  }
+];
+
+export const MultiSchoolCommandCenter: React.FC<MultiSchoolCommandCenterProps> = ({ onNavigateTab }) => {
   const { currentSchool, setSchoolBySlug } = useSchool();
   const [macroTotals, setMacroTotals] = useState<MacroTotals | null>(null);
   const [schools, setSchools] = useState<SchoolStat[]>([]);
@@ -103,6 +186,89 @@ export const MultiSchoolCommandCenter: React.FC = () => {
   const [executiveNotes, setExecutiveNotes] = useState<string>('');
   const [isSubmittingReview, setIsSubmittingReview] = useState<boolean>(false);
   const [reviewSuccessMsg, setReviewSuccessMsg] = useState<string | null>(null);
+
+  // School Management Modal State (Manage button)
+  const [selectedSchoolForManage, setSelectedSchoolForManage] = useState<SchoolStat | null>(null);
+  const [manageActiveTab, setManageActiveTab] = useState<'overview' | 'subjects' | 'modules'>('overview');
+  const [manageSubjectsList, setManageSubjectsList] = useState<string[]>([]);
+  const [newCustomSubject, setNewCustomSubject] = useState<string>('');
+  const [savingCurriculum, setSavingCurriculum] = useState<boolean>(false);
+  const [curriculumSuccessMsg, setCurriculumSuccessMsg] = useState<string | null>(null);
+  const [curriculumErrorMsg, setCurriculumErrorMsg] = useState<string | null>(null);
+
+  const parseSchoolSubjects = (sch: SchoolStat | null): string[] => {
+    if (!sch || !sch.offered_subjects) return [];
+    if (Array.isArray(sch.offered_subjects)) return sch.offered_subjects.filter(Boolean);
+    if (typeof sch.offered_subjects === 'string') {
+      try {
+        const parsed = JSON.parse(sch.offered_subjects);
+        if (Array.isArray(parsed)) return parsed.filter(Boolean);
+      } catch {
+        // fallback to split
+      }
+      return sch.offered_subjects.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+  const handleOpenManageSchool = (sch: SchoolStat) => {
+    setSchoolBySlug(sch.slug);
+    setSelectedSchoolForManage(sch);
+    setManageActiveTab('overview');
+    setManageSubjectsList(parseSchoolSubjects(sch));
+    setCurriculumSuccessMsg(null);
+    setCurriculumErrorMsg(null);
+    setNewCustomSubject('');
+  };
+
+  const handleToggleSubject = (subjectName: string) => {
+    setCurriculumSuccessMsg(null);
+    setCurriculumErrorMsg(null);
+    setManageSubjectsList(prev => {
+      if (prev.includes(subjectName)) {
+        return prev.filter(s => s !== subjectName);
+      } else {
+        return [...prev, subjectName];
+      }
+    });
+  };
+
+  const handleAddCustomSubject = () => {
+    const trimmed = newCustomSubject.trim();
+    if (!trimmed) return;
+    setCurriculumSuccessMsg(null);
+    setCurriculumErrorMsg(null);
+    if (!manageSubjectsList.some(s => s.toLowerCase() === trimmed.toLowerCase())) {
+      setManageSubjectsList(prev => [...prev, trimmed]);
+    }
+    setNewCustomSubject('');
+  };
+
+  const handleRemoveSubject = (subjectName: string) => {
+    setCurriculumSuccessMsg(null);
+    setCurriculumErrorMsg(null);
+    setManageSubjectsList(prev => prev.filter(s => s !== subjectName));
+  };
+
+  const handleSaveCurriculum = async () => {
+    if (!selectedSchoolForManage) return;
+    setSavingCurriculum(true);
+    setCurriculumSuccessMsg(null);
+    setCurriculumErrorMsg(null);
+    try {
+      await schoolRegistrationService.updateCurriculum(selectedSchoolForManage.id, {
+        offered_subjects: manageSubjectsList
+      });
+      setCurriculumSuccessMsg('Curriculum & offered subjects updated and synced to Cloud Database successfully!');
+      setSelectedSchoolForManage(prev => prev ? { ...prev, offered_subjects: manageSubjectsList } : null);
+      await fetchStats();
+    } catch (err: any) {
+      console.error('Failed to update curriculum:', err);
+      setCurriculumErrorMsg(err.response?.data?.error || err.message || 'Failed to update curriculum.');
+    } finally {
+      setSavingCurriculum(false);
+    }
+  };
 
   const fetchStats = async () => {
     setLoading(true);
@@ -565,8 +731,10 @@ export const MultiSchoolCommandCenter: React.FC = () => {
 
                           <td className="py-3.5 px-3 text-right">
                             <button
-                              onClick={() => setSchoolBySlug(sch.slug)}
-                              className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs transition-all border border-white/10 flex items-center gap-1.5 ml-auto cursor-pointer"
+                              type="button"
+                              onClick={() => handleOpenManageSchool(sch)}
+                              className="px-3.5 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600 text-purple-200 hover:text-white font-bold text-xs transition-all border border-purple-500/30 flex items-center gap-1.5 ml-auto cursor-pointer shadow-sm"
+                              title={`Manage ${sch.name} curriculum and modules`}
                             >
                               <span>Manage</span>
                               <ArrowUpRight className="w-3.5 h-3.5 text-purple-400" />
@@ -950,6 +1118,418 @@ export const MultiSchoolCommandCenter: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* VIEW 4: SCHOOL MANAGEMENT MODAL (TRIGGERED BY "MANAGE" BUTTON)           */}
+      {/* ========================================================================= */}
+      {selectedSchoolForManage && (
+        <Modal
+          isOpen={Boolean(selectedSchoolForManage)}
+          onClose={() => setSelectedSchoolForManage(null)}
+          title={`Manage Campus: ${selectedSchoolForManage.name}`}
+          maxWidth="5xl"
+        >
+          <div className="space-y-6 text-slate-100">
+            {/* Campus Header Summary Banner */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-slate-900 border border-purple-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                {selectedSchoolForManage.logo_url ? (
+                  <img
+                    src={selectedSchoolForManage.logo_url}
+                    alt={selectedSchoolForManage.name}
+                    className="w-12 h-12 rounded-2xl object-contain bg-white/5 p-1 border border-white/10 shrink-0"
+                  />
+                ) : (
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg text-white shadow-md shrink-0"
+                    style={{ backgroundColor: selectedSchoolForManage.primary_color || '#7c3aed' }}
+                  >
+                    {selectedSchoolForManage.name.charAt(0)}
+                  </div>
+                )}
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-black text-white">{selectedSchoolForManage.name}</h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                      ACTIVE
+                    </span>
+                  </div>
+                  <p className="text-xs text-purple-300/80 italic mt-0.5">
+                    {selectedSchoolForManage.motto || 'Education is the key to freedom'}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-purple-400" />
+                      {selectedSchoolForManage.circuit || 'Circuit Unassigned'} • {selectedSchoolForManage.province}
+                    </span>
+                    <span>•</span>
+                    <span className="font-mono text-purple-300">EMIS: {selectedSchoolForManage.emis_number}</span>
+                    <span>•</span>
+                    <span>Principal: <strong className="text-white">{selectedSchoolForManage.principal_name || 'Unassigned'}</strong></span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Macro Counters */}
+              <div className="grid grid-cols-3 gap-2 shrink-0">
+                <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-center">
+                  <span className="text-[10px] text-slate-400 block font-semibold">Learners</span>
+                  <span className="text-sm font-black font-mono text-cyan-300">
+                    {selectedSchoolForManage.learners_count || 0}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-center">
+                  <span className="text-[10px] text-slate-400 block font-semibold">Staff</span>
+                  <span className="text-sm font-black font-mono text-purple-300">
+                    {selectedSchoolForManage.staff_count || 0}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-center">
+                  <span className="text-[10px] text-slate-400 block font-semibold">Classes</span>
+                  <span className="text-sm font-black font-mono text-amber-300">
+                    {selectedSchoolForManage.classes_count || 0}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Management Tabs Navigation Bar */}
+            <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+              <button
+                type="button"
+                onClick={() => setManageActiveTab('overview')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  manageActiveTab === 'overview'
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                    : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Campus Overview</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setManageActiveTab('subjects')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  manageActiveTab === 'subjects'
+                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-600/30'
+                    : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Offered Subjects ({manageSubjectsList.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setManageActiveTab('modules')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  manageActiveTab === 'modules'
+                    ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/30'
+                    : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Active Modules & Preferences</span>
+              </button>
+            </div>
+
+            {/* ========================================================= */}
+            {/* TAB 1: CAMPUS OVERVIEW                                    */}
+            {/* ========================================================= */}
+            {manageActiveTab === 'overview' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Financial & Attendance Metrics */}
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                    <h4 className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-emerald-400" />
+                      <span>Financial & Attendance Health</span>
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Total Fee Collections</span>
+                        <p className="font-mono font-bold text-emerald-400 text-base mt-0.5">
+                          R{Number(selectedSchoolForManage.total_collected).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Total Invoiced</span>
+                        <p className="font-mono font-bold text-slate-300 text-base mt-0.5">
+                          R{Number(selectedSchoolForManage.total_invoiced).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="col-span-2 pt-2 border-t border-white/5 flex items-center justify-between">
+                        <span className="text-slate-400">Average Student Attendance:</span>
+                        <span className="font-bold text-amber-300 font-mono">
+                          {selectedSchoolForManage.avg_attendance_pct}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SubAdmin & Authority Status */}
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                    <h4 className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-purple-400" />
+                      <span>Appointed Campus SubAdmins</span>
+                    </h4>
+                    {selectedSchoolForManage.subadmins && selectedSchoolForManage.subadmins.length > 0 ? (
+                      <div className="space-y-2">
+                        {selectedSchoolForManage.subadmins.map(adm => (
+                          <div key={adm.id} className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs flex items-center justify-between">
+                            <div>
+                              <p className="font-bold text-white">{adm.name}</p>
+                              <span className="text-[11px] text-slate-400 font-mono">{adm.email}</span>
+                            </div>
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-300 font-bold">
+                              SubAdmin
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                        Awaiting SubAdmin appointment for this campus. The school principal acts as the primary campus administrator.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Switch Context & Actions Banner */}
+                <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                      <ExternalLink className="w-4 h-4 text-indigo-400" />
+                      <span>Inspect & Enter Campus Portal</span>
+                    </h4>
+                    <p className="text-xs text-slate-400">
+                      Switch executive viewing scope directly into {selectedSchoolForManage.name} to view its full academic workspace.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSchoolBySlug(selectedSchoolForManage.slug);
+                        setSelectedSchoolForManage(null);
+                        onNavigateTab?.('overview');
+                      }}
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>Enter School Dashboard</span>
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ========================================================= */}
+            {/* TAB 2: OFFERED SUBJECTS (CLOUD DATABASE DRIVEN)          */}
+            {/* ========================================================= */}
+            {manageActiveTab === 'subjects' && (
+              <div className="space-y-6">
+                {/* Cloud DB Notice */}
+                <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-purple-400 shrink-0" />
+                    <span>
+                      Subjects below are stored directly in the <strong className="text-purple-300">Supabase Cloud Database</strong>.
+                      The system strictly reads what the principal has chosen without hardcoding any unselected subjects.
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 shrink-0">
+                    Cloud Synced
+                  </span>
+                </div>
+
+                {/* Alerts */}
+                {curriculumSuccessMsg && (
+                  <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>{curriculumSuccessMsg}</span>
+                  </div>
+                )}
+                {curriculumErrorMsg && (
+                  <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                    <span>{curriculumErrorMsg}</span>
+                  </div>
+                )}
+
+                {/* Currently Selected Subjects Summary */}
+                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-indigo-400" />
+                      <span>Subjects Currently Offered by {selectedSchoolForManage.name} ({manageSubjectsList.length})</span>
+                    </h4>
+                    {manageSubjectsList.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setManageSubjectsList([])}
+                        className="text-[11px] text-rose-400 hover:text-rose-300 hover:underline cursor-pointer"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+
+                  {manageSubjectsList.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic">
+                      No subjects selected yet. Choose from standard CAPS subjects below or add custom subjects.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-1">
+                      {manageSubjectsList.map(sub => (
+                        <span
+                          key={sub}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-indigo-500/15 text-indigo-200 border border-indigo-500/30 shadow-sm"
+                        >
+                          <span>{sub}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSubject(sub)}
+                            className="p-0.5 rounded-full hover:bg-white/10 text-indigo-300 hover:text-rose-400 transition-colors cursor-pointer"
+                            title={`Remove ${sub}`}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Custom Subject Adder */}
+                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                  <label className="text-xs font-bold text-slate-300 block">
+                    Add Custom Subject or Elective:
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={newCustomSubject}
+                      onChange={(e) => setNewCustomSubject(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCustomSubject(); } }}
+                      placeholder="e.g. Sepedi Home Language, French Second Language, Maritime Economics..."
+                      className="flex-1 px-3.5 py-2 rounded-xl bg-slate-900 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddCustomSubject}
+                      className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Subject</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* CAPS Standard Subject Catalog Selector */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pb-1 border-b border-white/10">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-300">
+                      Standard South African CAPS Subject Catalog (Grades 8 - 12)
+                    </h4>
+                    <span className="text-[11px] text-slate-400">
+                      Click any subject to toggle selection
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-80 overflow-y-auto pr-1">
+                    {CAPS_SUBJECT_GROUPS.map((grp) => (
+                      <div key={grp.category} className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2.5">
+                        <h5 className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-purple-400" />
+                          <span>{grp.category}</span>
+                        </h5>
+                        <div className="flex flex-wrap gap-1.5">
+                          {grp.subjects.map(sub => {
+                            const isSelected = manageSubjectsList.includes(sub);
+                            return (
+                              <button
+                                key={sub}
+                                type="button"
+                                onClick={() => handleToggleSubject(sub)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm border border-purple-400/40'
+                                    : 'bg-white/5 text-slate-300 border border-white/10 hover:border-purple-400/30 hover:bg-white/10'
+                                }`}
+                              >
+                                {isSelected ? (
+                                  <Check className="w-3 h-3 text-emerald-300" />
+                                ) : (
+                                  <Plus className="w-3 h-3 text-slate-400" />
+                                )}
+                                <span>{sub}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Save Action Footer */}
+                <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-3">
+                  <span className="text-xs text-slate-400">
+                    Selected: <strong className="text-purple-300">{manageSubjectsList.length} subjects</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleSaveCurriculum}
+                    disabled={savingCurriculum}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                  >
+                    {savingCurriculum ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Saving to Cloud Database...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-3.5 h-3.5" />
+                        <span>Save Offered Subjects to Cloud DB</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ========================================================= */}
+            {/* TAB 3: ACTIVE MODULES & PREFERENCES                       */}
+            {/* ========================================================= */}
+            {manageActiveTab === 'modules' && (
+              <div className="space-y-4">
+                <SchoolModulePreferences
+                  school={selectedSchoolForManage as any}
+                  onSaved={async () => {
+                    await fetchStats();
+                  }}
+                  onClose={() => setSelectedSchoolForManage(null)}
+                />
+              </div>
+            )}
+
+            {/* Modal Bottom Close Button */}
+            <div className="pt-4 border-t border-white/10 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedSchoolForManage(null)}
+                className="px-5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors cursor-pointer"
+              >
+                Close Management Window
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

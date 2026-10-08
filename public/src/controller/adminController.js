@@ -2573,6 +2573,11 @@ exports.getMultiSchoolCommandCenterStats = async (req, res) => {
                 s.primary_color,
                 s.secondary_color,
                 s.motto,
+                s.offered_subjects,
+                s.offered_streams,
+                s.offered_languages,
+                COALESCE(s.teacher_modules, '[]'::jsonb) AS teacher_modules,
+                COALESCE(s.learner_modules, '[]'::jsonb) AS learner_modules,
                 -- Enrolled Learners
                 COALESCE((
                     SELECT COUNT(c.id)::int 

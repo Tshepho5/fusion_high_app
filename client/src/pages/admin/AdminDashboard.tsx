@@ -226,7 +226,7 @@ export const AdminDashboard: React.FC = () => {
       )}
       {activeTab === 'command-center' && (
         isSuperAdmin ? (
-          <MultiSchoolCommandCenter />
+          <MultiSchoolCommandCenter onNavigateTab={handleSelectTab} />
         ) : (
           <div className="p-8 text-center bg-white dark:bg-surface-dark rounded-3xl border border-slate-200 dark:border-white/10 space-y-4">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">

@@ -1,17 +1,17 @@
 import axios from 'axios';
 
 export const getApiBaseUrl = (): string => {
-  if (typeof window !== 'undefined') {
-    // If running in local browser on localhost or 127.0.0.1, always use relative path so local Express backend on port 4000 (or Vite proxy) is called directly
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return '';
-    }
-    // If running on Vercel, use relative path
-    if (window.location.hostname.includes('vercel.app')) {
-      return '';
-    }
+  // If explicitly requested to use local Express backend
+  if ((import.meta as any).env?.VITE_USE_LOCAL_BACKEND === 'true') {
+    return '';
   }
-  return (import.meta as any).env?.VITE_API_URL || 'https://fusion-high-backend.onrender.com';
+  // If custom API URL provided in environment, use it
+  const envUrl = (import.meta as any).env?.VITE_API_URL;
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
+    return envUrl.trim();
+  }
+  // Follow the cloud database data (Render production backend with Supabase Cloud DB)
+  return 'https://fusion-high-backend.onrender.com';
 };
 
 export const API_URL = getApiBaseUrl();
@@ -711,6 +711,8 @@ export const schoolRegistrationService = {
     api.post(`/api/schools/applications/${id}/decision`, { decision, reason, executive_notes, temporary_password }).then(res => res.data),
   updateModules: (schoolId: number, teacher_modules: string[], learner_modules: string[]) =>
     api.put(`/api/schools/${schoolId}/modules`, { teacher_modules, learner_modules }).then(res => res.data),
+  updateCurriculum: (schoolId: number, data: { offered_subjects?: string[]; offered_streams?: string[]; offered_languages?: string[] }) =>
+    api.put(`/api/schools/${schoolId}/curriculum`, data).then(res => res.data),
   getBank: (schoolId: number) => api.get(`/api/schools/${schoolId}/banking`).then(res => res.data),
   updateBank: (schoolId: number, data: { bank_name: string; account_holder: string; account_number: string; branch_code: string; account_type?: string }) =>
     api.put(`/api/schools/${schoolId}/banking`, data).then(res => res.data),

@@ -103,7 +103,7 @@ export const AdminDiscoverHub: React.FC<AdminDiscoverHubProps> = ({
       {/* Sub-Tab Content Rendering */}
       <div>
         {subTab === 'admissions' && canManageSchools && <SchoolAdmissionsManager onNavigateTab={onNavigateTab} />}
-        {subTab === 'command-center' && canManageSchools && <MultiSchoolCommandCenter />}
+        {subTab === 'command-center' && canManageSchools && <MultiSchoolCommandCenter onNavigateTab={onNavigateTab} />}
         {subTab === 'inter-school' && <InterSchoolCompetitions />}
         {subTab === 'bursaries' && <BursaryScholarshipHub />}
       </div>

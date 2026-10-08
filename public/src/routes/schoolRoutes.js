@@ -27,6 +27,7 @@ router.get('/:slug', schoolController.getSchoolBySlug);
 // Admin-only route to update school settings and colors
 router.put('/:id/branding', auth, requireRole(['admin']), schoolController.updateSchoolBranding);
 router.put('/:id/modules', auth, requireRole(['admin']), schoolController.updateSchoolModules);
+router.put('/:id/curriculum', auth, requireRole(['admin']), schoolController.updateSchoolCurriculum);
 router.get('/:id/banking', auth, requireRole(['admin']), schoolController.getSchoolBank);
 router.put('/:id/banking', auth, requireRole(['admin']), schoolController.updateSchoolBank);
 

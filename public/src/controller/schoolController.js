@@ -782,3 +782,72 @@ exports.updateSchoolBank = async (req, res) => {
   }
 };
 
+/**
+ * Updates a school's offered subjects, streams, and languages.
+ */
+exports.updateSchoolCurriculum = async (req, res) => {
+  try {
+    const schoolId = parseInt(req.params.id, 10);
+    if (!schoolId) return res.status(400).json({ error: 'A valid school ID is required.' });
+
+    if (!req.user?.is_superadmin && Number(req.user?.school_id) !== schoolId) {
+      return res.status(403).json({ error: 'You can only update the curriculum for your own school.' });
+    }
+
+    const { offered_subjects, offered_streams, offered_languages } = req.body;
+
+    const existingRes = await db.query('SELECT * FROM schools WHERE id = $1', [schoolId]);
+    if (existingRes.rows.length === 0) {
+      return res.status(404).json({ error: 'School not found.' });
+    }
+
+    const current = existingRes.rows[0];
+    const newSubjects = Array.isArray(offered_subjects) ? offered_subjects : current.offered_subjects;
+    const newStreams = Array.isArray(offered_streams) ? offered_streams : current.offered_streams;
+    const newLanguages = Array.isArray(offered_languages) ? offered_languages : current.offered_languages;
+
+    const updated = await db.query(
+      `UPDATE schools
+       SET offered_subjects = $1,
+           offered_streams = $2,
+           offered_languages = $3
+       WHERE id = $4
+       RETURNING *;`,
+      [newSubjects, newStreams, newLanguages, schoolId]
+    );
+
+    // Sync to Supabase Cloud REST if available
+    if (process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY) {
+      try {
+        const axios = require('axios');
+        await axios.patch(
+          `${process.env.SUPABASE_URL}/rest/v1/schools?id=eq.${schoolId}`,
+          {
+            offered_subjects: newSubjects,
+            offered_streams: newStreams,
+            offered_languages: newLanguages
+          },
+          {
+            headers: {
+              apikey: process.env.SUPABASE_SECRET_KEY,
+              Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+      } catch (cloudErr) {
+        console.warn('[SUPABASE CLOUD SYNC] Error syncing curriculum to cloud REST:', cloudErr.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'School curriculum and offered subjects updated successfully.',
+      school: updated.rows[0]
+    });
+  } catch (err) {
+    console.error('Error updating school curriculum:', err.message);
+    res.status(500).json({ error: 'Failed to update school curriculum.' });
+  }
+};
+

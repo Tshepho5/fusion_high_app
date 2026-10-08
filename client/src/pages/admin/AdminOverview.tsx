@@ -86,27 +86,6 @@ export const getSchoolOfferedSubjects = (school: SchoolProfile): string[] => {
       list = school.offered_subjects.split(',').map(s => s.trim()).filter(Boolean);
     }
   }
-
-  if (list.length === 0) {
-    const streams = Array.isArray(school.offered_streams) ? school.offered_streams : [];
-    const base = ['Mathematics', 'English Home Language', 'Life Orientation'];
-    if (streams.some((s: string) => /science|stem/i.test(s))) {
-      base.push('Physical Sciences', 'Life Sciences', 'Information Technology');
-    }
-    if (streams.some((s: string) => /commerce|finance/i.test(s))) {
-      base.push('Accounting', 'Business Studies', 'Economics');
-    }
-    if (streams.some((s: string) => /technical|engineering/i.test(s))) {
-      base.push('Civil Technology', 'Engineering Graphics & Design (EGD)');
-    }
-    if (streams.some((s: string) => /humanities|arts/i.test(s))) {
-      base.push('Geography', 'History');
-    }
-    if (base.length === 3) {
-      base.push('Physical Sciences', 'Life Sciences', 'Accounting', 'Geography', 'Economics');
-    }
-    return base;
-  }
   return list;
 };
 
@@ -123,7 +102,7 @@ export const getSchoolOfferedStreams = (school: SchoolProfile): string[] => {
       list = school.offered_streams.split(',').map(s => s.trim()).filter(Boolean);
     }
   }
-  return list.length > 0 ? list : ['General Academic (CAPS)', 'Science & STEM', 'Commerce'];
+  return list;
 };
 
 export const getSchoolOfferedLanguages = (school: SchoolProfile): string[] => {
@@ -139,7 +118,7 @@ export const getSchoolOfferedLanguages = (school: SchoolProfile): string[] => {
       list = school.offered_languages.split(',').map(s => s.trim()).filter(Boolean);
     }
   }
-  return list.length > 0 ? list : ['English (LOLT / Home Language)', 'Afrikaans FAL', 'Sepedi FAL'];
+  return list;
 };
 
 export const categorizeSchoolSubjects = (subjects: string[]) => {
@@ -486,8 +465,57 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
       return Number.isFinite(parsed) ? parsed : null;
     };
 
+    // Filter strictly by the subjects the principal has actually chosen for this school
+    const offeredSubjects = currentSchool && currentSchool.id !== 0
+      ? getSchoolOfferedSubjects(currentSchool)
+      : [];
+
+    let subjectSourceList = rawList;
+    if (offeredSubjects.length > 0) {
+      const lowerOffered = offeredSubjects.map(s => s.toLowerCase().trim());
+      subjectSourceList = rawList.filter(item => {
+        const itemName = item.name.toLowerCase().trim();
+        return lowerOffered.some(off => 
+          itemName === off ||
+          itemName.includes(off) ||
+          off.includes(itemName)
+        );
+      });
+
+      // Dynamically accommodate any offered subject selected by the principal not present in rawList
+      const gradesToPopulate = [8, 9, 10, 11, 12];
+      offeredSubjects.forEach(offName => {
+        const lower = offName.toLowerCase().trim();
+        const hasMatch = subjectSourceList.some(f => f.name.toLowerCase().trim() === lower || f.name.toLowerCase().includes(lower) || lower.includes(f.name.toLowerCase()));
+        if (!hasMatch) {
+          const codeSub = offName.replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase() || 'SUB';
+          gradesToPopulate.forEach(gr => {
+            let cat: 'stem' | 'commerce' | 'humanities' | 'languages' | 'technical' = 'stem';
+            if (lower.includes('acc') || lower.includes('bus') || lower.includes('eco')) cat = 'commerce';
+            else if (lower.includes('eng') || lower.includes('afr') || lower.includes('zul') || lower.includes('sepedi') || lower.includes('sotho') || lower.includes('lang')) cat = 'languages';
+            else if (lower.includes('geo') || lower.includes('hist') || lower.includes('tour')) cat = 'humanities';
+            else if (lower.includes('lo') || lower.includes('orient') || lower.includes('agri') || lower.includes('tech')) cat = 'technical';
+
+            subjectSourceList.push({
+              id: `offered-${codeSub.toLowerCase()}-g${gr}`,
+              name: offName,
+              code: `CAPS-${codeSub}-G${gr}`,
+              grade: gr,
+              category: cat,
+              stream: 'Curriculum Stream',
+              teacher_name: '',
+              learner_count: 0,
+              average_mark: null,
+              pass_rate: null,
+              status: 'Active'
+            });
+          });
+        }
+      });
+    }
+
     // Catalog names stay. Invented averages, pass rates, class sizes, and teacher names do not.
-    const catalog: SchoolSubjectItem[] = rawList.map((subject) => ({
+    const catalog: SchoolSubjectItem[] = subjectSourceList.map((subject) => ({
       ...subject,
       teacher_name: '',
       learner_count: 0,
@@ -534,7 +562,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
     }
 
     return catalog;
-  }, [apiSubjects]);
+  }, [apiSubjects, currentSchool]);
 
   // Filtered list based on Grade, Category, and Search
   const filteredSubjects = useMemo(() => {
