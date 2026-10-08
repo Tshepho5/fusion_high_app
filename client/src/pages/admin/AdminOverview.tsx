@@ -8,6 +8,16 @@ import { HomeGreeting } from '../../components/layout/WorkspaceChrome';
 import { MasterAdminExecutiveHub } from '../../components/admin/MasterAdminExecutiveHub';
 import { SchoolModulePreferences } from '../../components/admin/SchoolModulePreferences';
 import {
+  readModuleList,
+  TEACHER_MODULES,
+  LEARNER_MODULES,
+  LEARNER_CHOICE_MODULES,
+  getModuleIcon,
+  defaultTeacherModules,
+  defaultLearnerModules,
+  modulesReceivedByLearners,
+} from '../../utils/schoolModules';
+import {
   Users,
   GraduationCap,
   Briefcase,
@@ -285,6 +295,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
   const [selectedSchoolProvince, setSelectedSchoolProvince] = useState<string>('all');
   const [selectedSchoolCircuit, setSelectedSchoolCircuit] = useState<string>('all');
   const [selectedSchoolForCurriculum, setSelectedSchoolForCurriculum] = useState<SchoolProfile | null>(null);
+  const [schoolDossierTab, setSchoolDossierTab] = useState<'modules' | 'subjects' | 'configure'>('modules');
   const [isRefreshingSchools, setIsRefreshingSchools] = useState<boolean>(false);
   const [expandedSchoolIds, setExpandedSchoolIds] = useState<Record<number, boolean>>({});
 
@@ -671,8 +682,6 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
         </div>
       )}
 
-      <SchoolModulePreferences />
-
       {/* ========================================================================= */}
       {/* 1. GELEZA SA SUPERADMIN vs SCHOOL ADMIN OVERVIEW SPACE                     */}
       {/* ========================================================================= */}
@@ -858,6 +867,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     const isExpanded = Boolean(expandedSchoolIds[school.id]);
                     const displayedSubjects = isExpanded ? offeredSubjects : offeredSubjects.slice(0, 6);
                     const remainingCount = offeredSubjects.length - 6;
+                    const teacherModIds = readModuleList(school.teacher_modules) ?? defaultTeacherModules();
+                    const learnerModIds = readModuleList(school.learner_modules) ?? defaultLearnerModules();
+                    const totalActiveMods = teacherModIds.length + learnerModIds.length;
 
                     return (
                       <div
@@ -977,6 +989,63 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                             </div>
                           </div>
 
+                          {/* Active Campus Modules Preview with Icons */}
+                          <div className="p-3.5 rounded-2xl bg-cyan-500/5 dark:bg-cyan-950/20 border border-cyan-500/20 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-black text-cyan-950 dark:text-cyan-200 flex items-center gap-1.5">
+                                <Layers className="w-3.5 h-3.5 text-cyan-500" />
+                                <span>Active Modules ({totalActiveMods})</span>
+                              </span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
+                                {teacherModIds.length} Staff • {learnerModIds.length} Learner
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-1.5">
+                              {teacherModIds.slice(0, 4).map((modId) => {
+                                const Icon = getModuleIcon(modId);
+                                const opt = TEACHER_MODULES.find(m => m.id === modId);
+                                return (
+                                  <span
+                                    key={modId}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-white dark:bg-surface-dark border border-cyan-500/20 text-slate-800 dark:text-slate-200 shadow-2xs"
+                                    title={`Staff Tool: ${opt?.label || modId}`}
+                                  >
+                                    <Icon className="w-3 h-3 text-cyan-500 shrink-0" />
+                                    <span className="truncate max-w-[105px]">{opt?.label || modId}</span>
+                                  </span>
+                                );
+                              })}
+                              {learnerModIds.slice(0, 3).map((modId) => {
+                                const Icon = getModuleIcon(modId);
+                                const opt = LEARNER_MODULES.find(m => m.id === modId);
+                                return (
+                                  <span
+                                    key={modId}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-white dark:bg-surface-dark border border-purple-500/20 text-slate-800 dark:text-slate-200 shadow-2xs"
+                                    title={`Learner Tool: ${opt?.label || modId}`}
+                                  >
+                                    <Icon className="w-3 h-3 text-purple-500 shrink-0" />
+                                    <span className="truncate max-w-[105px]">{opt?.label || modId}</span>
+                                  </span>
+                                );
+                              })}
+                              {totalActiveMods > 7 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedSchoolForCurriculum(school);
+                                    setSchoolDossierTab('modules');
+                                  }}
+                                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 hover:underline cursor-pointer"
+                                >
+                                  +{totalActiveMods - 7} more
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
                           {/* ========================================================= */}
                           {/* SUBJECTS THIS SCHOOL OFFERS (Crucial Request Implementation) */}
                           {/* ========================================================= */}
@@ -1016,11 +1085,14 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                         <div className="p-4 bg-slate-50 dark:bg-surface-darker border-t border-slate-200 dark:border-white/10 flex items-center justify-between gap-2">
                           <button
                             type="button"
-                            onClick={() => setSelectedSchoolForCurriculum(school)}
+                            onClick={() => {
+                              setSelectedSchoolForCurriculum(school);
+                              setSchoolDossierTab('modules');
+                            }}
                             className="flex-1 py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-all shadow-md shadow-purple-600/20 flex items-center justify-center gap-1.5 cursor-pointer"
                           >
-                            <BookOpen className="w-3.5 h-3.5" />
-                            <span>Inspect Curriculum</span>
+                            <Layers className="w-3.5 h-3.5" />
+                            <span>Inspect School & Modules</span>
                           </button>
 
                           <button
@@ -1047,10 +1119,17 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {filteredRegisteredSchools.map((school) => {
                     const offeredSubjects = getSchoolOfferedSubjects(school);
+                    const teacherModIds = readModuleList(school.teacher_modules) ?? defaultTeacherModules();
+                    const learnerModIds = readModuleList(school.learner_modules) ?? defaultLearnerModules();
+                    const totalActiveMods = teacherModIds.length + learnerModIds.length;
+
                     return (
                       <div
                         key={school.id}
-                        onClick={() => setSelectedSchoolForCurriculum(school)}
+                        onClick={() => {
+                          setSelectedSchoolForCurriculum(school);
+                          setSchoolDossierTab('modules');
+                        }}
                         className="p-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-purple-500/50 transition-all shadow-sm hover:shadow-md cursor-pointer space-y-3 group"
                       >
                         <div className="flex items-center gap-3">
@@ -1075,8 +1154,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                         </div>
 
                         <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-200 dark:border-white/10">
-                          <span className="font-bold text-slate-700 dark:text-slate-300">
-                            {school.enrolled_learners_count || 0} Learners
+                          <span className="font-bold text-cyan-700 dark:text-cyan-300 flex items-center gap-1">
+                            <Layers className="w-3 h-3 text-cyan-500" />
+                            {totalActiveMods} Modules
                           </span>
                           <span className="px-2 py-0.5 rounded-md font-bold bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-[10px]">
                             {offeredSubjects.length} Subjects
@@ -1093,6 +1173,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 <div className="space-y-3">
                   {filteredRegisteredSchools.map((school) => {
                     const offeredSubjects = getSchoolOfferedSubjects(school);
+                    const teacherModIds = readModuleList(school.teacher_modules) ?? defaultTeacherModules();
+                    const learnerModIds = readModuleList(school.learner_modules) ?? defaultLearnerModules();
+                    const totalActiveMods = teacherModIds.length + learnerModIds.length;
 
                     return (
                       <div
@@ -1125,12 +1208,52 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                             <p className="text-xs text-slate-600 dark:text-slate-400">
                               {school.province || 'National'} • Circuit: {school.circuit || 'General'} • Principal: {school.principal_name || 'Unassigned'}
                             </p>
-                            {/* Offered subjects preview */}
+
+                            {/* Active modules preview */}
                             <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                              <span className="text-[11px] font-bold text-cyan-700 dark:text-cyan-300 flex items-center gap-1">
+                                <Layers className="w-3 h-3 text-cyan-500" />
+                                Modules ({totalActiveMods}):
+                              </span>
+                              {teacherModIds.slice(0, 3).map((modId) => {
+                                const Icon = getModuleIcon(modId);
+                                const opt = TEACHER_MODULES.find(m => m.id === modId);
+                                return (
+                                  <span
+                                    key={modId}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-cyan-500/10 text-cyan-800 dark:text-cyan-200"
+                                  >
+                                    <Icon className="w-2.5 h-2.5 text-cyan-500" />
+                                    <span>{opt?.label || modId}</span>
+                                  </span>
+                                );
+                              })}
+                              {learnerModIds.slice(0, 2).map((modId) => {
+                                const Icon = getModuleIcon(modId);
+                                const opt = LEARNER_MODULES.find(m => m.id === modId);
+                                return (
+                                  <span
+                                    key={modId}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-purple-500/10 text-purple-800 dark:text-purple-200"
+                                  >
+                                    <Icon className="w-2.5 h-2.5 text-purple-500" />
+                                    <span>{opt?.label || modId}</span>
+                                  </span>
+                                );
+                              })}
+                              {totalActiveMods > 5 && (
+                                <span className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400">
+                                  +{totalActiveMods - 5} more
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Offered subjects preview */}
+                            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
                               <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
                                 Subjects ({offeredSubjects.length}):
                               </span>
-                              {offeredSubjects.slice(0, 5).map((sub, idx) => (
+                              {offeredSubjects.slice(0, 4).map((sub, idx) => (
                                 <span
                                   key={idx}
                                   className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-800 dark:text-slate-200"
@@ -1138,9 +1261,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                                   {sub}
                                 </span>
                               ))}
-                              {offeredSubjects.length > 5 && (
+                              {offeredSubjects.length > 4 && (
                                 <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400">
-                                  +{offeredSubjects.length - 5} more
+                                  +{offeredSubjects.length - 4} more
                                 </span>
                               )}
                             </div>
@@ -1160,11 +1283,14 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              onClick={() => setSelectedSchoolForCurriculum(school)}
+                              onClick={() => {
+                                setSelectedSchoolForCurriculum(school);
+                                setSchoolDossierTab('modules');
+                              }}
                               className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                             >
-                              <BookOpen className="w-3.5 h-3.5" />
-                              <span>Inspect Curriculum</span>
+                              <Layers className="w-3.5 h-3.5" />
+                              <span>Inspect School & Modules</span>
                             </button>
                             <button
                               type="button"
@@ -1675,6 +1801,16 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
       </section>
     )}
 
+      {/* Campus Active Modules for School Admin */}
+      {!isSuperAdmin && currentSchool?.id > 0 && (
+        <div className="space-y-4">
+          <SchoolModulePreferences
+            school={currentSchool}
+            onSaved={refreshSchools}
+          />
+        </div>
+      )}
+
       {/* ========================================================================= */}
       {/* 3. FAVORITE MODULES SECTION (QUICK ACCESS FOR ADMIN)                     */}
       {/* ========================================================================= */}
@@ -1962,13 +2098,13 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
       )}
 
       {/* ========================================================================= */}
-      {/* 6. GELEZA SA ACCREDITED SCHOOL CURRICULUM & SUBJECTS INSPECTOR MODAL      */}
+      {/* 6. GELEZA SA ACCREDITED SCHOOL DOSSIER, MODULES & CURRICULUM MODAL         */}
       {/* ========================================================================= */}
       {selectedSchoolForCurriculum && (
         <Modal
           isOpen={!!selectedSchoolForCurriculum}
           onClose={() => setSelectedSchoolForCurriculum(null)}
-          title={`Campus Curriculum & Offered Subjects • ${selectedSchoolForCurriculum.name}`}
+          title={`Campus Dossier & Modules • ${selectedSchoolForCurriculum.name}`}
           maxWidth="4xl"
         >
           {(() => {
@@ -1977,6 +2113,13 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
             const allStreams = getSchoolOfferedStreams(school);
             const allLanguages = getSchoolOfferedLanguages(school);
             const categorized = categorizeSchoolSubjects(allSubjects);
+
+            const teacherModIds = readModuleList(school.teacher_modules) ?? defaultTeacherModules();
+            const learnerModIds = readModuleList(school.learner_modules) ?? defaultLearnerModules();
+            const activeTeacherModules = TEACHER_MODULES.filter(m => teacherModIds.includes(m.id));
+            const receivedByLearners = modulesReceivedByLearners(teacherModIds);
+            const activeLearnerOnlyModules = LEARNER_CHOICE_MODULES.filter(m => learnerModIds.includes(m.id));
+            const totalActiveModules = activeTeacherModules.length + activeLearnerOnlyModules.length;
 
             return (
               <div className="space-y-6 text-slate-900 dark:text-white">
@@ -2026,113 +2169,304 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   </div>
                 </div>
 
-                {/* Institutional & Curriculum Metadata */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5">
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Curriculum Framework</span>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">
-                      {school.curriculum_type || 'CAPS (DBE)'}
-                    </span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5">
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Grade Range</span>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">
-                      {school.grade_range || 'Grades 8 - 12'}
-                    </span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5">
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Principal / Lead</span>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white truncate block">
-                      {school.principal_name || 'Unassigned'}
-                    </span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5">
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Total Subjects</span>
-                    <span className="text-xs font-black font-mono text-indigo-600 dark:text-indigo-400">
-                      {allSubjects.length} Registered
-                    </span>
-                  </div>
+                {/* 3 Nav Tabs */}
+                <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-surface-dark border border-slate-200 dark:border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setSchoolDossierTab('modules')}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      schoolDossierTab === 'modules'
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'text-slate-700 dark:text-slate-300 hover:text-purple-600 dark:hover:text-white'
+                    }`}
+                  >
+                    <Layers className="w-4 h-4" />
+                    <span>Active Modules ({totalActiveModules})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSchoolDossierTab('subjects')}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      schoolDossierTab === 'subjects'
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'text-slate-700 dark:text-slate-300 hover:text-purple-600 dark:hover:text-white'
+                    }`}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>Curriculum & Subjects ({allSubjects.length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSchoolDossierTab('configure')}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      schoolDossierTab === 'configure'
+                        ? 'bg-cyan-600 text-white shadow-sm'
+                        : 'text-slate-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-white'
+                    }`}
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                    <span>Configure Modules</span>
+                  </button>
                 </div>
 
-                {/* Offered Academic Streams */}
-                <div className="space-y-2">
-                  <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 block flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-purple-500" />
-                    <span>Academic Streams Offered by {school.name}</span>
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {allStreams.map((stream, idx) => (
-                      <span
-                        key={idx}
-                        className="px-3 py-1 rounded-xl text-xs font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/30 flex items-center gap-1.5"
+                {/* TAB 1: ACTIVE CAMPUS MODULES ACCORDING TO WHAT THIS SCHOOL HAS SELECTED */}
+                {schoolDossierTab === 'modules' && (
+                  <div className="space-y-6">
+                    {/* Notice bar */}
+                    <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <Layers className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                        <div>
+                          <p className="text-xs font-bold text-slate-900 dark:text-white">
+                            Active Tools for {school.name}
+                          </p>
+                          <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                            Only these modules with their icons are activated and accessible to staff and learners for this specific campus.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSchoolDossierTab('configure')}
+                        className="px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs transition-all shadow-sm flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5 text-purple-500" />
-                        <span>{stream}</span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
+                        <SlidersHorizontal className="w-3.5 h-3.5" />
+                        <span>Customize Modules</span>
+                      </button>
+                    </div>
 
-                {/* Categorized Offered Subjects (The Core Highlight) */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-white/10">
-                    <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                      <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
-                      <span>Subjects Taught at this Campus ({allSubjects.length})</span>
-                    </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                      DBE / CAPS Compliant
-                    </span>
-                  </div>
+                    {/* Section 1: Modules for Teachers */}
+                    <div className="space-y-3">
+                      <div className="pb-1 border-b border-slate-200 dark:border-white/10">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <FileSpreadsheet className="w-4 h-4 text-cyan-500" />
+                          <span>Modules for Teachers ({activeTeacherModules.length} Active)</span>
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Attendance, conduct, leave, parent meetings, and the lesson studio stay with teachers. When teachers send marks, homework, notices, or a timetable, learners receive that automatically.
+                        </p>
+                      </div>
 
-                  <div className="space-y-4 max-h-80 overflow-y-auto pr-1 scrollbar-thin">
-                    {Object.entries(categorized).map(([catName, subs]) => {
-                      if (subs.length === 0) return null;
-                      return (
-                        <div key={catName} className="space-y-2">
-                          <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-purple-500" />
-                            <span>{catName}</span>
-                            <span className="text-[10px] text-slate-500 font-normal">({subs.length})</span>
-                          </h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {subs.map((sub, sIdx) => (
-                              <div
-                                key={sIdx}
-                                className="p-2.5 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/10 flex items-center justify-between gap-2 shadow-2xs"
-                              >
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {activeTeacherModules.map((mod) => {
+                          const Icon = mod.icon || getModuleIcon(mod.id);
+                          return (
+                            <div
+                              key={mod.id}
+                              className="p-3 rounded-2xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/10 flex items-center justify-between gap-3 shadow-2xs hover:border-cyan-500/40 transition-colors"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-8 h-8 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                                  <Icon className="w-4 h-4" />
+                                </div>
                                 <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                                  {sub}
-                                </span>
-                                <span className="text-[10px] px-2 py-0.5 rounded-md font-mono bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 shrink-0">
-                                  CAPS Gr {school.grade_range || '8-12'}
+                                  {mod.label}
                                 </span>
                               </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1 shrink-0">
+                                <Check className="w-3 h-3 text-emerald-500" />
+                                <span>Active</span>
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                {/* Languages of Instruction */}
-                <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-white/10">
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-cyan-500" />
-                    <span>Languages of Learning and Teaching (LOLT) & Additional Languages</span>
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {allLanguages.map((lang, lIdx) => (
-                      <span
-                        key={lIdx}
-                        className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20"
-                      >
-                        {lang}
-                      </span>
-                    ))}
+                    {/* Section 2: Learners receive these */}
+                    <div className="space-y-3 pt-2">
+                      <div className="pb-1 border-b border-slate-200 dark:border-white/10">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <Users className="w-4 h-4 text-purple-500" />
+                          <span>Learners receive these ({receivedByLearners.length})</span>
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          These are on because the matching teacher module is on. They are not a separate choice.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {receivedByLearners.map((mod) => {
+                          const Icon = mod.icon || getModuleIcon(mod.id);
+                          return (
+                            <span
+                              key={mod.id}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-purple-500/10 text-purple-800 dark:text-purple-200 border border-purple-500/30"
+                            >
+                              <Icon className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                              <span>{mod.label}</span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Section 3: Modules for learners only */}
+                    <div className="space-y-3 pt-2">
+                      <div className="pb-1 border-b border-slate-200 dark:border-white/10">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-amber-500" />
+                          <span>Modules for learners only ({activeLearnerOnlyModules.length} Active)</span>
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          These are learner tools. They do not open teacher marksheets, attendance, or other staff work. Home, subjects, profile, and settings stay on.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {activeLearnerOnlyModules.map((mod) => {
+                          const Icon = mod.icon || getModuleIcon(mod.id);
+                          return (
+                            <div
+                              key={mod.id}
+                              className="p-3 rounded-2xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/10 flex items-center justify-between gap-3 shadow-2xs hover:border-amber-500/40 transition-colors"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center shrink-0">
+                                  <Icon className="w-4 h-4" />
+                                </div>
+                                <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                  {mod.label}
+                                </span>
+                              </div>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1 shrink-0">
+                                <Check className="w-3 h-3 text-amber-500" />
+                                <span>Learner Active</span>
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* TAB 2: CURRICULUM & OFFERED SUBJECTS */}
+                {schoolDossierTab === 'subjects' && (
+                  <div className="space-y-6">
+                    {/* Institutional & Curriculum Metadata */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Curriculum Framework</span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">
+                          {school.curriculum_type || 'CAPS (DBE)'}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Grade Range</span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">
+                          {school.grade_range || 'Grades 8 - 12'}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Principal / Lead</span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white truncate block">
+                          {school.principal_name || 'Unassigned'}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Total Subjects</span>
+                        <span className="text-xs font-black font-mono text-indigo-600 dark:text-indigo-400">
+                          {allSubjects.length} Registered
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Offered Academic Streams */}
+                    <div className="space-y-2">
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 block flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-purple-500" />
+                        <span>Academic Streams Offered by {school.name}</span>
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {allStreams.map((stream, idx) => (
+                          <span
+                            key={idx}
+                            className="px-3 py-1 rounded-xl text-xs font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/30 flex items-center gap-1.5"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-purple-500" />
+                            <span>{stream}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Categorized Offered Subjects */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-white/10">
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                          <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+                          <span>Subjects Taught at this Campus ({allSubjects.length})</span>
+                        </span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                          DBE / CAPS Compliant
+                        </span>
+                      </div>
+
+                      <div className="space-y-4 max-h-80 overflow-y-auto pr-1 scrollbar-thin">
+                        {Object.entries(categorized).map(([catName, subs]) => {
+                          if (subs.length === 0) return null;
+                          return (
+                            <div key={catName} className="space-y-2">
+                              <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-purple-500" />
+                                <span>{catName}</span>
+                                <span className="text-[10px] text-slate-500 font-normal">({subs.length})</span>
+                              </h4>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {subs.map((sub, sIdx) => (
+                                  <div
+                                    key={sIdx}
+                                    className="p-2.5 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/10 flex items-center justify-between gap-2 shadow-2xs"
+                                  >
+                                    <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                      {sub}
+                                    </span>
+                                    <span className="text-[10px] px-2 py-0.5 rounded-md font-mono bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 shrink-0">
+                                      CAPS Gr {school.grade_range || '8-12'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Languages of Instruction */}
+                    <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-white/10">
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-cyan-500" />
+                        <span>Languages of Learning and Teaching (LOLT) & Additional Languages</span>
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {allLanguages.map((lang, lIdx) => (
+                          <span
+                            key={lIdx}
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20"
+                          >
+                            {lang}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 3: CONFIGURE MODULES FOR THIS SCHOOL */}
+                {schoolDossierTab === 'configure' && (
+                  <div className="space-y-4">
+                    <SchoolModulePreferences
+                      school={school}
+                      onSaved={async () => {
+                        await handleRefreshSchools();
+                        const updated = schoolsList.find(s => s.id === school.id);
+                        if (updated) setSelectedSchoolForCurriculum(updated);
+                      }}
+                    />
+                  </div>
+                )}
 
                 {/* Modal Footer Actions */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-slate-200 dark:border-white/10">
