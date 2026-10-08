@@ -30,6 +30,7 @@ router.use(auth, requireRole(['learner', 'admin']));
 // Study Material & Subject Management
 router.get('/subjects', learnerController.getSubjects);
 router.get('/my-subjects-overview', learnerController.getMySubjectsOverview);
+router.get('/subjects-overview', learnerController.getMySubjectsOverview);
 router.get('/subjects/overview', learnerController.getMySubjectsOverview);
 
 router.get('/task', learnerController.getTask);

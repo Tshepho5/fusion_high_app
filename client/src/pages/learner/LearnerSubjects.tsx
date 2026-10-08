@@ -228,13 +228,17 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
   const dueCount = Number(selectedSubject?.assignments_due) > 0
     ? Number(selectedSubject.assignments_due)
     : openWorkCount;
-  const primaryView = activeTab === 'topics' || activeTab === 'homework' || activeTab === 'grades';
+  const primaryView = activeTab === 'topics' || activeTab === 'homework' || activeTab === 'grades' || activeTab === 'resources';
 
-  const showPrimary = (tab: 'topics' | 'homework' | 'grades') => {
+  const showPrimary = (tab: 'topics' | 'homework' | 'grades' | 'resources') => {
     setActiveTab(tab);
     const subject = searchParams.get('subject');
-    if (subject && searchParams.get('view')) {
-      setSearchParams({ tab: 'subjects', subject });
+    if (subject) {
+      if (tab === 'resources') {
+        setSearchParams({ tab: 'subjects', subject, view: 'resources' });
+      } else {
+        setSearchParams({ tab: 'subjects', subject });
+      }
     }
   };
 
@@ -293,12 +297,19 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                 </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 <button type="button" onClick={() => showPrimary('topics')} className={purposeClass(activeTab === 'topics')}>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Learn</p>
                   <p className="mt-1 text-base sm:text-lg font-bold text-[#1C252C] dark:text-white">Lessons</p>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     {topics.length > 0 ? `${topics.length} chapters` : 'Syllabus'}
+                  </p>
+                </button>
+                <button type="button" onClick={() => showPrimary('resources')} className={purposeClass(activeTab === 'resources')}>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-purple-600 dark:text-purple-400">Resources</p>
+                  <p className="mt-1 text-base sm:text-lg font-bold text-[#1C252C] dark:text-white">Notes & Files</p>
+                  <p className="mt-1 text-xs text-purple-600 dark:text-purple-400 font-medium">
+                    {resources.length > 0 ? `${resources.length} available` : 'Teacher files'}
                   </p>
                 </button>
                 <button type="button" onClick={() => showPrimary('homework')} className={purposeClass(activeTab === 'homework')}>

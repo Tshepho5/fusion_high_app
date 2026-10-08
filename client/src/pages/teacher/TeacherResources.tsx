@@ -87,6 +87,7 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadModalError, setUploadModalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Assigned subjects for tailored button-driven landing view
@@ -192,7 +193,7 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
               ...prev,
               subject: unique[0].subject,
               grade: String(unique[0].grade),
-              target_class: unique[0].class_name || 'All',
+              target_class: 'All',
               stream: unique[0].stream || prev.stream
             }));
           }
@@ -220,7 +221,7 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
                 ...prev,
                 subject: unique[0].subject,
                 grade: String(unique[0].grade),
-                target_class: unique[0].class_name || 'All',
+                target_class: 'All',
                 stream: unique[0].stream || prev.stream
               }));
             }
@@ -246,6 +247,7 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      setUploadModalError(null);
       setFormData(prev => ({
         ...prev,
         file,
@@ -257,12 +259,13 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.file) {
-      setError('Please select a document or past paper to upload.');
+      setUploadModalError('Please attach a document file (PDF, DOCX, PPTX, EPUB, TXT) before uploading.');
       return;
     }
 
     setIsSubmitting(true);
     setError(null);
+    setUploadModalError(null);
 
     try {
       const data = new FormData();
@@ -280,12 +283,31 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
 
       const res = await teacherService.uploadResource(data);
 
-      setSuccessMsg(res?.message || 'Resource uploaded successfully! Targeted notifications dispatched to learners.');
+      const uploadedSubject = formData.subject;
+      const uploadedGrade = Number(formData.grade);
+      const matchedAssigned = assignedSubjects.find(
+        a => a.subject.toLowerCase() === uploadedSubject.toLowerCase() && Number(a.grade) === uploadedGrade
+      ) || {
+        subject: uploadedSubject,
+        grade: uploadedGrade,
+        class_name: formData.target_class !== 'All' ? formData.target_class : undefined,
+        stream: formData.stream
+      };
+
+      // Automatically navigate educator into the uploaded subject vault so they see the file immediately!
+      setSelectedSubjectItem(matchedAssigned);
+      setSelectedTypeFilter('All');
+      setSelectedClassFilter('All');
+      setSelectedPublishFilter('All');
+      setSearchQuery('');
+
+      setSuccessMsg(res?.message || `Resource uploaded successfully! Targeted notifications dispatched to learners.`);
       setIsUploadModalOpen(false);
+      setUploadModalError(null);
       setFormData({
         subject: formData.subject,
         grade: formData.grade,
-        target_class: formData.target_class,
+        target_class: 'All',
         stream: formData.stream,
         resource_type: 'past_paper',
         title: '',
@@ -296,10 +318,12 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
         file: null,
       });
       fetchResources();
-      setTimeout(() => setSuccessMsg(null), 5000);
+      setTimeout(() => setSuccessMsg(null), 6000);
     } catch (err: any) {
       console.error('Upload error:', err);
-      setError(err.response?.data?.error || 'Failed to upload resource to server.');
+      const errMsg = err.response?.data?.error || err.message || 'Failed to upload resource to server.';
+      setUploadModalError(errMsg);
+      setError(errMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -390,11 +414,13 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
 
           <button
             onClick={() => {
+              setUploadModalError(null);
               if (selectedSubjectItem) {
                 setFormData(prev => ({
                   ...prev,
                   subject: selectedSubjectItem.subject,
-                  grade: String(selectedSubjectItem.grade)
+                  grade: String(selectedSubjectItem.grade),
+                  target_class: 'All'
                 }));
               }
               setIsUploadModalOpen(true);
@@ -526,6 +552,104 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
               </p>
             </div>
           )}
+
+          {/* Recent Uploads Across All Classes Section */}
+          <div className="mt-8 pt-6 border-t border-white/5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h4 className="text-base font-bold text-white flex items-center gap-2">
+                  <FileCheck className="w-5 h-5 text-cyan-400" />
+                  <span>Recent Uploads Across All Classes</span>
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Direct overview of uploaded documents and past papers across all your assigned subjects
+                </p>
+              </div>
+              <span className="text-xs font-mono text-cyan-400 font-bold px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20">
+                {resources.length} Uploaded File{resources.length === 1 ? '' : 's'}
+              </span>
+            </div>
+
+            {resources.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                {resources.slice(0, 6).map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-4 rounded-2xl bg-surface-dark border border-white/10 hover:border-cyan-500/40 transition-all flex flex-col justify-between gap-3 text-xs shadow-sm"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        {getTypeBadge(item.resource_type)}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] px-2 py-0.5 rounded-md bg-white/5 text-cyan-300 font-mono font-bold">
+                            Gr {item.grade}
+                          </span>
+                          {item.is_published !== false ? (
+                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 font-bold border border-emerald-500/30">
+                              Published
+                            </span>
+                          ) : (
+                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 font-bold border border-amber-500/30">
+                              Draft
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <h5 className="font-bold text-white text-sm line-clamp-2" title={item.title}>
+                        {item.title}
+                      </h5>
+
+                      <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-1.5">
+                        <span className="text-cyan-400 font-semibold">{item.subject}</span>
+                        <span>•</span>
+                        <span>{item.class_name ? `Class ${item.class_name}` : 'All Classes'}</span>
+                        {item.file_size && (
+                          <>
+                            <span>•</span>
+                            <span>{item.file_size}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2.5 border-t border-white/5 text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const matched = assignedSubjects.find(
+                            a => a.subject.toLowerCase() === item.subject.toLowerCase() && Number(a.grade) === Number(item.grade)
+                          ) || { subject: item.subject, grade: item.grade, stream: item.stream };
+                          setSelectedSubjectItem(matched);
+                        }}
+                        className="text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Open Vault</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+
+                      <a
+                        href={item.file_path.startsWith('/') ? item.file_path : `/${item.file_path}`}
+                        download={item.file_name || `${item.title}.pdf`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 rounded-lg bg-surface-darker hover:bg-white/10 text-slate-200 hover:text-white font-bold flex items-center gap-1 border border-white/10 transition-colors"
+                      >
+                        <Download className="w-3 h-3 text-cyan-400" />
+                        <span>Download</span>
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 text-center rounded-2xl bg-surface-dark border border-white/5">
+                <p className="text-xs text-slate-400">
+                  No resources uploaded yet. Click <strong>Upload New Resource</strong> above to publish your first document to learners.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         /* ========================================================================= */
@@ -850,7 +974,7 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
                   setFormData(prev => ({
                     ...prev,
                     grade: newGrade,
-                    target_class: relevantClasses[0] || 'All'
+                    target_class: 'All'
                   }));
                 }}
                 className="w-full px-3 py-2.5 rounded-xl bg-surface-darker border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-500"
@@ -870,11 +994,16 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
                 onChange={(e) => setFormData({ ...formData, target_class: e.target.value })}
                 className="w-full px-3 py-2.5 rounded-xl bg-surface-darker border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-500"
               >
-                <option value="All">All Grade {formData.grade} Classes</option>
+                <option value="All">All Grade {formData.grade} Classes (Recommended: All registered learners)</option>
                 {availableClassesForGrade.map(c => (
-                  <option key={c} value={c}>Class {c} Only</option>
+                  <option key={c} value={c}>Class {c} Only (Restricted to Class {c})</option>
                 ))}
               </select>
+              <p className="text-[10px] text-slate-400 mt-1">
+                {formData.target_class === 'All'
+                  ? `✓ All registered learners taking Grade ${formData.grade} ${formData.subject} will see and download this file.`
+                  : `⚠️ Only learners assigned specifically to Class ${formData.target_class} will see this file.`}
+              </p>
             </div>
 
             <div>
@@ -986,6 +1115,14 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
               </span>
             </label>
           </div>
+
+          {/* Inline Upload Validation / Server Error Alert */}
+          {uploadModalError && (
+            <div className="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2.5 animate-fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span className="font-semibold">{uploadModalError}</span>
+            </div>
+          )}
 
           <div className="flex gap-2 pt-3">
             <button

@@ -1800,7 +1800,10 @@ function mapLearnerSubjectQuery(raw) {
     if (s.includes('acc')) return 'Accounting';
     if (s.includes('bus')) return 'Business Studies';
     if (s.includes('econ')) return 'Economics';
-    if (s.includes('eng')) return 'English FAL';
+    if (s.includes('eng')) {
+        if (s.includes('home') || s.includes('hl')) return 'English Home Language';
+        return 'English FAL';
+    }
     if (s.includes('lit')) return 'Mathematical Literacy';
     if (s.includes('tour')) return 'Tourism';
     if (s.includes('geog')) return 'Geography';
@@ -1873,6 +1876,13 @@ exports.getSubjectResources = async (req, res) => {
                 OR $3 ILIKE '%' || t.subject || '%'
                 OR t.subject ILIKE '%' || $3 || '%'
                 OR ($1 = '%' AND t.grade = $2)
+                OR (LOWER(t.subject) LIKE '%math%' AND LOWER($3) LIKE '%math%' AND LOWER(t.subject) NOT LIKE '%lit%' AND LOWER($3) NOT LIKE '%lit%')
+                OR (LOWER(t.subject) LIKE '%physic%' AND LOWER($3) LIKE '%physic%')
+                OR (LOWER(t.subject) LIKE '%english%' AND LOWER($3) LIKE '%english%')
+                OR (LOWER(t.subject) LIKE '%life sc%' AND LOWER($3) LIKE '%life sc%')
+                OR (LOWER(t.subject) LIKE '%economic%' AND LOWER($3) LIKE '%economic%')
+                OR (LOWER(t.subject) LIKE '%account%' AND LOWER($3) LIKE '%account%')
+                OR (LOWER(t.subject) LIKE '%business%' AND LOWER($3) LIKE '%business%')
             )`,
             `t.grade = $2`
         ];

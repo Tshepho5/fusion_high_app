@@ -6,8 +6,14 @@ const { auth: authenticateToken, requireRole } = require('../../../authMiddlewar
 
 const router = express.Router();
 
+const fs = require('fs');
+
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/textbooks/'),
+    destination: (req, file, cb) => {
+        const dest = path.join(process.cwd(), 'uploads', 'textbooks');
+        if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+        cb(null, dest);
+    },
     filename: (req, file, cb) => {
         const base = path.basename(file.originalname || 'resource.pdf');
         const ext = path.extname(base).toLowerCase() || '.pdf';
