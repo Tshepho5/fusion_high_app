@@ -280,3 +280,78 @@ exports.evaluateLifeSciencesAnswer = async (req, res) => {
     }
 };
 
+/**
+ * Retrieves the dedicated Grade 12 Physical Sciences CAPS topic database.
+ */
+exports.getPhysicalSciencesTopics = async (req, res) => {
+    try {
+        const kb = aiTutorService.getPhysicalSciencesKnowledgeBase();
+        res.json({
+            subject: 'Physical Sciences',
+            grade: 12,
+            curriculum: 'DBE CAPS (National Senior Certificate)',
+            totalTopics: kb.length,
+            topics: kb
+        });
+    } catch (err) {
+        console.error('[AI TUTOR CONTROLLER ERROR] getPhysicalSciencesTopics:', err);
+        res.status(500).json({ error: 'Failed to load Physical Sciences knowledge base.' });
+    }
+};
+
+/**
+ * Evaluates a learner's physics exam question response against the official DBE marking rubric.
+ */
+exports.evaluatePhysicalSciencesAnswer = async (req, res) => {
+    try {
+        const { itemId, studentAnswer } = req.body;
+        if (!itemId || !studentAnswer) {
+            return res.status(400).json({ error: 'Both itemId and studentAnswer are required.' });
+        }
+
+        const evaluation = aiTutorService.evaluatePhysicalSciencesAnswer(itemId, studentAnswer);
+        res.json(evaluation);
+    } catch (err) {
+        console.error('[AI TUTOR CONTROLLER ERROR] evaluatePhysicalSciencesAnswer:', err);
+        res.status(500).json({ error: 'Failed to evaluate Physical Sciences answer.' });
+    }
+};
+
+/**
+ * Retrieves the dedicated Grade 12 Mathematics CAPS topic database.
+ */
+exports.getMathematicsTopics = async (req, res) => {
+    try {
+        const kb = aiTutorService.getMathematicsKnowledgeBase();
+        res.json({
+            subject: 'Mathematics',
+            grade: 12,
+            curriculum: 'DBE CAPS (National Senior Certificate)',
+            totalTopics: kb.length,
+            topics: kb
+        });
+    } catch (err) {
+        console.error('[AI TUTOR CONTROLLER ERROR] getMathematicsTopics:', err);
+        res.status(500).json({ error: 'Failed to load Mathematics knowledge base.' });
+    }
+};
+
+/**
+ * Evaluates a learner's mathematics exam question response against the official DBE marking rubric.
+ */
+exports.evaluateMathematicsAnswer = async (req, res) => {
+    try {
+        const { itemId, studentAnswer } = req.body;
+        if (!itemId || !studentAnswer) {
+            return res.status(400).json({ error: 'Both itemId and studentAnswer are required.' });
+        }
+
+        const evaluation = aiTutorService.evaluateMathematicsAnswer(itemId, studentAnswer);
+        res.json(evaluation);
+    } catch (err) {
+        console.error('[AI TUTOR CONTROLLER ERROR] evaluateMathematicsAnswer:', err);
+        res.status(500).json({ error: 'Failed to evaluate Mathematics answer.' });
+    }
+};
+
+

@@ -32,6 +32,150 @@ try {
   console.warn('[AI SERVICE] Could not load Life Sciences KB:', e.message);
 }
 
+// Load Dedicated Grade 12 Physical Sciences AI Model Knowledge Base (RAG)
+let physicalSciencesKB = [];
+try {
+  const psPath = path.join(__dirname, '../../../data/physical_sciences_grade12_kb.json');
+  if (fs.existsSync(psPath)) {
+    physicalSciencesKB = JSON.parse(fs.readFileSync(psPath, 'utf8'));
+    console.info(`[AI SERVICE] Loaded Grade 12 Physical Sciences AI Knowledge Base (${physicalSciencesKB.length} CAPS core topics).`);
+  }
+} catch (e) {
+  console.warn('[AI SERVICE] Could not load Physical Sciences KB:', e.message);
+}
+
+function queryPhysicalSciencesModel(userText) {
+  if (!physicalSciencesKB || physicalSciencesKB.length === 0 || !userText) return null;
+  const lower = userText.toLowerCase();
+  let bestItem = null;
+  let maxMatches = 0;
+
+  for (const item of physicalSciencesKB) {
+    let matches = 0;
+    for (const kw of item.keywords) {
+      if (lower.includes(kw.toLowerCase())) matches += 1.8;
+    }
+    const words = (item.topic + ' ' + item.subtopic + ' ' + item.question).toLowerCase().split(/\s+/);
+    for (const w of words) {
+      if (w.length > 3 && lower.includes(w)) matches += 0.5;
+    }
+    if (matches > maxMatches) {
+      maxMatches = matches;
+      bestItem = item;
+    }
+  }
+
+  return maxMatches >= 1.5 && bestItem ? { ...bestItem, matchScore: maxMatches } : null;
+}
+
+function evaluatePhysicalSciencesAnswer(itemId, studentAnswer) {
+  const item = physicalSciencesKB.find(x => x.id === itemId);
+  if (!item) return { error: `Topic/Question ID ${itemId} not found in Physical Sciences KB.` };
+
+  const lower = (studentAnswer || '').toLowerCase();
+  const matched = item.keywords.filter(k => lower.includes(k.toLowerCase()));
+  const missing = item.keywords.filter(k => !lower.includes(k.toLowerCase()));
+  const total = item.rubric_points.length;
+  const keywordPct = matched.length / Math.max(1, item.keywords.length);
+  const estimatedMark = Math.min(total, Math.round(keywordPct * total));
+  const percentage = Math.round((estimatedMark / total) * 100);
+
+  return {
+    itemId: item.id,
+    topic: item.topic,
+    subtopic: item.subtopic,
+    paper: item.paper,
+    prescribedDefinition: item.prescribed_definition,
+    formula: item.formula,
+    constants: item.constants,
+    estimatedMark: `${estimatedMark}/${total}`,
+    percentage: `${percentage}%`,
+    matchedTerms: matched,
+    missingTerms: missing,
+    rubricChecklist: item.rubric_points,
+    modelAnswer: item.model_answer,
+    commonMisconceptions: item.common_misconceptions,
+    humanGuidance: item.human_guidance,
+    feedback: percentage >= 80 
+      ? "Outstanding mastery! Your steps and units follow official DBE CAPS examination guidelines perfectly."
+      : percentage >= 50
+        ? "Good conceptual work! Make sure to write down the standard formula, substitution with signs, and final SI unit to capture full rubric marks."
+        : "Needs revision. In the matric exam, markers require the explicit formula from the formula sheet and correct SI units."
+  };
+}
+
+// Load Dedicated Grade 12 Mathematics AI Model Knowledge Base (RAG)
+let mathematicsKB = [];
+try {
+  const mathPath = path.join(__dirname, '../../../data/mathematics_grade12_kb.json');
+  if (fs.existsSync(mathPath)) {
+    mathematicsKB = JSON.parse(fs.readFileSync(mathPath, 'utf8'));
+    console.info(`[AI SERVICE] Loaded Grade 12 Mathematics AI Knowledge Base (${mathematicsKB.length} CAPS core topics).`);
+  }
+} catch (e) {
+  console.warn('[AI SERVICE] Could not load Mathematics KB:', e.message);
+}
+
+function queryMathematicsModel(userText) {
+  if (!mathematicsKB || mathematicsKB.length === 0 || !userText) return null;
+  const lower = userText.toLowerCase();
+  let bestItem = null;
+  let maxMatches = 0;
+
+  for (const item of mathematicsKB) {
+    let matches = 0;
+    for (const kw of item.keywords) {
+      if (lower.includes(kw.toLowerCase())) matches += 1.8;
+    }
+    const words = (item.topic + ' ' + item.subtopic + ' ' + item.question).toLowerCase().split(/\s+/);
+    for (const w of words) {
+      if (w.length > 3 && lower.includes(w)) matches += 0.5;
+    }
+    if (matches > maxMatches) {
+      maxMatches = matches;
+      bestItem = item;
+    }
+  }
+
+  return maxMatches >= 1.5 && bestItem ? { ...bestItem, matchScore: maxMatches } : null;
+}
+
+function evaluateMathematicsAnswer(itemId, studentAnswer) {
+  const item = mathematicsKB.find(x => x.id === itemId);
+  if (!item) return { error: `Topic/Question ID ${itemId} not found in Mathematics KB.` };
+
+  const lower = (studentAnswer || '').toLowerCase();
+  const matched = item.keywords.filter(k => lower.includes(k.toLowerCase()));
+  const missing = item.keywords.filter(k => !lower.includes(k.toLowerCase()));
+  const total = item.rubric_points.length;
+  const keywordPct = matched.length / Math.max(1, item.keywords.length);
+  const estimatedMark = Math.min(total, Math.round(keywordPct * total));
+  const percentage = Math.round((estimatedMark / total) * 100);
+
+  return {
+    itemId: item.id,
+    topic: item.topic,
+    subtopic: item.subtopic,
+    paper: item.paper,
+    prescribedDefinition: item.prescribed_definition,
+    formula: item.formula,
+    constants: item.constants,
+    estimatedMark: `${estimatedMark}/${total}`,
+    percentage: `${percentage}%`,
+    matchedTerms: matched,
+    missingTerms: missing,
+    rubricChecklist: item.rubric_points,
+    modelAnswer: item.model_answer,
+    commonMisconceptions: item.common_misconceptions,
+    humanGuidance: item.human_guidance,
+    feedback: percentage >= 80 
+      ? "Outstanding mathematical mastery! Your algebraic steps, reasoning, and standard form follow official DBE CAPS marking criteria."
+      : percentage >= 50
+        ? "Good working! Ensure all intermediate algebraic steps, critical values/signs, and geometric reasons [in brackets] are explicitly stated to earn full method marks."
+        : "Needs revision. In the matric mathematics examination, full marks require standard formula substitution, correct sign conventions, and explicit mathematical justifications."
+  };
+}
+
 function queryLifeSciencesModel(userText) {
   if (!lifeSciencesKB || lifeSciencesKB.length === 0 || !userText) return null;
   const lower = userText.toLowerCase();
@@ -99,28 +243,38 @@ async function callAI(prompt, isJson = false, modelOverride = null) {
 
   const modelCandidates = modelOverride
     ? [modelOverride]
-    : ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.1-pro-preview', 'gemini-flash-latest'];
+    : ['gemini-3.8-flash', 'gemini-3.1-pro-preview'];
   let lastError = null;
 
   for (const targetModel of modelCandidates) {
-    try {
-      const model = genAI.getGenerativeModel({ model: targetModel });
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const model = genAI.getGenerativeModel({ model: targetModel });
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
 
-      if (isJson) {
-        const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        try {
-          return JSON.parse(cleanedText);
-        } catch (e) {
-          throw new Error('AI returned invalid JSON: ' + e.message);
+        if (isJson) {
+          const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+          try {
+            return JSON.parse(cleanedText);
+          } catch (e) {
+            throw new Error('AI returned invalid JSON: ' + e.message);
+          }
         }
+        return { text };
+      } catch (err) {
+        lastError = err;
+        const errMsg = err.message || '';
+        const isTransient = errMsg.includes('503') || errMsg.includes('429') || errMsg.includes('Quota exceeded') || errMsg.includes('high demand');
+        if (isTransient && attempt === 0) {
+          console.warn(`[AI SERVICE] Model ${targetModel} busy (${errMsg}). Retrying in 800ms...`);
+          await sleep(800);
+          continue;
+        }
+        console.warn(`[AI SERVICE] Model ${targetModel} attempt failed: ${errMsg}. Trying next candidate...`);
+        break;
       }
-      return { text };
-    } catch (err) {
-      console.warn(`[AI SERVICE] Model ${targetModel} attempt failed: ${err.message}. Trying next candidate...`);
-      lastError = err;
     }
   }
 
@@ -648,8 +802,110 @@ function generateCAPSLocalFallback(prompt, explicitSubject, explicitGrade, expli
   }
 }
 
+function resolvePortalOrAppAnswer(query, role = 'user') {
+  const lower = (query || '').toLowerCase();
+
+  // School registration, admissions, partner schools directory
+  if (lower.includes('school') && (lower.includes('add') || lower.includes('register') || lower.includes('admit') || lower.includes('application') || lower.includes('admission') || lower.includes('new school'))) {
+    return {
+      text: `### 🏫 Registering & Admitting Schools in Geleza SA\n\nTo onboard a new school onto the Geleza SA platform:\n\n1. **Submit or Review Applications**: Incoming institutions apply with their DBE EMIS number and provincial circuit details. Super Admins can review pending requests and approve them under **School Admissions**.\n2. **Approval & Instant Sync**: Once accredited and admitted, the school immediately appears in the **Registered Partner Schools Directory**.\n3. **Curriculum & Streams**: The school administrator can then configure academic phases (GET/FET) and subjects.\n\n👉 [Review School Admissions](action:school-admissions)\n👉 [Registered Partner Schools Directory](action:overview)`,
+      actionLinks: [
+        { label: 'Review School Admissions', tab: 'school-admissions' },
+        { label: 'Partner Schools Directory', tab: 'overview' }
+      ],
+      suggestions: ['How do I configure school subjects?', 'How do I add school administrators?', 'Where is the Multi-School Command Center?']
+    };
+  }
+
+  if (lower.includes('directory') || (lower.includes('partner') && lower.includes('school')) || lower.includes('campus')) {
+    return {
+      text: `### 🏛️ Registered Partner Schools Directory\n\nThe **Registered Partner Schools Directory** displays all verified, DBE-accredited partner campuses on the Geleza SA network. Each school card showcases:\n- Official DBE EMIS registration and province\n- Academic streams (Science, Commerce, General, Technical)\n- All active subjects taught on that campus\n\nYou can search, filter by province, and switch between Grid, Compact, and List views.\n\n👉 [Open Partner Schools Directory](action:overview)`,
+      actionLinks: [{ label: 'Partner Schools Directory', tab: 'overview' }],
+      suggestions: ['How do I admit a new school?', 'How do I manage campus users?', 'How do I view curriculum streams?']
+    };
+  }
+
+  if (lower.includes('user') || lower.includes('account') || lower.includes('role') || (lower.includes('teacher') && (lower.includes('add') || lower.includes('create') || lower.includes('invite'))) || lower.includes('staff')) {
+    return {
+      text: `### 👥 User Directory & Role Management\n\nIn Geleza SA, access permissions are governed by role-based controls (Super Admin, Principal/Campus Admin, HOD, Educator, Parent, Learner):\n\n1. Go to **User Management** in your navigation bar.\n2. Click **Create User** or **Invite Staff** to provision new accounts with secure Single Sign-On (SSO).\n3. To enroll full grades or classes at once, use the automated **SA-SAMS CSV Import**.\n\n👉 [Manage Users](action:users)\n👉 [Import Learners (SA-SAMS)](action:import-learners)`,
+      actionLinks: [
+        { label: 'Manage Users', tab: 'users' },
+        { label: 'Import Learners', tab: 'import-learners' }
+      ],
+      suggestions: ['How do I import learners via SA-SAMS?', 'How do I assign teachers to classes?', 'How do parents link to children?']
+    };
+  }
+
+  if (lower.includes('import') || lower.includes('sams') || lower.includes('csv')) {
+    return {
+      text: `### 📥 Bulk Learner Import (SA-SAMS CSV)\n\nYou can import learners into Geleza SA without manual data entry:\n\n1. Export your learner records from SA-SAMS into a standard .csv file.\n2. Navigate to **Import Learners** in the Admin dashboard.\n3. Drag and drop the file. Geleza SA validates learner IDs, grades, streams, and parental contact details before importing.\n\n👉 [Import Learners from SA-SAMS](action:import-learners)`,
+      actionLinks: [{ label: 'Import Learners', tab: 'import-learners' }],
+      suggestions: ['How do I create individual users?', 'Where is the class timetable?', 'How do I assign subjects?']
+    };
+  }
+
+  if (lower.includes('timetable') || lower.includes('schedule') || lower.includes('period')) {
+    return {
+      text: `### 📅 Timetable & Period Schedules\n\n- **Learners & Teachers**: View your daily timetable, classroom venues, and period slots directly.\n- **Admins**: Use the **Master Timetable Allocations** tool to schedule classes, prevent teacher clashes, and allocate venues.\n\n👉 [Open Timetable](action:timetable)`,
+      actionLinks: [{ label: 'Open Timetable', tab: 'timetable' }],
+      suggestions: ['How do I check my next period?', 'Where do I view school calendar events?', 'How do I manage educator relief?']
+    };
+  }
+
+  if (lower.includes('report') || lower.includes('mark') || lower.includes('grade card') || lower.includes('sba')) {
+    return {
+      text: `### 📊 CAPS Report Cards & Term Assessments\n\nGeleza SA automatically computes term marks according to Department of Basic Education (DBE) weighting:\n\n- **DBE 7-Point Rating Scale**:\n  • Level 7 (80–100% Outstanding)\n  • Level 6 (70–79% Meritorious)\n  • Level 5 (60–69% Substantial)\n  • Level 4 (50–59% Adequate)\n  • Level 3 (40–49% Moderate)\n  • Level 2 (30–39% Elementary)\n  • Level 1 (0–29% Not Achieved)\n- Official term report cards can be generated, signed, and downloaded as PDFs.\n\n👉 [View CAPS Report Cards](action:reports)\n👉 [Open Report Card Studio](action:report-studio)`,
+      actionLinks: [
+        { label: 'View CAPS Report Cards', tab: 'reports' },
+        { label: 'Report Card Studio', tab: 'report-studio' }
+      ],
+      suggestions: ['How are term marks calculated?', 'Where do teachers enter marks?', 'How do I check subject performance?']
+    };
+  }
+
+  if (lower.includes('fee') || lower.includes('finance') || lower.includes('payment') || lower.includes('bursar') || lower.includes('statement')) {
+    return {
+      text: `### 💳 School Fees, Statements & Bursaries\n\n- **Parents**: Track tuition balances, download official statements, and make secure instant payments.\n- **Admins**: Monitor collection rates, issue receipts, and manage fee exemptions.\n- **Tertiary Bursaries**: Explore verified South African bursaries and university financial aid in the catalog.\n\n👉 [Open Fee Management](action:finance)\n👉 [Explore Bursaries](action:bursaries)`,
+      actionLinks: [
+        { label: 'Open Fee Management', tab: 'finance' },
+        { label: 'Explore Bursaries', tab: 'bursaries' }
+      ],
+      suggestions: ['How do I download a fee statement?', 'Where are bursary applications?', 'How do parents make payments?']
+    };
+  }
+
+  if (lower.includes('attendance') || lower.includes('absent') || lower.includes('present') || lower.includes('roll call')) {
+    return {
+      text: `### 📋 Classroom Attendance & Registers\n\n- **Teachers**: Take daily period attendance in seconds with one-click bulk status or QR scanning.\n- **Parents**: Receive automated SMS and push notifications if a learner is marked absent or late.\n- **Admins**: View campus-wide attendance trends and compliance reports.\n\n👉 [View Attendance Register](action:attendance)`,
+      actionLinks: [{ label: 'View Attendance', tab: 'attendance' }],
+      suggestions: ['How do parents see attendance alerts?', 'Where is the master timetable?', 'How do I download attendance reports?']
+    };
+  }
+
+  if (lower.includes('homework') || lower.includes('assignment') || lower.includes('task')) {
+    return {
+      text: `### 📚 Assignments & Homework Hub\n\n- **Learners**: View due dates, teacher instructions, rubric guidelines, and upload completed assignments.\n- **Teachers**: Post homework tasks with attachments and grade student submissions directly.\n\n👉 [Go to Assignments](action:assignments)`,
+      actionLinks: [{ label: 'Go to Assignments', tab: 'assignments' }],
+      suggestions: ['How do I submit an assignment?', 'How do I ask the AI Tutor for help?', 'Where do I find study guides?']
+    };
+  }
+
+  if (lower.includes('geleza') || lower.includes('about the app') || lower.includes('what is this') || lower.includes('how does this app work') || lower.includes('features')) {
+    return {
+      text: `### 🌟 Welcome to Geleza SA\n\n**Geleza SA** is South Africa's comprehensive, DBE CAPS-aligned digital school operating system and educational ecosystem. It unifies:\n\n- **Institutional Governance**: Multi-school command centers, partner school directories, and automated admissions.\n- **Academic Excellence**: DBE CAPS syllabus tracking (Grades 8–12), 24/7 AI Tutor, past exam prep, and automatic 7-point report cards.\n- **Classroom Operations**: Master conflict-free timetables, daily attendance, educator leave relief, and asset tracking.\n- **Connected Community**: Real-time parent portal, instant fee reconciliation, bursary databases, and student message hub.\n\n👉 [Partner Schools Directory](action:overview)\n👉 [Open Technical Settings](action:settings)`,
+      actionLinks: [
+        { label: 'Partner Schools Directory', tab: 'overview' },
+        { label: 'Technical Settings', tab: 'settings' }
+      ],
+      suggestions: ['How do I add a school?', 'Where is the Master Timetable?', 'How do report cards work?']
+    };
+  }
+
+  return null;
+}
+
 async function safeAICall(prompt, isJson = false, retries = 1) {
-  const models = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.1-pro-preview', 'gemini-flash-latest'];
+  const models = ['gemini-3.8-flash', 'gemini-3.1-pro-preview'];
 
   for (const m of models) {
     try {
@@ -657,11 +913,19 @@ async function safeAICall(prompt, isJson = false, retries = 1) {
       const result = await callAI(prompt, isJson, m);
       if (result && !result.error) return result;
     } catch (err) {
-      if (err.message && (err.message.includes('429') || err.message.includes('Quota exceeded'))) {
-        console.info(`[AI SERVICE] Quota limit encountered on ${m}. Cascading...`);
+      if (err.message && (err.message.includes('429') || err.message.includes('Quota exceeded') || err.message.includes('503'))) {
+        console.info(`[AI SERVICE] Quota limit/spike encountered on ${m}. Cascading...`);
       } else {
         console.warn(`[AI SERVICE] Model ${m} error: ${err.message}`);
       }
+    }
+  }
+
+  // Check portal resolution first before generic syllabus fallback
+  if (!isJson) {
+    const portalAns = resolvePortalOrAppAnswer(prompt);
+    if (portalAns && portalAns.text) {
+      return { text: portalAns.text };
     }
   }
 
@@ -1191,31 +1455,58 @@ You are interacting in real-time with:
 - STRICT ZERO NEGATIVE ENERGY MANDATE: Under no circumstances express irritation, coldness, sarcasm, dismissiveness, or negativity. Foster a safe, inspiring environment where every learner, educator, parent, and admin feels supported.
 - NEVER start with robotic self-introductions like "Hello, I am an AI model..." or "As an AI...". Provide direct, warm, natural human-like assistance immediately.
 
-### 2. ROLE-BASED ACCESS CONTROL (RBAC) PORTAL ASSISTANCE:
-Understand and assist them in everything within their role's environment:
-- IF ROLE IS "LEARNER":
-  * Explain any academic subject concept across the CAPS curriculum (Grade 8–12), solve sample exam problems step-by-step, give study tips, and assist with homework.
-  * Guide them through learner modules: Timetable, Report Cards, Subject Performance, Assignments, Fees, Bursaries, Calendar, Messages, Arcade, Technical Settings.
-- IF ROLE IS "TEACHER":
-  * Assist with lesson planning, question formulation, exam rubrics, pedagogy, CAPS Annual Teaching Plans (ATP), and classroom management.
-  * Guide them through teacher modules: My Classes & Subjects, Timetable, AI Assessment Tools & Quiz Generator, Gradebook & Marks, Attendance Register, Leave Relief, Conduct.
-- IF ROLE IS "PARENT":
-  * Explain child academic progress, CAPS Performance Levels (Levels 1 to 7), report cards, school fee statements and payment procedures, parent-teacher consultations (PTC), and school calendar.
-  * Guide them through parent modules: Linked Children & Marks, Report Cards, School Fees, Consultations, Timetable, Calendar, Messages.
-- IF ROLE IS "ADMIN":
-  * Assist with school governance, master timetabling, matric pass rate forecasting, academic auditing, educator relief, fee management, and user accounts.
-  * Guide them through admin modules: Command Center, School Users, Academic Audits, Master Timetable, School Fees, Matric Projector.
+### 2. COMPREHENSIVE GELEZA SA PLATFORM ARCHITECTURE & ROLES (MANDATORY):
+Geleza SA is South Africa's DBE CAPS-integrated digital school operating system and institutional governance network.
+You possess deep, authoritative knowledge of all platform workflows, pages, and features. Always provide direct, step-by-step guidance and interactive action links:
+
+- INSTITUTIONAL GOVERNANCE & NETWORK:
+  * "Registered Partner Schools Directory": Lists verified DBE-accredited partner campuses, their EMIS numbers, provincial circuits, academic streams (Science, Commerce, General, Technical), and active subjects taught on campus: [Partner Schools Directory](action:overview).
+  * "School Admissions & Accreditation": Where incoming schools submit registrations. Super Admins review EMIS credentials and approve/admit campuses: [Review School Admissions](action:school-admissions). Once approved, schools appear immediately in the Partner Schools Directory.
+  * "Multi-School Command Center": Cross-campus benchmarking, district pass rates, and provincial governance: [Command Center](action:command-center).
+  * "School Subjects & Curriculum": Managing subject offerings per grade, assigning HODs and subject heads: [School Subjects](action:school-subjects).
+
+- USER ACCOUNTS & ADMISSIONS:
+  * Role permissions: Super Admin, School Principal/Campus Admin, HOD, Teacher, Parent/Guardian, Learner.
+  * Creating & managing users: [Manage Users](action:users).
+  * Bulk Learner Import: Seamless onboarding of entire grades via official SA-SAMS CSV file import: [Import Learners](action:import-learners).
+
+- TIMETABLE & CLASSROOM OPERATIONS:
+  * Master Timetabling: Conflict-free scheduling of teachers, classes, periods, and venues: [Master Timetable](action:timetable).
+  * Daily Attendance: Period-by-period registers, QR scanning, and instant parent alerts: [Attendance Register](action:attendance).
+  * Educator Leave & Relief: Automated substitute rosters: [Leave Relief](action:leave-relief).
+
+- ACADEMICS & CAPS REPORT CARDS:
+  * DBE CAPS 7-Point Rating Scale: Level 7 (80-100% Outstanding), Level 6 (70-79% Meritorious), Level 5 (60-69% Substantial), Level 4 (50-59% Adequate), Level 3 (40-49% Moderate), Level 2 (30-39% Elementary), Level 1 (0-29% Not Achieved).
+  * Term Report Cards: Generated automatically from teacher marks, complete with comments and principal verification: [CAPS Report Cards](action:reports) / [Report Card Studio](action:report-studio).
+  * Matric Pass Rate Projector: AI-driven predictive modeling for Bachelor, Diploma, and Higher Certificate pass rates: [Matric Projector](action:matric-projector).
+
+- FINANCE & BURSARIES:
+  * School Fees: Balance tracking, statements, fee exemptions, and online payments: [Open Fee Management](action:finance).
+  * Bursaries & Tertiary Aid: National catalog of accredited South African university bursaries: [Explore Bursaries](action:bursaries).
+
+- PARENTS & LEARNERS:
+  * Parents track child attendance, view term marks, and book Parent-Teacher Consultations: [Consultations](action:consultations).
+  * Learners view class schedules, complete assignments: [Go to Assignments](action:assignments), access AI tutor study guides, and play curriculum games in [Fusion Arcade](action:arcade).
 
 ### 3. INTERACTIVE NAVIGATION LINKS (CRITICAL):
 Whenever the user asks where to find something, how to access a feature, view documents, or navigate their dashboard, explain clearly AND ALWAYS provide interactive navigation links in this exact syntax:
 [Button Label](action:<tab_id>)
 
 Supported <tab_id> values:
+- "overview" -> Partner Schools Directory & Executive Overview e.g. [Partner Schools Directory](action:overview)
+- "school-admissions" -> School Admissions & Campus Applications e.g. [Review School Admissions](action:school-admissions)
+- "command-center" -> Multi-School Command Center e.g. [Command Center](action:command-center)
+- "users" -> School User Management & Permissions e.g. [Manage Users](action:users)
+- "import-learners" -> Bulk Learner SA-SAMS CSV Import e.g. [Import Learners](action:import-learners)
 - "timetable" -> Timetable & class schedule e.g. [Open Timetable](action:timetable)
 - "reports" -> CAPS Report Cards & term averages e.g. [View CAPS Report Cards](action:reports)
+- "report-studio" -> Report Card Studio e.g. [Open Report Card Studio](action:report-studio)
 - "performance" -> Subject Performance & marks e.g. [Check Subject Performance](action:performance)
 - "assignments" -> Assignments & homework e.g. [Go to Assignments](action:assignments)
 - "subjects" -> Enrolled Subjects & syllabus e.g. [Open Subjects & Syllabus](action:subjects)
+- "school-subjects" -> School Subjects Manager e.g. [School Subjects](action:school-subjects)
+- "matric-projector" -> Matric Pass Rate Projector e.g. [Matric Projector](action:matric-projector)
+- "leave-relief" -> Educator Leave & Relief e.g. [Leave Relief](action:leave-relief)
 - "ai-tools" -> Teacher AI Assessment & Quiz Tools e.g. [Open AI Assessment Tools](action:ai-tools)
 - "ai-tutor" -> Learner AI Tutor Session e.g. [Open AI Tutor](action:ai-tutor)
 - "finance" -> School Fees & payment records e.g. [Open Fee Management](action:finance)
@@ -1227,7 +1518,6 @@ Supported <tab_id> values:
 - "settings" -> Technical Settings & security e.g. [Open Technical Settings](action:settings)
 - "profile" -> User Profile e.g. [View Profile](action:profile)
 - "arcade" -> Educational Games (learners) e.g. [Open Fusion Arcade](action:arcade)
-- "users" -> School User Management (admin) e.g. [Manage Users](action:users)
 
 ### 4. ACADEMIC EXCELLENCE & CAPS CURRICULUM:
 - Answer ALL subject questions accurately (Math, Physics, Chemistry, Life Sciences/Biology, Economics, Business Studies, Accounting, Geography, History, Tourism, Languages, etc.).
@@ -1241,11 +1531,80 @@ ${topicsSummary ? `Available Subject Topics (Grade ${normGrade}): ${topicsSummar
   [SUGGESTIONS: <Prompt 1> | <Prompt 2> | <Prompt 3>]
 
 ${(() => {
-  if (normSubject === 'Life Sciences' || normSubject.includes('Bio')) {
+  const subLower = (normSubject || '').toLowerCase();
+  const isPhysics = subLower.includes('physic') || subLower.includes('chem') || (subLower.includes('science') && !subLower.includes('life'));
+  const isLifeScience = !isPhysics && (subLower.includes('life') || subLower.includes('bio'));
+  const isMath = subLower.includes('math') || subLower.includes('algebra') || subLower.includes('calculus') || subLower.includes('geometry') || subLower.includes('trigonometry');
+
+  if (isPhysics) {
+    const psMatch = queryPhysicalSciencesModel(userText);
+    if (psMatch) {
+      return `
+### ⚛️ DEDICATED GRADE 12 PHYSICAL SCIENCES SPECIALIST KNOWLEDGE BASE (STRICT DBE CAPS RAG):
+- Target Topic: "${psMatch.topic}" (${psMatch.paper}) — Subtopic: "${psMatch.subtopic}"
+- Official DBE Prescribed Definition: "${psMatch.prescribed_definition}"
+- Standard Formula: ${psMatch.formula}
+- Constants / Given: ${psMatch.constants}
+- Official DBE Marking Guidelines / Rubric:
+${psMatch.rubric_points.map(p => `  * ${p}`).join('\n')}
+- Prescribed Model Solution & Step-by-Step Calculation:
+${psMatch.model_answer}
+- Common Candidate Trap / Misconception:
+  "${psMatch.common_misconceptions}"
+- Human Educator Warmth & Guidance:
+  "${psMatch.human_guidance}"
+
+### STRICT SUBJECT ISOLATION DIRECTIVE:
+You are strictly in the Physical Sciences (Physics Paper 1 & Chemistry Paper 2) classroom.
+Under NO circumstances mention biology, cell structures, DNA, genetics, reproduction, or Life Sciences.
+Respond with human warmth, empathy, and mathematical clarity. Show every algebraic step with SI units.
+`;
+    } else {
+      return `
+### ⚛️ GRADE 12 PHYSICAL SCIENCES (PHYSICS P1 & CHEMISTRY P2) CLASSROOM:
+- Official CAPS Curriculum: Physical Sciences Grade 12 (Paper 1 Physics: Vertical Projectile Motion, Momentum & Impulse, Work-Energy-Power, Doppler Effect, Electric Circuits, Electrodynamics, Photoelectric Effect; Paper 2 Chemistry: Organic Chemistry, Rates of Reaction, Chemical Equilibrium, Acids & Bases, Electrochemical Cells).
+- Marking Standard: State formula first (1m), substitution with correct signs (1m), final answer with SI unit (1m).
+- Strict subject boundary: Do NOT discuss biology or Life Sciences.
+`;
+    }
+  } else if (isMath) {
+    const mathMatch = queryMathematicsModel(userText);
+    if (mathMatch) {
+      return `
+### 📐 DEDICATED GRADE 12 MATHEMATICS SPECIALIST KNOWLEDGE BASE (STRICT DBE CAPS RAG):
+- Target Topic: "${mathMatch.topic}" (${mathMatch.paper}) — Subtopic: "${mathMatch.subtopic}"
+- Official DBE Prescribed Theorem / Rule: "${mathMatch.prescribed_definition}"
+- Standard Examination Formula: ${mathMatch.formula}
+- Constants / Conditions: ${mathMatch.constants}
+- Official DBE Marking Guidelines / Method Rubric:
+${mathMatch.rubric_points.map(p => `  * ${p}`).join('\n')}
+- Prescribed Model Solution & Step-by-Step Algebraic Working:
+${mathMatch.model_answer}
+- Common Candidate Trap / Misconception:
+  "${mathMatch.common_misconceptions}"
+- Human Educator Warmth & Guidance:
+  "${mathMatch.human_guidance}"
+
+### STRICT SUBJECT ISOLATION DIRECTIVE:
+You are strictly in the Grade 12 Mathematics (Paper 1 & Paper 2) classroom.
+Under NO circumstances mention biology, Life Sciences, chemistry, or unrelated subjects.
+Write every algebraic step explicitly with clear sign rules, critical values, and geometric reasons in brackets e.g. [line || one side of Δ].
+Respond with human warmth, encouragement, and pedagogical excellence.
+`;
+    } else {
+      return `
+### 📐 GRADE 12 MATHEMATICS (PAPER 1 & PAPER 2) CLASSROOM:
+- Official CAPS Curriculum: Mathematics Grade 12 (Paper 1: Algebra, Equations & Inequalities, Sequences & Series, Functions & Inverses, Financial Maths, Differential Calculus, Probability; Paper 2: Statistics & Regression, Analytical Geometry, Trigonometry, Euclidean Geometry).
+- Marking Standard: State formula first (1m), substitution (1m), intermediate algebraic working (1m), final answer in simplest form (1m).
+- In Euclidean Geometry: ALWAYS provide geometric reasons in brackets [Reason] for every single statement.
+- Strict subject boundary: Do NOT discuss biology or Life Sciences.
+`;
+    }
+  } else if (isLifeScience) {
     const lsMatch = queryLifeSciencesModel(userText);
     if (lsMatch) {
       return `
-### DEDICATED GRADE 12 LIFE SCIENCES SPECIALIST MODEL CONTEXT:
+### 🧬 DEDICATED GRADE 12 LIFE SCIENCES SPECIALIST MODEL CONTEXT:
 - Target Topic: "${lsMatch.topic}" (${lsMatch.paper}) — Subtopic: "${lsMatch.subtopic}"
 - Official DBE Marking Guidelines / Rubric:
 ${lsMatch.rubric_points.map(p => `  * ${p}`).join('\n')}
@@ -1304,7 +1663,36 @@ Detailed, Warm, Helpful Response:
     }
   } catch (err) {
     console.error('[AI TUTOR ERROR]', err);
-    if (normSubject === 'Life Sciences' || normSubject.includes('Bio')) {
+    // Check if the query is a portal/app question first
+    const portalAns = resolvePortalOrAppAnswer(userText, normRole);
+    const subLower = (normSubject || '').toLowerCase();
+    const isPhysics = subLower.includes('physic') || subLower.includes('chem') || (subLower.includes('science') && !subLower.includes('life'));
+    const isLifeScience = !isPhysics && (subLower.includes('life') || subLower.includes('bio'));
+    const isMath = subLower.includes('math') || subLower.includes('algebra') || subLower.includes('calculus') || subLower.includes('geometry') || subLower.includes('trigonometry');
+
+    if (portalAns && portalAns.text) {
+      aiReplyText = portalAns.text;
+      actionLinks = portalAns.actionLinks || [];
+      suggestions = portalAns.suggestions || [];
+    } else if (isPhysics) {
+      const psMatch = queryPhysicalSciencesModel(userText);
+      if (psMatch) {
+        aiReplyText = `### ⚛️ Grade 12 Physical Sciences Specialist Assistant\n**CAPS Focus: ${psMatch.paper} — ${psMatch.topic} (${psMatch.subtopic})**\n\n${psMatch.model_answer}\n\n---\n#### 📋 Official DBE Marking Rubric Breakdown:\n${psMatch.rubric_points.map(p => `• ${p}`).join('\n')}\n\n💡 **Matric Exam Pitfall / Tip**:\n${psMatch.common_misconceptions}\n\n🤝 *Teacher Note: ${psMatch.human_guidance}*`;
+        suggestions = ['Solve a vertical projectile problem', 'Calculate conservation of momentum', 'How do I calculate internal resistance?'];
+      } else {
+        aiReplyText = `I'm your dedicated Grade 12 Physical Sciences AI Specialist! I can assist you with Paper 1 Physics (Vertical Projectile Motion, Momentum & Impulse, Work-Energy-Power, Doppler Effect, Electric Circuits, Electrodynamics, Photoelectric Effect) and Paper 2 Chemistry (Organic Chemistry, Reaction Rates, Chemical Equilibrium, Acids & Bases, Electrochemical Cells). What equation or concept are we tackling today?`;
+        suggestions = ['Explain Newton Second Law in terms of momentum', 'Calculate Work-Energy on an incline', 'How does the Doppler formula work?'];
+      }
+    } else if (isMath) {
+      const mathMatch = queryMathematicsModel(userText);
+      if (mathMatch) {
+        aiReplyText = `### 📐 Grade 12 Mathematics Specialist Assistant\n**CAPS Focus: ${mathMatch.paper} — ${mathMatch.topic} (${mathMatch.subtopic})**\n\n${mathMatch.model_answer}\n\n---\n#### 📋 Official DBE Marking Rubric Breakdown:\n${mathMatch.rubric_points.map(p => `• ${p}`).join('\n')}\n\n💡 **Matric Exam Pitfall / Tip**:\n${mathMatch.common_misconceptions}\n\n🤝 *Teacher Note: ${mathMatch.human_guidance}*`;
+        suggestions = ['Solve a quadratic inequality with critical values', 'Calculate sum to infinity of geometric series', 'Find the derivative from first principles'];
+      } else {
+        aiReplyText = `I'm your dedicated Grade 12 Mathematics AI Specialist! I can assist you with Paper 1 (Algebra, Sequences & Series, Functions, Financial Maths, Calculus, Probability) and Paper 2 (Statistics, Analytical Geometry, Trigonometry, Euclidean Geometry). What equation, theorem, or problem are we working through today?`;
+        suggestions = ['Show first principles derivative of 3x^2 - 2x', 'Solve financial maths balance outstanding', 'Prove angle at centre is twice angle at circumference'];
+      }
+    } else if (isLifeScience) {
       const lsMatch = queryLifeSciencesModel(userText);
       if (lsMatch) {
         aiReplyText = `### 🧬 Grade 12 Life Sciences Specialist Assistant\n**CAPS Focus: ${lsMatch.paper} — ${lsMatch.topic} (${lsMatch.subtopic})**\n\n${lsMatch.model_answer}\n\n---\n#### 📋 Official DBE CAPS Marking Rubric Breakdown:\n${lsMatch.rubric_points.map(p => `• ${p}`).join('\n')}\n\n💡 **Matric Exam Pitfall / Tip**:\n${lsMatch.common_misconceptions}`;
@@ -1314,20 +1702,36 @@ Detailed, Warm, Helpful Response:
         suggestions = ['Explain transcription vs translation', 'Describe DNA replication', 'How does eye accommodation work?'];
       }
     } else {
-      aiReplyText = `I'm right here with you! Whether you need help with your ${normSubject} subjects, understanding formulas, or finding your way around the portal, I've got you covered. What would you like to explore?`;
-      suggestions = ['Where is my weekly timetable?', 'How do I view CAPS report cards?', 'Explain a key subject concept'];
+      aiReplyText = `I'm here to support you with everything on Geleza SA! You can ask me any question about your academic subjects, exams, or navigating your dashboard tools. What would you like to explore?`;
+      suggestions = ['How do I check my timetable?', 'How do I view CAPS report cards?', 'Explain a subject concept step-by-step'];
     }
   }
 
   // Fallback / Auto-detection of navigation intent if no action link was explicitly generated
   const lowerText = userText.toLowerCase();
   if (actionLinks.length === 0) {
-    if (lowerText.includes('timetable') || lowerText.includes('schedule') || lowerText.includes('period')) {
+    if (lowerText.includes('school') && (lowerText.includes('add') || lowerText.includes('register') || lowerText.includes('admit') || lowerText.includes('application') || lowerText.includes('admission'))) {
+      actionLinks.push({ label: 'Review School Admissions', tab: 'school-admissions' });
+    } else if (lowerText.includes('partner') || (lowerText.includes('school') && (lowerText.includes('directory') || lowerText.includes('campus')))) {
+      actionLinks.push({ label: 'Partner Schools Directory', tab: 'overview' });
+    } else if (lowerText.includes('import') || lowerText.includes('sams') || lowerText.includes('csv')) {
+      actionLinks.push({ label: 'Import Learners from SA-SAMS', tab: 'import-learners' });
+    } else if (lowerText.includes('user') || lowerText.includes('account') || lowerText.includes('role') || lowerText.includes('teacher') || lowerText.includes('staff')) {
+      actionLinks.push({ label: 'Manage Users', tab: 'users' });
+    } else if (lowerText.includes('attendance') || lowerText.includes('absent')) {
+      actionLinks.push({ label: 'View Attendance', tab: 'attendance' });
+    } else if (lowerText.includes('consultation') || lowerText.includes('meeting') || lowerText.includes('parent-teacher')) {
+      actionLinks.push({ label: 'Schedule Consultation', tab: 'consultations' });
+    } else if (lowerText.includes('matric') || lowerText.includes('projector') || lowerText.includes('pass rate')) {
+      actionLinks.push({ label: 'Matric Pass Rate Projector', tab: 'matric-projector' });
+    } else if (lowerText.includes('timetable') || lowerText.includes('schedule') || lowerText.includes('period')) {
       actionLinks.push({ label: 'Open Timetable', tab: 'timetable' });
     } else if (lowerText.includes('report') || lowerText.includes('mark') || lowerText.includes('result')) {
       actionLinks.push({ label: 'View CAPS Report Cards', tab: 'reports' });
     } else if (lowerText.includes('fee') || lowerText.includes('payment') || lowerText.includes('statement') || lowerText.includes('finance')) {
       actionLinks.push({ label: 'Open Fee Management', tab: 'finance' });
+    } else if (lowerText.includes('bursar')) {
+      actionLinks.push({ label: 'Explore Bursaries', tab: 'bursaries' });
     } else if (lowerText.includes('assignment') || lowerText.includes('homework')) {
       actionLinks.push({ label: 'Go to Assignments', tab: 'assignments' });
     } else if (lowerText.includes('subject') || lowerText.includes('curriculum')) {
@@ -1404,5 +1808,11 @@ module.exports = {
   chatWithSubjectTutor,
   queryLifeSciencesModel,
   evaluateLifeSciencesAnswer,
-  getLifeSciencesKnowledgeBase: () => lifeSciencesKB
+  getLifeSciencesKnowledgeBase: () => lifeSciencesKB,
+  queryPhysicalSciencesModel,
+  evaluatePhysicalSciencesAnswer,
+  getPhysicalSciencesKnowledgeBase: () => physicalSciencesKB,
+  queryMathematicsModel,
+  evaluateMathematicsAnswer,
+  getMathematicsKnowledgeBase: () => mathematicsKB
 };

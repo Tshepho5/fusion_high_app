@@ -334,15 +334,53 @@ export const GelezaAIChatPanel: React.FC<GelezaAIChatPanelProps> = ({
       ]);
     } catch (err) {
       console.warn('[AI ASSISTANT WARN]', err);
-      // Helpful curriculum-aware fallback if network or endpoint has momentary issue
-      let fallbackText = "I'm right here with you! Let's work through this problem step-by-step. What specific equation, concept, or subject question are you tackling?";
+      // Smart contextual fallback with direct navigation links if network or model temporarily spikes
       const lower = textToSend.toLowerCase();
-      if (lower.includes('algebra') || lower.includes('equation') || lower.includes('solve')) {
-        fallbackText = `Great! Here's a step-by-step solution to solve for x in the equation:\n\n2(x + 3) = 14\n\n1. Expand: 2x + 6 = 14\n2. Subtract 6: 2x = 8\n3. Divide by 2: x = 4\n\nSo, the value of x is 4. 🎯\n\nWould you like another example or practice questions?`;
+      let fallbackText = "I'm here to support you with everything on Geleza SA! You can ask me any question about your subjects, exam preparations, or navigating your dashboard.";
+      let fallbackLinks: Array<{ label: string; tab: string }> = [];
+      let fallbackSuggestions: string[] = ['Where is my timetable?', 'How do I view CAPS report cards?', 'Explain a subject concept'];
+
+      if (lower.includes('school') && (lower.includes('add') || lower.includes('register') || lower.includes('admit') || lower.includes('application') || lower.includes('admission'))) {
+        fallbackText = "To register or onboard a school on Geleza SA, incoming institutions submit registration details which Super Admins review and accredit under School Admissions. Once admitted, verified campuses appear in the Registered Partner Schools Directory.";
+        fallbackLinks = [
+          { label: 'Review School Admissions', tab: 'school-admissions' },
+          { label: 'Partner Schools Directory', tab: 'overview' }
+        ];
+        fallbackSuggestions = ['How do I manage campus users?', 'How do I configure curriculum streams?'];
+      } else if (lower.includes('directory') || (lower.includes('partner') && lower.includes('school')) || lower.includes('campus')) {
+        fallbackText = "The Registered Partner Schools Directory showcases all accredited DBE partner institutions on Geleza SA, including their EMIS codes, curriculum streams, and offered subjects.";
+        fallbackLinks = [{ label: 'Partner Schools Directory', tab: 'overview' }];
+        fallbackSuggestions = ['How do I admit a school?', 'Where is the Multi-School Command Center?'];
+      } else if (lower.includes('user') || lower.includes('account') || lower.includes('role') || lower.includes('teacher') || lower.includes('staff')) {
+        fallbackText = "Manage user credentials, invite teachers, and assign permissions under User Management, or bulk import full classes via SA-SAMS CSV Import.";
+        fallbackLinks = [
+          { label: 'Manage Users', tab: 'users' },
+          { label: 'Import Learners (SA-SAMS)', tab: 'import-learners' }
+        ];
+        fallbackSuggestions = ['How do I import learners?', 'How do parents link to children?'];
+      } else if (lower.includes('import') || lower.includes('sams') || lower.includes('csv')) {
+        fallbackText = "You can bulk import learners into Geleza SA by uploading an official SA-SAMS CSV file in the Import Learners module.";
+        fallbackLinks = [{ label: 'Import Learners', tab: 'import-learners' }];
       } else if (lower.includes('report') || lower.includes('mark') || lower.includes('grade')) {
-        fallbackText = 'You can access your verified CAPS report cards and term assessments directly from the CAPS Report Cards module.';
-      } else if (lower.includes('timetable') || lower.includes('schedule')) {
-        fallbackText = 'Your school periods and schedule are available in the Timetable section.';
+        fallbackText = "You can access verified DBE CAPS report cards, term averages, and 7-point performance levels in the CAPS Report Cards module.";
+        fallbackLinks = [{ label: 'View CAPS Report Cards', tab: 'reports' }];
+      } else if (lower.includes('timetable') || lower.includes('schedule') || lower.includes('period')) {
+        fallbackText = "Your daily classroom schedule, teacher allocations, and period venues are available in the Timetable section.";
+        fallbackLinks = [{ label: 'Open Timetable', tab: 'timetable' }];
+      } else if (lower.includes('fee') || lower.includes('payment') || lower.includes('finance') || lower.includes('statement')) {
+        fallbackText = "Track school fees balances, view statements, and explore national bursary opportunities in the Finance & Bursaries hub.";
+        fallbackLinks = [
+          { label: 'Open Fee Management', tab: 'finance' },
+          { label: 'Explore Bursaries', tab: 'bursaries' }
+        ];
+      } else if (lower.includes('homework') || lower.includes('assignment')) {
+        fallbackText = "View class tasks, due dates, and submit completed homework in the Assignments portal.";
+        fallbackLinks = [{ label: 'Go to Assignments', tab: 'assignments' }];
+      } else if (lower.includes('attendance') || lower.includes('absent')) {
+        fallbackText = "Monitor daily classroom registers, period attendance, and automated parental absence alerts in the Attendance Register.";
+        fallbackLinks = [{ label: 'View Attendance', tab: 'attendance' }];
+      } else if (lower.includes('algebra') || lower.includes('equation') || lower.includes('solve')) {
+        fallbackText = `Here's a step-by-step example solving for x in: 2(x + 3) = 14\n\n1. Expand: 2x + 6 = 14\n2. Subtract 6: 2x = 8\n3. Divide by 2: x = 4\n\n🎯 The value of x is 4. Would you like to practice another problem?`;
       }
 
       setChatMessages((prev) => [
@@ -351,7 +389,9 @@ export const GelezaAIChatPanel: React.FC<GelezaAIChatPanelProps> = ({
           id: `ai-${Date.now()}`,
           sender: 'ai',
           text: fallbackText,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          actionLinks: fallbackLinks.length > 0 ? fallbackLinks : undefined,
+          suggestions: fallbackSuggestions
         }
       ]);
     } finally {

@@ -36,7 +36,10 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
-  FileCheck
+  FileCheck,
+  Atom,
+  Calculator,
+  Sigma
 } from 'lucide-react';
 
 interface LearnerAITutorProps {
@@ -150,8 +153,30 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Active Tab & Subject Studios State
+  const [activeTab, setActiveTab] = useState<'chat' | 'physics-studio' | 'math-studio' | 'life-sciences-studio' | 'adaptive'>('chat');
+
+  // Dedicated Subject AI Studio State (Grade 12 Physical Sciences)
+  const [physicsData, setPhysicsData] = useState<any[]>([]);
+  const [selectedPhysicsItem, setSelectedPhysicsItem] = useState<any | null>(null);
+  const [studentPhysicsAnswerText, setStudentPhysicsAnswerText] = useState<string>('');
+  const [physicsEvaluationResult, setPhysicsEvaluationResult] = useState<any | null>(null);
+  const [evaluatingPhysics, setEvaluatingPhysics] = useState<boolean>(false);
+  const [physicsPaperFilter, setPhysicsPaperFilter] = useState<'all' | 'Paper 1 (Physics)' | 'Paper 2 (Chemistry)'>('all');
+  const [showPhysicsModelAnswer, setShowPhysicsModelAnswer] = useState<boolean>(false);
+  const [loadingPhysicsData, setLoadingPhysicsData] = useState<boolean>(false);
+
+  // Dedicated Subject AI Studio State (Grade 12 Mathematics)
+  const [mathData, setMathData] = useState<any[]>([]);
+  const [selectedMathItem, setSelectedMathItem] = useState<any | null>(null);
+  const [studentMathAnswerText, setStudentMathAnswerText] = useState<string>('');
+  const [mathEvaluationResult, setMathEvaluationResult] = useState<any | null>(null);
+  const [evaluatingMath, setEvaluatingMath] = useState<boolean>(false);
+  const [mathPaperFilter, setMathPaperFilter] = useState<'all' | 'Paper 1 (Maths)' | 'Paper 2 (Maths)'>('all');
+  const [showMathModelAnswer, setShowMathModelAnswer] = useState<boolean>(false);
+  const [loadingMathData, setLoadingMathData] = useState<boolean>(false);
+
   // Dedicated Subject AI Studio State (Grade 12 Life Sciences)
-  const [activeTab, setActiveTab] = useState<'chat' | 'life-sciences-studio' | 'adaptive'>('chat');
   const [lifeSciencesData, setLifeSciencesData] = useState<any[]>([]);
   const [selectedLsItem, setSelectedLsItem] = useState<any | null>(null);
   const [studentAnswerText, setStudentAnswerText] = useState<string>('');
@@ -179,11 +204,112 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
   useEffect(() => {
     if (subject) {
       loadSavedConversations(subject);
-      if (subject.toLowerCase().includes('life sc') || subject.toLowerCase().includes('bio')) {
+      const subLower = subject.toLowerCase();
+      if (subLower.includes('math') || subLower.includes('algebra') || subLower.includes('calculus')) {
+        loadMathStudio();
+      } else if (subLower.includes('physic') || subLower.includes('chem') || (subLower.includes('science') && !subLower.includes('life'))) {
+        loadPhysicsStudio();
+      } else if (subLower.includes('life sc') || subLower.includes('bio')) {
         loadLifeSciencesStudio();
       }
     }
   }, [subject]);
+
+  const loadMathStudio = async () => {
+    setLoadingMathData(true);
+    try {
+      const res = await aiTutorService.getMathTopics();
+      if (res && res.topics) {
+        setMathData(res.topics);
+        if (res.topics.length > 0) {
+          setSelectedMathItem((prev: any) => prev || res.topics[0]);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load Mathematics studio topics:', err);
+    } finally {
+      setLoadingMathData(false);
+    }
+  };
+
+  const handleEvaluateMathAnswer = async () => {
+    if (!selectedMathItem || !studentMathAnswerText.trim()) return;
+    setEvaluatingMath(true);
+    try {
+      const res = await aiTutorService.evaluateMathAnswer({
+        itemId: selectedMathItem.id,
+        studentAnswer: studentMathAnswerText
+      });
+      setMathEvaluationResult(res);
+      const pct = parseInt(res.percentage || '0', 10);
+      if (pct >= 75) {
+        confetti({
+          particleCount: 50,
+          spread: 60,
+          origin: { y: 0.65 }
+        });
+      }
+    } catch (err) {
+      console.error('Math answer evaluation failed:', err);
+    } finally {
+      setEvaluatingMath(false);
+    }
+  };
+
+  const handleSelectMathQuestion = (item: any) => {
+    setSelectedMathItem(item);
+    setStudentMathAnswerText('');
+    setMathEvaluationResult(null);
+    setShowMathModelAnswer(false);
+  };
+
+  const loadPhysicsStudio = async () => {
+    setLoadingPhysicsData(true);
+    try {
+      const res = await aiTutorService.getPhysicsTopics();
+      if (res && res.topics) {
+        setPhysicsData(res.topics);
+        if (res.topics.length > 0) {
+          setSelectedPhysicsItem((prev: any) => prev || res.topics[0]);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load Physical Sciences studio topics:', err);
+    } finally {
+      setLoadingPhysicsData(false);
+    }
+  };
+
+  const handleEvaluatePhysicsAnswer = async () => {
+    if (!selectedPhysicsItem || !studentPhysicsAnswerText.trim()) return;
+    setEvaluatingPhysics(true);
+    try {
+      const res = await aiTutorService.evaluatePhysicsAnswer({
+        itemId: selectedPhysicsItem.id,
+        studentAnswer: studentPhysicsAnswerText
+      });
+      setPhysicsEvaluationResult(res);
+      const pct = parseInt(res.percentage || '0', 10);
+      if (pct >= 75) {
+        confetti({
+          particleCount: 50,
+          spread: 60,
+          origin: { y: 0.65 }
+        });
+      }
+    } catch (err) {
+      console.error('Physics answer evaluation failed:', err);
+    } finally {
+      setEvaluatingPhysics(false);
+    }
+  };
+
+  const handleSelectPhysicsQuestion = (item: any) => {
+    setSelectedPhysicsItem(item);
+    setStudentPhysicsAnswerText('');
+    setPhysicsEvaluationResult(null);
+    setShowPhysicsModelAnswer(false);
+  };
 
   const loadLifeSciencesStudio = async () => {
     setLoadingLsData(true);
@@ -330,6 +456,17 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                             subject.toLowerCase().includes('fal') ||
                             SA_OFFICIAL_LANGUAGES.some(l => l.name.toLowerCase() === subject.toLowerCase());
 
+  const isPhysicsSubject = subject.toLowerCase().includes('physic') || 
+                           subject.toLowerCase().includes('chem') || 
+                           (subject.toLowerCase().includes('science') && !subject.toLowerCase().includes('life'));
+
+  const isMathSubject = subject.toLowerCase().includes('math') || 
+                        subject.toLowerCase().includes('algebra') || 
+                        subject.toLowerCase().includes('calculus');
+
+  const isLifeSciencesSubject = subject.toLowerCase().includes('life sc') || 
+                                subject.toLowerCase().includes('bio');
+
   // Active Subject Topics List
   const activeSubjectItem = subjectsList.find(s => s.name.toLowerCase() === subject.toLowerCase());
   const activeTopics = activeSubjectItem ? activeSubjectItem.topics : [];
@@ -339,9 +476,55 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
     setSubject(newSub);
     setCurrentTopic('General Curriculum');
     setActiveConversationId(null);
+    setEvaluationResult(null);
+    setStudentAnswerText('');
+    setPhysicsEvaluationResult(null);
+    setStudentPhysicsAnswerText('');
+    setMathEvaluationResult(null);
+    setStudentMathAnswerText('');
+
+    const newLower = newSub.toLowerCase();
+    const isNewPhys = newLower.includes('physic') || newLower.includes('chem') || (newLower.includes('science') && !newLower.includes('life'));
+    const isNewMath = newLower.includes('math') || newLower.includes('algebra') || newLower.includes('calculus');
+    const isNewLs = newLower.includes('life sc') || newLower.includes('bio');
+
+    if (activeTab === 'math-studio' && !isNewMath) {
+      setActiveTab('chat');
+    } else if (activeTab === 'physics-studio' && !isNewPhys) {
+      setActiveTab('chat');
+    } else if (activeTab === 'life-sciences-studio' && !isNewLs) {
+      setActiveTab('chat');
+    }
 
     let greeting = `Switched to **${newSub}** (Grade ${learnerGrade}). Select a CAPS topic or ask a question to explore formulas, concepts, or practice problems.`;
-    if (newSub.toLowerCase().includes('language') || newSub.toLowerCase().includes('hl') || newSub.toLowerCase().includes('fal')) {
+    let suggestions = [
+      `Explain the foundational concepts of ${newSub}`,
+      `Give me a Grade ${learnerGrade} exam practice question`,
+      `What are the most common exam mistakes students make?`
+    ];
+
+    if (isNewMath) {
+      greeting = `Switched to **Mathematics** (Grade ${learnerGrade}). You can study Paper 1 (Algebra, Sequences & Series, Functions, Finance, Calculus, Probability) or Paper 2 (Statistics, Analytical Geometry, Trigonometry, Euclidean Geometry). Enter any equation, theorem, or problem for step-by-step guidance!`;
+      suggestions = [
+        `Explain derivative from first principles for 3x² - 2x`,
+        `How do I solve home loan balance outstanding in Financial Maths?`,
+        `Prove the Euclidean Geometry theorem that angle at centre is twice angle at circumference`
+      ];
+    } else if (isNewPhys) {
+      greeting = `Switched to **Physical Sciences** (Grade ${learnerGrade}). You can study Paper 1 (Physics: Projectiles, Momentum, Work-Energy, Doppler, Circuits, Electrodynamics) or Paper 2 (Chemistry: Organics, Reaction Rates, Equilibrium). Enter any calculation or theoretical question for step-by-step guidance!`;
+      suggestions = [
+        `Explain Vertical Projectile Motion sign conventions step-by-step`,
+        `How do I calculate Kc in Chemical Equilibrium with an ICE table?`,
+        `Show me the step-by-step calculation for an electric circuit with internal resistance`
+      ];
+    } else if (isNewLs) {
+      greeting = `Switched to **Life Sciences** (Grade ${learnerGrade}). You can study Paper 1 (Reproduction, Endocrine System, Homeostasis, Response to Environment) or Paper 2 (DNA, Meiosis, Genetics, Evolution). Ask any biological question for detailed guidance!`;
+      suggestions = [
+        `Explain the negative feedback mechanism of blood glucose`,
+        `What is the difference between transcription and translation?`,
+        `Explain the steps of a reflex arc with an example`
+      ];
+    } else if (newSub.toLowerCase().includes('language') || newSub.toLowerCase().includes('hl') || newSub.toLowerCase().includes('fal')) {
       const currentLangObj = SA_OFFICIAL_LANGUAGES.find(l => l.name === selectedLanguage) || SA_OFFICIAL_LANGUAGES[0];
       greeting = `${currentLangObj.greeting}\n\nSelect a topic or ask a question on **${currentLangObj.name}** (Grammar, Literature, Poetry, or Writing).`;
     }
@@ -352,11 +535,7 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
         sender: 'ai',
         text: greeting,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        suggestions: [
-          `Explain the foundational concepts of ${newSub}`,
-          `Give me a Grade ${learnerGrade} exam practice question`,
-          `What are the most common exam mistakes students make?`
-        ]
+        suggestions
       }
     ]);
   };
@@ -631,26 +810,75 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
             <span>24/7 Subject AI Chat</span>
           </button>
 
-          <button
-            onClick={() => {
-              setActiveTab('life-sciences-studio');
-              if (!subject.toLowerCase().includes('life sc')) {
-                setSubject('Life Sciences');
-              }
-              loadLifeSciencesStudio();
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'life-sciences-studio'
-                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-glow-emerald border border-emerald-400/40'
-                : 'bg-surface-darker hover:bg-white/5 text-emerald-400 border border-emerald-500/20'
-            }`}
-          >
-            <Dna className="w-4 h-4 text-emerald-300" />
-            <span>Grade 12 Life Sciences Studio</span>
-            <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              AI Rubric Marker
-            </span>
-          </button>
+          {/* Dynamic Studio Tab Buttons: Mathematics, Physical Sciences & Life Sciences */}
+          {(isMathSubject || (!isMathSubject && !isPhysicsSubject && !isLifeSciencesSubject)) && (
+            <button
+              onClick={() => {
+                setActiveTab('math-studio');
+                if (!isMathSubject) {
+                  setSubject('Mathematics');
+                }
+                loadMathStudio();
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'math-studio'
+                  ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-glow-amber border border-amber-400/40'
+                  : 'bg-surface-darker hover:bg-white/5 text-amber-400 border border-amber-500/20'
+              }`}
+            >
+              <Calculator className="w-4 h-4 text-amber-300" />
+              <span>Grade 12 Mathematics Studio</span>
+              <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                DBE Exam Lab & Formulas
+              </span>
+            </button>
+          )}
+
+          {(isPhysicsSubject || (!isMathSubject && !isPhysicsSubject && !isLifeSciencesSubject)) && (
+            <button
+              onClick={() => {
+                setActiveTab('physics-studio');
+                if (!isPhysicsSubject) {
+                  setSubject('Physical Sciences');
+                }
+                loadPhysicsStudio();
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'physics-studio'
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-glow-indigo border border-cyan-400/40'
+                  : 'bg-surface-darker hover:bg-white/5 text-cyan-400 border border-cyan-500/20'
+              }`}
+            >
+              <Atom className="w-4 h-4 text-cyan-300" />
+              <span>Grade 12 Physical Sciences Studio</span>
+              <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                DBE Exam Lab & Formulas
+              </span>
+            </button>
+          )}
+
+          {(isLifeSciencesSubject || (!isMathSubject && !isPhysicsSubject && !isLifeSciencesSubject)) && (
+            <button
+              onClick={() => {
+                setActiveTab('life-sciences-studio');
+                if (!isLifeSciencesSubject) {
+                  setSubject('Life Sciences');
+                }
+                loadLifeSciencesStudio();
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'life-sciences-studio'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-glow-emerald border border-emerald-400/40'
+                  : 'bg-surface-darker hover:bg-white/5 text-emerald-400 border border-emerald-500/20'
+              }`}
+            >
+              <Dna className="w-4 h-4 text-emerald-300" />
+              <span>Grade 12 Life Sciences Studio</span>
+              <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                AI Rubric Marker
+              </span>
+            </button>
+          )}
         </div>
 
         {/* CAPS Syllabus Topics Bar for Selected Subject */}
@@ -688,9 +916,645 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
         )}
       </div>
 
-      {/* Render Main Content: Either Dedicated Life Sciences Studio OR 24/7 Chat Grid */}
+      {/* Render Main Content: Either Dedicated Studios OR 24/7 Chat Grid */}
       {activeTab === 'adaptive' ? (
         <AdaptivePracticePanel subject={subject} grade={learnerGrade} />
+      ) : activeTab === 'math-studio' ? (
+        <div className="space-y-4">
+          {/* Mathematics Studio Banner */}
+          <div className="rounded-3xl bg-gradient-to-r from-amber-950/80 via-slate-900 to-orange-950/80 border border-amber-500/30 p-6 shadow-xl relative overflow-hidden">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1 max-w-2xl">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    DBE CAPS NSC Lab 2026
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                    Paper 1 & Paper 2
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    7 Official Textbooks & Memos
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-white font-display flex items-center gap-2">
+                  <Calculator className="w-5 h-5 text-amber-400" />
+                  <span>Grade 12 Mathematics NSC Exam Studio & AI Formula Lab</span>
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Master Algebra & Inequalities, Sequences & Series, Functions & Inverses, Financial Maths, Differential Calculus, Probability, Statistics, Analytical Geometry, Trigonometry, and Euclidean Geometry. Write your full algebraic steps, critical values, and geometric reasons in brackets to receive instant marks against official DBE marking guidelines.
+                </p>
+              </div>
+
+              {/* Filter Pills */}
+              <div className="flex items-center gap-1.5 bg-surface-darker/90 border border-white/10 p-1.5 rounded-2xl shrink-0">
+                {(['all', 'Paper 1 (Maths)', 'Paper 2 (Maths)'] as const).map((pf) => (
+                  <button
+                    key={pf}
+                    onClick={() => setMathPaperFilter(pf)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      mathPaperFilter === pf
+                        ? 'bg-amber-600 text-white shadow-glow-amber'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {pf === 'all' ? 'All Papers' : pf === 'Paper 1 (Maths)' ? 'Paper 1 (Maths)' : 'Paper 2 (Maths)'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Studio Workspace Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* Left: Question Explorer (5 Cols) */}
+            <div className="lg:col-span-5 rounded-3xl bg-surface-dark border border-white/10 p-4 shadow-xl flex flex-col h-[680px]">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
+                <div className="flex items-center gap-2">
+                  <FileCheck className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-bold uppercase text-white tracking-wider">
+                    Official Exam Questions ({mathData.filter(x => mathPaperFilter === 'all' || x.paper === mathPaperFilter).length})
+                  </span>
+                </div>
+                <button
+                  onClick={loadMathStudio}
+                  className="p-1 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors"
+                  title="Refresh Questions"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingMathData ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                {mathData
+                  .filter(item => mathPaperFilter === 'all' || item.paper === mathPaperFilter)
+                  .map((item) => {
+                    const isSelected = selectedMathItem?.id === item.id;
+                    const isP1 = item.paper.includes('Paper 1');
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => handleSelectMathQuestion(item)}
+                        className={`p-3.5 rounded-2xl border text-xs cursor-pointer transition-all ${
+                          isSelected
+                            ? 'bg-amber-950/40 border-amber-500/60 shadow-glow-amber ring-1 ring-amber-500/40'
+                            : 'bg-surface-darker hover:bg-white/5 border-white/5 text-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                            isP1 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          }`}>
+                            {isP1 ? 'Paper 1 • Maths' : 'Paper 2 • Maths'}
+                          </span>
+                          <span className="text-[10px] font-bold text-cyan-400">
+                            [{item.rubric_points?.length || 5} Marks]
+                          </span>
+                        </div>
+                        <p className="font-bold text-white text-xs line-clamp-1">{item.topic} — {item.subtopic}</p>
+                        <p className="text-[11px] text-slate-400 line-clamp-2 mt-1">{item.question}</p>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            {/* Right: Answer & Rubric Grading Workspace (7 Cols) */}
+            <div className="lg:col-span-7 rounded-3xl bg-surface-dark border border-white/10 p-5 shadow-xl flex flex-col h-[680px] overflow-y-auto space-y-4">
+              {selectedMathItem ? (
+                <>
+                  {/* Selected Question Header */}
+                  <div className="p-4 rounded-2xl bg-surface-darker border border-white/10 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={selectedMathItem.paper.includes('Paper 1') ? 'amber' : 'emerald'} size="sm">
+                          {selectedMathItem.paper}
+                        </Badge>
+                        <span className="text-xs font-bold text-slate-300">{selectedMathItem.topic} • {selectedMathItem.subtopic}</span>
+                      </div>
+                      <span className="text-xs font-bold text-cyan-400">
+                        Total: {selectedMathItem.rubric_points?.length || 5} Marks
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-white leading-snug">
+                      {selectedMathItem.question}
+                    </h4>
+
+                    {/* Formula Sheet & Prescribed Definition Box */}
+                    {(selectedMathItem.formula || selectedMathItem.prescribed_definition) && (
+                      <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-500/20 space-y-1 text-xs">
+                        {selectedMathItem.formula && (
+                          <div className="flex items-start gap-1.5 text-amber-200">
+                            <span className="font-bold text-amber-400 shrink-0">Formula Sheet:</span>
+                            <span className="font-mono text-[11.5px]">{selectedMathItem.formula}</span>
+                          </div>
+                        )}
+                        {selectedMathItem.constants && (
+                          <div className="flex items-start gap-1.5 text-slate-300 text-[11px]">
+                            <span className="font-bold text-slate-400 shrink-0">Standard Form / Conditions:</span>
+                            <span className="font-mono">{selectedMathItem.constants}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Student Answer Input Form */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
+                      <span>Your Full Algebraic Working / Proof:</span>
+                      <span className="text-[11px] font-normal text-slate-400">Show formulas, substitutions, critical values, and reasons in brackets [Reason]</span>
+                    </label>
+                    <textarea
+                      value={studentMathAnswerText}
+                      onChange={(e) => setStudentMathAnswerText(e.target.value)}
+                      rows={5}
+                      placeholder="Step 1: State standard formula from formula sheet\nStep 2: Substitute values with signs\nStep 3: Simplify and state critical values or reasons in brackets e.g. [line || one side of Δ]...\nFinal Answer: stated clearly in simplest form"
+                      className="w-full rounded-2xl bg-surface-darker border border-white/10 p-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 leading-relaxed resize-none font-mono"
+                    />
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleEvaluateMathAnswer}
+                          disabled={evaluatingMath || !studentMathAnswerText.trim()}
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 text-white text-xs font-bold shadow-glow-amber disabled:opacity-50 transition-all hover:scale-105 active:scale-95"
+                        >
+                          {evaluatingMath ? (
+                            <>
+                              <LoadingSpinner size="sm" />
+                              <span>Marking with CAPS Rubric...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Check className="w-4 h-4" />
+                              <span>Grade Solution with CAPS Rubric</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setActiveTab('chat');
+                            handleSendMessage(`Can you explain the Grade 12 Mathematics problem: "${selectedMathItem.question}" (${selectedMathItem.paper} - ${selectedMathItem.topic})? Please provide the full step-by-step algebraic solution with reasons and matric exam guidance.`);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 border border-brand-500/30 text-xs font-bold transition-all"
+                        >
+                          <HelpCircle className="w-4 h-4" />
+                          <span>Ask AI in Chat</span>
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => setShowMathModelAnswer(!showMathModelAnswer)}
+                        className="text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors"
+                      >
+                        {showMathModelAnswer ? 'Hide Marking Memo' : 'View CAPS Marking Memo'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Evaluation Results Card */}
+                  {mathEvaluationResult && (
+                    <div className="rounded-2xl bg-surface-darker border border-amber-500/40 p-4 space-y-3 shadow-lg animate-in fade-in duration-300">
+                      <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                        <div className="flex items-center gap-2">
+                          <Award className="w-5 h-5 text-amber-400" />
+                          <span className="text-xs font-bold text-white uppercase tracking-wider">Official DBE Marking Result</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-amber-400">
+                            {mathEvaluationResult.estimatedMark} Marks
+                          </span>
+                          <span className="text-xs font-bold text-slate-400">
+                            ({mathEvaluationResult.percentage})
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Feedback banner */}
+                      <p className="text-xs text-slate-200 leading-relaxed font-medium">
+                        {mathEvaluationResult.feedback}
+                      </p>
+
+                      {/* Human guidance note */}
+                      {mathEvaluationResult.humanGuidance && (
+                        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs flex items-start gap-2">
+                          <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                          <p className="text-[11.5px] leading-relaxed">
+                            <span className="font-bold text-amber-300">Teacher's Advice: </span>
+                            {mathEvaluationResult.humanGuidance}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Keyword Breakdown */}
+                      <div className="space-y-2 pt-1">
+                        <div>
+                          <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1 mb-1">
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Matched Mathematical Terms & Steps ({mathEvaluationResult.matchedTerms?.length || 0}):</span>
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {mathEvaluationResult.matchedTerms?.length > 0 ? (
+                              mathEvaluationResult.matchedTerms.map((term: string, i: number) => (
+                                <span key={i} className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
+                                  ✓ {term}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-[11px] text-slate-500">None detected. Check algebraic factors and standard notation.</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="text-[11px] font-bold text-violet-400 flex items-center gap-1 mb-1">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            <span>Missing Technical Steps to Include ({mathEvaluationResult.missingTerms?.length || 0}):</span>
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {mathEvaluationResult.missingTerms?.map((term: string, i: number) => (
+                              <span key={i} className="px-2 py-0.5 rounded-md bg-violet-500/15 text-violet-300 border border-violet-500/25 text-[10px] font-medium">
+                                • {term}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rubric Checklist */}
+                      <div className="pt-2 border-t border-white/5 space-y-1.5">
+                        <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
+                          <span>DBE Step-by-Step Marking Breakdown:</span>
+                        </span>
+                        <div className="space-y-1 bg-surface-dark/80 p-3 rounded-xl border border-white/5">
+                          {mathEvaluationResult.rubricChecklist?.map((point: string, idx: number) => (
+                            <div key={idx} className="text-[11px] text-slate-300 flex items-start gap-1.5">
+                              <span className="text-amber-400 font-bold">•</span>
+                              <span>{point}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Common Misconception Warning Banner */}
+                  {selectedMathItem.common_misconceptions && (
+                    <div className="p-3.5 rounded-2xl bg-amber-950/40 border border-amber-500/30 text-amber-200 text-xs space-y-1">
+                      <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>Common Matric Examination Trap / Pitfall:</span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed text-amber-100/90">
+                        {selectedMathItem.common_misconceptions}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Official Model Answer Drawer */}
+                  {showMathModelAnswer && (
+                    <div className="p-4 rounded-2xl bg-surface-darker border border-amber-500/30 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+                          Official CAPS Marking Memorandum
+                        </span>
+                        <Badge variant="amber" size="sm">DBE Standard</Badge>
+                      </div>
+                      <div className="text-xs text-slate-200 whitespace-pre-line leading-relaxed font-mono bg-surface-dark/60 p-3 rounded-xl">
+                        {selectedMathItem.model_answer}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="py-20 text-center text-slate-400 text-xs space-y-2">
+                  <Calculator className="w-8 h-8 mx-auto text-slate-600" />
+                  <p>Select a Mathematics question from the left panel to begin.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : activeTab === 'physics-studio' ? (
+        <div className="space-y-4">
+          {/* Physical Sciences Studio Banner */}
+          <div className="rounded-3xl bg-gradient-to-r from-blue-950/80 via-slate-900 to-cyan-950/80 border border-cyan-500/30 p-6 shadow-xl relative overflow-hidden">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1 max-w-2xl">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    DBE CAPS NSC Lab 2026
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                    Paper 1 (Physics) & Paper 2 (Chemistry)
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    8 Official Textbooks & Memos
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-white font-display flex items-center gap-2">
+                  <Atom className="w-5 h-5 text-cyan-400" />
+                  <span>Grade 12 Physical Sciences NSC Exam Studio & AI Formula Lab</span>
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Practice high-frequency national examination calculations and definitions across Vertical Projectile Motion, Momentum & Impulse, Work-Energy-Power, Doppler Effect, Electric Circuits, Electrodynamics, Photoelectric Effect, Organic Chemistry, Reaction Rates, and Chemical Equilibrium. Receive step-by-step grading against official DBE marking guidelines.
+                </p>
+              </div>
+
+              {/* Filter Pills */}
+              <div className="flex items-center gap-1.5 bg-surface-darker/90 border border-white/10 p-1.5 rounded-2xl shrink-0">
+                {(['all', 'Paper 1 (Physics)', 'Paper 2 (Chemistry)'] as const).map((pf) => (
+                  <button
+                    key={pf}
+                    onClick={() => setPhysicsPaperFilter(pf)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      physicsPaperFilter === pf
+                        ? 'bg-cyan-600 text-white shadow-glow-indigo'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {pf === 'all' ? 'All Papers' : pf === 'Paper 1 (Physics)' ? 'Paper 1 (Physics)' : 'Paper 2 (Chemistry)'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Studio Workspace Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* Left: Question Explorer (5 Cols) */}
+            <div className="lg:col-span-5 rounded-3xl bg-surface-dark border border-white/10 p-4 shadow-xl flex flex-col h-[680px]">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
+                <div className="flex items-center gap-2">
+                  <FileCheck className="w-4 h-4 text-cyan-400" />
+                  <span className="text-xs font-bold uppercase text-white tracking-wider">
+                    Official Exam Questions ({physicsData.filter(x => physicsPaperFilter === 'all' || x.paper === physicsPaperFilter).length})
+                  </span>
+                </div>
+                <button
+                  onClick={loadPhysicsStudio}
+                  className="p-1 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors"
+                  title="Refresh Questions"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingPhysicsData ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                {physicsData
+                  .filter(item => physicsPaperFilter === 'all' || item.paper === physicsPaperFilter)
+                  .map((item) => {
+                    const isSelected = selectedPhysicsItem?.id === item.id;
+                    const isP1 = item.paper.includes('Paper 1');
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => handleSelectPhysicsQuestion(item)}
+                        className={`p-3.5 rounded-2xl border text-xs cursor-pointer transition-all ${
+                          isSelected
+                            ? 'bg-cyan-950/40 border-cyan-500/60 shadow-glow-indigo ring-1 ring-cyan-500/40'
+                            : 'bg-surface-darker hover:bg-white/5 border-white/5 text-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                            isP1 ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                          }`}>
+                            {isP1 ? 'Paper 1 • Physics' : 'Paper 2 • Chemistry'}
+                          </span>
+                          <span className="text-[10px] font-bold text-amber-400">
+                            [{item.rubric_points?.length || 5} Marks]
+                          </span>
+                        </div>
+                        <p className="font-bold text-white text-xs line-clamp-1">{item.topic} — {item.subtopic}</p>
+                        <p className="text-[11px] text-slate-400 line-clamp-2 mt-1">{item.question}</p>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            {/* Right: Answer & Rubric Grading Workspace (7 Cols) */}
+            <div className="lg:col-span-7 rounded-3xl bg-surface-dark border border-white/10 p-5 shadow-xl flex flex-col h-[680px] overflow-y-auto space-y-4">
+              {selectedPhysicsItem ? (
+                <>
+                  {/* Selected Question Header */}
+                  <div className="p-4 rounded-2xl bg-surface-darker border border-white/10 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={selectedPhysicsItem.paper.includes('Paper 1') ? 'cyan' : 'indigo'} size="sm">
+                          {selectedPhysicsItem.paper}
+                        </Badge>
+                        <span className="text-xs font-bold text-slate-300">{selectedPhysicsItem.topic} • {selectedPhysicsItem.subtopic}</span>
+                      </div>
+                      <span className="text-xs font-bold text-amber-400">
+                        Total: {selectedPhysicsItem.rubric_points?.length || 5} Marks
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-white leading-snug">
+                      {selectedPhysicsItem.question}
+                    </h4>
+
+                    {/* Formula Sheet & Constants Box */}
+                    {(selectedPhysicsItem.formula || selectedPhysicsItem.constants) && (
+                      <div className="p-3 rounded-xl bg-cyan-950/30 border border-cyan-500/20 space-y-1 text-xs">
+                        {selectedPhysicsItem.formula && (
+                          <div className="flex items-start gap-1.5 text-cyan-200">
+                            <span className="font-bold text-cyan-400 shrink-0">Prescribed Formula:</span>
+                            <span className="font-mono text-[11.5px]">{selectedPhysicsItem.formula}</span>
+                          </div>
+                        )}
+                        {selectedPhysicsItem.constants && (
+                          <div className="flex items-start gap-1.5 text-slate-300 text-[11px]">
+                            <span className="font-bold text-slate-400 shrink-0">Physical Constants:</span>
+                            <span className="font-mono">{selectedPhysicsItem.constants}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Student Answer Input Form */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
+                      <span>Your Solution / Working / Scientific Definition:</span>
+                      <span className="text-[11px] font-normal text-slate-400">State formula, substitution with directional signs (+/-), and SI units</span>
+                    </label>
+                    <textarea
+                      value={studentPhysicsAnswerText}
+                      onChange={(e) => setStudentPhysicsAnswerText(e.target.value)}
+                      rows={5}
+                      placeholder="Step 1: Formula from data sheet (e.g. Wnet = ΔK)\nStep 2: Substitution with direction signs\nStep 3: Final calculated answer with SI unit (e.g. 4.49 s, 25.5 J, 1.83 m·s⁻¹ east)..."
+                      className="w-full rounded-2xl bg-surface-darker border border-white/10 p-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 leading-relaxed resize-none font-mono"
+                    />
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleEvaluatePhysicsAnswer}
+                          disabled={evaluatingPhysics || !studentPhysicsAnswerText.trim()}
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 text-white text-xs font-bold shadow-glow-indigo disabled:opacity-50 transition-all hover:scale-105 active:scale-95"
+                        >
+                          {evaluatingPhysics ? (
+                            <>
+                              <LoadingSpinner size="sm" />
+                              <span>Marking with CAPS Rubric...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Check className="w-4 h-4" />
+                              <span>Grade Solution with CAPS Rubric</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setActiveTab('chat');
+                            handleSendMessage(`Can you explain the Grade 12 Physical Sciences concept: "${selectedPhysicsItem.question}" (${selectedPhysicsItem.paper} - ${selectedPhysicsItem.topic})? Please provide the full step-by-step calculation with formula, signs, units, and matric exam advice.`);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 border border-brand-500/30 text-xs font-bold transition-all"
+                        >
+                          <HelpCircle className="w-4 h-4" />
+                          <span>Ask AI in Chat</span>
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => setShowPhysicsModelAnswer(!showPhysicsModelAnswer)}
+                        className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-colors"
+                      >
+                        {showPhysicsModelAnswer ? 'Hide Marking Memo' : 'View CAPS Marking Memo'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Evaluation Results Card */}
+                  {physicsEvaluationResult && (
+                    <div className="rounded-2xl bg-surface-darker border border-cyan-500/40 p-4 space-y-3 shadow-lg animate-in fade-in duration-300">
+                      <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                        <div className="flex items-center gap-2">
+                          <Award className="w-5 h-5 text-amber-400" />
+                          <span className="text-xs font-bold text-white uppercase tracking-wider">Official DBE Marking Result</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-cyan-400">
+                            {physicsEvaluationResult.estimatedMark} Marks
+                          </span>
+                          <span className="text-xs font-bold text-slate-400">
+                            ({physicsEvaluationResult.percentage})
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Feedback banner */}
+                      <p className="text-xs text-slate-200 leading-relaxed font-medium">
+                        {physicsEvaluationResult.feedback}
+                      </p>
+
+                      {/* Human guidance note */}
+                      {physicsEvaluationResult.humanGuidance && (
+                        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs flex items-start gap-2">
+                          <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                          <p className="text-[11.5px] leading-relaxed">
+                            <span className="font-bold text-amber-300">Teacher's Advice: </span>
+                            {physicsEvaluationResult.humanGuidance}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Keyword Breakdown */}
+                      <div className="space-y-2 pt-1">
+                        <div>
+                          <span className="text-[11px] font-bold text-cyan-400 flex items-center gap-1 mb-1">
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Matched Technical Variables & Terms ({physicsEvaluationResult.matchedTerms?.length || 0}):</span>
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {physicsEvaluationResult.matchedTerms?.length > 0 ? (
+                              physicsEvaluationResult.matchedTerms.map((term: string, i: number) => (
+                                <span key={i} className="px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold">
+                                  ✓ {term}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-[11px] text-slate-500">None detected. Check formula symbols and units.</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="text-[11px] font-bold text-violet-400 flex items-center gap-1 mb-1">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            <span>Missing Technical Terms to Include ({physicsEvaluationResult.missingTerms?.length || 0}):</span>
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {physicsEvaluationResult.missingTerms?.map((term: string, i: number) => (
+                              <span key={i} className="px-2 py-0.5 rounded-md bg-violet-500/15 text-violet-300 border border-violet-500/25 text-[10px] font-medium">
+                                • {term}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rubric Checklist */}
+                      <div className="pt-2 border-t border-white/5 space-y-1.5">
+                        <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>DBE Step-by-Step Marking Breakdown:</span>
+                        </span>
+                        <div className="space-y-1 bg-surface-dark/80 p-3 rounded-xl border border-white/5">
+                          {physicsEvaluationResult.rubricChecklist?.map((point: string, idx: number) => (
+                            <div key={idx} className="text-[11px] text-slate-300 flex items-start gap-1.5">
+                              <span className="text-cyan-400 font-bold">•</span>
+                              <span>{point}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Common Misconception Warning Banner */}
+                  {selectedPhysicsItem.common_misconceptions && (
+                    <div className="p-3.5 rounded-2xl bg-amber-950/40 border border-amber-500/30 text-amber-200 text-xs space-y-1">
+                      <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>Common Matric Examination Trap / Pitfall:</span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed text-amber-100/90">
+                        {selectedPhysicsItem.common_misconceptions}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Official Model Answer Drawer */}
+                  {showPhysicsModelAnswer && (
+                    <div className="p-4 rounded-2xl bg-surface-darker border border-cyan-500/30 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-cyan-300 uppercase tracking-wider">
+                          Official CAPS Marking Memorandum
+                        </span>
+                        <Badge variant="cyan" size="sm">DBE Standard</Badge>
+                      </div>
+                      <div className="text-xs text-slate-200 whitespace-pre-line leading-relaxed font-mono bg-surface-dark/60 p-3 rounded-xl">
+                        {selectedPhysicsItem.model_answer}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="py-20 text-center text-slate-400 text-xs space-y-2">
+                  <Atom className="w-8 h-8 mx-auto text-slate-600" />
+                  <p>Select a Physical Sciences question from the left panel to begin.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       ) : activeTab === 'life-sciences-studio' ? (
         <div className="space-y-4">
           {/* Life Sciences Studio Banner */}

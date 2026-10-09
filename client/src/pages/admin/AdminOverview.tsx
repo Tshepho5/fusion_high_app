@@ -733,9 +733,6 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   {registeredSchools.length} Verified {registeredSchools.length === 1 ? 'Campus' : 'Campuses'}
                 </span>
               </h2>
-              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-3xl">
-                Accredited DBE institutions registered on Geleza SA. Each school card showcases the curriculum, academic streams, and all offered subjects taught on that campus. Newly approved schools automatically appear here.
-              </p>
             </div>
 
             {/* Controls: Search, View Mode, Refresh */}

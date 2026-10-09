@@ -15,19 +15,26 @@ const genAI = new GoogleGenerativeAI(apiKey);
 
 async function run() {
     try {
-        // Use gemini-2.5-flash or gemini-2.0-flash for high performance
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
-        const prompt = 'Write a short, futuristic story about a programmer and their AI assistant.';
-
-        console.log(`Sending prompt: "${prompt}"`);
-        console.log('---------------------------------');
-
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
-
-        console.log(text);
+        const candidates = [
+            'gemini-3.8-flash',
+            'gemini-2.5-pro',
+            'gemini-1.5-flash',
+            'gemini-1.5-flash-latest',
+            'gemini-1.5-pro',
+            'gemini-2.0-flash-exp'
+        ];
+        for (const modelName of candidates) {
+            try {
+                console.log(`Trying ${modelName}...`);
+                const model = genAI.getGenerativeModel({ model: modelName });
+                const result = await model.generateContent('Say hello in one word');
+                const response = await result.response;
+                console.log(`SUCCESS [${modelName}]:`, response.text());
+                return;
+            } catch (err) {
+                console.log(`FAILED [${modelName}]: ${err.status || err.message}`);
+            }
+        }
     } catch (error) {
         console.error('An error occurred:', error);
     }
