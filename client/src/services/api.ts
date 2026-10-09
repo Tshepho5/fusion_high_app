@@ -10,6 +10,10 @@ export const getApiBaseUrl = (): string => {
   if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
     return envUrl.trim();
   }
+  // In local development on localhost or 127.0.0.1, use relative URL ('') so Vite proxies directly to the local backend on port 4000
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return '';
+  }
   // Follow the cloud database data (Render production backend with Supabase Cloud DB)
   return 'https://fusion-high-backend.onrender.com';
 };

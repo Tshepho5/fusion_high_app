@@ -236,10 +236,17 @@ function evaluateLifeSciencesAnswer(itemId, studentAnswer) {
   };
 }
 
-const rawGeminiKey = (process.env.GEMINI_API_KEY || '').replace(/^["']|["']$/g, '').trim();
-const genAI = rawGeminiKey ? new GoogleGenerativeAI(rawGeminiKey) : null;
+function getGenAI() {
+  const rawKey = (
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    ""
+  ).replace(/^["']|["']$/g, '').trim();
+  return rawKey ? new GoogleGenerativeAI(rawKey) : null;
+}
 
 async function callAI(prompt, isJson = false, modelOverride = null) {
+  const genAI = getGenAI();
   if (!genAI) {
     console.warn("[AI SERVICE] AI service is disabled. GEMINI_API_KEY is not set.");
     throw new Error("AI service is currently disabled by configuration.");
