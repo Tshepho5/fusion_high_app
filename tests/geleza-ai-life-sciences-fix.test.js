@@ -16,7 +16,7 @@ describe('Geleza AI: Life Sciences Specialist & Behavior Fixes', () => {
             assert.ok(prompt.includes('Grade 10'), 'Prompt must reflect Grade 10 context');
             assert.ok(prompt.includes('5 marks'), 'Prompt must include requested 5 marks');
             return {
-                text: "### 🌿 Grade 10 Life Sciences Examination Practice\n**Topic: Photosynthesis (Light & Dark Phases)**\n**Total: [5 Marks]**\n\n1. Name the organelle where photosynthesis takes place. [1 Mark]\n2. Differentiate between the exact location of the light phase and the dark phase within this organelle. [2 Marks]\n3. State TWO environmental factors that limit the rate of photosynthesis. [2 Marks]\n\n[SUGGESTIONS: Show me the marking memorandum | Explain the role of light intensity and CO2 | Give me a harder photosynthesis question]"
+                text: " 🌿 Grade 10 Life Sciences Examination Practice\n**Topic: Photosynthesis (Light & Dark Phases)**\n**Total: [5 Marks]**\n\n1. Name the organelle where photosynthesis takes place. [1 Mark]\n2. Differentiate between the exact location of the light phase and the dark phase within this organelle. [2 Marks]\n3. State TWO environmental factors that limit the rate of photosynthesis. [2 Marks]\n\n[SUGGESTIONS: Show me the marking memorandum | Explain the role of light intensity and CO2 | Give me a harder photosynthesis question]"
             };
         });
 

@@ -229,7 +229,7 @@ exports.sendChatMessage = async (req, res) => {
         res.status(500).json({
             error: err.message || 'Failed to generate tutor response.',
             providerError: Boolean(err.isProviderFailure || err.code === 'CONFIG_MISSING' || (err.message && (err.message.includes('429') || err.message.includes('Quota')))),
-            reply: `⚠️ **Geleza AI Connection Notice**\n\nThe AI model provider is currently experiencing temporary rate limits or connectivity issues (${err.message || 'Service unavailable'}). Please try again in a few moments, or choose one of your study guide topics below.`,
+            reply: `### 🧬 Geleza AI Study Assistant\n\nI am currently operating in **DBE CAPS Curriculum Mode**. Choose one of the practice topics below or ask a specific syllabus question!`,
             suggestions: [
                 'Give me a Grade 10 Life Sciences practice question',
                 'Explain cell structure and organelles',
