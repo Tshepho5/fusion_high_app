@@ -217,6 +217,9 @@ function evaluateLifeSciencesAnswer(itemId, studentAnswer) {
     topic: item.topic,
     subtopic: item.subtopic,
     paper: item.paper,
+    prescribedDefinition: item.prescribed_definition,
+    formula: item.formula,
+    constants: item.constants,
     estimatedMark: `${estimatedMark}/${total}`,
     percentage: `${percentage}%`,
     matchedTerms: matched,
@@ -224,11 +227,12 @@ function evaluateLifeSciencesAnswer(itemId, studentAnswer) {
     rubricChecklist: item.rubric_points,
     modelAnswer: item.model_answer,
     commonMisconceptions: item.common_misconceptions,
+    humanGuidance: item.human_guidance,
     feedback: percentage >= 80 
-      ? "Outstanding mastery! You used official DBE CAPS scientific terminology accurately."
+      ? "Outstanding biological mastery! You used official DBE CAPS scientific terminology accurately and concisely."
       : percentage >= 50
-        ? "Good conceptual understanding! Ensure you include the missing keywords to gain full rubric marks in the exam."
-        : "Needs revision. Official CAPS markers deduct marks if key biological terms are missing."
+        ? "Good conceptual understanding! Ensure you include the missing technical keywords and state cause-and-effect clearly to gain full marks."
+        : "Needs revision. Official CAPS markers deduct marks if key biological terms and sequential phases are missing."
   };
 }
 
@@ -1604,15 +1608,31 @@ Respond with human warmth, encouragement, and pedagogical excellence.
     const lsMatch = queryLifeSciencesModel(userText);
     if (lsMatch) {
       return `
-### 🧬 DEDICATED GRADE 12 LIFE SCIENCES SPECIALIST MODEL CONTEXT:
+### 🧬 DEDICATED GRADE 12 LIFE SCIENCES SPECIALIST KNOWLEDGE BASE (STRICT DBE CAPS RAG):
 - Target Topic: "${lsMatch.topic}" (${lsMatch.paper}) — Subtopic: "${lsMatch.subtopic}"
-- Official DBE Marking Guidelines / Rubric:
+- Official DBE Prescribed Definition: "${lsMatch.prescribed_definition}"
+- Biological Process / Formula: ${lsMatch.formula}
+- Biological Constants / Conditions: ${lsMatch.constants}
+- Official DBE CAPS Marking Guidelines / Rubric:
 ${lsMatch.rubric_points.map(p => `  * ${p}`).join('\n')}
-- Prescribed Model Answer:
+- Prescribed Model Solution & Step-by-Step Biological Explanation:
 ${lsMatch.model_answer}
 - Common Candidate Trap / Misconception:
   "${lsMatch.common_misconceptions}"
-- Ensure your explanation directly uses and highlights these critical biological keywords: ${lsMatch.keywords.join(', ')}.
+- Human Educator Warmth & Guidance:
+  "${lsMatch.human_guidance}"
+
+### STRICT SUBJECT ISOLATION DIRECTIVE:
+You are strictly in the Grade 12 Life Sciences (Paper 1 & Paper 2) classroom.
+Under NO circumstances discuss Physical Sciences physics formulas, velocity/momentum calculations, or mathematics Euclidean geometry proofs.
+Use accurate CAPS biological terminology (synapsis, chiasmata, trisomy 21, ovulation, vasodilation, vasoconstriction, transcription, translation, codon, IA/IB/i, bipedalism, etc.) and explain with empathy, clarity, and human warmth.
+`;
+    } else {
+      return `
+### 🧬 GRADE 12 LIFE SCIENCES (PAPER 1 & PAPER 2) CLASSROOM:
+- Official CAPS Curriculum: Life Sciences Grade 12 (Paper 1: Meiosis, Reproduction in Vertebrates, Human Reproduction, Nervous System, Senses, Endocrine System & Homeostasis, Plant Responses; Paper 2: DNA: Code of Life, Meiosis, Genetics and Inheritance, Evolution by Natural Selection, Human Evolution).
+- Marking Standard: State biological definitions accurately, describe sequential processes in clear numbered steps, highlight key biological terminology, explain cause-and-effect in homeostatic negative feedback loops.
+- Strict subject boundary: Do NOT discuss physics or physical science calculations or unrelated subjects.
 `;
     }
   }
@@ -1695,7 +1715,7 @@ Detailed, Warm, Helpful Response:
     } else if (isLifeScience) {
       const lsMatch = queryLifeSciencesModel(userText);
       if (lsMatch) {
-        aiReplyText = `### 🧬 Grade 12 Life Sciences Specialist Assistant\n**CAPS Focus: ${lsMatch.paper} — ${lsMatch.topic} (${lsMatch.subtopic})**\n\n${lsMatch.model_answer}\n\n---\n#### 📋 Official DBE CAPS Marking Rubric Breakdown:\n${lsMatch.rubric_points.map(p => `• ${p}`).join('\n')}\n\n💡 **Matric Exam Pitfall / Tip**:\n${lsMatch.common_misconceptions}`;
+        aiReplyText = `### 🧬 Grade 12 Life Sciences Specialist Assistant\n**CAPS Focus: ${lsMatch.paper} — ${lsMatch.topic} (${lsMatch.subtopic})**\n\n${lsMatch.model_answer}\n\n---\n#### 📋 Official DBE CAPS Marking Rubric Breakdown:\n${lsMatch.rubric_points.map(p => `• ${p}`).join('\n')}\n\n💡 **Matric Exam Pitfall / Tip**:\n${lsMatch.common_misconceptions}\n\n🤝 *Teacher Note: ${lsMatch.human_guidance}*`;
         suggestions = ['How do I solve a Punnett Square?', 'Describe the human reflex arc', 'Explain blood glucose negative feedback'];
       } else {
         aiReplyText = `I'm your dedicated Grade 12 Life Sciences AI Specialist! I can assist you with both Paper 1 (Human reproduction, nervous system, senses, endocrine system & homeostasis, plant tropisms) and Paper 2 (DNA code of life, genetics & inheritance, meiosis, evolution & natural selection). What topic would you like to review?`;

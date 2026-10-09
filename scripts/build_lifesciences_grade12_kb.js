@@ -1,0 +1,419 @@
+/**
+ * Builder script: Generates data/lifesciences_grade12_kb.json
+ * Grounded in the DBE CAPS Grade 12 Life Sciences Learner Book, Teacher's Guide, 
+ * Exam Guidelines 2021, and 2025 Past Papers & Memorandums (Paper 1 & Paper 2).
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+const kbData = [
+  // ==========================================
+  // PAPER 1: MEIOSIS
+  // ==========================================
+  {
+    id: "LIFE12_P1_001",
+    paper: "Paper 1 (Life Sciences)",
+    topic: "Meiosis & Chromosome Dynamics",
+    subtopic: "Stages of Meiosis, Crossing Over & Non-Disjunction",
+    question: "Describe the events of Prophase I in meiosis with specific reference to crossing over, explain how crossing over contributes to genetic variation, and explain what happens if non-disjunction of chromosome pair 21 occurs during Anaphase I.",
+    keywords: [
+      "meiosis", "prophase I", "crossing over", "chiasma", "chiasmata", "homologous chromosomes",
+      "bivalent", "non-sister chromatids", "genetic variation", "non-disjunction", "down syndrome", "trisomy 21"
+    ],
+    prescribed_definition: "Meiosis is a reduction division of a diploid nucleus (2n) to form four genetically unique haploid gametes (n). Crossing over is the reciprocal exchange of genetic material between non-sister chromatids of homologous chromosomes during Prophase I.",
+    formula: "2n (diploid) -> 4 x n (haploid gametes). Non-disjunction formula: n + 1 (24 chromosomes) + n (23 chromosomes) = 2n + 1 (47 chromosomes - Trisomy 21).",
+    constants: "Human diploid number: 2n = 46 (23 pairs); Haploid number: n = 23.",
+    model_answer: "1. EVENTS OF PROPHASE I & CROSSING OVER:\n" +
+      "• Chromatin condenses and thickens into visible chromosomes.\n" +
+      "• Homologous chromosomes pair up side-by-side in a process called synapsis to form bivalents (tetrads).\n" +
+      "• Non-sister chromatids overlap and touch at points called chiasmata (singular: chiasma).\n" +
+      "• Chromatid segments break and swap positions between homologous partners.\n" +
+      "• This exchanges maternal and paternal alleles, producing new recombinant chromatid combinations.\n\n" +
+      "2. CONTRIBUTION TO GENETIC VARIATION:\n" +
+      "• Crossing over breaks existing linkage groups and forms recombinant chromosomes that carry unique combinations of maternal and paternal genes.\n" +
+      "• When gametes are later formed, each carries a distinct genetic blueprint, ensuring offspring are genetically distinct from both parents and siblings.\n\n" +
+      "3. NON-DISJUNCTION OF CHROMOSOME PAIR 21 (DOWN SYNDROME):\n" +
+      "• Non-disjunction is the failure of homologous chromosome pairs to separate during Anaphase I (or sister chromatids during Anaphase II).\n" +
+      "• Both copies of chromosome 21 move into one daughter cell, leaving the other daughter cell with no copy of chromosome 21.\n" +
+      "• Resulting gametes: one has n + 1 (24 chromosomes with two copies of chromosome 21); the other has n - 1 (22 chromosomes).\n" +
+      "• If an abnormal gamete with 24 chromosomes is fertilised by a normal gamete with 23 chromosomes, the zygote has 47 chromosomes (Trisomy 21), leading to Down syndrome.",
+    rubric_points: [
+      "Synapsis / homologous chromosomes pair up to form bivalents (1 mark)",
+      "Non-sister chromatids touch at chiasmata and exchange genetic segments (2 marks)",
+      "Genetic variation explanation: generates new recombinant allele combinations (1 mark)",
+      "Definition of non-disjunction: failure of homologous chromosomes to separate during Anaphase I (1 mark)",
+      "Consequence: formation of abnormal gamete (n + 1 / 24 chromosomes) (1 mark)",
+      "Fertilisation creates a zygote with 47 chromosomes (Trisomy 21 / Down syndrome) (1 mark)"
+    ],
+    common_misconceptions: "Confusing sister chromatids with non-sister chromatids (crossing over NEVER occurs between sister chromatids of the same chromosome, as they are identical copies). Also confusing non-disjunction in Anaphase I (homologous chromosomes fail to separate) with Anaphase II (sister chromatids fail to separate).",
+    human_guidance: "When drawing or describing crossing over, always distinguish maternal and paternal chromatids with different shadings (e.g., solid vs stripes). Remember that Down syndrome is caused by an extra chromosome 21, resulting in 47 chromosomes in all somatic cells."
+  },
+
+  // ==========================================
+  // PAPER 1: REPRODUCTION IN VERTEBRATES
+  // ==========================================
+  {
+    id: "LIFE12_P1_002",
+    paper: "Paper 1 (Life Sciences)",
+    topic: "Reproduction in Vertebrates",
+    subtopic: "Reproductive Strategies & The Amniotic Egg",
+    question: "Differentiate between ovipary, ovovivipary, and vivipary in vertebrates. Name the four extra-embryonic membranes of the amniotic egg and describe their primary biological functions in terrestrial adaptation.",
+    keywords: [
+      "vertebrate reproduction", "ovipary", "ovovivipary", "vivipary", "amniotic egg",
+      "amnion", "chorion", "allantois", "yolk sac", "amniotic fluid", "terrestrial adaptation"
+    ],
+    prescribed_definition: "Reproductive strategies in vertebrates ensure survival of offspring in varying habitats. Ovipary involves laying eggs outside the female body; ovovivipary involves eggs retained and hatched internally without placental nourishment; vivipary involves internal embryonic development nourished via a placenta.",
+    formula: "Extra-embryonic membranes: Amnion (protection) + Chorion (gas exchange) + Allantois (waste/gas exchange) + Yolk sac (nutrient supply).",
+    constants: "Amniotes: Reptiles, Birds, and Mammals.",
+    model_answer: "1. COMPARISON OF REPRODUCTIVE STRATEGIES:\n" +
+      "• Ovipary: Eggs are laid by the female and embryonic development occurs outside the mother's body in the external environment. Nourishment is obtained entirely from egg yolk (e.g., birds, most reptiles, frogs).\n" +
+      "• Ovovivipary: Fertilised eggs are retained inside the female's body until hatching. Embryos obtain nourishment from the egg yolk, NOT through a placenta. Young are born live (e.g., certain sharks, vipers).\n" +
+      "• Vivipary: Fertilised eggs develop inside the mother's uterus with direct maternal nourishment via a placenta. Young are born live at an advanced developmental stage (e.g., placental mammals).\n\n" +
+      "2. FOUR EXTRA-EMBRYONIC MEMBRANES OF THE AMNIOTIC EGG:\n" +
+      "• Amnion: Forms a fluid-filled sac (containing amniotic fluid) that encloses the embryo, protecting it from mechanical shock, dehydration, and temperature changes.\n" +
+      "• Chorion: Outermost membrane that lines the shell; enables gaseous exchange of oxygen and carbon dioxide between the embryo and the atmosphere.\n" +
+      "• Allantois: Stores nitrogenous metabolic wastes (uric acid) and assists the chorion with gaseous exchange.\n" +
+      "• Yolk Sac: Encloses the nutrient-rich yolk, providing proteins, lipids, and vitamins to sustain embryonic growth.",
+    rubric_points: [
+      "Ovipary defined: eggs laid externally, nourished by yolk (1 mark)",
+      "Ovovivipary defined: eggs retained internally, nourished by yolk, born live (1 mark)",
+      "Vivipary defined: internal development with placental nourishment, born live (1 mark)",
+      "Amnion identified with shock absorption / anti-desiccation function (1 mark)",
+      "Chorion identified with respiratory gas exchange function (1 mark)",
+      "Allantois identified with waste storage and gas exchange (1 mark)",
+      "Yolk sac identified with nutrient reservoir function (1 mark)"
+    ],
+    common_misconceptions: "Stating that ovoviviparous embryos receive nutrients from the mother's blood (they DO NOT; they rely exclusively on their egg yolk). Also thinking amphibians have amniotic eggs (amphibians are anamniotes and require water to breed).",
+    human_guidance: "The development of the amniotic egg was the critical evolutionary milestone that freed vertebrates from relying on aquatic environments for reproduction, allowing reptiles, birds, and mammals to conquer dry land."
+  },
+
+  // ==========================================
+  // PAPER 1: HUMAN REPRODUCTION
+  // ==========================================
+  {
+    id: "LIFE12_P1_003",
+    paper: "Paper 1 (Life Sciences)",
+    topic: "Human Reproduction & Menstrual Cycle",
+    subtopic: "Hormonal Regulation of the Ovarian & Uterine Cycles",
+    question: "Explain the hormonal control of the human menstrual cycle from Day 1 to Day 28, focusing on the roles and interactions of FSH, LH, oestrogen, and progesterone. What happens to hormone levels if fertilisation does not take place?",
+    keywords: [
+      "menstrual cycle", "ovarian cycle", "uterine cycle", "fsh", "lh", "oestrogen", "progesterone",
+      "follicle stimulating hormone", "luteinising hormone", "graafian follicle", "corpus luteum",
+      "ovulation", "endometrium", "negative feedback"
+    ],
+    prescribed_definition: "The menstrual cycle is a repeating 28-day cycle governed by pituitary gonadotropins (FSH, LH) and ovarian hormones (oestrogen, progesterone) that coordinates ovum maturation and uterine endometrium preparation for pregnancy.",
+    formula: "Follicular phase (Days 1-13) -> Ovulation (Day 14) -> Luteal phase (Days 15-28) -> Menstruation (Days 1-5).",
+    constants: "Pituitary hormones: FSH & LH. Ovarian hormones: Oestrogen & Progesterone. Ovulation peak: Surge in LH at Day 14.",
+    model_answer: "1. FOLLICULAR PHASE (Days 1 - 13):\n" +
+      "• The anterior pituitary gland secretes Follicle Stimulating Hormone (FSH).\n" +
+      "• FSH stimulates the development of a primary follicle into a mature Graafian follicle in the ovary.\n" +
+      "• As the Graafian follicle matures, its cells secrete Oestrogen.\n" +
+      "• Oestrogen causes the vascularisation and thickening of the uterine endometrium lining.\n" +
+      "• High oestrogen levels exert negative feedback on FSH (preventing further follicles from maturing) and trigger a surge of Luteinising Hormone (LH).\n\n" +
+      "2. OVULATION (Day 14):\n" +
+      "• The sudden surge of LH causes the Graafian follicle to rupture and release the mature ovum into the Fallopian tube (ovulation).\n\n" +
+      "3. LUTEAL PHASE (Days 15 - 28):\n" +
+      "• Under the influence of LH, the empty ruptured follicle transforms into a glandular structure called the Corpus Luteum.\n" +
+      "• The Corpus Luteum secretes high amounts of Progesterone (and moderate oestrogen).\n" +
+      "• Progesterone maintains, further thickens, and makes the endometrium glandular and highly vascularised, preparing it for blastocyst implantation.\n" +
+      "• Progesterone inhibits pituitary secretion of FSH and LH (negative feedback).\n\n" +
+      "4. IF FERTILISATION DOES NOT OCCUR:\n" +
+      "• The unfertilised ovum degenerates.\n" +
+      "• Without LH or embryonic hCG, the corpus luteum degenerates into the corpus albicans.\n" +
+      "• Levels of progesterone and oestrogen drop sharply.\n" +
+      "• The lack of progesterone causes the functional endometrial lining to break down and shed along with blood, marking menstruation (Days 1 - 5 of the next cycle).\n" +
+      "• The drop in progesterone removes inhibition on the pituitary, allowing FSH to rise and start a new cycle.",
+    rubric_points: [
+      "FSH stimulates maturation of Graafian follicle in ovary (1 mark)",
+      "Graafian follicle secretes oestrogen which thickens/vascularises endometrium (2 marks)",
+      "LH surge triggers ovulation on Day 14 (1 mark)",
+      "Corpus luteum secretes progesterone to maintain glandular endometrium (2 marks)",
+      "Degeneration of corpus luteum leads to sharp drop in progesterone (1 mark)",
+      "Endometrium sheds causing menstruation when progesterone drops (1 mark)"
+    ],
+    common_misconceptions: "Learners often state that progesterone causes menstruation. In fact, HIGH progesterone PREVENTS menstruation; it is the sharp DROP in progesterone that triggers the shedding of the endometrium.",
+    human_guidance: "Visualise the 28-day cycle on two parallel tracks: what is happening in the ovary (follicle -> Graafian follicle -> ovulation -> corpus luteum) and what is happening in the uterus (menstruation -> thickening -> glandular maintenance). Follow the hormones: FSH -> Oestrogen -> LH -> Progesterone."
+  },
+
+  // ==========================================
+  // PAPER 1: RESPONDING TO ENVIRONMENT - HUMANS
+  // ==========================================
+  {
+    id: "LIFE12_P1_004",
+    paper: "Paper 1 (Life Sciences)",
+    topic: "Human Nervous System & Reflex Arc",
+    subtopic: "Structure & Function of the Brain, Neurons and the Reflex Arc",
+    question: "Name the three major parts of the human brain and state two functions for each. Then, explain the pathway of a spinal reflex arc when a person accidentally touches a hot stove, identifying all five functional components in sequence.",
+    keywords: [
+      "nervous system", "cerebrum", "cerebellum", "medulla oblongata", "reflex arc", "reflex action",
+      "sensory neuron", "motor neuron", "interneuron", "receptor", "effector", "synapse"
+    ],
+    prescribed_definition: "A reflex action is a rapid, involuntary, automatic response to an external stimulus that protects the body from injury. A reflex arc is the neural pathway traversed by nerve impulses from the receptor to the effector.",
+    formula: "Reflex Arc Pathway: Receptor -> Sensory Neuron -> Interneuron (in Spinal Cord) -> Motor Neuron -> Effector (Muscle/Gland).",
+    constants: "Cerebrum (higher thought, voluntary action), Cerebellum (balance, motor coordination), Medulla Oblongata (vital involuntary autonomic functions).",
+    model_answer: "1. THREE MAJOR BRAIN REGIONS & FUNCTIONS:\n" +
+      "• Cerebrum:\n" +
+      "  - Controls all voluntary actions and conscious thoughts (reasoning, memory, intellect, language).\n" +
+      "  - Receives and interprets sensory impulses from sense organs (vision, hearing, touch, taste, smell).\n" +
+      "• Cerebellum:\n" +
+      "  - Coordinates voluntary muscular movements to ensure smooth, precise actions.\n" +
+      "  - Controls balance, equilibrium, and muscle tone (posture).\n" +
+      "• Medulla Oblongata:\n" +
+      "  - Regulates vital involuntary visceral functions (heart rate, blood pressure, peristalsis, breathing rate).\n" +
+      "  - Acts as a reflex centre for protective reflexes such as coughing, sneezing, swallowing, and vomiting.\n\n" +
+      "2. SPINAL REFLEX ARC PATHWAY (TOUCHING A HOT STOVE):\n" +
+      "• 1. Receptor: Thermo/pain receptors in the skin of the hand detect the extreme heat stimulus and generate nerve impulses.\n" +
+      "• 2. Sensory Neuron (Afferent): Carries the nerve impulses via the dorsal root into the grey matter of the spinal cord.\n" +
+      "• 3. Interneuron / Connector Neuron: Located within the spinal cord; receives the impulse across a synapse and directs it immediately to a motor neuron (also sends collaterals to the cerebrum for conscious awareness later).\n" +
+      "• 4. Motor Neuron (Efferent): Transmits the impulse out of the spinal cord via the ventral root to the effector organ.\n" +
+      "• 5. Effector: Biceps muscle in the arm contracts rapidly to pull the hand away from the hot stove, preventing severe tissue damage before the brain registers conscious pain.",
+    rubric_points: [
+      "Cerebrum functions: voluntary movement control + sensory interpretation/reasoning (2 marks)",
+      "Cerebellum functions: motor coordination + balance/posture (2 marks)",
+      "Medulla oblongata functions: vital involuntary reflexes like breathing/heart rate (2 marks)",
+      "Five reflex arc components in exact sequence: Receptor -> Sensory neuron -> Interneuron -> Motor neuron -> Effector (5 marks)",
+      "Action: Effector muscle contracts pulling hand away before brain feels pain (1 mark)"
+    ],
+    common_misconceptions: "Thinking the brain decides to pull the hand away. The reflex arc is routed strictly through the spinal cord for maximum speed; the impulse only reaches the cerebrum after the hand has already been pulled away.",
+    human_guidance: "Remember the directional roots: Sensory enters via the DORSAL root of the spinal cord; Motor exits via the VENTRAL root. Use the mnemonic SAME DAVE: Sensory Afferent, Motor Efferent; Dorsal Afferent, Ventral Efferent."
+  },
+
+  // ==========================================
+  // PAPER 1: HOMEOSTASIS & ENDOCRINE
+  // ==========================================
+  {
+    id: "LIFE12_P1_005",
+    paper: "Paper 1 (Life Sciences)",
+    topic: "Homeostasis & Negative Feedback",
+    subtopic: "Blood Glucose Regulation & Thermoregulation",
+    question: "Describe the negative feedback mechanism that restores normal blood glucose levels after a carbohydrate-rich meal, and explain the physiological mechanisms of the human skin during thermoregulation on a hot day (38°C).",
+    keywords: [
+      "homeostasis", "negative feedback", "insulin", "glucagon", "beta cells", "pancreas", "glycogen",
+      "thermoregulation", "vasodilation", "sweat glands", "evaporation", "hypothalamus"
+    ],
+    prescribed_definition: "Homeostasis is the maintenance of a constant internal environment (tissue fluid) within narrow physiological limits, enabling optimal cellular functioning through negative feedback mechanisms.",
+    formula: "High Glucose -> Beta Cells -> Insulin -> Glycogen storage -> Normal Glucose. High Temp -> Hypothalamus -> Vasodilation + Sweating -> Heat Loss -> Normal Temp.",
+    constants: "Normal human blood glucose: ~3.9 - 5.5 mmol/L (70-99 mg/dL); Normal core temperature: ~37.0°C.",
+    model_answer: "1. BLOOD GLUCOSE REGULATION AFTER A CARBOHYDRATE MEAL:\n" +
+      "• Blood glucose concentration rises above the normal setpoint (~5.0 mmol/L).\n" +
+      "• The Islets of Langerhans in the pancreas detect the elevated blood glucose level.\n" +
+      "• Beta cells in the pancreas secrete the hormone Insulin into the bloodstream.\n" +
+      "• Insulin travels to target organs (liver and skeletal muscles) and causes:\n" +
+      "  - Increased permeability of cell membranes to glucose (cells absorb more glucose).\n" +
+      "  - Conversion of excess glucose into stored insoluble Glycogen (glycogenesis).\n" +
+      "  - Stimulation of cellular respiration to utilise glucose.\n" +
+      "• Blood glucose concentration decreases back to normal.\n" +
+      "• Normal levels inhibit further insulin secretion (negative feedback).\n\n" +
+      "2. THERMOREGULATION ON A HOT DAY (38°C):\n" +
+      "• Thermoreceptors in the skin and hypothalamus detect a rise in core blood temperature above 37°C.\n" +
+      "• The thermoregulatory centre in the hypothalamus sends impulses to skin effectors:\n" +
+      "  - Vasodilation: Sphincter muscles relax and superficial blood vessels (arterioles) dilate, increasing blood flow near the skin surface, maximising heat loss via radiation and convection.\n" +
+      "  - Increased Sweating: Sweat glands become more active and secrete large amounts of sweat onto the skin surface. As sweat evaporates, latent heat of vaporisation is absorbed from the skin, cooling the body.\n" +
+      "  - Hair Erector Muscles Relax: Hairs lie flat against the skin surface, preventing a layer of insulating warm air from being trapped.\n" +
+      "• Core body temperature drops back towards the 37°C setpoint.",
+    rubric_points: [
+      "Pancreatic beta cells detect elevated glucose and secrete insulin (2 marks)",
+      "Insulin causes liver/muscle to convert glucose into stored glycogen (2 marks)",
+      "Normal glucose level restored via negative feedback (1 mark)",
+      "Hypothalamus detects elevated temperature (1 mark)",
+      "Vasodilation: superficial arterioles dilate, increasing blood flow to radiate heat (2 marks)",
+      "Sweating: sweat glands secrete sweat; evaporation removes latent heat (2 marks)"
+    ],
+    common_misconceptions: "Confusing GLUCAGON (the hormone that increases glucose) with GLYCOGEN (the stored polysaccharide carbohydrate). Also stating that 'capillaries move closer to the skin surface'—capillaries cannot move; arterioles simply dilate (vasodilation) or constrict (vasoconstriction).",
+    human_guidance: "Use this handy spelling distinction: INSULIN puts glucose IN to storage as glycogen; GLUCAGON is secreted when glucose is GONE. For skin, always describe vasodilation as the dilation of arterioles, never capillaries."
+  },
+
+  // ==========================================
+  // PAPER 2: DNA & PROTEIN SYNTHESIS
+  // ==========================================
+  {
+    id: "LIFE12_P2_001",
+    paper: "Paper 2 (Life Sciences)",
+    topic: "DNA - Code of Life",
+    subtopic: "DNA Replication & Protein Synthesis (Transcription and Translation)",
+    question: "Describe the process of DNA replication and explain its biological importance. Then, describe the two main stages of protein synthesis: transcription in the nucleus and translation at the ribosome.",
+    keywords: [
+      "dna replication", "transcription", "translation", "mrna", "trna", "codon", "anticodon",
+      "ribosome", "peptide bond", "amino acid", "complementary base pairing", "polymerase", "semi-conservative"
+    ],
+    prescribed_definition: "DNA is a double-stranded helical polymer of nucleotides (deoxyribose, phosphate, A, T, C, G) carrying genetic information. Protein synthesis is the expression of this code into polypeptides via transcription (mRNA synthesis) and translation (polypeptide assembly).",
+    formula: "Complementary Base Pairing: DNA: A-T, C-G. RNA: A-U, C-G. Codon (mRNA triplet) = Anticodon (tRNA triplet) -> Specific Amino Acid.",
+    constants: "Start codon: AUG (Methionine); Stop codons: UAA, UAG, UGA.",
+    model_answer: "1. DNA REPLICATION & IMPORTANCE:\n" +
+      "• Process (Occurs during Interphase in the nucleus):\n" +
+      "  - The double helix unwinds.\n" +
+      "  - Weak hydrogen bonds between complementary nitrogenous bases unzip/break under the action of DNA helicase.\n" +
+      "  - Both original DNA strands serve as templates.\n" +
+      "  - Free DNA nucleotides from the nucleoplasm attach to their complementary exposed bases (A with T, and C with G).\n" +
+      "  - DNA polymerase seals the sugar-phosphate backbone.\n" +
+      "  - Two identical DNA molecules are formed, each containing one original parental strand and one newly synthesised strand (semi-conservative replication).\n" +
+      "• Biological Importance: Doubles genetic material before cell division so daughter cells receive an exact, full complement of chromosomes identical to the parent cell.\n\n" +
+      "2. PROTEIN SYNTHESIS:\n" +
+      "• Stage A: Transcription (in Nucleus):\n" +
+      "  - DNA unwinds and unzips along the specific gene sequence.\n" +
+      "  - One DNA strand acts as the template to form messenger RNA (mRNA).\n" +
+      "  - Free RNA nucleotides pair with complementary DNA bases (Adenine pairs with Uracil, Cytosine with Guanine).\n" +
+      "  - The single-stranded mRNA molecule detaches, moves out of the nucleus through nuclear pores into the cytoplasm, and binds to a ribosome.\n" +
+      "• Stage B: Translation (at Ribosome):\n" +
+      "  - The ribosome reads the mRNA sequence in groups of three bases called codons.\n" +
+      "  - Transfer RNA (tRNA) molecules in the cytoplasm carry specific amino acids.\n" +
+      "  - Each tRNA has a specific triplet of bases called an anticodon complementary to an mRNA codon.\n" +
+      "  - tRNA matches its anticodon to the complementary codon on mRNA.\n" +
+      "  - Adjacent amino acids join by peptide bonds to form a growing polypeptide chain.\n" +
+      "  - When a stop codon is reached, the polypeptide chain detaches and folds into a functional protein.",
+    rubric_points: [
+      "DNA unwinds, weak hydrogen bonds break/unzip (1 mark)",
+      "Free DNA nucleotides pair complementarily (A-T, C-G) to form 2 identical DNA molecules (2 marks)",
+      "Importance: preserves chromosome number in daughter cells (1 mark)",
+      "Transcription: DNA template produces single-stranded mRNA with Uracil replacing Thymine (2 marks)",
+      "mRNA moves from nucleus to ribosome (1 mark)",
+      "Translation: tRNA anticodons bind to complementary mRNA codons (2 marks)",
+      "Amino acids link via peptide bonds to form protein (1 mark)"
+    ],
+    common_misconceptions: "Using Thymine in RNA! Remember: RNA NEVER has Thymine (T); it always has Uracil (U). Another common error is mixing up codons (on mRNA) with anticodons (on tRNA).",
+    human_guidance: "Follow the genetic flow: DNA triplet -> mRNA codon -> tRNA anticodon -> Amino Acid. Practice converting DNA triplets (e.g., TAC) into mRNA codons (AUG) into tRNA anticodons (UAC)."
+  },
+
+  // ==========================================
+  // PAPER 2: GENETICS & INHERITANCE
+  // ==========================================
+  {
+    id: "LIFE12_P2_002",
+    paper: "Paper 2 (Life Sciences)",
+    topic: "Genetics & Inheritance",
+    subtopic: "Monohybrid Crosses, Incomplete Dominance, Blood Groups & Pedigrees",
+    question: "A man with heterozygous Type A blood marries a woman with heterozygous Type B blood. Represent the genetic cross using a standard Punnett square to show the phenotypic and genotypic ratios of their possible offspring. Explain why the ABO blood system demonstrates both complete dominance and co-dominance.",
+    keywords: [
+      "genetics", "monohybrid cross", "punnett square", "blood groups", "abo blood group",
+      "multiple alleles", "co-dominance", "complete dominance", "genotype", "phenotype", "ia", "ib", "i"
+    ],
+    prescribed_definition: "Monohybrid genetic crosses track the inheritance of a single characteristic governed by alleles. The ABO blood grouping is controlled by three multiple alleles: IA, IB, and i.",
+    formula: "Alleles: IA (produces antigen A), IB (produces antigen B), i (recessive, no antigen). Genotypes: IAIA or IAi (Type A); IBIB or IBi (Type B); IAIB (Type AB); ii (Type O).",
+    constants: "IA and IB are codominant with each other; both IA and IB are completely dominant over i.",
+    model_answer: "1. GENETIC CROSS FORMAT (P1 to F1):\n\n" +
+      "P1 Phenotype:  Father Type A   x   Mother Type B\n" +
+      "P1 Genotype:   IAi             x   IBi\n\n" +
+      "Meiosis / Gametes:  IA, i      x   IB, i\n\n" +
+      "Fertilisation / Punnett Square:\n" +
+      "-----------------------------\n" +
+      "       |     IA     |    i    |\n" +
+      "-----------------------------\n" +
+      "  IB   |    IAIB    |   IBi   |\n" +
+      "-----------------------------\n" +
+      "   i   |    IAi     |   ii    |\n" +
+      "-----------------------------\n\n" +
+      "F1 Genotypes:  1 IAIB : 1 IBi : 1 IAi : 1 ii\n" +
+      "F1 Phenotypes: 1 Type AB : 1 Type B : 1 Type A : 1 Type O\n" +
+      "Phenotypic Ratio: 1 : 1 : 1 : 1 (25% chance for each blood group)\n\n" +
+      "2. WHY ABO BLOOD DEMONSTRATES BOTH COMPLETE DOMINANCE & CO-DOMINANCE:\n" +
+      "• Complete Dominance:\n" +
+      "  - Both allele IA and allele IB are completely dominant over the recessive allele i.\n" +
+      "  - An individual with genotype IAi displays only blood group A; an individual with genotype IBi displays only blood group B. The recessive allele i is completely masked.\n" +
+      "• Co-dominance:\n" +
+      "  - Alleles IA and IB are codominant with each other.\n" +
+      "  - When both IA and IB are inherited together (genotype IAIB), neither allele masks the other. Both alleles are equally expressed in the phenotype, producing both Antigen A and Antigen B on red blood cells (Blood Group AB).",
+    rubric_points: [
+      "P1 phenotypes and genotypes correctly stated (1 mark)",
+      "Meiosis indicated with correct gametes separated (1 mark)",
+      "Correct Punnett square execution with 4 offspring boxes (2 marks)",
+      "F1 genotypes and phenotypes clearly listed (1 mark)",
+      "Complete dominance explained: IA and IB fully dominant over recessive i (1 mark)",
+      "Co-dominance explained: IA and IB equally expressed in heterozygous IAIB (1 mark)"
+    ],
+    common_misconceptions: "Writing blood alleles as simple capital letters (A, B, O) rather than the standard DBE CAPS notation (IA, IB, i). Failing to write 'P1', 'F1', 'Meiosis', and 'Fertilisation' in genetic cross layouts loses compulsory marking points in DBE exams.",
+    human_guidance: "Always format genetic crosses strictly using the 6 DBE checklist items: 1. P1 Phenotype, 2. P1 Genotype, 3. Meiosis/Gametes, 4. Fertilisation/Punnett square, 5. F1 Genotypes, 6. F1 Phenotypes. It ensures full marks every single time."
+  },
+
+  // ==========================================
+  // PAPER 2: EVOLUTION BY NATURAL SELECTION
+  // ==========================================
+  {
+    id: "LIFE12_P2_003",
+    paper: "Paper 2 (Life Sciences)",
+    topic: "Evolution by Natural Selection",
+    subtopic: "Darwin's Natural Selection, Lamarckism & Speciation",
+    question: "Using Darwin's theory of evolution by natural selection, explain how the African elephant population may have evolved longer trunks over generations. Compare this explanation to Lamarck's theory of use and disuse, and explain why Lamarck's theory was rejected.",
+    keywords: [
+      "evolution", "natural selection", "darwin", "lamarck", "use and disuse", "inheritance of acquired characteristics",
+      "genetic variation", "struggle for survival", "differential reproduction", "favourable adaptation"
+    ],
+    prescribed_definition: "Natural selection is the mechanism of evolution wherein organisms possessing inherited phenotypic traits best adapted to their environment survive and reproduce at higher rates, passing these favourable alleles to offspring.",
+    formula: "Darwinian Mechanism: Variation exists -> Environmental change / selection pressure -> Struggle for survival -> Best adapted survive (survival of the fittest) -> Reproduce and pass alleles -> Higher frequency in next generation.",
+    constants: "Lamarck's two laws: Law of use and disuse; Law of inheritance of acquired characteristics (rejected by modern genetics).",
+    model_answer: "1. DARWINIAN EXPLANATION FOR LONGER ELEPHANT TRUNKS:\n" +
+      "• There was original genetic variation in trunk length within the ancestral elephant population (some had longer trunks, some had shorter trunks).\n" +
+      "• When food (treetop foliage) became scarce or higher up due to drought, competition/struggle for survival occurred.\n" +
+      "• Elephants with longer trunks had a selective advantage because they could reach higher branches and access more food and water.\n" +
+      "• The longer-trunked elephants survived (survival of the fittest), while elephants with shorter trunks starved and died out.\n" +
+      "• The surviving long-trunked elephants reproduced and passed the favourable alleles for long trunks to their offspring.\n" +
+      "• Over many generations, the proportion of elephants with long trunks increased until the entire population possessed long trunks.\n\n" +
+      "2. COMPARISON TO LAMARCK'S THEORY:\n" +
+      "• Lamarck proposed the 'Law of Use and Disuse': Ancestral elephants constantly stretched their short trunks to reach higher branches, causing their trunks to lengthen during their individual lifetime.\n" +
+      "• Lamarck also proposed the 'Law of Inheritance of Acquired Characteristics': These acquired long trunks were then passed down to their offspring.\n\n" +
+      "3. WHY LAMARCK'S THEORY WAS REJECTED:\n" +
+      "• Phenotypic changes acquired by an organism during its lifetime (e.g., muscle enlargement or stretched skin) are somatic and do NOT alter the nucleotide sequence of gamete DNA.\n" +
+      "• Only genetic traits encoded in germ-line DNA (genes/alleles) can be inherited by offspring. Experiments (such as Weismann cutting mice tails) proved acquired traits are not inherited.",
+    rubric_points: [
+      "Stated that ancestral population had original genetic variation in trunk length (1 mark)",
+      "Identified environmental selection pressure / struggle for survival (1 mark)",
+      "Elephants with longer trunks were better adapted and survived (1 mark)",
+      "Surviving elephants reproduced and passed favourable alleles to offspring (1 mark)",
+      "Frequency of long trunks increased over generations (1 mark)",
+      "Lamarck explained via use and disuse and acquired characteristics (1 mark)",
+      "Rejection reason: acquired somatic changes do not alter gamete DNA (1 mark)"
+    ],
+    common_misconceptions: "Claiming that individual elephants 'chose' to grow longer trunks to adapt. Evolution operates on POPULATIONS over GENERATIONS, not on individual organisms willing an adaptation.",
+    human_guidance: "Memorise the 5-point Darwinian answer template: 1. Variation exists, 2. Environmental change / selection pressure, 3. Best adapted survive (differential survival), 4. Reproduce and pass favourable alleles, 5. Trait frequency increases in next generation. You can apply this exact structure to any exam question on natural selection!"
+  },
+
+  // ==========================================
+  // PAPER 2: HUMAN EVOLUTION & HOMINID FOSSILS
+  // ==========================================
+  {
+    id: "LIFE12_P2_004",
+    paper: "Paper 2 (Life Sciences)",
+    topic: "Human Evolution",
+    subtopic: "Evidence for Bipedalism, Cranial Trends & The 'Out of Africa' Hypothesis",
+    question: "List four anatomical differences between humans (Homo sapiens) and African apes that demonstrate adaptation to bipedalism. Describe three evolutionary trends seen in the hominid skull from Australopithecus to modern humans, and explain the genetic evidence supporting the 'Out of Africa' hypothesis.",
+    keywords: [
+      "human evolution", "bipedalism", "foramen magnum", "cranial capacity", "prognathism",
+      "australopithecus", "homo sapiens", "out of africa", "mitochondrial dna", "mtdna", "fossil evidence"
+    ],
+    prescribed_definition: "Human evolution describes the evolutionary lineage of hominids characterised by anatomical adaptations toward bipedalism, encephalisation (increased brain size), reduced dentition, and tool use. The 'Out of Africa' hypothesis states modern Homo sapiens originated in Africa ~200,000 years ago and migrated globally.",
+    formula: "Bipedal adaptations: Foramen magnum positioned centrally forward + S-shaped spine + short/broad bowl-shaped pelvis + non-opposable big toe.",
+    constants: "Cranial capacity: Apes/Australopithecus: 400-500 cm³; Homo habilis: ~650 cm³; Homo erectus: ~1000 cm³; Homo sapiens: ~1400 cm³.",
+    model_answer: "1. FOUR ANATOMICAL DIFFERENCES INDICATING BIPEDALISM:\n" +
+      "• Position of the Foramen Magnum: Located centrally at the base of the skull in humans (balancing head directly atop vertical vertebral column); located towards the back of the skull in quadrupedal apes.\n" +
+      "• Shape of the Spine: S-shaped (curved) spine in humans to act as a shock absorber and maintain an upright centre of gravity; C-shaped curved spine in apes.\n" +
+      "• Pelvic Girdle: Short, broad, bowl-shaped pelvis in humans to support internal organs in an upright posture and allow bipedal striding; long, narrow pelvis in apes.\n" +
+      "• Feet & Big Toe: Humans have a non-opposable big toe aligned in parallel with other digits and prominent foot arches for push-off when walking; apes have an opposable big toe for grasping tree branches (quadrumanous).\n\n" +
+      "2. THREE EVOLUTIONARY TRENDS IN THE HOMINID SKULL:\n" +
+      "• Increased Cranial Capacity / Brain Volume: Australopithecus (~450 cm³) -> Homo habilis (~650 cm³) -> Homo erectus (~1000 cm³) -> Homo sapiens (~1400 cm³).\n" +
+      "• Decreased Facial Prognathism: Apes and early hominids have prominent protruding snouts/jaws (prognathous); modern humans have a flat, vertical face with a prominent chin (orthognathous).\n" +
+      "• Decreased Brow Ridges & Sagittal Crest: Prominent supraorbital brow ridges and sagittal crests in Australopithecus reduced to minimal or absent in modern Homo sapiens.\n\n" +
+      "3. GENETIC EVIDENCE FOR 'OUT OF AFRICA' HYPOTHESIS:\n" +
+      "• Mitochondrial DNA (mtDNA) is inherited exclusively down the maternal line without crossing over, accumulating mutations at a steady molecular clock rate.\n" +
+      "• Studies of modern human populations reveal that indigenous African populations exhibit the highest genetic diversity in mtDNA.\n" +
+      "• Because older populations accumulate more mutations over time, the highest diversity indicates African populations are the oldest, tracing modern humans back to a common ancestral maternal lineage in Africa ~150,000 - 200,000 years ago.\n" +
+      "• Y-chromosome DNA analysis (passed patrilineally from father to son) also demonstrates the greatest diversity among African males, confirming the same African origin.",
+    rubric_points: [
+      "Foramen magnum position: centrally forward in humans vs posterior in apes (1 mark)",
+      "Spine shape: S-shaped in humans vs C-shaped in apes (1 mark)",
+      "Pelvis shape: short, wide, bowl-shaped in humans vs long, narrow in apes (1 mark)",
+      "Foot structure: non-opposable big toe with arches in humans (1 mark)",
+      "Cranial capacity trend: increased brain volume over time (1 mark)",
+      "Prognathism trend: reduction in snout projection / flatter face (1 mark)",
+      "mtDNA evidence: highest genetic diversity found in African populations (2 marks)"
+    ],
+    common_misconceptions: "Believing humans evolved FROM chimpanzees. Humans and modern African apes share a COMMON ANCESTOR; chimpanzees are evolutionary cousins, not ancestors.",
+    human_guidance: "When writing about the 'Out of Africa' hypothesis, always link the fossil evidence (oldest Homo sapiens fossils like Florisbad and Omo found in Africa) with the genetic evidence (mtDNA and Y-chromosome diversity)."
+  }
+];
+
+// Write files
+const outputPath = path.join(__dirname, '..', 'data', 'lifesciences_grade12_kb.json');
+const outputPathAlias = path.join(__dirname, '..', 'data', 'life_sciences_grade12_kb.json');
+fs.writeFileSync(outputPath, JSON.stringify(kbData, null, 2), 'utf-8');
+fs.writeFileSync(outputPathAlias, JSON.stringify(kbData, null, 2), 'utf-8');
+console.log(`[LIFE SCIENCES KB BUILD] Successfully generated ${outputPath} & ${outputPathAlias} with ${kbData.length} core DBE CAPS topics!`);

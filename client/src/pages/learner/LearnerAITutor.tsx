@@ -1605,7 +1605,7 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                 <div className="flex items-center gap-2">
                   <FileCheck className="w-4 h-4 text-emerald-400" />
                   <span className="text-xs font-bold uppercase text-white tracking-wider">
-                    Official Exam Questions ({lifeSciencesData.filter(x => paperFilter === 'all' || x.paper === paperFilter).length})
+                    Official Exam Questions ({lifeSciencesData.filter(x => paperFilter === 'all' || x.paper?.includes(paperFilter)).length})
                   </span>
                 </div>
                 <button
@@ -1619,10 +1619,10 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
 
               <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
                 {lifeSciencesData
-                  .filter(item => paperFilter === 'all' || item.paper === paperFilter)
+                  .filter(item => paperFilter === 'all' || item.paper?.includes(paperFilter))
                   .map((item) => {
                     const isSelected = selectedLsItem?.id === item.id;
-                    const isP1 = item.paper === 'Paper 1';
+                    const isP1 = item.paper?.includes('Paper 1');
                     return (
                       <div
                         key={item.id}
@@ -1659,7 +1659,7 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                   <div className="p-4 rounded-2xl bg-surface-darker border border-white/10 space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <Badge variant={selectedLsItem.paper === 'Paper 1' ? 'emerald' : 'cyan'} size="sm">
+                        <Badge variant={selectedLsItem.paper?.includes('Paper 1') ? 'emerald' : 'cyan'} size="sm">
                           {selectedLsItem.paper}
                         </Badge>
                         <span className="text-xs font-bold text-slate-300">{selectedLsItem.topic} • {selectedLsItem.subtopic}</span>
@@ -1672,6 +1672,32 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                       {selectedLsItem.question}
                     </h4>
                   </div>
+
+                  {/* Official CAPS Definition & Process Dynamics Banner (if available) */}
+                  {(selectedLsItem.prescribed_definition || selectedLsItem.formula) && (
+                    <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/20 text-xs space-y-1.5">
+                      {selectedLsItem.prescribed_definition && (
+                        <div>
+                          <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider block mb-0.5">
+                            Official CAPS Definition:
+                          </span>
+                          <p className="text-[11.5px] text-slate-200 leading-relaxed font-sans">
+                            {selectedLsItem.prescribed_definition}
+                          </p>
+                        </div>
+                      )}
+                      {selectedLsItem.formula && (
+                        <div className="pt-1 border-t border-white/5">
+                          <span className="text-[11px] font-bold text-teal-300 uppercase tracking-wider block mb-0.5">
+                            Process Dynamics / Genetic Summary:
+                          </span>
+                          <p className="text-[11.5px] text-teal-200/90 font-mono">
+                            {selectedLsItem.formula}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Student Answer Input Form */}
                   <div className="space-y-2">
@@ -1750,6 +1776,17 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                       <p className="text-xs text-slate-200 leading-relaxed font-medium">
                         {evaluationResult.feedback}
                       </p>
+
+                      {/* Human guidance note */}
+                      {evaluationResult.humanGuidance && (
+                        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-200 text-xs flex items-start gap-2">
+                          <Lightbulb className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                          <p className="text-[11.5px] leading-relaxed">
+                            <span className="font-bold text-emerald-300">Teacher's Advice: </span>
+                            {evaluationResult.humanGuidance}
+                          </p>
+                        </div>
+                      )}
 
                       {/* Keyword Breakdown */}
                       <div className="space-y-2 pt-1">
