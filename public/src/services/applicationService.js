@@ -391,7 +391,7 @@ Return strictly JSON with format:
   "extractedSummary": "Short explanation of document contents and Home Affairs compliance"
 }
 `;
-        const model = genAI.getGenerativeModel({ model: 'gemini-3.8-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
         const aiResult = await model.generateContent(prompt);
         const textResp = (await aiResult.response).text().replace(/```json/g, '').replace(/```/g, '').trim();
         const parsed = JSON.parse(textResp);

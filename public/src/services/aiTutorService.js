@@ -247,7 +247,7 @@ async function callAI(prompt, isJson = false, modelOverride = null) {
 
   const modelCandidates = modelOverride
     ? [modelOverride]
-    : ['gemini-3.8-flash', 'gemini-3.1-pro-preview'];
+    : ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'];
   let lastError = null;
 
   for (const targetModel of modelCandidates) {
@@ -909,7 +909,7 @@ function resolvePortalOrAppAnswer(query, role = 'user') {
 }
 
 async function safeAICall(prompt, isJson = false, retries = 1) {
-  const models = ['gemini-3.8-flash', 'gemini-3.1-pro-preview'];
+  const models = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'];
 
   for (const m of models) {
     try {
