@@ -136,32 +136,106 @@ async function migrateSchoolOnboardingAndCleanRoster() {
     const learnerRoleId = roleMap['learner'] || 3;
     const teacherRoleId = roleMap['teacher'] || 4;
 
+    // Helper functions that work regardless of database unique constraint definitions
+    async function upsertUser(email, hash, roleId, schoolId, isSuper, first, last, idNum, phone, extra = {}) {
+      const existing = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+      if (existing.rows.length === 0) {
+        const res = await db.query(
+          `INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country, parent_type, dob, gender)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'South Africa', $10, $11, $12)
+           RETURNING id`,
+          [email, hash, roleId, schoolId, isSuper, first, last, idNum, phone, extra.parent_type || null, extra.dob || null, extra.gender || null]
+        );
+        return res.rows[0].id;
+      } else {
+        const uid = existing.rows[0].id;
+        await db.query(
+          `UPDATE users
+           SET password_hash = $1, role_id = $2, school_id = COALESCE($3, school_id), is_superadmin = $4, full_name = $5, surname = $6, id_number = $7, phone = $8, parent_type = COALESCE($9, parent_type)
+           WHERE id = $10`,
+          [hash, roleId, schoolId, isSuper, first, last, idNum, phone, extra.parent_type || null, uid]
+        );
+        return uid;
+      }
+    }
+
+    async function upsertEmployee(userId, first, last, deptId, subjects, codes, grades, classes, schoolId, phone, email) {
+      const existing = await db.query('SELECT id FROM employees WHERE user_id = $1 LIMIT 1', [userId]);
+      if (existing.rows.length === 0) {
+        await db.query(
+          `INSERT INTO employees (user_id, full_name, surname, department_id, subjects, subject_codes, grades_taught, classes_taught, school_id, phone, email)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [userId, first, last, deptId, subjects, codes, grades, classes, schoolId, phone, email]
+        );
+      } else {
+        await db.query(
+          `UPDATE employees
+           SET full_name = $1, surname = $2, department_id = $3, subjects = $4, subject_codes = $5, grades_taught = $6, classes_taught = $7, school_id = $8, phone = $9, email = $10
+           WHERE user_id = $11`,
+          [first, last, deptId, subjects, codes, grades, classes, schoolId, phone, email, userId]
+        );
+      }
+    }
+
+    async function upsertClass(name, grade, stream, teacherId, schoolId) {
+      const existing = await db.query('SELECT id FROM classes WHERE name = $1 LIMIT 1', [name]);
+      if (existing.rows.length === 0) {
+        const res = await db.query(
+          `INSERT INTO classes (name, grade, stream, homeroom_teacher_id, school_id)
+           VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+          [name, grade, stream, teacherId, schoolId]
+        );
+        return res.rows[0].id;
+      } else {
+        await db.query(
+          `UPDATE classes
+           SET grade = $1, stream = $2, homeroom_teacher_id = $3, school_id = COALESCE($4, school_id)
+           WHERE id = $5`,
+          [grade, stream, teacherId, schoolId, existing.rows[0].id]
+        );
+        return existing.rows[0].id;
+      }
+    }
+
+    async function upsertChild(learnerUserId, first, last, parentId, learnerNum, grade, classId, stream, lang, schoolId, subjects) {
+      const existing = await db.query('SELECT id FROM children WHERE learner_user_id = $1 OR learner_number = $2 LIMIT 1', [learnerUserId, learnerNum]);
+      if (existing.rows.length === 0) {
+        const res = await db.query(
+          `INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, home_language, school_id, subjects)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+          [learnerUserId, first, last, parentId, learnerNum, grade, classId, stream, lang, schoolId, subjects]
+        );
+        return res.rows[0].id;
+      } else {
+        await db.query(
+          `UPDATE children
+           SET full_name = $1, surname = $2, parent_id = $3, learner_number = $4, grade = $5, class_id = $6, stream = $7, home_language = $8, school_id = $9, subjects = $10, learner_user_id = $11
+           WHERE id = $12`,
+          [first, last, parentId, learnerNum, grade, classId, stream, lang, schoolId, subjects, learnerUserId, existing.rows[0].id]
+        );
+        return existing.rows[0].id;
+      }
+    }
+
+    async function ensureParentChild(parentId, childId, relationship) {
+      const existing = await db.query('SELECT 1 FROM parent_children WHERE parent_id = $1 AND child_id = $2 LIMIT 1', [parentId, childId]);
+      if (existing.rows.length === 0) {
+        await db.query(
+          `INSERT INTO parent_children (parent_id, child_id, relationship, is_primary)
+           VALUES ($1, $2, $3, TRUE)`,
+          [parentId, childId, relationship]
+        );
+      }
+    }
+
     // A. 2 Geleza Executive / Admins
-    // Executive 1: Tshepho Letlalo Makula (SuperAdmin)
-    await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
-      VALUES ('admin@gelezasa.co.za', $1, $2, NULL, TRUE, 'Tshepho Letlalo', 'Makula', '0209205494088', '0692606618', 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        is_superadmin = TRUE,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname;
-    `, [superadminPass, adminRoleId]);
+    await upsertUser('admin@gelezasa.co.za', superadminPass, adminRoleId, null, true, 'Tshepho Letlalo', 'Makula', '0209205494088', '0692606618');
+    await upsertUser('exec@gelezasa.co.za', defaultHash, adminRoleId, null, true, 'Geleza Executive', 'Director', '8001015099088', '0123730000');
 
-    // Executive 2: Executive Director (Geleza SA Operations)
-    await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
-      VALUES ('exec@gelezasa.co.za', $1, $2, NULL, TRUE, 'Geleza Executive', 'Director', '8001015099088', '0123730000', 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        is_superadmin = TRUE,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname;
-    `, [defaultHash, adminRoleId]);
-
+    // Find available schools on tenant
     const allSchoolsRes = await db.query('SELECT id FROM schools ORDER BY id ASC');
-    let schoolAId = 3;
-    let schoolBId = 2;
+    let schoolAId = 1;
+    let schoolBId = 1;
 
     if (allSchoolsRes.rows.length > 0) {
       schoolAId = allSchoolsRes.rows[0].id;
@@ -176,202 +250,39 @@ async function migrateSchoolOnboardingAndCleanRoster() {
       schoolBId = schoolAId;
     }
 
-    // B. 2 School Principals
-    // Principal 1
-    await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
-      VALUES ('principal@makgoka.co.za', $1, $2, $3, FALSE, 'K. E.', 'Molepo', '8005200494082', '0152660022', 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        school_id = EXCLUDED.school_id,
-        password_hash = EXCLUDED.password_hash,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname;
-    `, [defaultHash, adminRoleId, schoolAId]);
+    // B. Principals
+    await upsertUser('principal@makgoka.co.za', defaultHash, adminRoleId, schoolAId, false, 'K. E.', 'Molepo', '8005200494082', '0152660022');
+    await upsertUser('principal@mountainview.co.za', defaultHash, adminRoleId, schoolBId, false, 'M. S.', 'Phasha', '7803155494081', '0152671100');
 
-    // Principal 2
-    await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
-      VALUES ('principal@mountainview.co.za', $1, $2, $3, FALSE, 'M. S.', 'Phasha', '7803155494081', '0152671100', 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        school_id = EXCLUDED.school_id,
-        password_hash = EXCLUDED.password_hash,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname;
-    `, [defaultHash, adminRoleId, schoolBId]);
+    // C. Teachers
+    const teacher1Id = await upsertUser('teacher.science@gelezasa.co.za', defaultHash, teacherRoleId, schoolAId, false, 'Thabang', 'Maetane', '0208285930086', '0827637087');
+    await upsertEmployee(teacher1Id, 'Thabang', 'Maetane', 2, ['Physical Sciences', 'Life Sciences', 'Mathematics'], ['PHSC10', 'LFSC10', 'MATH10S'], [10, 11], ['10A'], schoolAId, '0827637087', 'teacher.science@gelezasa.co.za');
 
-    // C. 2 Teachers (Each assigned to their school, class, and subjects)
-    // Teacher 1: Mr. Thabang Maetane (Science Stream & Class Teacher for 10A)
-    const t1UserRes = await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
-      VALUES ('teacher.science@gelezasa.co.za', $1, $2, $3, FALSE, 'Thabang', 'Maetane', '0208285930086', '0827637087', 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        school_id = EXCLUDED.school_id,
-        password_hash = EXCLUDED.password_hash,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname
-      RETURNING id;
-    `, [defaultHash, teacherRoleId, schoolAId]);
-    const teacher1Id = t1UserRes.rows[0].id;
+    const teacher2Id = await upsertUser('teacher.commerce@gelezasa.co.za', defaultHash, teacherRoleId, schoolBId, false, 'Minenhle', 'Dlungwane', '0205101032085', '0711943962');
+    await upsertEmployee(teacher2Id, 'Minenhle', 'Dlungwane', 2, ['Accounting', 'Business Studies', 'Economics'], ['ACC10', 'BUSS10', 'ECON10'], [10, 11], ['10B'], schoolBId, '0711943962', 'teacher.commerce@gelezasa.co.za');
 
-    await db.query(`
-      INSERT INTO employees (user_id, full_name, surname, department_id, subjects, subject_codes, grades_taught, classes_taught, school_id, phone, email)
-      VALUES ($1, 'Thabang', 'Maetane', 2, ARRAY['Physical Sciences','Life Sciences','Mathematics'], ARRAY['PHSC10','LFSC10','MATH10S'], ARRAY[10,11], ARRAY['10A'], $2, '0827637087', 'teacher.science@gelezasa.co.za')
-      ON CONFLICT (user_id) DO UPDATE SET
-        subjects = EXCLUDED.subjects,
-        subject_codes = EXCLUDED.subject_codes,
-        grades_taught = EXCLUDED.grades_taught,
-        classes_taught = EXCLUDED.classes_taught,
-        school_id = EXCLUDED.school_id;
-    `, [teacher1Id, schoolAId]);
+    // D. Classes
+    const class10AId = await upsertClass('10A', 10, 'Science', teacher1Id, schoolAId);
+    const class10BId = await upsertClass('10B', 10, 'Commerce', teacher2Id, schoolBId);
 
-    // Teacher 2: Ms. Minenhle Dlungwane (Commerce Stream & Class Teacher for 10B)
-    const t2UserRes = await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
-      VALUES ('teacher.commerce@gelezasa.co.za', $1, $2, $3, FALSE, 'Minenhle', 'Dlungwane', '0205101032085', '0711943962', 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        school_id = EXCLUDED.school_id,
-        password_hash = EXCLUDED.password_hash,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname
-      RETURNING id;
-    `, [defaultHash, teacherRoleId, schoolBId]);
-    const teacher2Id = t2UserRes.rows[0].id;
+    // E. Parents
+    const parent1Id = await upsertUser('parent.walters@gelezasa.co.za', defaultHash, parentRoleId, schoolAId, false, 'Sarah', 'Walters', '7905150099081', '0820000003', { parent_type: 'Mother' });
+    const parent2Id = await upsertUser('parent.modiba@gelezasa.co.za', defaultHash, parentRoleId, schoolBId, false, 'Matome', 'Modiba', '7608125099082', '0820000004', { parent_type: 'Father' });
 
-    await db.query(`
-      INSERT INTO employees (user_id, full_name, surname, department_id, subjects, subject_codes, grades_taught, classes_taught, school_id, phone, email)
-      VALUES ($1, 'Minenhle', 'Dlungwane', 2, ARRAY['Accounting','Business Studies','Economics'], ARRAY['ACC10','BUSS10','ECON10'], ARRAY[10,11], ARRAY['10B'], $2, '0711943962', 'teacher.commerce@gelezasa.co.za')
-      ON CONFLICT (user_id) DO UPDATE SET
-        subjects = EXCLUDED.subjects,
-        subject_codes = EXCLUDED.subject_codes,
-        grades_taught = EXCLUDED.grades_taught,
-        classes_taught = EXCLUDED.classes_taught,
-        school_id = EXCLUDED.school_id;
-    `, [teacher2Id, schoolBId]);
+    // F. Learners
+    const learner1UserId = await upsertUser('learner.walters@gelezasa.co.za', defaultHash, learnerRoleId, schoolAId, false, 'Lerato', 'Walters', '0901014089081', '0820000010', { dob: '2009-01-01', gender: 'Female' });
+    const child1Id = await upsertChild(
+      learner1UserId, 'Lerato', 'Walters', parent1Id, 'GSA-MKG-001', 10, class10AId, 'Science', 'Sepedi Home Language', schoolAId,
+      ['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Sepedi Home Language', 'Life Orientation']
+    );
+    await ensureParentChild(parent1Id, child1Id, 'Mother');
 
-    // D. Dynamic Classes Setup & Homeroom Link
-    await db.query(`
-      INSERT INTO classes (name, grade, stream, homeroom_teacher_id, school_id)
-      VALUES 
-        ('10A', 10, 'Science', $1, $3),
-        ('10B', 10, 'Commerce', $2, $4)
-      ON CONFLICT (name) DO UPDATE SET
-        stream = EXCLUDED.stream,
-        homeroom_teacher_id = EXCLUDED.homeroom_teacher_id,
-        school_id = EXCLUDED.school_id;
-    `, [teacher1Id, teacher2Id, schoolAId, schoolBId]);
-
-    const class10ARes = await db.query(`SELECT id FROM classes WHERE name = '10A' LIMIT 1`);
-    const class10BRes = await db.query(`SELECT id FROM classes WHERE name = '10B' LIMIT 1`);
-    const class10AId = class10ARes.rows[0]?.id || 1;
-    const class10BId = class10BRes.rows[0]?.id || 1;
-
-    // E. 2 Parents
-    // Parent 1: Mrs. Sarah Walters
-    const p1UserRes = await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country, parent_type)
-      VALUES ('parent.walters@gelezasa.co.za', $1, $2, $3, FALSE, 'Sarah', 'Walters', '7905150099081', '0820000003', 'South Africa', 'Mother')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        school_id = EXCLUDED.school_id,
-        password_hash = EXCLUDED.password_hash,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname
-      RETURNING id;
-    `, [defaultHash, parentRoleId, schoolAId]);
-    const parent1Id = p1UserRes.rows[0].id;
-
-    // Parent 2: Mr. Matome Modiba
-    const p2UserRes = await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country, parent_type)
-      VALUES ('parent.modiba@gelezasa.co.za', $1, $2, $3, FALSE, 'Matome', 'Modiba', '7608125099082', '0820000004', 'South Africa', 'Father')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        school_id = EXCLUDED.school_id,
-        password_hash = EXCLUDED.password_hash,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname
-      RETURNING id;
-    `, [defaultHash, parentRoleId, schoolBId]);
-    const parent2Id = p2UserRes.rows[0].id;
-
-    // F. 2 Learners (Each strictly linked to their Parent, Class Teacher, and Subjects)
-    // Learner 1: Lerato Walters (Grade 10A Science)
-    const l1UserRes = await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, dob, gender, phone, country)
-      VALUES ('learner.walters@gelezasa.co.za', $1, $2, $3, FALSE, 'Lerato', 'Walters', '0901014089081', '2009-01-01', 'Female', '0820000010', 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        school_id = EXCLUDED.school_id,
-        password_hash = EXCLUDED.password_hash,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname
-      RETURNING id;
-    `, [defaultHash, learnerRoleId, schoolAId]);
-    const learner1UserId = l1UserRes.rows[0].id;
-
-    const child1Res = await db.query(`
-      INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, home_language, school_id, subjects)
-      VALUES (
-        $1, 'Lerato', 'Walters', $2, 'GSA-MKG-001', 10, $3, 'Science', 'Sepedi Home Language', $4,
-        ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Sepedi Home Language', 'Life Orientation']
-      )
-      ON CONFLICT (learner_user_id) DO UPDATE SET
-        parent_id = EXCLUDED.parent_id,
-        class_id = EXCLUDED.class_id,
-        school_id = EXCLUDED.school_id,
-        stream = EXCLUDED.stream,
-        home_language = EXCLUDED.home_language,
-        subjects = EXCLUDED.subjects
-      RETURNING id;
-    `, [learner1UserId, parent1Id, class10AId, schoolAId]);
-    const child1Id = child1Res.rows[0].id;
-
-    await db.query(`
-      INSERT INTO parent_children (parent_id, child_id, relationship, is_primary)
-      VALUES ($1, $2, 'Mother', TRUE)
-      ON CONFLICT (parent_id, child_id) DO NOTHING;
-    `, [parent1Id, child1Id]);
-
-    // Learner 2: Karabo Modiba (Grade 10B Commerce)
-    const l2UserRes = await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, dob, gender, phone, country)
-      VALUES ('learner.modiba@gelezasa.co.za', $1, $2, $3, FALSE, 'Karabo', 'Modiba', '0905061234567', '2009-05-06', 'Male', '0820000020', 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        school_id = EXCLUDED.school_id,
-        password_hash = EXCLUDED.password_hash,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname
-      RETURNING id;
-    `, [defaultHash, learnerRoleId, schoolBId]);
-    const learner2UserId = l2UserRes.rows[0].id;
-
-    const child2Res = await db.query(`
-      INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, home_language, school_id, subjects)
-      VALUES (
-        $1, 'Karabo', 'Modiba', $2, 'GSA-MTV-002', 10, $3, 'Commerce', 'isiZulu Home Language', $4,
-        ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'isiZulu Home Language', 'Life Orientation']
-      )
-      ON CONFLICT (learner_user_id) DO UPDATE SET
-        parent_id = EXCLUDED.parent_id,
-        class_id = EXCLUDED.class_id,
-        school_id = EXCLUDED.school_id,
-        stream = EXCLUDED.stream,
-        home_language = EXCLUDED.home_language,
-        subjects = EXCLUDED.subjects
-      RETURNING id;
-    `, [learner2UserId, parent2Id, class10BId, schoolBId]);
-    const child2Id = child2Res.rows[0].id;
-
-    await db.query(`
-      INSERT INTO parent_children (parent_id, child_id, relationship, is_primary)
-      VALUES ($1, $2, 'Father', TRUE)
-      ON CONFLICT (parent_id, child_id) DO NOTHING;
-    `, [parent2Id, child2Id]);
+    const learner2UserId = await upsertUser('learner.modiba@gelezasa.co.za', defaultHash, learnerRoleId, schoolBId, false, 'Karabo', 'Modiba', '0905061234567', '0820000020', { dob: '2009-05-06', gender: 'Male' });
+    const child2Id = await upsertChild(
+      learner2UserId, 'Karabo', 'Modiba', parent2Id, 'GSA-MTV-002', 10, class10BId, 'Commerce', 'isiZulu Home Language', schoolBId,
+      ['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'isiZulu Home Language', 'Life Orientation']
+    );
+    await ensureParentChild(parent2Id, child2Id, 'Father');
     console.log('[MIGRATION] Demo roster checked. Existing passwords were left unchanged.');
 
   } catch (err) {
