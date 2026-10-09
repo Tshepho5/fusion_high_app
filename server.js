@@ -498,6 +498,8 @@ const optionalTokenAuth = (req, res, next) => {
 app.post('/api/ai/chat', optionalTokenAuth, aiTutorController.sendChatMessage);
 app.get('/api/ai/physics/topics', optionalTokenAuth, aiTutorController.getPhysicalSciencesTopics);
 app.post('/api/ai/physics/evaluate', optionalTokenAuth, aiTutorController.evaluatePhysicalSciencesAnswer);
+app.get('/api/ai/physics-grade10/topics', optionalTokenAuth, aiTutorController.getPhysicalSciencesGrade10Topics);
+app.post('/api/ai/physics-grade10/evaluate', optionalTokenAuth, aiTutorController.evaluatePhysicalSciencesAnswer);
 app.get('/api/ai/physical-sciences/topics', optionalTokenAuth, aiTutorController.getPhysicalSciencesTopics);
 app.post('/api/ai/physical-sciences/evaluate', optionalTokenAuth, aiTutorController.evaluatePhysicalSciencesAnswer);
 app.get('/api/ai/math/topics', optionalTokenAuth, aiTutorController.getMathematicsTopics);

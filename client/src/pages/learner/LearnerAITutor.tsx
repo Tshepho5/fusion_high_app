@@ -156,7 +156,8 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
   // Active Tab & Subject Studios State
   const [activeTab, setActiveTab] = useState<'chat' | 'physics-studio' | 'math-studio' | 'life-sciences-studio' | 'adaptive'>('chat');
 
-  // Dedicated Subject AI Studio State (Grade 12 Physical Sciences)
+  // Dedicated Subject AI Studio State (Physical Sciences: Grade 10 & 12)
+  const [physicsGrade, setPhysicsGrade] = useState<number>(10);
   const [physicsData, setPhysicsData] = useState<any[]>([]);
   const [selectedPhysicsItem, setSelectedPhysicsItem] = useState<any | null>(null);
   const [studentPhysicsAnswerText, setStudentPhysicsAnswerText] = useState<string>('');
@@ -263,14 +264,15 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
     setShowMathModelAnswer(false);
   };
 
-  const loadPhysicsStudio = async () => {
+  const loadPhysicsStudio = async (overrideGrade?: number) => {
     setLoadingPhysicsData(true);
+    const g = overrideGrade !== undefined ? overrideGrade : (physicsGrade || (learnerGrade === 12 ? 12 : 10));
     try {
-      const res = await aiTutorService.getPhysicsTopics();
+      const res = await aiTutorService.getPhysicsTopics(g);
       if (res && res.topics) {
         setPhysicsData(res.topics);
         if (res.topics.length > 0) {
-          setSelectedPhysicsItem((prev: any) => prev || res.topics[0]);
+          setSelectedPhysicsItem(res.topics[0]);
         }
       }
     } catch (err) {
@@ -365,6 +367,9 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
       const data = await aiTutorService.getSubjectsWithSyllabus();
       if (data) {
         setLearnerGrade(data.grade || 10);
+        if (data.grade === 10 || data.grade === 12) {
+          setPhysicsGrade(data.grade);
+        }
         setLearnerStream(data.stream || 'Science');
         setSchoolName(data.schoolName || 'Fusion High School');
         if (data.subjects && data.subjects.length > 0) {
@@ -841,7 +846,7 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                 if (!isPhysicsSubject) {
                   setSubject('Physical Sciences');
                 }
-                loadPhysicsStudio();
+                loadPhysicsStudio(physicsGrade);
               }}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                 activeTab === 'physics-studio'
@@ -850,7 +855,7 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
               }`}
             >
               <Atom className="w-4 h-4 text-cyan-300" />
-              <span>Grade 12 Physical Sciences Studio</span>
+              <span>Grade {physicsGrade} Physical Sciences Studio</span>
               <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
                 DBE Exam Lab & Formulas
               </span>
@@ -1245,39 +1250,74 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
               <div className="space-y-1 max-w-2xl">
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                    DBE CAPS NSC Lab 2026
+                    {physicsGrade === 10 ? 'DBE CAPS Model 2015-2018' : 'DBE CAPS NSC Lab 2026'}
                   </span>
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
                     Paper 1 (Physics) & Paper 2 (Chemistry)
                   </span>
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    8 Official Textbooks & Memos
+                    {physicsGrade === 10 ? 'Grade 10 Learner Book & Memos' : '8 Official Textbooks & Memos'}
                   </span>
                 </div>
                 <h3 className="text-lg font-bold text-white font-display flex items-center gap-2">
                   <Atom className="w-5 h-5 text-cyan-400" />
-                  <span>Grade 12 Physical Sciences NSC Exam Studio & AI Formula Lab</span>
+                  <span>Grade {physicsGrade} Physical Sciences NSC Exam Studio & AI Formula Lab</span>
                 </h3>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  Practice high-frequency national examination calculations and definitions across Vertical Projectile Motion, Momentum & Impulse, Work-Energy-Power, Doppler Effect, Electric Circuits, Electrodynamics, Photoelectric Effect, Organic Chemistry, Reaction Rates, and Chemical Equilibrium. Receive step-by-step grading against official DBE marking guidelines.
+                  {physicsGrade === 10
+                    ? "Practice high-frequency Grade 10 national examination calculations and definitions across Transverse Pulses & Superposition, Waves & Sound, Electromagnetic Radiation (E = hf), Electrostatics (Q = ne), Electric Circuits (Ohm's Law, Series & Parallel), Motion in 1D & Equations of Motion, Conservation of Mechanical Energy, Classification of Matter, States & Boiling Point, Atomic Structure & Aufbau, Chemical Bonding & Lewis Diagrams, and Quantitative Chemistry (The Mole & Stoichiometry). Receive instant marks against official DBE marking guidelines."
+                    : "Practice high-frequency national examination calculations and definitions across Vertical Projectile Motion, Momentum & Impulse, Work-Energy-Power, Doppler Effect, Electric Circuits, Electrodynamics, Photoelectric Effect, Organic Chemistry, Reaction Rates, and Chemical Equilibrium. Receive step-by-step grading against official DBE marking guidelines."}
                 </p>
               </div>
 
-              {/* Filter Pills */}
-              <div className="flex items-center gap-1.5 bg-surface-darker/90 border border-white/10 p-1.5 rounded-2xl shrink-0">
-                {(['all', 'Paper 1 (Physics)', 'Paper 2 (Chemistry)'] as const).map((pf) => (
+              {/* Controls: Grade Switcher & Paper Filter Pills */}
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {/* Grade Switcher */}
+                <div className="flex items-center gap-1 bg-surface-darker/90 border border-white/10 p-1 rounded-2xl">
                   <button
-                    key={pf}
-                    onClick={() => setPhysicsPaperFilter(pf)}
+                    onClick={() => {
+                      setPhysicsGrade(10);
+                      loadPhysicsStudio(10);
+                    }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      physicsPaperFilter === pf
-                        ? 'bg-cyan-600 text-white shadow-glow-indigo'
+                      physicsGrade === 10
+                        ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-glow-indigo'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    {pf === 'all' ? 'All Papers' : pf === 'Paper 1 (Physics)' ? 'Paper 1 (Physics)' : 'Paper 2 (Chemistry)'}
+                    Grade 10
                   </button>
-                ))}
+                  <button
+                    onClick={() => {
+                      setPhysicsGrade(12);
+                      loadPhysicsStudio(12);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      physicsGrade === 12
+                        ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-glow-indigo'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Grade 12
+                  </button>
+                </div>
+
+                {/* Paper Filter */}
+                <div className="flex items-center gap-1 bg-surface-darker/90 border border-white/10 p-1 rounded-2xl">
+                  {(['all', 'Paper 1 (Physics)', 'Paper 2 (Chemistry)'] as const).map((pf) => (
+                    <button
+                      key={pf}
+                      onClick={() => setPhysicsPaperFilter(pf)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        physicsPaperFilter === pf
+                          ? 'bg-cyan-600 text-white shadow-glow-indigo'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {pf === 'all' ? 'All Papers' : pf === 'Paper 1 (Physics)' ? 'P1 Physics' : 'P2 Chemistry'}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -1294,7 +1334,7 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                   </span>
                 </div>
                 <button
-                  onClick={loadPhysicsStudio}
+                  onClick={() => loadPhysicsStudio()}
                   className="p-1 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors"
                   title="Refresh Questions"
                 >
@@ -1413,7 +1453,7 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                         <button
                           onClick={() => {
                             setActiveTab('chat');
-                            handleSendMessage(`Can you explain the Grade 12 Physical Sciences concept: "${selectedPhysicsItem.question}" (${selectedPhysicsItem.paper} - ${selectedPhysicsItem.topic})? Please provide the full step-by-step calculation with formula, signs, units, and matric exam advice.`);
+                            handleSendMessage(`Can you explain the Grade ${physicsGrade} Physical Sciences concept: "${selectedPhysicsItem.question}" (${selectedPhysicsItem.paper} - ${selectedPhysicsItem.topic})? Please provide the full step-by-step calculation with formula, signs, units, and CAPS exam advice.`);
                           }}
                           className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 border border-brand-500/30 text-xs font-bold transition-all"
                         >

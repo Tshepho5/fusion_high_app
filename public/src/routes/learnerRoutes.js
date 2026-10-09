@@ -32,7 +32,9 @@ router.get('/ai-tutor/conversations/:id', auth, requireRole(['learner', 'teacher
 router.post('/ai-tutor/new-session', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.startNewConversation);
 router.delete('/ai-tutor/conversations/:id', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.deleteConversation);
 router.get('/ai-tutor/physics/topics', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.getPhysicalSciencesTopics);
+router.get('/ai-tutor/physics-grade10/topics', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.getPhysicalSciencesGrade10Topics);
 router.post('/ai-tutor/physics/evaluate', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.evaluatePhysicalSciencesAnswer);
+router.post('/ai-tutor/physics-grade10/evaluate', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.evaluatePhysicalSciencesAnswer);
 router.get('/ai-tutor/math/topics', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.getMathematicsTopics);
 router.post('/ai-tutor/math/evaluate', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.evaluateMathematicsAnswer);
 router.get('/ai-tutor/life-sciences/topics', auth, requireRole(['learner', 'teacher', 'admin', 'parent']), aiTutorController.getLifeSciencesTopics);

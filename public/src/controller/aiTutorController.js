@@ -281,10 +281,21 @@ exports.evaluateLifeSciencesAnswer = async (req, res) => {
 };
 
 /**
- * Retrieves the dedicated Grade 12 Physical Sciences CAPS topic database.
+ * Retrieves the dedicated Physical Sciences CAPS topic database (Supports Grade 10 and Grade 12).
  */
 exports.getPhysicalSciencesTopics = async (req, res) => {
     try {
+        const grade = parseInt(req.query.grade || '12', 10);
+        if (grade === 10) {
+            const kb = aiTutorService.getPhysicalSciencesGrade10KnowledgeBase();
+            return res.json({
+                subject: 'Physical Sciences',
+                grade: 10,
+                curriculum: 'DBE CAPS Grade 10',
+                totalTopics: kb.length,
+                topics: kb
+            });
+        }
         const kb = aiTutorService.getPhysicalSciencesKnowledgeBase();
         res.json({
             subject: 'Physical Sciences',
@@ -296,6 +307,25 @@ exports.getPhysicalSciencesTopics = async (req, res) => {
     } catch (err) {
         console.error('[AI TUTOR CONTROLLER ERROR] getPhysicalSciencesTopics:', err);
         res.status(500).json({ error: 'Failed to load Physical Sciences knowledge base.' });
+    }
+};
+
+/**
+ * Explicitly retrieves the dedicated Grade 10 Physical Sciences CAPS topic database.
+ */
+exports.getPhysicalSciencesGrade10Topics = async (req, res) => {
+    try {
+        const kb = aiTutorService.getPhysicalSciencesGrade10KnowledgeBase();
+        res.json({
+            subject: 'Physical Sciences',
+            grade: 10,
+            curriculum: 'DBE CAPS Grade 10',
+            totalTopics: kb.length,
+            topics: kb
+        });
+    } catch (err) {
+        console.error('[AI TUTOR CONTROLLER ERROR] getPhysicalSciencesGrade10Topics:', err);
+        res.status(500).json({ error: 'Failed to load Grade 10 Physical Sciences knowledge base.' });
     }
 };
 

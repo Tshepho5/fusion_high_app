@@ -44,13 +44,25 @@ try {
   console.warn('[AI SERVICE] Could not load Physical Sciences KB:', e.message);
 }
 
-function queryPhysicalSciencesModel(userText) {
-  if (!physicalSciencesKB || physicalSciencesKB.length === 0 || !userText) return null;
+// Load Dedicated Grade 10 Physical Sciences AI Model Knowledge Base (RAG)
+let physicalSciencesGrade10KB = [];
+try {
+  const ps10Path = path.join(__dirname, '../../../data/physical_sciences_grade10_kb.json');
+  if (fs.existsSync(ps10Path)) {
+    physicalSciencesGrade10KB = JSON.parse(fs.readFileSync(ps10Path, 'utf8'));
+    console.info(`[AI SERVICE] Loaded Grade 10 Physical Sciences AI Knowledge Base (${physicalSciencesGrade10KB.length} CAPS core topics).`);
+  }
+} catch (e) {
+  console.warn('[AI SERVICE] Could not load Grade 10 Physical Sciences KB:', e.message);
+}
+
+function queryPhysicalSciencesGrade10Model(userText) {
+  if (!physicalSciencesGrade10KB || physicalSciencesGrade10KB.length === 0 || !userText) return null;
   const lower = userText.toLowerCase();
   let bestItem = null;
   let maxMatches = 0;
 
-  for (const item of physicalSciencesKB) {
+  for (const item of physicalSciencesGrade10KB) {
     let matches = 0;
     for (const kw of item.keywords) {
       if (lower.includes(kw.toLowerCase())) matches += 1.8;
@@ -65,10 +77,114 @@ function queryPhysicalSciencesModel(userText) {
     }
   }
 
-  return maxMatches >= 1.5 && bestItem ? { ...bestItem, matchScore: maxMatches } : null;
+  return maxMatches >= 1.5 && bestItem ? { ...bestItem, matchScore: maxMatches, grade: 10 } : null;
+}
+
+function evaluatePhysicalSciencesGrade10Answer(itemId, studentAnswer) {
+  const item = physicalSciencesGrade10KB.find(x => x.id === itemId);
+  if (!item) return { error: `Topic/Question ID ${itemId} not found in Grade 10 Physical Sciences KB.` };
+
+  const lower = (studentAnswer || '').toLowerCase();
+  const matched = item.keywords.filter(k => lower.includes(k.toLowerCase()));
+  const missing = item.keywords.filter(k => !lower.includes(k.toLowerCase()));
+  const total = item.rubric_points.length;
+  const keywordPct = matched.length / Math.max(1, item.keywords.length);
+  const estimatedMark = Math.min(total, Math.round(keywordPct * total));
+  const percentage = Math.round((estimatedMark / total) * 100);
+
+  return {
+    itemId: item.id,
+    topic: item.topic,
+    subtopic: item.subtopic,
+    paper: item.paper,
+    grade: 10,
+    prescribedDefinition: item.prescribed_definition,
+    formula: item.formula,
+    constants: item.constants,
+    estimatedMark: `${estimatedMark}/${total}`,
+    percentage: `${percentage}%`,
+    matchedTerms: matched,
+    missingTerms: missing,
+    rubricChecklist: item.rubric_points,
+    modelAnswer: item.model_answer,
+    commonMisconceptions: item.common_misconceptions,
+    humanGuidance: item.human_guidance,
+    feedback: percentage >= 80 
+      ? "Outstanding Grade 10 mastery! Your steps and units follow official DBE CAPS examination guidelines perfectly."
+      : percentage >= 50
+        ? "Good conceptual work! Make sure to write down the standard formula, substitution with signs, and final SI unit to capture full rubric marks."
+        : "Needs revision. In Grade 10 examinations, markers require the explicit formula from the formula sheet and correct SI units."
+  };
+}
+
+function queryPhysicalSciencesModel(userText, grade = null) {
+  if (!userText) return null;
+  const isGr10 = grade === 10 || grade === '10';
+  const isGr12 = grade === 12 || grade === '12';
+
+  if (isGr10) {
+    return queryPhysicalSciencesGrade10Model(userText);
+  }
+
+  if (isGr12) {
+    if (!physicalSciencesKB || physicalSciencesKB.length === 0) return null;
+    const lower = userText.toLowerCase();
+    let bestItem = null;
+    let maxMatches = 0;
+
+    for (const item of physicalSciencesKB) {
+      let matches = 0;
+      for (const kw of item.keywords) {
+        if (lower.includes(kw.toLowerCase())) matches += 1.8;
+      }
+      const words = (item.topic + ' ' + item.subtopic + ' ' + item.question).toLowerCase().split(/\s+/);
+      for (const w of words) {
+        if (w.length > 3 && lower.includes(w)) matches += 0.5;
+      }
+      if (matches > maxMatches) {
+        maxMatches = matches;
+        bestItem = item;
+      }
+    }
+    return maxMatches >= 1.5 && bestItem ? { ...bestItem, matchScore: maxMatches, grade: 12 } : null;
+  }
+
+  // If grade not specified, check both and pick highest match
+  const gr10Match = queryPhysicalSciencesGrade10Model(userText);
+  let gr12Match = null;
+  if (physicalSciencesKB && physicalSciencesKB.length > 0) {
+    const lower = userText.toLowerCase();
+    let bestItem = null;
+    let maxMatches = 0;
+    for (const item of physicalSciencesKB) {
+      let matches = 0;
+      for (const kw of item.keywords) {
+        if (lower.includes(kw.toLowerCase())) matches += 1.8;
+      }
+      const words = (item.topic + ' ' + item.subtopic + ' ' + item.question).toLowerCase().split(/\s+/);
+      for (const w of words) {
+        if (w.length > 3 && lower.includes(w)) matches += 0.5;
+      }
+      if (matches > maxMatches) {
+        maxMatches = matches;
+        bestItem = item;
+      }
+    }
+    if (maxMatches >= 1.5 && bestItem) {
+      gr12Match = { ...bestItem, matchScore: maxMatches, grade: 12 };
+    }
+  }
+
+  if (gr10Match && gr12Match) {
+    return gr10Match.matchScore >= gr12Match.matchScore ? gr10Match : gr12Match;
+  }
+  return gr10Match || gr12Match;
 }
 
 function evaluatePhysicalSciencesAnswer(itemId, studentAnswer) {
+  if (itemId && itemId.startsWith('PS10_')) {
+    return evaluatePhysicalSciencesGrade10Answer(itemId, studentAnswer);
+  }
   const item = physicalSciencesKB.find(x => x.id === itemId);
   if (!item) return { error: `Topic/Question ID ${itemId} not found in Physical Sciences KB.` };
 
@@ -1540,10 +1656,12 @@ ${(() => {
   const isMath = subLower.includes('math') || subLower.includes('algebra') || subLower.includes('calculus') || subLower.includes('geometry') || subLower.includes('trigonometry');
 
   if (isPhysics) {
-    const psMatch = queryPhysicalSciencesModel(userText);
+    const isGr10 = normGrade === 10 || normGrade === '10';
+    const psMatch = queryPhysicalSciencesModel(userText, normGrade);
+    const matchedGr10 = isGr10 || (psMatch && psMatch.id && psMatch.id.startsWith('PS10_'));
     if (psMatch) {
       return `
-### ⚛️ DEDICATED GRADE 12 PHYSICAL SCIENCES SPECIALIST KNOWLEDGE BASE (STRICT DBE CAPS RAG):
+### ⚛️ DEDICATED GRADE ${matchedGr10 ? '10' : '12'} PHYSICAL SCIENCES SPECIALIST KNOWLEDGE BASE (STRICT DBE CAPS RAG):
 - Target Topic: "${psMatch.topic}" (${psMatch.paper}) — Subtopic: "${psMatch.subtopic}"
 - Official DBE Prescribed Definition: "${psMatch.prescribed_definition}"
 - Standard Formula: ${psMatch.formula}
@@ -1558,9 +1676,16 @@ ${psMatch.model_answer}
   "${psMatch.human_guidance}"
 
 ### STRICT SUBJECT ISOLATION DIRECTIVE:
-You are strictly in the Physical Sciences (Physics Paper 1 & Chemistry Paper 2) classroom.
+You are strictly in the Grade ${matchedGr10 ? '10' : '12'} Physical Sciences (Physics Paper 1 & Chemistry Paper 2) classroom.
 Under NO circumstances mention biology, cell structures, DNA, genetics, reproduction, or Life Sciences.
 Respond with human warmth, empathy, and mathematical clarity. Show every algebraic step with SI units.
+`;
+    } else if (matchedGr10) {
+      return `
+### ⚛️ GRADE 10 PHYSICAL SCIENCES (PHYSICS P1 & CHEMISTRY P2) CLASSROOM:
+- Official CAPS Curriculum: Physical Sciences Grade 10 (Paper 1 Physics: Transverse & Longitudinal Waves, Sound & Ultrasound, Electromagnetic Radiation & Photons, Magnetism & Electrostatics, Electric Circuits, Motion in 1D & Equations of Motion, Mechanical Energy Ep + Ek; Paper 2 Chemistry: Classification of Matter, States of Matter & Kinetic Molecular Theory, Atomic Structure & Electron Configurations, Chemical Bonding & Lewis Diagrams, Quantitative Chemistry / The Mole Concept & Stoichiometry, Physical & Chemical Change).
+- Marking Standard: State formula first (1m), substitution with correct signs and values (1m), final answer with SI unit (1m).
+- Strict subject boundary: Do NOT discuss biology or Life Sciences.
 `;
     } else {
       return `
@@ -1696,10 +1821,17 @@ Detailed, Warm, Helpful Response:
       actionLinks = portalAns.actionLinks || [];
       suggestions = portalAns.suggestions || [];
     } else if (isPhysics) {
-      const psMatch = queryPhysicalSciencesModel(userText);
+      const isGr10 = normGrade === 10 || normGrade === '10';
+      const psMatch = queryPhysicalSciencesModel(userText, normGrade);
       if (psMatch) {
-        aiReplyText = `### ⚛️ Grade 12 Physical Sciences Specialist Assistant\n**CAPS Focus: ${psMatch.paper} — ${psMatch.topic} (${psMatch.subtopic})**\n\n${psMatch.model_answer}\n\n---\n#### 📋 Official DBE Marking Rubric Breakdown:\n${psMatch.rubric_points.map(p => `• ${p}`).join('\n')}\n\n💡 **Matric Exam Pitfall / Tip**:\n${psMatch.common_misconceptions}\n\n🤝 *Teacher Note: ${psMatch.human_guidance}*`;
-        suggestions = ['Solve a vertical projectile problem', 'Calculate conservation of momentum', 'How do I calculate internal resistance?'];
+        const grLabel = (psMatch.id && psMatch.id.startsWith('PS10_')) || isGr10 ? 'Grade 10' : 'Grade 12';
+        aiReplyText = `### ⚛️ ${grLabel} Physical Sciences Specialist Assistant\n**CAPS Focus: ${psMatch.paper} — ${psMatch.topic} (${psMatch.subtopic})**\n\n${psMatch.model_answer}\n\n---\n#### 📋 Official DBE Marking Rubric Breakdown:\n${psMatch.rubric_points.map(p => `• ${p}`).join('\n')}\n\n💡 **Exam Pitfall / Tip**:\n${psMatch.common_misconceptions}\n\n🤝 *Teacher Note: ${psMatch.human_guidance}*`;
+        suggestions = isGr10 
+          ? ['Calculate wave speed using v = fλ', 'Solve equivalent resistance in parallel', 'Calculate moles and volume of gas at STP']
+          : ['Solve a vertical projectile problem', 'Calculate conservation of momentum', 'How do I calculate internal resistance?'];
+      } else if (isGr10) {
+        aiReplyText = `I'm your dedicated Grade 10 Physical Sciences AI Specialist! I can assist you with Paper 1 Physics (Transverse & Longitudinal Waves, Sound, Electromagnetic Radiation, Magnetism & Electrostatics, Electric Circuits, Motion in 1D, Conservation of Mechanical Energy) and Paper 2 Chemistry (Classification of Matter, States of Matter, Atomic Structure, Chemical Bonding, Quantitative Chemistry / The Mole Concept). What topic or problem are we working on today?`;
+        suggestions = ['Explain principle of superposition', 'Solve a motion problem with equations of motion', 'Calculate molar mass and moles of a compound'];
       } else {
         aiReplyText = `I'm your dedicated Grade 12 Physical Sciences AI Specialist! I can assist you with Paper 1 Physics (Vertical Projectile Motion, Momentum & Impulse, Work-Energy-Power, Doppler Effect, Electric Circuits, Electrodynamics, Photoelectric Effect) and Paper 2 Chemistry (Organic Chemistry, Reaction Rates, Chemical Equilibrium, Acids & Bases, Electrochemical Cells). What equation or concept are we tackling today?`;
         suggestions = ['Explain Newton Second Law in terms of momentum', 'Calculate Work-Energy on an incline', 'How does the Doppler formula work?'];
@@ -1831,8 +1963,11 @@ module.exports = {
   evaluateLifeSciencesAnswer,
   getLifeSciencesKnowledgeBase: () => lifeSciencesKB,
   queryPhysicalSciencesModel,
+  queryPhysicalSciencesGrade10Model,
   evaluatePhysicalSciencesAnswer,
+  evaluatePhysicalSciencesGrade10Answer,
   getPhysicalSciencesKnowledgeBase: () => physicalSciencesKB,
+  getPhysicalSciencesGrade10KnowledgeBase: () => physicalSciencesGrade10KB,
   queryMathematicsModel,
   evaluateMathematicsAnswer,
   getMathematicsKnowledgeBase: () => mathematicsKB
