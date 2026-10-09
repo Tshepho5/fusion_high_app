@@ -21,6 +21,16 @@ router.post('/verify-otp', authController.verifyOTP);
 router.post('/reset-password', authController.resetPassword);
 router.post('/webauthn/login/options', webauthnController.loginOptions);
 router.post('/webauthn/login/verify', webauthnController.loginVerify);
+router.all('/sync-roster', async (req, res) => {
+    try {
+        const { migrateSchoolOnboardingAndCleanRoster } = require('../../../db/migrate_school_onboarding_and_clean_roster');
+        await migrateSchoolOnboardingAndCleanRoster();
+        res.json({ success: true, message: 'Roster synced successfully' });
+    } catch (err) {
+        console.error('Sync roster route error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
 
 // Parent Portal Access Application (Public)
 router.post('/parent-applications', parentAppController.submitParentApplication);

@@ -17,8 +17,7 @@ import {
   Moon,
   AlertCircle,
   ShieldCheck,
-  Fingerprint,
-  Sparkles
+  Fingerprint
 } from 'lucide-react';
 import { startAuthentication, browserSupportsWebAuthn, platformAuthenticatorIsAvailable } from '@simplewebauthn/browser';
 import { authService } from '../../services/api';
@@ -549,51 +548,6 @@ export const LoginPage: React.FC = () => {
                   <span>Sign in with fingerprint</span>
                 </button>
               )}
-
-              {/* Quick Testing Credentials Panel */}
-              <div className="pt-3 border-t border-white/20 dark:border-white/10">
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${isLight ? 'text-slate-800' : 'text-slate-300'}`}>
-                    <Sparkles className="w-3 h-3 text-amber-500" />
-                    Testing Credentials (1-Click)
-                  </span>
-                  <span className={`text-[10px] font-mono font-bold ${isLight ? 'text-blue-700' : 'text-cyan-300'}`}>
-                    pwd: password123
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {[
-                    { role: 'Admin', email: 'admin@gelezasa.co.za', badge: 'SuperAdmin' },
-                    { role: 'Teacher', email: 'teacher.science@gelezasa.co.za', badge: 'Science' },
-                    { role: 'Learner', email: 'learner.walters@gelezasa.co.za', badge: 'Grade 10' },
-                    { role: 'Parent', email: 'parent.walters@gelezasa.co.za', badge: 'Guardian' }
-                  ].map((acc) => (
-                    <button
-                      key={acc.role}
-                      type="button"
-                      onClick={() => {
-                        setIdentifier(acc.email);
-                        setPassword('password123');
-                        setAccountReady(true);
-                        setError(null);
-                        setFieldErrors({});
-                      }}
-                      className={`px-2.5 py-1.5 rounded-lg text-left text-xs transition-all border flex items-center justify-between ${
-                        isLight
-                          ? 'bg-white/90 hover:bg-white text-slate-900 border-slate-300 shadow-xs hover:border-blue-500'
-                          : 'bg-slate-900/70 hover:bg-slate-800 text-slate-100 border-white/15 hover:border-cyan-400'
-                      }`}
-                    >
-                      <span className="font-bold text-[11px] truncate">{acc.role}</span>
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-medium ${
-                        isLight ? 'bg-blue-100 text-blue-800' : 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/40'
-                      }`}>
-                        {acc.badge}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
             </form>
           </div>
         </div>
