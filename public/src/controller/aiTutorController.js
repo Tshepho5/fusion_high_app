@@ -196,6 +196,10 @@ exports.sendChatMessage = async (req, res) => {
             } catch (_) {}
         }
 
+        const reqId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        const startTime = Date.now();
+        console.info(`[AI REQUEST RECV] id=${reqId} role=${userRole} subject=${subject || 'General'} grade=${grade || 10} msgLen=${message.length}`);
+
         const tutorResponse = await aiTutorService.chatWithSubjectTutor({
             learnerUserId: userId,
             role: userRole,
@@ -212,10 +216,26 @@ exports.sendChatMessage = async (req, res) => {
             schoolName
         });
 
-        res.json(tutorResponse);
+        const durationMs = Date.now() - startTime;
+        console.info(`[AI RESPONSE DELIVERED] id=${reqId} duration=${durationMs}ms replyLen=${tutorResponse?.reply ? tutorResponse.reply.length : 0} suggestions=${tutorResponse?.suggestions ? tutorResponse.suggestions.length : 0}`);
+
+        res.json({
+            ...tutorResponse,
+            requestId: reqId,
+            durationMs
+        });
     } catch (err) {
-        console.error('[AI TUTOR CONTROLLER ERROR] sendChatMessage:', err);
-        res.status(500).json({ error: err.message || 'Failed to generate tutor response.' });
+        console.error(`[AI REQUEST FAILED] error=${err.message} code=${err.code || 'UNKNOWN'}`);
+        res.status(500).json({
+            error: err.message || 'Failed to generate tutor response.',
+            providerError: Boolean(err.isProviderFailure || err.code === 'CONFIG_MISSING' || (err.message && (err.message.includes('429') || err.message.includes('Quota')))),
+            reply: `⚠️ **Geleza AI Connection Notice**\n\nThe AI model provider is currently experiencing temporary rate limits or connectivity issues (${err.message || 'Service unavailable'}). Please try again in a few moments, or choose one of your study guide topics below.`,
+            suggestions: [
+                'Give me a Grade 10 Life Sciences practice question',
+                'Explain cell structure and organelles',
+                'Show me exam study tips for Life Sciences'
+            ]
+        });
     }
 };
 

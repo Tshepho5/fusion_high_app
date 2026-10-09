@@ -5,7 +5,7 @@ class AIProvider {
     constructor() {
         this._client = null;
         this.defaultModel = process.env.AI_MODEL || 'gemini-3.5-flash';
-        this.fallbackModels = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'];
+        this.fallbackModels = ['gemini-3.5-flash', 'gemini-3.8-flash'];
     }
 
     _getKey() {
@@ -33,20 +33,24 @@ class AIProvider {
     }
 
     /**
-     * Non-streaming generation with automatic model fallback and retry
+     * Non-streaming generation with automatic model fallback, retry, and diagnostic logging
      */
     async generateContent({ systemInstruction, prompt, history = [], tools = null, temperature = 0.4 }) {
         const client = this.getClient();
         if (!client) {
-            throw new Error('AI service is not configured. GEMINI_API_KEY is missing on the server.');
+            const err = new Error('AI service is not configured. GEMINI_API_KEY is missing on the server.');
+            err.code = 'CONFIG_MISSING';
+            throw err;
         }
 
         const candidates = [this.defaultModel, ...this.fallbackModels.filter(m => m !== this.defaultModel)];
         let lastError = null;
+        const startTime = Date.now();
 
         for (const modelName of candidates) {
             for (let attempt = 0; attempt < 2; attempt++) {
                 try {
+                    console.info(`[AI DIAGNOSTIC: START] Requesting model=${modelName} attempt=${attempt + 1} promptLength=${prompt ? prompt.length : 0}`);
                     const modelConfig = {
                         model: modelName,
                         generationConfig: { temperature }
@@ -76,16 +80,21 @@ class AIProvider {
                     const response = await result.response;
                     const functionCalls = response.functionCalls ? response.functionCalls() : null;
                     const text = response.text ? response.text() : '';
+                    const latencyMs = Date.now() - startTime;
+
+                    console.info(`[AI DIAGNOSTIC: SUCCESS] model=${modelName} latency=${latencyMs}ms responseLength=${text.length}`);
 
                     return {
                         text,
                         functionCalls: functionCalls || null,
                         modelUsed: modelName,
+                        latencyMs,
                         rawResponse: response
                     };
                 } catch (err) {
                     lastError = err;
                     const msg = err.message || '';
+                    console.warn(`[AI DIAGNOSTIC: ATTEMPT FAILED] model=${modelName} attempt=${attempt + 1} error=${msg}`);
                     const isTransient = msg.includes('429') || msg.includes('503') || msg.includes('Quota') || msg.includes('busy');
                     if (isTransient && attempt === 0) {
                         await new Promise(r => setTimeout(r, 1000));
@@ -96,6 +105,7 @@ class AIProvider {
             }
         }
 
+        console.error(`[AI DIAGNOSTIC: ALL FAILED] totalDuration=${Date.now() - startTime}ms lastError=${lastError?.message}`);
         throw lastError || new Error('All AI model candidate attempts failed.');
     }
 

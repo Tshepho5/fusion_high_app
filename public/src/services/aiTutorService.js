@@ -32,6 +32,18 @@ try {
   console.warn('[AI SERVICE] Could not load Life Sciences KB:', e.message);
 }
 
+// Load Dedicated Grade 10 Life Sciences AI Model Knowledge Base (RAG)
+let lifeSciencesGrade10KB = [];
+try {
+  const ls10Path = path.join(__dirname, '../../../data/life_sciences_grade10_kb.json');
+  if (fs.existsSync(ls10Path)) {
+    lifeSciencesGrade10KB = JSON.parse(fs.readFileSync(ls10Path, 'utf8'));
+    console.info(`[AI SERVICE] Loaded Grade 10 Life Sciences AI Knowledge Base (${lifeSciencesGrade10KB.length} CAPS core topics).`);
+  }
+} catch (e) {
+  console.warn('[AI SERVICE] Could not load Grade 10 Life Sciences KB:', e.message);
+}
+
 // Load Dedicated Grade 12 Physical Sciences AI Model Knowledge Base (RAG)
 let physicalSciencesKB = [];
 try {
@@ -292,16 +304,16 @@ function evaluateMathematicsAnswer(itemId, studentAnswer) {
   };
 }
 
-function queryLifeSciencesModel(userText) {
-  if (!lifeSciencesKB || lifeSciencesKB.length === 0 || !userText) return null;
+function queryLifeSciencesGrade10Model(userText) {
+  if (!lifeSciencesGrade10KB || lifeSciencesGrade10KB.length === 0 || !userText) return null;
   const lower = userText.toLowerCase();
   let bestItem = null;
   let maxMatches = 0;
 
-  for (const item of lifeSciencesKB) {
+  for (const item of lifeSciencesGrade10KB) {
     let matches = 0;
     for (const kw of item.keywords) {
-      if (lower.includes(kw.toLowerCase())) matches += 1.5;
+      if (lower.includes(kw.toLowerCase())) matches += 1.8;
     }
     const words = (item.topic + ' ' + item.subtopic + ' ' + item.question).toLowerCase().split(/\s+/);
     for (const w of words) {
@@ -313,10 +325,114 @@ function queryLifeSciencesModel(userText) {
     }
   }
 
-  return maxMatches >= 1.5 && bestItem ? { ...bestItem, matchScore: maxMatches } : null;
+  return maxMatches >= 1.5 && bestItem ? { ...bestItem, matchScore: maxMatches, grade: 10 } : null;
+}
+
+function evaluateLifeSciencesGrade10Answer(itemId, studentAnswer) {
+  const item = lifeSciencesGrade10KB.find(x => x.id === itemId);
+  if (!item) return { error: `Topic/Question ID ${itemId} not found in Grade 10 Life Sciences KB.` };
+
+  const lower = (studentAnswer || '').toLowerCase();
+  const matched = item.keywords.filter(k => lower.includes(k.toLowerCase()));
+  const missing = item.keywords.filter(k => !lower.includes(k.toLowerCase()));
+  const total = item.rubric_points.length;
+  const keywordPct = matched.length / Math.max(1, item.keywords.length);
+  const estimatedMark = Math.min(total, Math.round(keywordPct * total));
+  const percentage = Math.round((estimatedMark / total) * 100);
+
+  return {
+    itemId: item.id,
+    topic: item.topic,
+    subtopic: item.subtopic,
+    paper: item.paper,
+    grade: 10,
+    prescribedDefinition: item.prescribed_definition,
+    formula: item.formula,
+    constants: item.constants,
+    estimatedMark: `${estimatedMark}/${total}`,
+    percentage: `${percentage}%`,
+    matchedTerms: matched,
+    missingTerms: missing,
+    rubricChecklist: item.rubric_points,
+    modelAnswer: item.model_answer,
+    commonMisconceptions: item.common_misconceptions,
+    humanGuidance: item.human_guidance,
+    feedback: percentage >= 80 
+      ? "Outstanding biological mastery! Your Grade 10 terminology and conceptual explanations follow official DBE CAPS guidelines."
+      : percentage >= 50
+        ? "Good conceptual work! Ensure you state precise scientific keywords and biological cause-and-effect to gain full rubric marks."
+        : "Needs revision. Official CAPS markers require exact scientific definitions and correct organelle/process terminology."
+  };
+}
+
+function queryLifeSciencesModel(userText, grade = null) {
+  if (!userText) return null;
+  const isGr10 = grade === 10 || grade === '10';
+  const isGr12 = grade === 12 || grade === '12';
+
+  if (isGr10) {
+    return queryLifeSciencesGrade10Model(userText);
+  }
+
+  if (isGr12) {
+    if (!lifeSciencesKB || lifeSciencesKB.length === 0) return null;
+    const lower = userText.toLowerCase();
+    let bestItem = null;
+    let maxMatches = 0;
+
+    for (const item of lifeSciencesKB) {
+      let matches = 0;
+      for (const kw of item.keywords) {
+        if (lower.includes(kw.toLowerCase())) matches += 1.5;
+      }
+      const words = (item.topic + ' ' + item.subtopic + ' ' + item.question).toLowerCase().split(/\s+/);
+      for (const w of words) {
+        if (w.length > 3 && lower.includes(w)) matches += 0.5;
+      }
+      if (matches > maxMatches) {
+        maxMatches = matches;
+        bestItem = item;
+      }
+    }
+    return maxMatches >= 1.5 && bestItem ? { ...bestItem, matchScore: maxMatches, grade: 12 } : null;
+  }
+
+  // If grade not specified, compare both
+  const gr10Match = queryLifeSciencesGrade10Model(userText);
+  let gr12Match = null;
+  if (lifeSciencesKB && lifeSciencesKB.length > 0) {
+    const lower = userText.toLowerCase();
+    let bestItem = null;
+    let maxMatches = 0;
+    for (const item of lifeSciencesKB) {
+      let matches = 0;
+      for (const kw of item.keywords) {
+        if (lower.includes(kw.toLowerCase())) matches += 1.5;
+      }
+      const words = (item.topic + ' ' + item.subtopic + ' ' + item.question).toLowerCase().split(/\s+/);
+      for (const w of words) {
+        if (w.length > 3 && lower.includes(w)) matches += 0.5;
+      }
+      if (matches > maxMatches) {
+        maxMatches = matches;
+        bestItem = item;
+      }
+    }
+    if (maxMatches >= 1.5 && bestItem) {
+      gr12Match = { ...bestItem, matchScore: maxMatches, grade: 12 };
+    }
+  }
+
+  if (gr10Match && gr12Match) {
+    return gr10Match.matchScore >= gr12Match.matchScore ? gr10Match : gr12Match;
+  }
+  return gr10Match || gr12Match;
 }
 
 function evaluateLifeSciencesAnswer(itemId, studentAnswer) {
+  if (itemId && itemId.startsWith('LS10_')) {
+    return evaluateLifeSciencesGrade10Answer(itemId, studentAnswer);
+  }
   const item = lifeSciencesKB.find(x => x.id === itemId);
   if (!item) return { error: `Topic/Question ID ${itemId} not found in Life Sciences KB.` };
 
@@ -370,16 +486,18 @@ async function callAI(prompt, isJson = false, modelOverride = null) {
 
   const modelCandidates = modelOverride
     ? [modelOverride]
-    : ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'];
+    : ['gemini-3.5-flash', 'gemini-3.8-flash'];
   let lastError = null;
 
   for (const targetModel of modelCandidates) {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
+        console.info(`[AI MODEL START] targetModel=${targetModel} attempt=${attempt + 1} promptLength=${prompt ? prompt.length : 0}`);
         const model = genAI.getGenerativeModel({ model: targetModel });
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const text = response.text();
+        console.info(`[AI MODEL SUCCESS] targetModel=${targetModel} responseLength=${text.length}`);
 
         if (isJson) {
           const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -1031,8 +1149,19 @@ function resolvePortalOrAppAnswer(query, role = 'user') {
   return null;
 }
 
+let mockAIProvider = null;
+
+function setMockProvider(fn) {
+  mockAIProvider = fn;
+}
+
 async function safeAICall(prompt, isJson = false, retries = 1) {
-  const models = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'];
+  if (typeof mockAIProvider === 'function') {
+    return await mockAIProvider(prompt, isJson);
+  }
+
+  const models = ['gemini-3.5-flash', 'gemini-3.8-flash'];
+  let lastError = null;
 
   for (const m of models) {
     try {
@@ -1040,6 +1169,7 @@ async function safeAICall(prompt, isJson = false, retries = 1) {
       const result = await callAI(prompt, isJson, m);
       if (result && !result.error) return result;
     } catch (err) {
+      lastError = err;
       if (err.message && (err.message.includes('429') || err.message.includes('Quota exceeded') || err.message.includes('503'))) {
         console.info(`[AI SERVICE] Quota limit/spike encountered on ${m}. Cascading...`);
       } else {
@@ -1048,16 +1178,20 @@ async function safeAICall(prompt, isJson = false, retries = 1) {
     }
   }
 
-  try {
-    const fb = generateCAPSLocalFallback(prompt);
-    if (!isJson && (!fb || !fb.text)) {
-      return { text: typeof fb === 'string' ? fb : "I'm right here with you! Let's work through this problem step-by-step. What specific equation, concept, or subject question are you tackling?" };
+  // Only use local fallback generator for structured test/lesson generation if explicitly requested
+  if (isJson || prompt.includes('Lesson Plan') || prompt.includes('Test Paper') || prompt.includes('learning_outcomes')) {
+    try {
+      const fb = generateCAPSLocalFallback(prompt);
+      if (fb) return fb;
+    } catch (fallbackErr) {
+      console.error('[AI FALLBACK ERROR]', fallbackErr);
     }
-    return fb;
-  } catch (fallbackErr) {
-    console.error('[AI FALLBACK ERROR]', fallbackErr);
-    return isJson ? { error: 'Failed to generate content.' } : { text: "I'm here to help with your CAPS school studies! What topic would you like to review?" };
   }
+
+  // For real user conversational requests, NEVER return fake generic placeholders. Throw provider error instead.
+  const providerErr = lastError || new Error('AI provider connection is temporarily unavailable.');
+  providerErr.isProviderFailure = true;
+  throw providerErr;
 }
 
 async function getTextCompletion(prompt) {
@@ -1421,7 +1555,90 @@ async function deleteConversation(conversationId, learnerUserId) {
   return res.rows.length > 0;
 }
 
-/**
+function generateAcademicSuggestions(userText, normSubject, normGrade) {
+  const lower = (userText || '').toLowerCase();
+  const subLower = (normSubject || '').toLowerCase();
+
+  if (subLower.includes('life') || subLower.includes('bio')) {
+    if (lower.includes('photo') || lower.includes('light') || lower.includes('chloroplast')) {
+      return [
+        'Show me the marking memorandum for this question',
+        'Explain the role of light intensity and CO2',
+        'Give me a harder photosynthesis practice question'
+      ];
+    }
+    if (lower.includes('mito') || lower.includes('meio') || lower.includes('cell division')) {
+      return [
+        'Compare Prophase in mitosis vs Meiosis I',
+        'What causes non-disjunction in cell division?',
+        'Give me a 5-mark cell division practice question'
+      ];
+    }
+    if (lower.includes('osmo') || lower.includes('diffus') || lower.includes('water potential')) {
+      return [
+        'Explain turgor pressure vs plasmolysis in plant cells',
+        'How do I calculate percentage mass change in potato cylinders?',
+        'Give me a 5-mark osmosis exam question'
+      ];
+    }
+    if (lower.includes('nutri') || lower.includes('digest') || lower.includes('enzyme') || lower.includes('villi')) {
+      return [
+        'Explain chemical digestion by pancreatic enzymes',
+        'Explain structural adaptations of the small intestine villi',
+        'Give me a 10-mark question on human nutrition'
+      ];
+    }
+    if (lower.includes('hi') || lower.includes('hello') || lower.includes('help')) {
+      return [
+        `Give me a Grade ${normGrade} Life Sciences practice question`,
+        'Explain cell structure and organelles',
+        'What are the core exam topics for Term 3?'
+      ];
+    }
+    return [
+      `Give me a 5-mark Grade ${normGrade} CAPS exam question`,
+      'Explain this biological concept with an analogy',
+      'Show me the marking criteria and exam tips'
+    ];
+  }
+
+  if (subLower.includes('physic') || subLower.includes('chem')) {
+    if (lower.includes('wave') || lower.includes('sound') || lower.includes('light')) {
+      return [
+        'Show me how to calculate wave speed with v = fλ',
+        'Explain the principle of superposition',
+        'Give me a 5-mark waves practice problem'
+      ];
+    }
+    if (lower.includes('circuit') || lower.includes('resist') || lower.includes('current')) {
+      return [
+        'Solve equivalent resistance in a parallel branch',
+        'Explain internal resistance and lost volts',
+        'Give me a circuit calculation problem with memo'
+      ];
+    }
+    return [
+      `Show me the step-by-step formula and substitution`,
+      `Give me a Grade ${normGrade} Physical Sciences practice problem`,
+      `What common exam mistakes do students make here?`
+    ];
+  }
+
+  if (subLower.includes('math')) {
+    return [
+      'Show the step-by-step algebraic working',
+      'Give me another practice problem with solutions',
+      'Explain the key theorem or formula used here'
+    ];
+  }
+
+  return [
+    `Give me a Grade ${normGrade} practice question in ${normSubject}`,
+    `Explain this concept step-by-step`,
+    `What are the high-yield exam tips for this topic?`
+  ];
+}
+
 /**
  * Main Interactive Role-Based Academic AI Assistant & Chat Engine:
  * - Powered by Google Gemini API (gemini-3.6-flash).
@@ -1729,10 +1946,12 @@ Respond with human warmth, encouragement, and pedagogical excellence.
 `;
     }
   } else if (isLifeScience) {
-    const lsMatch = queryLifeSciencesModel(userText);
+    const isGr10 = normGrade === 10 || normGrade === '10';
+    const lsMatch = queryLifeSciencesModel(userText, normGrade);
+    const matchedGr10 = isGr10 || (lsMatch && lsMatch.id && lsMatch.id.startsWith('LS10_'));
     if (lsMatch) {
       return `
-### 🧬 DEDICATED GRADE 12 LIFE SCIENCES SPECIALIST KNOWLEDGE BASE (STRICT DBE CAPS RAG):
+### 🧬 DEDICATED GRADE ${matchedGr10 ? '10' : '12'} LIFE SCIENCES SPECIALIST KNOWLEDGE BASE (STRICT DBE CAPS RAG):
 - Target Topic: "${lsMatch.topic}" (${lsMatch.paper}) — Subtopic: "${lsMatch.subtopic}"
 - Official DBE Prescribed Definition: "${lsMatch.prescribed_definition}"
 - Biological Process / Formula: ${lsMatch.formula}
@@ -1747,9 +1966,20 @@ ${lsMatch.model_answer}
   "${lsMatch.human_guidance}"
 
 ### STRICT SUBJECT ISOLATION DIRECTIVE:
-You are strictly in the Grade 12 Life Sciences (Paper 1 & Paper 2) classroom.
+You are strictly in the Grade ${matchedGr10 ? '10' : '12'} Life Sciences classroom.
 Under NO circumstances discuss Physical Sciences physics formulas, velocity/momentum calculations, or mathematics Euclidean geometry proofs.
-Use accurate CAPS biological terminology (synapsis, chiasmata, trisomy 21, ovulation, vasodilation, vasoconstriction, transcription, translation, codon, IA/IB/i, bipedalism, etc.) and explain with empathy, clarity, and human warmth.
+Use accurate CAPS biological terminology (chloroplast, thylakoids, stroma, osmosis, plasmolysis, turgor pressure, selectively permeable, mitosis, metaphase, anaphase, xylem, phloem, villi, enzymes, etc.) and explain with empathy, clarity, and pedagogical excellence.
+`;
+    } else if (matchedGr10) {
+      return `
+### 🧬 GRADE 10 LIFE SCIENCES (PAPER 1 & PAPER 2) CLASSROOM:
+- Official CAPS Curriculum: Life Sciences Grade 10:
+  * Term 1 / Chemistry of Life: Inorganic compounds (Water as solvent, lubricant & temperature buffer; Minerals like Fe, Ca, N, P, I), Organic compounds (Carbohydrates - monosaccharides, disaccharides, polysaccharides; Lipids - fats, oils, cholesterol; Proteins - amino acids, peptide bonds; Enzymes - biological catalysts, active site, lock-and-key model, denaturation above 45°C or extreme pH; Nucleic acids - DNA, RNA).
+  * Term 2 / Cells & Tissues: Cell structure & organelles (Microscopy, Cell wall, Plasma membrane, Fluid Mosaic model, Nucleus, Mitochondria / cellular respiration, Chloroplasts / photosynthesis, Ribosomes, Endoplasmic reticulum, Golgi body, Vacuole; Plant vs Animal cells). Movement across membranes (Diffusion, Osmosis, Water potential gradient, Selectively permeable membrane, Turgor pressure, Plasmolysis, Active transport). Cell Division / Mitosis (Interphase, Prophase, Metaphase, Anaphase, Telophase, Cytokinesis; Biological importance in growth, repair, and asexual reproduction; Cancer as uncontrolled mitosis). Plant tissues (Meristematic, Epidermis & guard cells, Xylem vessels & tracheids, Phloem sieve tubes & companion cells, Parenchyma, Sclerenchyma, Collenchyma). Animal tissues (Epithelial, Connective, Muscle, Nerve).
+  * Term 3 / Plant & Animal Organs: Dicotyledonous Leaf anatomy & adaptations for photosynthesis; Uptake of water & mineral salts in roots (root hair absorption, xylem conduction, transpiration pull); Transpiration & environmental factors (temperature, light intensity, humidity, wind); Support systems in animals (Hydrostatic, Exoskeleton, Endoskeleton; Human axial and appendicular skeleton, joints); Transport systems in mammals (Heart anatomy, Cardiac cycle, Blood vessels - arteries, veins, capillaries; Pulmonary and systemic circulation).
+  * Term 4 / Biosphere to Ecosystems & History of Life: Biosphere, Biomes of South Africa, Ecosystem trophic structure; History of life on Earth (Fossils, Geological timescale, Mass extinctions).
+- Marking Standard: State biological definitions accurately, show explicit mark allocations (e.g. [5 Marks], [10 Marks]), describe sequential biological processes in clear numbered steps, explain cause-and-effect clearly.
+- Strict subject boundary: Do NOT discuss physics or mathematics calculations or unrelated subjects.
 `;
     } else {
       return `
@@ -1762,6 +1992,17 @@ Use accurate CAPS biological terminology (synapsis, chiasmata, trisomy 21, ovula
   }
   return '';
 })()}
+
+### 6. CRITICAL USER INTENT & PEDAGOGICAL DIRECTIVES (MANDATORY):
+1. Understand the user's specific request before responding:
+   - If the user asks to GENERATE a practice question, exam problem, or quiz (e.g. "Generate a South African CAPS examination practice question for Grade 10 Life Sciences... Include mark allocation [e.g. 5 Marks] and test my problem solving"), GENERATE THE ACTUAL QUESTION IMMEDIATELY with the requested mark allocation and scenario! NEVER ask what question they want, and NEVER respond with generic greeting deflection!
+   - If the user asks for an EXPLANATION (e.g. "Explain the difference between mitosis and meiosis" or "Explain osmosis using a simple example"), PROVIDE THE DIRECT SCIENTIFIC EXPLANATION IMMEDIATELY using appropriate CAPS scientific terminology, analogies, and structured comparisons.
+   - If the user asks a difficult question on a topic (e.g. "Give me a difficult question about human nutrition worth 10 marks"), generate a high-order cognitive question with a comprehensive 10-mark breakdown and memorandum.
+   - If the user greets naturally (e.g. "Hi", "Hello"), respond with a warm, natural greeting and offer help without forcing an unrelated academic question.
+   - If the user says "Explain it more simply", review the preceding answer and re-explain the concept using simpler language and concrete real-world analogies.
+2. Avoid repeating introductory greetings ("I'm right here with you", "Hello learner") on every message.
+3. Do not treat every user question as a request for step-by-step coaching on an unspecified problem. If they asked a question or asked for a question to be generated, answer or generate it directly!
+4. Only ask clarifying questions if essential information is genuinely missing to formulate an answer.
 
 ${historyPrompt}
 ${fullName || normRole}: ${userText}
@@ -1820,49 +2061,37 @@ Detailed, Warm, Helpful Response:
       aiReplyText = portalAns.text;
       actionLinks = portalAns.actionLinks || [];
       suggestions = portalAns.suggestions || [];
-    } else if (isPhysics) {
-      const isGr10 = normGrade === 10 || normGrade === '10';
-      const psMatch = queryPhysicalSciencesModel(userText, normGrade);
-      if (psMatch) {
-        const grLabel = (psMatch.id && psMatch.id.startsWith('PS10_')) || isGr10 ? 'Grade 10' : 'Grade 12';
-        aiReplyText = `### ⚛️ ${grLabel} Physical Sciences Specialist Assistant\n**CAPS Focus: ${psMatch.paper} — ${psMatch.topic} (${psMatch.subtopic})**\n\n${psMatch.model_answer}\n\n---\n#### 📋 Official DBE Marking Rubric Breakdown:\n${psMatch.rubric_points.map(p => `• ${p}`).join('\n')}\n\n💡 **Exam Pitfall / Tip**:\n${psMatch.common_misconceptions}\n\n🤝 *Teacher Note: ${psMatch.human_guidance}*`;
-        suggestions = isGr10 
-          ? ['Calculate wave speed using v = fλ', 'Solve equivalent resistance in parallel', 'Calculate moles and volume of gas at STP']
-          : ['Solve a vertical projectile problem', 'Calculate conservation of momentum', 'How do I calculate internal resistance?'];
-      } else if (isGr10) {
-        aiReplyText = `I'm your dedicated Grade 10 Physical Sciences AI Specialist! I can assist you with Paper 1 Physics (Transverse & Longitudinal Waves, Sound, Electromagnetic Radiation, Magnetism & Electrostatics, Electric Circuits, Motion in 1D, Conservation of Mechanical Energy) and Paper 2 Chemistry (Classification of Matter, States of Matter, Atomic Structure, Chemical Bonding, Quantitative Chemistry / The Mole Concept). What topic or problem are we working on today?`;
-        suggestions = ['Explain principle of superposition', 'Solve a motion problem with equations of motion', 'Calculate molar mass and moles of a compound'];
-      } else {
-        aiReplyText = `I'm your dedicated Grade 12 Physical Sciences AI Specialist! I can assist you with Paper 1 Physics (Vertical Projectile Motion, Momentum & Impulse, Work-Energy-Power, Doppler Effect, Electric Circuits, Electrodynamics, Photoelectric Effect) and Paper 2 Chemistry (Organic Chemistry, Reaction Rates, Chemical Equilibrium, Acids & Bases, Electrochemical Cells). What equation or concept are we tackling today?`;
-        suggestions = ['Explain Newton Second Law in terms of momentum', 'Calculate Work-Energy on an incline', 'How does the Doppler formula work?'];
-      }
-    } else if (isMath) {
-      const mathMatch = queryMathematicsModel(userText);
-      if (mathMatch) {
-        aiReplyText = `### 📐 Grade 12 Mathematics Specialist Assistant\n**CAPS Focus: ${mathMatch.paper} — ${mathMatch.topic} (${mathMatch.subtopic})**\n\n${mathMatch.model_answer}\n\n---\n#### 📋 Official DBE Marking Rubric Breakdown:\n${mathMatch.rubric_points.map(p => `• ${p}`).join('\n')}\n\n💡 **Matric Exam Pitfall / Tip**:\n${mathMatch.common_misconceptions}\n\n🤝 *Teacher Note: ${mathMatch.human_guidance}*`;
-        suggestions = ['Solve a quadratic inequality with critical values', 'Calculate sum to infinity of geometric series', 'Find the derivative from first principles'];
-      } else {
-        aiReplyText = `I'm your dedicated Grade 12 Mathematics AI Specialist! I can assist you with Paper 1 (Algebra, Sequences & Series, Functions, Financial Maths, Calculus, Probability) and Paper 2 (Statistics, Analytical Geometry, Trigonometry, Euclidean Geometry). What equation, theorem, or problem are we working through today?`;
-        suggestions = ['Show first principles derivative of 3x^2 - 2x', 'Solve financial maths balance outstanding', 'Prove angle at centre is twice angle at circumference'];
-      }
-    } else if (isLifeScience) {
-      const lsMatch = queryLifeSciencesModel(userText);
-      if (lsMatch) {
-        aiReplyText = `### 🧬 Grade 12 Life Sciences Specialist Assistant\n**CAPS Focus: ${lsMatch.paper} — ${lsMatch.topic} (${lsMatch.subtopic})**\n\n${lsMatch.model_answer}\n\n---\n#### 📋 Official DBE CAPS Marking Rubric Breakdown:\n${lsMatch.rubric_points.map(p => `• ${p}`).join('\n')}\n\n💡 **Matric Exam Pitfall / Tip**:\n${lsMatch.common_misconceptions}\n\n🤝 *Teacher Note: ${lsMatch.human_guidance}*`;
-        suggestions = ['How do I solve a Punnett Square?', 'Describe the human reflex arc', 'Explain blood glucose negative feedback'];
-      } else {
-        aiReplyText = `I'm your dedicated Grade 12 Life Sciences AI Specialist! I can assist you with both Paper 1 (Human reproduction, nervous system, senses, endocrine system & homeostasis, plant tropisms) and Paper 2 (DNA code of life, genetics & inheritance, meiosis, evolution & natural selection). What topic would you like to review?`;
-        suggestions = ['Explain transcription vs translation', 'Describe DNA replication', 'How does eye accommodation work?'];
-      }
     } else {
-      aiReplyText = `I'm here to support you with everything on Geleza SA! You can ask me any question about your academic subjects, exams, or navigating your dashboard tools. What would you like to explore?`;
-      suggestions = ['How do I check my timetable?', 'How do I view CAPS report cards?', 'Explain a subject concept step-by-step'];
+      // Academic Subject Fallback: Do NOT mask provider failure with a generic fake greeting!
+      // Check if we have verified CAPS curriculum KB match
+      let matchedKB = null;
+      let subjectLabel = normSubject;
+      if (isLifeScience) {
+        matchedKB = queryLifeSciencesModel(userText, normGrade);
+        subjectLabel = `Life Sciences (Grade ${normGrade})`;
+      } else if (isPhysics) {
+        matchedKB = queryPhysicalSciencesModel(userText, normGrade);
+        subjectLabel = `Physical Sciences (Grade ${normGrade})`;
+      } else if (isMath) {
+        matchedKB = queryMathematicsModel(userText);
+        subjectLabel = `Mathematics (Grade ${normGrade})`;
+      }
+
+      if (matchedKB) {
+        aiReplyText = `⚠️ **Note: The live AI model is temporarily experiencing high traffic (${err.message || 'Rate limit'}). Here is the official DBE CAPS curriculum study guide for your topic:**\n\n### 🧬 ${subjectLabel}: ${matchedKB.topic} (${matchedKB.subtopic})\n\n${matchedKB.model_answer}\n\n---\n#### 📋 Official DBE CAPS Marking Rubric Breakdown:\n${matchedKB.rubric_points.map(p => `• ${p}`).join('\n')}\n\n💡 **CAPS Exam Tip**:\n${matchedKB.common_misconceptions}\n\n🤝 *Teacher Note: ${matchedKB.human_guidance}*`;
+      } else {
+        aiReplyText = `⚠️ **Geleza AI Connection Notice**\n\nThe AI model provider is currently experiencing temporary rate limits or connectivity issues (${err.message || 'Service temporarily unavailable'}).\n\nYour question about **${normSubject}** could not be completed by the live model. Please try again shortly or choose a study topic below.`;
+      }
+      suggestions = generateAcademicSuggestions(userText, normSubject, normGrade);
     }
   }
 
-  // Fallback / Auto-detection of navigation intent if no action link was explicitly generated
+  // Fallback / Auto-detection of navigation intent ONLY if not an academic subject or if explicitly asking about the portal
   const lowerText = userText.toLowerCase();
-  if (actionLinks.length === 0) {
+  const subLower = (normSubject || '').toLowerCase();
+  const isAcademic = subLower.includes('life') || subLower.includes('physic') || subLower.includes('chem') || subLower.includes('math') || subLower.includes('account');
+
+  if (actionLinks.length === 0 && !isAcademic) {
     if (lowerText.includes('school') && (lowerText.includes('add') || lowerText.includes('register') || lowerText.includes('admit') || lowerText.includes('application') || lowerText.includes('admission'))) {
       actionLinks.push({ label: 'Review School Admissions', tab: 'school-admissions' });
     } else if (lowerText.includes('partner') || (lowerText.includes('school') && (lowerText.includes('directory') || lowerText.includes('campus')))) {
@@ -1897,11 +2126,7 @@ Detailed, Warm, Helpful Response:
   }
 
   if (suggestions.length === 0) {
-    suggestions = [
-      `Where is my weekly timetable?`,
-      `How do I check CAPS report cards?`,
-      `Explain a key concept in ${normSubject}`
-    ];
+    suggestions = generateAcademicSuggestions(userText, normSubject, normGrade);
   }
 
   // 6. Persist user message and AI response into PostgreSQL database if valid session
@@ -1943,6 +2168,7 @@ Detailed, Warm, Helpful Response:
 }
 
 module.exports = {
+  setMockProvider,
   aiCurriculum,
   activeAssessments,
   safeAICall,
@@ -1960,8 +2186,11 @@ module.exports = {
   deleteConversation,
   chatWithSubjectTutor,
   queryLifeSciencesModel,
+  queryLifeSciencesGrade10Model,
   evaluateLifeSciencesAnswer,
+  evaluateLifeSciencesGrade10Answer,
   getLifeSciencesKnowledgeBase: () => lifeSciencesKB,
+  getLifeSciencesGrade10KnowledgeBase: () => lifeSciencesGrade10KB,
   queryPhysicalSciencesModel,
   queryPhysicalSciencesGrade10Model,
   evaluatePhysicalSciencesAnswer,

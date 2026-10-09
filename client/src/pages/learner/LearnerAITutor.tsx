@@ -613,11 +613,18 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
       setMessages(prev => [...prev, aiMessage]);
     } catch (err: any) {
       console.error('[AI TUTOR ERROR]', err);
+      const serverNotice = err.response?.data?.reply;
+      const serverSuggestions = err.response?.data?.suggestions;
       const errMsg: Message = {
         id: `ai-err-${Date.now()}`,
         sender: 'ai',
-        text: `I had trouble connecting to the curriculum tutor engine. Please check your network and try again!`,
+        text: serverNotice || `⚠️ I had trouble connecting to the curriculum tutor engine. Please check your network and try again!`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        suggestions: serverSuggestions || [
+          `Give me a Grade ${learnerGrade} practice question`,
+          `Explain a foundational concept in ${subject}`,
+          `What are the most common exam mistakes?`
+        ]
       };
       setMessages(prev => [...prev, errMsg]);
     } finally {
