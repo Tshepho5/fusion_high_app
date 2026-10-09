@@ -10,6 +10,8 @@
     "build": "npm run build:client",
     "test": "node --test tests/critical-path.test.js tests/learner-csv-import.test.js",
     "test:critical": "node --test tests/critical-path.test.js tests/learner-csv-import.test.js",
+    "test:ai": "node --test tests/geleza-ai.test.js",
+    "test:ai:auto": "node tests/geleza-ai-automation.test.js",
     "scan:secrets": "node scripts/scan-secrets.js",
     "docs:pdf": "node docs/geleza-sa-project-guide/generate-geleza-sa-pdf.js",
     "docs:exec": "node docs/geleza-sa-project-guide/generate-executive-brief.js"

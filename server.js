@@ -62,9 +62,12 @@ ensureDir(appUploadDir);
 // Initialize all database tables, multi-parent, and notification schemas on server startup (local/dedicated server only)
 const initializeAllDatabaseTables = require('./db/init_full_schema');
 const createAiConversationsTables = require('./db/create_ai_conversations_tables');
+const createGelezaAiTables = require('./db/create_geleza_ai_tables');
+const createRagKnowledgeTables = require('./db/create_rag_knowledge_tables');
 const emailService = require('./public/src/services/emailService');
 const gelezaEarlyWarningJob = require('./public/src/services/gelezaEarlyWarningJob');
 const feeReminderJob = require('./public/src/services/feeReminderJob');
+const gelezaAutomationJob = require('./public/src/services/ai/gelezaAutomationJob');
 
 if (!process.env.VERCEL) {
   (async () => {
@@ -79,6 +82,8 @@ if (!process.env.VERCEL) {
       const WebPushService = require('./public/src/services/webPushService');
       await WebPushService.init();
       await createAiConversationsTables();
+      await createGelezaAiTables();
+      await createRagKnowledgeTables();
       const migrateSportsCoachEvents = require('./db/migrate_sports_coach_events');
       await migrateSportsCoachEvents();
       const { migrateSchoolOnboardingAndCleanRoster } = require('./db/migrate_school_onboarding_and_clean_roster');
@@ -96,6 +101,8 @@ if (!process.env.VERCEL) {
       // Start automated daily background risk audit for student performance
       gelezaEarlyWarningJob.startPeriodicRiskAudit();
       feeReminderJob.startPeriodicFeeReminders();
+      // Start proactive Geleza AI school workflow automation
+      gelezaAutomationJob.startPeriodicAutomation();
     } catch (err) {
       console.error('[DB BOOTSTRAP] Initialization error:', err.message);
     }
@@ -481,7 +488,7 @@ app.post('/api/teacher/timetable/swap-request', authenticateToken, timetableSwap
 app.get('/api/teacher/timetable/swap-requests', authenticateToken, timetableSwapController.getSwapRequests);
 app.post('/api/teacher/timetable/swap-requests/:id/respond', authenticateToken, timetableSwapController.respondToSwapRequest);
 
-// Universal 24/7 AI Chat Assistant Endpoint (Available to all authenticated roles & visitors)
+// Universal 24/7 AI Chat Assistant Endpoint Auth Helper
 const optionalTokenAuth = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -495,7 +502,11 @@ const optionalTokenAuth = (req, res, next) => {
   });
 };
 
-app.post('/api/ai/chat', optionalTokenAuth, aiTutorController.sendChatMessage);
+// Mount Universal Geleza AI Intelligent Subsystem
+const aiRoutes = require('./public/src/routes/aiRoutes');
+app.use('/api/ai', aiRoutes);
+
+app.post('/api/ai/legacy-chat', optionalTokenAuth, aiTutorController.sendChatMessage);
 app.get('/api/ai/physics/topics', optionalTokenAuth, aiTutorController.getPhysicalSciencesTopics);
 app.post('/api/ai/physics/evaluate', optionalTokenAuth, aiTutorController.evaluatePhysicalSciencesAnswer);
 app.get('/api/ai/physics-grade10/topics', optionalTokenAuth, aiTutorController.getPhysicalSciencesGrade10Topics);

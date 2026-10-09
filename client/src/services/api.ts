@@ -216,7 +216,10 @@ export const learnerService = {
     conversationHistory?: any[];
     previous_questions?: string[];
   }) => 
-    api.post('/api/learner/ai-tutor/chat', { ...payload, message: payload.message || payload.prompt || payload.question }).then(res => res.data),
+    api.post('/api/ai/chat', { 
+      ...payload, 
+      message: payload.message || payload.prompt || payload.question 
+    }).then(res => res.data),
   getEnrolledSubjectsWithSyllabus: () => api.get('/api/learner/ai-tutor/subjects').then(res => res.data),
   getAIConversations: (subject?: string) => api.get('/api/learner/ai-tutor/conversations', { params: { subject } }).then(res => res.data),
   getAIConversationDetails: (id: number | string) => api.get(`/api/learner/ai-tutor/conversations/${id}`).then(res => res.data),
@@ -234,6 +237,38 @@ export const learnerService = {
   updateHomeLanguage: (home_language: string) => api.put('/api/learner/home-language', { home_language }).then(res => res.data),
   getCareerPathway: () => api.get('/api/learner/career-pathway').then(res => res.data),
   simulateAps: (payload: { subject_marks: Array<{ subject: string; mark: number }> }) => api.post('/api/learner/simulate-aps', payload).then(res => res.data),
+};
+
+// Universal Geleza AI Subsystem Client APIs
+export const gelezaAiService = {
+  chat: (payload: {
+    message: string;
+    conversationId?: number | null;
+    role?: string;
+    contextData?: any;
+  }) => api.post('/api/ai/chat', payload).then(res => res.data),
+  getConversations: () =>
+    api.get('/api/ai/conversations').then(res => res.data),
+  getConversationDetails: (id: number | string) =>
+    api.get(`/api/ai/conversations/${id}`).then(res => res.data),
+  deleteConversation: (id: number | string) =>
+    api.delete(`/api/ai/conversations/${id}`).then(res => res.data),
+  submitFeedback: (payload: { messageId: string | number; rating: 'up' | 'down'; feedbackText?: string }) =>
+    api.post('/api/ai/feedback', payload).then(res => res.data),
+  generateQuiz: (payload: { subject: string; grade?: number; topic: string; questionCount?: number; difficulty?: string }) =>
+    api.post('/api/ai/tutor/quiz', payload).then(res => res.data),
+  explainMistake: (payload: { subject: string; grade?: number; question: string; studentAnswer: string; correctAnswer?: string }) =>
+    api.post('/api/ai/tutor/explain-mistake', payload).then(res => res.data),
+  generateLessonPlan: (payload: { subject: string; grade?: number; topic: string; term?: number; durationMinutes?: number }) =>
+    api.post('/api/ai/teacher/lesson-plan', payload).then(res => res.data),
+  generateAssessment: (payload: { subject: string; grade?: number; topic: string; totalMarks?: number }) =>
+    api.post('/api/ai/teacher/assessment', payload).then(res => res.data),
+  draftParentMessage: (payload: { childName?: string; teacherName?: string; topic?: string; messageObjective?: string }) =>
+    api.post('/api/ai/parent/draft-message', payload).then(res => res.data),
+  getClassRiskBriefing: (classId: number | string) =>
+    api.get(`/api/ai/automation/briefing/class/${classId}`).then(res => res.data),
+  getClassAnalytics: (classId: number | string) =>
+    api.get(`/api/ai/insight/class/${classId}`).then(res => res.data),
 };
 
 // Interactive CAPS Subject AI Tutor APIs
@@ -482,6 +517,13 @@ export const conductService = {
   getChildConductForParent: (childId: number | string) => api.get(`/api/conduct/child/${childId}`).then(res => res.data),
   getTeacherConductLogs: () => api.get('/api/conduct/teacher-logs').then(res => res.data),
   updateDetentionStatus: (id: number | string, detention_status: string) => api.patch(`/api/conduct/detention/${id}`, { detention_status }).then(res => res.data),
+};
+
+// School Direct Messaging APIs
+export const messageService = {
+  sendMessage: (payload: { recipientId?: number | string; recipient_id?: number | string; subject?: string; content?: string; body?: string }) =>
+    api.post('/api/messages', payload).then(res => res.data),
+  getMessages: () => api.get('/api/messages').then(res => res.data),
 };
 
 // Examination Seating & Candidate Allocation APIs

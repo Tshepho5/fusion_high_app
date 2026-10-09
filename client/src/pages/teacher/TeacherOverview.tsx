@@ -5,6 +5,7 @@ import { TeacherOverviewSkeleton } from '../../components/teacher/TeacherOvervie
 import { Modal } from '../../components/common/Modal';
 import { Badge } from '../../components/common/Badge';
 import { TeacherQRScannerModal } from '../../components/teacher/TeacherQRScannerModal';
+import { TeacherAICopilotModal } from '../../components/teacher/TeacherAICopilotModal';
 import { FavoriteModulesSection } from '../../components/common/FavoriteModulesSection';
 import {
   Briefcase,
@@ -156,6 +157,10 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
 
   // Subject Command Center ("View All" Modal) State
   const [viewAllSubject, setViewAllSubject] = useState<any | null>(null);
+
+  // Geleza AI Copilot Modal State
+  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [copilotTab, setCopilotTab] = useState<'lesson' | 'test' | 'risk'>('lesson');
 
   // Subject View Mode State (Persisted in localStorage)
   const [subjectsViewMode, setSubjectsViewMode] = useState<SubjectViewMode>(() => {
@@ -402,6 +407,51 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
   return (
     <div className="space-y-6 animate-fade-in text-slate-100 pb-12">
       <HomeGreeting />
+
+      {/* GELEZA AI EDUCATOR COPILOT QUICK LAUNCHER */}
+      <section className="p-4 md:p-5 rounded-2xl bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-slate-900/60 border border-indigo-500/20 shadow-lg relative overflow-hidden backdrop-blur-sm">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center space-x-3.5">
+            <div className="p-3 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 text-white shadow-md shadow-indigo-500/20 shrink-0">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-white">Geleza AI Teacher Copilot</h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  CAPS & Bloom's
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Generate one-click CAPS lesson plans, balanced Bloom's test papers with marking memorandums, and synthesize class risk telemetry.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+            <button
+              onClick={() => { setCopilotTab('lesson'); setIsCopilotOpen(true); }}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md flex items-center gap-1.5 transition-all"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Lesson Planner</span>
+            </button>
+            <button
+              onClick={() => { setCopilotTab('test'); setIsCopilotOpen(true); }}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md flex items-center gap-1.5 transition-all"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Test & Memo</span>
+            </button>
+            <button
+              onClick={() => { setCopilotTab('risk'); setIsCopilotOpen(true); }}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-md flex items-center gap-1.5 transition-all"
+            >
+              <AlertCircle className="w-3.5 h-3.5" />
+              <span>Class Risk Briefing</span>
+            </button>
+          </div>
+        </div>
+      </section>
 
       {/* 1. ASSIGNED CLASSES & SUBJECTS WITH MULTI-VIEW SWITCHER */}
       <section className="space-y-3">
@@ -1534,6 +1584,13 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
         selectedClass={activeQRSubject?.class_name || `${activeQRSubject?.grade || 10}A`}
         subjectName={activeQRSubject?.subject_name || 'Subject'}
         onApplyAttendance={handleApplyQRAttendance}
+      />
+
+      {/* Geleza AI Copilot Modal */}
+      <TeacherAICopilotModal
+        isOpen={isCopilotOpen}
+        onClose={() => setIsCopilotOpen(false)}
+        initialTab={copilotTab}
       />
 
     </div>

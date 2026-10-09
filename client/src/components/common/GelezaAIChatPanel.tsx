@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { learnerService } from '../../services/api';
+import { learnerService, gelezaAiService } from '../../services/api';
 import { GelezaAIMascot, GELEZA_AI } from './GelezaAIMascot';
 
 export interface ChatMessage {
@@ -150,6 +150,7 @@ export const GelezaAIChatPanel: React.FC<GelezaAIChatPanelProps> = ({
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [isVoiceCallActive, setIsVoiceCallActive] = useState(false);
   const [isCallMuted, setIsCallMuted] = useState(false);
+  const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
 
   // Active chat messages
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
@@ -261,6 +262,24 @@ export const GelezaAIChatPanel: React.FC<GelezaAIChatPanelProps> = ({
     }
   }, [chatMessages, view, isAiThinking]);
 
+  useEffect(() => {
+    if (user?.id) {
+      gelezaAiService.getConversations().then((res: any) => {
+        if (res?.conversations && Array.isArray(res.conversations) && res.conversations.length > 0) {
+          const mapped: RecentChatSession[] = res.conversations.map((c: any) => ({
+            id: String(c.id),
+            icon: 'general',
+            title: c.title || 'Conversation',
+            preview: c.last_message ? (c.last_message.substring(0, 60) + '...') : 'Recent consultation...',
+            time: new Date(c.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            messages: []
+          }));
+          setRecentChats(mapped);
+        }
+      }).catch(() => {});
+    }
+  }, [user?.id]);
+
   const handleStartNewChat = () => {
     const fresh: ChatMessage[] = [
       {
@@ -271,11 +290,24 @@ export const GelezaAIChatPanel: React.FC<GelezaAIChatPanelProps> = ({
       }
     ];
     setChatMessages(fresh);
+    setActiveConversationId(null);
     setShowMenu(false);
     setView('chat');
   };
 
-  const handleOpenRecentChat = (session: RecentChatSession) => {
+  const handleOpenRecentChat = async (session: RecentChatSession) => {
+    const convId = parseInt(session.id, 10);
+    if (!isNaN(convId)) {
+      try {
+        const details = await gelezaAiService.getConversationDetails(convId);
+        if (details?.messages && Array.isArray(details.messages) && details.messages.length > 0) {
+          setChatMessages(details.messages);
+          setActiveConversationId(convId);
+          setView('chat');
+          return;
+        }
+      } catch (_) {}
+    }
     if (session.messages && session.messages.length > 0) {
       setChatMessages(session.messages);
     }
@@ -306,8 +338,13 @@ export const GelezaAIChatPanel: React.FC<GelezaAIChatPanelProps> = ({
         stream: (user as any)?.stream || 'General',
         role: role || (user as any)?.role || 'learner',
         fullName: user?.full_name || (user as any)?.name || '',
+        conversationId: activeConversationId,
         conversationHistory: chatMessages.slice(-10)
       });
+
+      if (res?.conversationId) {
+        setActiveConversationId(res.conversationId);
+      }
 
       const rawReply = res?.reply || res?.answer || res?.response || res?.text || '';
       const responseSuggestions = res?.suggestions || [];

@@ -32,11 +32,13 @@ import {
   X,
   AlertCircle,
   User,
-  Mail
+  Mail,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
 import { FusionAppIcon } from '../../components/common/FusionAppIcon';
+import { ParentAIAcademicSummaryModal } from '../../components/parent/ParentAIAcademicSummaryModal';
 
 type ChildrenViewMode = 'carousel' | 'grid' | 'compact' | 'list';
 
@@ -49,6 +51,10 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
   const [children, setChildren] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const carouselRef = useRef<HTMLDivElement>(null);
+
+  // Geleza AI Academic Companion Modal State
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [selectedAiChild, setSelectedAiChild] = useState<any>(null);
 
   // Learners View Switcher (Carousel / Grid / Compact / List)
   const [childrenViewMode, setChildrenViewMode] = useState<ChildrenViewMode>(() => {
@@ -168,6 +174,37 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
   return (
     <div className="space-y-6 animate-fade-in text-slate-900 dark:text-slate-100 pb-12">
       <HomeGreeting />
+
+      {/* GELEZA AI PARENT COMPANION BANNER */}
+      <section className="p-4 md:p-5 rounded-2xl bg-gradient-to-r from-emerald-900/40 via-teal-900/30 to-slate-900/60 border border-emerald-500/20 shadow-lg relative overflow-hidden backdrop-blur-sm">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center space-x-3.5">
+            <div className="p-3 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20 shrink-0">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-white">Geleza AI Parent Companion</h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  Plain-Language
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Understand your child's continuous assessment progress, check DBE attendance compliance, and easily draft respectful educator messages.
+              </p>
+            </div>
+          </div>
+          {children && children.length > 0 && (
+            <button
+              onClick={() => { setSelectedAiChild(children[0]); setIsAiModalOpen(true); }}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all cursor-pointer shrink-0"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>View AI Progress Summary</span>
+            </button>
+          )}
+        </div>
+      </section>
 
       {/* 1. REGISTERED LEARNERS (WITH CAROUSEL / GRID / COMPACT / LIST VIEWS) */}
       <section className="space-y-3">
@@ -343,6 +380,15 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                         <ArrowRight className="w-3 h-3 text-[#13C8D9] dark:text-[#0A121A]" />
                       </button>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedAiChild(child); setIsAiModalOpen(true); }}
+                      className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>AI Academic Summary & Drafter</span>
+                    </button>
                   </div>
                 );
               })
@@ -719,6 +765,14 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
           </div>
         </div>
       )}
+
+      {/* Geleza AI Academic Companion Modal */}
+      <ParentAIAcademicSummaryModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        child={selectedAiChild}
+        childrenList={children}
+      />
 
     </div>
   );
