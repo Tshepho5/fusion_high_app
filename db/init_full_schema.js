@@ -788,7 +788,7 @@ async function initializeAllDatabaseTables(customClient) {
         subject_name VARCHAR(100),
         period VARCHAR(50),
         relief_date DATE NOT NULL,
-        notes TEXT,
+        notes TEXT
       );
 
       ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS total_days NUMERIC(4,1) DEFAULT 1.0;
