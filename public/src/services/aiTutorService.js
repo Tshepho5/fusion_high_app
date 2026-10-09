@@ -925,14 +925,6 @@ async function safeAICall(prompt, isJson = false, retries = 1) {
     }
   }
 
-  // Check portal resolution first before generic syllabus fallback
-  if (!isJson) {
-    const portalAns = resolvePortalOrAppAnswer(prompt);
-    if (portalAns && portalAns.text) {
-      return { text: portalAns.text };
-    }
-  }
-
   try {
     const fb = generateCAPSLocalFallback(prompt);
     if (!isJson && (!fb || !fb.text)) {
@@ -1690,7 +1682,9 @@ Detailed, Warm, Helpful Response:
     const isLifeScience = !isPhysics && (subLower.includes('life') || subLower.includes('bio'));
     const isMath = subLower.includes('math') || subLower.includes('algebra') || subLower.includes('calculus') || subLower.includes('geometry') || subLower.includes('trigonometry');
 
-    if (portalAns && portalAns.text) {
+    const isAcademicSubject = isPhysics || isLifeScience || isMath || subLower.includes('account') || subLower.includes('business') || subLower.includes('econ') || subLower.includes('geograph') || subLower.includes('histor') || subLower.includes('tour') || subLower.includes('english');
+
+    if (!isAcademicSubject && portalAns && portalAns.text) {
       aiReplyText = portalAns.text;
       actionLinks = portalAns.actionLinks || [];
       suggestions = portalAns.suggestions || [];
