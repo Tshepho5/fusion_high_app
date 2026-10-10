@@ -374,10 +374,10 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                       </button>
                       <button
                         onClick={() => onNavigateTab('reports', child.id)}
-                        className="px-2 py-1.5 rounded-lg bg-[#1C252C] dark:bg-[#13C8D9] text-white dark:text-[#0A121A] font-bold text-xs transition-colors flex items-center justify-center gap-1 shadow-sm hover:opacity-90 cursor-pointer"
+                        className="px-2 py-1.5 rounded-lg bg-[#1C252C] hover:bg-slate-800 dark:bg-[#13C8D9] dark:hover:bg-[#18E2EC] text-white dark:text-[#0A121A] font-bold text-xs transition-colors flex items-center justify-center gap-1 shadow-sm cursor-pointer"
                       >
-                        <span>Report Card</span>
-                        <ArrowRight className="w-3 h-3 text-[#13C8D9] dark:text-[#0A121A]" />
+                        <span className="text-white dark:text-[#0A121A]">Report Card</span>
+                        <ArrowRight className="w-3 h-3 text-white dark:text-[#0A121A]" />
                       </button>
                     </div>
 
@@ -464,10 +464,10 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                       </button>
                       <button
                         onClick={() => onNavigateTab('reports', child.id)}
-                        className="px-2 py-1.5 rounded-lg bg-[#1C252C] dark:bg-[#13C8D9] text-white dark:text-[#0A121A] font-bold text-xs transition-colors flex items-center justify-center gap-1 shadow-sm hover:opacity-90 cursor-pointer"
+                        className="px-2 py-1.5 rounded-lg bg-[#1C252C] hover:bg-slate-800 dark:bg-[#13C8D9] dark:hover:bg-[#18E2EC] text-white dark:text-[#0A121A] font-bold text-xs transition-colors flex items-center justify-center gap-1 shadow-sm cursor-pointer"
                       >
-                        <span>Report Card</span>
-                        <ArrowRight className="w-3 h-3 text-[#13C8D9] dark:text-[#0A121A]" />
+                        <span className="text-white dark:text-[#0A121A]">Report Card</span>
+                        <ArrowRight className="w-3 h-3 text-white dark:text-[#0A121A]" />
                       </button>
                     </div>
                   </div>
@@ -552,10 +552,10 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                       </button>
                       <button
                         onClick={() => onNavigateTab('reports', child.id)}
-                        className="px-3 py-1.5 rounded-lg bg-[#1C252C] dark:bg-[#13C8D9] text-white dark:text-[#0A121A] text-xs font-bold transition-colors shadow-xs hover:opacity-90 flex items-center gap-1 cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg bg-[#1C252C] hover:bg-slate-800 dark:bg-[#13C8D9] dark:hover:bg-[#18E2EC] text-white dark:text-[#0A121A] text-xs font-bold transition-colors shadow-xs flex items-center gap-1 cursor-pointer"
                       >
-                        <span>Report</span>
-                        <ArrowRight className="w-3.5 h-3.5 text-[#13C8D9] dark:text-[#0A121A]" />
+                        <span className="text-white dark:text-[#0A121A]">Report Card</span>
+                        <ArrowRight className="w-3.5 h-3.5 text-white dark:text-[#0A121A]" />
                       </button>
                     </div>
                   </div>

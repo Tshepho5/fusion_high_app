@@ -383,7 +383,11 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
       const fallbackList: any[] = [];
       wSubs.forEach((subName: string) => {
         wGrades.forEach((g: number) => {
-          const matchedClass = wClasses.find((c: string) => c.includes(String(g))) || `${g}A`;
+          const rawClass = wClasses.find((c: string) => {
+            const digits = (c || '').replace(/•\s*school\s*\d+/i, '').replace(/school\s*\d+/i, '');
+            return digits.includes(String(g)) || c.toLowerCase().includes(`grade ${g}`);
+          }) || `${g}A`;
+          const matchedClass = rawClass.replace(/\s*•\s*School\s*\d+/i, '').trim();
           fallbackList.push({
             id: `${subName}-${g}-${matchedClass}`,
             subject_name: subName,

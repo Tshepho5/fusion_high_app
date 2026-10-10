@@ -42,6 +42,39 @@ function parsePeriodFromSlot(slotKey, fallback = 1) {
 }
 
 /**
+ * Extracts numeric grade level (8-12) from class strings like "Grade 11 • School 13", "10A", "Grade 10".
+ */
+function extractGradeFromClass(clsStr) {
+    if (!clsStr) return null;
+    const str = String(clsStr).trim();
+    const gMatch = str.match(/\bgrade\s*(\d{1,2})\b/i);
+    if (gMatch) return parseInt(gMatch[1], 10);
+    const leadMatch = str.match(/^(\d{1,2})/);
+    if (leadMatch) return parseInt(leadMatch[1], 10);
+    const cleanStr = str.replace(/•\s*school\s*\d+/i, '').replace(/school\s*\d+/i, '');
+    const anyMatch = cleanStr.match(/(\d{1,2})/);
+    if (anyMatch) return parseInt(anyMatch[1], 10);
+    return null;
+}
+
+/**
+ * Normalizes class strings, stripping multi-tenant / metadata suffixes like "• School 13".
+ */
+function cleanClassName(clsStr, grade) {
+    if (!clsStr) return `${grade || 10}A`;
+    let s = String(clsStr).trim();
+    s = s.replace(/\s*•\s*School\s*\d+/i, '').trim();
+    if (s.toLowerCase().startsWith('grade ')) {
+        const after = s.replace(/grade\s*/i, '').trim();
+        if (/^\d{1,2}$/.test(after)) {
+            return `${after}A`;
+        }
+        return after;
+    }
+    return s || `${grade || 10}A`;
+}
+
+/**
  * Returns workload details for a teacher.
  */
 exports.getWorkload = async (req, res) => {
@@ -100,7 +133,40 @@ exports.getWorkload = async (req, res) => {
             (emp.subjects || []).forEach(s => subjects.add(s));
             (emp.subject_codes || []).forEach(c => subject_codes.add(c));
             (emp.grades_taught || []).forEach(g => grades_taught.add(g));
-            (emp.classes_taught || []).forEach(c => classes_taught.add(c));
+            (emp.classes_taught || []).forEach(c => classes_taught.add(cleanClassName(c, 10)));
+        }
+
+        // Resilient auto-healing: if workload is empty, check confirmed/approved staff_invites
+        if (subjects.size === 0 && teacherEmail) {
+            try {
+                const inviteRes = await db.query(`
+                    SELECT * FROM staff_invites 
+                    WHERE LOWER(email) = LOWER($1) 
+                      AND status IN ('approved', 'accepted', 'applied')
+                    ORDER BY updated_at DESC LIMIT 1
+                `, [teacherEmail]);
+                if (inviteRes.rows.length > 0) {
+                    const inv = inviteRes.rows[0];
+                    const invSubs = (inv.confirmed_subjects && inv.confirmed_subjects.length > 0)
+                        ? inv.confirmed_subjects
+                        : (inv.subjects_offered || []);
+                    const invGrades = (inv.confirmed_grades && inv.confirmed_grades.length > 0)
+                        ? inv.confirmed_grades
+                        : (inv.assigned_grades || [10]);
+                    const invClasses = (inv.confirmed_classes && inv.confirmed_classes.length > 0)
+                        ? inv.confirmed_classes
+                        : (inv.assigned_classes || []);
+
+                    invSubs.forEach(s => {
+                        subjects.add(s);
+                        subject_codes.add(`${s.substring(0, 4).toUpperCase()}${invGrades[0] || 10}`);
+                    });
+                    invGrades.forEach(g => grades_taught.add(Number(g)));
+                    invClasses.forEach(c => classes_taught.add(cleanClassName(c, 10)));
+                }
+            } catch (e) {
+                console.warn('Auto-healing workload from staff_invites note:', e.message);
+            }
         }
 
         res.json({
@@ -269,9 +335,9 @@ exports.getMySubjectsOverview = async (req, res) => {
                 const sCode = empCodes[i] || `${(sName || 'SUBJ').substring(0, 4).toUpperCase()}${empGrades[0] || 10}`;
                 for (const gNum of empGrades) {
                     const gradeClasses = empClasses.filter(c => {
-                        const d = (c || '').replace(/\D/g, '');
-                        return d ? parseInt(d, 10) === gNum : false;
-                    });
+                        const g = extractGradeFromClass(c);
+                        return g !== null && !isNaN(g) ? g === gNum : false;
+                    }).map(c => cleanClassName(c, gNum));
                     const toAdd = gradeClasses.length > 0 ? gradeClasses : [`${gNum}A`];
                     for (const cName of toAdd) {
                         const already = itemsToProcess.some(x => 
@@ -289,6 +355,86 @@ exports.getMySubjectsOverview = async (req, res) => {
                         }
                     }
                 }
+            }
+        }
+
+        // 5. Resilient Auto-Healing: If teacher has no items yet, check staff_invites by email for confirmed/approved record
+        if (itemsToProcess.length === 0 && teacherEmail) {
+            try {
+                const inviteRes = await db.query(`
+                    SELECT * FROM staff_invites 
+                    WHERE LOWER(email) = LOWER($1) 
+                      AND status IN ('approved', 'accepted', 'applied')
+                    ORDER BY updated_at DESC LIMIT 1
+                `, [teacherEmail]);
+
+                if (inviteRes.rows.length > 0) {
+                    const inv = inviteRes.rows[0];
+                    const invSubs = (inv.confirmed_subjects && inv.confirmed_subjects.length > 0)
+                        ? inv.confirmed_subjects
+                        : (inv.subjects_offered || []);
+                    const invGrades = (inv.confirmed_grades && inv.confirmed_grades.length > 0)
+                        ? inv.confirmed_grades.map(Number)
+                        : (inv.assigned_grades ? inv.assigned_grades.map(Number) : [10]);
+                    const rawClasses = (inv.confirmed_classes && inv.confirmed_classes.length > 0)
+                        ? inv.confirmed_classes
+                        : (inv.assigned_classes || []);
+
+                    if (invSubs.length > 0) {
+                        // Auto-sync into employees table
+                        await db.query(`
+                            INSERT INTO employees (
+                                user_id, full_name, surname, department_id, school_id, phone, email,
+                                subjects, grades_taught, classes_taught
+                            )
+                            VALUES ($1, $2, $3, 2, $4, $5, $6, $7, $8, $9)
+                            ON CONFLICT (user_id) DO UPDATE SET
+                                school_id = COALESCE(EXCLUDED.school_id, employees.school_id),
+                                subjects = EXCLUDED.subjects,
+                                grades_taught = EXCLUDED.grades_taught,
+                                classes_taught = EXCLUDED.classes_taught;
+                        `, [
+                            teacherId, inv.full_name || 'Teacher', inv.surname || '',
+                            inv.school_id || schoolId, inv.phone || null, teacherEmail,
+                            invSubs, invGrades, rawClasses.map(c => cleanClassName(c, 10))
+                        ]).catch(e => console.warn('Auto-healing employees error:', e.message));
+
+                        // Auto-sync into teacher_assignments table and populate itemsToProcess
+                        for (const sName of invSubs) {
+                            for (const gNum of invGrades) {
+                                const matchingClasses = rawClasses.filter(c => {
+                                    const g = extractGradeFromClass(c);
+                                    return g === null || isNaN(g) || g === gNum;
+                                }).map(c => cleanClassName(c, gNum));
+                                const classesToAssign = matchingClasses.length > 0 ? matchingClasses : [`${gNum}A`];
+
+                                for (const cName of classesToAssign) {
+                                    await db.query(`
+                                        INSERT INTO teacher_assignments (teacher_id, subject_name, grade_level, class_name)
+                                        VALUES ($1, $2, $3, $4)
+                                        ON CONFLICT (teacher_id, subject_name, grade_level, class_name) DO NOTHING;
+                                    `, [teacherId, sName, gNum, cName]).catch(() => {});
+
+                                    const already = itemsToProcess.some(x => 
+                                        x.subjectName.toLowerCase() === sName.toLowerCase() && 
+                                        x.gradeNum === gNum && 
+                                        x.className === cName
+                                    );
+                                    if (!already) {
+                                        itemsToProcess.push({
+                                            subjectName: sName,
+                                            code: `${sName.substring(0, 4).toUpperCase()}${gNum}`,
+                                            gradeNum: gNum,
+                                            className: cName
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Error auto-healing teacher assignments from staff_invites:', err);
             }
         }
 

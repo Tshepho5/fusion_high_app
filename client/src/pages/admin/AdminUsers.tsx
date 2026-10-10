@@ -1094,8 +1094,8 @@ export const AdminUsers: React.FC = () => {
           <LoadingSpinner text="Retrieving records from PostgreSQL database..." />
         ) : activeTab === 'employees' ? (
           <div className="space-y-6">
-            {/* PENDING EDUCATOR REGISTRATIONS & WORKLOAD ALLOCATIONS SECTION */}
-            {staffInvites.filter(si => si.status === 'applied' || si.status === 'pending').length > 0 && (
+            {/* PENDING EDUCATOR REGISTRATIONS & WORKLOAD ALLOCATIONS SECTION - strictly appears AFTER teacher has applied */}
+            {staffInvites.filter(si => si.status === 'applied').length > 0 && (
               <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-950/40 border border-amber-500/30 space-y-3.5 shadow-xl">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
                   <div className="flex items-center gap-2.5">
@@ -1106,7 +1106,7 @@ export const AdminUsers: React.FC = () => {
                       <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
                         <span>Pending Educator Registrations & Workload Allocations</span>
                         <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold text-[10px] border border-amber-500/30">
-                          {staffInvites.filter(si => si.status === 'applied' || si.status === 'pending').length} Actions
+                          {staffInvites.filter(si => si.status === 'applied').length} Actions
                         </span>
                       </h3>
                       <p className="text-[11px] text-slate-400">
@@ -1118,9 +1118,8 @@ export const AdminUsers: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {staffInvites
-                    .filter(si => si.status === 'applied' || si.status === 'pending')
+                    .filter(si => si.status === 'applied')
                     .map((invite) => {
-                      const isApplied = invite.status === 'applied';
                       const subs = invite.confirmed_subjects?.length > 0
                         ? invite.confirmed_subjects
                         : (invite.subjects_offered || []);
@@ -1134,7 +1133,7 @@ export const AdminUsers: React.FC = () => {
                       return (
                         <div
                           key={invite.id}
-                          className="p-3.5 rounded-xl bg-slate-950/70 border border-white/10 flex flex-col justify-between gap-3 hover:border-brand-500/40 transition-all"
+                          className="p-3.5 rounded-xl bg-slate-950/70 border border-amber-500/30 flex flex-col justify-between gap-3 hover:border-brand-500/40 transition-all shadow-md"
                         >
                           <div className="space-y-2">
                             <div className="flex items-start justify-between gap-2">
@@ -1145,14 +1144,8 @@ export const AdminUsers: React.FC = () => {
                                 <p className="text-[11px] text-slate-400 font-mono">{invite.email}</p>
                                 {invite.phone && <p className="text-[10px] text-slate-500">Phone: {invite.phone}</p>}
                               </div>
-                              <span
-                                className={`px-2 py-0.5 rounded-md font-bold text-[10px] shrink-0 border ${
-                                  isApplied
-                                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/30 animate-pulse'
-                                    : 'bg-cyan-500/10 text-cyan-300 border-cyan-500/20'
-                                }`}
-                              >
-                                {isApplied ? 'Workload Confirmed • Needs Approval' : 'Invite Sent (Pending Confirmation)'}
+                              <span className="px-2 py-0.5 rounded-md font-bold text-[10px] shrink-0 border bg-amber-500/20 text-amber-300 border-amber-500/30 animate-pulse">
+                                Workload Confirmed • Needs Approval
                               </span>
                             </div>
 
@@ -1219,6 +1212,113 @@ export const AdminUsers: React.FC = () => {
                                     <span>Approve & Activate Teacher</span>
                                   </>
                                 )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* OUTGOING TEACHER INVITATIONS SECTION - Awaiting Educator Registration / Acceptance */}
+            {staffInvites.filter(si => si.status === 'pending').length > 0 && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/60 border border-cyan-500/20 space-y-3.5 shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-300 flex items-center justify-center border border-cyan-500/30">
+                      <Mail className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
+                        <span>Outgoing Educator Invitations (Awaiting Acceptance)</span>
+                        <span className="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 font-bold text-[10px] border border-cyan-500/30">
+                          {staffInvites.filter(si => si.status === 'pending').length} Sent
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Invitations dispatched to teachers. Once the educator confirms their workload and sets their password, they will appear under Pending Approvals above.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {staffInvites
+                    .filter(si => si.status === 'pending')
+                    .map((invite) => {
+                      const subs = invite.subjects_offered || [];
+                      const grds = invite.assigned_grades || [];
+                      const clss = invite.assigned_classes || [];
+
+                      return (
+                        <div
+                          key={invite.id}
+                          className="p-3.5 rounded-xl bg-slate-950/70 border border-white/10 flex flex-col justify-between gap-3 hover:border-cyan-500/40 transition-all"
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <h4 className="font-bold text-white text-sm">
+                                  {invite.full_name || 'Educator'} {invite.surname || ''}
+                                </h4>
+                                <p className="text-[11px] text-slate-400 font-mono">{invite.email}</p>
+                                {invite.phone && <p className="text-[10px] text-slate-500">Phone: {invite.phone}</p>}
+                              </div>
+                              <span className="px-2 py-0.5 rounded-md font-bold text-[10px] shrink-0 border bg-cyan-500/10 text-cyan-300 border-cyan-500/20">
+                                Invite Sent (Pending Confirmation)
+                              </span>
+                            </div>
+
+                            {/* Workload preview */}
+                            <div className="p-2.5 rounded-lg bg-white/5 border border-white/5 space-y-1 text-[11px]">
+                              <div className="flex flex-wrap items-center gap-1">
+                                <span className="text-slate-400 font-semibold">Allocated Subjects:</span>
+                                {subs.length > 0 ? (
+                                  subs.map((s: string) => (
+                                    <span key={s} className="px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300 text-[10px] font-bold">
+                                      {s}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-slate-500">General</span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 pt-0.5">
+                                <span><strong>Grades:</strong> {grds.join(', ') || 'FET Phase'}</span>
+                                <span>&bull;</span>
+                                <span><strong>Classes:</strong> {clss.join(', ') || '10A'}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/5">
+                            {invite.invite_token && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const url = `${window.location.origin}/register?role=teacher&invite=${invite.invite_token}&email=${encodeURIComponent(invite.email)}`;
+                                  navigator.clipboard.writeText(url);
+                                  setActionSuccess(`Direct registration link copied for ${invite.email}`);
+                                  setTimeout(() => setActionSuccess(null), 3000);
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-[11px] cursor-pointer flex items-center gap-1"
+                                title="Copy confirmation link to share via WhatsApp or SMS"
+                              >
+                                <ExternalLink className="w-3 h-3 text-cyan-300" />
+                                <span>Copy Link</span>
+                              </button>
+                            )}
+
+                            <div className="flex items-center gap-2 ml-auto">
+                              <button
+                                type="button"
+                                onClick={() => handleDeclineStaffInvite(invite.id)}
+                                className="px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-bold text-[11px] cursor-pointer transition-colors"
+                              >
+                                Cancel Invite
                               </button>
                             </div>
                           </div>

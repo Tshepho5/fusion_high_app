@@ -3566,6 +3566,39 @@ exports.getStaffInvites = async (req, res) => {
 };
 
 /**
+ * Helper to extract numeric grade level (8-12) from class strings like "Grade 11 • School 13", "10A", "Grade 10".
+ */
+function extractGradeFromClass(clsStr) {
+  if (!clsStr) return null;
+  const str = String(clsStr).trim();
+  const gMatch = str.match(/\bgrade\s*(\d{1,2})\b/i);
+  if (gMatch) return parseInt(gMatch[1], 10);
+  const leadMatch = str.match(/^(\d{1,2})/);
+  if (leadMatch) return parseInt(leadMatch[1], 10);
+  const cleanStr = str.replace(/•\s*school\s*\d+/i, '').replace(/school\s*\d+/i, '');
+  const anyMatch = cleanStr.match(/(\d{1,2})/);
+  if (anyMatch) return parseInt(anyMatch[1], 10);
+  return null;
+}
+
+/**
+ * Normalizes class strings, stripping multi-tenant / metadata suffixes like "• School 13".
+ */
+function cleanClassName(clsStr, grade) {
+  if (!clsStr) return `${grade || 10}A`;
+  let s = String(clsStr).trim();
+  s = s.replace(/\s*•\s*School\s*\d+/i, '').trim();
+  if (s.toLowerCase().startsWith('grade ')) {
+    const after = s.replace(/grade\s*/i, '').trim();
+    if (/^\d{1,2}$/.test(after)) {
+      return `${after}A`;
+    }
+    return after;
+  }
+  return s || `${grade || 10}A`;
+}
+
+/**
  * Approves a teacher/staff application and sends an official registration email.
  */
 exports.approveStaffInvite = async (req, res) => {
@@ -3580,17 +3613,18 @@ exports.approveStaffInvite = async (req, res) => {
     const schoolRes = await db.query('SELECT name, principal_name FROM schools WHERE id = $1', [invite.school_id]);
     const schoolName = schoolRes.rows[0]?.name || 'Geleza SA Partner School';
     const principalName = `${req.user?.full_name || schoolRes.rows[0]?.principal_name || 'The School Principal'}`;
-    const baseUrl = req.headers.origin || req.headers.referer?.replace(/\/$/, '') || process.env.FRONTEND_URL || process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const baseUrl = req.headers?.origin || req.headers?.referer?.replace(/\/$/, '') || process.env.FRONTEND_URL || process.env.APP_URL || (typeof req.get === 'function' ? `${req.protocol || 'https'}://${req.get('host')}` : 'http://localhost:3000');
 
     const activeSubjects = (invite.confirmed_subjects && invite.confirmed_subjects.length > 0)
       ? invite.confirmed_subjects
       : (invite.subjects_offered || []);
     const activeGrades = (invite.confirmed_grades && invite.confirmed_grades.length > 0)
-      ? invite.confirmed_grades
-      : (invite.assigned_grades || [10]);
-    const activeClasses = (invite.confirmed_classes && invite.confirmed_classes.length > 0)
+      ? invite.confirmed_grades.map(Number)
+      : (invite.assigned_grades ? invite.assigned_grades.map(Number) : [10]);
+    const rawClasses = (invite.confirmed_classes && invite.confirmed_classes.length > 0)
       ? invite.confirmed_classes
       : (invite.assigned_classes || []);
+    const activeClasses = rawClasses.map(c => cleanClassName(c, 10));
 
     const finalFullName = (invite.full_name || '').trim();
     const finalSurname = (invite.surname || '').trim();
@@ -3605,11 +3639,11 @@ exports.approveStaffInvite = async (req, res) => {
         )
         VALUES ($1, $2, 4, $3, FALSE, $4, $5, $6, $7, 'South Africa')
         ON CONFLICT (email) DO UPDATE SET
-          password_hash = EXCLUDED.password_hash,
+          password_hash = COALESCE(EXCLUDED.password_hash, users.password_hash),
           role_id = 4,
           school_id = EXCLUDED.school_id,
-          full_name = EXCLUDED.full_name,
-          surname = EXCLUDED.surname,
+          full_name = COALESCE(NULLIF(EXCLUDED.full_name, ''), users.full_name),
+          surname = COALESCE(NULLIF(EXCLUDED.surname, ''), users.surname),
           id_number = COALESCE(EXCLUDED.id_number, users.id_number),
           phone = COALESCE(EXCLUDED.phone, users.phone)
         RETURNING id, email, full_name, surname, role_id, school_id;
@@ -3650,14 +3684,14 @@ exports.approveStaffInvite = async (req, res) => {
       // 3. Populate teacher_assignments table
       for (const subj of activeSubjects) {
         for (const grade of activeGrades) {
-          const matchingClasses = activeClasses.filter(c => {
-            const g = parseInt(String(c).replace(/\D/g, ''), 10);
-            return isNaN(g) || g === grade;
-          });
+          const matchingClasses = rawClasses.filter(c => {
+            const g = extractGradeFromClass(c);
+            return g === null || isNaN(g) || g === grade;
+          }).map(c => cleanClassName(c, grade));
           const classesToAssign = matchingClasses.length > 0 ? matchingClasses : [`${grade}A`];
           for (const clsName of classesToAssign) {
             const classLookup = await db.query(
-              'SELECT id FROM classes WHERE name = $1 AND school_id = $2 LIMIT 1',
+              'SELECT id FROM classes WHERE name = $1 AND (school_id = $2 OR school_id IS NULL) LIMIT 1',
               [clsName, invite.school_id]
             ).catch(() => ({ rows: [] }));
             const classId = classLookup.rows[0]?.id || null;
@@ -3666,7 +3700,7 @@ exports.approveStaffInvite = async (req, res) => {
               INSERT INTO teacher_assignments (teacher_id, subject_name, grade_level, class_name, class_id)
               VALUES ($1, $2, $3, $4, $5)
               ON CONFLICT (teacher_id, subject_name, grade_level, class_name) 
-              DO UPDATE SET class_id = EXCLUDED.class_id;
+              DO UPDATE SET class_id = COALESCE(EXCLUDED.class_id, teacher_assignments.class_id);
             `, [user.id, subj, grade, clsName, classId]).catch(e => console.warn('Teacher assignment insert note:', e.message));
           }
         }
