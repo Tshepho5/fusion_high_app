@@ -327,7 +327,7 @@ export const Subject3DCoverFlow: React.FC<Subject3DCoverFlowProps> = ({
           <button
             type="button"
             onClick={() => onAction ? onAction('marks', activeSubject.raw || activeSubject) : onOpenSubject(activeSubject.raw || activeSubject)}
-            className="p-2.5 rounded-full text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-all group relative cursor-pointer"
+            className="p-2.5 rounded-full text-slate-500 hover:text-cyan-600 dark:text-slate-400 dark:hover:text-cyan-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-all group relative cursor-pointer"
             title="Educator & Classmates Roster"
           >
             <Users className="w-4 h-4" />

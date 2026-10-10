@@ -854,28 +854,32 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Top Banner with Subject Context */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-purple-900/40 via-surface-dark to-brand-900/30 border border-purple-500/30 shadow-xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1 z-10">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-mono font-bold uppercase border border-purple-500/40 flex items-center gap-1">
-              <BookOpen className="w-3 h-3 text-purple-400" />
+      {/* Top Banner with Subject Context & Data Provenance */}
+      <div className="p-6 rounded-3xl bg-gradient-to-r from-brand-900/40 via-surface-dark to-cyan-900/30 border border-brand-500/30 shadow-xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-2 z-10">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-2.5 py-0.5 rounded-full bg-brand-500/20 text-brand-300 text-[10px] font-mono font-bold uppercase border border-brand-500/40 flex items-center gap-1">
+              <BookOpen className="w-3 h-3 text-cyan-400" />
               CAPS DBE ARCHIVE
             </span>
-            <Badge variant="indigo" size="sm">Grade {grade}</Badge>
+            <Badge variant="cyan" size="sm">Grade {grade}</Badge>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/40 dark:bg-cyan-900/30 border border-cyan-500/30 text-[10px] text-cyan-300 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              Live DBE Exam Bank
+            </span>
           </div>
           <h3 className="text-xl md:text-2xl font-extrabold font-display text-white">
             {subject} Past Papers & Memorandums
           </h3>
           <p className="text-xs text-slate-300">
-            Official DBE examination question papers and memorandums for Grade {grade}.
+            Retrieved live from Fusion Database & DBE CAPS Exam Repository • Official question papers and marking memos.
           </p>
         </div>
 
         <div className="flex items-center gap-3 z-10">
           <div className="p-3 rounded-2xl bg-surface-darker/90 border border-white/10 text-center">
             <p className="text-[10px] font-semibold text-slate-400 uppercase">Available Documents</p>
-            <p className="text-base font-extrabold text-purple-400 font-mono">
+            <p className="text-base font-extrabold text-cyan-400 font-mono">
               {dbeResources.length > 0 ? `${dbeResources.length} Official Files` : `${papers.length} Series`}
             </p>
           </div>
@@ -886,8 +890,8 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
       {dbeResources.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-2">
-              <FolderDown className="w-4 h-4 text-purple-400" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-2">
+              <FolderDown className="w-4 h-4 text-cyan-400" />
               Official DBE Past Question Papers & Memorandums (Grade {grade})
             </h4>
             <span className="text-[11px] text-slate-400 font-mono">
@@ -905,16 +909,16 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
               return (
                 <div
                   key={res.id}
-                  className="p-5 rounded-2xl bg-surface-darker/95 border border-white/10 hover:border-purple-500/40 transition-all flex flex-col justify-between gap-4 shadow-lg group"
+                  className="p-5 rounded-2xl bg-surface-darker/95 border border-white/10 hover:border-brand-500/40 transition-all flex flex-col justify-between gap-4 shadow-lg group"
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`p-3 rounded-2xl shrink-0 ${isMemo ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+                    <div className={`p-3 rounded-2xl shrink-0 ${isMemo ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'}`}>
                       {isMemo ? <CheckCircle2 className="w-6 h-6" /> : <FileText className="w-6 h-6" />}
                     </div>
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <Badge variant={isMemo ? 'emerald' : 'rose'} size="sm">
+                        <Badge variant={isMemo ? 'emerald' : 'cyan'} size="sm">
                           {isMemo ? 'Marking Memo' : 'Exam Question Paper'}
                         </Badge>
                         {res.year && (
@@ -929,7 +933,7 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
                         )}
                       </div>
 
-                      <h5 className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors line-clamp-2" title={res.title}>
+                      <h5 className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors line-clamp-2" title={res.title}>
                         {res.title}
                       </h5>
 
@@ -945,7 +949,7 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
                       download={res.file_name || `${(res.title || 'CAPS_Document').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition-all hover:scale-105 cursor-pointer"
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-md transition-all hover:scale-105 cursor-pointer"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>Download PDF Document</span>
@@ -967,7 +971,7 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search topics (e.g. Paper 1, Memo, Newton)..."
-            className="w-full pl-10 pr-4 py-2 bg-surface-dark border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+            className="w-full pl-10 pr-4 py-2 bg-surface-dark border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
           />
         </div>
 
@@ -1017,13 +1021,13 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
             <div
               key={paper.id}
               className={`rounded-3xl bg-surface-dark/95 border transition-all duration-200 overflow-hidden shadow-lg ${
-                isExpanded ? 'border-purple-500/50 shadow-glow-purple' : 'border-white/10 hover:border-white/20'
+                isExpanded ? 'border-cyan-500/50 shadow-glow-cyan' : 'border-white/10 hover:border-white/20'
               }`}
             >
               {/* Paper Header Row */}
               <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-300 font-extrabold font-mono text-sm shrink-0">
+                  <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-300 font-extrabold font-mono text-sm shrink-0">
                     {paper.paperNumber.replace('Paper ', 'P')}
                   </div>
 
@@ -1032,7 +1036,7 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
                       <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[10px] font-mono text-slate-300 font-bold">
                         {paper.year} {paper.season}
                       </span>
-                      <span className="px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 text-[10px] font-mono font-bold">
+                      <span className="px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 text-[10px] font-mono font-bold">
                         {paper.marks} Marks
                       </span>
                       <span className="px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 text-[10px] font-mono font-bold flex items-center gap-1">
@@ -1076,7 +1080,7 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
 
                   <button
                     onClick={() => handleDownloadPaper(paper, 'Marking Memo')}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white text-xs font-semibold border border-purple-500/30 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-cyan-600/20 hover:bg-cyan-600 text-cyan-300 hover:text-white text-xs font-semibold border border-cyan-500/30 transition-colors"
                     title="Download Marking Memorandum"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -1097,8 +1101,8 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
               {isExpanded && (
                 <div className="p-5 border-t border-white/10 bg-surface-darker/60 space-y-4 animate-fade-in">
                   <div className="flex items-center justify-between">
-                    <h5 className="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-2">
-                      <HelpCircle className="w-4 h-4 text-purple-400" />
+                    <h5 className="text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-2">
+                      <HelpCircle className="w-4 h-4 text-cyan-400" />
                       Exam Questions & Step-by-Step Memorandum
                     </h5>
                     <span className="text-[11px] text-slate-400 font-mono">
@@ -1136,9 +1140,9 @@ export const SubjectPastPapers: React.FC<SubjectPastPapersProps> = ({
                           <div className="flex items-center justify-between pt-1">
                             <button
                               onClick={() => handleToggleMemo(paper.id, qIdx)}
-                              className="text-xs font-semibold text-purple-300 hover:text-purple-200 flex items-center gap-1.5 transition-colors"
+                              className="text-xs font-semibold text-cyan-300 hover:text-cyan-200 flex items-center gap-1.5 transition-colors"
                             >
-                              <Eye className="w-3.5 h-3.5 text-purple-400" />
+                              <Eye className="w-3.5 h-3.5 text-cyan-400" />
                               <span>{isMemoVisible ? 'Hide Solution Memo' : 'Show Official Memorandum'}</span>
                             </button>
 

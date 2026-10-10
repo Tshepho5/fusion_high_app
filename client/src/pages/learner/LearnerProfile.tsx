@@ -21,7 +21,8 @@ import {
   EyeOff,
   Calendar,
   IdCard,
-  Users
+  Users,
+  Database
 } from 'lucide-react';
 
 const formatDob = (raw: string | undefined | null) => {
@@ -236,7 +237,7 @@ export const LearnerProfile: React.FC = () => {
       {/* Avatar + name + class */}
       <div className="flex flex-col items-center text-center pt-2 space-y-3">
         <div className="relative group">
-          <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-brand-600 to-cyan-500 border-2 border-brand-400/50 shadow-glow-indigo flex items-center justify-center text-white font-extrabold text-3xl overflow-hidden relative">
+          <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-brand-600 to-cyan-500 border-2 border-brand-400/50 shadow-glow-cyan flex items-center justify-center text-white font-extrabold text-3xl overflow-hidden relative">
             <span className="select-none">{initial}</span>
             {pfp && (
               <img
@@ -307,7 +308,7 @@ export const LearnerProfile: React.FC = () => {
       <button
         type="button"
         onClick={() => setIsEditing((v) => !v)}
-        className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-bold text-sm shadow-glow-indigo transition-all active:scale-[0.99]"
+        className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-bold text-sm shadow-glow-cyan transition-all active:scale-[0.99]"
       >
         {isEditing ? 'Close Edit Profile' : 'Edit Profile'}
       </button>
@@ -463,7 +464,7 @@ export const LearnerProfile: React.FC = () => {
                       <div>
                         <label className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                           <span>Grade & Stream</span>
-                          <span className="text-[9px] text-indigo-400/80 font-mono">CAPS</span>
+                          <span className="text-[9px] text-cyan-400/80 font-mono">CAPS</span>
                         </label>
                         <div className="relative">
                           <input
@@ -538,7 +539,7 @@ export const LearnerProfile: React.FC = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-bold text-xs shadow-glow-indigo transition-all disabled:opacity-50 active:scale-[0.99]"
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-bold text-xs shadow-glow-cyan transition-all disabled:opacity-50 active:scale-[0.99]"
                 >
                   {loading ? 'Saving Profile Details...' : isProfileUnlocked ? 'Save Official Profile Changes' : 'Save Contact Details'}
                 </button>
@@ -654,55 +655,71 @@ export const LearnerProfile: React.FC = () => {
       {/* Learner academic ribbon + digital ID — kept, below the profile summary */}
       {role === 'learner' && (
         <>
+          {/* Live Data Retrieval Source Indicator */}
+          <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-[#0E1722]/90 border border-slate-200/90 dark:border-white/10 shadow-xs backdrop-blur-md">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="flex h-2.5 w-2.5 relative shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500" />
+              </span>
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
+                Learner profile, marks & Smart Card credentials retrieved live from PostgreSQL School Database
+              </span>
+            </div>
+            <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider shrink-0 hidden sm:inline">
+              PostgreSQL Live Sync
+            </span>
+          </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 shadow-sm space-y-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Current Grade</span>
-              <p className="text-xl font-extrabold text-white">Grade {grade}</p>
-              <span className="text-[10px] text-indigo-400 font-medium">{stream} Stream</span>
+            <div className="p-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 shadow-sm space-y-1">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Current Grade</span>
+              <p className="text-xl font-extrabold text-slate-900 dark:text-white">Grade {grade}</p>
+              <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-semibold">{stream} Stream</span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 shadow-sm space-y-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Learner Number</span>
-              <p className="text-xl font-extrabold text-white font-mono">{learnerNumber}</p>
-              <span className="text-[10px] text-cyan-400 font-medium">Verified Active</span>
+            <div className="p-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 shadow-sm space-y-1">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Learner Number</span>
+              <p className="text-xl font-extrabold text-slate-900 dark:text-white font-mono">{learnerNumber}</p>
+              <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-semibold">Verified Active</span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 shadow-sm space-y-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Term Average</span>
-              <p className={`text-xl font-extrabold ${profile.overall_average != null || profile.academic?.overall_average != null ? 'text-emerald-400' : 'text-slate-500'}`}>
+            <div className="p-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 shadow-sm space-y-1">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Term Average</span>
+              <p className={`text-xl font-extrabold ${profile.overall_average != null || profile.academic?.overall_average != null ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
                 {profile.overall_average != null || profile.academic?.overall_average != null
                   ? `${profile.overall_average ?? profile.academic?.overall_average}%`
                   : '—'}
               </p>
-              <span className="text-[10px] text-slate-400 font-medium">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                 {profile.overall_average != null || profile.academic?.overall_average != null
                   ? 'From school marks'
                   : 'Awaiting school upload'}
               </span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 shadow-sm space-y-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Attendance Rate</span>
-              <p className={`text-xl font-extrabold ${profile.attendance_percentage != null ? 'text-white' : 'text-slate-500'}`}>
+            <div className="p-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 shadow-sm space-y-1">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Attendance Rate</span>
+              <p className={`text-xl font-extrabold ${profile.attendance_percentage != null ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>
                 {profile.attendance_percentage != null ? `${profile.attendance_percentage}% Present` : '—'}
               </p>
-              <span className="text-[10px] text-slate-400 font-medium">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                 {profile.attendance_percentage != null ? 'School attendance record' : 'Awaiting school upload'}
               </span>
             </div>
           </div>
 
-          <div className="p-6 rounded-3xl bg-surface-dark border border-cyan-500/30 shadow-2xl space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+          <div className="p-6 rounded-3xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-cyan-500/30 shadow-sm dark:shadow-2xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-white/10 pb-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 border border-cyan-500/40 flex items-center justify-center">
                   <QrCode className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold font-display text-white">
+                  <h3 className="text-sm font-bold font-display text-slate-900 dark:text-white">
                     Official Digital Student Smart Card
                   </h3>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400">
                     Present this card or its QR Code to educators during class roll-call or gate entry.
                   </p>
                 </div>

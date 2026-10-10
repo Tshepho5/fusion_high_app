@@ -207,7 +207,7 @@ export const SubjectFocusTimer: React.FC<SubjectFocusTimerProps> = ({
               GAMIFIED FOCUS WORKSPACE
             </span>
             <Badge variant="cyan" size="sm">{subject}</Badge>
-            <Badge variant="indigo" size="sm">Grade {grade}</Badge>
+            <Badge variant="cyan" size="sm">Grade {grade}</Badge>
           </div>
           <h3 className="text-xl md:text-2xl font-extrabold font-display text-white">
             {subject} Study Streak & Focus Timer

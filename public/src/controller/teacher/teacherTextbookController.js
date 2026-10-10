@@ -139,18 +139,55 @@ exports.uploadResource = async (req, res) => {
     const fileSize = req.file ? `${(req.file.size / (1024 * 1024)).toFixed(2)} MB` : '1.5 MB';
 
     try {
-        const insertRes = await db.query(`
-            INSERT INTO textbooks (
-                subject, grade, stream, resource_type, title, description, 
-                term, year, file_path, file_name, file_size, teacher_id, class_id, is_published, upload_date
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
-            RETURNING *
-        `, [
-            subject, grade, stream, resourceType, title, description,
-            term, year, filePath, fileName, fileSize, req.user.id, classId, isPublished
-        ]);
+        // Auto-migrate schema columns if missing in database
+        try {
+            await db.query(`
+                ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS subject VARCHAR(100);
+                ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS teacher_id TEXT;
+                ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+                ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE;
+                ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS resource_type VARCHAR(50) DEFAULT 'past_paper';
+                ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS title VARCHAR(255);
+                ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS description TEXT;
+                ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS term VARCHAR(50);
+                ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS year INTEGER DEFAULT 2026;
+                ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS file_name VARCHAR(255);
+                ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS file_size VARCHAR(50) DEFAULT '2.4 MB';
+                ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS stream VARCHAR(50) DEFAULT 'General';
+                ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS class_id INTEGER;
+            `);
+        } catch (_) {}
 
-        const uploadedResource = insertRes.rows[0];
+        // Prevent duplicate records on upload retries
+        const existingRes = await db.query(`
+            SELECT id FROM textbooks 
+            WHERE teacher_id::text = $1::text AND subject = $2 AND grade = $3 AND title = $4 AND file_name = $5
+            LIMIT 1;
+        `, [String(req.user.id), subject, grade, title, fileName]);
+
+        let uploadedResource;
+        if (existingRes.rows.length > 0) {
+            const updateRes = await db.query(`
+                UPDATE textbooks
+                SET stream = $1, resource_type = $2, description = $3, term = $4, year = $5,
+                    file_path = $6, file_size = $7, class_id = $8, is_published = $9, upload_date = NOW()
+                WHERE id = $10
+                RETURNING *;
+            `, [stream, resourceType, description, term, year, filePath, fileSize, classId, isPublished, existingRes.rows[0].id]);
+            uploadedResource = updateRes.rows[0];
+        } else {
+            const insertRes = await db.query(`
+                INSERT INTO textbooks (
+                    subject, grade, stream, resource_type, title, description, 
+                    term, year, file_path, file_name, file_size, teacher_id, class_id, is_published, upload_date
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
+                RETURNING *;
+            `, [
+                subject, grade, stream, resourceType, title, description,
+                term, year, filePath, fileName, fileSize, req.user.id, classId, isPublished
+            ]);
+            uploadedResource = insertRes.rows[0];
+        }
 
         // If this uploaded resource is a textbook, sync it into textbook_inventory catalog
         if (resourceType === 'textbook') {

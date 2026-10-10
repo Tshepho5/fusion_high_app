@@ -321,7 +321,10 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
       setTimeout(() => setSuccessMsg(null), 6000);
     } catch (err: any) {
       console.error('Upload error:', err);
-      const errMsg = err.response?.data?.error || err.message || 'Failed to upload resource to server.';
+      let errMsg = err.response?.data?.error || err.response?.data?.message || err.message;
+      if (!errMsg || errMsg === 'Network Error' || err.code === 'ERR_NETWORK') {
+        errMsg = 'Network communication failure: unable to reach the server. Please verify your connection or file size (maximum 50MB) and try again.';
+      }
       setUploadModalError(errMsg);
       setError(errMsg);
     } finally {

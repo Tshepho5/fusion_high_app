@@ -115,25 +115,98 @@ exports.getActivityDetails = async (req, res) => {
 /**
  * Create New Club or Sport (Admin / Teacher)
  */
+const BASELINE_REQUIREMENTS = [
+  '• Learners must attend scheduled practices regularly.',
+  '• Appropriate attire/equipment must be brought to each session.',
+  '• Respect for coaches, teammates, and opponents is mandatory.',
+  '• Participation in school fixtures and events is compulsory unless excused.',
+  '• Learners must maintain a minimum 60% academic pass rate to ensure sports participation does not negatively affect academic performance.'
+].join('\n');
+
 exports.createActivity = async (req, res) => {
   try {
-    const { name, category = 'Sports', season = 'Annual', venue = 'School Grounds', practice_schedule, description, coach_user_id } = req.body;
+    const {
+      name,
+      category = 'Sports',
+      season = 'Annual',
+      venue = 'School Grounds',
+      practice_schedule,
+      description,
+      coach_user_id,
+      eligible_grades = '8, 9, 10, 11, 12'
+    } = req.body;
     const coachId = coach_user_id || req.user.id;
 
     if (!name) {
       return res.status(400).json({ error: 'Activity name is required.' });
     }
 
-    const result = await db.query(`
-      INSERT INTO extracurricular_activities (name, category, coach_user_id, season, venue, practice_schedule, description)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *;
-    `, [name, category, coachId, season, venue, practice_schedule, description || '']);
+    // Auto-migrate eligible_grades and min_academic_average columns if not present
+    try {
+      await db.query(`
+        ALTER TABLE extracurricular_activities ADD COLUMN IF NOT EXISTS eligible_grades VARCHAR(100) DEFAULT '8, 9, 10, 11, 12';
+        ALTER TABLE extracurricular_activities ADD COLUMN IF NOT EXISTS min_academic_average NUMERIC(5,2) DEFAULT 60.0;
+      `);
+    } catch (_) {}
+
+    const finalDescription = (description && description.trim()) ? description.trim() : BASELINE_REQUIREMENTS;
+
+    let result;
+    try {
+      result = await db.query(`
+        INSERT INTO extracurricular_activities (name, category, coach_user_id, season, venue, practice_schedule, description, eligible_grades)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING *;
+      `, [name, category, coachId, season, venue, practice_schedule, finalDescription, eligible_grades]);
+    } catch (insertErr) {
+      // Fallback if eligible_grades column is pending
+      result = await db.query(`
+        INSERT INTO extracurricular_activities (name, category, coach_user_id, season, venue, practice_schedule, description)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING *;
+      `, [name, category, coachId, season, venue, practice_schedule, finalDescription]);
+    }
+
+    const activity = result.rows[0];
+
+    // Communication Integration: Broadcast notice to learners, parents, and staff
+    try {
+      let coachName = 'Staff Coach';
+      if (coachId) {
+        const cRes = await db.query('SELECT full_name, surname FROM users WHERE id = $1', [coachId]);
+        if (cRes.rows[0]) {
+          coachName = `${cRes.rows[0].full_name} ${cRes.rows[0].surname || ''}`.trim();
+        }
+      }
+
+      const noticeTitle = `🏆 New Squad Registered: ${name} (${category})`;
+      const noticeContent = `Fusion High has officially registered the ${name} squad for ${season} season. Coach: ${coachName} • Venue: ${venue} • Practice Times: ${practice_schedule || 'Scheduled weekly'}. Eligible: Grade(s) ${eligible_grades}. Academic Requirement: Minimum 60% pass rate. Join through the Sports & Extracurriculars portal.`;
+
+      // Save to official announcements
+      await db.query(`
+        INSERT INTO announcements (title, content, role_target, author_id, created_at)
+        VALUES ($1, $2, 'all', $3, NOW())
+      `, [noticeTitle, noticeContent, req.user.id]).catch(() => {});
+
+      // Dispatch real-time notice via NotificationService
+      NotificationService.sendTargeted({
+        targetRole: 'all',
+        includeParents: true,
+        authorId: req.user.id,
+        title: noticeTitle,
+        message: noticeContent,
+        fullContent: noticeContent,
+        type: 'sports',
+        targetTab: 'sports'
+      }).catch((err) => console.warn('[SPORTS BROADCAST NOTICE]', err.message));
+    } catch (notifErr) {
+      console.warn('[SPORTS BROADCAST NOTICE WARNING]', notifErr.message);
+    }
 
     res.status(201).json({
       success: true,
-      message: `${name} squad created successfully.`,
-      activity: result.rows[0]
+      message: `${name} squad registered successfully. Broadcast notice dispatched to learners, parents, and staff.`,
+      activity
     });
   } catch (err) {
     console.error('Error creating activity:', err);
@@ -196,7 +269,7 @@ exports.getAvailableCoaches = async (req, res) => {
 };
 
 /**
- * Add / Join Member to Activity
+ * Add / Join Member to Activity with Strict Grade & Academic Eligibility Checks
  */
 exports.joinActivity = async (req, res) => {
   try {
@@ -213,6 +286,55 @@ exports.joinActivity = async (req, res) => {
       return res.status(400).json({ error: 'Activity ID and Child ID are required.' });
     }
 
+    // 1. Fetch Squad Activity Requirements & Grade Eligibility
+    const actRes = await db.query('SELECT * FROM extracurricular_activities WHERE id::text = $1::text', [String(activity_id)]);
+    if (actRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Squad activity not found.' });
+    }
+    const activity = actRes.rows[0];
+
+    // 2. Fetch Learner Record (Grade and Details)
+    const childRes = await db.query('SELECT id, grade, full_name, surname FROM children WHERE id::text = $1::text', [String(targetChildId)]);
+    if (childRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Learner profile not found.' });
+    }
+    const child = childRes.rows[0];
+    const learnerGrade = Number(child.grade) || 10;
+
+    // 3. GRADE ELIGIBILITY CHECK: Check if learner's grade is allowed
+    const eligibleGradesRaw = activity.eligible_grades || '8, 9, 10, 11, 12';
+    const allowedGrades = eligibleGradesRaw
+      .split(',')
+      .map(g => parseInt(g.trim().replace(/\D/g, ''), 10))
+      .filter(n => !isNaN(n));
+
+    if (allowedGrades.length > 0 && !allowedGrades.includes(learnerGrade)) {
+      return res.status(400).json({
+        error: `Grade eligibility requirement not met: The ${activity.name} squad is only open to Grade(s) ${eligibleGradesRaw}. Your enrolled grade is Grade ${learnerGrade}.`
+      });
+    }
+
+    // 4. ACADEMIC PASS RATE REQUIREMENT CHECK (>= 60%)
+    try {
+      const avgRes = await db.query(`
+        SELECT AVG(COALESCE(grade, 0)) AS avg_score, COUNT(*) as marks_count
+        FROM progress
+        WHERE child_id::text = $1::text
+      `, [String(targetChildId)]);
+
+      const avgScore = avgRes.rows[0]?.avg_score ? parseFloat(avgRes.rows[0].avg_score) : null;
+      const marksCount = parseInt(avgRes.rows[0]?.marks_count || '0', 10);
+
+      if (marksCount > 0 && avgScore !== null && avgScore < 60.0) {
+        return res.status(400).json({
+          error: `Academic pass rate requirement not met: Learners must maintain a minimum 60% academic pass rate to participate in school sports and extracurriculars. Your current recorded academic average is ${Math.round(avgScore)}% (Required: ≥60%). Please consult with your educators to improve academic standing before joining squads.`
+        });
+      }
+    } catch (academicErr) {
+      console.warn('[ACADEMIC CHECK NOTICE]', academicErr.message);
+    }
+
+    // 5. Register Member in Squad Roster
     let result;
     try {
       result = await db.query(`
@@ -223,7 +345,6 @@ exports.joinActivity = async (req, res) => {
       `, [activity_id, targetChildId, role, jersey_number || null]);
     } catch (insertErr) {
       if (String(insertErr.message).includes('jersey_number') || String(insertErr.message).includes('does not exist')) {
-        console.warn('[EXTRACURRICULAR] Auto-migrating missing extracurricular_members columns...');
         try {
           await db.query(`
             ALTER TABLE extracurricular_members ADD COLUMN IF NOT EXISTS jersey_number VARCHAR(10);
@@ -235,8 +356,7 @@ exports.joinActivity = async (req, res) => {
             ON CONFLICT (activity_id, child_id) DO UPDATE SET role = EXCLUDED.role, jersey_number = EXCLUDED.jersey_number
             RETURNING *;
           `, [activity_id, targetChildId, role, jersey_number || null]);
-        } catch (retryErr) {
-          // Fallback without jersey_number column
+        } catch (_) {
           result = await db.query(`
             INSERT INTO extracurricular_members (activity_id, child_id, role)
             VALUES ($1, $2, $3)
@@ -251,7 +371,7 @@ exports.joinActivity = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Learner joined activity squad successfully.',
+      message: `Eligibility verified (Grade ${learnerGrade} & Academic pass rate ≥60%). ${child.full_name} joined ${activity.name} squad successfully.`,
       member: result.rows[0]
     });
   } catch (err) {

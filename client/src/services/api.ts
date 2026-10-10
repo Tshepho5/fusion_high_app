@@ -38,6 +38,13 @@ api.interceptors.request.use((config) => {
   if (activeSchoolId) {
     config.headers['x-school-id'] = activeSchoolId;
   }
+  // When sending FormData, delete Content-Type so Axios/browser sets multipart boundary correctly
+  if (config.data instanceof FormData) {
+    if (config.headers) {
+      delete (config.headers as any)['Content-Type'];
+      delete (config.headers as any)['content-type'];
+    }
+  }
   return config;
 }, (error) => {
   return Promise.reject(error);
@@ -346,7 +353,9 @@ export const teacherService = {
   getMyResources: (params?: { subject?: string; grade?: number | string; class_id?: number | string; resource_type?: string; search?: string }) => 
     api.get('/api/teacher/my-resources', { params }).then(res => res.data),
   uploadResource: (formData: FormData) => 
-    api.post('/api/teacher/upload-resource', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(res => res.data),
+    api.post('/api/teacher/upload-resource', formData, {
+      timeout: 120000,
+    }).then(res => res.data),
   togglePublishResource: (id: number | string, isPublished?: boolean) => 
     api.patch(`/api/teacher/resources/${id}/publish`, { is_published: isPublished }).then(res => res.data),
   deleteResource: (id: number | string) => api.delete(`/api/teacher/resources/${id}`).then(res => res.data),

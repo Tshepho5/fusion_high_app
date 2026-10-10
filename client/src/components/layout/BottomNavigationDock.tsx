@@ -30,7 +30,7 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
             type="button"
             onClick={() => onSelectTab(onModulesPage ? 'overview' : 'more')}
             aria-label={onModulesPage ? 'Tap to close' : 'Menu'}
-            className="absolute inset-0 rounded-full p-[4px] bg-gradient-to-br from-[#F472B6] via-[#7C3AED] to-[#22D3EE] shadow-[0_0_24px_rgba(34,211,238,0.7)] cursor-pointer active:scale-95 transition-transform"
+            className="absolute inset-0 rounded-full p-[4px] bg-gradient-to-br from-[#13C8D9] via-[#0891B2] to-[#18E2EC] shadow-[0_0_24px_rgba(19,200,217,0.7)] cursor-pointer active:scale-95 transition-transform"
           >
             <span className="flex h-full w-full items-center justify-center rounded-full bg-[#070B14] text-center">
               {onModulesPage ? (

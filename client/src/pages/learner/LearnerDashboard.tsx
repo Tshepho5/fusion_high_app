@@ -25,6 +25,7 @@ import { FusionArcadeHub } from '../../components/learner/FusionArcadeHub';
 import { ModulePageHeader } from '../../components/layout/WorkspaceChrome';
 import { LearnerMoreHub } from './LearnerMoreHub';
 import { LearnerDiscoverHub } from './LearnerDiscoverHub';
+import { GelezaAIStudyHubModule } from '../../components/learner/GelezaAIStudyHubModule';
 import { useSchool } from '../../context/SchoolContext';
 import { moduleAllowed } from '../../utils/schoolModules';
 
@@ -93,6 +94,8 @@ export const LearnerDashboard: React.FC = () => {
         return 'My Subjects';
       case 'performance':
         return 'Subject Academic Performance';
+      case 'geleza-quiz':
+        return 'Geleza AI Study Hub & Practice Quizzes';
       case 'ai-tutor':
         return 'CAPS AI Study Tutor & Exam Studios';
       case 'career-advisor':
@@ -144,6 +147,7 @@ export const LearnerDashboard: React.FC = () => {
       discover: 'Discover',
       subjects: 'Subjects',
       performance: 'Marks',
+      'geleza-quiz': 'Geleza AI Hub',
       'ai-tutor': 'AI Tutor',
       'career-advisor': 'Career Advisor',
       bursaries: 'Bursaries',
@@ -253,6 +257,9 @@ export const LearnerDashboard: React.FC = () => {
       {activeTab === 'arcade' && <FusionArcadeHub />}
       {activeTab === 'performance' && <SubjectPerformanceView />}
       {activeTab === 'assignments' && <LearnerAssignments />}
+      {activeTab === 'geleza-quiz' && (
+        <GelezaAIStudyHubModule initialSubject={tutorContext.subject || 'Mathematics'} />
+      )}
       {activeTab === 'ai-tutor' && (
         <LearnerAITutor
           initialSubject={tutorContext.subject}

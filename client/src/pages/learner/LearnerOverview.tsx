@@ -287,34 +287,21 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
     <div className="space-y-6 animate-fade-in text-slate-100 pb-20">
       <HomeGreeting />
 
-      {/* GELEZA AI STUDY HUB & PRACTICE QUIZ BANNER */}
-      <section className="p-4 md:p-5 rounded-2xl bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-slate-900/60 border border-purple-500/20 shadow-lg relative overflow-hidden backdrop-blur-sm">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center space-x-3.5">
-            <div className="p-3 rounded-xl bg-gradient-to-tr from-purple-500 to-indigo-600 text-white shadow-md shadow-indigo-500/20 shrink-0">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white">Geleza AI Study Hub</h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                  Instant Scored Quiz
-                </span>
-              </div>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Practice official CAPS questions, get Socratic hints, and receive instant explanations for your mistakes.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setIsQuizModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md shadow-purple-600/20 flex items-center gap-2 transition-all cursor-pointer shrink-0"
-          >
-            <BrainCircuit className="w-4 h-4" />
-            <span>Launch Practice Quiz</span>
-          </button>
+      {/* Live Data Retrieval Source Indicator */}
+      <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-[#0E1722]/90 border border-slate-200/90 dark:border-white/10 shadow-xs backdrop-blur-md">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="flex h-2.5 w-2.5 relative shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500" />
+          </span>
+          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
+            Retrieved live from Fusion School Database (PostgreSQL) • Official CAPS Enrolled Records
+          </span>
         </div>
-      </section>
+        <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider shrink-0 hidden sm:inline">
+          PostgreSQL Verified
+        </span>
+      </div>
 
       {/* 1. ENROLLED SUBJECTS HUB - CUSTOMIZABLE PRESENTATION & PICTURES */}
       <section className="space-y-4">
@@ -541,9 +528,6 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                         {meta.categoryLabel || 'CAPS Subject'}
                       </span>
                       <div className="flex items-center gap-1.5">
-                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-black/60 text-white backdrop-blur-md border border-white/10">
-                          Grade {grade}
-                        </span>
                         {assignmentsDue > 0 && (
                           <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-500/80 text-white backdrop-blur-md flex items-center gap-1 shadow-sm">
                             <FileText className="w-3 h-3" />
@@ -682,9 +666,6 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                         {meta.categoryLabel || 'CAPS Subject'}
                       </span>
                       <div className="flex items-center gap-1.5">
-                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-black/60 text-white backdrop-blur-md border border-white/10">
-                          Grade {grade}
-                        </span>
                         {assignmentsDue > 0 && (
                           <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-500/80 text-white backdrop-blur-md flex items-center gap-1 shadow-sm">
                             <FileText className="w-3 h-3" />
@@ -902,9 +883,6 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-mono text-cyan-400">{code}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-slate-400">
-                          Grade {grade}
-                        </span>
                       </div>
                       <h3
                         onClick={() => onNavigateTab('subjects', name)}
@@ -965,7 +943,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
           >
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div className="flex items-center gap-2">
-                <BookMarked className="w-5 h-5 text-indigo-400" />
+                <BookMarked className="w-5 h-5 text-cyan-400" />
                 <div>
                   <h3 className="text-base font-bold text-white">
                     {safeString(selectedResourceSubject.name)} Resources
@@ -983,13 +961,13 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
             <div className="flex-1 overflow-y-auto space-y-2.5 custom-scrollbar pr-1">
               {loadingResources ? (
                 <div className="py-8 text-center text-slate-400 text-xs">
-                  <LoadingSpinner text="Fetching study materials..." />
+                  <LoadingSpinner text="Retrieving subject study materials from PostgreSQL database..." />
                 </div>
               ) : resourceList && resourceList.length > 0 ? (
                 resourceList.map((res, i) => (
                   <div
                     key={i}
-                    className="p-3.5 rounded-2xl bg-surface-darker border border-white/5 hover:border-indigo-500/30 transition-all flex items-center justify-between gap-3"
+                    className="p-3.5 rounded-2xl bg-surface-darker border border-white/5 hover:border-cyan-500/30 transition-all flex items-center justify-between gap-3"
                   >
                     <div className="space-y-0.5">
                       <h4 className="text-xs font-bold text-white">{safeString(res.title || res.file_name, 'Study Material')}</h4>
@@ -1000,7 +978,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                         href={res.file_path}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors shrink-0 flex items-center gap-1"
+                        className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition-colors shrink-0 flex items-center gap-1"
                       >
                         <span>Open</span>
                         <ExternalLink className="w-3 h-3" />

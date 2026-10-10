@@ -26,6 +26,7 @@ import {
   Coins,
   CreditCard,
   Bell,
+  BrainCircuit,
   type LucideIcon
 } from 'lucide-react';
 
@@ -59,6 +60,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
   // Learner-specific modules
   performance: TrendingUp,
   reports: GraduationCap,
+  'geleza-quiz': BrainCircuit,
   'ai-tutor': Bot,
   'career-advisor': Briefcase,
   arcade: Gamepad2,
@@ -97,6 +99,7 @@ export const LEARNER_MODULES: SchoolModuleOption[] = [
   { id: 'assignments', label: 'Submit homework', icon: FileText },
   { id: 'exam-seating', label: 'My exam seat', icon: Grid3X3 },
   { id: 'discover', label: 'Discover studios', icon: Compass },
+  { id: 'geleza-quiz', label: 'Geleza AI study hub', icon: BrainCircuit },
   { id: 'ai-tutor', label: 'AI study tutor', icon: Bot },
   { id: 'career-advisor', label: 'Career advisor', icon: Briefcase },
   { id: 'arcade', label: 'Study games', icon: Gamepad2 },
@@ -130,7 +133,7 @@ export const LEARNER_FOLLOWS_TEACHER: Record<string, string[]> = {
   messages: ['messages'],
 };
 
-const LEARNER_CHOICE_IDS = ['discover', 'ai-tutor', 'career-advisor', 'arcade', 'bursaries', 'finance'];
+const LEARNER_CHOICE_IDS = ['discover', 'geleza-quiz', 'ai-tutor', 'career-advisor', 'arcade', 'bursaries', 'finance'];
 
 export const LEARNER_CHOICE_MODULES = LEARNER_MODULES.filter((module) => LEARNER_CHOICE_IDS.includes(module.id));
 

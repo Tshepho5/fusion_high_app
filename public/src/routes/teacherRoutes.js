@@ -55,8 +55,37 @@ router.get('/textbook-topics', teacherController.getTopicsFromTextbook);
 router.get('/my-textbooks', teacherController.getMyTextbooks);
 router.get('/my-resources', teacherController.getMyTextbooks);
 router.get('/my-learners', teacherController.getMyLearners);
-router.post('/upload-textbook', upload.single('textbook'), teacherController.uploadTextbook);
-router.post('/upload-resource', upload.single('file'), teacherController.uploadResource);
+router.post('/upload-textbook', (req, res, next) => {
+    upload.single('textbook')(req, res, (err) => {
+        if (err) {
+            console.error('[TEACHER UPLOAD TEXTBOOK ERROR]', err);
+            if (err instanceof multer.MulterError) {
+                if (err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({ error: 'Textbook file exceeds the 50MB maximum size limit.' });
+                }
+                return res.status(400).json({ error: `Upload error: ${err.message}` });
+            }
+            return res.status(400).json({ error: `File error: ${err.message}` });
+        }
+        next();
+    });
+}, teacherController.uploadTextbook);
+
+router.post('/upload-resource', (req, res, next) => {
+    upload.single('file')(req, res, (err) => {
+        if (err) {
+            console.error('[TEACHER UPLOAD RESOURCE ERROR]', err);
+            if (err instanceof multer.MulterError) {
+                if (err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({ error: 'Document file exceeds the 50MB maximum size limit.' });
+                }
+                return res.status(400).json({ error: `Upload error: ${err.message}` });
+            }
+            return res.status(400).json({ error: `File error: ${err.message}` });
+        }
+        next();
+    });
+}, teacherController.uploadResource);
 router.patch('/resources/:id/publish', teacherController.togglePublishResource);
 router.put('/resources/:id/publish', teacherController.togglePublishResource);
 router.delete('/resources/:id', teacherController.deleteResource);

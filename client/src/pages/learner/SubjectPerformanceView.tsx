@@ -69,27 +69,33 @@ export const SubjectPerformanceView: React.FC = () => {
   const getCapsRatingLevel = (mark: number) => {
     if (mark >= 80) return { level: 7, label: 'Outstanding Achievement', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' };
     if (mark >= 70) return { level: 6, label: 'Meritorious Achievement', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' };
-    if (mark >= 60) return { level: 5, label: 'Substantial Achievement', color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' };
-    if (mark >= 50) return { level: 4, label: 'Moderate Achievement', color: 'text-violet-400 bg-violet-500/10 border-violet-500/20' };
-    if (mark >= 40) return { level: 3, label: 'Adequate Achievement', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' };
-    if (mark >= 30) return { level: 2, label: 'Elementary Achievement', color: 'text-rose-400 bg-rose-500/10 border-rose-500/20' };
-    return { level: 1, label: 'Not Achieved', color: 'text-red-500 bg-red-500/10 border-red-500/20' };
+    if (mark >= 60) return { level: 5, label: 'Substantial Achievement', color: 'text-brand-400 bg-brand-500/10 border-brand-500/20' };
+    if (mark >= 50) return { level: 4, label: 'Moderate Achievement', color: 'text-sky-400 bg-sky-500/10 border-sky-500/20' };
+    if (mark >= 40) return { level: 3, label: 'Adequate Achievement', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' };
+    if (mark >= 30) return { level: 2, label: 'Elementary Achievement', color: 'text-orange-400 bg-orange-500/10 border-orange-500/20' };
+    return { level: 1, label: 'Not Achieved', color: 'text-rose-400 bg-rose-500/10 border-rose-500/20' };
   };
 
   return (
     <div className="space-y-6 animate-fade-in max-w-5xl mx-auto text-slate-100 pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
-        <div>
-          <h2 className="text-xl md:text-2xl font-bold font-display text-white tracking-tight flex items-center gap-2.5">
-            <TrendingUp className="w-6 h-6 text-emerald-400" />
-            <span>Subject Academic Performance & Analytics</span>
-          </h2>
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-xl md:text-2xl font-bold font-display text-white tracking-tight flex items-center gap-2.5">
+              <TrendingUp className="w-6 h-6 text-emerald-400" />
+              <span>Subject Academic Performance & Analytics</span>
+            </h2>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/40 dark:bg-cyan-900/30 border border-cyan-500/30 text-[10px] text-cyan-300 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              Retrieved Live from Fusion PostgreSQL Database
+            </span>
+          </div>
         </div>
 
         <select
           value={selectedTerm}
           onChange={(e) => setSelectedTerm(e.target.value)}
-          className="px-3.5 py-2 rounded-xl bg-surface-dark border border-white/10 text-xs font-semibold text-white focus:outline-none focus:border-indigo-500 self-start sm:self-auto"
+          className="px-3.5 py-2 rounded-xl bg-surface-dark border border-white/10 text-xs font-semibold text-white focus:outline-none focus:border-cyan-500 self-start sm:self-auto"
         >
           <option value="Term 3, 2026">Term 3, 2026 (Current)</option>
           <option value="Term 2, 2026">Term 2, 2026</option>
@@ -122,7 +128,7 @@ export const SubjectPerformanceView: React.FC = () => {
         <div className="p-5 rounded-3xl bg-surface-dark border border-white/10 shadow-sm space-y-1">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total Enrolled Subjects</span>
           <p className="text-3xl font-extrabold text-white">{subjects.length}</p>
-          <span className="text-[10px] text-indigo-400 font-medium">
+          <span className="text-[10px] text-cyan-400 font-medium">
             {subjects.length > 0 ? 'Enrolled subjects on record' : 'No subjects linked yet'}
           </span>
         </div>
@@ -140,7 +146,7 @@ export const SubjectPerformanceView: React.FC = () => {
 
       <div className="space-y-4">
         <h3 className="text-sm font-bold font-display text-white flex items-center gap-2">
-          <Award className="w-4 h-4 text-indigo-400" />
+          <Award className="w-4 h-4 text-cyan-400" />
           <span>Subject Marks & CAPS Achievement Scale</span>
         </h3>
 
@@ -184,7 +190,7 @@ export const SubjectPerformanceView: React.FC = () => {
                     <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${
-                          mark !== null ? 'bg-gradient-to-r from-indigo-500 to-emerald-400' : 'bg-slate-700'
+                          mark !== null ? 'bg-gradient-to-r from-cyan-500 to-emerald-400' : 'bg-slate-700'
                         }`}
                         style={{ width: mark !== null ? `${mark}%` : '0%' }}
                       />
