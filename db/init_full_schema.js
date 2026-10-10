@@ -674,6 +674,8 @@ async function initializeAllDatabaseTables(customClient) {
         activity_id INTEGER NOT NULL REFERENCES extracurricular_activities(id) ON DELETE CASCADE,
         child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
         role VARCHAR(50) DEFAULT 'Member',
+        jersey_number VARCHAR(10),
+        joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         joined_date DATE DEFAULT CURRENT_DATE,
         UNIQUE(activity_id, child_id)
       );
@@ -681,12 +683,28 @@ async function initializeAllDatabaseTables(customClient) {
       CREATE TABLE IF NOT EXISTS extracurricular_events (
         id SERIAL PRIMARY KEY,
         activity_id INTEGER NOT NULL REFERENCES extracurricular_activities(id) ON DELETE CASCADE,
-        event_name VARCHAR(255) NOT NULL,
+        title VARCHAR(255),
+        event_name VARCHAR(255),
+        event_type VARCHAR(50) DEFAULT 'Match',
+        opponent_school VARCHAR(150),
         opponent VARCHAR(150),
+        venue VARCHAR(150) DEFAULT 'Home Ground',
         event_date DATE NOT NULL,
         event_time TIME,
+        start_time VARCHAR(20),
         location VARCHAR(200),
+        result_score VARCHAR(100),
         result_summary VARCHAR(100),
+        notes TEXT,
+        status VARCHAR(30) DEFAULT 'Draft',
+        is_confirmed BOOLEAN DEFAULT FALSE,
+        is_published BOOLEAN DEFAULT FALSE,
+        published_at TIMESTAMP WITH TIME ZONE,
+        added_to_calendar BOOLEAN DEFAULT FALSE,
+        calendar_event_id INTEGER REFERENCES events(id) ON DELETE SET NULL,
+        created_by_coach_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        bus_transport_info VARCHAR(255),
+        required_kit VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 

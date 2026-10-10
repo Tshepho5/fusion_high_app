@@ -54,14 +54,45 @@ exports.getActivityDetails = async (req, res) => {
     }
 
     // Squad members
-    const membersRes = await db.query(`
-      SELECT m.id, m.role, m.jersey_number, m.joined_at,
-             c.id AS child_id, c.full_name AS learner_name, c.surname AS learner_surname, c.grade, c.learner_number
-      FROM extracurricular_members m
-      JOIN children c ON m.child_id::text = c.id::text
-      WHERE m.activity_id::text = $1::text
-      ORDER BY m.role = 'Captain' DESC, m.role = 'Vice-Captain' DESC, c.surname ASC;
-    `, [String(id)]);
+    let membersRes;
+    try {
+      membersRes = await db.query(`
+        SELECT m.id, m.role, m.jersey_number, m.joined_at,
+               c.id AS child_id, c.full_name AS learner_name, c.surname AS learner_surname, c.grade, c.learner_number
+        FROM extracurricular_members m
+        JOIN children c ON m.child_id::text = c.id::text
+        WHERE m.activity_id::text = $1::text
+        ORDER BY m.role = 'Captain' DESC, m.role = 'Vice-Captain' DESC, c.surname ASC;
+      `, [String(id)]);
+    } catch (memErr) {
+      if (String(memErr.message).includes('jersey_number') || String(memErr.message).includes('joined_at') || String(memErr.message).includes('does not exist')) {
+        try {
+          await db.query(`
+            ALTER TABLE extracurricular_members ADD COLUMN IF NOT EXISTS jersey_number VARCHAR(10);
+            ALTER TABLE extracurricular_members ADD COLUMN IF NOT EXISTS joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+          `);
+          membersRes = await db.query(`
+            SELECT m.id, m.role, m.jersey_number, m.joined_at,
+                   c.id AS child_id, c.full_name AS learner_name, c.surname AS learner_surname, c.grade, c.learner_number
+            FROM extracurricular_members m
+            JOIN children c ON m.child_id::text = c.id::text
+            WHERE m.activity_id::text = $1::text
+            ORDER BY m.role = 'Captain' DESC, m.role = 'Vice-Captain' DESC, c.surname ASC;
+          `, [String(id)]);
+        } catch (_) {
+          membersRes = await db.query(`
+            SELECT m.id, m.role, NULL AS jersey_number, COALESCE(m.joined_date, CURRENT_DATE) AS joined_at,
+                   c.id AS child_id, c.full_name AS learner_name, c.surname AS learner_surname, c.grade, c.learner_number
+            FROM extracurricular_members m
+            JOIN children c ON m.child_id::text = c.id::text
+            WHERE m.activity_id::text = $1::text
+            ORDER BY m.role = 'Captain' DESC, m.role = 'Vice-Captain' DESC, c.surname ASC;
+          `, [String(id)]);
+        }
+      } else {
+        throw memErr;
+      }
+    }
 
     // Events / Fixtures
     const eventsRes = await db.query(`
@@ -182,12 +213,41 @@ exports.joinActivity = async (req, res) => {
       return res.status(400).json({ error: 'Activity ID and Child ID are required.' });
     }
 
-    const result = await db.query(`
-      INSERT INTO extracurricular_members (activity_id, child_id, role, jersey_number)
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (activity_id, child_id) DO UPDATE SET role = EXCLUDED.role, jersey_number = EXCLUDED.jersey_number
-      RETURNING *;
-    `, [activity_id, targetChildId, role, jersey_number || null]);
+    let result;
+    try {
+      result = await db.query(`
+        INSERT INTO extracurricular_members (activity_id, child_id, role, jersey_number)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (activity_id, child_id) DO UPDATE SET role = EXCLUDED.role, jersey_number = EXCLUDED.jersey_number
+        RETURNING *;
+      `, [activity_id, targetChildId, role, jersey_number || null]);
+    } catch (insertErr) {
+      if (String(insertErr.message).includes('jersey_number') || String(insertErr.message).includes('does not exist')) {
+        console.warn('[EXTRACURRICULAR] Auto-migrating missing extracurricular_members columns...');
+        try {
+          await db.query(`
+            ALTER TABLE extracurricular_members ADD COLUMN IF NOT EXISTS jersey_number VARCHAR(10);
+            ALTER TABLE extracurricular_members ADD COLUMN IF NOT EXISTS joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+          `);
+          result = await db.query(`
+            INSERT INTO extracurricular_members (activity_id, child_id, role, jersey_number)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (activity_id, child_id) DO UPDATE SET role = EXCLUDED.role, jersey_number = EXCLUDED.jersey_number
+            RETURNING *;
+          `, [activity_id, targetChildId, role, jersey_number || null]);
+        } catch (retryErr) {
+          // Fallback without jersey_number column
+          result = await db.query(`
+            INSERT INTO extracurricular_members (activity_id, child_id, role)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (activity_id, child_id) DO UPDATE SET role = EXCLUDED.role
+            RETURNING *;
+          `, [activity_id, targetChildId, role]);
+        }
+      } else {
+        throw insertErr;
+      }
+    }
 
     res.status(201).json({
       success: true,
