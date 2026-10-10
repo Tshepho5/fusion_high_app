@@ -287,21 +287,6 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
     <div className="space-y-6 animate-fade-in text-slate-100 pb-20">
       <HomeGreeting />
 
-      {/* Live Data Retrieval Source Indicator */}
-      <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-[#0E1722]/90 border border-slate-200/90 dark:border-white/10 shadow-xs backdrop-blur-md">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="flex h-2.5 w-2.5 relative shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500" />
-          </span>
-          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
-            Retrieved live from Fusion School Database (PostgreSQL) • Official CAPS Enrolled Records
-          </span>
-        </div>
-        <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider shrink-0 hidden sm:inline">
-          PostgreSQL Verified
-        </span>
-      </div>
 
       {/* 1. ENROLLED SUBJECTS HUB - CUSTOMIZABLE PRESENTATION & PICTURES */}
       <section className="space-y-4">
@@ -961,7 +946,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
             <div className="flex-1 overflow-y-auto space-y-2.5 custom-scrollbar pr-1">
               {loadingResources ? (
                 <div className="py-8 text-center text-slate-400 text-xs">
-                  <LoadingSpinner text="Retrieving subject study materials from PostgreSQL database..." />
+                  <LoadingSpinner text="Retrieving subject study materials..." />
                 </div>
               ) : resourceList && resourceList.length > 0 ? (
                 resourceList.map((res, i) => (

@@ -181,7 +181,7 @@ export const LearnerTimetable: React.FC = () => {
     window.print();
   };
 
-  if (loading) return <LoadingSpinner text="Fetching timetable from database..." />;
+  if (loading) return <LoadingSpinner text="Fetching timetable schedule..." />;
 
   return (
     <div className="space-y-6">
@@ -197,10 +197,6 @@ export const LearnerTimetable: React.FC = () => {
             </h2>
             <span className="text-xs text-slate-400 font-mono">
               Grade {user?.grade || user?.academic?.grade || '10'}
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/40 dark:bg-cyan-900/30 border border-cyan-500/30 text-[10px] text-cyan-300 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-              Retrieved from School PostgreSQL Database
             </span>
           </div>
         </div>
@@ -469,7 +465,7 @@ export const LearnerTimetable: React.FC = () => {
             <div className="rounded-3xl bg-surface-dark border border-white/10 p-12 text-center text-slate-400 text-xs space-y-2">
               <Calendar className="w-8 h-8 text-slate-600 mx-auto mb-2" />
               <p className="font-bold text-slate-300">
-                {activeSchedule ? `No periods found for ${selectedDay}.` : 'No active timetable published in database.'}
+                {activeSchedule ? `No periods found for ${selectedDay}.` : 'No active timetable published.'}
               </p>
               <p className="text-[11px] text-slate-500 max-w-md mx-auto">
                 Try clearing your search filter or select another day of the week.

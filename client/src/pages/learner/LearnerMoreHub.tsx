@@ -257,21 +257,6 @@ export const LearnerMoreHub: React.FC<LearnerMoreHubProps> = ({ onNavigateTab })
 
   return (
     <div className="space-y-6 animate-fade-in text-slate-900 dark:text-slate-100 pb-20">
-      {/* Live Data Retrieval Source Indicator */}
-      <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-[#0E1722]/90 border border-slate-200/90 dark:border-white/10 shadow-xs backdrop-blur-md">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="flex h-2.5 w-2.5 relative shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500" />
-          </span>
-          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
-            Active school modules retrieved live from Fusion PostgreSQL Database • Verified School Allocations
-          </span>
-        </div>
-        <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider shrink-0 hidden sm:inline">
-          PostgreSQL Verified
-        </span>
-      </div>
 
       {/* Header Card */}
       <div className="p-5 sm:p-6 xl:px-1 xl:bg-transparent xl:dark:bg-transparent xl:border-transparent xl:shadow-none rounded-3xl bg-white/80 dark:bg-[#0F1A24]/90 backdrop-blur-xl border border-slate-200/90 dark:border-[#1B2E3D] shadow-sm relative overflow-hidden transition-colors">

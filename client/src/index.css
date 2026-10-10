@@ -263,6 +263,16 @@ html[data-theme="navy"] input:not(.login-glowing-input)::placeholder,
 }
 
 /* 3. Solid Colored Buttons, Badges, & Gradients: MUST PRESERVE CRISP WHITE TEXT ON DEEP FILLS */
+.smart-id-card,
+.smart-id-card *,
+.theme-light .smart-id-card,
+.theme-light .smart-id-card *,
+html[data-theme="light"] .smart-id-card,
+html[data-theme="light"] .smart-id-card *,
+.light .smart-id-card,
+.light .smart-id-card * {
+  /* Guard against any light mode global text overrides */
+}
 .theme-light .text-always-white,
 html[data-theme="light"] .text-always-white,
 .light .text-always-white,

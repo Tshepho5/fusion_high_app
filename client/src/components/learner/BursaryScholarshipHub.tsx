@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { bursaryService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../common/Badge';
 import { Modal } from '../common/Modal';
 import { LoadingSpinner } from '../common/LoadingSpinner';
@@ -37,6 +38,14 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
   childId,
   isParentView = false
 }) => {
+  const { user } = useAuth();
+  const userRole = ((user?.role as string) || '').toLowerCase();
+  const isPrincipalDashboard =
+    userRole === 'admin' ||
+    userRole === 'principal' ||
+    Boolean(user?.is_superadmin) ||
+    (!childId && userRole !== 'learner' && !isParentView);
+
   const [bursaries, setBursaries] = useState<any[]>([]);
   const [learnerData, setLearnerData] = useState<any | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -126,27 +135,11 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
   });
 
   if (loading) {
-    return <LoadingSpinner size="lg" text="Retrieving NSFAS & corporate bursary opportunities from PostgreSQL database..." />;
+    return <LoadingSpinner size="lg" text="Loading bursary opportunities..." />;
   }
 
   return (
     <div className="space-y-6">
-      {/* Live Data Retrieval Source Indicator */}
-      <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-[#0E1722]/90 border border-slate-200/90 dark:border-white/10 shadow-xs backdrop-blur-md">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="flex h-2.5 w-2.5 relative shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500" />
-          </span>
-          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
-            Retrieved live from PostgreSQL Database • Verified National NSFAS & Corporate Registry
-          </span>
-        </div>
-        <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider shrink-0 hidden sm:inline">
-          PostgreSQL Verified
-        </span>
-      </div>
-
       {/* Header Banner */}
       <div className="p-6 rounded-3xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
@@ -165,8 +158,8 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
           </div>
         </div>
 
-        {/* Academic Profile Snippet */}
-        {learnerData && (
+        {/* Academic Profile Snippet - Hidden in Principal Dashboard */}
+        {!isPrincipalDashboard && learnerData && (
           <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-100 dark:bg-surface-darker border border-slate-200/80 dark:border-white/5">
             <div className="text-center px-2 border-r border-slate-200 dark:border-white/10">
               <p className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 font-mono">Calculated APS</p>
@@ -280,14 +273,16 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
 
                 {/* Match Score Circular / Badge */}
                 <div className="text-right shrink-0">
-                  <div className={`px-2.5 py-1 rounded-2xl border font-mono font-extrabold text-xs flex items-center gap-1 ${
-                    isHighMatch
-                      ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
-                      : 'bg-cyan-500/15 border-cyan-500/30 text-cyan-700 dark:text-cyan-300'
-                  }`}>
-                    <Sparkles className="w-3 h-3 text-cyan-500" />
-                    <span>{matchScore}% Match</span>
-                  </div>
+                  {!isPrincipalDashboard && (
+                    <div className={`px-2.5 py-1 rounded-2xl border font-mono font-extrabold text-xs flex items-center gap-1 ${
+                      isHighMatch
+                        ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                        : 'bg-cyan-500/15 border-cyan-500/30 text-cyan-700 dark:text-cyan-300'
+                    }`}>
+                      <Sparkles className="w-3 h-3 text-cyan-500" />
+                      <span>{matchScore}% Match</span>
+                    </div>
+                  )}
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
                     Min APS: <strong>{bursary.min_aps}</strong>
                   </p>

@@ -655,21 +655,6 @@ export const LearnerProfile: React.FC = () => {
       {/* Learner academic ribbon + digital ID — kept, below the profile summary */}
       {role === 'learner' && (
         <>
-          {/* Live Data Retrieval Source Indicator */}
-          <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-[#0E1722]/90 border border-slate-200/90 dark:border-white/10 shadow-xs backdrop-blur-md">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="flex h-2.5 w-2.5 relative shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500" />
-              </span>
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
-                Learner profile, marks & Smart Card credentials retrieved live from PostgreSQL School Database
-              </span>
-            </div>
-            <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider shrink-0 hidden sm:inline">
-              PostgreSQL Live Sync
-            </span>
-          </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 shadow-sm space-y-1">

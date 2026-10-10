@@ -24,7 +24,7 @@ import { authService } from '../../services/api';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login, establishSession } = useAuth();
+  const { login, establishSession, isAuthenticated, role } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   const isLight = theme === 'light';
@@ -88,6 +88,92 @@ export const LoginPage: React.FC = () => {
       }
     } catch (_) {}
   }, []);
+
+  // Strict Keyboard Shortcut Disabling & Navigation Restrictor on Login Page
+  useEffect(() => {
+    // If user is already authenticated, redirect immediately to dashboard
+    if (isAuthenticated && role) {
+      navigate(`/dashboard/${role.toLowerCase()}`, { replace: true });
+      return;
+    }
+
+    // Lock browser history traversal to prevent back/forward bouncing between login and dashboard before authentication
+    const lockHistory = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
+    lockHistory();
+
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      // Keep user locked on login page prior to authenticating
+      lockHistory();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    // Global Keydown Barrier on Login Page:
+    // Intercepts & disables all special shortcut keys, hotkeys, and key-driven navigation
+    const handleKeyDownBarrier = (e: KeyboardEvent) => {
+      const activeElement = document.activeElement as HTMLElement | null;
+      const isInputFocused =
+        activeElement &&
+        (activeElement.tagName === 'INPUT' ||
+          activeElement.tagName === 'TEXTAREA' ||
+          activeElement.isContentEditable);
+
+      // Block backspace outside of text fields (prevents browser back navigation)
+      if (e.key === 'Backspace' && !isInputFocused) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      // Block Alt + Left / Alt + Right (browser history back / forward navigation keys)
+      if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      // If authentication is actively running (loading), block all submission/navigation keys
+      if (loading) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+      }
+
+      // If Ctrl or Meta (Cmd) is pressed:
+      if (e.ctrlKey || e.metaKey) {
+        const key = e.key.toLowerCase();
+        // Allow standard text editing keystrokes ONLY inside active input fields
+        const isEditingKey = isInputFocused && ['c', 'v', 'x', 'a', 'z', 'y'].includes(key);
+        if (!isEditingKey) {
+          // Block any special shortcut (e.g. Ctrl+K, Ctrl+M, Ctrl+P, Ctrl+D, Ctrl+H, etc.)
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation?.();
+          return;
+        }
+      }
+
+      // Block Function keys (F1 - F12) that might trigger browser or custom actions
+      if (/^F\d+$/.test(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    };
+
+    // Attach in capture phase to intercept before any child or global listener
+    window.addEventListener('keydown', handleKeyDownBarrier, { capture: true });
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('keydown', handleKeyDownBarrier, { capture: true });
+    };
+  }, [isAuthenticated, role, loading, navigate]);
 
   const confirmAccount = async (value: string) => {
     const trimmed = value.trim();
@@ -207,7 +293,13 @@ export const LoginPage: React.FC = () => {
         {/* Back to Home Navigation Pill */}
         <Link
           to="/"
+          onClick={(e) => {
+            if (loading) e.preventDefault();
+          }}
+          tabIndex={loading ? -1 : 0}
           className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold shadow-lg backdrop-blur-md transition-all active:scale-95 border ${
+            loading ? 'opacity-50 pointer-events-none cursor-not-allowed' : ''
+          } ${
             isLight
               ? 'bg-white/80 hover:bg-white text-slate-900 border-white/70 shadow-black/10'
               : 'bg-black/40 hover:bg-black/60 text-white border-white/25 shadow-black/30'

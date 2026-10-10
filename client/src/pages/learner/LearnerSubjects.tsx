@@ -302,21 +302,6 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
 
   return (
     <div className="space-y-6">
-      {/* Live Data Retrieval Source Indicator */}
-      <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-[#0E1722]/90 border border-slate-200/90 dark:border-white/10 shadow-xs backdrop-blur-md">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="flex h-2.5 w-2.5 relative shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500" />
-          </span>
-          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
-            Official CAPS curriculum, chapters & SBA tasks retrieved live from PostgreSQL Database
-          </span>
-        </div>
-        <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider shrink-0 hidden sm:inline">
-          PostgreSQL Verified
-        </span>
-      </div>
 
       {selectedSubject ? (
         <div className="max-w-3xl mx-auto space-y-8 animate-fade-in">
@@ -727,9 +712,9 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
             {showLanguagePicker && (
               <div className="mt-4 pt-4 border-t border-white/10 space-y-2 animate-fade-in">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-300 font-semibold">Click an official language to update database:</span>
+                  <span className="text-xs text-slate-300 font-semibold">Select your official home language:</span>
                   {updatingLanguage && (
-                    <span className="text-xs text-brand-300 animate-pulse font-bold">Updating school database...</span>
+                    <span className="text-xs text-brand-300 animate-pulse font-bold">Updating official language...</span>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -863,7 +848,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
             )
           ) : (
             <div className="p-12 text-center text-slate-400 text-xs rounded-3xl bg-surface-dark border border-white/10">
-              No enrolled subjects found in database.
+              No enrolled subjects found.
             </div>
           )}
         </div>

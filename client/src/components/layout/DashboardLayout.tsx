@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { Navbar } from './Navbar';
 import { CommandPalette } from '../common/CommandPalette';
 import { BottomNavigationDock } from './BottomNavigationDock';
@@ -22,6 +23,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   customBottomDock,
   hideBottomDock = false,
 }) => {
+  const { isAuthenticated, user } = useAuth();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   // Tab transition state to display the shimmer skeleton whenever user switches tabs
@@ -47,22 +49,42 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     }
   }, [activeTab]);
 
-  // Global key listener for Ctrl+K or Cmd+K or Ctrl+M for Main Menu
+  // Special keyboard shortcuts (Ctrl+K Command Palette, Ctrl+M Menu, Ctrl+H Home)
+  // Strictly enabled ONLY post-login after authentication state is verified
   useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore shortcut keystrokes if an input or textarea is currently focused and typing normal text
+      const target = e.target as HTMLElement | null;
+      const isTyping =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setCommandPaletteOpen((prev) => !prev);
+        return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm' && !isTyping) {
         e.preventDefault();
         onSelectTab(activeTab === 'more' ? 'overview' : 'more');
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h' && !isTyping) {
+        e.preventDefault();
+        onSelectTab('overview');
+        return;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTab, onSelectTab]);
+  }, [isAuthenticated, user, activeTab, onSelectTab]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-[#CBDDE3] via-[#DBE7EC] to-[#EBF2F5] dark:from-[#060D14] dark:via-[#09131F] dark:to-[#0B1520] text-slate-900 dark:text-slate-100 selection:bg-cyan-500 selection:text-white relative transition-colors duration-300">

@@ -87,7 +87,7 @@ export const SubjectPerformanceView: React.FC = () => {
             </h2>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/40 dark:bg-cyan-900/30 border border-cyan-500/30 text-[10px] text-cyan-300 font-medium">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-              Retrieved Live from Fusion PostgreSQL Database
+              Official CAPS Performance Records
             </span>
           </div>
         </div>

@@ -82,22 +82,6 @@ export const GelezaAIStudyHubModule: React.FC<GelezaAIStudyHubModuleProps> = ({
 
   return (
     <div className="space-y-6 animate-fade-in pb-16">
-      {/* Live Data Retrieval Source Indicator */}
-      <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-[#0E1722]/90 border border-slate-200/90 dark:border-white/10 shadow-xs backdrop-blur-md">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="flex h-2.5 w-2.5 relative shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500" />
-          </span>
-          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
-            Geleza AI Question Bank & Marking Rubric retrieved live from PostgreSQL Database • Verified CAPS Curriculum
-          </span>
-        </div>
-        <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider shrink-0 hidden sm:inline">
-          PostgreSQL Synced
-        </span>
-      </div>
-
       {/* Hero Module Banner */}
       <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex items-start gap-4">
@@ -239,9 +223,9 @@ export const GelezaAIStudyHubModule: React.FC<GelezaAIStudyHubModuleProps> = ({
 
         <div className="p-5 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 shadow-xs space-y-2">
           <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-[#18E2EC]">
-            <Database className="w-5 h-5" />
+            <BrainCircuit className="w-5 h-5" />
           </div>
-          <h4 className="text-sm font-bold text-slate-900 dark:text-white">PostgreSQL Data Sync</h4>
+          <h4 className="text-sm font-bold text-slate-900 dark:text-white">Real-Time Study Sync</h4>
           <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
             Results and study sessions are synchronized with your academic profile and school records.
           </p>

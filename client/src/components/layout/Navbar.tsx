@@ -57,8 +57,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
     return () => unsubscribe();
   }, [user?.id]);
 
-  // Close profile dropdown when clicking outside
+  // Close profile dropdown when clicking outside or pressing Escape (post-login)
   useEffect(() => {
+    if (!showProfileMenu || !user?.id) return;
+
     const handleClickOutside = (event: MouseEvent) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false);
@@ -75,7 +77,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [showProfileMenu, user?.id]);
 
   const handleHomeClick = () => {
     if (onNavigateHome) {
