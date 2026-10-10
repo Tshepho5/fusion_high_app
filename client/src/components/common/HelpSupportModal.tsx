@@ -673,7 +673,9 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
           <button
             onClick={() => setActiveTab('ai-support')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-              isLight
+              (activeTab as string) === 'ai-support'
+                ? 'bg-gradient-to-r from-brand-600 to-cyan-500 text-white shadow-md'
+                : isLight
                 ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}

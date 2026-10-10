@@ -2402,5 +2402,13 @@ module.exports = {
   getPhysicalSciencesGrade10KnowledgeBase: () => physicalSciencesGrade10KB,
   queryMathematicsModel,
   evaluateMathematicsAnswer,
-  getMathematicsKnowledgeBase: () => mathematicsKB
+  getMathematicsKnowledgeBase: () => mathematicsKB,
+  resolvePortalOrAppAnswer,
+  isGreetingText,
+  getGreetingResponse,
+  isExplainTopicRequest,
+  getExplainTopicResponse,
+  isPracticeQuestionRequest,
+  getPracticeQuestionResponse,
+  generateAcademicSuggestions
 };
