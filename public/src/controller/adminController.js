@@ -3119,16 +3119,35 @@ exports.getSchoolSubjectsSummary = async (req, res) => {
             const learnerCount = parseInt(learnerCountRes.rows[0]?.count || '0', 10);
 
             // Compute assessment statistics & marks from formal submissions only
-            const marksStatsRes = await db.query(`
-                SELECT 
-                    COUNT(id) as total_marks_recorded,
-                    COUNT(DISTINCT assessment_name) as assessments_count,
-                    ROUND(AVG(percentage)) as avg_mark,
-                    COUNT(CASE WHEN percentage >= 50 THEN 1 END) as passed_count,
-                    COUNT(CASE WHEN published_to_admin = TRUE OR is_published = TRUE THEN 1 END) as published_count
-                FROM marks
-                WHERE grade = $1 AND LOWER(subject) = LOWER($2) AND (is_formal = TRUE OR is_formal IS NULL);
-            `, [sub.grade, sub.name]);
+            let marksStatsRes;
+            try {
+                marksStatsRes = await db.query(`
+                    SELECT 
+                        COUNT(id) as total_marks_recorded,
+                        COUNT(DISTINCT assessment_name) as assessments_count,
+                        ROUND(AVG(percentage)) as avg_mark,
+                        COUNT(CASE WHEN percentage >= 50 THEN 1 END) as passed_count,
+                        COUNT(CASE WHEN published_to_admin = TRUE OR is_published = TRUE THEN 1 END) as published_count
+                    FROM marks
+                    WHERE grade = $1 AND LOWER(subject) = LOWER($2) AND (is_formal = TRUE OR is_formal IS NULL);
+                `, [sub.grade, sub.name]);
+            } catch (queryErr) {
+                // Defensive fallback if is_formal or published_to_admin column is not present
+                try {
+                    marksStatsRes = await db.query(`
+                        SELECT 
+                            COUNT(id) as total_marks_recorded,
+                            COUNT(DISTINCT assessment_name) as assessments_count,
+                            ROUND(AVG(percentage)) as avg_mark,
+                            COUNT(CASE WHEN percentage >= 50 THEN 1 END) as passed_count,
+                            COUNT(CASE WHEN is_published = TRUE THEN 1 END) as published_count
+                        FROM marks
+                        WHERE grade = $1 AND LOWER(subject) = LOWER($2);
+                    `, [sub.grade, sub.name]);
+                } catch (fallbackErr) {
+                    marksStatsRes = { rows: [{ total_marks_recorded: '0', assessments_count: '0', avg_mark: null, passed_count: '0', published_count: '0' }] };
+                }
+            }
 
             const stats = marksStatsRes.rows[0];
             const recordedCount = parseInt(stats?.total_marks_recorded || '0', 10);

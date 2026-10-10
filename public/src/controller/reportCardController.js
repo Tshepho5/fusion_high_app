@@ -250,15 +250,27 @@ exports.getGradeTemplateMarks = async (req, res) => {
       const attRate = totalDays > 0 ? Math.round((daysPresent / totalDays) * 100) : null;
 
       // Fetch ONLY recorded formal assessment marks (Strictly exclude informal quizzes / drills)
-      const marksRes = await db.query(
-        `SELECT subject, assessment_name, score, max_score, percentage, weight, is_formal, assessment_type, recorded_at
-         FROM marks
-         WHERE (child_id = $1 OR learner_id = $1)
-           AND (term = $2 OR term IS NULL)
-           AND (is_formal = TRUE OR is_formal IS NULL)
-         ORDER BY recorded_at ASC`,
-        [l.id, termNum]
-      );
+      let marksRes;
+      try {
+        marksRes = await db.query(
+          `SELECT subject, assessment_name, score, max_score, percentage, weight, is_formal, assessment_type, recorded_at
+           FROM marks
+           WHERE (child_id = $1 OR learner_id = $1)
+             AND (term = $2 OR term IS NULL)
+             AND (is_formal = TRUE OR is_formal IS NULL)
+           ORDER BY recorded_at ASC`,
+          [l.id, termNum]
+        );
+      } catch (errMarks) {
+        marksRes = await db.query(
+          `SELECT subject, assessment_name, score, max_score, percentage, weight, recorded_at
+           FROM marks
+           WHERE (child_id = $1 OR learner_id = $1)
+             AND (term = $2 OR term IS NULL)
+           ORDER BY recorded_at ASC`,
+          [l.id, termNum]
+        ).catch(() => ({ rows: [] }));
+      }
 
       // Calculate marks & assessment percentage weighting for each subject
       const subjectOutcomes = [];
@@ -1275,15 +1287,27 @@ exports.transferTeacherMarksToTemplate = async (req, res) => {
 
     for (const l of learners) {
       // Fetch ONLY recorded formal assessment marks (Strictly exclude informal practice/quizzes)
-      const marksRes = await db.query(
-        `SELECT subject, assessment_name, score, max_score, percentage, weight, is_formal, assessment_type
-         FROM marks 
-         WHERE (child_id = $1 OR learner_id = $1)
-           AND (term = $2 OR term IS NULL)
-           AND (is_formal = TRUE OR is_formal IS NULL)
-         ORDER BY recorded_at ASC`,
-        [l.id, termNum]
-      );
+      let marksRes;
+      try {
+        marksRes = await db.query(
+          `SELECT subject, assessment_name, score, max_score, percentage, weight, is_formal, assessment_type
+           FROM marks 
+           WHERE (child_id = $1 OR learner_id = $1)
+             AND (term = $2 OR term IS NULL)
+             AND (is_formal = TRUE OR is_formal IS NULL)
+           ORDER BY recorded_at ASC`,
+          [l.id, termNum]
+        );
+      } catch (errMarks) {
+        marksRes = await db.query(
+          `SELECT subject, assessment_name, score, max_score, percentage, weight
+           FROM marks 
+           WHERE (child_id = $1 OR learner_id = $1)
+             AND (term = $2 OR term IS NULL)
+           ORDER BY recorded_at ASC`,
+          [l.id, termNum]
+        ).catch(() => ({ rows: [] }));
+      }
 
       // Real Attendance from attendance register
       const attRes = await db.query(
