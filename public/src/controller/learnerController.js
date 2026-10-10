@@ -184,23 +184,92 @@ exports.getMySubjectsOverview = async (req, res) => {
         let totalAvgSum = 0;
         let validAvgCount = 0;
 
+        let learnerClassName = `${learner.grade || 10}A`;
+        let classTeacherFormatted = 'To Be Assigned';
+        let classTeacherEmail = null;
+        try {
+            let classRes = null;
+            if (learner.class_id) {
+                classRes = await db.query(
+                    `SELECT c.id, c.name as class_name, 
+                            COALESCE(u_ht.full_name || ' ' || u_ht.surname, u_at.full_name || ' ' || u_at.surname) as class_teacher_name,
+                            COALESCE(u_ht.email, u_at.email) as class_teacher_email
+                     FROM classes c
+                     LEFT JOIN users u_ht ON c.homeroom_teacher_id = u_ht.id
+                     LEFT JOIN users u_at ON c.assigned_teacher_id = u_at.id
+                     WHERE c.id = $1 LIMIT 1`,
+                    [learner.class_id]
+                );
+            }
+            if (!classRes || classRes.rows.length === 0) {
+                classRes = await db.query(
+                    `SELECT c.id, c.name as class_name, 
+                            COALESCE(u_ht.full_name || ' ' || u_ht.surname, u_at.full_name || ' ' || u_at.surname) as class_teacher_name,
+                            COALESCE(u_ht.email, u_at.email) as class_teacher_email
+                     FROM classes c
+                     LEFT JOIN users u_ht ON c.homeroom_teacher_id = u_ht.id
+                     LEFT JOIN users u_at ON c.assigned_teacher_id = u_at.id
+                     WHERE c.grade = $1 AND (c.stream = $2 OR c.stream = 'General')
+                     ORDER BY c.id ASC LIMIT 1`,
+                    [learner.grade || 10, learner.stream || 'General']
+                );
+            }
+            if (classRes && classRes.rows.length > 0) {
+                learnerClassName = classRes.rows[0].class_name || learnerClassName;
+                classTeacherFormatted = classRes.rows[0].class_teacher_name?.trim() || classTeacherFormatted;
+                classTeacherEmail = classRes.rows[0].class_teacher_email || null;
+                if (!learner.class_id && classRes.rows[0].id && learner.id) {
+                    await db.query(`UPDATE children SET class_id = $1 WHERE id = $2`, [classRes.rows[0].id, learner.id]).catch(() => {});
+                }
+            }
+        } catch (_) {}
+
         for (const subjName of subjectsList) {
             let teacherFormatted = 'To Be Assigned';
             try {
+                // 1. Direct match in teacher_assignments by subject, grade, and class
                 let teacherRes = await db.query(
                     `SELECT u.full_name, u.surname 
-                     FROM employees e 
-                     JOIN users u ON e.user_id = u.id 
-                     WHERE EXISTS (
-                         SELECT 1 FROM unnest(COALESCE(e.subjects, ARRAY[]::TEXT[])) s 
-                         WHERE s ILIKE $1 OR $1 ILIKE s
-                     )
-                     AND ($2 = ANY(COALESCE(e.grades_taught, ARRAY[]::INT[])) OR ARRAY_LENGTH(e.grades_taught, 1) IS NULL OR e.grades_taught = '{}')
+                     FROM teacher_assignments ta
+                     JOIN users u ON ta.teacher_id = u.id 
+                     WHERE (ta.subject_name ILIKE $1 OR $1 ILIKE ta.subject_name)
+                       AND (ta.grade_level = $2 OR $2 IS NULL)
+                       AND ($3::int IS NULL OR ta.class_id = $3 OR ta.class_name ILIKE $4)
                      LIMIT 1`,
-                    [`%${subjName}%`, learner.grade || 10]
-                );
+                    [`%${subjName}%`, learner.grade || 10, learner.class_id || null, `%${learnerClassName}%`]
+                ).catch(() => ({ rows: [] }));
 
-                if (teacherRes.rows.length === 0) {
+                // 2. Direct match in teacher_assignments by subject and grade
+                if (!teacherRes || teacherRes.rows.length === 0) {
+                    teacherRes = await db.query(
+                        `SELECT u.full_name, u.surname 
+                         FROM teacher_assignments ta
+                         JOIN users u ON ta.teacher_id = u.id 
+                         WHERE (ta.subject_name ILIKE $1 OR $1 ILIKE ta.subject_name)
+                           AND (ta.grade_level = $2 OR $2 IS NULL)
+                         LIMIT 1`,
+                        [`%${subjName}%`, learner.grade || 10]
+                    ).catch(() => ({ rows: [] }));
+                }
+
+                // 3. Match in employees table by subjects and grades_taught
+                if (!teacherRes || teacherRes.rows.length === 0) {
+                    teacherRes = await db.query(
+                        `SELECT u.full_name, u.surname 
+                         FROM employees e 
+                         JOIN users u ON e.user_id = u.id 
+                         WHERE EXISTS (
+                             SELECT 1 FROM unnest(COALESCE(e.subjects, ARRAY[]::TEXT[])) s 
+                             WHERE s ILIKE $1 OR $1 ILIKE s
+                         )
+                         AND ($2 = ANY(COALESCE(e.grades_taught, ARRAY[]::INT[])) OR ARRAY_LENGTH(e.grades_taught, 1) IS NULL OR e.grades_taught = '{}')
+                         LIMIT 1`,
+                        [`%${subjName}%`, learner.grade || 10]
+                    ).catch(() => ({ rows: [] }));
+                }
+
+                // 4. Fallback match in employees table by subjects array
+                if (!teacherRes || teacherRes.rows.length === 0) {
                     teacherRes = await db.query(
                         `SELECT u.full_name, u.surname 
                          FROM employees e 
@@ -211,10 +280,10 @@ exports.getMySubjectsOverview = async (req, res) => {
                          )
                          LIMIT 1`,
                         [`%${subjName}%`]
-                    );
+                    ).catch(() => ({ rows: [] }));
                 }
 
-                if (teacherRes.rows[0]) {
+                if (teacherRes && teacherRes.rows[0]) {
                     const fn = teacherRes.rows[0].full_name || '';
                     const sn = teacherRes.rows[0].surname || '';
                     teacherFormatted = `${fn.trim()} ${sn.trim()}`.trim() || 'To Be Assigned';
@@ -338,6 +407,10 @@ exports.getMySubjectsOverview = async (req, res) => {
         } catch (_) {}
 
         res.json({
+            class_name: learnerClassName,
+            class_teacher: classTeacherFormatted,
+            class_teacher_name: classTeacherFormatted,
+            class_teacher_email: classTeacherEmail,
             enrolled_subjects_count: subjectsList.length,
             upcoming_assessments_count: totalPending || 2,
             assignments_due_count: totalPending,

@@ -30,16 +30,26 @@ exports.getProfile = async (req, res) => {
         if (user.role === 'learner') {
             const lrnNum = (user.email || '').split('@')[0];
             const childRes = await db.query(
-                `SELECT * FROM children 
-                 WHERE learner_user_id::text = $1::text OR learner_number::text = $2::text
+                `SELECT c.*, cl.name as class_name,
+                        COALESCE(u_ht.full_name || ' ' || u_ht.surname, u_at.full_name || ' ' || u_at.surname) as class_teacher_name,
+                        COALESCE(u_ht.email, u_at.email) as class_teacher_email
+                 FROM children c
+                 LEFT JOIN classes cl ON c.class_id = cl.id
+                 LEFT JOIN users u_ht ON cl.homeroom_teacher_id = u_ht.id
+                 LEFT JOIN users u_at ON cl.assigned_teacher_id = u_at.id
+                 WHERE c.learner_user_id::text = $1::text OR c.learner_number::text = $2::text
                  LIMIT 1`, 
                 [req.user.id, lrnNum]
-            );
+            ).catch(() => ({ rows: [] }));
             user.academic = childRes.rows[0] || null;
             if (user.academic) {
                 user.grade = user.academic.grade;
                 user.stream = user.academic.stream;
                 user.learner_number = user.academic.learner_number;
+                user.class_name = user.academic.class_name || `${user.academic.grade || 10}A`;
+                user.class_teacher = user.academic.class_teacher_name || null;
+                user.class_teacher_name = user.academic.class_teacher_name || null;
+                user.class_teacher_email = user.academic.class_teacher_email || null;
                 if (user.academic.school_id) {
                     user.school_id = user.academic.school_id;
                 }

@@ -1083,33 +1083,33 @@ export const AdminUsers: React.FC = () => {
             placeholder="Search directory..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-surface-dark border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-surface-dark border border-slate-200 dark:border-white/10 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
         </div>
       </div>
 
       {/* Directory Content List */}
-      <div className="rounded-3xl bg-surface-dark border border-white/10 p-5 shadow-xl">
+      <div className="rounded-3xl bg-white dark:bg-surface-dark border border-slate-200/80 dark:border-white/10 p-5 shadow-sm dark:shadow-xl">
         {loading ? (
           <LoadingSpinner text="Retrieving records from PostgreSQL database..." />
         ) : activeTab === 'employees' ? (
           <div className="space-y-6">
             {/* PENDING EDUCATOR REGISTRATIONS & WORKLOAD ALLOCATIONS SECTION - strictly appears AFTER teacher has applied */}
             {staffInvites.filter(si => si.status === 'applied').length > 0 && (
-              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-950/40 border border-amber-500/30 space-y-3.5 shadow-xl">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
+              <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/50 dark:bg-gradient-to-r dark:from-slate-900 dark:to-indigo-950/40 border border-amber-300/80 dark:border-amber-500/30 space-y-3.5 shadow-sm dark:shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/70 dark:border-white/10 pb-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center border border-amber-500/30">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/15 dark:bg-amber-500/20 text-amber-600 dark:text-amber-300 flex items-center justify-center border border-amber-500/30">
                       <Clock className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
+                      <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                         <span>Pending Educator Registrations & Workload Allocations</span>
-                        <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold text-[10px] border border-amber-500/30">
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500/15 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold text-[10px] border border-amber-500/30">
                           {staffInvites.filter(si => si.status === 'applied').length} Actions
                         </span>
                       </h3>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400">
                         Review confirmed workload assignments and approve newly registered educators to activate their portal access.
                       </p>
                     </div>
@@ -1133,29 +1133,29 @@ export const AdminUsers: React.FC = () => {
                       return (
                         <div
                           key={invite.id}
-                          className="p-3.5 rounded-xl bg-slate-950/70 border border-amber-500/30 flex flex-col justify-between gap-3 hover:border-brand-500/40 transition-all shadow-md"
+                          className="p-3.5 rounded-xl bg-white dark:bg-slate-950/70 border border-amber-200/80 dark:border-amber-500/30 flex flex-col justify-between gap-3 hover:border-brand-500/40 transition-all shadow-sm"
                         >
                           <div className="space-y-2">
                             <div className="flex items-start justify-between gap-2">
                               <div>
-                                <h4 className="font-bold text-white text-sm">
+                                <h4 className="font-bold text-slate-900 dark:text-white text-sm">
                                   {invite.full_name || 'Educator'} {invite.surname || ''}
                                 </h4>
-                                <p className="text-[11px] text-slate-400 font-mono">{invite.email}</p>
+                                <p className="text-[11px] text-slate-600 dark:text-slate-400 font-mono">{invite.email}</p>
                                 {invite.phone && <p className="text-[10px] text-slate-500">Phone: {invite.phone}</p>}
                               </div>
-                              <span className="px-2 py-0.5 rounded-md font-bold text-[10px] shrink-0 border bg-amber-500/20 text-amber-300 border-amber-500/30 animate-pulse">
+                              <span className="px-2 py-0.5 rounded-md font-bold text-[10px] shrink-0 border bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 animate-pulse">
                                 Workload Confirmed • Needs Approval
                               </span>
                             </div>
 
                             {/* Workload preview */}
-                            <div className="p-2.5 rounded-lg bg-white/5 border border-white/5 space-y-1 text-[11px]">
+                            <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200/70 dark:border-white/5 space-y-1 text-[11px]">
                               <div className="flex flex-wrap items-center gap-1">
-                                <span className="text-slate-400 font-semibold">Subjects:</span>
+                                <span className="text-slate-600 dark:text-slate-400 font-semibold">Subjects:</span>
                                 {subs.length > 0 ? (
                                   subs.map((s: string) => (
-                                    <span key={s} className="px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300 text-[10px] font-bold">
+                                    <span key={s} className="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20 text-[10px] font-bold">
                                       {s}
                                     </span>
                                   ))
@@ -1163,7 +1163,7 @@ export const AdminUsers: React.FC = () => {
                                   <span className="text-slate-500">General</span>
                                 )}
                               </div>
-                              <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 pt-0.5">
+                              <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-600 dark:text-slate-400 pt-0.5">
                                 <span><strong>Grades:</strong> {grds.join(', ') || 'FET Phase'}</span>
                                 <span>&bull;</span>
                                 <span><strong>Classes:</strong> {clss.join(', ') || '10A'}</span>
@@ -1172,7 +1172,7 @@ export const AdminUsers: React.FC = () => {
                           </div>
 
                           {/* Action Buttons */}
-                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/5">
+                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/70 dark:border-white/5">
                             {invite.invite_token && (
                               <button
                                 type="button"
@@ -1182,10 +1182,10 @@ export const AdminUsers: React.FC = () => {
                                   setActionSuccess(`Direct registration link copied for ${invite.email}`);
                                   setTimeout(() => setActionSuccess(null), 3000);
                                 }}
-                                className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-[11px] cursor-pointer flex items-center gap-1"
+                                className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-transparent font-bold text-[11px] cursor-pointer flex items-center gap-1 transition-colors"
                                 title="Copy confirmation link to share via WhatsApp or SMS"
                               >
-                                <ExternalLink className="w-3 h-3 text-cyan-300" />
+                                <ExternalLink className="w-3 h-3 text-cyan-600 dark:text-cyan-300" />
                                 <span>Copy Link</span>
                               </button>
                             )}
@@ -1194,7 +1194,7 @@ export const AdminUsers: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleDeclineStaffInvite(invite.id)}
-                                className="px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-bold text-[11px] cursor-pointer transition-colors"
+                                className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-transparent font-bold text-[11px] cursor-pointer transition-colors"
                               >
                                 Decline
                               </button>
@@ -1224,20 +1224,20 @@ export const AdminUsers: React.FC = () => {
 
             {/* OUTGOING TEACHER INVITATIONS SECTION - Awaiting Educator Registration / Acceptance */}
             {staffInvites.filter(si => si.status === 'pending').length > 0 && (
-              <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/60 border border-cyan-500/20 space-y-3.5 shadow-md">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
+              <div className="p-4 sm:p-5 rounded-2xl bg-cyan-50/50 dark:bg-slate-900/60 border border-cyan-200/70 dark:border-cyan-500/20 space-y-3.5 shadow-sm dark:shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-cyan-200/60 dark:border-white/10 pb-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-300 flex items-center justify-center border border-cyan-500/30">
+                    <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 flex items-center justify-center border border-cyan-500/30">
                       <Mail className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
+                      <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                         <span>Outgoing Educator Invitations (Awaiting Acceptance)</span>
-                        <span className="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 font-bold text-[10px] border border-cyan-500/30">
+                        <span className="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 font-bold text-[10px] border border-cyan-500/30">
                           {staffInvites.filter(si => si.status === 'pending').length} Sent
                         </span>
                       </h3>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400">
                         Invitations dispatched to teachers. Once the educator confirms their workload and sets their password, they will appear under Pending Approvals above.
                       </p>
                     </div>
@@ -1255,29 +1255,29 @@ export const AdminUsers: React.FC = () => {
                       return (
                         <div
                           key={invite.id}
-                          className="p-3.5 rounded-xl bg-slate-950/70 border border-white/10 flex flex-col justify-between gap-3 hover:border-cyan-500/40 transition-all"
+                          className="p-3.5 rounded-xl bg-white dark:bg-slate-950/70 border border-slate-200 dark:border-white/10 flex flex-col justify-between gap-3 hover:border-cyan-500/40 transition-all shadow-sm"
                         >
                           <div className="space-y-2">
                             <div className="flex items-start justify-between gap-2">
                               <div>
-                                <h4 className="font-bold text-white text-sm">
+                                <h4 className="font-bold text-slate-900 dark:text-white text-sm">
                                   {invite.full_name || 'Educator'} {invite.surname || ''}
                                 </h4>
-                                <p className="text-[11px] text-slate-400 font-mono">{invite.email}</p>
+                                <p className="text-[11px] text-slate-600 dark:text-slate-400 font-mono">{invite.email}</p>
                                 {invite.phone && <p className="text-[10px] text-slate-500">Phone: {invite.phone}</p>}
                               </div>
-                              <span className="px-2 py-0.5 rounded-md font-bold text-[10px] shrink-0 border bg-cyan-500/10 text-cyan-300 border-cyan-500/20">
+                              <span className="px-2 py-0.5 rounded-md font-bold text-[10px] shrink-0 border bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/25">
                                 Invite Sent (Pending Confirmation)
                               </span>
                             </div>
 
                             {/* Workload preview */}
-                            <div className="p-2.5 rounded-lg bg-white/5 border border-white/5 space-y-1 text-[11px]">
+                            <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200/70 dark:border-white/5 space-y-1 text-[11px]">
                               <div className="flex flex-wrap items-center gap-1">
-                                <span className="text-slate-400 font-semibold">Allocated Subjects:</span>
+                                <span className="text-slate-600 dark:text-slate-400 font-semibold">Allocated Subjects:</span>
                                 {subs.length > 0 ? (
                                   subs.map((s: string) => (
-                                    <span key={s} className="px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300 text-[10px] font-bold">
+                                    <span key={s} className="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20 text-[10px] font-bold">
                                       {s}
                                     </span>
                                   ))
@@ -1285,7 +1285,7 @@ export const AdminUsers: React.FC = () => {
                                   <span className="text-slate-500">General</span>
                                 )}
                               </div>
-                              <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 pt-0.5">
+                              <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-600 dark:text-slate-400 pt-0.5">
                                 <span><strong>Grades:</strong> {grds.join(', ') || 'FET Phase'}</span>
                                 <span>&bull;</span>
                                 <span><strong>Classes:</strong> {clss.join(', ') || '10A'}</span>
@@ -1294,7 +1294,7 @@ export const AdminUsers: React.FC = () => {
                           </div>
 
                           {/* Action Buttons */}
-                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/5">
+                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/70 dark:border-white/5">
                             {invite.invite_token && (
                               <button
                                 type="button"
@@ -1304,10 +1304,10 @@ export const AdminUsers: React.FC = () => {
                                   setActionSuccess(`Direct registration link copied for ${invite.email}`);
                                   setTimeout(() => setActionSuccess(null), 3000);
                                 }}
-                                className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-[11px] cursor-pointer flex items-center gap-1"
+                                className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-transparent font-bold text-[11px] cursor-pointer flex items-center gap-1 transition-colors"
                                 title="Copy confirmation link to share via WhatsApp or SMS"
                               >
-                                <ExternalLink className="w-3 h-3 text-cyan-300" />
+                                <ExternalLink className="w-3 h-3 text-cyan-600 dark:text-cyan-300" />
                                 <span>Copy Link</span>
                               </button>
                             )}
@@ -1316,7 +1316,7 @@ export const AdminUsers: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleDeclineStaffInvite(invite.id)}
-                                className="px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-bold text-[11px] cursor-pointer transition-colors"
+                                className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-transparent font-bold text-[11px] cursor-pointer transition-colors"
                               >
                                 Cancel Invite
                               </button>
@@ -1333,7 +1333,7 @@ export const AdminUsers: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
+                  <tr className="border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono text-[10px]">
                     <th className="pb-3 px-3">Educator / Staff</th>
                     <th className="pb-3 px-3">Designation & Department</th>
                   <th className="pb-3 px-3">Assigned Subjects</th>
@@ -1343,21 +1343,21 @@ export const AdminUsers: React.FC = () => {
                   <th className="pb-3 px-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                 {filteredEmployees.map((e) => (
-                  <tr key={e.employee_id} className="hover:bg-white/5 transition-colors">
+                  <tr key={e.employee_id} className="hover:bg-slate-50/80 dark:hover:bg-white/5 transition-colors">
                     <td className="py-3.5 px-3">
-                      <p className="font-bold text-white text-sm">{e.full_name} {e.surname}</p>
-                      <p className="text-[11px] text-slate-400 font-mono">{e.email}</p>
+                      <p className="font-bold text-slate-900 dark:text-white text-sm">{e.full_name} {e.surname}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">{e.email}</p>
                     </td>
                     <td className="py-3.5 px-3">
-                      <p className="font-semibold text-cyan-400">{e.employee_role || 'Teacher'}</p>
-                      <p className="text-[11px] text-slate-400">{e.department_name || 'Academic'}</p>
+                      <p className="font-semibold text-cyan-600 dark:text-cyan-400">{e.employee_role || 'Teacher'}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">{e.department_name || 'Academic'}</p>
                     </td>
                     <td className="py-3.5 px-3">
                       <div className="flex flex-wrap gap-1 max-w-xs">
                         {(e.subjects || []).map(s => (
-                          <span key={s} className="px-2 py-0.5 rounded-md bg-brand-500/20 text-brand-300 text-[10px] font-bold border border-brand-500/30">
+                          <span key={s} className="px-2 py-0.5 rounded-md bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 text-[10px] font-bold border border-cyan-500/20">
                             {s}
                           </span>
                         ))}
@@ -1365,8 +1365,8 @@ export const AdminUsers: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-3">
                       <div className="space-y-0.5">
-                        <p className="text-white font-mono text-[11px]">Grades: {(e.grades_taught || []).join(', ') || '10, 11'}</p>
-                        <p className="text-slate-400 text-[10px]">Classes: {(e.classes_taught || []).join(', ') || '10A'}</p>
+                        <p className="text-slate-800 dark:text-white font-mono text-[11px]">Grades: {(e.grades_taught || []).join(', ') || '10, 11'}</p>
+                        <p className="text-slate-500 dark:text-slate-400 text-[10px]">Classes: {(e.classes_taught || []).join(', ') || '10A'}</p>
                       </div>
                     </td>
                     <td className="py-3.5 px-3">

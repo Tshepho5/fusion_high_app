@@ -85,6 +85,10 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
   const [performance, setPerformance] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isQuizModalOpen, setIsQuizModalOpen] = useState<boolean>(false);
+  const [classInfo, setClassInfo] = useState<{ className: string; classTeacher: string }>({
+    className: '10A',
+    classTeacher: 'To Be Assigned'
+  });
 
   // Subject Presentation Mode (3D Flow / Carousel / Visual Cards / Grid / Compact / List)
   const [subjectViewMode, setSubjectViewMode] = useState<SubjectViewMode>(() => {
@@ -176,10 +180,26 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
           learnerService.getGradesOverview().catch(() => learnerService.getProgress())
         ]);
 
-        if (profData.status === 'fulfilled') setProfile(profData.value);
+        let currentClassName = user?.academic?.class_name || (user?.grade ? `${user.grade}A` : '10A');
+        let currentClassTeacher = user?.academic?.class_teacher_name || user?.academic?.class_teacher || 'To Be Assigned';
+
+        if (profData.status === 'fulfilled') {
+          const pVal = profData.value;
+          setProfile(pVal);
+          if (pVal?.class_name || pVal?.academic?.class_name) {
+            currentClassName = pVal?.class_name || pVal?.academic?.class_name;
+          }
+          if (pVal?.class_teacher || pVal?.class_teacher_name || pVal?.academic?.class_teacher_name) {
+            currentClassTeacher = pVal?.class_teacher || pVal?.class_teacher_name || pVal?.academic?.class_teacher_name;
+          }
+        }
         
         if (subjData.status === 'fulfilled') {
           const val = subjData.value;
+          if (val?.class_name) currentClassName = val.class_name;
+          if (val?.class_teacher || val?.class_teacher_name) {
+            currentClassTeacher = val.class_teacher || val.class_teacher_name;
+          }
           let subList: any[] = [];
           if (val && Array.isArray(val.subjects)) {
             subList = val.subjects;
@@ -200,6 +220,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
             });
           setSubjects(formatted);
         }
+        setClassInfo({ className: currentClassName, classTeacher: currentClassTeacher });
 
         if (annData.status === 'fulfilled') {
           const list = Array.isArray(annData.value) ? annData.value : annData.value?.announcements || [];
@@ -296,16 +317,26 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
             <div className="w-10 h-10 rounded-2xl bg-brand-500/15 border border-brand-500/30 text-brand-400 flex items-center justify-center shadow-sm">
               <BookOpen className="w-5 h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg md:text-xl xl:text-2xl font-bold font-display text-white tracking-tight">
-                  My Enrolled Subjects
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500/20 text-brand-300 border border-brand-500/30">
-                  {filteredSubjects.length} of {displaySubjects.length}
-                </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg md:text-xl xl:text-2xl font-bold font-display text-white tracking-tight">
+                    My Enrolled Subjects
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500/20 text-brand-300 border border-brand-500/30">
+                    {filteredSubjects.length} of {displaySubjects.length}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-300">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-medium">
+                    <span>Class:</span>
+                    <strong className="text-white font-bold">{classInfo.className}</strong>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-800/80 text-slate-300 border border-white/10 font-medium">
+                    <span>Class Teacher:</span>
+                    <strong className="text-white font-bold">{classInfo.classTeacher}</strong>
+                  </span>
+                </div>
               </div>
-            </div>
           </div>
 
           {/* View Mode Switcher (3D Flow / Carousel / Visual Hero Cards / Grid / Compact / List) */}

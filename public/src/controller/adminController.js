@@ -3648,150 +3648,134 @@ exports.approveStaffInvite = async (req, res) => {
     const finalFullName = (invite.full_name || '').trim();
     const finalSurname = (invite.surname || '').trim();
 
-    // IF TEACHER HAS ALREADY SUBMITTED REGISTRATION WITH PASSWORD:
-    if (invite.password_hash) {
-      // 1. Create or update user in users table (role_id = 4 for teacher)
-      const userRes = await db.query(`
-        INSERT INTO users (
-          email, password_hash, role_id, school_id, is_superadmin,
-          full_name, surname, id_number, phone, country
-        )
-        VALUES ($1, $2, 4, $3, FALSE, $4, $5, $6, $7, 'South Africa')
-        ON CONFLICT (email) DO UPDATE SET
-          password_hash = COALESCE(EXCLUDED.password_hash, users.password_hash),
-          role_id = 4,
-          school_id = EXCLUDED.school_id,
-          full_name = COALESCE(NULLIF(EXCLUDED.full_name, ''), users.full_name),
-          surname = COALESCE(NULLIF(EXCLUDED.surname, ''), users.surname),
-          id_number = COALESCE(EXCLUDED.id_number, users.id_number),
-          phone = COALESCE(EXCLUDED.phone, users.phone)
-        RETURNING id, email, full_name, surname, role_id, school_id;
-      `, [
-        invite.email.toLowerCase().trim(),
-        invite.password_hash,
-        invite.school_id,
-        finalFullName,
-        finalSurname,
-        invite.id_number || null,
-        invite.phone || null
-      ]);
+    // Check if user already exists in users table by email
+    const userExistingRes = await db.query(
+      'SELECT id, email, password_hash, role_id FROM users WHERE LOWER(email) = LOWER($1)',
+      [invite.email.toLowerCase().trim()]
+    ).catch(() => ({ rows: [] }));
+    const existingUser = userExistingRes.rows[0];
+    const effectivePasswordHash = invite.password_hash || existingUser?.password_hash || null;
 
-      const user = userRes.rows[0];
+    // 1. Create or update user in users table (role_id = 4 for teacher)
+    // If neither invite nor existingUser has a password, generate a secure random placeholder hash
+    const finalPasswordHash = effectivePasswordHash || await bcrypt.hash(require('crypto').randomBytes(16).toString('hex'), 10);
 
-      // 2. Create or update employee record
-      await db.query(`
-        INSERT INTO employees (
-          user_id, full_name, surname, department_id, school_id, phone, email,
-          subjects, grades_taught, classes_taught
-        )
-        VALUES ($1, $2, $3, 2, $4, $5, $6, $7, $8, $9)
-        ON CONFLICT (user_id) DO UPDATE SET
-          school_id = EXCLUDED.school_id,
-          full_name = EXCLUDED.full_name,
-          surname = EXCLUDED.surname,
-          email = EXCLUDED.email,
-          phone = EXCLUDED.phone,
-          subjects = EXCLUDED.subjects,
-          grades_taught = EXCLUDED.grades_taught,
-          classes_taught = EXCLUDED.classes_taught;
-      `, [
-        user.id, finalFullName, finalSurname,
-        invite.school_id, invite.phone || null, invite.email,
-        activeSubjects, activeGrades, activeClasses
-      ]);
+    const userRes = await db.query(`
+      INSERT INTO users (
+        email, password_hash, role_id, school_id, is_superadmin,
+        full_name, surname, id_number, phone, country
+      )
+      VALUES ($1, $2, 4, $3, FALSE, $4, $5, $6, $7, 'South Africa')
+      ON CONFLICT (email) DO UPDATE SET
+        password_hash = COALESCE(users.password_hash, EXCLUDED.password_hash),
+        role_id = 4,
+        school_id = EXCLUDED.school_id,
+        full_name = COALESCE(NULLIF(EXCLUDED.full_name, ''), users.full_name),
+        surname = COALESCE(NULLIF(EXCLUDED.surname, ''), users.surname),
+        id_number = COALESCE(EXCLUDED.id_number, users.id_number),
+        phone = COALESCE(EXCLUDED.phone, users.phone)
+      RETURNING id, email, full_name, surname, role_id, school_id;
+    `, [
+      invite.email.toLowerCase().trim(),
+      finalPasswordHash,
+      invite.school_id,
+      finalFullName,
+      finalSurname,
+      invite.id_number || null,
+      invite.phone || null
+    ]);
 
-      // 3. Populate teacher_assignments table
-      for (const subj of activeSubjects) {
-        for (const grade of activeGrades) {
-          const matchingClasses = rawClasses.filter(c => {
-            const g = extractGradeFromClass(c);
-            return g === null || isNaN(g) || g === grade;
-          }).map(c => cleanClassName(c, grade));
-          const classesToAssign = matchingClasses.length > 0 ? matchingClasses : [`${grade}A`];
-          for (const clsName of classesToAssign) {
-            const classLookup = await db.query(
-              'SELECT id FROM classes WHERE name = $1 AND (school_id = $2 OR school_id IS NULL) LIMIT 1',
-              [clsName, invite.school_id]
-            ).catch(() => ({ rows: [] }));
-            const classId = classLookup.rows[0]?.id || null;
+    const user = userRes.rows[0];
 
-            await db.query(`
-              INSERT INTO teacher_assignments (teacher_id, subject_name, grade_level, class_name, class_id)
-              VALUES ($1, $2, $3, $4, $5)
-              ON CONFLICT (teacher_id, subject_name, grade_level, class_name) 
-              DO UPDATE SET class_id = COALESCE(EXCLUDED.class_id, teacher_assignments.class_id);
-            `, [user.id, subj, grade, clsName, classId]).catch(e => console.warn('Teacher assignment insert note:', e.message));
-          }
+    // 2. Create or update employee record with active subjects, grades, and classes
+    await db.query(`
+      INSERT INTO employees (
+        user_id, full_name, surname, department_id, school_id, phone, email,
+        subjects, grades_taught, classes_taught
+      )
+      VALUES ($1, $2, $3, 2, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (user_id) DO UPDATE SET
+        school_id = EXCLUDED.school_id,
+        full_name = EXCLUDED.full_name,
+        surname = EXCLUDED.surname,
+        email = EXCLUDED.email,
+        phone = EXCLUDED.phone,
+        subjects = EXCLUDED.subjects,
+        grades_taught = EXCLUDED.grades_taught,
+        classes_taught = EXCLUDED.classes_taught;
+    `, [
+      user.id, finalFullName, finalSurname,
+      invite.school_id, invite.phone || null, invite.email,
+      activeSubjects, activeGrades, activeClasses
+    ]);
+
+    // 3. Populate teacher_assignments table for every subject, grade, and class
+    for (const subj of activeSubjects) {
+      for (const grade of activeGrades) {
+        const matchingClasses = rawClasses.filter(c => {
+          const g = extractGradeFromClass(c);
+          return g === null || isNaN(g) || g === grade;
+        }).map(c => cleanClassName(c, grade));
+        const classesToAssign = matchingClasses.length > 0 ? matchingClasses : [`${grade}A`];
+        for (const clsName of classesToAssign) {
+          const classLookup = await db.query(
+            'SELECT id FROM classes WHERE name = $1 AND (school_id = $2 OR school_id IS NULL) LIMIT 1',
+            [clsName, invite.school_id]
+          ).catch(() => ({ rows: [] }));
+          const classId = classLookup.rows[0]?.id || null;
+
+          await db.query(`
+            INSERT INTO teacher_assignments (teacher_id, subject_name, grade_level, class_name, class_id)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (teacher_id, subject_name, grade_level, class_name) 
+            DO UPDATE SET class_id = COALESCE(EXCLUDED.class_id, teacher_assignments.class_id);
+          `, [user.id, subj, grade, clsName, classId]).catch(e => console.warn('Teacher assignment insert note:', e.message));
         }
       }
-
-      // 4. Update classes table homeroom or assigned teacher
-      if (activeClasses.length > 0) {
-        await db.query(`
-          UPDATE classes 
-          SET assigned_teacher_id = $1 
-          WHERE name = ANY($2) AND school_id = $3 AND assigned_teacher_id IS NULL;
-        `, [user.id, activeClasses, invite.school_id]).catch(() => {});
-      }
-
-      // 5. Update staff_invites status to approved
-      await db.query(`
-        UPDATE staff_invites 
-        SET status = 'approved',
-            approved_by = $1,
-            approved_at = CURRENT_TIMESTAMP,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = $2;
-      `, [req.user?.id || null, id]);
-
-      // 6. Send official approval email to teacher with direct Login link
-      const loginUrl = `${baseUrl}/login`;
-      emailService.sendTeacherApplicationApprovedNotice({
-        colleagueEmail: invite.email,
-        colleagueName: finalFullName ? `${finalFullName} ${finalSurname}` : 'Educator',
-        principalName,
-        schoolName,
-        subjects: activeSubjects,
-        classes: activeClasses,
-        loginUrl
-      }).catch(e => console.warn('Could not send teacher approval email:', e.message));
-
-      return res.json({
-        success: true,
-        message: `Educator account for ${finalFullName} ${finalSurname} has been officially approved and activated! An activation confirmation email has been dispatched to ${invite.email}.`,
-        status: 'approved',
-        user
-      });
-    } else {
-      // Teacher hasn't registered password yet; mark approved & dispatch registration link
-      const approvalToken = require('crypto').randomBytes(24).toString('hex');
-      await db.query(`
-        UPDATE staff_invites 
-        SET status = 'approved',
-            approval_token = $1,
-            approved_by = $2,
-            approved_at = CURRENT_TIMESTAMP,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = $3;
-      `, [approvalToken, req.user?.id || null, id]);
-
-      const registerUrl = `${baseUrl}/register?role=teacher&step=register&token=${approvalToken}&email=${encodeURIComponent(invite.email)}`;
-      emailService.sendTeacherApplicationApprovedNotice({
-        colleagueEmail: invite.email,
-        colleagueName: finalFullName ? `${finalFullName} ${finalSurname}` : 'Educator',
-        principalName,
-        schoolName,
-        subjects: activeSubjects,
-        classes: activeClasses,
-        registerUrl
-      }).catch(e => console.warn('Could not send teacher approval email:', e.message));
-
-      return res.json({
-        success: true,
-        message: `Application for ${finalFullName || invite.email} has been approved. Registration link dispatched.`,
-        status: 'approved'
-      });
     }
+
+    // 4. Update classes table homeroom or assigned teacher
+    if (activeClasses.length > 0) {
+      await db.query(`
+        UPDATE classes 
+        SET assigned_teacher_id = $1 
+        WHERE name = ANY($2) AND school_id = $3 AND assigned_teacher_id IS NULL;
+      `, [user.id, activeClasses, invite.school_id]).catch(() => {});
+    }
+
+    // 5. Update staff_invites status to approved
+    const approvalToken = require('crypto').randomBytes(24).toString('hex');
+    await db.query(`
+      UPDATE staff_invites 
+      SET status = 'approved',
+          approval_token = COALESCE(approval_token, $1),
+          approved_by = $2,
+          approved_at = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $3;
+    `, [approvalToken, req.user?.id || null, id]);
+
+    // 6. Send official approval email to teacher
+    const loginUrl = `${baseUrl}/login`;
+    const registerUrl = `${baseUrl}/register?role=teacher&step=register&token=${approvalToken}&email=${encodeURIComponent(invite.email)}`;
+    
+    emailService.sendTeacherApplicationApprovedNotice({
+      colleagueEmail: invite.email,
+      colleagueName: finalFullName ? `${finalFullName} ${finalSurname}` : 'Educator',
+      principalName,
+      schoolName,
+      subjects: activeSubjects,
+      classes: activeClasses,
+      loginUrl: effectivePasswordHash ? loginUrl : undefined,
+      registerUrl: !effectivePasswordHash ? registerUrl : undefined
+    }).catch(e => console.warn('Could not send teacher approval email:', e.message));
+
+    return res.json({
+      success: true,
+      message: `Educator account for ${finalFullName} ${finalSurname} has been officially approved and assigned ${activeSubjects.length} subjects! Credentials and activation notice dispatched to ${invite.email}.`,
+      status: 'approved',
+      user
+    });
   } catch (err) {
     console.error('Error approving staff application:', err);
     res.status(500).json({ error: 'Failed to approve staff application: ' + err.message });

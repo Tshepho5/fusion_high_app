@@ -402,8 +402,37 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
       });
       return fallbackList;
     }
+
+    // Secondary fallback from user profile context if available
+    const userSubs = (user as any)?.academic?.subjects || (user as any)?.preferences?.assigned_subjects || [];
+    const userGrades = (user as any)?.academic?.grades_taught || (user as any)?.preferences?.assigned_grades || [10];
+    const userClasses = (user as any)?.academic?.classes_taught || (user as any)?.preferences?.assigned_classes || [];
+    if (Array.isArray(userSubs) && userSubs.length > 0) {
+      const fallbackList: any[] = [];
+      userSubs.forEach((subName: string) => {
+        userGrades.forEach((g: number) => {
+          const rawClass = userClasses.find((c: string) => {
+            const digits = (c || '').replace(/•\s*school\s*\d+/i, '').replace(/school\s*\d+/i, '');
+            return digits.includes(String(g)) || c.toLowerCase().includes(`grade ${g}`);
+          }) || `${g}A`;
+          const matchedClass = rawClass.replace(/\s*•\s*School\s*\d+/i, '').trim();
+          fallbackList.push({
+            id: `${subName}-${g}-${matchedClass}`,
+            subject_name: subName,
+            grade: g,
+            class_name: matchedClass,
+            code: `${subName.substring(0, 4).toUpperCase()}${g}`,
+            stream: subName.toLowerCase().includes('scien') || subName.toLowerCase().includes('physic') ? 'Science' : 'General',
+            learner_count: 0,
+            period_room: `Room ${matchedClass} • Scheduled`
+          });
+        });
+      });
+      return fallbackList;
+    }
+
     return [];
-  }, [subjectsOverview, workload]);
+  }, [subjectsOverview, workload, user]);
 
   if (loading) return <TeacherOverviewSkeleton />;
 

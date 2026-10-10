@@ -204,6 +204,40 @@ async function initializeAllDatabaseTables(customClient) {
         ('12C', 12, 'Tourism')
       ON CONFLICT (name) DO NOTHING;
 
+      ALTER TABLE classes ADD COLUMN IF NOT EXISTS homeroom_teacher_id INTEGER;
+      ALTER TABLE classes ADD COLUMN IF NOT EXISTS assigned_teacher_id INTEGER;
+      ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+
+      CREATE TABLE IF NOT EXISTS teacher_assignments (
+        id SERIAL PRIMARY KEY,
+        teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        subject_name VARCHAR(100) NOT NULL,
+        subject_code VARCHAR(50),
+        grade_level INTEGER NOT NULL,
+        class_name VARCHAR(50),
+        class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_teacher_assignments_unique 
+        ON teacher_assignments(teacher_id, subject_name, grade_level, class_name);
+      CREATE INDEX IF NOT EXISTS idx_teacher_assignments_filter 
+        ON teacher_assignments(teacher_id, subject_name, grade_level);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_user_id_unique 
+        ON employees(user_id);
+
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'unique_teacher_assignment'
+        ) THEN
+          ALTER TABLE teacher_assignments 
+          ADD CONSTRAINT unique_teacher_assignment UNIQUE (teacher_id, subject_name, grade_level, class_name);
+        END IF;
+      EXCEPTION
+        WHEN OTHERS THEN NULL;
+      END $$;
+
       CREATE TABLE IF NOT EXISTS subjects (
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,

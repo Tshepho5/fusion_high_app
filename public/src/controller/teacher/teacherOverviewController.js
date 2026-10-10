@@ -141,9 +141,9 @@ exports.getWorkload = async (req, res) => {
             try {
                 const inviteRes = await db.query(`
                     SELECT * FROM staff_invites 
-                    WHERE LOWER(email) = LOWER($1) 
-                      AND status IN ('approved', 'accepted', 'applied')
-                    ORDER BY updated_at DESC LIMIT 1
+                    WHERE TRIM(LOWER(email)) = TRIM(LOWER($1)) 
+                      AND (status IS NULL OR status NOT IN ('rejected', 'declined', 'cancelled'))
+                    ORDER BY (CASE WHEN status = 'approved' THEN 1 WHEN status = 'accepted' THEN 2 WHEN status = 'applied' THEN 3 ELSE 4 END), updated_at DESC LIMIT 1
                 `, [teacherEmail]);
                 if (inviteRes.rows.length > 0) {
                     const inv = inviteRes.rows[0];
@@ -363,9 +363,9 @@ exports.getMySubjectsOverview = async (req, res) => {
             try {
                 const inviteRes = await db.query(`
                     SELECT * FROM staff_invites 
-                    WHERE LOWER(email) = LOWER($1) 
-                      AND status IN ('approved', 'accepted', 'applied')
-                    ORDER BY updated_at DESC LIMIT 1
+                    WHERE TRIM(LOWER(email)) = TRIM(LOWER($1)) 
+                      AND (status IS NULL OR status NOT IN ('rejected', 'declined', 'cancelled'))
+                    ORDER BY (CASE WHEN status = 'approved' THEN 1 WHEN status = 'accepted' THEN 2 WHEN status = 'applied' THEN 3 ELSE 4 END), updated_at DESC LIMIT 1
                 `, [teacherEmail]);
 
                 if (inviteRes.rows.length > 0) {
