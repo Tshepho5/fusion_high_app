@@ -66,7 +66,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
   const [currentHomeLanguage, setCurrentHomeLanguage] = useState<string>('');
   const [updatingLanguage, setUpdatingLanguage] = useState<boolean>(false);
   const [languageMessage, setLanguageMessage] = useState<string | null>(null);
-  const [showLanguagePicker, setShowLanguagePicker] = useState<boolean>(true);
+  const [showLanguagePicker, setShowLanguagePicker] = useState<boolean>(false);
 
   const [topics, setTopics] = useState<any[]>([]);
   const [resources, setResources] = useState<any[]>([]);
@@ -176,10 +176,8 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
       .then((data) => {
         if (data.home_language) {
           setCurrentHomeLanguage(data.home_language);
-          setShowLanguagePicker(false);
-        } else {
-          setShowLanguagePicker(true);
         }
+        setShowLanguagePicker(false);
         const list = Array.isArray(data) ? data : data.subjects || [];
         rememberSubjects(list);
         applySubjectFromUrl(list, targetSubParam, targetViewParam);
@@ -299,6 +297,14 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
         ? 'bg-white dark:bg-[#142230] border-cyan-400 shadow-sm'
         : 'bg-white/80 dark:bg-white/[0.04] border-slate-200 dark:border-white/10 hover:border-cyan-400/50'
     }`;
+
+  if (loadingSubjects) {
+    return (
+      <div className="py-24 flex flex-col items-center justify-center space-y-4">
+        <LoadingSpinner size="lg" text="Loading enrolled subjects..." />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -748,9 +754,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
             </div>
           )}
 
-          {loadingSubjects ? (
-            <LoadingSpinner text="Fetching assigned curriculum subjects..." />
-          ) : subjects.length > 0 ? (
+          {subjects.length > 0 ? (
             subjectsViewMode === '3d-flow' ? (
               <Subject3DCoverFlow
                 subjects={subjects}
