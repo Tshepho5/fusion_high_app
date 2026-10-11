@@ -128,8 +128,21 @@ export const ASSESSMENT_COMPONENTS = [
   }
 ];
 
+export const normalizeClassGrade = (clsStr: string | number | null | undefined): string => {
+  if (clsStr === null || clsStr === undefined) return '';
+  const s = String(clsStr).trim();
+  if (!s || s.toLowerCase() === 'all') return 'all';
+  // Match standard grade strings like "Class 11", "Grade 11", "11 · School 13", "11 - School 13", "10A", "10B", etc.
+  const match = s.match(/(?:grade|class)?\s*(\d{1,2})/i);
+  if (match) {
+    return match[1];
+  }
+  const digits = s.replace(/[^0-9]/g, '');
+  return digits || s;
+};
+
 const DEFAULT_SUBJECTS = ['Mathematics', 'Physical Sciences', 'Life Sciences', 'Accounting', 'Business Studies', 'Economics', 'English FAL'];
-const DEFAULT_CLASSES = ['10A', '10B', '11A', '12A'];
+const DEFAULT_CLASSES = ['10', '11', '12'];
 
 export const TeacherAssessments: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -137,9 +150,9 @@ export const TeacherAssessments: React.FC = () => {
   const queryClass = searchParams.get('class');
 
   const [subjects, setSubjects] = useState<string[]>(querySubject ? [querySubject, ...DEFAULT_SUBJECTS.filter(s => s !== querySubject)] : DEFAULT_SUBJECTS);
-  const [classes, setClasses] = useState<string[]>(queryClass ? [queryClass, ...DEFAULT_CLASSES.filter(c => c !== queryClass)] : DEFAULT_CLASSES);
+  const [classes, setClasses] = useState<string[]>(queryClass ? [normalizeClassGrade(queryClass), ...DEFAULT_CLASSES.filter(c => c !== normalizeClassGrade(queryClass))] : DEFAULT_CLASSES);
   const [selectedSubject, setSelectedSubject] = useState<string>(querySubject || DEFAULT_SUBJECTS[0]);
-  const [selectedClass, setSelectedClass] = useState<string>(queryClass || DEFAULT_CLASSES[0]);
+  const [selectedClass, setSelectedClass] = useState<string>(queryClass ? normalizeClassGrade(queryClass) : DEFAULT_CLASSES[0]);
 
   // Active Category View: 'formal' | 'term' | 'ai' | 'entry' | 'history'
   const [activeCategory, setActiveCategory] = useState<'formal' | 'term' | 'ai' | 'entry' | 'history'>('formal');
@@ -190,8 +203,8 @@ export const TeacherAssessments: React.FC = () => {
           const list = Array.isArray(overview) ? overview : [];
           list.forEach((c: any) => {
             if (c.subject_name) extractedSubjects.push(c.subject_name);
-            if (c.class_name) extractedClasses.push(c.class_name);
-            else if (c.grade) extractedClasses.push(`${c.grade}A`);
+            const norm = normalizeClassGrade(c.class_name || c.grade);
+            if (norm && norm !== 'all') extractedClasses.push(norm);
           });
         } catch (_) {}
 
@@ -201,7 +214,8 @@ export const TeacherAssessments: React.FC = () => {
           const list = Array.isArray(clsRes) ? clsRes : [];
           list.forEach((c: any) => {
             if (c.subject_name || c.subject) extractedSubjects.push(c.subject_name || c.subject);
-            if (c.name || c.class_name) extractedClasses.push(c.name || c.class_name);
+            const norm = normalizeClassGrade(c.name || c.class_name || c.grade);
+            if (norm && norm !== 'all') extractedClasses.push(norm);
           });
         } catch (_) {}
 
@@ -210,8 +224,8 @@ export const TeacherAssessments: React.FC = () => {
           const learnersRes = await teacherService.getMyLearners();
           const list = Array.isArray(learnersRes) ? learnersRes : (learnersRes?.learners || []);
           list.forEach((l: any) => {
-            if (l.class_name) extractedClasses.push(l.class_name);
-            else if (l.grade) extractedClasses.push(`${l.grade}A`);
+            const norm = normalizeClassGrade(l.class_name || l.grade);
+            if (norm && norm !== 'all') extractedClasses.push(norm);
             if (Array.isArray(l.subjects)) {
               l.subjects.forEach((s: string) => extractedSubjects.push(s));
             }
@@ -220,9 +234,11 @@ export const TeacherAssessments: React.FC = () => {
 
         if (!isMounted) return;
 
-        // Deduplicate and combine with default curriculum
+        // Deduplicate classes to numeric grades only: '10', '11', '12'
         const uniqueSubjects = Array.from(new Set([...extractedSubjects.filter(Boolean), ...DEFAULT_SUBJECTS]));
-        const uniqueClasses = Array.from(new Set([...extractedClasses.filter(Boolean), ...DEFAULT_CLASSES]));
+        const uniqueClasses = Array.from(
+          new Set([...extractedClasses.filter(c => c && /^\d+$/.test(c)), ...DEFAULT_CLASSES])
+        ).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
 
         setSubjects(uniqueSubjects);
         setClasses(uniqueClasses);
@@ -234,9 +250,11 @@ export const TeacherAssessments: React.FC = () => {
         });
 
         setSelectedClass(prev => {
-          if (queryClass && uniqueClasses.includes(queryClass)) return queryClass;
-          if (prev && uniqueClasses.includes(prev)) return prev;
-          return uniqueClasses[0] || '10A';
+          const normQuery = queryClass ? normalizeClassGrade(queryClass) : null;
+          if (normQuery && uniqueClasses.includes(normQuery)) return normQuery;
+          const normPrev = prev ? normalizeClassGrade(prev) : null;
+          if (normPrev && uniqueClasses.includes(normPrev)) return normPrev;
+          return uniqueClasses[0] || '10';
         });
       } catch (err) {
         console.warn('Teacher workload load notice:', err);
@@ -253,7 +271,7 @@ export const TeacherAssessments: React.FC = () => {
     return () => { isMounted = false; };
   }, [searchParams]);
 
-  // 2. Load learners roster for selected class, subject, and term (with multi-tier fallback to Mark Register & Roster)
+  // 2. Load learners roster for selected class, subject, and term (with strict grade isolation)
   const fetchRoster = async () => {
     setLoading(true);
     setError(null);
@@ -262,7 +280,10 @@ export const TeacherAssessments: React.FC = () => {
       setLoading(false);
     }, 5000);
 
-    const targetClass = selectedClass || classes[0] || '10A';
+    const rawClass = selectedClass || classes[0] || '10';
+    const isAll = rawClass === 'all';
+    const normGradeNum = isAll ? null : parseInt(normalizeClassGrade(rawClass), 10);
+    const targetClass = isAll ? 'all' : (normGradeNum ? String(normGradeNum) : '10');
     const targetSubject = selectedSubject || subjects[0] || 'Mathematics';
 
     try {
@@ -272,6 +293,7 @@ export const TeacherAssessments: React.FC = () => {
       try {
         const res = await teacherService.getClassRoster({
           class: targetClass,
+          grade: normGradeNum || undefined,
           subject: targetSubject,
           term
         });
@@ -281,7 +303,7 @@ export const TeacherAssessments: React.FC = () => {
       }
 
       // Tier 2: Attendance Roster (Exact endpoint powering "Mark Register")
-      if (roster.length === 0) {
+      if (roster.length === 0 && !normGradeNum) {
         try {
           const attRes = await teacherService.getAttendanceRoster({
             class: targetClass === 'all' ? '' : targetClass,
@@ -297,19 +319,20 @@ export const TeacherAssessments: React.FC = () => {
         }
       }
 
-      // Tier 3: Enrolled learners list (Exact endpoint powering "Roster")
+      // Tier 3: Enrolled learners list (strictly isolated by target grade, never leaking other grades)
       if (roster.length === 0) {
         try {
           const myRes = await teacherService.getMyLearners({ subject: targetSubject });
           const allList = Array.isArray(myRes) ? myRes : (myRes?.learners || []);
           if (allList.length > 0) {
-            const filtered = (targetClass && targetClass !== 'all')
-              ? allList.filter((l: any) => 
-                  (l.class_name && l.class_name.toLowerCase() === targetClass.toLowerCase()) ||
-                  String(l.grade) === targetClass.replace(/[^0-9]/g, '')
-                )
-              : allList;
-            roster = filtered.length > 0 ? filtered : allList;
+            if (normGradeNum !== null && !isNaN(normGradeNum)) {
+              roster = allList.filter((l: any) => {
+                const lGrade = parseInt(normalizeClassGrade(l.grade || l.class_name), 10);
+                return lGrade === normGradeNum;
+              });
+            } else {
+              roster = allList;
+            }
           }
         } catch (err) {
           console.warn('Tier 3 getMyLearners notice:', err);
@@ -318,8 +341,27 @@ export const TeacherAssessments: React.FC = () => {
 
       clearTimeout(safetyTimer);
 
-      if (roster.length > 0) {
-        setLearners(roster.map((s: any) => {
+      // STRICT GRADE ISOLATION:
+      // If a specific grade is selected, ensure ONLY matching grade learners are kept
+      let strictlyFiltered = roster;
+      if (normGradeNum !== null && !isNaN(normGradeNum)) {
+        strictlyFiltered = roster.filter((l: any) => {
+          const lGrade = parseInt(normalizeClassGrade(l.grade || l.class_name), 10);
+          return lGrade === normGradeNum;
+        });
+      }
+
+      // Deduplicate learners by id / child_id to prevent duplicates
+      const seenIds = new Set<string | number>();
+      const deduplicated = strictlyFiltered.filter((l: any) => {
+        const id = l.id || l.child_id;
+        if (!id || seenIds.has(id)) return false;
+        seenIds.add(id);
+        return true;
+      });
+
+      if (deduplicated.length > 0) {
+        setLearners(deduplicated.map((s: any) => {
           const baseMark = s.final_calculated_mark !== null && s.final_calculated_mark !== undefined 
             ? Math.round(parseFloat(s.final_calculated_mark)) 
             : (s.current_mark !== null && s.current_mark !== undefined ? Math.round(parseFloat(s.current_mark)) : 0);
@@ -337,13 +379,16 @@ export const TeacherAssessments: React.FC = () => {
           else if (selectedComponent === 'project' && s.project?.score !== undefined) currentCompMark = s.project.score;
           else if (selectedComponent === 'exam' && s.exam?.score !== undefined) currentCompMark = s.exam.score;
 
+          const learnerGrade = parseInt(normalizeClassGrade(s.grade || s.class_name), 10) || normGradeNum || 10;
+          const learnerClass = String(learnerGrade);
+
           return {
             id: s.id || s.child_id,
             full_name: s.full_name || s.learner_name || s.name || 'Learner',
             surname: s.surname || s.learner_surname || '',
             learner_number: s.learner_number || (s.id ? `2026-FHS-${String(s.id).padStart(3, '0')}` : '2026-001'),
-            grade: s.grade || parseInt(targetClass.replace(/[^0-9]/g, ''), 10) || 10,
-            class_name: s.class_name || targetClass || '10A',
+            grade: learnerGrade,
+            class_name: learnerClass,
             test1: s.test1 || null,
             test2: s.test2 || null,
             assignment: s.assignment || null,
@@ -574,7 +619,7 @@ export const TeacherAssessments: React.FC = () => {
   }, [learners]);
 
   const activeSubjectDisplay = selectedSubject || subjects[0] || 'Mathematics';
-  const activeClassDisplay = selectedClass === 'all' ? 'All Classes' : (selectedClass || classes[0] || '10A');
+  const activeClassDisplay = selectedClass === 'all' ? 'All Classes' : (normalizeClassGrade(selectedClass) || classes[0] || '10');
 
   return (
     <div className="space-y-6 animate-fade-in text-slate-100 pb-12">
@@ -918,7 +963,7 @@ export const TeacherAssessments: React.FC = () => {
                         <td className="py-3 px-2 font-mono font-bold text-[#13C8D9] text-[11px]">{learner.learner_number}</td>
                         <td className="py-3 px-2 font-mono text-slate-300 text-[11px]">
                           <span className="px-2 py-0.5 rounded-lg bg-surface-darker border border-white/5 font-semibold text-slate-200">
-                            {learner.class_name || selectedClass || 'N/A'}
+                            {normalizeClassGrade(learner.class_name || learner.grade) || '10'}
                           </span>
                         </td>
                         <td className="py-3 px-3 font-bold text-white text-xs whitespace-nowrap">{displayName}</td>
@@ -1161,7 +1206,7 @@ export const TeacherAssessments: React.FC = () => {
                         <td className="py-3.5 px-3 font-mono font-bold text-[#13C8D9]">{learner.learner_number}</td>
                         <td className="py-3.5 px-3 font-mono text-slate-300">
                           <span className="px-2 py-0.5 rounded-lg bg-surface-darker border border-white/5 font-semibold text-slate-200">
-                            {learner.class_name || selectedClass || 'N/A'}
+                            {normalizeClassGrade(learner.class_name || learner.grade) || '10'}
                           </span>
                         </td>
                         <td className="py-3.5 px-3 font-bold text-white text-sm">{displayName}</td>
@@ -1297,7 +1342,7 @@ export const TeacherAssessments: React.FC = () => {
                           <td className="py-3 px-3 font-mono font-bold text-[#13C8D9]">{learner.learner_number}</td>
                           <td className="py-3 px-3 font-mono text-slate-300">
                             <span className="px-2 py-0.5 rounded-lg bg-surface-dark border border-white/5 font-semibold text-slate-200">
-                              {learner.class_name || selectedClass || 'N/A'}
+                              {normalizeClassGrade(learner.class_name || learner.grade) || '10'}
                             </span>
                           </td>
                           <td className="py-3 px-3 font-bold text-white">{displayName}</td>
@@ -1709,7 +1754,7 @@ export const TeacherAssessments: React.FC = () => {
                           <td className="py-3.5 px-3 font-mono font-bold text-[#13C8D9]">{learner.learner_number}</td>
                           <td className="py-3.5 px-3 font-mono text-slate-300">
                             <span className="px-2 py-0.5 rounded-lg bg-surface-darker border border-white/5 font-semibold text-slate-200">
-                              {learner.class_name || selectedClass || 'N/A'}
+                              {normalizeClassGrade(learner.class_name || learner.grade) || '10'}
                             </span>
                           </td>
                           <td className="py-3.5 px-3 font-bold text-white text-sm">{displayName}</td>
@@ -1738,7 +1783,7 @@ export const TeacherAssessments: React.FC = () => {
             ) : (
               <div className="p-8 text-center text-slate-400 text-xs bg-surface-darker rounded-2xl border border-white/5 space-y-3">
                 <p className="font-bold text-white text-sm">0 Learners Available</p>
-                <p>None available for class {activeClassDisplay}.</p>
+                <p>No learners found in Class {activeClassDisplay}.</p>
                 <div className="flex items-center justify-center gap-2 pt-2">
                   <button
                     onClick={() => setSelectedClass('all')}

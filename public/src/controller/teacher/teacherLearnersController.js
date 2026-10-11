@@ -146,26 +146,32 @@ exports.getMyLearners = async (req, res) => {
  */
 exports.getClassList = async (req, res) => {
     const classParam = (req.query.class || req.query.class_id || req.query.className || '').toString().trim();
-    const gradeParam = req.query.grade || (classParam ? classParam.replace(/[^0-9]/g, '') : null);
     const subjectParam = (req.query.subject || '').toString().trim();
     const schoolId = resolveSchoolId(req);
     const termParam = (req.query.term || '').trim();
     const assessmentParam = (req.query.assessment_name || req.query.assessmentTitle || '').trim();
 
+    // Extract requested target grade (e.g. 10, 11, 12)
+    let targetGrade = parseInt(req.query.grade, 10) || null;
+    if (!targetGrade && classParam && classParam.toLowerCase() !== 'all' && classParam !== 'None Selected') {
+        const cleanStr = String(classParam).replace(/[•·]\s*school\s*\d+/gi, '').replace(/school\s*\d+/gi, '').trim();
+        const gMatch = cleanStr.match(/\bgrade\s*(\d{1,2})\b/i) || cleanStr.match(/^(\d{1,2})/i) || cleanStr.match(/(\d{1,2})/);
+        if (gMatch) {
+            targetGrade = parseInt(gMatch[1], 10);
+        }
+    }
+
     try {
         const params = [subjectParam, schoolId];
         let conditions = [`(c.school_id = $2 OR $2 IS NULL)`];
 
-        if (classParam && classParam !== 'None Selected' && classParam.toLowerCase() !== 'all') {
+        if (targetGrade) {
+            params.push(targetGrade);
+            conditions.push(`c.grade = $${params.length}`);
+        } else if (classParam && classParam !== 'None Selected' && classParam.toLowerCase() !== 'all') {
             params.push(classParam);
             const pIdx = params.length;
-            conditions.push(`(cl.name ILIKE $${pIdx} OR cl.id::text = $${pIdx} OR CONCAT(c.grade, 'A') ILIKE $${pIdx} OR CONCAT('Grade ', c.grade, 'A') ILIKE $${pIdx})`);
-        }
-
-        if (gradeParam && parseInt(gradeParam, 10)) {
-            params.push(parseInt(gradeParam, 10));
-            const pIdx = params.length;
-            conditions.push(`c.grade = $${pIdx}`);
+            conditions.push(`(cl.name ILIKE $${pIdx} OR cl.id::text = $${pIdx})`);
         }
 
         let whereClause = `WHERE ` + conditions.join(' AND ');
@@ -195,7 +201,8 @@ exports.getClassList = async (req, res) => {
         `;
 
         const query = `
-            SELECT c.id, 
+            SELECT DISTINCT ON (c.id)
+                   c.id, 
                    c.full_name as learner_name, 
                    c.surname as learner_surname, 
                    c.full_name,
@@ -204,20 +211,22 @@ exports.getClassList = async (req, res) => {
                    c.grade,
                    c.stream,
                    c.subjects,
-                   COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name,
+                   COALESCE(c.grade::text, '10') as class_name,
                    ${markSubquery}
             FROM children c
             LEFT JOIN classes cl ON c.class_id = cl.id
             ${whereClause}
-            ORDER BY c.grade ASC, c.surname ASC, c.full_name ASC
+            ORDER BY c.id, c.grade ASC, c.surname ASC, c.full_name ASC
         `;
 
         let result = await db.query(query, params);
 
-        // Fallback: If no match with strict filters, fetch by grade or all children
-        if (result.rows.length === 0 && gradeParam && parseInt(gradeParam, 10)) {
+        // Fallback: ONLY if NO specific grade or class was requested (e.g. 'all' view)
+        // If a specific grade was requested and has 0 learners, return 0 learners (never leak other grades)
+        if (result.rows.length === 0 && (!classParam || classParam.toLowerCase() === 'all') && !req.query.grade) {
             result = await db.query(`
-                SELECT c.id, 
+                SELECT DISTINCT ON (c.id)
+                       c.id, 
                        c.full_name as learner_name, 
                        c.surname as learner_surname, 
                        c.full_name,
@@ -226,36 +235,23 @@ exports.getClassList = async (req, res) => {
                        c.grade,
                        c.stream,
                        c.subjects,
-                       COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name,
-                       (SELECT COALESCE(p.score, p.grade) FROM progress p WHERE p.child_id = c.id ORDER BY p.id DESC LIMIT 1) as current_mark,
-                       (SELECT p.is_published FROM progress p WHERE p.child_id = c.id ORDER BY p.id DESC LIMIT 1) as is_published
-                FROM children c
-                LEFT JOIN classes cl ON c.class_id = cl.id
-                WHERE c.grade = $1 AND (c.school_id = $2 OR $2 IS NULL)
-                ORDER BY c.grade ASC, c.surname ASC, c.full_name ASC
-            `, [parseInt(gradeParam, 10), schoolId]);
-        }
-
-        if (result.rows.length === 0) {
-            result = await db.query(`
-                SELECT c.id, 
-                       c.full_name as learner_name, 
-                       c.surname as learner_surname, 
-                       c.full_name,
-                       c.surname,
-                       c.learner_number, 
-                       c.grade,
-                       c.stream,
-                       c.subjects,
-                       COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name,
+                       COALESCE(c.grade::text, '10') as class_name,
                        (SELECT COALESCE(p.score, p.grade) FROM progress p WHERE p.child_id = c.id ORDER BY p.id DESC LIMIT 1) as current_mark,
                        (SELECT p.is_published FROM progress p WHERE p.child_id = c.id ORDER BY p.id DESC LIMIT 1) as is_published
                 FROM children c
                 LEFT JOIN classes cl ON c.class_id = cl.id
                 WHERE (c.school_id = $1 OR $1 IS NULL)
-                ORDER BY c.grade ASC, c.surname ASC, c.full_name ASC
+                ORDER BY c.id, c.grade ASC, c.surname ASC, c.full_name ASC
             `, [schoolId]);
         }
+
+        // Sort rows by grade ASC, surname ASC, full_name ASC
+        result.rows.sort((a, b) => {
+            if (a.grade !== b.grade) return a.grade - b.grade;
+            const sComp = (a.surname || '').localeCompare(b.surname || '');
+            if (sComp !== 0) return sComp;
+            return (a.full_name || '').localeCompare(b.full_name || '');
+        });
 
         // 3. Query marks table for all learners in this class for the selected subject and term
         const childIds = result.rows.map(r => r.id);
@@ -872,7 +868,8 @@ exports.getTeacherClasses = async (req, res) => {
                     WHERE tt.teacher_id = $1
                 `, [teacherId]);
                 if (ttRes.rows.length > 0) {
-                    return res.json(ttRes.rows);
+                    const mappedTt = ttRes.rows.map(r => ({ ...r, name: String(r.grade || 10) }));
+                    return res.json(mappedTt);
                 }
             } catch (e) {}
 
@@ -887,7 +884,8 @@ exports.getTeacherClasses = async (req, res) => {
                     WHERE c.assigned_teacher_id = $1 OR c.homeroom_teacher_id = $1
                 `, [teacherId]);
                 if (clRes.rows.length > 0) {
-                    return res.json(clRes.rows);
+                    const mappedCl = clRes.rows.map(r => ({ ...r, name: String(r.grade || 10) }));
+                    return res.json(mappedCl);
                 }
             } catch (e) {}
 
@@ -909,7 +907,7 @@ exports.getTeacherClasses = async (req, res) => {
                         if (subjectParam && sub.toLowerCase() !== subjectParam.toLowerCase()) continue;
                         matching.push({
                             id: null,
-                            name: cls,
+                            name: String(gradeNum),
                             grade: gradeNum,
                             stream: 'General',
                             subject_name: sub,
@@ -923,7 +921,26 @@ exports.getTeacherClasses = async (req, res) => {
             return res.json([]);
         }
 
-        res.json(result.rows);
+        const cleanedRows = [];
+        const seenClassKeys = new Set();
+        for (const r of result.rows) {
+            const rawName = String(r.name || r.grade || '10');
+            const cleanStr = rawName.replace(/[•·]\s*school\s*\d+/gi, '').replace(/school\s*\d+/gi, '').trim();
+            const gMatch = cleanStr.match(/\bgrade\s*(\d{1,2})\b/i) || cleanStr.match(/^(\d{1,2})/i) || cleanStr.match(/(\d{1,2})/);
+            const gNum = r.grade || (gMatch ? parseInt(gMatch[1], 10) : 10);
+            const cleanName = String(gNum);
+            const key = `${cleanName}-${r.subject_name || ''}`;
+            if (!seenClassKeys.has(key)) {
+                seenClassKeys.add(key);
+                cleanedRows.push({
+                    ...r,
+                    name: cleanName,
+                    grade: gNum
+                });
+            }
+        }
+
+        res.json(cleanedRows);
     } catch (err) {
         console.error('Error fetching teacher assigned classes:', err);
         res.status(500).json({ error: 'Failed to retrieve assigned classes: ' + err.message });

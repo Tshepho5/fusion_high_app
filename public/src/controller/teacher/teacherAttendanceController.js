@@ -16,12 +16,30 @@ exports.getAttendanceRoster = async (req, res) => {
         return res.status(400).json({ error: 'Class or grade parameter is required.' });
     }
 
-    const cleanedGrade = (classId || req.query.grade || '').toString().replace(/[^0-9]/g, '');
+    const rawClassStr = (classId || req.query.grade || '').toString();
+    const cleanStr = rawClassStr.replace(/[•·]\s*school\s*\d+/gi, '').replace(/school\s*\d+/gi, '').trim();
+    const gMatch = cleanStr.match(/\bgrade\s*(\d{1,2})\b/i) || cleanStr.match(/^(\d{1,2})/i) || cleanStr.match(/(\d{1,2})/);
+    const cleanedGrade = gMatch ? gMatch[1] : '';
 
     try {
-        let subjectFilter = '';
-        const params = [classId || `${cleanedGrade}A`, date, cleanedGrade || '0', schoolId, subject || null];
+        const params = [];
+        params.push(date); // $1: date
+        const dateIdx = 1;
 
+        params.push(schoolId ? parseInt(schoolId, 10) : null); // $2: schoolId
+        const schoolIdx = 2;
+
+        let classCondition = '';
+        if (cleanedGrade) {
+            params.push(parseInt(cleanedGrade, 10));
+            classCondition = `AND c.grade = $${params.length}`;
+        } else if (classId && classId.toLowerCase() !== 'all') {
+            params.push(classId);
+            const clIdx = params.length;
+            classCondition = `AND (cl.name ILIKE $${clIdx} OR c.class_id::text = $${clIdx})`;
+        }
+
+        let subjectFilter = '';
         if (subject) {
             params.push(subject);
             const pIdx = params.length;
@@ -48,21 +66,22 @@ exports.getAttendanceRoster = async (req, res) => {
                 c.grade,
                 c.stream,
                 c.parent_id,
-                COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name,
+                COALESCE(c.grade::text, '10') as class_name,
                 COALESCE(a.status, 'present') as status,
                 a.created_at as marked_at
             FROM children c
             LEFT JOIN classes cl ON c.class_id = cl.id
-            LEFT JOIN attendance a ON c.id = a.child_id AND a.attendance_date = $2::DATE AND ($5::text IS NULL OR a.subject_name ILIKE $5 OR a.subject_name IS NULL)
-            WHERE (c.school_id = $4 OR $4 IS NULL)
-              AND (cl.name ILIKE $1 OR c.class_id::text = $1 OR c.grade::text = $3)
+            LEFT JOIN attendance a ON c.id = a.child_id AND a.attendance_date = $${dateIdx}::DATE
+            WHERE ($${schoolIdx}::int IS NULL OR c.school_id = $${schoolIdx}::int)
+              ${classCondition}
               ${subjectFilter}
             ORDER BY c.id, c.surname, c.full_name
         `;
         let { rows } = await db.query(query, params);
 
-        // Fallback: If no learners matched with strict subject filter, load class learners
-        if (rows.length === 0) {
+        // Fallback: ONLY if subject was filtered and yielded 0, retry without subject filter within SAME grade/class
+        if (rows.length === 0 && subject) {
+            const fallbackParams = params.slice(0, cleanedGrade || (classId && classId.toLowerCase() !== 'all') ? 3 : 2);
             const fallbackQuery = `
                 SELECT DISTINCT ON (c.id)
                     c.id, 
@@ -72,17 +91,17 @@ exports.getAttendanceRoster = async (req, res) => {
                     c.grade,
                     c.stream,
                     c.parent_id,
-                    COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name,
+                    COALESCE(c.grade::text, '10') as class_name,
                     COALESCE(a.status, 'present') as status,
                     a.created_at as marked_at
                 FROM children c
                 LEFT JOIN classes cl ON c.class_id = cl.id
-                LEFT JOIN attendance a ON c.id = a.child_id AND a.attendance_date = $2::DATE
-                WHERE (c.school_id = $4 OR $4 IS NULL)
-                  AND (cl.name ILIKE $1 OR c.class_id::text = $1 OR c.grade::text = $3)
+                LEFT JOIN attendance a ON c.id = a.child_id AND a.attendance_date = $${dateIdx}::DATE
+                WHERE ($${schoolIdx}::int IS NULL OR c.school_id = $${schoolIdx}::int)
+                  ${classCondition}
                 ORDER BY c.id, c.surname, c.full_name
             `;
-            const fbRes = await db.query(fallbackQuery, [classId || `${cleanedGrade}A`, date, cleanedGrade || '0', schoolId]);
+            const fbRes = await db.query(fallbackQuery, fallbackParams);
             rows = fbRes.rows;
         }
 

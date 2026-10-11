@@ -5,49 +5,42 @@ const { buildPreview, validateMappedRow } = require('../services/learnerCsvImpor
 const MAX_IMPORT = 500;
 
 async function resolveClassId(schoolId, grade, className) {
-  if (className) {
-    const byName = await db.query(
-      `SELECT id FROM classes
-       WHERE school_id::text = $1::text
-         AND LOWER(TRIM(name)) = LOWER(TRIM($2))
-       LIMIT 1`,
-      [String(schoolId), className]
-    );
-    if (byName.rows[0]) return byName.rows[0].id;
+  const g = grade && grade >= 8 && grade <= 12 ? grade : (className ? parseInt(String(className).replace(/[^0-9]/g, ''), 10) : 10) || 10;
+  const normalizedName = `${g}`;
 
-    // Create class if missing so import is not blocked
-    const g = grade && grade >= 8 && grade <= 12 ? grade : 10;
-    const stream = g >= 10 ? 'Science' : 'General';
-    try {
-      const created = await db.query(
-        `INSERT INTO classes (name, grade, stream, school_id)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id`,
-        [className.trim(), g, stream, schoolId]
-      );
-      if (created.rows[0]) return created.rows[0].id;
-    } catch (_) {
-      try {
-        const created2 = await db.query(
-          `INSERT INTO classes (name, grade, stream)
-           VALUES ($1, $2, $3)
-           RETURNING id`,
-          [className.trim(), g, stream]
-        );
-        if (created2.rows[0]) return created2.rows[0].id;
-      } catch (__) {
-        // schema may differ; fall through
-      }
-    }
-  }
-  if (grade) {
-    const byGrade = await db.query(
-      `SELECT id FROM classes
-       WHERE school_id::text = $1::text AND grade = $2
-       ORDER BY id ASC LIMIT 1`,
-      [String(schoolId), grade]
+  // 1. First look for existing class with this numeric grade in the school
+  const byGrade = await db.query(
+    `SELECT id FROM classes
+     WHERE school_id::text = $1::text
+       AND (name = $2 OR grade = $3)
+     ORDER BY (name = $2) DESC, id ASC
+     LIMIT 1`,
+    [String(schoolId), normalizedName, g]
+  );
+  if (byGrade.rows[0]) return byGrade.rows[0].id;
+
+  // 2. Create isolated numeric grade class if missing
+  const stream = g >= 10 ? 'Science' : 'General';
+  try {
+    const created = await db.query(
+      `INSERT INTO classes (name, grade, stream, school_id)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [normalizedName, g, stream, schoolId]
     );
-    if (byGrade.rows[0]) return byGrade.rows[0].id;
+    if (created.rows[0]) return created.rows[0].id;
+  } catch (_) {
+    try {
+      const created2 = await db.query(
+        `INSERT INTO classes (name, grade, stream)
+         VALUES ($1, $2, $3)
+         RETURNING id`,
+        [normalizedName, g, stream]
+      );
+      if (created2.rows[0]) return created2.rows[0].id;
+    } catch (__) {
+      // fall through
+    }
   }
   const any = await db.query(
     `SELECT id FROM classes WHERE school_id::text = $1::text ORDER BY id ASC LIMIT 1`,

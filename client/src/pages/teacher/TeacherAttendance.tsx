@@ -111,19 +111,26 @@ export const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ initialCla
 
   // Load teacher assigned classes (strictly deduplicated and matching assigned subjects/grades)
   useEffect(() => {
+    const normalizeCls = (cls: any) => {
+      if (!cls) return '';
+      const s = String(cls).trim();
+      const m = s.match(/(?:grade|class)?\s*(\d{1,2})/i);
+      return m ? m[1] : s.replace(/[^0-9]/g, '');
+    };
+
     teacherService.getMySubjectsOverview()
       .then((res) => {
         const list = Array.isArray(res) ? res : [];
         if (list.length > 0) {
           const names = Array.from(
-            new Set(list.map((c: any) => c.class_name || `${c.grade}A`).filter(Boolean))
-          ) as string[];
+            new Set(list.map((c: any) => normalizeCls(c.class_name || c.grade)).filter(c => c && /^\d+$/.test(c)))
+          ).sort((a: any, b: any) => parseInt(a, 10) - parseInt(b, 10)) as string[];
           if (names.length > 0) {
             setClasses(names);
-            if (!initialClass || !names.includes(initialClass)) {
+            if (!initialClass || !names.includes(normalizeCls(initialClass))) {
               setSelectedClass(names[0]);
             } else {
-              setSelectedClass(initialClass);
+              setSelectedClass(normalizeCls(initialClass));
             }
             return;
           }
@@ -135,8 +142,8 @@ export const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ initialCla
         const list = Array.isArray(res) ? res : [];
         if (list.length > 0) {
           const names = Array.from(
-            new Set(list.map((c: any) => c.name || c.class_name).filter(Boolean))
-          ) as string[];
+            new Set(list.map((c: any) => normalizeCls(c.name || c.class_name || c.grade)).filter(c => c && /^\d+$/.test(c)))
+          ).sort((a: any, b: any) => parseInt(a, 10) - parseInt(b, 10)) as string[];
           if (names.length > 0) {
             setClasses(names);
             if (!selectedClass) setSelectedClass(names[0]);

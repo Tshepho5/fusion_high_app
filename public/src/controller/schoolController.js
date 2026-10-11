@@ -33,7 +33,7 @@ async function viewerFromRequest(req) {
 async function ensureGradeClasses(schoolId) {
   await db.query('ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id INTEGER');
   for (let grade = 8; grade <= 12; grade += 1) {
-    const name = `Grade ${grade} · School ${schoolId}`;
+    const name = `${grade}`;
     await db.query(
       `INSERT INTO classes (name, grade, stream, school_id)
        SELECT $1, $2, 'General', $3
