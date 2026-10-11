@@ -105,7 +105,11 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const saved = localStorage.getItem('cached_schools_list');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const hasWalters = parsed.some((s: any) => s.name?.toLowerCase().includes('walters') || s.slug === 'walters-high-school');
+          if (hasWalters) return parsed;
+          return [...parsed, ...DEFAULT_SCHOOLS.filter(d => !parsed.some((p: any) => p.id === d.id || p.slug === d.slug))];
+        }
       }
     } catch (_) {}
     return DEFAULT_SCHOOLS;
@@ -129,10 +133,18 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setLoading(true);
       const res = await api.get('/api/schools');
       if (Array.isArray(res.data) && res.data.length > 0) {
-        setSchoolsList(res.data);
-        localStorage.setItem('cached_schools_list', JSON.stringify(res.data));
+        const incoming = res.data;
+        const merged: SchoolProfile[] = [...incoming];
+        DEFAULT_SCHOOLS.forEach(defSchool => {
+          const exists = merged.some(s => s.id === defSchool.id || s.slug === defSchool.slug || (s.name && s.name.toLowerCase() === defSchool.name.toLowerCase()));
+          if (!exists) {
+            merged.push(defSchool);
+          }
+        });
+        setSchoolsList(merged);
+        localStorage.setItem('cached_schools_list', JSON.stringify(merged));
         const savedId = localStorage.getItem('active_school_id');
-        const matched = res.data.find((s: SchoolProfile) => String(s.id) === savedId || s.slug === savedId) || res.data[0];
+        const matched = merged.find((s: SchoolProfile) => String(s.id) === savedId || s.slug === savedId) || merged[0];
         setCurrentSchoolState(matched);
         localStorage.setItem('active_school_profile', JSON.stringify(matched));
         localStorage.setItem('active_school_id', String(matched.id));

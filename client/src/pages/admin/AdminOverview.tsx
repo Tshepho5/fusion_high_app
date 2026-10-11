@@ -594,8 +594,10 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
 
   // Registered schools only (active verified partner campuses on Geleza SA)
   const registeredSchools = useMemo(() => {
-    const list = (schoolsList && schoolsList.length > 0) ? schoolsList : DEFAULT_SCHOOLS;
-    return list.filter(s => s.is_active && s.id !== 0);
+    const raw = (Array.isArray(schoolsList) && schoolsList.length > 0) ? schoolsList : DEFAULT_SCHOOLS;
+    const filtered = raw.filter(s => s && s.id !== 0 && s.is_active !== false && String(s.is_active) !== 'false');
+    if (filtered.length > 0) return filtered;
+    return DEFAULT_SCHOOLS.filter(s => s && s.id !== 0);
   }, [schoolsList]);
 
   const filteredRegisteredSchools = useMemo(() => {
