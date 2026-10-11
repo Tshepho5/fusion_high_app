@@ -643,10 +643,8 @@ export const ReportCardStudio: React.FC = () => {
                 onChange={(e) => setSelectedClass(e.target.value)}
                 className="px-3 py-1.5 rounded-xl bg-surface-darker border border-white/10 text-xs font-bold text-white focus:ring-2 focus:ring-emerald-500"
               >
-                <option value="All">All Class Rooms</option>
-                <option value={`${selectedGrade}A`}>{selectedGrade}A</option>
-                <option value={`${selectedGrade}B`}>{selectedGrade}B</option>
-                <option value={`${selectedGrade}C`}>{selectedGrade}C</option>
+                <option value="All">All Classes</option>
+                <option value={selectedGrade}>Class {selectedGrade}</option>
               </select>
             </div>
 
