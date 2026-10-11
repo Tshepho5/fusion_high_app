@@ -1179,7 +1179,7 @@ exports.getSchoolMetadata = async (req, res) => {
 };
 
 /**
- * Deletes a user by ID (cascades to related tables).
+ * Deletes a user by ID (snapshots to recycle bin first, then cascades to related tables).
  */
 exports.deleteUser = async (req, res) => {
     const { id } = req.params;
@@ -1187,12 +1187,74 @@ exports.deleteUser = async (req, res) => {
         return res.status(400).json({ error: 'A valid numeric User ID is required.' });
     }
 
+    const userId = parseInt(id, 10);
+
     try {
-        const result = await db.query('DELETE FROM users WHERE id = $1 RETURNING id, full_name, surname, email', [parseInt(id, 10)]);
-        if (result.rows.length === 0) {
+        // 1. Fetch full user details and role
+        const userRes = await db.query(`
+            SELECT u.*, r.name AS role_name 
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            WHERE u.id = $1
+        `, [userId]);
+
+        if (userRes.rows.length === 0) {
             return res.status(404).json({ error: 'User not found.' });
         }
-        res.json({ success: true, message: `User ${result.rows[0].email} deleted successfully.` });
+
+        const user = userRes.rows[0];
+        const roleName = user.role_name ? user.role_name.toLowerCase() : 'user';
+
+        // 2. Fetch associated employee details if any
+        const empRes = await db.query('SELECT * FROM employees WHERE user_id = $1', [userId]).catch(() => ({ rows: [] }));
+        const employee = empRes.rows[0] || null;
+
+        // 3. Fetch teacher assignments if any
+        const asgnRes = await db.query('SELECT * FROM teacher_assignments WHERE teacher_id = $1', [userId]).catch(() => ({ rows: [] }));
+        const teacherAssignments = asgnRes.rows || [];
+
+        // 4. Fetch parent_children if any
+        const pcRes = await db.query('SELECT * FROM parent_children WHERE parent_id = $1', [userId]).catch(() => ({ rows: [] }));
+        const parentChildren = pcRes.rows || [];
+
+        // 5. Fetch linked children if learner user
+        const lcRes = await db.query('SELECT id, learner_number, full_name, surname, grade, stream FROM children WHERE learner_user_id = $1', [userId]).catch(() => ({ rows: [] }));
+        const linkedChildren = lcRes.rows || [];
+
+        const fullName = `${user.full_name || ''} ${user.surname || ''}`.trim() || user.username || user.email;
+        const deletedByName = req.user ? `${req.user.full_name || ''} ${req.user.surname || ''}`.trim() || req.user.email : 'Admin';
+
+        // 6. Snapshot to recycle_bin
+        await db.query(`
+            INSERT INTO recycle_bin (record_type, original_id, school_id, name, identifier, role_name, data, deleted_by, deleted_by_name, deleted_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+        `, [
+            roleName,
+            userId,
+            user.school_id || req.user?.school_id || null,
+            fullName,
+            user.email || user.username || `User #${userId}`,
+            user.role_name || 'User',
+            JSON.stringify({ user, employee, teacherAssignments, parentChildren, linkedChildren }),
+            req.user?.id || null,
+            deletedByName
+        ]);
+
+        // 7. Cleanup dependent references to avoid FK constraints
+        await db.query('DELETE FROM teacher_assignments WHERE teacher_id = $1', [userId]).catch(() => {});
+        await db.query('UPDATE classes SET assigned_teacher_id = NULL WHERE assigned_teacher_id = $1', [userId]).catch(() => {});
+        await db.query('DELETE FROM employees WHERE user_id = $1', [userId]).catch(() => {});
+        await db.query('DELETE FROM parent_children WHERE parent_id = $1', [userId]).catch(() => {});
+        await db.query('UPDATE children SET parent_id = NULL WHERE parent_id = $1', [userId]).catch(() => {});
+        await db.query('UPDATE children SET learner_user_id = NULL WHERE learner_user_id = $1', [userId]).catch(() => {});
+
+        // 8. Delete user
+        await db.query('DELETE FROM users WHERE id = $1', [userId]);
+
+        res.json({
+            success: true,
+            message: `User ${user.email} moved to Recycle Bin. You can restore them anytime from the Recycle Bin tab.`
+        });
     } catch (err) {
         console.error('Error deleting user:', err);
         res.status(500).json({ error: 'Failed to delete user: ' + err.message });
@@ -1201,6 +1263,7 @@ exports.deleteUser = async (req, res) => {
 
 /**
  * Deletes a learner child record by child ID (and linked user account if exists).
+ * Saves a full snapshot in the recycle bin for 1-click restoration.
  */
 exports.deleteLearner = async (req, res) => {
     const { id } = req.params;
@@ -1212,7 +1275,7 @@ exports.deleteLearner = async (req, res) => {
 
     try {
         const childRes = await db.query(
-            'SELECT id, learner_user_id, full_name, surname, learner_number FROM children WHERE id = $1',
+            'SELECT * FROM children WHERE id = $1',
             [learnerId]
         );
 
@@ -1221,6 +1284,41 @@ exports.deleteLearner = async (req, res) => {
         }
 
         const child = childRes.rows[0];
+
+        // Fetch associated user account if any
+        let linkedUser = null;
+        if (child.learner_user_id) {
+            const userRes = await db.query(`
+                SELECT u.*, r.name as role_name 
+                FROM users u 
+                LEFT JOIN roles r ON u.role_id = r.id 
+                WHERE u.id = $1
+            `, [child.learner_user_id]).catch(() => ({ rows: [] }));
+            linkedUser = userRes.rows[0] || null;
+        }
+
+        // Fetch parent links
+        const parentLinksRes = await db.query('SELECT * FROM parent_children WHERE child_id = $1', [learnerId]).catch(() => ({ rows: [] }));
+        const parentLinks = parentLinksRes.rows || [];
+
+        const fullName = `${child.full_name || ''} ${child.surname || ''}`.trim() || `Learner #${learnerId}`;
+        const deletedByName = req.user ? `${req.user.full_name || ''} ${req.user.surname || ''}`.trim() || req.user.email : 'Admin';
+
+        // Snapshot to recycle_bin
+        await db.query(`
+            INSERT INTO recycle_bin (record_type, original_id, school_id, name, identifier, role_name, data, deleted_by, deleted_by_name, deleted_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+        `, [
+            'learner',
+            learnerId,
+            child.school_id || req.user?.school_id || null,
+            fullName,
+            child.learner_number || `ID-${learnerId}`,
+            'Learner',
+            JSON.stringify({ child, linkedUser, parentLinks }),
+            req.user?.id || null,
+            deletedByName
+        ]);
 
         // Safeguard deletions from related tables that might have strict constraints
         await db.query('DELETE FROM parent_children WHERE child_id = $1', [learnerId]).catch(() => {});
@@ -1243,11 +1341,320 @@ exports.deleteLearner = async (req, res) => {
 
         res.json({
             success: true,
-            message: `Learner ${child.full_name} ${child.surname} (${child.learner_number}) removed successfully.`
+            message: `Learner ${child.full_name} ${child.surname} (${child.learner_number}) moved to Recycle Bin. You can restore them anytime from the Recycle Bin tab.`
         });
     } catch (err) {
         console.error('Error deleting learner:', err);
         res.status(500).json({ error: 'Failed to delete learner: ' + err.message });
+    }
+};
+
+/**
+ * Gets all deleted items in the Recycle Bin.
+ */
+exports.getRecycleBin = async (req, res) => {
+    try {
+        const schoolId = req.user?.school_id;
+        const isMaster = req.user?.role === 'superadmin' || req.user?.role === 'system_admin' || !schoolId;
+
+        let query = `
+            SELECT id, record_type, original_id, school_id, name, identifier, role_name, deleted_by, deleted_by_name, deleted_at,
+                   (data->'child'->>'grade') AS learner_grade,
+                   (data->'child'->>'stream') AS learner_stream,
+                   (data->'user'->>'email') AS user_email,
+                   (data->'user'->>'phone') AS user_phone
+            FROM recycle_bin
+        `;
+        const params = [];
+        if (!isMaster) {
+            query += ` WHERE (school_id = $1 OR school_id IS NULL)`;
+            params.push(schoolId);
+        }
+        query += ` ORDER BY deleted_at DESC LIMIT 500;`;
+
+        const result = await db.query(query, params);
+        res.json({
+            success: true,
+            items: result.rows,
+            totalCount: result.rows.length
+        });
+    } catch (err) {
+        console.error('Error fetching recycle bin:', err);
+        res.status(500).json({ error: 'Failed to fetch items from recycle bin.' });
+    }
+};
+
+/**
+ * Restores a deleted person (learner, teacher, parent, staff, admin) from the Recycle Bin.
+ */
+exports.restoreFromRecycleBin = async (req, res) => {
+    const { id } = req.params;
+    if (!id || isNaN(parseInt(id, 10))) {
+        return res.status(400).json({ error: 'Valid recycle bin item ID is required.' });
+    }
+
+    try {
+        const binRes = await db.query('SELECT * FROM recycle_bin WHERE id = $1', [parseInt(id, 10)]);
+        if (binRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Item not found in recycle bin.' });
+        }
+
+        const item = binRes.rows[0];
+        const { record_type, data } = item;
+
+        if (record_type === 'learner') {
+            const { child, linkedUser, parentLinks } = data;
+            if (!child) {
+                return res.status(400).json({ error: 'Corrupt snapshot data for learner.' });
+            }
+
+            // Restore linked user if existed
+            let restoredUserId = child.learner_user_id || null;
+            if (linkedUser && linkedUser.email) {
+                const existingUser = await db.query('SELECT id FROM users WHERE email = $1', [linkedUser.email]);
+                if (existingUser.rows.length > 0) {
+                    restoredUserId = existingUser.rows[0].id;
+                } else {
+                    const insertUser = await db.query(`
+                        INSERT INTO users (id, email, password_hash, full_name, surname, role_id, school_id, phone, created_at)
+                        VALUES (COALESCE($1, nextval('users_id_seq')), $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+                        ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email
+                        RETURNING id;
+                    `, [
+                        linkedUser.id,
+                        linkedUser.email,
+                        linkedUser.password_hash || '$2b$10$defaultPasswordHashHere',
+                        linkedUser.full_name,
+                        linkedUser.surname,
+                        linkedUser.role_id,
+                        linkedUser.school_id,
+                        linkedUser.phone || null
+                    ]).catch(async () => {
+                        return await db.query(`
+                            INSERT INTO users (email, password_hash, full_name, surname, role_id, school_id, phone)
+                            VALUES ($1, $2, $3, $4, $5, $6, $7)
+                            RETURNING id;
+                        `, [
+                            linkedUser.email,
+                            linkedUser.password_hash || '$2b$10$defaultPasswordHashHere',
+                            linkedUser.full_name,
+                            linkedUser.surname,
+                            linkedUser.role_id,
+                            linkedUser.school_id,
+                            linkedUser.phone || null
+                        ]);
+                    });
+                    restoredUserId = insertUser.rows[0]?.id || restoredUserId;
+                }
+            }
+
+            // Check if learner already exists
+            const existingChild = await db.query('SELECT id FROM children WHERE id = $1', [child.id]);
+            if (existingChild.rows.length > 0) {
+                await db.query('DELETE FROM recycle_bin WHERE id = $1', [item.id]);
+                return res.json({ success: true, message: `Learner ${item.name} is already active in database.` });
+            }
+
+            // Re-insert child
+            await db.query(`
+                INSERT INTO children (id, full_name, surname, learner_number, grade, stream, parent_id, school_id, learner_user_id, class_id, subjects, home_language)
+                VALUES (
+                    COALESCE($1, nextval('children_id_seq')), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+                )
+                ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name;
+            `, [
+                child.id,
+                child.full_name,
+                child.surname,
+                child.learner_number,
+                child.grade,
+                child.stream || null,
+                child.parent_id || null,
+                child.school_id || item.school_id || null,
+                restoredUserId,
+                child.class_id || null,
+                child.subjects || [],
+                child.home_language || 'English'
+            ]).catch(async () => {
+                await db.query(`
+                    INSERT INTO children (full_name, surname, learner_number, grade, stream, parent_id, school_id, learner_user_id, class_id, subjects, home_language)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
+                `, [
+                    child.full_name,
+                    child.surname,
+                    child.learner_number,
+                    child.grade,
+                    child.stream || null,
+                    child.parent_id || null,
+                    child.school_id || item.school_id || null,
+                    restoredUserId,
+                    child.class_id || null,
+                    child.subjects || [],
+                    child.home_language || 'English'
+                ]);
+            });
+
+            // Restore parent relations
+            if (parentLinks && parentLinks.length > 0) {
+                for (const pl of parentLinks) {
+                    await db.query(`
+                        INSERT INTO parent_children (parent_id, child_id)
+                        VALUES ($1, $2)
+                        ON CONFLICT DO NOTHING;
+                    `, [pl.parent_id, child.id]).catch(() => {});
+                }
+            } else if (child.parent_id) {
+                await db.query(`
+                    INSERT INTO parent_children (parent_id, child_id)
+                    VALUES ($1, $2)
+                    ON CONFLICT DO NOTHING;
+                `, [child.parent_id, child.id]).catch(() => {});
+            }
+
+        } else {
+            // It's a user (teacher, parent, staff, admin, etc.)
+            const { user, employee, teacherAssignments, parentChildren } = data;
+            if (!user) {
+                return res.status(400).json({ error: 'Corrupt snapshot data for user.' });
+            }
+
+            // Check if email already in use
+            const existingUser = await db.query('SELECT id, email FROM users WHERE email = $1', [user.email]);
+            let restoredUserId = user.id;
+
+            if (existingUser.rows.length > 0) {
+                restoredUserId = existingUser.rows[0].id;
+                await db.query(`
+                    UPDATE users 
+                    SET full_name = $1, surname = $2, role_id = $3, school_id = $4, phone = $5
+                    WHERE id = $6;
+                `, [user.full_name, user.surname, user.role_id, user.school_id || item.school_id, user.phone, restoredUserId]);
+            } else {
+                const insertUserRes = await db.query(`
+                    INSERT INTO users (id, email, password_hash, full_name, surname, role_id, school_id, phone, created_at)
+                    VALUES (COALESCE($1, nextval('users_id_seq')), $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+                    ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email
+                    RETURNING id;
+                `, [
+                    user.id,
+                    user.email,
+                    user.password_hash || '$2b$10$defaultPasswordHashHere',
+                    user.full_name,
+                    user.surname,
+                    user.role_id,
+                    user.school_id || item.school_id,
+                    user.phone || null
+                ]).catch(async () => {
+                    return await db.query(`
+                        INSERT INTO users (email, password_hash, full_name, surname, role_id, school_id, phone)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7)
+                        RETURNING id;
+                    `, [
+                        user.email,
+                        user.password_hash || '$2b$10$defaultPasswordHashHere',
+                        user.full_name,
+                        user.surname,
+                        user.role_id,
+                        user.school_id || item.school_id,
+                        user.phone || null
+                    ]);
+                });
+                restoredUserId = insertUserRes.rows[0]?.id || restoredUserId;
+            }
+
+            // If teacher / employee, restore employee row & teacher assignments
+            if (employee) {
+                await db.query(`
+                    INSERT INTO employees (
+                        user_id, full_name, surname, department_id, school_id, phone, email,
+                        subjects, grades_taught, classes_taught
+                    )
+                    VALUES ($1, $2, $3, COALESCE($4, 2), $5, $6, $7, $8, $9, $10)
+                    ON CONFLICT (user_id) DO UPDATE SET 
+                        subjects = EXCLUDED.subjects,
+                        grades_taught = EXCLUDED.grades_taught,
+                        classes_taught = EXCLUDED.classes_taught;
+                `, [
+                    restoredUserId,
+                    employee.full_name || user.full_name,
+                    employee.surname || user.surname,
+                    employee.department_id || 2,
+                    employee.school_id || item.school_id,
+                    employee.phone || user.phone,
+                    employee.email || user.email,
+                    employee.subjects || [],
+                    employee.grades_taught || [],
+                    employee.classes_taught || []
+                ]).catch(e => console.warn('Employee restore notice:', e.message));
+            }
+
+            // Restore teacher assignments
+            if (teacherAssignments && teacherAssignments.length > 0) {
+                for (const asgn of teacherAssignments) {
+                    await db.query(`
+                        INSERT INTO teacher_assignments (teacher_id, subject_name, grade_level, class_name, class_id)
+                        VALUES ($1, $2, $3, $4, $5)
+                        ON CONFLICT (teacher_id, subject_name, grade_level, class_name) DO NOTHING;
+                    `, [restoredUserId, asgn.subject_name, asgn.grade_level, asgn.class_name, asgn.class_id]).catch(() => {});
+                }
+            }
+
+            // Restore parent children links
+            if (parentChildren && parentChildren.length > 0) {
+                for (const pc of parentChildren) {
+                    await db.query(`
+                        INSERT INTO parent_children (parent_id, child_id)
+                        VALUES ($1, $2)
+                        ON CONFLICT DO NOTHING;
+                    `, [restoredUserId, pc.child_id]).catch(() => {});
+                }
+            }
+        }
+
+        // Remove from recycle bin once successfully restored
+        await db.query('DELETE FROM recycle_bin WHERE id = $1', [item.id]);
+
+        res.json({
+            success: true,
+            message: `"${item.name}" has been successfully brought back and restored!`
+        });
+    } catch (err) {
+        console.error('Error restoring from recycle bin:', err);
+        res.status(500).json({ error: 'Failed to restore record: ' + err.message });
+    }
+};
+
+/**
+ * Permanently deletes an item from the Recycle Bin.
+ */
+exports.permanentDeleteFromRecycleBin = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await db.query('DELETE FROM recycle_bin WHERE id = $1', [parseInt(id, 10)]);
+        res.json({ success: true, message: 'Item permanently deleted from Recycle Bin.' });
+    } catch (err) {
+        console.error('Error permanently deleting from recycle bin:', err);
+        res.status(500).json({ error: 'Failed to permanently delete item.' });
+    }
+};
+
+/**
+ * Empties all items in the Recycle Bin for the school.
+ */
+exports.emptyRecycleBin = async (req, res) => {
+    try {
+        const schoolId = req.user?.school_id;
+        const isMaster = req.user?.role === 'superadmin' || req.user?.role === 'system_admin' || !schoolId;
+
+        if (isMaster) {
+            await db.query('DELETE FROM recycle_bin');
+        } else {
+            await db.query('DELETE FROM recycle_bin WHERE school_id = $1', [schoolId]);
+        }
+        res.json({ success: true, message: 'Recycle bin successfully emptied.' });
+    } catch (err) {
+        console.error('Error emptying recycle bin:', err);
+        res.status(500).json({ error: 'Failed to empty recycle bin.' });
     }
 };
 

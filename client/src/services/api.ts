@@ -398,6 +398,10 @@ export const adminService = {
   getLearners: () => api.get('/api/admin/learners').then(res => res.data),
   createLearner: (payload: any) => api.post('/api/admin/learners', payload).then(res => res.data),
   deleteLearner: (id: number | string) => api.delete(`/api/admin/learners/${id}`).then(res => res.data),
+  getRecycleBin: () => api.get('/api/admin/recycle-bin').then(res => res.data),
+  restoreFromRecycleBin: (id: number | string) => api.post(`/api/admin/recycle-bin/${id}/restore`).then(res => res.data),
+  permanentDeleteFromRecycleBin: (id: number | string) => api.delete(`/api/admin/recycle-bin/${id}`).then(res => res.data),
+  emptyRecycleBin: () => api.post('/api/admin/recycle-bin/empty').then(res => res.data),
   previewLearnerImport: (payload: { csv_text: string; mapping?: Record<string, string> }) =>
     api.post('/api/admin/learners/import/preview', payload).then(res => res.data),
   commitLearnerImport: (payload: {

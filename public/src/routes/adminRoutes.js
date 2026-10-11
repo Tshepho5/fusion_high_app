@@ -16,7 +16,11 @@ router.put('/users/:id', auth, isAdmin, adminController.updateUserProfile);
 router.get('/users/:role', auth, isAdmin, adminController.getUsersByRole);
 router.put('/users/:userId/toggle-profile-lock', auth, isAdmin, adminController.toggleUserProfileLock);
 router.delete('/users/:id', auth, isAdmin, adminController.deleteUser);
-router.get('/teachers', auth, isAdmin, adminController.getAllTeachers);
+// Recycle Bin & Data Recovery (Bring Back Deleted Users, Learners, Staff)
+router.get('/recycle-bin', auth, isAdmin, adminController.getRecycleBin);
+router.post('/recycle-bin/:id/restore', auth, isAdmin, adminController.restoreFromRecycleBin);
+router.delete('/recycle-bin/:id', auth, isAdmin, adminController.permanentDeleteFromRecycleBin);
+router.post('/recycle-bin/empty', auth, isAdmin, adminController.emptyRecycleBin);
 
 // SubAdmin / School Administrator Management (Main Admin only)
 router.get('/school-admins', auth, isAdmin, adminController.getAllSchoolAdmins);

@@ -130,18 +130,39 @@ interface SchoolMetadata {
   subjects: { id: number; name: string; code: string; grade: number; stream: string }[];
 }
 
+interface RecycleBinItem {
+  id: number;
+  record_type: string;
+  original_id: number;
+  school_id?: number;
+  name: string;
+  identifier?: string;
+  role_name?: string;
+  deleted_by?: number;
+  deleted_by_name?: string;
+  deleted_at: string;
+  learner_grade?: string;
+  learner_stream?: string;
+  user_email?: string;
+  user_phone?: string;
+}
+
 export const AdminUsers: React.FC = () => {
   const [, setSearchParams] = useSearchParams();
   const { currentSchool, schoolsList } = useSchool();
   const { user: currentUser } = useAuth();
   const isSuperAdmin = Boolean(currentUser?.is_superadmin);
 
-  const [activeTab, setActiveTab] = useState<'employees' | 'learners' | 'parents' | 'parent-applications' | 'admissions' | 'admins' | 'all'>('employees');
+  const [activeTab, setActiveTab] = useState<'employees' | 'learners' | 'parents' | 'parent-applications' | 'admissions' | 'admins' | 'all' | 'recycle-bin'>('employees');
   
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [learners, setLearners] = useState<LearnerRecord[]>([]);
   const [parents, setParents] = useState<ParentRecord[]>([]);
+  const [recycleBinItems, setRecycleBinItems] = useState<RecycleBinItem[]>([]);
+  const [recycleBinRoleFilter, setRecycleBinRoleFilter] = useState<'all' | 'learner' | 'teacher' | 'parent' | 'staff' | 'admin'>('all');
+  const [restoringItemId, setRestoringItemId] = useState<number | null>(null);
+  const [emptyingBin, setEmptyingBin] = useState(false);
   const [parentApplications, setParentApplications] = useState<any[]>([]);
   const [decidingAppId, setDecidingAppId] = useState<number | null>(null);
   const [editingParentApp, setEditingParentApp] = useState<any | null>(null);
@@ -315,7 +336,7 @@ export const AdminUsers: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [usersData, empData, lrnData, metaData, admData, parentsData, adminsData, parentAppsData, staffInvitesData] = await Promise.allSettled([
+      const [usersData, empData, lrnData, metaData, admData, parentsData, adminsData, parentAppsData, staffInvitesData, recycleBinData] = await Promise.allSettled([
         adminService.getUsers(),
         adminService.getEmployees(),
         adminService.getLearners(),
@@ -324,7 +345,8 @@ export const AdminUsers: React.FC = () => {
         adminService.getParents(),
         isSuperAdmin ? adminService.getSchoolAdmins() : Promise.resolve({ admins: [] }),
         parentApplicationService.getAll(),
-        classStaffService.getStaffInvites()
+        classStaffService.getStaffInvites(),
+        adminService.getRecycleBin()
       ]);
 
       if (usersData.status === 'fulfilled') setUsers(Array.isArray(usersData.value) ? usersData.value : []);
@@ -346,6 +368,10 @@ export const AdminUsers: React.FC = () => {
       }
       if (staffInvitesData.status === 'fulfilled') {
         setStaffInvites(Array.isArray(staffInvitesData.value) ? staffInvitesData.value : []);
+      }
+      if (recycleBinData.status === 'fulfilled') {
+        const rbList = recycleBinData.value?.items || (Array.isArray(recycleBinData.value) ? recycleBinData.value : []);
+        setRecycleBinItems(rbList);
       }
 
     } catch (err: any) {
@@ -699,15 +725,15 @@ export const AdminUsers: React.FC = () => {
       setError(`Cannot delete user: user account does not have a valid numeric user ID.`);
       return;
     }
-    if (!window.confirm(`Are you sure you want to remove user "${email}" and all their associated records from the database?`)) {
+    if (!window.confirm(`Move user "${email}" to Recycle Bin? You can restore and bring them back anytime from the Recycle Bin tab.`)) {
       return;
     }
     setError(null);
     try {
       await adminService.deleteUser(userId);
-      setActionSuccess(`User ${email} removed.`);
+      setActionSuccess(`User ${email} moved to Recycle Bin.`);
       fetchData();
-      setTimeout(() => setActionSuccess(null), 3000);
+      setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to delete user.');
     }
@@ -718,17 +744,68 @@ export const AdminUsers: React.FC = () => {
       setError('Cannot delete learner: missing valid learner ID.');
       return;
     }
-    if (!window.confirm(`Are you sure you want to remove learner "${name}" and all their associated records from the database?`)) {
+    if (!window.confirm(`Move learner "${name}" to Recycle Bin? You can restore and bring them back anytime from the Recycle Bin tab.`)) {
       return;
     }
     setError(null);
     try {
       await adminService.deleteLearner(learnerId);
-      setActionSuccess(`Learner ${name} removed.`);
+      setActionSuccess(`Learner ${name} moved to Recycle Bin.`);
       fetchData();
-      setTimeout(() => setActionSuccess(null), 3000);
+      setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to delete learner.');
+    }
+  };
+
+  const handleRestoreItem = async (binId: number, name: string) => {
+    setRestoringItemId(binId);
+    setError(null);
+    try {
+      const res = await adminService.restoreFromRecycleBin(binId);
+      setActionSuccess(res.message || `Successfully brought back and restored ${name}!`);
+      fetchData();
+      setTimeout(() => setActionSuccess(null), 5000);
+    } catch (err: any) {
+      console.error('Failed to restore item:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to restore person.');
+    } finally {
+      setRestoringItemId(null);
+    }
+  };
+
+  const handlePermanentDelete = async (binId: number, name: string) => {
+    if (!window.confirm(`Are you sure you want to PERMANENTLY delete "${name}"? This cannot be undone.`)) {
+      return;
+    }
+    setError(null);
+    try {
+      await adminService.permanentDeleteFromRecycleBin(binId);
+      setActionSuccess(`"${name}" permanently removed from Recycle Bin.`);
+      setRecycleBinItems(prev => prev.filter(item => item.id !== binId));
+      setTimeout(() => setActionSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to permanently delete item:', err);
+      setError(err.response?.data?.error || 'Failed to delete item.');
+    }
+  };
+
+  const handleEmptyRecycleBin = async () => {
+    if (!window.confirm('Are you sure you want to permanently delete ALL items currently in the Recycle Bin? This action cannot be undone.')) {
+      return;
+    }
+    setEmptyingBin(true);
+    setError(null);
+    try {
+      await adminService.emptyRecycleBin();
+      setActionSuccess('Recycle bin emptied successfully.');
+      setRecycleBinItems([]);
+      setTimeout(() => setActionSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to empty recycle bin:', err);
+      setError(err.response?.data?.error || 'Failed to empty recycle bin.');
+    } finally {
+      setEmptyingBin(false);
     }
   };
 
@@ -795,6 +872,20 @@ export const AdminUsers: React.FC = () => {
     (a.school_name || '').toLowerCase().includes(q) ||
     (a.school_circuit || '').toLowerCase().includes(q)
   );
+
+  const filteredRecycleBinItems = recycleBinItems.filter(item => {
+    const matchesSearch =
+      (item.name || '').toLowerCase().includes(q) ||
+      (item.identifier || '').toLowerCase().includes(q) ||
+      (item.role_name || '').toLowerCase().includes(q) ||
+      (item.record_type || '').toLowerCase().includes(q) ||
+      (item.user_email || '').toLowerCase().includes(q);
+    const matchesRole =
+      recycleBinRoleFilter === 'all' ||
+      item.record_type.toLowerCase() === recycleBinRoleFilter.toLowerCase() ||
+      (item.role_name || '').toLowerCase() === recycleBinRoleFilter.toLowerCase();
+    return matchesSearch && matchesRole;
+  });
 
   const handleQuickApproveAndEnroll = async (admId: number, admName: string) => {
     setEnrollingAdmissionId(admId);
@@ -1096,6 +1187,23 @@ export const AdminUsers: React.FC = () => {
           >
             <Users className="w-3.5 h-3.5" />
             <span>All Users ({users.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('recycle-bin')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'recycle-bin'
+                ? 'bg-rose-600 text-white shadow-sm shadow-rose-900/40'
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+            <span>Recycle Bin ({recycleBinItems.length})</span>
+            {recycleBinItems.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-extrabold text-[10px] border border-rose-500/30">
+                {recycleBinItems.length}
+              </span>
+            )}
           </button>
         </div>
 
@@ -1891,7 +1999,7 @@ export const AdminUsers: React.FC = () => {
               <div className="p-8 text-center text-slate-400 text-xs">No School Administrators found matching your search query.</div>
             )}
           </div>
-        ) : (
+        ) : activeTab === 'all' ? (
           /* All Users Table */
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -1962,6 +2070,152 @@ export const AdminUsers: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        ) : (
+          /* Recycle Bin (Bring Back Deleted People) Table */
+          <div className="space-y-4">
+            {/* Bin Controls Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center border border-rose-500/20">
+                  <Trash2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                    <span>Recycle Bin (Data Recovery Center)</span>
+                    <span className="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 font-black text-[10px] border border-rose-500/20">
+                      {recycleBinItems.length} Deleted Records
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Deleted people (learners, teachers, parents, staff) can be restored and brought back here with 1 click.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Role Filters */}
+                <div className="flex items-center gap-1 bg-white dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-white/10 text-[11px]">
+                  {(['all', 'learner', 'teacher', 'parent', 'staff', 'admin'] as const).map(role => (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => setRecycleBinRoleFilter(role)}
+                      className={`px-2.5 py-1 rounded-lg font-bold capitalize transition-all ${
+                        recycleBinRoleFilter === role
+                          ? 'bg-rose-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {role === 'all' ? 'All Roles' : `${role}s`}
+                    </button>
+                  ))}
+                </div>
+
+                {recycleBinItems.length > 0 && (
+                  <button
+                    type="button"
+                    disabled={emptyingBin}
+                    onClick={handleEmptyRecycleBin}
+                    className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold text-xs flex items-center gap-1.5 transition-all disabled:opacity-50 cursor-pointer"
+                    title="Permanently empty all items in bin"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{emptyingBin ? 'Emptying...' : 'Empty Bin'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Recycle Bin Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono text-[10px]">
+                    <th className="pb-3 px-3">Name & Details</th>
+                    <th className="pb-3 px-3">Record Type</th>
+                    <th className="pb-3 px-3">Identifier / Email</th>
+                    <th className="pb-3 px-3">Deleted By</th>
+                    <th className="pb-3 px-3">Deleted Date</th>
+                    <th className="pb-3 px-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                  {filteredRecycleBinItems.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                      <td className="py-3.5 px-3">
+                        <p className="font-bold text-slate-900 dark:text-white text-sm">{item.name}</p>
+                        <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                          <span>Orig ID: #{item.original_id}</span>
+                          {item.learner_grade && <span>• Grade {item.learner_grade}</span>}
+                          {item.learner_stream && <span>• {item.learner_stream}</span>}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-3">
+                        <Badge
+                          variant={
+                            item.record_type === 'learner'
+                              ? 'indigo'
+                              : item.record_type === 'teacher'
+                              ? 'cyan'
+                              : item.record_type === 'parent'
+                              ? 'amber'
+                              : 'rose'
+                          }
+                          size="sm"
+                        >
+                          {item.record_type.toUpperCase()}
+                        </Badge>
+                      </td>
+                      <td className="py-3.5 px-3 font-mono text-slate-700 dark:text-slate-300">
+                        {item.identifier || item.user_email || '-'}
+                        {item.user_phone && <span className="block text-[10px] text-slate-500">{item.user_phone}</span>}
+                      </td>
+                      <td className="py-3.5 px-3 text-slate-600 dark:text-slate-400 text-[11px]">
+                        {item.deleted_by_name || 'Admin'}
+                      </td>
+                      <td className="py-3.5 px-3 font-mono text-slate-500 text-[11px]">
+                        {new Date(item.deleted_at).toLocaleString()}
+                      </td>
+                      <td className="py-3.5 px-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            disabled={restoringItemId === item.id}
+                            onClick={() => handleRestoreItem(item.id, item.name)}
+                            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs shadow-sm flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            title="Bring this person back into the active system"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-white" />
+                            <span>{restoringItemId === item.id ? 'Restoring...' : 'Bring Back'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handlePermanentDelete(item.id, item.name)}
+                            className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-colors cursor-pointer"
+                            title="Permanently remove from database"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filteredRecycleBinItems.length === 0 && (
+                <div className="p-12 text-center space-y-2">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/5 mx-auto flex items-center justify-center text-slate-400">
+                    <Trash2 className="w-6 h-6" />
+                  </div>
+                  <p className="text-slate-700 dark:text-slate-300 font-bold text-sm">Recycle Bin is Empty</p>
+                  <p className="text-slate-500 text-xs max-w-sm mx-auto">
+                    When any learner, educator, or parent account is deleted, they will be archived here and can be brought back anytime with 1-click.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
