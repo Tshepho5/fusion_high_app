@@ -397,6 +397,7 @@ export const adminService = {
   createParent: (payload: any) => api.post('/api/admin/parents', payload).then(res => res.data),
   getLearners: () => api.get('/api/admin/learners').then(res => res.data),
   createLearner: (payload: any) => api.post('/api/admin/learners', payload).then(res => res.data),
+  deleteLearner: (id: number | string) => api.delete(`/api/admin/learners/${id}`).then(res => res.data),
   previewLearnerImport: (payload: { csv_text: string; mapping?: Record<string, string> }) =>
     api.post('/api/admin/learners/import/preview', payload).then(res => res.data),
   commitLearnerImport: (payload: {
@@ -464,7 +465,8 @@ export const parentService = {
   getChildrenDetailed: () => api.get('/api/parent/children-detailed').then(res => res.data),
   getChildOverview: (childId: string | number) => api.get(`/api/parent/child-overview/${childId}`).then(res => res.data),
   getChildPerformance: (childId: string | number) => api.get(`/api/parent/child-performance?childId=${childId}`).then(res => res.data),
-  getChildAttendance: (childId: string | number) => api.get(`/api/parent/child-attendance?childId=${childId}`).then(res => res.data),
+  getChildAttendance: (childId: string | number, term?: string) =>
+    api.get('/api/parent/child-attendance', { params: { childId, term } }).then(res => res.data),
   getChildTimetable: (childId?: string | number) => api.get(`/api/parent/child-timetable${childId ? `?child_id=${childId}` : ''}`).then(res => res.data),
   getChildHomework: (childId: string | number) => api.get('/api/parent/child-assignments', { params: { childId } }).then(res => res.data),
   getChildProgress: (childId: string | number) => api.get(`/api/progress/${childId}`).then(res => res.data),

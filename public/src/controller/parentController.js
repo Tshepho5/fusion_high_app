@@ -1379,6 +1379,7 @@ exports.getChildAttendanceOverview = async (req, res) => {
     try {
         const parentId = req.user.id;
         let childId = req.query.childId || req.query.child_id;
+        const requestedTerm = req.query.term ? String(req.query.term).trim() : null;
 
         const availableChildren = await fetchParentChildren(parentId);
         if (availableChildren.length === 0) {
@@ -1392,14 +1393,14 @@ exports.getChildAttendanceOverview = async (req, res) => {
                 days_present: 0,
                 days_absent: 0,
                 late_days: 0,
-                overall_attendance: 100,
-                attendance_rate: 100,
+                overall_attendance: 0,
+                attendance_rate: 0,
                 stats: {
                     present_days: 0,
                     absent_days: 0,
                     late_days: 0,
-                    attendance_rate: 100,
-                    punctuality_rate: 100
+                    attendance_rate: 0,
+                    punctuality_rate: 0
                 },
                 daily_records: [],
                 records: [],
@@ -1412,6 +1413,18 @@ exports.getChildAttendanceOverview = async (req, res) => {
             const found = availableChildren.find(c => c.id === parseInt(childId, 10));
             if (found) targetChild = found;
         }
+
+        // Helper to resolve DBE Term from record date
+        const getTermFromDate = (dateVal) => {
+            if (!dateVal) return 'Term 1';
+            const d = new Date(dateVal);
+            if (isNaN(d.getTime())) return 'Term 1';
+            const m = d.getMonth() + 1;
+            if (m <= 3) return 'Term 1';
+            if (m <= 6) return 'Term 2';
+            if (m <= 9) return 'Term 3';
+            return 'Term 4';
+        };
 
         // Query real database attendance records for this child
         const attRes = await db.query(
@@ -1434,7 +1447,7 @@ exports.getChildAttendanceOverview = async (req, res) => {
         let absentCount = 0;
         let lateCount = 0;
 
-        const dailyRecords = rows.map(r => {
+        const allDailyRecords = rows.map(r => {
             const statusLower = (r.status || 'present').toLowerCase();
             if (statusLower === 'present') presentCount++;
             else if (statusLower === 'absent') absentCount++;
@@ -1442,6 +1455,7 @@ exports.getChildAttendanceOverview = async (req, res) => {
 
             const dateObj = new Date(r.date);
             const isoDate = r.date instanceof Date ? r.date.toISOString().split('T')[0] : String(r.date).split('T')[0];
+            const term = getTermFromDate(r.date);
 
             return {
                 id: r.id,
@@ -1454,6 +1468,7 @@ exports.getChildAttendanceOverview = async (req, res) => {
                 subject: r.subject_name,
                 recorded_by: r.recorded_by_name,
                 teacher: r.recorded_by_name,
+                term: term,
                 time: r.created_at ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '08:00 AM',
                 time_in: statusLower === 'absent' ? '—' : (r.created_at ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '08:00 AM'),
                 time_out: statusLower === 'absent' ? '—' : '02:30 PM',
@@ -1462,24 +1477,55 @@ exports.getChildAttendanceOverview = async (req, res) => {
         });
 
         const totalRecorded = rows.length;
-        const attendanceRate = totalRecorded > 0 ? Math.round(((presentCount + lateCount) / totalRecorded) * 100) : 100;
-        const punctualityRate = (presentCount + lateCount) > 0 ? Math.round((presentCount / (presentCount + lateCount)) * 100) : 100;
+        const attendedTotal = presentCount + lateCount;
+        // Strict 0% attendance if no classes attended or no records exist
+        const overallAttendanceRate = totalRecorded > 0 && attendedTotal > 0
+            ? Math.round((attendedTotal / totalRecorded) * 100)
+            : 0;
+        const overallPunctualityRate = attendedTotal > 0
+            ? Math.round((presentCount / attendedTotal) * 100)
+            : 0;
+
+        // Apply Term Filtering if explicitly requested
+        let displayRecords = allDailyRecords;
+        let activePresent = presentCount;
+        let activeAbsent = absentCount;
+        let activeLate = lateCount;
+        let activeTotal = totalRecorded;
+        let activeAttendanceRate = overallAttendanceRate;
+        let activePunctualityRate = overallPunctualityRate;
+
+        if (requestedTerm && requestedTerm.toLowerCase() !== 'all' && requestedTerm.toLowerCase() !== 'all terms') {
+            displayRecords = allDailyRecords.filter(r => r.term.toLowerCase() === requestedTerm.toLowerCase());
+            activePresent = displayRecords.filter(r => r.status === 'present').length;
+            activeAbsent = displayRecords.filter(r => r.status === 'absent').length;
+            activeLate = displayRecords.filter(r => r.status === 'late').length;
+            activeTotal = displayRecords.length;
+            const activeAttended = activePresent + activeLate;
+            activeAttendanceRate = activeTotal > 0 && activeAttended > 0
+                ? Math.round((activeAttended / activeTotal) * 100)
+                : 0;
+            activePunctualityRate = activeAttended > 0
+                ? Math.round((activePresent / activeAttended) * 100)
+                : 0;
+        }
 
         const statsObj = {
-            present_days: presentCount,
-            absent_days: absentCount,
-            late_days: lateCount,
-            attendance_rate: attendanceRate,
-            punctuality_rate: punctualityRate
+            present_days: activePresent,
+            absent_days: activeAbsent,
+            late_days: activeLate,
+            attendance_rate: activeAttendanceRate,
+            punctuality_rate: activePunctualityRate
         };
 
-        const calendarEntries = dailyRecords.map(r => ({
+        const calendarEntries = displayRecords.map(r => ({
             id: `att-${r.id}`,
             date: r.date,
             title: `Attendance: ${r.status.toUpperCase()} (${r.subject})`,
             type: r.status === 'present' ? 'Sports' : (r.status === 'late' ? 'Holiday' : 'Exam'),
             status: r.status,
             subject: r.subject,
+            term: r.term,
             time: r.time,
             child_name: targetChild.full_name,
             is_attendance: true
@@ -1493,20 +1539,22 @@ exports.getChildAttendanceOverview = async (req, res) => {
             grade: targetChild.grade,
             profile_picture: targetChild.profile_picture_path,
             children: availableChildren.map(c => ({ id: c.id, full_name: c.full_name, surname: c.surname, grade: c.grade })),
-            total_recorded: totalRecorded,
-            present_count: presentCount,
-            absent_count: absentCount,
-            late_count: lateCount,
-            days_present: presentCount,
-            days_absent: absentCount,
-            late_days: lateCount,
-            overall_attendance: attendanceRate,
-            attendance_rate: attendanceRate,
-            punctuality_rate: punctualityRate,
+            selected_term: requestedTerm || 'All Terms',
+            total_recorded: activeTotal,
+            present_count: activePresent,
+            absent_count: activeAbsent,
+            late_count: activeLate,
+            days_present: activePresent,
+            days_absent: activeAbsent,
+            late_days: activeLate,
+            overall_attendance: activeAttendanceRate,
+            attendance_rate: activeAttendanceRate,
+            punctuality_rate: activePunctualityRate,
             stats: statsObj,
-            daily_records: dailyRecords,
-            records: dailyRecords,
-            recent_attendance_records: dailyRecords,
+            daily_records: displayRecords,
+            records: displayRecords,
+            all_records: allDailyRecords,
+            recent_attendance_records: displayRecords,
             calendar_entries: calendarEntries
         });
     } catch (err) {

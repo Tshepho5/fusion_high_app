@@ -85,6 +85,7 @@ interface EmployeeRecord {
 }
 
 interface LearnerRecord {
+  id?: number;
   child_id?: number;
   learner_id?: number;
   user_id: number;
@@ -694,6 +695,10 @@ export const AdminUsers: React.FC = () => {
   };
 
   const handleDeleteUser = async (userId: number, email: string) => {
+    if (!userId) {
+      setError(`Cannot delete user: user account does not have a valid numeric user ID.`);
+      return;
+    }
     if (!window.confirm(`Are you sure you want to remove user "${email}" and all their associated records from the database?`)) {
       return;
     }
@@ -705,6 +710,25 @@ export const AdminUsers: React.FC = () => {
       setTimeout(() => setActionSuccess(null), 3000);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to delete user.');
+    }
+  };
+
+  const handleDeleteLearner = async (learnerId: number, name: string) => {
+    if (!learnerId) {
+      setError('Cannot delete learner: missing valid learner ID.');
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to remove learner "${name}" and all their associated records from the database?`)) {
+      return;
+    }
+    setError(null);
+    try {
+      await adminService.deleteLearner(learnerId);
+      setActionSuccess(`Learner ${name} removed.`);
+      fetchData();
+      setTimeout(() => setActionSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to delete learner.');
     }
   };
 
@@ -1553,7 +1577,7 @@ export const AdminUsers: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-3 text-right">
                       <button
-                        onClick={() => handleDeleteUser(l.user_id, l.email || l.learner_number || '')}
+                        onClick={() => handleDeleteLearner((l.learner_id || l.child_id || l.id || 0) as number, `${l.full_name} ${l.surname}`)}
                         className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
                         title="Remove Learner"
                       >

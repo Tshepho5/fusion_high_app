@@ -37,6 +37,7 @@ router.post('/register-parent', auth, isAdmin, adminController.createParent);
 // Learner Management (matching children table in schema.sql)
 router.get('/learners', auth, isAdmin, adminController.getAllLearners);
 router.post('/learners', auth, isAdmin, adminController.createLearner);
+router.delete('/learners/:id', auth, isAdmin, adminController.deleteLearner);
 // SA-SAMS / Excel CSV import (Menu 16.3 Learner Info → save as CSV)
 router.post('/learners/import/preview', auth, isAdmin, learnerImportController.previewLearnerImport);
 router.post('/learners/import', auth, isAdmin, learnerImportController.commitLearnerImport);

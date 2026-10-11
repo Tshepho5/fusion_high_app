@@ -1183,10 +1183,12 @@ exports.getSchoolMetadata = async (req, res) => {
  */
 exports.deleteUser = async (req, res) => {
     const { id } = req.params;
-    if (!id) return res.status(400).json({ error: 'User ID is required.' });
+    if (!id || id === 'null' || id === 'undefined' || isNaN(parseInt(id, 10))) {
+        return res.status(400).json({ error: 'A valid numeric User ID is required.' });
+    }
 
     try {
-        const result = await db.query('DELETE FROM users WHERE id = $1 RETURNING id, full_name, surname, email', [id]);
+        const result = await db.query('DELETE FROM users WHERE id = $1 RETURNING id, full_name, surname, email', [parseInt(id, 10)]);
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'User not found.' });
         }
@@ -1196,6 +1198,59 @@ exports.deleteUser = async (req, res) => {
         res.status(500).json({ error: 'Failed to delete user: ' + err.message });
     }
 };
+
+/**
+ * Deletes a learner child record by child ID (and linked user account if exists).
+ */
+exports.deleteLearner = async (req, res) => {
+    const { id } = req.params;
+    if (!id || id === 'null' || id === 'undefined' || isNaN(parseInt(id, 10))) {
+        return res.status(400).json({ error: 'A valid numeric Learner ID is required.' });
+    }
+
+    const learnerId = parseInt(id, 10);
+
+    try {
+        const childRes = await db.query(
+            'SELECT id, learner_user_id, full_name, surname, learner_number FROM children WHERE id = $1',
+            [learnerId]
+        );
+
+        if (childRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Learner record not found in database.' });
+        }
+
+        const child = childRes.rows[0];
+
+        // Safeguard deletions from related tables that might have strict constraints
+        await db.query('DELETE FROM parent_children WHERE child_id = $1', [learnerId]).catch(() => {});
+        await db.query('DELETE FROM attendance WHERE child_id = $1', [learnerId]).catch(() => {});
+        await db.query('DELETE FROM behavior_incidents WHERE child_id = $1', [learnerId]).catch(() => {});
+        await db.query('DELETE FROM progress WHERE child_id = $1', [learnerId]).catch(() => {});
+        await db.query('DELETE FROM marks WHERE child_id = $1', [learnerId]).catch(() => {});
+        await db.query('DELETE FROM report_cards WHERE child_id = $1', [learnerId]).catch(() => {});
+        await db.query('DELETE FROM teacher_consultations WHERE child_id = $1', [learnerId]).catch(() => {});
+
+        // Delete learner record from children table
+        await db.query('DELETE FROM children WHERE id = $1', [learnerId]);
+
+        // If there is an associated learner account in users table, delete it as well
+        if (child.learner_user_id) {
+            await db.query('DELETE FROM users WHERE id = $1', [child.learner_user_id]).catch(err => {
+                console.warn('Note: associated user account for learner already removed or not found:', err.message);
+            });
+        }
+
+        res.json({
+            success: true,
+            message: `Learner ${child.full_name} ${child.surname} (${child.learner_number}) removed successfully.`
+        });
+    } catch (err) {
+        console.error('Error deleting learner:', err);
+        res.status(500).json({ error: 'Failed to delete learner: ' + err.message });
+    }
+};
+
 
 /**
  * Creates a new behavior incident log.

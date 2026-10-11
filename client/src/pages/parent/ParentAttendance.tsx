@@ -28,6 +28,8 @@ export const ParentAttendance: React.FC<ParentAttendanceProps> = ({ onNavigateTa
   const [loadingAttendance, setLoadingAttendance] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [selectedTerm, setSelectedTerm] = useState<string>('All Terms');
+
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -90,14 +92,44 @@ export const ParentAttendance: React.FC<ParentAttendanceProps> = ({ onNavigateTa
     );
   }
 
-  const stats = {
-    present_days: attendanceData?.stats?.present_days ?? attendanceData?.days_present ?? attendanceData?.present_count ?? 0,
-    absent_days: attendanceData?.stats?.absent_days ?? attendanceData?.days_absent ?? attendanceData?.absent_count ?? 0,
-    late_days: attendanceData?.stats?.late_days ?? attendanceData?.late_days ?? attendanceData?.late_count ?? 0,
-    attendance_rate: attendanceData?.stats?.attendance_rate ?? attendanceData?.overall_attendance ?? attendanceData?.attendance_rate ?? 100
+  // DBE South Africa Term Date Classifier
+  const getTermForDate = (dateStr?: string): string => {
+    if (!dateStr) return 'Term 1';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'Term 1';
+    const month = d.getMonth() + 1;
+    if (month <= 3) return 'Term 1';
+    if (month <= 6) return 'Term 2';
+    if (month <= 9) return 'Term 3';
+    return 'Term 4';
   };
 
-  const records = attendanceData?.records || attendanceData?.recent_attendance_records || attendanceData?.recent || [];
+  const rawRecords: any[] = attendanceData?.all_records || attendanceData?.records || attendanceData?.recent_attendance_records || attendanceData?.recent || [];
+
+  // Filter records by selected term
+  const filteredRecords = selectedTerm === 'All Terms'
+    ? rawRecords
+    : rawRecords.filter((r: any) => (r.term || getTermForDate(r.date || r.attendance_date)) === selectedTerm);
+
+  const presentDays = filteredRecords.filter((r: any) => (r.status || '').toLowerCase() === 'present').length;
+  const absentDays = filteredRecords.filter((r: any) => (r.status || '').toLowerCase() === 'absent').length;
+  const lateDays = filteredRecords.filter((r: any) => (r.status || '').toLowerCase() === 'late').length;
+  const totalDays = filteredRecords.length;
+  const attendedCount = presentDays + lateDays;
+
+  // Strict 0% attendance calculation: if learner hasn't attended any class or has no records, show 0 (not 100%)
+  const attendanceRate = totalDays > 0 && attendedCount > 0
+    ? Math.round((attendedCount / totalDays) * 100)
+    : 0;
+
+  const stats = {
+    present_days: presentDays,
+    absent_days: absentDays,
+    late_days: lateDays,
+    attendance_rate: attendanceRate
+  };
+
+  const availableTerms = ['All Terms', 'Term 1', 'Term 2', 'Term 3', 'Term 4'] as const;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -146,10 +178,18 @@ export const ParentAttendance: React.FC<ParentAttendanceProps> = ({ onNavigateTa
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             <div className="p-4 rounded-3xl bg-surface-dark border border-white/10 shadow-lg space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Attendance Rate</span>
-              <div className="text-2xl font-black font-display text-emerald-400">
+              <div className={`text-2xl font-black font-display ${stats.attendance_rate === 0 ? 'text-slate-400' : 'text-emerald-400'}`}>
                 {stats.attendance_rate}%
               </div>
-              <p className="text-[10px] text-slate-500">Above provincial 90% benchmark</p>
+              <p className="text-[10px] text-slate-500">
+                {totalDays === 0
+                  ? 'No attendance records logged'
+                  : stats.attendance_rate === 0
+                  ? 'No classes attended'
+                  : stats.attendance_rate >= 90
+                  ? 'Above provincial 90% benchmark'
+                  : 'Below provincial 90% benchmark'}
+              </p>
             </div>
 
             <div className="p-4 rounded-3xl bg-surface-dark border border-white/10 shadow-lg space-y-1">
@@ -157,7 +197,9 @@ export const ParentAttendance: React.FC<ParentAttendanceProps> = ({ onNavigateTa
               <div className="text-2xl font-black font-display text-white">
                 {stats.present_days}
               </div>
-              <p className="text-[10px] text-emerald-400">Active class participation</p>
+              <p className="text-[10px] text-emerald-400">
+                {stats.present_days === 0 ? '0 days attended' : 'Active class participation'}
+              </p>
             </div>
 
             <div className="p-4 rounded-3xl bg-surface-dark border border-white/10 shadow-lg space-y-1">
@@ -179,22 +221,43 @@ export const ParentAttendance: React.FC<ParentAttendanceProps> = ({ onNavigateTa
 
           {/* Detailed Attendance Log */}
           <div className="p-6 rounded-3xl bg-surface-dark border border-white/10 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 pb-4">
               <h3 className="text-sm font-bold font-display text-white flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-emerald-400" />
                 Recent Daily Presence History ({selectedChild.full_name})
               </h3>
-              <Badge variant="emerald" size="sm">Term 3 Active</Badge>
+              
+              {/* Term Selector Buttons */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[11px] font-semibold text-slate-400 mr-1 hidden sm:inline">Choose Term:</span>
+                {availableTerms.map(termOption => {
+                  const isSelected = selectedTerm === termOption;
+                  return (
+                    <button
+                      key={termOption}
+                      onClick={() => setSelectedTerm(termOption)}
+                      className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-emerald-500 to-brand-600 text-white shadow-md shadow-emerald-500/20'
+                          : 'bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10'
+                      }`}
+                    >
+                      {termOption}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {loadingAttendance ? (
               <LoadingSpinner text="Fetching attendance history..." />
-            ) : records.length > 0 ? (
+            ) : filteredRecords.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-white/10 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       <th className="pb-3">Date</th>
+                      <th className="pb-3">Term</th>
                       <th className="pb-3">Subject / Period</th>
                       <th className="pb-3">Status</th>
                       <th className="pb-3">Recorded By</th>
@@ -202,13 +265,19 @@ export const ParentAttendance: React.FC<ParentAttendanceProps> = ({ onNavigateTa
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {records.map((r: any, idx: number) => {
+                    {filteredRecords.map((r: any, idx: number) => {
                       const isPresent = (r.status || '').toLowerCase() === 'present';
                       const isLate = (r.status || '').toLowerCase() === 'late';
+                      const termTag = r.term || getTermForDate(r.date || r.attendance_date);
                       return (
                         <tr key={idx} className="hover:bg-white/5 transition-colors">
                           <td className="py-3 font-mono text-white">
                             {r.date || new Date().toLocaleDateString()}
+                          </td>
+                          <td className="py-3">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/5 text-slate-300 border border-white/10">
+                              {termTag}
+                            </span>
                           </td>
                           <td className="py-3 text-slate-300 font-semibold">
                             {r.subject_name || r.subject || 'All Day Register'}
@@ -222,7 +291,7 @@ export const ParentAttendance: React.FC<ParentAttendanceProps> = ({ onNavigateTa
                             </Badge>
                           </td>
                           <td className="py-3 text-slate-400">
-                            {r.teacher_name || 'Class Educator'}
+                            {r.teacher_name || r.recorded_by || 'Class Educator'}
                           </td>
                           <td className="py-3 text-slate-500 italic">
                             {r.remarks || r.notes || 'Normal attendance'}
@@ -235,7 +304,9 @@ export const ParentAttendance: React.FC<ParentAttendanceProps> = ({ onNavigateTa
               </div>
             ) : (
               <div className="p-8 text-center text-slate-400 text-xs">
-                No absentee or late incidents recorded for {selectedChild.full_name}. Excellent punctuality!
+                {rawRecords.length === 0
+                  ? `No attendance records logged for ${selectedChild.full_name} yet.`
+                  : `No attendance records found for ${selectedTerm} for ${selectedChild.full_name}.`}
               </div>
             )}
           </div>
