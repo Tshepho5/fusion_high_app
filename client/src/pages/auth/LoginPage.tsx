@@ -24,7 +24,7 @@ import { authService } from '../../services/api';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login, establishSession, isAuthenticated, role, user, logout } = useAuth();
+  const { login, establishSession } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   const isLight = theme === 'light';
@@ -414,32 +414,6 @@ export const LoginPage: React.FC = () => {
                 <span className="font-bold leading-snug">
                   {typeof error === 'string' ? error : (error as any)?.message || String(error)}
                 </span>
-              </div>
-            )}
-
-            {/* Active Session Status (Allows continuing to dashboard or entering new credentials) */}
-            {isAuthenticated && user && (
-              <div className="mt-4 p-3.5 rounded-2xl bg-[#091E28]/80 border border-[#13C8D9]/30 flex items-center justify-between gap-3 text-xs shadow-md">
-                <div className="min-w-0">
-                  <p className="text-white font-bold truncate">Currently signed in as {user.full_name || user.email}</p>
-                  <p className="text-[10px] text-[#13C8D9] font-mono capitalize">{role} Account</p>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/dashboard/${role?.toLowerCase()}`)}
-                    className="px-2.5 py-1.5 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 font-bold text-[11px] transition-all cursor-pointer shadow-sm"
-                  >
-                    Go to Dashboard
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => logout()}
-                    className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-[11px] transition-all cursor-pointer"
-                  >
-                    Switch Account
-                  </button>
-                </div>
               </div>
             )}
 
