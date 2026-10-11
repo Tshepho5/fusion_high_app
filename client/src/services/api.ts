@@ -30,11 +30,11 @@ const api = axios.create({
 
 // Attach JWT token and Active School Tenant ID automatically
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  const activeSchoolId = localStorage.getItem('active_school_id');
+  const activeSchoolId = localStorage.getItem('active_school_id') || sessionStorage.getItem('active_school_id');
   if (activeSchoolId) {
     config.headers['x-school-id'] = activeSchoolId;
   }

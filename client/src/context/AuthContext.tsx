@@ -33,30 +33,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(() => {
-    const isRemembered = localStorage.getItem('remember_me') === 'true';
-    const isSessionActive = sessionStorage.getItem('session_active') === 'true';
-    if (!isRemembered && !isSessionActive) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('user');
-      return null;
-    }
-    return sessionStorage.getItem('token') || localStorage.getItem('token');
+    return localStorage.getItem('token') || sessionStorage.getItem('token') || null;
   });
 
   const [role, setRole] = useState<UserRole>(() => {
-    const isRemembered = localStorage.getItem('remember_me') === 'true';
-    const isSessionActive = sessionStorage.getItem('session_active') === 'true';
-    if (!isRemembered && !isSessionActive) return null;
-    return ((sessionStorage.getItem('userRole') || localStorage.getItem('userRole')) as UserRole) || null;
+    return ((localStorage.getItem('userRole') || sessionStorage.getItem('userRole')) as UserRole) || null;
   });
 
   const [user, setUserState] = useState<User | null>(() => {
-    const isRemembered = localStorage.getItem('remember_me') === 'true';
-    const isSessionActive = sessionStorage.getItem('session_active') === 'true';
-    if (!isRemembered && !isSessionActive) return null;
     try {
-      const saved = sessionStorage.getItem('user') || localStorage.getItem('user');
+      const saved = localStorage.getItem('user') || sessionStorage.getItem('user');
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
@@ -207,7 +193,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [token]);
 
-  const establishSession = async (data: any, rememberMe: boolean = false) => {
+  const establishSession = async (data: any, rememberMe: boolean = true) => {
     const userToken = data.token;
     const userRole = (data.role || 'learner').toLowerCase() as UserRole;
     const userData = data.user || { id: data.id, role: userRole, email: data.email };
@@ -216,24 +202,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setRole(userRole);
     setUserState(userData);
 
-    sessionStorage.setItem('session_active', 'true');
-    sessionStorage.setItem('token', userToken);
-    if (userRole) sessionStorage.setItem('userRole', userRole);
-    sessionStorage.setItem('user', JSON.stringify(userData));
-
-    if (rememberMe) {
-      localStorage.setItem('remember_me', 'true');
-      localStorage.setItem('token', userToken);
-      if (userRole) {
-        localStorage.setItem('userRole', userRole);
-      }
-      localStorage.setItem('user', JSON.stringify(userData));
-    } else {
-      localStorage.removeItem('remember_me');
-      localStorage.removeItem('token');
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('user');
+    // Save to localStorage so API interceptors, other tabs, and PWA sessions have valid auth tokens
+    localStorage.setItem('token', userToken);
+    if (userRole) {
+      localStorage.setItem('userRole', userRole);
     }
+    localStorage.setItem('user', JSON.stringify(userData));
+
+    // Also mirror to sessionStorage
+    sessionStorage.setItem('token', userToken);
+    if (userRole) {
+      sessionStorage.setItem('userRole', userRole);
+    }
+    sessionStorage.setItem('user', JSON.stringify(userData));
 
     userService.heartbeat().catch(() => {});
 

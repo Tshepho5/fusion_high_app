@@ -24,7 +24,7 @@ import { authService } from '../../services/api';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login, establishSession, isAuthenticated, role, user } = useAuth();
+  const { login, establishSession, isAuthenticated, role, user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   const isLight = theme === 'light';
@@ -32,7 +32,7 @@ export const LoginPage: React.FC = () => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -89,24 +89,10 @@ export const LoginPage: React.FC = () => {
     } catch (_) {}
   }, []);
 
-  // Strict Keyboard Shortcut Disabling & Navigation Restrictor on Login Page
+  // Keyboard Barrier on Login Page
   useEffect(() => {
-    // Keep user on login page so they can fill in credentials; do not auto-redirect away
-    const lockHistory = () => {
-      window.history.pushState(null, '', window.location.href);
-    };
-    lockHistory();
-
-    const handlePopState = (e: PopStateEvent) => {
-      e.preventDefault();
-      // Keep user locked on login page prior to authenticating
-      lockHistory();
-    };
-
-    window.addEventListener('popstate', handlePopState);
-
     // Global Keydown Barrier on Login Page:
-    // Intercepts & disables all special shortcut keys, hotkeys, and key-driven navigation
+    // Intercepts & disables special hotkeys and key-driven navigation outside inputs
     const handleKeyDownBarrier = (e: KeyboardEvent) => {
       const activeElement = document.activeElement as HTMLElement | null;
       const isInputFocused =
@@ -164,10 +150,9 @@ export const LoginPage: React.FC = () => {
     window.addEventListener('keydown', handleKeyDownBarrier, { capture: true });
 
     return () => {
-      window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('keydown', handleKeyDownBarrier, { capture: true });
     };
-  }, [isAuthenticated, role, loading, navigate]);
+  }, [loading]);
 
   const confirmAccount = async (value: string) => {
     const trimmed = value.trim();
@@ -449,17 +434,10 @@ export const LoginPage: React.FC = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      localStorage.removeItem('remember_me');
-                      localStorage.removeItem('token');
-                      localStorage.removeItem('userRole');
-                      localStorage.removeItem('user');
-                      sessionStorage.clear();
-                      window.location.reload();
-                    }}
+                    onClick={() => logout()}
                     className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-[11px] transition-all cursor-pointer"
                   >
-                    Clear Session
+                    Switch Account
                   </button>
                 </div>
               </div>
