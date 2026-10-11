@@ -67,7 +67,7 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useSchool, SchoolProfile } from '../../context/SchoolContext';
+import { useSchool, SchoolProfile, DEFAULT_SCHOOLS } from '../../context/SchoolContext';
 import { Subject3DCoverFlow } from '../../components/subject/Subject3DCoverFlow';
 
 export type SubjectViewMode = '3d-flow' | 'carousel' | 'grid' | 'compact' | 'list';
@@ -251,7 +251,7 @@ interface AdminOverviewProps {
 export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) => {
   const { user } = useAuth();
   const { currentSchool, schoolsList, setSchoolById, refreshSchools } = useSchool();
-  const isSuperAdmin = Boolean(user?.is_superadmin);
+  const isSuperAdmin = Boolean(user?.is_superadmin || (user as any)?.role_name === 'superadmin');
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const metricsCarouselRef = useRef<HTMLDivElement>(null);
@@ -337,6 +337,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
 
   useEffect(() => {
     setLoading(true);
+    refreshSchools().catch(() => {});
     Promise.allSettled([
       adminService.getOverviewStats(),
       adminService.getSubjectsSummary(),
@@ -593,7 +594,8 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
 
   // Registered schools only (active verified partner campuses on Geleza SA)
   const registeredSchools = useMemo(() => {
-    return (schoolsList || []).filter(s => s.is_active && s.id !== 0);
+    const list = (schoolsList && schoolsList.length > 0) ? schoolsList : DEFAULT_SCHOOLS;
+    return list.filter(s => s.is_active && s.id !== 0);
   }, [schoolsList]);
 
   const filteredRegisteredSchools = useMemo(() => {

@@ -169,7 +169,23 @@ async function ensureDatabaseSchema() {
       );
     `);
 
-    // 7. Auto-synchronize registered school applications to schools table
+    // 7. Ensure Walters High School profile is active and complete
+    await db.query(`
+      UPDATE schools
+      SET emis_number = COALESCE(emis_number, '592409761'),
+          circuit = COALESCE(circuit, 'Polokwane Central Circuit'),
+          district = COALESCE(district, 'Capricorn South (Polokwane/Mankweng)'),
+          province = COALESCE(province, 'Limpopo'),
+          principal_name = COALESCE(principal_name, 'Bontle Mothopeng'),
+          motto = COALESCE(motto, 'Knowledge is Power, Education is Freedom'),
+          physical_address = COALESCE(physical_address, '555 Makobo street, Polokwane, Limpopo'),
+          contact_phone = COALESCE(contact_phone, '+27610512832'),
+          contact_email = COALESCE(contact_email, 'mothopeng.bont13@gmail.com'),
+          is_active = TRUE
+      WHERE name ILIKE '%Walters%';
+    `).catch(() => {});
+
+    // 8. Auto-synchronize registered school applications to schools table
     const pendingSchools = await db.query(`
       SELECT * FROM school_applications 
       WHERE created_school_id IS NULL OR status = 'pending_review' OR status = 'under_review'

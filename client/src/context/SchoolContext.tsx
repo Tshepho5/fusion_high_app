@@ -35,18 +35,58 @@ export interface SchoolProfile {
   parents_count?: number;
 }
 
-export const DEFAULT_SCHOOLS: SchoolProfile[] = [];
+export const DEFAULT_SCHOOLS: SchoolProfile[] = [
+  {
+    id: 14,
+    name: 'Walters High School',
+    slug: 'walters-high-school',
+    domain: 'walters-high-school.co.za',
+    emis_number: '592409761',
+    circuit: 'Polokwane Central Circuit',
+    district: 'Capricorn South (Polokwane/Mankweng)',
+    province: 'Limpopo',
+    physical_address: '555 Makobo street, Polokwane, Limpopo',
+    contact_email: 'mothopeng.bont13@gmail.com',
+    contact_phone: '+27610512832',
+    principal_name: 'Bontle Mothopeng',
+    primary_color: '#0284c7',
+    secondary_color: '#06b6d4',
+    accent_color: '#f59e0b',
+    motto: 'Knowledge is Power, Education is Freedom',
+    curriculum_type: 'CAPS (DBE)',
+    grade_range: '8-12',
+    is_active: true,
+    offered_languages: ['English FAL', 'Sepedi Home Language'],
+    offered_subjects: ['Mathematics', 'Physical Sciences', 'Life Sciences', 'Accounting', 'Business Studies', 'Economics', 'Geography', 'History', 'English FAL', 'Sepedi Home Language', 'Life Orientation'],
+    offered_streams: ['Science', 'Commerce', 'General']
+  },
+  {
+    id: 15,
+    name: 'Tshilidzi Secondary School',
+    slug: 'tshilidzi-secondary-school',
+    domain: 'tshilidzi-secondary-school.co.za',
+    emis_number: '923987654',
+    circuit: 'Vhembe Central Circuit',
+    district: 'Vhembe East',
+    province: 'Limpopo',
+    physical_address: 'Tshilidzi Stand 12, Thohoyandou, 0950',
+    contact_email: 'principal@tshilidzi.co.za',
+    contact_phone: '+27159620000',
+    principal_name: 'N. Tshilidzi',
+    primary_color: '#0284c7',
+    secondary_color: '#06b6d4',
+    accent_color: '#f59e0b',
+    motto: 'Excellence in Education',
+    curriculum_type: 'CAPS (DBE)',
+    grade_range: '8-12',
+    is_active: true,
+    offered_languages: ['English Home Language', 'English FAL', 'Sepedi Home Language', 'Tshivenda Home Language'],
+    offered_subjects: ['Mathematics', 'Physical Sciences', 'Life Sciences', 'Accounting', 'Business Studies', 'Economics', 'English FAL', 'Sepedi Home Language', 'Life Orientation'],
+    offered_streams: ['Science', 'Commerce', 'General']
+  }
+];
 
-export const DEFAULT_SCHOOL: SchoolProfile = {
-  id: 0,
-  name: 'No school registered yet',
-  slug: '',
-  primary_color: '#0284c7',
-  secondary_color: '#06b6d4',
-  accent_color: '#f59e0b',
-  motto: 'Geleza Smart, The Future Is Thine',
-  is_active: false
-};
+export const DEFAULT_SCHOOL: SchoolProfile = DEFAULT_SCHOOLS[0];
 
 interface SchoolContextType {
   currentSchool: SchoolProfile;
@@ -60,8 +100,28 @@ interface SchoolContextType {
 const SchoolContext = createContext<SchoolContextType | undefined>(undefined);
 
 export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [schoolsList, setSchoolsList] = useState<SchoolProfile[]>([]);
-  const [currentSchool, setCurrentSchoolState] = useState<SchoolProfile>(DEFAULT_SCHOOL);
+  const [schoolsList, setSchoolsList] = useState<SchoolProfile[]>(() => {
+    try {
+      const saved = localStorage.getItem('cached_schools_list');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (_) {}
+    return DEFAULT_SCHOOLS;
+  });
+
+  const [currentSchool, setCurrentSchoolState] = useState<SchoolProfile>(() => {
+    try {
+      const saved = localStorage.getItem('active_school_profile');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.id) return parsed;
+      }
+    } catch (_) {}
+    return DEFAULT_SCHOOLS[0] || DEFAULT_SCHOOL;
+  });
+
   const [loading, setLoading] = useState(false);
 
   const fetchSchools = async () => {
@@ -70,19 +130,23 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const res = await api.get('/api/schools');
       if (Array.isArray(res.data) && res.data.length > 0) {
         setSchoolsList(res.data);
+        localStorage.setItem('cached_schools_list', JSON.stringify(res.data));
         const savedId = localStorage.getItem('active_school_id');
         const matched = res.data.find((s: SchoolProfile) => String(s.id) === savedId || s.slug === savedId) || res.data[0];
         setCurrentSchoolState(matched);
         localStorage.setItem('active_school_profile', JSON.stringify(matched));
         localStorage.setItem('active_school_id', String(matched.id));
       } else {
-        setSchoolsList([]);
-        setCurrentSchoolState(DEFAULT_SCHOOL);
-        localStorage.removeItem('active_school_profile');
-        localStorage.removeItem('active_school_id');
+        setSchoolsList(DEFAULT_SCHOOLS);
+        const savedId = localStorage.getItem('active_school_id');
+        const matched = DEFAULT_SCHOOLS.find((s: SchoolProfile) => String(s.id) === savedId || s.slug === savedId) || DEFAULT_SCHOOLS[0];
+        setCurrentSchoolState(matched);
       }
     } catch (err) {
       console.warn('Could not fetch schools list, using fallback defaults:', err);
+      if (!schoolsList || schoolsList.length === 0) {
+        setSchoolsList(DEFAULT_SCHOOLS);
+      }
     } finally {
       setLoading(false);
     }
