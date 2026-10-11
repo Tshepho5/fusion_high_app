@@ -647,14 +647,15 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
   const totalClasses = stats?.total_classes !== undefined 
     ? Number(stats.total_classes) 
     : (stats?.classes !== undefined ? Number(stats.classes) : 0);
-  const overallAttendance = stats?.overall_attendance !== undefined && stats.overall_attendance !== null 
-    ? `${stats.overall_attendance}%` 
-    : (stats?.attendance_rate !== undefined && stats.attendance_rate !== null ? `${stats.attendance_rate}%` : '0%');
+  const rawAttendance = stats?.overall_attendance !== undefined && stats.overall_attendance !== null 
+    ? Number(stats.overall_attendance) 
+    : (stats?.attendance_rate !== undefined && stats.attendance_rate !== null ? Number(stats.attendance_rate) : 0);
+  const overallAttendance = rawAttendance > 0 ? `${rawAttendance}%` : 'Awaiting Data Capture';
 
   const metricCards = [
-    { title: 'Enrolled Learners', value: totalLearners, sub: 'Active CAPS Students', icon: GraduationCap, color: 'text-indigo-400', tab: 'users' },
-    { title: 'Teaching Staff', value: totalTeachers, sub: 'Subject Specialists', icon: Briefcase, color: 'text-cyan-400', tab: 'users' },
-    { title: 'Class Units', value: totalClasses, sub: 'Grade 8-12 Rooms', icon: BookOpen, color: 'text-emerald-400', tab: 'timetable' },
+    { title: 'Enrolled Learners', value: totalLearners > 0 ? totalLearners : 'No records yet', sub: 'Active CAPS Students', icon: GraduationCap, color: 'text-indigo-400', tab: 'users' },
+    { title: 'Teaching Staff', value: totalTeachers > 0 ? totalTeachers : 'No records yet', sub: 'Subject Specialists', icon: Briefcase, color: 'text-cyan-400', tab: 'users' },
+    { title: 'Class Units', value: totalClasses > 0 ? totalClasses : 'No records yet', sub: 'Grade 8-12 Rooms', icon: BookOpen, color: 'text-emerald-400', tab: 'timetable' },
     { title: 'School Attendance', value: overallAttendance, sub: 'Daily Average', icon: CalendarCheck, color: 'text-amber-400', tab: 'marks' },
   ];
 

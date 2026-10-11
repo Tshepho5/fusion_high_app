@@ -29,12 +29,13 @@ export const SchoolPerformanceMetricsView: React.FC<SchoolPerformanceMetricsView
 }) => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>({
-    totalLearners: 0,
-    totalTeachers: 0,
-    totalClasses: 0,
-    overallAttendance: '-',
-    passRate: '-',
-    matricPassRate: '-',
+    totalLearners: 'No records yet',
+    totalTeachers: 'No records yet',
+    totalClasses: 'No records yet',
+    overallAttendance: 'Awaiting Data Capture',
+    passRate: 'Awaiting Data Capture',
+    matricPassRate: 'Awaiting Data Capture',
+    ratio: 'Awaiting Data Capture',
   });
 
   useEffect(() => {
@@ -42,13 +43,53 @@ export const SchoolPerformanceMetricsView: React.FC<SchoolPerformanceMetricsView
       .getOverviewStats()
       .then((res: any) => {
         const d = res?.data || res || {};
+        const learners = Number(d.totalLearners ?? d.learner ?? d.total_learners ?? d.total_students ?? 0);
+        const teachers = Number(d.totalTeachers ?? d.teacher ?? d.total_teachers ?? 0);
+        const classes = Number(d.totalClasses ?? d.classes ?? d.total_classes ?? 0);
+
+        // Attendance: only show % if recorded and > 0, never display 0%
+        let attVal: number | null = null;
+        if (d.attendance_rate !== undefined && d.attendance_rate !== null && Number(d.attendance_rate) > 0) {
+          attVal = Number(d.attendance_rate);
+        } else if (d.overall_attendance !== undefined && d.overall_attendance !== null && Number(d.overall_attendance) > 0) {
+          attVal = Number(d.overall_attendance);
+        } else if (d.attendanceRate !== undefined && d.attendanceRate !== null && Number(d.attendanceRate) > 0) {
+          attVal = Number(d.attendanceRate);
+        }
+
+        // Pass rate: only show % if recorded and > 0, no dummy values
+        let pRate: number | null = null;
+        if (d.passRate !== undefined && d.passRate !== null && Number(d.passRate) > 0) {
+          pRate = Number(d.passRate);
+        } else if (d.pass_rate !== undefined && d.pass_rate !== null && Number(d.pass_rate) > 0) {
+          pRate = Number(d.pass_rate);
+        }
+
+        // Matric pass rate: only show % if recorded and > 0, no dummy values
+        let mRate: number | null = null;
+        if (d.matricPassRate !== undefined && d.matricPassRate !== null && Number(d.matricPassRate) > 0) {
+          mRate = Number(d.matricPassRate);
+        } else if (d.matric_pass_rate !== undefined && d.matric_pass_rate !== null && Number(d.matric_pass_rate) > 0) {
+          mRate = Number(d.matric_pass_rate);
+        }
+
+        // Learner-to-Educator ratio: only show if learners > 0 and teachers > 0 and ratio >= 1
+        let ratioVal: string | null = null;
+        if (teachers > 0 && learners > 0) {
+          const ratioNum = Math.round(learners / teachers);
+          if (ratioNum >= 1) {
+            ratioVal = `${ratioNum}:1`;
+          }
+        }
+
         setStats({
-          totalLearners: d.totalLearners ?? d.learner ?? d.total_learners ?? d.total_students ?? 0,
-          totalTeachers: d.totalTeachers ?? d.teacher ?? d.total_teachers ?? 0,
-          totalClasses: d.totalClasses ?? d.classes ?? d.total_classes ?? 0,
-          overallAttendance: d.attendance_rate !== undefined ? `${d.attendance_rate}%` : (d.attendanceRate ?? d.overall_attendance ? `${d.overall_attendance}%` : '96.2%'),
-          passRate: d.passRate ? (typeof d.passRate === 'number' ? `${d.passRate}%` : d.passRate) : '92.9%',
-          matricPassRate: d.matricPassRate ? (typeof d.matricPassRate === 'number' ? `${d.matricPassRate}%` : d.matricPassRate) : '94.8%',
+          totalLearners: learners > 0 ? learners : 'No records yet',
+          totalTeachers: teachers > 0 ? teachers : 'No records yet',
+          totalClasses: classes > 0 ? classes : 'No records yet',
+          overallAttendance: attVal !== null ? `${attVal}%` : 'Awaiting Data Capture',
+          passRate: pRate !== null ? `${pRate}%` : 'Awaiting Data Capture',
+          matricPassRate: mRate !== null ? `${mRate}%` : 'Awaiting Data Capture',
+          ratio: ratioVal !== null ? ratioVal : 'Awaiting Data Capture',
         });
       })
       .catch(() => {})
@@ -93,7 +134,7 @@ export const SchoolPerformanceMetricsView: React.FC<SchoolPerformanceMetricsView
   const breakdownMetrics = [
     { label: 'Overall School Pass Rate', value: stats.passRate, icon: Award, color: 'text-emerald-400' },
     { label: 'Matric Forecast (Bachelor Degree)', value: stats.matricPassRate, icon: TrendingUp, color: 'text-cyan-400' },
-    { label: 'Learner-to-Educator Ratio', value: stats.totalTeachers > 0 ? `${Math.round(stats.totalLearners / stats.totalTeachers)}:1` : '1:1', icon: Users, color: 'text-purple-400' },
+    { label: 'Learner-to-Educator Ratio', value: stats.ratio, icon: Users, color: 'text-purple-400' },
   ];
 
   if (loading) {
@@ -146,7 +187,9 @@ export const SchoolPerformanceMetricsView: React.FC<SchoolPerformanceMetricsView
               </div>
 
               <div>
-                <p className="text-3xl font-extrabold text-slate-900 dark:text-white">{m.value}</p>
+                <p className={`${typeof m.value === 'number' ? 'text-3xl' : 'text-xl sm:text-2xl'} font-extrabold text-slate-900 dark:text-white`}>
+                  {m.value}
+                </p>
               </div>
 
               <div className="pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-500 font-bold">
@@ -176,7 +219,7 @@ export const SchoolPerformanceMetricsView: React.FC<SchoolPerformanceMetricsView
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{b.label}</p>
-                  <p className="text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">{b.value}</p>
+                  <p className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white mt-0.5">{b.value}</p>
                 </div>
               </div>
             );

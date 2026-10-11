@@ -1028,18 +1028,6 @@ export const AdminUsers: React.FC = () => {
           )}
 
           <button
-            onClick={() => {
-              setInviteModalError(null);
-              setGeneratedInviteUrl(null);
-              setIsInviteTeacherModalOpen(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-500 to-teal-400 hover:from-blue-500 hover:to-cyan-400 text-slate-950 font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer"
-          >
-            <Mail className="w-4 h-4 text-slate-950" />
-            <span>+ Invite Teacher by Email</span>
-          </button>
-
-          <button
             onClick={() => setIsAddEmployeeModalOpen(true)}
             className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-300 font-bold text-xs border border-white/10 transition-colors"
             title="Manual registration without email invite"
