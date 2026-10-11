@@ -41,8 +41,21 @@ exports.getChildren = async (req, res) => {
         const result = await db.query(query, [req.user.id]);
         const rawChildren = result.rows || [];
 
+        // Deduplicate learners by unique learner tracking number (#GSA-MKG-001) or name + grade
+        const seenLearners = new Set();
+        const uniqueRawChildren = [];
+        for (const child of rawChildren) {
+            const ref = (child.learner_number && child.learner_number.trim() && !child.learner_number.startsWith('2026-FHS-'))
+                ? child.learner_number.trim().toUpperCase()
+                : `${(child.full_name || '').trim().toLowerCase()}_${(child.surname || '').trim().toLowerCase()}_${child.grade || ''}`;
+            if (!seenLearners.has(ref)) {
+                seenLearners.add(ref);
+                uniqueRawChildren.push(child);
+            }
+        }
+
         // Enrich strictly with real Machine Learning pass prediction and risk flags
-        const enrichedChildren = await Promise.all(rawChildren.map(async (child) => {
+        const enrichedChildren = await Promise.all(uniqueRawChildren.map(async (child) => {
             let attRate = 85;
             let avgScore = 55;
 
@@ -843,7 +856,20 @@ async function fetchParentChildren(parentId) {
         [parentId]
     );
 
-    return childrenRes.rows || [];
+    const raw = childrenRes.rows || [];
+    // Strict deduplication by unique learner tracking number (#GSA-MKG-001) or normalized name + grade
+    const seen = new Set();
+    const unique = [];
+    for (const child of raw) {
+        const ref = (child.learner_number && child.learner_number.trim() && !child.learner_number.startsWith('2026-FHS-'))
+            ? child.learner_number.trim().toUpperCase()
+            : `${(child.full_name || '').trim().toLowerCase()}_${(child.surname || '').trim().toLowerCase()}_${child.grade || ''}`;
+        if (!seen.has(ref)) {
+            seen.add(ref);
+            unique.push(child);
+        }
+    }
+    return unique;
 }
 
 /**

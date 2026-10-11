@@ -329,14 +329,26 @@ html[data-theme="light"] button[class*="bg-emerald-6"] *,
 .light button[class*="bg-emerald-6"] *,
 .theme-light button[class*="bg-cyan-6"] *,
 html[data-theme="light"] button[class*="bg-cyan-6"] *,
-.light button[class*="bg-cyan-6"] * {
+.light button[class*="bg-cyan-6"] *,
+.theme-light .report-card-btn,
+html[data-theme="light"] .report-card-btn,
+.light .report-card-btn,
+.theme-light .report-card-btn *,
+html[data-theme="light"] .report-card-btn *,
+.light .report-card-btn *,
+.theme-light button[class*="bg-[#1C252C]"],
+html[data-theme="light"] button[class*="bg-[#1C252C]"],
+.light button[class*="bg-[#1C252C]"],
+.theme-light button[class*="bg-[#1C252C]"] *,
+html[data-theme="light"] button[class*="bg-[#1C252C]"] *,
+.light button[class*="bg-[#1C252C]"] * {
   color: #FFFFFF !important;
 }
 
 /* 4. High-contrast text on light surfaces across dashboards and cards */
-.theme-light .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not(button[class*="bg-brand-"] *):not(button[class*="bg-indigo-"] *):not(button[class*="bg-blue-"] *):not(button[class*="bg-rose-"] *):not(button[class*="bg-emerald-"] *):not(a[class*="bg-brand-"] *):not(a[class*="bg-blue-"] *):not(a[class*="bg-indigo-"] *):not(button[class*="bg-gradient-to-"] *):not(a[class*="bg-gradient-to-"] *):not([class*="bg-brand-6"]):not([class*="bg-indigo-6"]):not([class*="bg-blue-6"]):not([class*="bg-rose-6"]),
-html[data-theme="light"] .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not(button[class*="bg-brand-"] *):not(button[class*="bg-indigo-"] *):not(button[class*="bg-blue-"] *):not(button[class*="bg-rose-"] *):not(button[class*="bg-emerald-"] *):not(a[class*="bg-brand-"] *):not(a[class*="bg-blue-"] *):not(a[class*="bg-indigo-"] *):not(button[class*="bg-gradient-to-"] *):not(a[class*="bg-gradient-to-"] *):not([class*="bg-brand-6"]):not([class*="bg-indigo-6"]):not([class*="bg-blue-6"]):not([class*="bg-rose-6"]),
-.light .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not(button[class*="bg-brand-"] *):not(button[class*="bg-indigo-"] *):not(button[class*="bg-blue-"] *):not(button[class*="bg-rose-"] *):not(button[class*="bg-emerald-"] *):not(a[class*="bg-brand-"] *):not(a[class*="bg-blue-"] *):not(a[class*="bg-indigo-"] *):not(button[class*="bg-gradient-to-"] *):not(a[class*="bg-gradient-to-"] *):not([class*="bg-brand-6"]):not([class*="bg-indigo-6"]):not([class*="bg-blue-6"]):not([class*="bg-rose-6"]) {
+.theme-light .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not(.report-card-btn):not(.report-card-btn *):not(button[class*="bg-[#1C252C]"]):not(button[class*="bg-[#1C252C]"] *):not(button[class*="bg-brand-"] *):not(button[class*="bg-indigo-"] *):not(button[class*="bg-blue-"] *):not(button[class*="bg-rose-"] *):not(button[class*="bg-emerald-"] *):not(a[class*="bg-brand-"] *):not(a[class*="bg-blue-"] *):not(a[class*="bg-indigo-"] *):not(button[class*="bg-gradient-to-"] *):not(a[class*="bg-gradient-to-"] *):not([class*="bg-brand-6"]):not([class*="bg-indigo-6"]):not([class*="bg-blue-6"]):not([class*="bg-rose-6"]),
+html[data-theme="light"] .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not(.report-card-btn):not(.report-card-btn *):not(button[class*="bg-[#1C252C]"]):not(button[class*="bg-[#1C252C]"] *):not(button[class*="bg-brand-"] *):not(button[class*="bg-indigo-"] *):not(button[class*="bg-blue-"] *):not(button[class*="bg-rose-"] *):not(button[class*="bg-emerald-"] *):not(a[class*="bg-brand-"] *):not(a[class*="bg-blue-"] *):not(a[class*="bg-indigo-"] *):not(button[class*="bg-gradient-to-"] *):not(a[class*="bg-gradient-to-"] *):not([class*="bg-brand-6"]):not([class*="bg-indigo-6"]):not([class*="bg-blue-6"]):not([class*="bg-rose-6"]),
+.light .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not(.report-card-btn):not(.report-card-btn *):not(button[class*="bg-[#1C252C]"]):not(button[class*="bg-[#1C252C]"] *):not(button[class*="bg-brand-"] *):not(button[class*="bg-indigo-"] *):not(button[class*="bg-blue-"] *):not(button[class*="bg-rose-"] *):not(button[class*="bg-emerald-"] *):not(a[class*="bg-brand-"] *):not(a[class*="bg-blue-"] *):not(a[class*="bg-indigo-"] *):not(button[class*="bg-gradient-to-"] *):not(a[class*="bg-gradient-to-"] *):not([class*="bg-brand-6"]):not([class*="bg-indigo-6"]):not([class*="bg-blue-6"]):not([class*="bg-rose-6"]) {
   color: #0F172A !important;
 }
 
