@@ -141,18 +141,51 @@ export const normalizeClassGrade = (clsStr: string | number | null | undefined):
   return digits || s;
 };
 
-const DEFAULT_SUBJECTS = ['Mathematics', 'Physical Sciences', 'Life Sciences', 'Accounting', 'Business Studies', 'Economics', 'English FAL'];
-const DEFAULT_CLASSES = ['10', '11', '12'];
+interface TeacherWorkloadAssignment {
+  subject: string;
+  grade?: string;
+  className?: string;
+}
 
 export const TeacherAssessments: React.FC = () => {
   const [searchParams] = useSearchParams();
   const querySubject = searchParams.get('subject');
   const queryClass = searchParams.get('class');
 
-  const [subjects, setSubjects] = useState<string[]>(querySubject ? [querySubject, ...DEFAULT_SUBJECTS.filter(s => s !== querySubject)] : DEFAULT_SUBJECTS);
-  const [classes, setClasses] = useState<string[]>(queryClass ? [normalizeClassGrade(queryClass), ...DEFAULT_CLASSES.filter(c => c !== normalizeClassGrade(queryClass))] : DEFAULT_CLASSES);
-  const [selectedSubject, setSelectedSubject] = useState<string>(querySubject || DEFAULT_SUBJECTS[0]);
-  const [selectedClass, setSelectedClass] = useState<string>(queryClass ? normalizeClassGrade(queryClass) : DEFAULT_CLASSES[0]);
+  const [teacherAssignments, setTeacherAssignments] = useState<TeacherWorkloadAssignment[]>([]);
+  const [allTeacherSubjects, setAllTeacherSubjects] = useState<string[]>(querySubject ? [querySubject] : []);
+  const [classes, setClasses] = useState<string[]>(queryClass ? [normalizeClassGrade(queryClass)] : ['10', '11', '12']);
+  const [selectedSubject, setSelectedSubject] = useState<string>(querySubject || '');
+  const [selectedClass, setSelectedClass] = useState<string>(queryClass ? normalizeClassGrade(queryClass) : '10');
+
+  // Compute subjects dynamically: only subjects assigned to this specific teacher
+  // If a specific class is selected, show subjects assigned to this teacher for that class (or all assigned subjects if no class filter)
+  const subjects = useMemo(() => {
+    if (allTeacherSubjects.length === 0) {
+      return querySubject ? [querySubject] : [];
+    }
+    if (!selectedClass || selectedClass === 'all') {
+      return allTeacherSubjects;
+    }
+    const normSelectedGrade = normalizeClassGrade(selectedClass);
+    const matching = teacherAssignments.filter(a => {
+      if (!a.grade && !a.className) return true; // subject assigned to educator across all classes
+      const gNorm = normalizeClassGrade(a.grade || a.className);
+      return gNorm === normSelectedGrade;
+    }).map(a => a.subject);
+
+    const uniqueForGrade = Array.from(new Set(matching.filter(Boolean)));
+    return uniqueForGrade.length > 0 ? uniqueForGrade : allTeacherSubjects;
+  }, [selectedClass, teacherAssignments, allTeacherSubjects, querySubject]);
+
+  // Keep selectedSubject in sync with available assigned subjects
+  useEffect(() => {
+    if (subjects.length > 0) {
+      if (!selectedSubject || !subjects.includes(selectedSubject)) {
+        setSelectedSubject(subjects[0]);
+      }
+    }
+  }, [subjects, selectedSubject]);
 
   // Active Category View: 'formal' | 'term' | 'ai' | 'entry' | 'history'
   const [activeCategory, setActiveCategory] = useState<'formal' | 'term' | 'ai' | 'entry' | 'history'>('formal');
@@ -194,60 +227,71 @@ export const TeacherAssessments: React.FC = () => {
 
     const loadWorkloadAndClasses = async () => {
       try {
-        let extractedSubjects: string[] = [];
+        let assignmentsList: TeacherWorkloadAssignment[] = [];
         let extractedClasses: string[] = [];
 
-        // Source A: getMySubjectsOverview (active workload cards)
+        // Source A: getMySubjectsOverview (active workload cards from teacher_assignments, teacher_timetable, classes)
         try {
           const overview = await teacherService.getMySubjectsOverview();
           const list = Array.isArray(overview) ? overview : [];
           list.forEach((c: any) => {
-            if (c.subject_name) extractedSubjects.push(c.subject_name);
-            const norm = normalizeClassGrade(c.class_name || c.grade);
+            const sub = (c.subject_name || c.subject || '').trim();
+            const norm = normalizeClassGrade(c.class_name || c.grade || c.grade_level);
+            if (sub) {
+              assignmentsList.push({ subject: sub, grade: norm || undefined, className: c.class_name });
+            }
             if (norm && norm !== 'all') extractedClasses.push(norm);
           });
         } catch (_) {}
 
-        // Source B: getClasses (teacher assigned class list)
+        // Source B: getWorkload (teacher workload profile from employee record & assignments)
+        try {
+          const wl = await teacherService.getWorkload();
+          if (wl?.subjects && Array.isArray(wl.subjects)) {
+            wl.subjects.forEach((s: string) => {
+              const sub = (s || '').trim();
+              if (sub) assignmentsList.push({ subject: sub });
+            });
+          }
+          if (wl?.grades_taught && Array.isArray(wl.grades_taught)) {
+            wl.grades_taught.forEach((g: any) => {
+              const norm = normalizeClassGrade(g);
+              if (norm && norm !== 'all') extractedClasses.push(norm);
+            });
+          }
+        } catch (_) {}
+
+        // Source C: getClasses (teacher assigned class list)
         try {
           const clsRes = await teacherService.getClasses();
-          const list = Array.isArray(clsRes) ? clsRes : [];
+          const list = Array.isArray(clsRes) ? clsRes : clsRes?.classes || [];
           list.forEach((c: any) => {
-            if (c.subject_name || c.subject) extractedSubjects.push(c.subject_name || c.subject);
-            const norm = normalizeClassGrade(c.name || c.class_name || c.grade);
-            if (norm && norm !== 'all') extractedClasses.push(norm);
-          });
-        } catch (_) {}
-
-        // Source C: getMyLearners (roster and mark register source)
-        try {
-          const learnersRes = await teacherService.getMyLearners();
-          const list = Array.isArray(learnersRes) ? learnersRes : (learnersRes?.learners || []);
-          list.forEach((l: any) => {
-            const norm = normalizeClassGrade(l.class_name || l.grade);
-            if (norm && norm !== 'all') extractedClasses.push(norm);
-            if (Array.isArray(l.subjects)) {
-              l.subjects.forEach((s: string) => extractedSubjects.push(s));
+            const sub = (c.subject_name || c.subject || '').trim();
+            const norm = normalizeClassGrade(c.name || c.class_name || c.grade || c.grade_level);
+            if (sub) {
+              assignmentsList.push({ subject: sub, grade: norm || undefined, className: c.name || c.class_name });
             }
+            if (norm && norm !== 'all') extractedClasses.push(norm);
           });
         } catch (_) {}
 
         if (!isMounted) return;
 
-        // Deduplicate classes to numeric grades only: '10', '11', '12'
-        const uniqueSubjects = Array.from(new Set([...extractedSubjects.filter(Boolean), ...DEFAULT_SUBJECTS]));
+        // Deduplicate classes to numeric grades only: '8', '9', '10', '11', '12'
         const uniqueClasses = Array.from(
-          new Set([...extractedClasses.filter(c => c && /^\d+$/.test(c)), ...DEFAULT_CLASSES])
+          new Set(extractedClasses.filter(c => c && /^\d+$/.test(c)))
         ).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
 
-        setSubjects(uniqueSubjects);
-        setClasses(uniqueClasses);
+        // Deduplicate subjects assigned to this specific teacher
+        const uniqueTeacherSubjects = Array.from(
+          new Set(assignmentsList.map(a => a.subject).filter(Boolean))
+        );
 
-        setSelectedSubject(prev => {
-          if (querySubject && uniqueSubjects.includes(querySubject)) return querySubject;
-          if (prev && uniqueSubjects.includes(prev)) return prev;
-          return uniqueSubjects[0] || 'Mathematics';
-        });
+        setTeacherAssignments(assignmentsList);
+        setAllTeacherSubjects(uniqueTeacherSubjects);
+        if (uniqueClasses.length > 0) {
+          setClasses(uniqueClasses);
+        }
 
         setSelectedClass(prev => {
           const normQuery = queryClass ? normalizeClassGrade(queryClass) : null;
@@ -255,6 +299,12 @@ export const TeacherAssessments: React.FC = () => {
           const normPrev = prev ? normalizeClassGrade(prev) : null;
           if (normPrev && uniqueClasses.includes(normPrev)) return normPrev;
           return uniqueClasses[0] || '10';
+        });
+
+        setSelectedSubject(prev => {
+          if (querySubject && uniqueTeacherSubjects.includes(querySubject)) return querySubject;
+          if (prev && uniqueTeacherSubjects.includes(prev)) return prev;
+          return uniqueTeacherSubjects[0] || '';
         });
       } catch (err) {
         console.warn('Teacher workload load notice:', err);
@@ -284,7 +334,13 @@ export const TeacherAssessments: React.FC = () => {
     const isAll = rawClass === 'all';
     const normGradeNum = isAll ? null : parseInt(normalizeClassGrade(rawClass), 10);
     const targetClass = isAll ? 'all' : (normGradeNum ? String(normGradeNum) : '10');
-    const targetSubject = selectedSubject || subjects[0] || 'Mathematics';
+    const targetSubject = selectedSubject || subjects[0] || '';
+
+    if (!targetSubject) {
+      setLoading(false);
+      clearTimeout(safetyTimer);
+      return;
+    }
 
     try {
       let roster: any[] = [];
@@ -618,7 +674,7 @@ export const TeacherAssessments: React.FC = () => {
     return learners.reduce((sum, l) => sum + (l.ai_completed_count || 0), 0);
   }, [learners]);
 
-  const activeSubjectDisplay = selectedSubject || subjects[0] || 'Mathematics';
+  const activeSubjectDisplay = selectedSubject || subjects[0] || 'Assigned Subject';
   const activeClassDisplay = selectedClass === 'all' ? 'All Classes' : (normalizeClassGrade(selectedClass) || classes[0] || '10');
 
   return (
@@ -694,7 +750,7 @@ export const TeacherAssessments: React.FC = () => {
               </select>
             ) : (
               <span className="px-3 py-1.5 rounded-xl bg-surface-darker text-slate-400 text-xs font-bold border border-white/5">
-                None available
+                No subjects assigned
               </span>
             )}
           </div>
