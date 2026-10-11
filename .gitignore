@@ -36,3 +36,8 @@ serviceAccountKey*.json
 .firebase/
 scratch/
 
+# Python Cache & Temp Output
+__pycache__/
+*.pyc
+QuestionBank/output/
+

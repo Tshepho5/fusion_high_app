@@ -360,6 +360,13 @@ export const teacherService = {
   togglePublishResource: (id: number | string, isPublished?: boolean) => 
     api.patch(`/api/teacher/resources/${id}/publish`, { is_published: isPublished }).then(res => res.data),
   deleteResource: (id: number | string) => api.delete(`/api/teacher/resources/${id}`).then(res => res.data),
+
+  // CAPS Past Paper Question Bank
+  getQuestionBankStats: () => api.get('/api/teacher/question-bank/stats').then(res => res.data),
+  getQuestionBankQuestions: (params?: { grade?: number | string; subject?: string; topic?: string; qtype?: string; limit?: number }) =>
+    api.get('/api/teacher/question-bank/questions', { params }).then(res => res.data),
+  generateQuestionBankTest: (payload: { marks: number; grade?: number | string; subject?: string; topic?: string; title?: string; qtype?: string }) =>
+    api.post('/api/teacher/question-bank/generate', payload).then(res => res.data),
 };
 
 // Notification APIs

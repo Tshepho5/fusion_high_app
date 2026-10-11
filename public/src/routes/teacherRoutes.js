@@ -49,6 +49,12 @@ router.get('/classlist', teacherController.getClassList);
 router.get('/classes', teacherController.getTeacherClasses);
 router.get('/class-roster', teacherController.getClassRoster);
 
+// CAPS Question Bank Endpoints
+const questionBankController = require('../controller/teacher/questionBankController');
+router.get('/question-bank/stats', questionBankController.getStats);
+router.get('/question-bank/questions', questionBankController.getQuestions);
+router.post('/question-bank/generate', questionBankController.generateAssessment);
+
 
 router.get('/topics', teacherController.getTopicsFromTextbook);
 router.get('/textbook-topics', teacherController.getTopicsFromTextbook);

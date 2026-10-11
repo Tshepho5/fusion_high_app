@@ -83,6 +83,10 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
 
   // Assessment generator inputs
   const [testMarks, setTestMarks] = useState(30);
+  const [testSource, setTestSource] = useState<'question_bank' | 'ai'>('question_bank');
+  const [qbStats, setQbStats] = useState<any>(null);
+  const [qbTopics, setQbTopics] = useState<string[]>([]);
+  const [selectedQType, setSelectedQType] = useState<string>('');
 
   // Class Risk Briefing inputs
   const [classes, setClasses] = useState<any[]>([]);
@@ -109,6 +113,17 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
           setClasses(list);
           if (list.length > 0 && !selectedClassId) {
             setSelectedClassId(list[0].id);
+          }
+        })
+        .catch(() => {});
+
+      teacherService.getQuestionBankStats()
+        .then(res => {
+          if (res?.ok) {
+            setQbStats(res);
+            if (Array.isArray(res.topics)) {
+              setQbTopics(res.topics);
+            }
           }
         })
         .catch(() => {});
@@ -141,25 +156,53 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
   };
 
   const handleGenerateAssessment = async () => {
-    if (!topic.trim()) {
-      setError('Please specify a topic for the assessment paper.');
-      return;
-    }
     setLoading(true);
     setError(null);
     try {
-      const res = await gelezaAiService.generateAssessment({
-        subject,
-        grade,
-        topic: topic.trim(),
-        totalMarks: testMarks
-      });
-      setTestResult(res.assessment || res);
+      if (testSource === 'question_bank') {
+        const res = await teacherService.generateQuestionBankTest({
+          marks: testMarks,
+          grade,
+          subject,
+          topic: topic.trim() || undefined,
+          title: `${subject} Grade ${grade} Test`,
+          qtype: selectedQType || undefined
+        });
+        if (!res?.ok && !res?.success) {
+          throw new Error(res?.error || res?.message || 'Could not assemble test from question bank.');
+        }
+        setTestResult(res);
+      } else {
+        if (!topic.trim()) {
+          setError('Please specify a topic for the assessment paper.');
+          setLoading(false);
+          return;
+        }
+        const res = await gelezaAiService.generateAssessment({
+          subject,
+          grade,
+          topic: topic.trim(),
+          totalMarks: testMarks
+        });
+        setTestResult(res.assessment || res);
+      }
     } catch (err: any) {
-      setError(err?.response?.data?.error || 'Failed to generate assessment paper. Please try again.');
+      setError(err?.response?.data?.error || err?.message || 'Failed to generate assessment paper.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDownloadText = (filename: string, content: string) => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleFetchClassRisk = async () => {
@@ -466,6 +509,34 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
             <div className="space-y-6">
               {!testResult ? (
                 <div className="space-y-5">
+                  {/* Mode Selector: Question Bank vs AI Synthesis */}
+                  <div className="flex items-center gap-2 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setTestSource('question_bank')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        testSource === 'question_bank'
+                          ? 'bg-[#13C8D9] text-slate-950 shadow-md font-extrabold'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Award className="w-3.5 h-3.5" />
+                      <span>CAPS Question Bank ({qbStats?.usable_groups || 25} Paper Units)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTestSource('ai')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        testSource === 'ai'
+                          ? 'bg-[#13C8D9] text-slate-950 shadow-md font-extrabold'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>AI Curriculum Synthesis</span>
+                    </button>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Subject</label>
@@ -474,8 +545,8 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
                         onChange={(e) => setSubject(e.target.value)}
                         className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                       >
+                        <option value="Physical Sciences">Physical Sciences (Question Bank Ready)</option>
                         <option value="Mathematics">Mathematics</option>
-                        <option value="Physical Sciences">Physical Sciences</option>
                         <option value="Life Sciences">Life Sciences</option>
                         <option value="Accounting">Accounting</option>
                         <option value="English">English</option>
@@ -490,7 +561,7 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
                         onChange={(e) => setGrade(Number(e.target.value))}
                         className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                       >
-                        <option value={10}>Grade 10</option>
+                        <option value={10}>Grade 10 (Past Paper Active)</option>
                         <option value={11}>Grade 11</option>
                         <option value={12}>Grade 12</option>
                       </select>
@@ -510,16 +581,60 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assessment Topic</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Quadratic Inequalities and Functions"
-                      value={topic}
-                      onChange={(e) => setTopic(e.target.value)}
-                      className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                    />
-                  </div>
+                  {testSource === 'question_bank' ? (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          Select CAPS Topic from Question Bank
+                        </label>
+                        <select
+                          value={topic}
+                          onChange={(e) => setTopic(e.target.value)}
+                          className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                        >
+                          <option value="">All Topics (Balanced Curriculum Mix)</option>
+                          {qbTopics.map(t => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Filter by Question Type (Optional)
+                          </label>
+                          <select
+                            value={selectedQType}
+                            onChange={(e) => setSelectedQType(e.target.value)}
+                            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                          >
+                            <option value="">All Question Types (Recommended)</option>
+                            <option value="multiple choice">Multiple Choice</option>
+                            <option value="definition">Definitions</option>
+                            <option value="calculation">Calculations</option>
+                            <option value="theory">Theory & Explanations</option>
+                          </select>
+                        </div>
+
+                        <div className="p-3 rounded-xl bg-[#13C8D9]/10 border border-[#13C8D9]/30 text-xs text-slate-300 flex items-center gap-2.5">
+                          <Award className="w-5 h-5 text-[#13C8D9] shrink-0" />
+                          <span>Official DBE past examination items with verified mark breakdowns and marking memorandums.</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assessment Topic</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Quadratic Inequalities and Functions"
+                        value={topic}
+                        onChange={(e) => setTopic(e.target.value)}
+                        className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      />
+                    </div>
+                  )}
 
                   {/* Cognitive Distribution Info */}
                   <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
@@ -548,32 +663,32 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
 
                   <button
                     onClick={handleGenerateAssessment}
-                    disabled={loading || !topic.trim()}
-                    className="w-full py-3.5 px-6 rounded-xl font-bold text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                    disabled={loading || (testSource === 'ai' && !topic.trim())}
+                    className="w-full py-3.5 px-6 rounded-xl font-bold text-sm bg-gradient-to-r from-teal-600 to-[#13C8D9] hover:from-teal-700 hover:to-[#18E2EC] text-slate-950 shadow-lg shadow-teal-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer active:scale-[0.99]"
                   >
-                    {loading ? <LoadingSpinner size="sm" /> : <Sparkles className="w-4 h-4" />}
-                    <span>Generate Assessment Paper & Memorandum</span>
+                    {loading ? <LoadingSpinner size="sm" /> : <Award className="w-4 h-4 text-slate-950" />}
+                    <span>{testSource === 'question_bank' ? 'Assemble Test & Memo from Question Bank' : 'Generate Assessment Paper & Memorandum'}</span>
                   </button>
                 </div>
               ) : (
                 <div className="space-y-5 animate-fade-in">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
                     <div>
                       <h3 className="font-bold text-lg text-slate-900 dark:text-white">
                         {testResult.title || `${subject} Controlled Assessment`}
                       </h3>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Grade {grade} • Total: {testMarks} Marks • CAPS Compliant
+                        Grade {grade} • Total: {testResult.totalMarks || testMarks} Marks • CAPS Compliant • {testResult.groupsCount ? `${testResult.groupsCount} Question Units` : 'DBE Standards'}
                       </p>
                     </div>
 
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center flex-wrap gap-2">
                       <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex items-center">
                         <button
                           onClick={() => setViewMode('paper')}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                             viewMode === 'paper'
-                              ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
+                              ? 'bg-[#13C8D9] text-slate-950 font-bold shadow-sm'
                               : 'text-slate-600 dark:text-slate-400'
                           }`}
                         >
@@ -583,7 +698,7 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
                           onClick={() => setViewMode('memo')}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                             viewMode === 'memo'
-                              ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
+                              ? 'bg-[#13C8D9] text-slate-950 font-bold shadow-sm'
                               : 'text-slate-600 dark:text-slate-400'
                           }`}
                         >
@@ -593,15 +708,39 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
 
                       <button
                         onClick={() => handleCopy(viewMode === 'paper' ? (testResult.paperText || JSON.stringify(testResult.questions)) : (testResult.memoText || JSON.stringify(testResult.memorandum)))}
-                        className="p-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5"
+                        className="p-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 cursor-pointer"
+                        title="Copy to clipboard"
                       >
                         {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                         <span>{copied ? 'Copied' : 'Copy'}</span>
                       </button>
 
                       <button
+                        onClick={() => handleDownloadText(
+                          `${(testResult.title || 'test_paper').replace(/[^a-zA-Z0-9_-]/g, '_')}_${viewMode}.txt`,
+                          viewMode === 'paper' 
+                            ? (testResult.paperText || JSON.stringify(testResult.questions, null, 2))
+                            : (testResult.memoText || JSON.stringify(testResult.memorandum, null, 2))
+                        )}
+                        className="p-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 cursor-pointer"
+                        title="Download as text file"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download</span>
+                      </button>
+
+                      <button
+                        onClick={() => window.print()}
+                        className="p-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 cursor-pointer"
+                        title="Print paper"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Print</span>
+                      </button>
+
+                      <button
                         onClick={() => setTestResult(null)}
-                        className="p-2 text-xs font-medium rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300"
+                        className="p-2 text-xs font-medium rounded-lg bg-[#13C8D9]/20 text-[#13C8D9] border border-[#13C8D9]/30 hover:bg-[#13C8D9]/30 cursor-pointer font-bold"
                       >
                         New Paper
                       </button>
@@ -611,20 +750,34 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
                   {/* Question Paper View */}
                   {viewMode === 'paper' && (
                     <div className="space-y-4">
-                      {testResult.questions && Array.isArray(testResult.questions) ? (
+                      {testResult.questions && Array.isArray(testResult.questions) && testResult.questions.length > 0 ? (
                         testResult.questions.map((q: any, idx: number) => (
-                          <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                            <div className="flex items-center justify-between mb-2">
+                          <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2">
+                            <div className="flex items-center justify-between mb-1">
                               <span className="font-bold text-sm text-slate-900 dark:text-white">
-                                Question {idx + 1}
+                                {q.questionNumber || `Question ${idx + 1}`}
                               </span>
-                              <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold">
-                                [{q.marks || 5} Marks] • {q.cognitiveLevel || 'Routine'}
+                              <span className="text-xs px-2.5 py-1 rounded-full bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 font-semibold">
+                                [{q.marks || 2} Marks] • {q.cognitiveLevel || q.topic || 'Standard'}
                               </span>
                             </div>
-                            <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed">
+                            {q.context && (
+                              <p className="text-xs text-slate-500 dark:text-slate-400 italic bg-white/5 p-2 rounded-lg">
+                                {q.context}
+                              </p>
+                            )}
+                            <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed font-medium">
                               {q.question || q.text}
                             </p>
+                            {q.options && typeof q.options === 'object' && Object.keys(q.options).length > 0 && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-2 pl-3">
+                                {Object.entries(q.options).map(([k, v]) => (
+                                  <div key={k} className="text-xs text-slate-700 dark:text-slate-300 font-mono">
+                                    <strong className="text-[#13C8D9]">{k}.</strong> {String(v)}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         ))
                       ) : (
@@ -638,19 +791,19 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
                   {/* Marking Memo View */}
                   {viewMode === 'memo' && (
                     <div className="space-y-4">
-                      {testResult.memorandum && Array.isArray(testResult.memorandum) ? (
+                      {testResult.memorandum && Array.isArray(testResult.memorandum) && testResult.memorandum.length > 0 ? (
                         testResult.memorandum.map((m: any, idx: number) => (
-                          <div key={idx} className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900">
-                            <div className="flex items-center justify-between mb-2">
+                          <div key={idx} className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 space-y-1">
+                            <div className="flex items-center justify-between mb-1">
                               <span className="font-bold text-sm text-emerald-900 dark:text-emerald-300">
-                                Question {idx + 1} Memo
+                                {m.questionNumber || `Question ${idx + 1}`} Memorandum
                               </span>
                               <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                                Total: {m.marks || 5} Marks
+                                Total: {m.marks || 2} Marks
                               </span>
                             </div>
-                            <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed">
-                              {m.solution || m.answer || m.memo}
+                            <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed font-mono">
+                              {m.guidelines || m.solution || m.answer || m.memo}
                             </p>
                           </div>
                         ))
