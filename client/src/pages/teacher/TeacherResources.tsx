@@ -854,7 +854,7 @@ export const TeacherResources: React.FC<{ onNavigateTab?: (tab: string, params?:
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-3.5 h-3.5" />
+                        <CheckCircle2 className="w-3.5 h-3.5" />
                         <span className="hidden sm:inline">Publish</span>
                       </>
                     )}

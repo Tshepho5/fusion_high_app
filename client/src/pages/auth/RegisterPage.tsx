@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { authService, parentApplicationService, systemControlService, classStaffService } from '../../services/api';
 import { useSchool } from '../../context/SchoolContext';
 import { intakeClosed, intakeReason } from '../../utils/admissionGate';
-import { FusionAIIcon } from '../../components/common/FusionAIIcon';
 import { SchoolRegistrationModal } from '../../components/landing/SchoolRegistrationModal';
 import {
   User,
@@ -1464,7 +1463,7 @@ export const RegisterPage: React.FC = () => {
                   {idExtracted && (
                     <div className="mt-2 p-2.5 rounded-xl bg-brand-500/10 border border-brand-500/20 text-xs text-brand-300 flex items-center justify-between animate-fade-in">
                       <div className="flex items-center gap-2">
-                        <FusionAIIcon className="w-3.5 h-3.5 text-cyan-300" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-cyan-300" />
                         <span>Autofilled from ID: <strong>DOB {idExtracted.displayDob}</strong> &bull; <strong>{idExtracted.gender}</strong></span>
                       </div>
                       <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">

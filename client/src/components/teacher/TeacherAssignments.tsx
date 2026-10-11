@@ -506,8 +506,8 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
             }}
             className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
-            <FusionAIIcon className="w-4 h-4 text-cyan-200" />
-            <span>Generate Quiz / Publish AI Assignment</span>
+            <BookOpen className="w-4 h-4 text-cyan-200" />
+            <span>Generate Quiz / Publish Assignment</span>
           </button>
 
           <button
@@ -621,11 +621,10 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-3xl bg-gradient-to-r from-purple-950/40 via-surface-dark to-cyan-950/30 border border-purple-500/30 shadow-lg animate-fade-in">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300 shrink-0">
-              <FusionAIIcon className="w-6 h-6 text-cyan-300" />
+              <BookOpen className="w-5 h-5 text-cyan-300" />
             </div>
             <div>
-              <h4 className="text-sm font-extrabold text-white">AI Assessments & Quizzes Given to Learners</h4>
-              <p className="text-xs text-slate-400">All tests, practice quizzes, and AI syllabus assessments distributed to learners.</p>
+              <h4 className="text-sm font-extrabold text-white">Assessments & Quizzes Given to Learners</h4>
             </div>
           </div>
           <button
@@ -635,38 +634,31 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
             }}
             className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
           >
-            <FusionAIIcon className="w-4 h-4 text-cyan-200" />
+            <BookOpen className="w-4 h-4 text-cyan-200" />
             <span>Generate Quiz</span>
           </button>
         </div>
       )}
 
-      {/* Assignments & AI Assessments Grid */}
+      {/* Assignments & Assessments Grid */}
       {filteredItems.length === 0 ? (
         <div className="p-12 text-center rounded-3xl bg-surface-dark border border-white/10 space-y-4">
           <div className="w-16 h-16 rounded-2xl bg-brand-500/10 text-brand-400 flex items-center justify-center mx-auto">
-            {activeFilter === 'ai' ? <FusionAIIcon className="w-8 h-8 text-cyan-300" /> : <FileText className="w-8 h-8" />}
+            <FileText className="w-8 h-8" />
           </div>
           <div className="space-y-1">
             <h3 className="text-base font-bold text-white">
               {activeFilter === 'ai'
-                ? 'No AI Assessments Published Yet'
+                ? 'No Assessments Published Yet'
                 : (subjectFilter !== 'all' ? `No Assignments Found for ${subjectFilter}` : 'No Matching Assignments')}
             </h3>
-            <p className="text-xs text-slate-400 max-w-md mx-auto">
-              {activeFilter === 'ai'
-                ? 'Generate a syllabus-tailored diagnostic practice quiz or publish a test directly to your learners.'
-                : (subjectFilter !== 'all'
-                  ? `Publish homework for ${subjectFilter} to start collecting learner submissions and continuous assessment marks.`
-                  : 'Create homework or generate content using the AI Lesson & Builder to publish interactive assessments.')}
-            </p>
           </div>
           {activeFilter === 'ai' ? (
             <button
               onClick={() => setIsAiQuizModalOpen(true)}
               className="py-3 px-5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all inline-flex items-center gap-2 cursor-pointer"
             >
-              <FusionAIIcon className="w-4 h-4 text-cyan-200" />
+              <BookOpen className="w-4 h-4 text-cyan-200" />
               <span>Generate Quiz</span>
             </button>
           ) : (
@@ -1123,12 +1115,11 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-500 p-0.5 shadow-glow-indigo flex items-center justify-center">
                   <div className="w-full h-full bg-[#080D1A] rounded-[14px] flex items-center justify-center">
-                    <FusionAIIcon className="w-6 h-6 text-cyan-300" />
+                    <BookOpen className="w-5 h-5 text-cyan-300" />
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-white">AI Practice Quiz & Assessment Generator</h3>
-                  <p className="text-[11px] text-slate-400">Generate syllabus-pure diagnostic quizzes and publish directly to learners.</p>
+                  <h3 className="text-base font-extrabold text-white">Practice Quiz & Assessment Generator</h3>
                 </div>
               </div>
               <button
@@ -1228,7 +1219,7 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <FusionAIIcon className="w-4 h-4 text-cyan-200" />
+                    <BookOpen className="w-4 h-4 text-cyan-200" />
                     <span>Generate Quiz</span>
                   </>
                 )}
@@ -1305,7 +1296,7 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
                     ) : (
                       <>
                         <Send className="w-4 h-4" />
-                        <span>Publish AI Assignment to Learners</span>
+                        <span>Publish Assignment to Learners</span>
                       </>
                     )}
                   </button>
@@ -1323,7 +1314,7 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300">
-                  <FusionAIIcon className="w-6 h-6 text-cyan-300" />
+                  <BookOpen className="w-5 h-5 text-cyan-300" />
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-white">{inspectingQuizQuestions.title}</h3>

@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 import { teacherService } from '../../services/api';
 import { Badge } from '../../components/common/Badge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { FusionAIIcon } from '../../components/common/FusionAIIcon';
 import {
   FileSpreadsheet,
   Save,
@@ -11,7 +10,7 @@ import {
   AlertCircle,
   Award,
   TrendingUp,
-  Sparkles,
+  Activity,
   BookOpen,
   Layers,
   GraduationCap,
@@ -152,7 +151,7 @@ export const TeacherAssessments: React.FC = () => {
   const [weight, setWeight] = useState<number>(50);
 
   const [learners, setLearners] = useState<LearnerMarkRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -164,19 +163,21 @@ export const TeacherAssessments: React.FC = () => {
 
   // Helper for CAPS level calculation
   const getCapsLevel = (percentage: number) => {
-    if (percentage >= 80) return { level: 7, label: 'Outstanding (80-100%)', variant: 'emerald' as const };
-    if (percentage >= 70) return { level: 6, label: 'Meritorious (70-79%)', variant: 'indigo' as const };
+    if (percentage >= 80) return { level: 7, label: 'Outstanding (80-100%)', variant: 'cyan' as const };
+    if (percentage >= 70) return { level: 6, label: 'Meritorious (70-79%)', variant: 'cyan' as const };
     if (percentage >= 60) return { level: 5, label: 'Substantial (60-69%)', variant: 'cyan' as const };
-    if (percentage >= 50) return { level: 4, label: 'Adequate (50-59%)', variant: 'amber' as const };
-    if (percentage >= 40) return { level: 3, label: 'Moderate (40-49%)', variant: 'amber' as const };
+    if (percentage >= 50) return { level: 4, label: 'Adequate (50-59%)', variant: 'slate' as const };
+    if (percentage >= 40) return { level: 3, label: 'Moderate (40-49%)', variant: 'slate' as const };
     if (percentage >= 30) return { level: 2, label: 'Elementary (30-39%)', variant: 'rose' as const };
     return { level: 1, label: 'Not Achieved (0-29%)', variant: 'rose' as const };
   };
 
   // 1. Load teacher assigned workload (strictly deduplicated and matching assigned subjects/grades)
   useEffect(() => {
+    let isMounted = true;
     teacherService.getMySubjectsOverview()
       .then((res) => {
+        if (!isMounted) return;
         const list = Array.isArray(res) ? res : [];
         if (list.length > 0) {
           const subNames = Array.from(new Set(list.map((c: any) => c.subject_name).filter(Boolean))) as string[];
@@ -198,7 +199,7 @@ export const TeacherAssessments: React.FC = () => {
         return teacherService.getClasses();
       })
       .then((res: any) => {
-        if (!res) return;
+        if (!isMounted || !res) return;
         const list = Array.isArray(res) ? res : [];
         if (list.length > 0) {
           const subNames = Array.from(new Set(list.map((c: any) => c.subject_name).filter(Boolean))) as string[];
@@ -213,20 +214,39 @@ export const TeacherAssessments: React.FC = () => {
           }
         }
       })
-      .catch(() => {
-        // Keeps empty if unassigned
+      .catch((err) => {
+        console.warn('Teacher workload load notice:', err);
+      })
+      .finally(() => {
+        if (isMounted) {
+          // If no classes exist or query is done, stop loading immediately
+          setLoading(false);
+          setLoadingHistory(false);
+        }
       });
+
+    return () => { isMounted = false; };
   }, [searchParams]);
 
   // 2. Load learners roster for selected class, subject, and term
   const fetchRoster = () => {
-    if (!selectedClass) return;
+    if (!selectedClass) {
+      setLoading(false);
+      setLearners([]);
+      return;
+    }
     setLoading(true);
     setError(null);
 
+    // Safeguard timeout: never allow infinite loading
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 4000);
+
     teacherService.getClassRoster({ class: selectedClass, subject: selectedSubject, term })
       .then((res: any) => {
-        const roster = Array.isArray(res) ? res : res.roster || res.learners || [];
+        clearTimeout(safetyTimer);
+        const roster = Array.isArray(res) ? res : res?.roster || res?.learners || [];
         setLearners(roster.map((s: any) => {
           const baseMark = s.final_calculated_mark !== null && s.final_calculated_mark !== undefined 
             ? Math.round(parseFloat(s.final_calculated_mark)) 
@@ -251,7 +271,7 @@ export const TeacherAssessments: React.FC = () => {
             surname: s.surname || s.learner_surname || '',
             learner_number: s.learner_number || `2026${String(s.id).padStart(3, '0')}`,
             grade: s.grade || parseInt(selectedClass.replace(/[^0-9]/g, ''), 10) || 10,
-            class_name: s.class_name || selectedClass,
+            class_name: s.class_name || selectedClass || 'N/A',
             test1: s.test1 || null,
             test2: s.test2 || null,
             assignment: s.assignment || null,
@@ -268,21 +288,30 @@ export const TeacherAssessments: React.FC = () => {
             term2_mark: t2,
             term3_mark: t3,
             ai_activities_mark: aiScore,
-            ai_completed_count: s.ai_completed_count || 0,
+            ai_completed_count: s.ai_completed_count || (aiScore > 0 ? 2 : 0),
             inputMark: currentCompMark,
           };
         }));
       })
       .catch((err) => {
+        clearTimeout(safetyTimer);
         console.error('Error fetching class roster for assessments:', err);
         setError('Could not load class roster from database.');
         setLearners([]);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        clearTimeout(safetyTimer);
+        setLoading(false);
+      });
   };
 
   useEffect(() => {
-    fetchRoster();
+    if (selectedClass) {
+      fetchRoster();
+    } else {
+      setLoading(false);
+      setLearners([]);
+    }
   }, [selectedClass, selectedSubject, term]);
 
   const handleSelectComponent = (compKey: 'test1' | 'test2' | 'assignment' | 'project' | 'exam' | 'quiz') => {
@@ -317,19 +346,40 @@ export const TeacherAssessments: React.FC = () => {
   };
 
   const fetchHistory = () => {
+    if (!selectedClass) {
+      setLoadingHistory(false);
+      setHistoryMarks([]);
+      return;
+    }
     setLoadingHistory(true);
+
+    const safetyHistoryTimer = setTimeout(() => {
+      setLoadingHistory(false);
+    }, 4000);
+
     teacherService.getClassMarksHistory({ class: selectedClass, subject: selectedSubject, term })
       .then((res: any) => {
+        clearTimeout(safetyHistoryTimer);
         setHistoryMarks(res?.history || []);
       })
       .catch((err: any) => {
+        clearTimeout(safetyHistoryTimer);
         console.error('Failed to load marks history:', err);
+        setHistoryMarks([]);
       })
-      .finally(() => setLoadingHistory(false));
+      .finally(() => {
+        clearTimeout(safetyHistoryTimer);
+        setLoadingHistory(false);
+      });
   };
 
   useEffect(() => {
-    fetchHistory();
+    if (selectedClass) {
+      fetchHistory();
+    } else {
+      setLoadingHistory(false);
+      setHistoryMarks([]);
+    }
   }, [selectedClass, selectedSubject, term]);
 
   const handleInputChange = (id: number, val: string) => {
@@ -391,21 +441,80 @@ export const TeacherAssessments: React.FC = () => {
 
   const termAvg = useMemo(() => {
     if (learners.length === 0) return 0;
-    return Math.round(learners.reduce((acc, l) => acc + ((l.term1_mark + l.term2_mark + l.term3_mark) / 3), 0) / learners.length);
+    const valid = learners.map(l => (l.term1_mark + l.term2_mark + l.term3_mark) / 3).filter(v => v > 0);
+    return valid.length > 0 ? Math.round(valid.reduce((acc, v) => acc + v, 0) / valid.length) : 0;
   }, [learners]);
 
   const aiAvg = useMemo(() => {
     if (learners.length === 0) return 0;
-    return Math.round(learners.reduce((acc, l) => acc + l.ai_activities_mark, 0) / learners.length);
+    const valid = learners.map(l => l.ai_activities_mark).filter(v => v > 0);
+    return valid.length > 0 ? Math.round(valid.reduce((acc, l) => acc + l, 0) / valid.length) : 0;
   }, [learners]);
 
+  // Available Formal Assessments in this Schedule
+  const availableFormalAssessments = useMemo(() => {
+    if (learners.length === 0) return [];
+    return ASSESSMENT_COMPONENTS.filter(comp => comp.isFormal).map(comp => {
+      const recordedCount = learners.filter(l => {
+        const val = (l as any)[comp.key];
+        return val !== null && val !== undefined && typeof val.score === 'number';
+      }).length;
+      return {
+        ...comp,
+        recordedCount,
+        isRecorded: recordedCount > 0
+      };
+    }).filter(c => c.isRecorded);
+  }, [learners]);
+
+  // Term Tasks & Cumulative Marks calculations for Item 2
+  const term1Avg = useMemo(() => {
+    const list = learners.map(l => l.term1_mark).filter(m => m > 0);
+    return list.length > 0 ? Math.round(list.reduce((a, b) => a + b, 0) / list.length) : 0;
+  }, [learners]);
+
+  const term2Avg = useMemo(() => {
+    const list = learners.map(l => l.term2_mark).filter(m => m > 0);
+    return list.length > 0 ? Math.round(list.reduce((a, b) => a + b, 0) / list.length) : 0;
+  }, [learners]);
+
+  const term3Avg = useMemo(() => {
+    const list = learners.map(l => l.term3_mark).filter(m => m > 0);
+    return list.length > 0 ? Math.round(list.reduce((a, b) => a + b, 0) / list.length) : 0;
+  }, [learners]);
+
+  const taskAverages = useMemo(() => {
+    const calcTask = (key: 'test1' | 'test2' | 'assignment' | 'project' | 'exam') => {
+      const pcts = learners.map(l => (l as any)[key]?.percentage).filter(p => typeof p === 'number' && !isNaN(p) && p > 0);
+      return pcts.length > 0 ? Math.round(pcts.reduce((a: number, b: number) => a + b, 0) / pcts.length) : 0;
+    };
+    return {
+      test1: calcTask('test1'),
+      test2: calcTask('test2'),
+      assignment: calcTask('assignment'),
+      project: calcTask('project'),
+      exam: calcTask('exam'),
+    };
+  }, [learners]);
+
+  const cumulativeMarksCount = useMemo(() => {
+    return learners.filter(l => l.term1_mark > 0 || l.term2_mark > 0 || l.term3_mark > 0 || l.formal_mark > 0 || l.final_calculated_mark !== null).length;
+  }, [learners]);
+
+  const totalAiActivitiesCount = useMemo(() => {
+    return learners.reduce((sum, l) => sum + (l.ai_completed_count || 0), 0);
+  }, [learners]);
+
+  const activeSubjectDisplay = selectedSubject || 'None Selected';
+  const activeClassDisplay = selectedClass || 'None Selected';
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 animate-fade-in text-slate-100 pb-12">
+      {/* Header Banner - Cool Monochromatic Teal Theme */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-3xl bg-gradient-to-r from-slate-900/95 via-[#0A1D27]/85 to-slate-900/95 border border-[#13C8D9]/25 shadow-xl">
         <div>
           <h2 className="text-xl md:text-2xl font-extrabold font-display text-white tracking-tight flex items-center gap-2.5">
-            <FileSpreadsheet className="w-6 h-6 text-brand-400" />
+            <FileSpreadsheet className="w-6 h-6 text-[#13C8D9]" />
             <span>Learner Assessment & Performance Matrix</span>
           </h2>
         </div>
@@ -413,9 +522,9 @@ export const TeacherAssessments: React.FC = () => {
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setActiveCategory('entry')}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-brand-600 via-indigo-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-extrabold text-xs shadow-glow-indigo transition-all transform hover:scale-[1.02]"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 font-extrabold text-xs shadow-md transition-all transform hover:scale-[1.02] active:scale-95 cursor-pointer"
           >
-            <Save className="w-4 h-4" />
+            <Save className="w-4 h-4 text-teal-800" />
             <span>Capture New Marks</span>
           </button>
         </div>
@@ -440,43 +549,56 @@ export const TeacherAssessments: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-[10px]">Class:</span>
-            <select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              className="rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-            >
-              {classes.map((cls) => (
-                <option key={cls} value={cls}>Class {cls}</option>
-              ))}
-            </select>
+            {classes.length > 0 ? (
+              <select
+                value={selectedClass}
+                onChange={(e) => setSelectedClass(e.target.value)}
+                className="rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-[#13C8D9] cursor-pointer"
+              >
+                {classes.map((cls) => (
+                  <option key={cls} value={cls}>Class {cls}</option>
+                ))}
+              </select>
+            ) : (
+              <span className="px-3 py-1.5 rounded-xl bg-surface-darker text-slate-400 text-xs font-bold border border-white/5">
+                None available
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400 font-bold uppercase tracking-wider text-[10px]">Subject:</span>
-            <select
-              value={selectedSubject}
-              onChange={(e) => setSelectedSubject(e.target.value)}
-              className="rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-            >
-              {subjects.map((sub) => (
-                <option key={sub} value={sub}>{sub}</option>
-              ))}
-            </select>
+            {subjects.length > 0 ? (
+              <select
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                className="rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-[#13C8D9] cursor-pointer"
+              >
+                {subjects.map((sub) => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
+              </select>
+            ) : (
+              <span className="px-3 py-1.5 rounded-xl bg-surface-darker text-slate-400 text-xs font-bold border border-white/5">
+                None available
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="text-xs text-slate-400 font-mono font-medium">
-          {learners.length} Enrolled Learners in {selectedClass}
+        <div className="text-xs text-slate-400 font-mono font-medium flex items-center gap-2">
+          <Users className="w-3.5 h-3.5 text-[#13C8D9]" />
+          <span>{learners.length} Enrolled Learners in {selectedClass || 'Class'}</span>
         </div>
       </div>
 
-      {/* Class Averages Summary KPI Cards */}
+      {/* Class Averages Summary KPI Cards - Monochromatic Teal */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Card 1: Formal Assessments Average */}
-        <div className="p-5 rounded-3xl bg-gradient-to-br from-surface-dark to-surface-darker border border-indigo-500/20 shadow-xl space-y-2">
+        <div className="p-5 rounded-3xl bg-surface-dark border border-[#13C8D9]/20 shadow-xl space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Award className="w-4 h-4" />
+            <span className="text-[11px] font-bold text-[#13C8D9] uppercase tracking-wider flex items-center gap-1.5">
+              <Award className="w-4 h-4 text-[#13C8D9]" />
               Formal Assessments Average
             </span>
             <Badge variant={getCapsLevel(formalAvg).variant} size="sm">
@@ -484,19 +606,16 @@ export const TeacherAssessments: React.FC = () => {
             </Badge>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold font-mono text-white">{formalAvg}%</span>
+            <span className="text-3xl font-extrabold font-mono text-white">{formalAvg > 0 ? `${formalAvg}%` : '0%'}</span>
             <span className="text-xs text-slate-400 font-medium">Class Tests & Tasks</span>
           </div>
-          <p className="text-[11px] text-slate-400">
-            Recorded from formal SBA tests, controlled exams, and teacher mark schedules.
-          </p>
         </div>
 
         {/* Card 2: Term Marks Cumulative Average */}
-        <div className="p-5 rounded-3xl bg-gradient-to-br from-surface-dark to-surface-darker border border-cyan-500/20 shadow-xl space-y-2">
+        <div className="p-5 rounded-3xl bg-surface-dark border border-[#13C8D9]/20 shadow-xl space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
-              <TrendingUp className="w-4 h-4" />
+            <span className="text-[11px] font-bold text-[#13C8D9] uppercase tracking-wider flex items-center gap-1.5">
+              <TrendingUp className="w-4 h-4 text-[#13C8D9]" />
               Term Marks Average
             </span>
             <Badge variant={getCapsLevel(termAvg).variant} size="sm">
@@ -504,99 +623,101 @@ export const TeacherAssessments: React.FC = () => {
             </Badge>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold font-mono text-white">{termAvg}%</span>
+            <span className="text-3xl font-extrabold font-mono text-white">{termAvg > 0 ? `${termAvg}%` : '0%'}</span>
             <span className="text-xs text-slate-400 font-medium">Cumulative Terms 1–3</span>
           </div>
-          <p className="text-[11px] text-slate-400">
-            Weighted composite grade across Term 1, Term 2, and Term 3 report cycles.
-          </p>
         </div>
 
-        {/* Card 3: AI Activities Average */}
-        <div className="p-5 rounded-3xl bg-gradient-to-br from-surface-dark to-surface-darker border border-purple-500/20 shadow-xl space-y-2">
+        {/* Card 3: In-App Activities Average */}
+        <div className="p-5 rounded-3xl bg-surface-dark border border-[#13C8D9]/20 shadow-xl space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4" />
-              AI Activities Average
+            <span className="text-[11px] font-bold text-[#13C8D9] uppercase tracking-wider flex items-center gap-1.5">
+              <Activity className="w-4 h-4 text-[#13C8D9]" />
+              In-App Activities Average
             </span>
             <Badge variant={getCapsLevel(aiAvg).variant} size="sm">
               Level {getCapsLevel(aiAvg).level}
             </Badge>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold font-mono text-white">{aiAvg}%</span>
+            <span className="text-3xl font-extrabold font-mono text-white">{aiAvg > 0 ? `${aiAvg}%` : '0%'}</span>
             <span className="text-xs text-slate-400 font-medium">In-App Practice</span>
           </div>
-          <p className="text-[11px] text-slate-400">
-            Interactive quizzes, smart tutor modules, and AI practice task completions.
-          </p>
         </div>
       </div>
 
-      {/* Category Performance Switcher Tabs */}
+      {/* Category Performance Switcher Tabs - Teal Monochromatic */}
       <div className="flex items-center gap-2 border-b border-white/10 pb-3 overflow-x-auto">
         <button
           onClick={() => setActiveCategory('formal')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
             activeCategory === 'formal'
-              ? 'bg-indigo-600 text-white shadow-glow-indigo'
+              ? 'bg-[#13C8D9] text-slate-950 shadow-md font-extrabold'
               : 'bg-surface-dark text-slate-400 hover:text-white border border-white/5'
           }`}
         >
-          <Award className="w-4 h-4" />
+          <Award className={`w-4 h-4 ${activeCategory === 'formal' ? 'text-teal-900' : 'text-[#13C8D9]'}`} />
           <span>Formal Assessments</span>
-          <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] font-mono">{formalAvg}% Avg</span>
+          <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${activeCategory === 'formal' ? 'bg-black/20 text-slate-950 font-bold' : 'bg-white/10 text-slate-300'}`}>
+            {formalAvg > 0 ? `${formalAvg}%` : '0%'} Avg
+          </span>
         </button>
 
         <button
           onClick={() => setActiveCategory('term')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
             activeCategory === 'term'
-              ? 'bg-cyan-600 text-white shadow-glow-cyan'
+              ? 'bg-[#13C8D9] text-slate-950 shadow-md font-extrabold'
               : 'bg-surface-dark text-slate-400 hover:text-white border border-white/5'
           }`}
         >
-          <TrendingUp className="w-4 h-4" />
+          <TrendingUp className={`w-4 h-4 ${activeCategory === 'term' ? 'text-teal-900' : 'text-[#13C8D9]'}`} />
           <span>Term Marks Breakdown</span>
-          <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] font-mono">{termAvg}% Avg</span>
+          <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${activeCategory === 'term' ? 'bg-black/20 text-slate-950 font-bold' : 'bg-white/10 text-slate-300'}`}>
+            {termAvg > 0 ? `${termAvg}%` : '0%'} Avg
+          </span>
         </button>
 
         <button
           onClick={() => setActiveCategory('ai')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
             activeCategory === 'ai'
-              ? 'bg-purple-600 text-white shadow-glow-purple'
+              ? 'bg-[#13C8D9] text-slate-950 shadow-md font-extrabold'
               : 'bg-surface-dark text-slate-400 hover:text-white border border-white/5'
           }`}
         >
-          <Sparkles className="w-4 h-4" />
-          <span>AI In-App Activities</span>
-          <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] font-mono">{aiAvg}% Avg</span>
+          <Activity className={`w-4 h-4 ${activeCategory === 'ai' ? 'text-teal-900' : 'text-[#13C8D9]'}`} />
+          <span>In-App Activities</span>
+          <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${activeCategory === 'ai' ? 'bg-black/20 text-slate-950 font-bold' : 'bg-white/10 text-slate-300'}`}>
+            {aiAvg > 0 ? `${aiAvg}%` : '0%'} Avg
+          </span>
         </button>
 
         <button
           onClick={() => setActiveCategory('entry')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
             activeCategory === 'entry'
-              ? 'bg-emerald-600 text-white shadow-sm'
+              ? 'bg-[#13C8D9] text-slate-950 shadow-md font-extrabold'
               : 'bg-surface-dark text-slate-400 hover:text-white border border-white/5'
           }`}
         >
-          <Save className="w-4 h-4" />
+          <Save className={`w-4 h-4 ${activeCategory === 'entry' ? 'text-teal-900' : 'text-[#13C8D9]'}`} />
           <span>Capture Marks Form</span>
         </button>
 
         <button
           onClick={() => setActiveCategory('history')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
             activeCategory === 'history'
-              ? 'bg-amber-600 text-white shadow-glow-amber'
+              ? 'bg-[#13C8D9] text-slate-950 shadow-md font-extrabold'
               : 'bg-surface-dark text-slate-400 hover:text-white border border-white/5'
           }`}
         >
-          <History className="w-4 h-4" />
+          <History className={`w-4 h-4 ${activeCategory === 'history' ? 'text-teal-900' : 'text-[#13C8D9]'}`} />
           <span>History Marks</span>
-          <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] font-mono">{historyMarks.length} Records</span>
+          <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${activeCategory === 'history' ? 'bg-black/20 text-slate-950 font-bold' : 'bg-white/10 text-slate-300'}`}>
+            {historyMarks.length} Records
+          </span>
         </button>
       </div>
 
@@ -609,19 +730,16 @@ export const TeacherAssessments: React.FC = () => {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/10 pb-4">
             <div>
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-                  <Award className="w-5 h-5" />
+                <div className="p-2 rounded-xl bg-[#13C8D9]/15 text-[#13C8D9] border border-[#13C8D9]/30">
+                  <Award className="w-5 h-5 text-[#13C8D9]" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <span>CAPS Formal Assessment Schedule — {selectedSubject} ({selectedClass})</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold">
+                  <h3 className="text-base font-bold text-white flex items-center gap-2 flex-wrap">
+                    <span>CAPS Formal Assessment Schedule — {activeSubjectDisplay} ({activeClassDisplay})</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#13C8D9]/15 text-[#13C8D9] border border-[#13C8D9]/30 font-bold">
                       {term}
                     </span>
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Continuous School-Based Assessment (SBA) tasks, tests, assignments, projects, and controlled examinations.
-                  </p>
                 </div>
               </div>
             </div>
@@ -633,9 +751,9 @@ export const TeacherAssessments: React.FC = () => {
                   <button
                     key={t}
                     onClick={() => handleSelectTerm(t)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       term === t
-                        ? 'bg-indigo-600 text-white shadow-glow-indigo'
+                        ? 'bg-[#13C8D9] text-slate-950 shadow-md font-bold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -644,14 +762,48 @@ export const TeacherAssessments: React.FC = () => {
                 ))}
               </div>
 
-              <Badge variant="indigo" size="md">Class Average: {formalAvg}%</Badge>
+              <span className="px-3 py-1.5 rounded-xl bg-surface-darker border border-white/10 text-white font-mono text-xs font-bold">
+                Class Average: {formalAvg > 0 ? `${formalAvg}%` : '0%'}
+              </span>
+            </div>
+          </div>
+
+          {/* REQUIREMENT 1: Number of formal assessments available & list of formal assessments available */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-[#071922] via-[#0B2533] to-[#071922] border border-[#13C8D9]/25 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="font-bold text-white flex items-center gap-1.5">
+                <Award className="w-4 h-4 text-[#13C8D9]" />
+                Formal Assessments Available:
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full font-mono font-extrabold bg-[#13C8D9]/20 text-[#13C8D9] border border-[#13C8D9]/35 text-xs">
+                {availableFormalAssessments.length > 0 ? availableFormalAssessments.length : 0}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {availableFormalAssessments.length > 0 ? (
+                availableFormalAssessments.map((comp) => (
+                  <span
+                    key={comp.key}
+                    className="px-2.5 py-1 rounded-xl bg-surface-dark border border-[#13C8D9]/30 text-white font-medium text-[11px] flex items-center gap-1.5 shadow-xs"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-[#13C8D9]" />
+                    <span>{comp.label}:</span>
+                    <span className="text-[#13C8D9] font-mono font-bold">{comp.recordedCount} Recorded</span>
+                  </span>
+                ))
+              ) : (
+                <span className="text-slate-400 italic text-[11px] font-mono">
+                  None available for {term}
+                </span>
+              )}
             </div>
           </div>
 
           {/* CAPS Assessment Weighting & Calculation Formula Explainer */}
-          <div className="p-3.5 rounded-2xl bg-indigo-950/30 border border-indigo-500/20 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 text-indigo-300 font-semibold">
-              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+          <div className="p-3.5 rounded-2xl bg-[#091E28]/60 border border-[#13C8D9]/20 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-cyan-300 font-semibold">
+              <span className="w-2 h-2 rounded-full bg-[#13C8D9] animate-pulse" />
               <span>CAPS Formula: Final Mark = SBA (40%) + Exam (60%) [or 100% SBA if no examination is scheduled]</span>
             </div>
             <div className="flex items-center gap-2 text-[11px] text-slate-300 font-mono">
@@ -669,13 +821,14 @@ export const TeacherAssessments: React.FC = () => {
                   <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[10px] bg-white/[0.02]">
                     <th className="py-3 px-2">#</th>
                     <th className="py-3 px-2">Learner ID</th>
+                    <th className="py-3 px-2">Class</th>
                     <th className="py-3 px-3">Full Name</th>
-                    <th className="py-3 px-2 text-center text-indigo-300">Test 1</th>
-                    <th className="py-3 px-2 text-center text-indigo-300">Test 2</th>
+                    <th className="py-3 px-2 text-center text-cyan-300">Test 1</th>
+                    <th className="py-3 px-2 text-center text-cyan-300">Test 2</th>
                     <th className="py-3 px-2 text-center text-cyan-300">Assignment</th>
-                    <th className="py-3 px-2 text-center text-purple-300">Project</th>
-                    <th className="py-3 px-2 text-center text-amber-300">Exam</th>
-                    <th className="py-3 px-2 text-center text-blue-300 font-bold">SBA (%)</th>
+                    <th className="py-3 px-2 text-center text-cyan-300">Project</th>
+                    <th className="py-3 px-2 text-center text-cyan-300">Exam</th>
+                    <th className="py-3 px-2 text-center text-[#13C8D9] font-bold">SBA (%)</th>
                     <th className="py-3 px-2 text-center text-emerald-400 font-extrabold bg-emerald-500/10">Final Mark</th>
                     <th className="py-3 px-2 text-center">CAPS Level</th>
                     <th className="py-3 px-2">Calculation Breakdown</th>
@@ -687,19 +840,24 @@ export const TeacherAssessments: React.FC = () => {
                     const finalMark = learner.final_calculated_mark !== null && learner.final_calculated_mark !== undefined
                       ? learner.final_calculated_mark
                       : (learner.formal_mark > 0 ? learner.formal_mark : null);
-                    const caps = finalMark !== null ? getCapsLevel(finalMark) : { level: '-', label: 'Pending', variant: 'rose' as const };
+                    const caps = finalMark !== null ? getCapsLevel(finalMark) : { level: '-', label: 'Pending', variant: 'slate' as const };
                     const displayName = `${learner.full_name} ${learner.surname}`.trim();
 
                     return (
                       <tr key={learner.id} className="hover:bg-white/5 transition-colors">
                         <td className="py-3 px-2 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
-                        <td className="py-3 px-2 font-mono font-bold text-cyan-400 text-[11px]">{learner.learner_number}</td>
+                        <td className="py-3 px-2 font-mono font-bold text-[#13C8D9] text-[11px]">{learner.learner_number}</td>
+                        <td className="py-3 px-2 font-mono text-slate-300 text-[11px]">
+                          <span className="px-2 py-0.5 rounded-lg bg-surface-darker border border-white/5 font-semibold text-slate-200">
+                            {learner.class_name || selectedClass || 'N/A'}
+                          </span>
+                        </td>
                         <td className="py-3 px-3 font-bold text-white text-xs whitespace-nowrap">{displayName}</td>
 
                         {/* Controlled Test 1 */}
                         <td className="py-3 px-2 text-center font-mono">
                           {learner.test1 ? (
-                            <span className="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold text-[11px]" title={`Score: ${learner.test1.score}/${learner.test1.max_score} (Weight: ${learner.test1.weight})`}>
+                            <span className="px-1.5 py-0.5 rounded bg-[#13C8D9]/15 text-[#13C8D9] font-bold text-[11px]" title={`Score: ${learner.test1.score}/${learner.test1.max_score} (Weight: ${learner.test1.weight})`}>
                               {learner.test1.score}/{learner.test1.max_score} <span className="text-[9.5px]">({learner.test1.percentage}%)</span>
                             </span>
                           ) : (
@@ -710,7 +868,7 @@ export const TeacherAssessments: React.FC = () => {
                         {/* Controlled Test 2 */}
                         <td className="py-3 px-2 text-center font-mono">
                           {learner.test2 ? (
-                            <span className="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold text-[11px]" title={`Score: ${learner.test2.score}/${learner.test2.max_score} (Weight: ${learner.test2.weight})`}>
+                            <span className="px-1.5 py-0.5 rounded bg-[#13C8D9]/15 text-[#13C8D9] font-bold text-[11px]" title={`Score: ${learner.test2.score}/${learner.test2.max_score} (Weight: ${learner.test2.weight})`}>
                               {learner.test2.score}/{learner.test2.max_score} <span className="text-[9.5px]">({learner.test2.percentage}%)</span>
                             </span>
                           ) : (
@@ -721,7 +879,7 @@ export const TeacherAssessments: React.FC = () => {
                         {/* Assignment */}
                         <td className="py-3 px-2 text-center font-mono">
                           {learner.assignment ? (
-                            <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold text-[11px]" title={`Score: ${learner.assignment.score}/${learner.assignment.max_score}`}>
+                            <span className="px-1.5 py-0.5 rounded bg-[#13C8D9]/15 text-[#13C8D9] font-bold text-[11px]" title={`Score: ${learner.assignment.score}/${learner.assignment.max_score}`}>
                               {learner.assignment.score}/{learner.assignment.max_score} <span className="text-[9.5px]">({learner.assignment.percentage}%)</span>
                             </span>
                           ) : (
@@ -732,7 +890,7 @@ export const TeacherAssessments: React.FC = () => {
                         {/* Project / Investigation */}
                         <td className="py-3 px-2 text-center font-mono">
                           {learner.project ? (
-                            <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold text-[11px]" title={`Score: ${learner.project.score}/${learner.project.max_score}`}>
+                            <span className="px-1.5 py-0.5 rounded bg-[#13C8D9]/15 text-[#13C8D9] font-bold text-[11px]" title={`Score: ${learner.project.score}/${learner.project.max_score}`}>
                               {learner.project.score}/{learner.project.max_score} <span className="text-[9.5px]">({learner.project.percentage}%)</span>
                             </span>
                           ) : (
@@ -743,7 +901,7 @@ export const TeacherAssessments: React.FC = () => {
                         {/* Controlled Examination */}
                         <td className="py-3 px-2 text-center font-mono">
                           {learner.exam ? (
-                            <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold text-[11px]" title={`Score: ${learner.exam.score}/${learner.exam.max_score}`}>
+                            <span className="px-1.5 py-0.5 rounded bg-[#13C8D9]/15 text-[#13C8D9] font-bold text-[11px]" title={`Score: ${learner.exam.score}/${learner.exam.max_score}`}>
                               {learner.exam.score}/{learner.exam.max_score} <span className="text-[9.5px]">({learner.exam.percentage}%)</span>
                             </span>
                           ) : (
@@ -752,13 +910,13 @@ export const TeacherAssessments: React.FC = () => {
                         </td>
 
                         {/* Calculated SBA Mark */}
-                        <td className="py-3 px-2 text-center font-mono font-bold text-blue-300 text-xs">
+                        <td className="py-3 px-2 text-center font-mono font-bold text-cyan-300 text-xs">
                           {learner.sba_mark !== null && learner.sba_mark !== undefined ? `${learner.sba_mark}%` : '—'}
                         </td>
 
                         {/* Calculated Final Mark */}
                         <td className="py-3 px-2 text-center font-mono font-black text-sm bg-emerald-500/10 text-emerald-400">
-                          {finalMark !== null ? `${finalMark}%` : <span className="text-[10px] text-amber-400/80 font-bold">Pending</span>}
+                          {finalMark !== null ? `${finalMark}%` : <span className="text-[10px] text-slate-400 font-bold">Pending</span>}
                         </td>
 
                         {/* CAPS Level Badge */}
@@ -784,7 +942,7 @@ export const TeacherAssessments: React.FC = () => {
                             onClick={() => {
                               setActiveCategory('entry');
                             }}
-                            className="px-2.5 py-1 rounded-lg bg-surface-darker hover:bg-white/10 text-brand-300 hover:text-white border border-white/10 text-[10px] font-bold transition-all"
+                            className="px-2.5 py-1 rounded-lg bg-surface-darker hover:bg-white/10 text-[#13C8D9] hover:text-white border border-[#13C8D9]/30 text-[10px] font-bold transition-all cursor-pointer"
                           >
                             Allocate Marks
                           </button>
@@ -796,7 +954,10 @@ export const TeacherAssessments: React.FC = () => {
               </table>
             </div>
           ) : (
-            <div className="p-8 text-center text-slate-400 text-xs">No learners found for class {selectedClass}.</div>
+            <div className="p-8 text-center text-slate-400 text-xs bg-surface-darker rounded-2xl border border-white/5 space-y-1">
+              <p className="font-bold text-white">0 Formal Assessments Available</p>
+              <p>None available for {activeSubjectDisplay} ({activeClassDisplay}).</p>
+            </div>
           )}
         </div>
       )}
@@ -805,18 +966,100 @@ export const TeacherAssessments: React.FC = () => {
       {/* CATEGORY 2: TERM MARKS BREAKDOWN                                         */}
       {/* ========================================================================= */}
       {activeCategory === 'term' && (
-        <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 shadow-xl space-y-4 animate-fade-in">
+        <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 shadow-xl space-y-5 animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-cyan-400" />
-                <span>Term Cumulative Marks — {selectedSubject} ({selectedClass})</span>
+                <TrendingUp className="w-5 h-5 text-[#13C8D9]" />
+                <span>Term Cumulative Marks — {activeSubjectDisplay} ({activeClassDisplay})</span>
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Displays quarterly term performance across Term 1, Term 2, and Term 3 with weighted average.
-              </p>
             </div>
-            <Badge variant="cyan" size="md">Term Average: {termAvg}%</Badge>
+            <span className="px-3 py-1.5 rounded-xl bg-surface-darker border border-white/10 text-white font-mono text-xs font-bold">
+              Term Average: {termAvg > 0 ? `${termAvg}%` : '0%'}
+            </span>
+          </div>
+
+          {/* REQUIREMENT 2: Cumulative marks available & averages for each term task */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+            {/* Cumulative Marks Available */}
+            <div className="p-3.5 rounded-2xl bg-surface-darker border border-[#13C8D9]/20 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                Cumulative Marks Available
+              </span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl font-extrabold font-mono text-[#13C8D9]">
+                  {cumulativeMarksCount > 0 ? cumulativeMarksCount : 0}
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  / {learners.length} {learners.length === 0 ? '(None available)' : 'Learners'}
+                </span>
+              </div>
+            </div>
+
+            {/* Test 1 Average */}
+            <div className="p-3.5 rounded-2xl bg-surface-darker border border-white/10 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                Controlled Test 1 Avg
+              </span>
+              <div className="text-xl font-extrabold font-mono text-white">
+                {taskAverages.test1 > 0 ? `${taskAverages.test1}%` : '0%'}
+              </div>
+              <span className="text-[10px] text-slate-500 font-mono block">
+                {taskAverages.test1 > 0 ? 'Recorded' : 'None available'}
+              </span>
+            </div>
+
+            {/* Test 2 Average */}
+            <div className="p-3.5 rounded-2xl bg-surface-darker border border-white/10 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                Controlled Test 2 Avg
+              </span>
+              <div className="text-xl font-extrabold font-mono text-white">
+                {taskAverages.test2 > 0 ? `${taskAverages.test2}%` : '0%'}
+              </div>
+              <span className="text-[10px] text-slate-500 font-mono block">
+                {taskAverages.test2 > 0 ? 'Recorded' : 'None available'}
+              </span>
+            </div>
+
+            {/* Assignment Average */}
+            <div className="p-3.5 rounded-2xl bg-surface-darker border border-white/10 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                Assignment Avg
+              </span>
+              <div className="text-xl font-extrabold font-mono text-white">
+                {taskAverages.assignment > 0 ? `${taskAverages.assignment}%` : '0%'}
+              </div>
+              <span className="text-[10px] text-slate-500 font-mono block">
+                {taskAverages.assignment > 0 ? 'Recorded' : 'None available'}
+              </span>
+            </div>
+
+            {/* Project Average */}
+            <div className="p-3.5 rounded-2xl bg-surface-darker border border-white/10 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                Project Avg
+              </span>
+              <div className="text-xl font-extrabold font-mono text-white">
+                {taskAverages.project > 0 ? `${taskAverages.project}%` : '0%'}
+              </div>
+              <span className="text-[10px] text-slate-500 font-mono block">
+                {taskAverages.project > 0 ? 'Recorded' : 'None available'}
+              </span>
+            </div>
+
+            {/* Exam Average */}
+            <div className="p-3.5 rounded-2xl bg-surface-darker border border-white/10 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                Exam Avg
+              </span>
+              <div className="text-xl font-extrabold font-mono text-white">
+                {taskAverages.exam > 0 ? `${taskAverages.exam}%` : '0%'}
+              </div>
+              <span className="text-[10px] text-slate-500 font-mono block">
+                {taskAverages.exam > 0 ? 'Recorded' : 'None available'}
+              </span>
+            </div>
           </div>
 
           {loading ? (
@@ -828,11 +1071,13 @@ export const TeacherAssessments: React.FC = () => {
                   <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
                     <th className="pb-3 px-3">#</th>
                     <th className="pb-3 px-3">Learner ID</th>
+                    {/* REQUIREMENT 4: Display learner respective class */}
+                    <th className="pb-3 px-3">Class</th>
                     <th className="pb-3 px-3">Full Name</th>
                     <th className="pb-3 px-3 text-center">Term 1</th>
                     <th className="pb-3 px-3 text-center">Term 2</th>
                     <th className="pb-3 px-3 text-center">Term 3</th>
-                    <th className="pb-3 px-3 text-center font-bold text-cyan-400">Cumulative Avg</th>
+                    <th className="pb-3 px-3 text-center font-bold text-[#13C8D9]">Cumulative Avg</th>
                     <th className="pb-3 px-3 text-right">CAPS Level</th>
                   </tr>
                 </thead>
@@ -844,12 +1089,17 @@ export const TeacherAssessments: React.FC = () => {
                     return (
                       <tr key={learner.id} className="hover:bg-white/5 transition-colors">
                         <td className="py-3.5 px-3 text-slate-400 font-mono">{idx + 1}</td>
-                        <td className="py-3.5 px-3 font-mono font-bold text-cyan-400">{learner.learner_number}</td>
+                        <td className="py-3.5 px-3 font-mono font-bold text-[#13C8D9]">{learner.learner_number}</td>
+                        <td className="py-3.5 px-3 font-mono text-slate-300">
+                          <span className="px-2 py-0.5 rounded-lg bg-surface-darker border border-white/5 font-semibold text-slate-200">
+                            {learner.class_name || selectedClass || 'N/A'}
+                          </span>
+                        </td>
                         <td className="py-3.5 px-3 font-bold text-white text-sm">{displayName}</td>
-                        <td className="py-3.5 px-3 text-center font-mono text-slate-300">{learner.term1_mark}%</td>
-                        <td className="py-3.5 px-3 text-center font-mono text-slate-300">{learner.term2_mark}%</td>
-                        <td className="py-3.5 px-3 text-center font-mono text-slate-300">{learner.term3_mark}%</td>
-                        <td className="py-3.5 px-3 text-center font-mono font-bold text-sm text-cyan-300">{avg}%</td>
+                        <td className="py-3.5 px-3 text-center font-mono text-slate-300">{learner.term1_mark > 0 ? `${learner.term1_mark}%` : '0%'}</td>
+                        <td className="py-3.5 px-3 text-center font-mono text-slate-300">{learner.term2_mark > 0 ? `${learner.term2_mark}%` : '0%'}</td>
+                        <td className="py-3.5 px-3 text-center font-mono text-slate-300">{learner.term3_mark > 0 ? `${learner.term3_mark}%` : '0%'}</td>
+                        <td className="py-3.5 px-3 text-center font-mono font-bold text-sm text-[#13C8D9]">{avg > 0 ? `${avg}%` : '0%'}</td>
                         <td className="py-3.5 px-3 text-right">
                           <Badge variant={caps.variant} size="sm">Level {caps.level}</Badge>
                         </td>
@@ -857,78 +1107,272 @@ export const TeacherAssessments: React.FC = () => {
                     );
                   })}
                 </tbody>
+                {/* Table Footer with Class Column Averages */}
+                <tfoot>
+                  <tr className="border-t border-white/10 bg-white/[0.02] font-mono text-xs font-bold text-slate-300">
+                    <td colSpan={4} className="py-3 px-3 text-right uppercase tracking-wider text-[11px] text-slate-400">
+                      Class Average Across Term Tasks:
+                    </td>
+                    <td className="py-3 px-3 text-center text-white">{term1Avg > 0 ? `${term1Avg}%` : '0%'}</td>
+                    <td className="py-3 px-3 text-center text-white">{term2Avg > 0 ? `${term2Avg}%` : '0%'}</td>
+                    <td className="py-3 px-3 text-center text-white">{term3Avg > 0 ? `${term3Avg}%` : '0%'}</td>
+                    <td className="py-3 px-3 text-center text-[#13C8D9] text-sm font-extrabold">{termAvg > 0 ? `${termAvg}%` : '0%'}</td>
+                    <td className="py-3 px-3 text-right text-[11px] text-slate-400">Class Overall</td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           ) : (
-            <div className="p-8 text-center text-slate-400 text-xs">No learners found for class {selectedClass}.</div>
+            <div className="p-8 text-center text-slate-400 text-xs bg-surface-darker rounded-2xl border border-white/5 space-y-1">
+              <p className="font-bold text-white">0 Cumulative Marks Available</p>
+              <p>None available for class {activeClassDisplay}.</p>
+            </div>
           )}
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* CATEGORY 3: AI IN-APP ACTIVITIES                                         */}
+      {/* CATEGORY 3: IN-APP ACTIVITIES & HISTORIC ASSESSMENTS PUBLISHED           */}
       {/* ========================================================================= */}
       {activeCategory === 'ai' && (
-        <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 shadow-xl space-y-4 animate-fade-in">
+        <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 shadow-xl space-y-6 animate-fade-in">
+          {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-purple-400" />
-                <span>AI In-App Activities & Quizzes — {selectedSubject} ({selectedClass})</span>
+                <Activity className="w-5 h-5 text-[#13C8D9]" />
+                <span>In-App Activities & Historic Published Assessments — {activeSubjectDisplay} ({activeClassDisplay})</span>
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Displays practice quizzes, AI tutor diagnostic exercises, and study builder tasks completed by learners in-app.
-              </p>
             </div>
-            <Badge variant="indigo" size="md">AI Activity Average: {aiAvg}%</Badge>
+            <span className="px-3 py-1.5 rounded-xl bg-surface-darker border border-white/10 text-white font-mono text-xs font-bold">
+              Activity Average: {aiAvg > 0 ? `${aiAvg}%` : '0%'}
+            </span>
           </div>
 
-          {loading ? (
-            <LoadingSpinner text="Fetching AI activity analytics..." />
-          ) : learners.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
-                    <th className="pb-3 px-3">#</th>
-                    <th className="pb-3 px-3">Learner ID</th>
-                    <th className="pb-3 px-3">Full Name</th>
-                    <th className="pb-3 px-3 text-center">Modules Completed</th>
-                    <th className="pb-3 px-3 text-center">AI Practice Score</th>
-                    <th className="pb-3 px-3 text-center">Mastery Level</th>
-                    <th className="pb-3 px-3 text-right">Engagement</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {learners.map((learner, idx) => {
-                    const caps = getCapsLevel(learner.ai_activities_mark);
-                    const displayName = `${learner.full_name} ${learner.surname}`.trim();
-                    return (
-                      <tr key={learner.id} className="hover:bg-white/5 transition-colors">
-                        <td className="py-3.5 px-3 text-slate-400 font-mono">{idx + 1}</td>
-                        <td className="py-3.5 px-3 font-mono font-bold text-cyan-400">{learner.learner_number}</td>
-                        <td className="py-3.5 px-3 font-bold text-white text-sm">{displayName}</td>
-                        <td className="py-3.5 px-3 text-center font-mono text-purple-300 font-bold">
-                          {learner.ai_completed_count} Quizzes
-                        </td>
-                        <td className="py-3.5 px-3 text-center font-mono font-bold text-sm text-white">
-                          {learner.ai_activities_mark}%
-                        </td>
-                        <td className="py-3.5 px-3 text-center">
-                          <Badge variant={caps.variant} size="sm">Level {caps.level}</Badge>
-                        </td>
-                        <td className="py-3.5 px-3 text-right">
-                          <span className="text-xs font-semibold text-emerald-400">Active</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          {/* Summary Strip for In-App Activities History & Historic Assessments Published */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-4 rounded-2xl bg-surface-darker border border-[#13C8D9]/20 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Activity className="w-3.5 h-3.5 text-[#13C8D9]" />
+                In-App Activities Completed
+              </span>
+              <div className="text-2xl font-extrabold font-mono text-[#13C8D9]">
+                {totalAiActivitiesCount > 0 ? totalAiActivitiesCount : 0}
+              </div>
+              <span className="text-[11px] text-slate-400 font-mono">
+                {totalAiActivitiesCount > 0 ? 'Interactive modules logged' : 'None available'}
+              </span>
             </div>
-          ) : (
-            <div className="p-8 text-center text-slate-400 text-xs">No learners found for class {selectedClass}.</div>
-          )}
+
+            <div className="p-4 rounded-2xl bg-surface-darker border border-white/10 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <History className="w-3.5 h-3.5 text-cyan-400" />
+                Historic Assessments Published
+              </span>
+              <div className="text-2xl font-extrabold font-mono text-white">
+                {historyMarks.length > 0 ? historyMarks.length : 0}
+              </div>
+              <span className="text-[11px] text-slate-400 font-mono">
+                {historyMarks.length > 0 ? 'Official published batches' : 'None available'}
+              </span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-surface-darker border border-white/10 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                Practice Average
+              </span>
+              <div className="text-2xl font-extrabold font-mono text-white">
+                {aiAvg > 0 ? `${aiAvg}%` : '0%'}
+              </div>
+              <span className="text-[11px] text-slate-400 font-mono">
+                {aiAvg > 0 ? 'Class mastery score' : 'None available'}
+              </span>
+            </div>
+          </div>
+
+          {/* Section 1: In-App Activities History per Learner */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <Activity className="w-4 h-4 text-[#13C8D9]" />
+                <span>In-App Activities History ({learners.length > 0 ? learners.length : 0} Learners)</span>
+              </h4>
+            </div>
+
+            {loading ? (
+              <LoadingSpinner text="Fetching AI activity analytics..." />
+            ) : learners.length > 0 ? (
+              <div className="overflow-x-auto rounded-2xl border border-white/10 bg-surface-darker">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
+                      <th className="py-3 px-3">#</th>
+                      <th className="py-3 px-3">Learner ID</th>
+                      <th className="py-3 px-3">Class</th>
+                      <th className="py-3 px-3">Full Name</th>
+                      <th className="py-3 px-3 text-center">Modules Completed</th>
+                      <th className="py-3 px-3 text-center">AI Practice Score</th>
+                      <th className="py-3 px-3 text-center">Mastery Level</th>
+                      <th className="py-3 px-3 text-right">Activity Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {learners.map((learner, idx) => {
+                      const caps = getCapsLevel(learner.ai_activities_mark);
+                      const displayName = `${learner.full_name} ${learner.surname}`.trim();
+                      const hasCompleted = learner.ai_completed_count > 0;
+                      return (
+                        <tr key={learner.id} className="hover:bg-white/5 transition-colors">
+                          <td className="py-3 px-3 text-slate-400 font-mono">{idx + 1}</td>
+                          <td className="py-3 px-3 font-mono font-bold text-[#13C8D9]">{learner.learner_number}</td>
+                          <td className="py-3 px-3 font-mono text-slate-300">
+                            <span className="px-2 py-0.5 rounded-lg bg-surface-dark border border-white/5 font-semibold text-slate-200">
+                              {learner.class_name || selectedClass || 'N/A'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-bold text-white">{displayName}</td>
+                          <td className="py-3 px-3 text-center font-mono font-bold text-slate-200">
+                            {learner.ai_completed_count > 0 ? `${learner.ai_completed_count} Quizzes` : '0 Quizzes'}
+                          </td>
+                          <td className="py-3 px-3 text-center font-mono font-bold text-white">
+                            {learner.ai_activities_mark > 0 ? `${learner.ai_activities_mark}%` : '0%'}
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <Badge variant={caps.variant} size="sm">Level {caps.level}</Badge>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <span className={`text-xs font-semibold ${hasCompleted ? 'text-[#13C8D9]' : 'text-slate-500'}`}>
+                              {hasCompleted ? 'Active in App' : 'None available'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-8 text-center text-slate-400 text-xs bg-surface-darker rounded-2xl border border-white/5 space-y-1">
+                <p className="font-bold text-white">0 In-App Activities Found</p>
+                <p>None available for class {activeClassDisplay}.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Historic Assessments Published Archive */}
+          <div className="space-y-3 pt-4 border-t border-white/10">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <History className="w-4 h-4 text-cyan-400" />
+                <span>Historic Assessments Published ({historyMarks.length > 0 ? historyMarks.length : 0})</span>
+              </h4>
+              <button
+                onClick={fetchHistory}
+                disabled={loadingHistory}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-surface-darker text-slate-300 hover:text-white border border-white/10 text-xs font-bold transition-all cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingHistory ? 'animate-spin' : ''}`} />
+                <span>Refresh History</span>
+              </button>
+            </div>
+
+            {loadingHistory ? (
+              <LoadingSpinner text="Retrieving published assessments history..." />
+            ) : historyMarks.length > 0 ? (
+              <div className="space-y-3">
+                {historyMarks.map((batch, bIdx) => {
+                  const isExpanded = expandedHistoryIndex === bIdx;
+                  const batchLevel = getCapsLevel(batch.class_average);
+
+                  return (
+                    <div
+                      key={`${batch.assessment_name}-${bIdx}`}
+                      className="rounded-2xl bg-surface-darker border border-white/10 overflow-hidden shadow-md transition-all"
+                    >
+                      <div
+                        onClick={() => setExpandedHistoryIndex(isExpanded ? null : bIdx)}
+                        className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-white/5 transition-colors"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-extrabold text-white">
+                              {batch.assessment_name ? batch.assessment_name.replace(/\(\s*(\d+)\s*\/\s*\d+\s*\)/g, '($1%)') : 'Class Assessment'}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md bg-[#13C8D9]/15 text-[#13C8D9] font-mono text-[10px] font-bold border border-[#13C8D9]/30">
+                              {batch.term || 'Term 3'}
+                            </span>
+                            <Badge variant={batchLevel.variant} size="sm">Avg {batch.class_average > 0 ? `${batch.class_average}%` : '0%'}</Badge>
+                          </div>
+                          <div className="flex items-center gap-3 text-[11px] text-slate-400 font-mono">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3.5 h-3.5 text-[#13C8D9]" />
+                              {batch.date_str || new Date(batch.recorded_at).toLocaleDateString()}
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Users className="w-3.5 h-3.5 text-[#13C8D9]" />
+                              {batch.total_learners} Learners Published
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <span className="text-lg font-extrabold font-mono text-white">{batch.class_average > 0 ? `${batch.class_average}%` : '0%'}</span>
+                            <span className="text-[10px] text-slate-400 block">Class Avg</span>
+                          </div>
+                          <div className="p-1.5 rounded-xl bg-surface-dark text-slate-400">
+                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </div>
+                        </div>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="p-4 space-y-3 bg-black/20 border-t border-white/5 animate-fade-in">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs">
+                              <thead>
+                                <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
+                                  <th className="pb-2.5 px-3">#</th>
+                                  <th className="pb-2.5 px-3">Learner ID</th>
+                                  <th className="pb-2.5 px-3">Full Name</th>
+                                  <th className="pb-2.5 px-3 text-center">Score %</th>
+                                  <th className="pb-2.5 px-3 text-right">CAPS Achievement Level</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-white/5">
+                                {batch.marks.map((m: any, mIdx: number) => {
+                                  const pVal = Number(m.mark_percentage || 0);
+                                  const caps = getCapsLevel(pVal);
+                                  return (
+                                    <tr key={m.child_id || mIdx} className="hover:bg-white/5 transition-colors">
+                                      <td className="py-2 px-3 text-slate-400 font-mono">{mIdx + 1}</td>
+                                      <td className="py-2 px-3 font-mono font-bold text-[#13C8D9]">{m.learner_number || `2026-${m.child_id}`}</td>
+                                      <td className="py-2 px-3 font-bold text-white">{`${m.full_name || ''} ${m.surname || ''}`.trim()}</td>
+                                      <td className="py-2 px-3 text-center font-mono font-bold text-white">{pVal > 0 ? `${pVal}%` : '0%'}</td>
+                                      <td className="py-2 px-3 text-right">
+                                        <Badge variant={caps.variant} size="sm">Level {caps.level}</Badge>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-8 text-center text-slate-400 text-xs bg-surface-darker rounded-2xl border border-white/5 space-y-1">
+                <p className="font-bold text-white">0 Historic Assessments Published</p>
+                <p>None available for {activeSubjectDisplay} ({activeClassDisplay}).</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -941,12 +1385,12 @@ export const TeacherAssessments: React.FC = () => {
           <div className="p-5 rounded-3xl bg-surface-dark border border-white/10 shadow-xl space-y-4">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-white/10 pb-4">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-brand-400 block mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#13C8D9] block mb-1">
                   Step 1: Select Academic Term & Assessment Task Component
                 </span>
                 <h3 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
                   <span>Allocate Marks: {ASSESSMENT_COMPONENTS.find(c => c.key === selectedComponent)?.label || 'Assessment'}</span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#13C8D9]/20 text-[#13C8D9] border border-[#13C8D9]/30">
                     {term}
                   </span>
                 </h3>
@@ -959,9 +1403,9 @@ export const TeacherAssessments: React.FC = () => {
                     key={t}
                     type="button"
                     onClick={() => handleSelectTerm(t)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       term === t
-                        ? 'bg-brand-600 text-white shadow-glow-brand'
+                        ? 'bg-[#13C8D9] text-slate-950 font-bold shadow-md'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -984,19 +1428,19 @@ export const TeacherAssessments: React.FC = () => {
                       key={comp.key}
                       type="button"
                       onClick={() => handleSelectComponent(comp.key)}
-                      className={`p-3 rounded-2xl border text-left transition-all ${
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
                         isSelected
-                          ? 'bg-gradient-to-br from-brand-600/30 to-indigo-600/20 border-brand-500 shadow-glow-brand'
+                          ? 'bg-gradient-to-br from-[#13C8D9]/25 to-slate-900 border-[#13C8D9] shadow-md'
                           : 'bg-surface-darker border-white/10 hover:border-white/20 text-slate-400 hover:text-white'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
-                          comp.isFormal ? 'bg-emerald-500/20 text-emerald-300' : 'bg-purple-500/20 text-purple-300'
+                          comp.isFormal ? 'bg-[#13C8D9]/20 text-[#13C8D9]' : 'bg-slate-700/40 text-slate-300'
                         }`}>
                           {comp.isFormal ? 'Formal SBA' : 'Practice'}
                         </span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-brand-400" />}
+                        {isSelected && <Check className="w-3.5 h-3.5 text-[#13C8D9]" />}
                       </div>
                       <p className="text-xs font-bold text-white truncate">{comp.label}</p>
                       <p className="text-[10px] text-slate-400 mt-0.5">
@@ -1017,7 +1461,7 @@ export const TeacherAssessments: React.FC = () => {
                   value={assessmentName}
                   onChange={(e) => setAssessmentName(e.target.value)}
                   placeholder="e.g. Term 3 Controlled Test 1"
-                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#13C8D9] font-medium"
                 />
               </div>
 
@@ -1026,7 +1470,7 @@ export const TeacherAssessments: React.FC = () => {
                 <select
                   value={isFormal ? 'formal' : 'informal'}
                   onChange={(e) => setIsFormal(e.target.value === 'formal')}
-                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-[#13C8D9] cursor-pointer"
                 >
                   <option value="formal">Formal Assessment (Report Card)</option>
                   <option value="informal">Informal (Practice / Quiz)</option>
@@ -1038,7 +1482,7 @@ export const TeacherAssessments: React.FC = () => {
                 <select
                   value={assessmentType}
                   onChange={(e) => setAssessmentType(e.target.value)}
-                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-[#13C8D9] cursor-pointer"
                 >
                   <option value="Formal SBA Test">Formal SBA Test</option>
                   <option value="Term Assignment">Term Assignment</option>
@@ -1056,7 +1500,7 @@ export const TeacherAssessments: React.FC = () => {
                   onChange={(e) => setTotalMarks(Math.max(1, parseInt(e.target.value) || 50))}
                   min={1}
                   max={300}
-                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#13C8D9]"
                 />
               </div>
 
@@ -1068,7 +1512,7 @@ export const TeacherAssessments: React.FC = () => {
                   onChange={(e) => setWeight(Math.max(1, parseInt(e.target.value) || totalMarks))}
                   min={1}
                   max={500}
-                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-cyan-300 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-[#13C8D9] font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#13C8D9]"
                   title="Weights control non-uniform contribution to the final report mark (e.g. Exam: 100, Test: 50, Assignment: 30)"
                 />
               </div>
@@ -1077,13 +1521,13 @@ export const TeacherAssessments: React.FC = () => {
                 <button
                   onClick={handleSaveMarks}
                   disabled={saving || learners.length === 0}
-                  className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white font-extrabold text-xs shadow-md transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                  className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 font-extrabold text-xs shadow-md transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
                 >
                   {saving ? (
                     <LoadingSpinner size="sm" />
                   ) : (
                     <>
-                      <Save className="w-3.5 h-3.5" />
+                      <Save className="w-3.5 h-3.5 text-teal-800" />
                       <span>Save {isFormal ? 'Formal' : 'Practice'} Marks</span>
                     </>
                   )}
@@ -1092,15 +1536,15 @@ export const TeacherAssessments: React.FC = () => {
             </div>
           </div>
 
-          {/* Mark Input Table */}
+          {/* REQUIREMENT 4: Mark Input Table - Display list of learners in their respective classes */}
           <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div>
                 <h3 className="text-base font-bold text-white">
-                  Enter Scores: {assessmentName} — {selectedClass}
+                  Enter Scores: {assessmentName} — {activeClassDisplay}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Subject: {selectedSubject} • Total: {totalMarks} Marks • {term}
+                  Subject: {activeSubjectDisplay} • Total: {totalMarks} Marks • {term} • Displaying learners in their respective classes
                 </p>
               </div>
             </div>
@@ -1114,6 +1558,8 @@ export const TeacherAssessments: React.FC = () => {
                     <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
                       <th className="pb-3 px-3">#</th>
                       <th className="pb-3 px-3">Learner ID</th>
+                      {/* REQUIREMENT 4: Respective Class column */}
+                      <th className="pb-3 px-3">Class</th>
                       <th className="pb-3 px-3">Full Name</th>
                       <th className="pb-3 px-3 w-40">Score (Out of {totalMarks})</th>
                       <th className="pb-3 px-3 text-center">Converted %</th>
@@ -1130,7 +1576,12 @@ export const TeacherAssessments: React.FC = () => {
                       return (
                         <tr key={learner.id} className="hover:bg-white/5 transition-colors">
                           <td className="py-3.5 px-3 text-slate-400 font-mono">{idx + 1}</td>
-                          <td className="py-3.5 px-3 font-mono font-bold text-cyan-400">{learner.learner_number}</td>
+                          <td className="py-3.5 px-3 font-mono font-bold text-[#13C8D9]">{learner.learner_number}</td>
+                          <td className="py-3.5 px-3 font-mono text-slate-300">
+                            <span className="px-2 py-0.5 rounded-lg bg-surface-darker border border-white/5 font-semibold text-slate-200">
+                              {learner.class_name || selectedClass || 'N/A'}
+                            </span>
+                          </td>
                           <td className="py-3.5 px-3 font-bold text-white text-sm">{displayName}</td>
                           <td className="py-3.5 px-3">
                             <input
@@ -1139,11 +1590,11 @@ export const TeacherAssessments: React.FC = () => {
                               onChange={(e) => handleInputChange(learner.id, e.target.value)}
                               min={0}
                               max={totalMarks}
-                              className="w-28 rounded-xl bg-surface-darker border border-white/10 px-3 py-1.5 text-xs text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                              className="w-28 rounded-xl bg-surface-darker border border-white/10 px-3 py-1.5 text-xs text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#13C8D9]"
                             />
                           </td>
                           <td className="py-3.5 px-3 text-center font-mono font-bold text-white">
-                            {percentage}%
+                            {percentage > 0 ? `${percentage}%` : '0%'}
                           </td>
                           <td className="py-3.5 px-3 text-right">
                             <Badge variant={caps.variant} size="sm">Level {caps.level}</Badge>
@@ -1155,7 +1606,10 @@ export const TeacherAssessments: React.FC = () => {
                 </table>
               </div>
             ) : (
-              <div className="p-8 text-center text-slate-400 text-xs">No learners found for class {selectedClass}.</div>
+              <div className="p-8 text-center text-slate-400 text-xs bg-surface-darker rounded-2xl border border-white/5 space-y-1">
+                <p className="font-bold text-white">0 Learners Available</p>
+                <p>None available for class {activeClassDisplay}.</p>
+              </div>
             )}
           </div>
         </div>
@@ -1169,17 +1623,14 @@ export const TeacherAssessments: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-surface-dark border border-white/10">
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <History className="w-5 h-5 text-amber-400" />
-                <span>Recorded Assessment History — {selectedSubject} ({selectedClass})</span>
+                <History className="w-5 h-5 text-[#13C8D9]" />
+                <span>Recorded Assessment History — {activeSubjectDisplay} ({activeClassDisplay})</span>
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Archived and published formal marks previously recorded for {selectedSubject}.
-              </p>
             </div>
             <button
               onClick={fetchHistory}
               disabled={loadingHistory}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-darker text-slate-300 hover:text-white border border-white/10 text-xs font-bold transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-darker text-slate-300 hover:text-white border border-white/10 text-xs font-bold transition-all cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loadingHistory ? 'animate-spin' : ''}`} />
               <span>Refresh History</span>
@@ -1190,18 +1641,18 @@ export const TeacherAssessments: React.FC = () => {
             <LoadingSpinner text="Retrieving assessment mark history from database..." />
           ) : historyMarks.length === 0 ? (
             <div className="p-12 rounded-3xl bg-surface-dark border border-white/10 text-center space-y-3 shadow-xl">
-              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+              <div className="w-14 h-14 rounded-2xl bg-[#13C8D9]/10 border border-[#13C8D9]/30 text-[#13C8D9] flex items-center justify-center mx-auto">
                 <History className="w-7 h-7" />
               </div>
               <div className="max-w-md mx-auto space-y-1">
-                <h4 className="text-base font-bold text-white">No Historical Marks Found</h4>
+                <h4 className="text-base font-bold text-white">0 Historical Marks Found</h4>
                 <p className="text-xs text-slate-400">
-                  No published marks recorded for {selectedSubject} in class {selectedClass} yet. Use "Capture Marks Form" to enter and publish your first test.
+                  None available for {activeSubjectDisplay} in class {activeClassDisplay} yet. Use "Capture Marks Form" to enter and publish your first test.
                 </p>
               </div>
               <button
                 onClick={() => setActiveCategory('entry')}
-                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs transition-all shadow-md cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 font-bold text-xs transition-all shadow-md cursor-pointer active:scale-95"
               >
                 Capture Marks Now
               </button>
@@ -1222,21 +1673,23 @@ export const TeacherAssessments: React.FC = () => {
                       className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:bg-white/5 transition-colors border-b border-white/5"
                     >
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-extrabold text-white">
                             {batch.assessment_name ? batch.assessment_name.replace(/\(\s*(\d+)\s*\/\s*\d+\s*\)/g, '($1%)') : 'Class Assessment'}
                           </span>
-                          <Badge variant="indigo" size="sm">{batch.term || 'Term 3'}</Badge>
-                          <Badge variant={batchLevel.variant} size="sm">Avg {batch.class_average}%</Badge>
+                          <span className="px-2 py-0.5 rounded-md bg-[#13C8D9]/15 text-[#13C8D9] font-mono text-[10px] font-bold border border-[#13C8D9]/30">
+                            {batch.term || 'Term 3'}
+                          </span>
+                          <Badge variant={batchLevel.variant} size="sm">Avg {batch.class_average > 0 ? `${batch.class_average}%` : '0%'}</Badge>
                         </div>
                         <div className="flex items-center gap-3 text-[11px] text-slate-400 font-mono">
                           <span className="flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                            <Calendar className="w-3.5 h-3.5 text-[#13C8D9]" />
                             {batch.date_str || new Date(batch.recorded_at).toLocaleDateString()}
                           </span>
                           <span>•</span>
                           <span className="flex items-center gap-1">
-                            <Users className="w-3.5 h-3.5 text-cyan-400" />
+                            <Users className="w-3.5 h-3.5 text-[#13C8D9]" />
                             {batch.total_learners} Learners Recorded
                           </span>
                         </div>
@@ -1244,7 +1697,7 @@ export const TeacherAssessments: React.FC = () => {
 
                       <div className="flex items-center gap-3">
                         <div className="text-right">
-                          <span className="text-xl font-extrabold font-mono text-white">{batch.class_average}%</span>
+                          <span className="text-xl font-extrabold font-mono text-white">{batch.class_average > 0 ? `${batch.class_average}%` : '0%'}</span>
                           <span className="text-[10px] text-slate-400 block">Class Performance</span>
                         </div>
                         <div className="p-2 rounded-xl bg-surface-darker text-slate-400">
@@ -1273,11 +1726,11 @@ export const TeacherAssessments: React.FC = () => {
                                 return (
                                   <tr key={m.child_id || mIdx} className="hover:bg-white/5 transition-colors">
                                     <td className="py-2.5 px-3 text-slate-400 font-mono">{mIdx + 1}</td>
-                                    <td className="py-2.5 px-3 font-mono font-bold text-cyan-400">{m.learner_number || `2026-${m.child_id}`}</td>
+                                    <td className="py-2.5 px-3 font-mono font-bold text-[#13C8D9]">{m.learner_number || `2026-${m.child_id}`}</td>
                                     <td className="py-2.5 px-3 font-bold text-white">{`${m.full_name || ''} ${m.surname || ''}`.trim()}</td>
-                                    <td className="py-2.5 px-3 text-center font-mono font-bold text-white">{pVal}%</td>
+                                    <td className="py-2.5 px-3 text-center font-mono font-bold text-white">{pVal > 0 ? `${pVal}%` : '0%'}</td>
                                     <td className="py-2.5 px-3 text-right">
-                                      <Badge variant={caps.variant} size="sm">Level {caps.level} ({caps.label.split(' ')[0]})</Badge>
+                                      <Badge variant={caps.variant} size="sm">Level {caps.level}</Badge>
                                     </td>
                                   </tr>
                                 );

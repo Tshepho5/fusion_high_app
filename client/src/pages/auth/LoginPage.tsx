@@ -24,7 +24,7 @@ import { authService } from '../../services/api';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login, establishSession, isAuthenticated, role } = useAuth();
+  const { login, establishSession, isAuthenticated, role, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   const isLight = theme === 'light';
@@ -32,7 +32,7 @@ export const LoginPage: React.FC = () => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -91,13 +91,7 @@ export const LoginPage: React.FC = () => {
 
   // Strict Keyboard Shortcut Disabling & Navigation Restrictor on Login Page
   useEffect(() => {
-    // If user is already authenticated, redirect immediately to dashboard
-    if (isAuthenticated && role) {
-      navigate(`/dashboard/${role.toLowerCase()}`, { replace: true });
-      return;
-    }
-
-    // Lock browser history traversal to prevent back/forward bouncing between login and dashboard before authentication
+    // Keep user on login page so they can fill in credentials; do not auto-redirect away
     const lockHistory = () => {
       window.history.pushState(null, '', window.location.href);
     };
@@ -233,6 +227,7 @@ export const LoginPage: React.FC = () => {
         identifier: trimmedId,
         learnerNumber: trimmedId,
         password: trimmedPass,
+        rememberMe,
       };
 
       const { role } = await login(credentials);
@@ -270,7 +265,7 @@ export const LoginPage: React.FC = () => {
         challengeId: started.challengeId,
         response: assertion,
       });
-      const { role } = await establishSession(data);
+      const { role } = await establishSession(data, rememberMe);
       navigate(`/dashboard/${role || 'learner'}`);
     } catch (err: any) {
       const cancelled = err?.name === 'NotAllowedError' || err?.code === 'ERROR_CEREMONY_ABORTED';
@@ -434,6 +429,39 @@ export const LoginPage: React.FC = () => {
                 <span className="font-bold leading-snug">
                   {typeof error === 'string' ? error : (error as any)?.message || String(error)}
                 </span>
+              </div>
+            )}
+
+            {/* Active Session Status (Allows continuing to dashboard or entering new credentials) */}
+            {isAuthenticated && user && (
+              <div className="mt-4 p-3.5 rounded-2xl bg-[#091E28]/80 border border-[#13C8D9]/30 flex items-center justify-between gap-3 text-xs shadow-md">
+                <div className="min-w-0">
+                  <p className="text-white font-bold truncate">Currently signed in as {user.full_name || user.email}</p>
+                  <p className="text-[10px] text-[#13C8D9] font-mono capitalize">{role} Account</p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/dashboard/${role?.toLowerCase()}`)}
+                    className="px-2.5 py-1.5 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 font-bold text-[11px] transition-all cursor-pointer shadow-sm"
+                  >
+                    Go to Dashboard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem('remember_me');
+                      localStorage.removeItem('token');
+                      localStorage.removeItem('userRole');
+                      localStorage.removeItem('user');
+                      sessionStorage.clear();
+                      window.location.reload();
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-[11px] transition-all cursor-pointer"
+                  >
+                    Clear Session
+                  </button>
+                </div>
               </div>
             )}
 

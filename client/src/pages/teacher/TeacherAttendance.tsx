@@ -430,7 +430,7 @@ export const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ initialCla
           {/* Quick Status Modifiers */}
           <div className="flex items-center justify-between bg-surface-darker p-3.5 rounded-2xl border border-white/5">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-brand-400" />
+              <CheckCircle2 className="w-4 h-4 text-brand-400" />
               <span className="text-xs text-slate-300 font-bold">Quick Batch Mark:</span>
             </div>
             <div className="flex items-center gap-2">

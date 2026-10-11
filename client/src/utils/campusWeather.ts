@@ -128,13 +128,29 @@ async function fetchForecast(latitude: number, longitude: number): Promise<Forec
   return payload;
 }
 
-function locate(): Promise<{ latitude: number; longitude: number }> {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) {
-      resolve(CAMPUS);
-      return;
+async function locate(): Promise<{ latitude: number; longitude: number }> {
+  // Prevent unprompted location permission popup on landing page / login
+  if (typeof navigator === 'undefined' || !navigator.geolocation) {
+    return CAMPUS;
+  }
+
+  // Only request coordinates if the user has ALREADY explicitly granted location permission
+  if (navigator.permissions && navigator.permissions.query) {
+    try {
+      const status = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+      if (status.state !== 'granted') {
+        return CAMPUS;
+      }
+    } catch {
+      return CAMPUS;
     }
-    const timer = window.setTimeout(() => resolve(CAMPUS), 4500);
+  } else {
+    // If Permissions API is not supported, default to CAMPUS to avoid unprompted browser popup
+    return CAMPUS;
+  }
+
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(() => resolve(CAMPUS), 3000);
     navigator.geolocation.getCurrentPosition(
       (position) => {
         window.clearTimeout(timer);
@@ -144,7 +160,7 @@ function locate(): Promise<{ latitude: number; longitude: number }> {
         window.clearTimeout(timer);
         resolve(CAMPUS);
       },
-      { enableHighAccuracy: false, timeout: 4000, maximumAge: 10 * 60 * 1000 }
+      { enableHighAccuracy: false, timeout: 3000, maximumAge: 10 * 60 * 1000 }
     );
   });
 }

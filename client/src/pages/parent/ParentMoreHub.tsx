@@ -234,7 +234,7 @@ export const ParentMoreHub: React.FC<ParentMoreHubProps> = ({ onNavigateTab }) =
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 p-0.5 shadow-md flex items-center justify-center shrink-0">
               <div className="w-full h-full rounded-[14px] bg-white dark:bg-[#0A121A] flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-cyan-600 dark:text-[#18E2EC]" />
+                <LayoutGrid className="w-6 h-6 text-cyan-600 dark:text-[#18E2EC]" />
               </div>
             </div>
             <div>

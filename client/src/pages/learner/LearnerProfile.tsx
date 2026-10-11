@@ -15,7 +15,6 @@ import {
   Camera,
   Phone,
   MapPin,
-  Sparkles,
   QrCode,
   Eye,
   EyeOff,
@@ -347,7 +346,7 @@ export const LearnerProfile: React.FC = () => {
                 : 'bg-amber-500/10 border-amber-500/20 text-amber-200/90'
             }`}>
               {isProfileUnlocked ? (
-                <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               ) : (
                 <Lock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
               )}
@@ -366,7 +365,7 @@ export const LearnerProfile: React.FC = () => {
             <form onSubmit={handleUpdatePersonalDetails} className="space-y-4">
               <div className="space-y-3 pt-1">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  {isProfileUnlocked ? <Sparkles className="w-3 h-3 text-emerald-400" /> : <Lock className="w-3 h-3 text-slate-500" />}
+                  {isProfileUnlocked ? <CheckCircle className="w-3 h-3 text-emerald-400" /> : <Lock className="w-3 h-3 text-slate-500" />}
                   {isProfileUnlocked ? 'Personal Information (Editable)' : 'Verified School Credentials (Read-Only)'}
                 </p>
 
@@ -501,8 +500,7 @@ export const LearnerProfile: React.FC = () => {
 
               <div className="pt-4 border-t border-white/10 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
-                    <Sparkles className="w-3 h-3 text-cyan-400" />
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">
                     Contact & Residential Information
                   </p>
                   <span className="text-[9px] text-slate-400 font-mono">Modify anytime</span>

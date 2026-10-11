@@ -601,10 +601,10 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                         <button
                           onClick={() => onNavigateTab('ai-tutor')}
                           className="px-2 py-1.5 rounded-xl bg-white hover:bg-cyan-500/15 text-cyan-700 hover:text-cyan-800 dark:bg-white/5 dark:hover:bg-cyan-500/15 dark:text-[#18E2EC] text-[11px] font-semibold border border-cyan-500/30 hover:border-cyan-500/60 transition-colors text-center flex items-center justify-center gap-1 cursor-pointer"
-                          title="Ask AI Tutor"
+                          title="Ask Tutor"
                         >
-                          <Bot className="w-3 h-3 text-cyan-400" />
-                          <span>AI Tutor</span>
+                          <BookOpen className="w-3 h-3 text-cyan-400" />
+                          <span>Tutor</span>
                         </button>
                         <button
                           onClick={() => onNavigateTab('performance')}
@@ -739,10 +739,10 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                         <button
                           onClick={() => onNavigateTab('ai-tutor')}
                           className="px-2 py-1.5 rounded-xl bg-white hover:bg-cyan-500/15 text-cyan-700 hover:text-cyan-800 dark:bg-white/5 dark:hover:bg-cyan-500/15 dark:text-[#18E2EC] text-[11px] font-semibold border border-cyan-500/30 hover:border-cyan-500/60 transition-colors text-center flex items-center justify-center gap-1 cursor-pointer"
-                          title="Ask AI Tutor"
+                          title="Ask Tutor"
                         >
-                          <Bot className="w-3 h-3 text-cyan-400" />
-                          <span>AI Tutor</span>
+                          <BookOpen className="w-3 h-3 text-cyan-400" />
+                          <span>Tutor</span>
                         </button>
                         <button
                           onClick={() => onNavigateTab('performance')}

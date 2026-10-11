@@ -595,7 +595,7 @@ export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId }) => {
                             ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
                             : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
                         }`}>
-                          <Sparkles className="w-3 h-3" />
+                          <ShieldCheck className="w-3 h-3" />
                           <span>{isHigh ? 'High Risk Candidate' : isMod ? 'Moderate Risk' : 'On Track (Low Risk)'}</span>
                         </span>
                       );
@@ -639,17 +639,14 @@ export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId }) => {
                 <span className="text-3xl font-extrabold text-white font-display">{overallAvg}%</span>
                 <span className="text-xs text-slate-400">across {subjectsList.length} subjects</span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Calculated from {progressRecords.length} teacher-recorded assessments.
-              </p>
             </div>
 
-            {/* Card 2: ML Predicted Final Examination Score */}
+            {/* Card 2: Projected Examination Score */}
             <div className="rounded-3xl bg-gradient-to-br from-indigo-950/60 via-surface-dark to-surface-dark border border-indigo-500/30 p-5 shadow-xl space-y-2 relative overflow-hidden">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
-                  <FusionAIIcon className="w-4 h-4 text-cyan-400" />
-                  ML Projected Score
+                  <TrendingUp className="w-4 h-4 text-cyan-400" />
+                  Projected Score
                 </span>
                 <Badge variant="indigo" size="sm">
                   {predictedFinal >= overallAvg ? '+ Growth Trajectory' : 'Steady'}
@@ -659,9 +656,6 @@ export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId }) => {
                 <span className="text-3xl font-extrabold text-cyan-300 font-display">{predictedFinal}%</span>
                 <span className="text-xs text-slate-300 font-semibold">{getCapsLevel(predictedFinal).level}</span>
               </div>
-              <p className="text-[11px] text-slate-300">
-                Trained supervised model projection based on term SBA trajectory.
-              </p>
             </div>
 
             {/* Card 3: ML Pass Risk & Probability */}

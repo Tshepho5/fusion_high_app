@@ -468,8 +468,8 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                               }}
                               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-cyan-700 dark:text-cyan-300 font-bold text-xs border border-cyan-500/20 transition-all cursor-pointer"
                             >
-                              <Sparkles className="w-3.5 h-3.5 text-cyan-500" />
-                              <span>Solve with AI</span>
+                              <BookOpen className="w-3.5 h-3.5 text-cyan-500" />
+                              <span>Practice Tutor</span>
                             </button>
 
                             <a

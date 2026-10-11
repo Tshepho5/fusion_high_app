@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Layers, Trophy } from 'lucide-react';
+import { BookOpen, Layers, Trophy } from 'lucide-react';
 
 interface TeacherDiscoverHubProps {
   onNavigateTab: (tabId: string, params?: any) => void;
@@ -7,7 +7,7 @@ interface TeacherDiscoverHubProps {
 
 const discoverModules = [
   { id: 'resources', title: 'Past Papers & Vault', icon: Layers },
-  { id: 'ai-tools', title: 'AI Lesson Studio', icon: Sparkles },
+  { id: 'ai-tools', title: 'Lesson Studio', icon: BookOpen },
   { id: 'inter-school', title: 'Olympiads & Derbies', icon: Trophy },
 ];
 

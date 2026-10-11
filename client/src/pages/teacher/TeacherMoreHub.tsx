@@ -197,10 +197,10 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
     // 4. Curriculum & AI
     {
       id: 'ai-tools',
-      title: 'AI Lesson & Test Paper Studio',
+      title: 'Lesson & Test Paper Studio',
       category: 'curriculum',
-      icon: Sparkles,
-      badge: 'AI Powered',
+      icon: BookOpen,
+      badge: 'Curriculum',
       color: 'text-purple-400',
       iconBg: 'bg-purple-500/15 border-purple-500/30',
     },

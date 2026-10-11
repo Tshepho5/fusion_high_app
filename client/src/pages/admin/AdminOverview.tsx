@@ -2365,12 +2365,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     <div className="space-y-3 pt-2">
                       <div className="pb-1 border-b border-slate-200 dark:border-white/10">
                         <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
-                          <Sparkles className="w-4 h-4 text-amber-500" />
+                          <GraduationCap className="w-4 h-4 text-amber-500" />
                           <span>Modules for learners only ({activeLearnerOnlyModules.length} Active)</span>
                         </h4>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                          These are learner tools. They do not open teacher marksheets, attendance, or other staff work. Home, subjects, profile, and settings stay on.
-                        </p>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">

@@ -737,7 +737,7 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-500 text-white shadow-glow-indigo">
-              <FusionAIIcon className="w-6 h-6 text-white" variant="pulse" />
+              <GraduationCap className="w-6 h-6 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -1974,7 +1974,7 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                   >
                     {isAi && (
                       <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-white text-xs font-bold shrink-0 mt-1 shadow-sm">
-                        <FusionAIIcon className="w-4 h-4 text-white" />
+                        <GraduationCap className="w-4 h-4 text-white" />
                       </div>
                     )}
 
@@ -1996,11 +1996,11 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
                         {msg.text}
                       </div>
 
-                      {/* Interactive AI Suggestion Action Pills */}
+                      {/* Interactive Suggestion Action Pills */}
                       {isAi && msg.suggestions && msg.suggestions.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
                           <p className="text-[10.5px] font-bold text-slate-400 flex items-center gap-1">
-                            <Sparkles className="w-3 h-3 text-amber-400" />
+                            <Lightbulb className="w-3 h-3 text-amber-400" />
                             <span>Suggested Next Steps:</span>
                           </p>
                           <div className="flex flex-wrap gap-1.5">
@@ -2058,7 +2058,7 @@ export const LearnerAITutor: React.FC<LearnerAITutorProps> = ({
               {loading && (
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-xl bg-brand-600/30 flex items-center justify-center text-brand-400">
-                    <FusionAIIcon className="w-4 h-4 text-cyan-400" variant="pulse" />
+                    <GraduationCap className="w-4 h-4 text-cyan-400" />
                   </div>
                   <div className="rounded-2xl bg-surface-darker border border-white/10 p-3 text-xs text-slate-400 flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />

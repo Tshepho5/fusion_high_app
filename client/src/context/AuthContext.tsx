@@ -22,8 +22,8 @@ interface AuthContextType {
   role: UserRole;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: { email?: string; learnerNumber?: string; password: string }) => Promise<any>;
-  establishSession: (data: any) => Promise<any>;
+  login: (credentials: { email?: string; learnerNumber?: string; password: string; rememberMe?: boolean }) => Promise<any>;
+  establishSession: (data: any, rememberMe?: boolean) => Promise<any>;
   logout: () => void;
   updateUser: (updatedData: Partial<User>) => void;
   refreshUser: () => Promise<void>;
@@ -32,11 +32,35 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
-  const [role, setRole] = useState<UserRole>((localStorage.getItem('userRole') as UserRole) || null);
+  const [token, setToken] = useState<string | null>(() => {
+    const isRemembered = localStorage.getItem('remember_me') === 'true';
+    const isSessionActive = sessionStorage.getItem('session_active') === 'true';
+    if (!isRemembered && !isSessionActive) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('user');
+      return null;
+    }
+    return sessionStorage.getItem('token') || localStorage.getItem('token');
+  });
+
+  const [role, setRole] = useState<UserRole>(() => {
+    const isRemembered = localStorage.getItem('remember_me') === 'true';
+    const isSessionActive = sessionStorage.getItem('session_active') === 'true';
+    if (!isRemembered && !isSessionActive) return null;
+    return ((sessionStorage.getItem('userRole') || localStorage.getItem('userRole')) as UserRole) || null;
+  });
+
   const [user, setUserState] = useState<User | null>(() => {
-    const saved = localStorage.getItem('user');
-    return saved ? JSON.parse(saved) : null;
+    const isRemembered = localStorage.getItem('remember_me') === 'true';
+    const isSessionActive = sessionStorage.getItem('session_active') === 'true';
+    if (!isRemembered && !isSessionActive) return null;
+    try {
+      const saved = sessionStorage.getItem('user') || localStorage.getItem('user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [sessionPrompt, setSessionPrompt] = useState<null | 'idle' | 'logout'>(null);
@@ -183,7 +207,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [token]);
 
-  const establishSession = async (data: any) => {
+  const establishSession = async (data: any, rememberMe: boolean = false) => {
     const userToken = data.token;
     const userRole = (data.role || 'learner').toLowerCase() as UserRole;
     const userData = data.user || { id: data.id, role: userRole, email: data.email };
@@ -192,11 +216,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setRole(userRole);
     setUserState(userData);
 
-    localStorage.setItem('token', userToken);
-    if (userRole) {
-      localStorage.setItem('userRole', userRole);
+    sessionStorage.setItem('session_active', 'true');
+    sessionStorage.setItem('token', userToken);
+    if (userRole) sessionStorage.setItem('userRole', userRole);
+    sessionStorage.setItem('user', JSON.stringify(userData));
+
+    if (rememberMe) {
+      localStorage.setItem('remember_me', 'true');
+      localStorage.setItem('token', userToken);
+      if (userRole) {
+        localStorage.setItem('userRole', userRole);
+      }
+      localStorage.setItem('user', JSON.stringify(userData));
+    } else {
+      localStorage.removeItem('remember_me');
+      localStorage.removeItem('token');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('user');
     }
-    localStorage.setItem('user', JSON.stringify(userData));
 
     userService.heartbeat().catch(() => {});
 
@@ -216,11 +253,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return { data, role: userRole };
   };
 
-  const login = async (credentials: { email?: string; learnerNumber?: string; password: string }) => {
+  const login = async (credentials: { email?: string; learnerNumber?: string; password: string; rememberMe?: boolean }) => {
     setIsLoading(true);
     try {
       const data = await authService.login(credentials);
-      return await establishSession(data);
+      return await establishSession(data, Boolean(credentials.rememberMe));
     } finally {
       setIsLoading(false);
     }
@@ -242,6 +279,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setToken(null);
     setRole(null);
     setUserState(null);
+    sessionStorage.clear();
+    localStorage.removeItem('remember_me');
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
     localStorage.removeItem('user');

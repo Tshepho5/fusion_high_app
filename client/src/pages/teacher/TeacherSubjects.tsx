@@ -620,8 +620,8 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
               onClick={() => onNavigateTab('ai-tools', { tool: 'quiz' })}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all"
             >
-              <FusionAIIcon className="w-4 h-4 text-cyan-200" variant="pulse" />
-              <span>AI Lesson & Quiz Builder</span>
+              <BookOpen className="w-4 h-4 text-cyan-200" />
+              <span>Lesson & Quiz Builder</span>
             </button>
           </div>
         </div>
@@ -746,10 +746,10 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                   <button
                     onClick={() => handleOpenAIWorkspace(card.subject_name, card.grade, card.class_name, 'quiz')}
                     className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-cyan-600/20 hover:bg-cyan-600 text-cyan-300 hover:text-white border border-cyan-500/40 font-bold text-xs transition-all shadow-glow-cyan"
-                    title="Generate AI Quizzes & Lessons for this Subject"
+                    title="Quizzes & Lessons for this Subject"
                   >
-                    <FusionAIIcon className="w-3.5 h-3.5 text-cyan-200" />
-                    <span>AI Quiz</span>
+                    <BookOpen className="w-3.5 h-3.5 text-cyan-200" />
+                    <span>Quiz</span>
                   </button>
 
                   <button
@@ -813,9 +813,8 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                                       ? 'bg-amber-500/15 text-amber-400 border-amber-500/30 hover:bg-amber-500/25'
                                       : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
                                   }`}
-                                  title="Click to view AI ML Risk Diagnostic & Remedial Action Plan"
+                                  title="Click to view Risk Diagnostic & Remedial Action Plan"
                                 >
-                                  <Sparkles className="w-2.5 h-2.5" />
                                   <span>{mlRisk.riskLabel}</span>
                                 </button>
 

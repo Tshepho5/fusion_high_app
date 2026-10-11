@@ -442,44 +442,38 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
       <HomeGreeting />
 
       {/* GELEZA AI EDUCATOR COPILOT QUICK LAUNCHER */}
-      <section className="p-4 md:p-5 rounded-2xl bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-slate-900/60 border border-indigo-500/20 shadow-lg relative overflow-hidden backdrop-blur-sm">
+      <section className="p-4 md:p-5 rounded-2xl bg-gradient-to-r from-slate-900/95 via-[#0c2431]/80 to-slate-900/95 border border-[#13C8D9]/25 shadow-lg relative overflow-hidden backdrop-blur-sm">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center space-x-3.5">
-            <div className="p-3 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 text-white shadow-md shadow-indigo-500/20 shrink-0">
-              <Sparkles className="w-5 h-5" />
-            </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white">Geleza AI Teacher Copilot</h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <h3 className="text-base font-bold text-white tracking-tight">Geleza AI Teacher Copilot</h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#13C8D9]/15 text-[#13C8D9] border border-[#13C8D9]/30">
                   CAPS & Bloom's
                 </span>
               </div>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Generate one-click CAPS lesson plans, balanced Bloom's test papers with marking memorandums, and synthesize class risk telemetry.
-              </p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
             <button
               onClick={() => { setCopilotTab('lesson'); setIsCopilotOpen(true); }}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md flex items-center gap-1.5 transition-all"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
             >
-              <BookOpen className="w-3.5 h-3.5" />
+              <BookOpen className="w-3.5 h-3.5 text-teal-800" />
               <span>Lesson Planner</span>
             </button>
             <button
               onClick={() => { setCopilotTab('test'); setIsCopilotOpen(true); }}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md flex items-center gap-1.5 transition-all"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <FileSpreadsheet className="w-3.5 h-3.5 text-teal-800" />
               <span>Test & Memo</span>
             </button>
             <button
               onClick={() => { setCopilotTab('risk'); setIsCopilotOpen(true); }}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-md flex items-center gap-1.5 transition-all"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
             >
-              <AlertCircle className="w-3.5 h-3.5" />
+              <AlertCircle className="w-3.5 h-3.5 text-teal-800" />
               <span>Class Risk Briefing</span>
             </button>
           </div>
@@ -490,7 +484,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
       <section className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-[#13C8D9]/15 text-[#13C8D9] flex items-center justify-center">
               <BookOpen className="w-4 h-4" />
             </div>
             <div>
@@ -590,9 +584,6 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
               <BookOpen className="w-6 h-6" />
             </div>
             <h3 className="text-sm font-bold text-white">No Subjects or Classes Assigned</h3>
-            <p className="text-xs text-slate-400 max-w-md">
-              You do not have any active subject or class teaching assignments registered to your educator account. Please contact your school administrator or Head of Department to allocate your curriculum subjects.
-            </p>
           </div>
         ) : (
           <>
@@ -703,9 +694,9 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                         <button
                           onClick={() => onNavigateTab('ai-tools', { subject: card.subject_name, grade: card.grade, tool: 'lesson-plan' })}
                           className="p-1.5 rounded-lg bg-slate-100 hover:bg-cyan-500/15 hover:border-cyan-500/50 text-slate-700 hover:text-cyan-700 dark:bg-white/5 dark:hover:bg-cyan-500/15 dark:text-slate-200 dark:hover:text-[#18E2EC] border border-slate-200 dark:border-white/10 transition-all cursor-pointer"
-                          title="AI Lesson & Test Builder for this Subject"
+                          title="Lesson & Test Builder for this Subject"
                         >
-                          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                          <FileSpreadsheet className="w-3.5 h-3.5 text-teal-600 dark:text-[#18E2EC]" />
                         </button>
                         <button
                           onClick={() => onNavigateTab('resources', { subject: card.subject_name, grade: card.grade })}
@@ -834,9 +825,9 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                         <button
                           onClick={() => onNavigateTab('ai-tools', { subject: card.subject_name, grade: card.grade, tool: 'lesson-plan' })}
                           className="p-1.5 rounded-lg bg-slate-100 hover:bg-cyan-500/15 hover:border-cyan-500/50 text-slate-700 hover:text-cyan-700 dark:bg-white/5 dark:hover:bg-cyan-500/15 dark:text-slate-200 dark:hover:text-[#18E2EC] border border-slate-200 dark:border-white/10 transition-all cursor-pointer"
-                          title="AI Lesson & Test Builder for this Subject"
+                          title="Lesson & Test Builder for this Subject"
                         >
-                          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                          <FileSpreadsheet className="w-3.5 h-3.5 text-teal-600 dark:text-[#18E2EC]" />
                         </button>
                         <button
                           onClick={() => onNavigateTab('resources', { subject: card.subject_name, grade: card.grade })}
@@ -1442,14 +1433,14 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                   className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200 dark:border-white/10 hover:border-cyan-500/60 hover:bg-cyan-500/10 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
                 >
                   <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-[#18E2EC] border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Sparkles className="w-5 h-5" />
+                    <BookOpen className="w-5 h-5" />
                   </div>
                   <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-700 dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2">
-                    AI Lesson Planner
+                    Lesson Planner
                   </span>
                 </button>
 
-                {/* 5. AI Test Paper Studio */}
+                {/* 5. Test Paper Studio */}
                 <button
                   type="button"
                   onClick={() => {
@@ -1460,10 +1451,10 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                   className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200 dark:border-white/10 hover:border-cyan-500/50 hover:bg-cyan-500/5 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
                 >
                   <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Bot className="w-5 h-5" />
+                    <FileSpreadsheet className="w-5 h-5" />
                   </div>
                   <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-700 dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2">
-                    AI Test Paper Studio
+                    Test Paper Studio
                   </span>
                 </button>
 

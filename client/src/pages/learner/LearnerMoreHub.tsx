@@ -129,17 +129,17 @@ export const LearnerMoreHub: React.FC<LearnerMoreHubProps> = ({ onNavigateTab })
     // 2. Study Tools & AI
     {
       id: 'geleza-quiz',
-      title: 'Geleza AI Study Hub (CAPS Instant Quiz)',
+      title: 'Study Hub (CAPS Instant Quiz)',
       category: 'study-ai',
-      icon: BrainCircuit,
+      icon: BookOpen,
       badge: 'Instant Quiz',
     },
     {
       id: 'ai-tutor',
-      title: 'CAPS AI Study Tutor & Exam Studios',
+      title: 'CAPS Study Tutor & Exam Studios',
       category: 'study-ai',
-      icon: Bot,
-      badge: 'AI Marker',
+      icon: GraduationCap,
+      badge: 'Tutor',
     },
     {
       id: 'career-advisor',

@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSchool } from '../../context/SchoolContext';
 import { moduleAllowed, parentModuleAllowed } from '../../utils/schoolModules';
-import { FusionAIIcon } from '../common/FusionAIIcon';
 import {
   LayoutDashboard,
   Users,
@@ -71,22 +70,22 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
     switch (role) {
       case 'teacher':
         return [
-          { id: 'overview', label: 'Educator Analytics', desc: 'Class performance metrics, daily pass rates & learner overview', category: 'academic', icon: LayoutDashboard, gradient: 'from-[#0284c7] to-[#2563eb]' },
-          { id: 'subjects', label: 'My Subjects', desc: 'Subject curricula, CAPS past papers & learning resources', category: 'academic', icon: BookOpen, gradient: 'from-[#0ea5e9] to-[#0284c7]' },
-          { id: 'assignments', label: 'Homework & Submissions', desc: 'Publish homework briefs, review learner uploads & sign off marks', category: 'academic', icon: BookOpen, gradient: 'from-[#2563eb] to-[#4338ca]', badge: 'AI Live' },
-          { id: 'classes', label: 'Class Registers & Marks', desc: '60fps continuous Camera QR scanner & mark entry registers', category: 'operations', icon: Users, gradient: 'from-[#0f766e] to-[#0284c7]', badge: 'QR LIVE' },
-          { id: 'ai-tools', label: 'AI Lesson & Test Builder', desc: 'CAPS lesson plans & instant exam test papers with memorandums', category: 'academic', icon: FusionAIIcon, gradient: 'from-[#4f46e5] to-[#2563eb]', badge: 'AI' },
-          { id: 'ptc', label: 'Parent Conferences (PTC)', desc: '15-minute educator consultation calendar & appointment slots', category: 'chat', icon: Users, gradient: 'from-[#0284c7] to-[#1e40af]' },
-          { id: 'conduct', label: 'Merits & Conduct Logs', desc: 'Badge awards, XP points & disciplinary records', category: 'operations', icon: Award, gradient: 'from-[#1e40af] to-[#3b82f6]' },
-          { id: 'my-leave', label: 'Leave & Relief Duty', desc: 'Staff relief allocations & educator leave management', category: 'operations', icon: UserCheck, gradient: 'from-[#334155] to-[#1e293b]' },
-          { id: 'exam-seating', label: 'Exam Seating Planner', desc: 'Hall seating grids & learner admission tickets', category: 'operations', icon: Grid, gradient: 'from-[#1d4ed8] to-[#4338ca]' },
-          { id: 'sports', label: 'Sports & Extracurriculars', desc: 'Athletics, match fixtures, team rosters & tournaments', category: 'campus', icon: Trophy, gradient: 'from-[#0f766e] to-[#0284c7]' },
-          { id: 'textbooks', label: 'Textbook Inventory', desc: 'Asset barcode scanning & classroom textbook distribution', category: 'operations', icon: BookMarked, gradient: 'from-[#0284c7] to-[#0369a1]' },
-          { id: 'timetable', label: 'Teacher Timetable', desc: 'Weekly teaching periods & room allocations', category: 'operations', icon: Clock, gradient: 'from-[#0ea5e9] to-[#2563eb]' },
-          { id: 'calendar', label: 'School Calendar', desc: 'Term dates, exams & official school events', category: 'campus', icon: Calendar, gradient: 'from-[#2563eb] to-[#4f46e5]' },
-          { id: 'announcements', label: 'Broadcast Notices', desc: 'Publish announcements to learners and parents', category: 'campus', icon: Megaphone, gradient: 'from-[#0284c7] to-[#3b82f6]' },
-          { id: 'messages', label: 'Communication Hub', desc: 'Direct messages with parents, learners & colleagues', category: 'chat', icon: MessageSquare, gradient: 'from-[#0284c7] to-[#2563eb]', badge: 'CHAT' },
-          { id: 'settings', label: 'Technical Settings', desc: 'Theme colors, dark/light mode, typography fonts & preferences', category: 'operations', icon: Settings, gradient: 'from-[#334155] to-[#475569]' },
+          { id: 'overview', label: 'Educator Analytics', desc: '', category: 'academic', icon: LayoutDashboard, gradient: 'from-[#0284c7] to-[#2563eb]' },
+          { id: 'subjects', label: 'My Subjects', desc: '', category: 'academic', icon: BookOpen, gradient: 'from-[#0ea5e9] to-[#0284c7]' },
+          { id: 'assignments', label: 'Homework & Submissions', desc: '', category: 'academic', icon: BookOpen, gradient: 'from-[#2563eb] to-[#4338ca]' },
+          { id: 'classes', label: 'Class Registers & Marks', desc: '', category: 'operations', icon: Users, gradient: 'from-[#0f766e] to-[#0284c7]', badge: 'QR LIVE' },
+          { id: 'ai-tools', label: 'Lesson & Test Builder', desc: '', category: 'academic', icon: BookOpen, gradient: 'from-[#4f46e5] to-[#2563eb]' },
+          { id: 'ptc', label: 'Parent Conferences (PTC)', desc: '', category: 'chat', icon: Users, gradient: 'from-[#0284c7] to-[#1e40af]' },
+          { id: 'conduct', label: 'Merits & Conduct Logs', desc: '', category: 'operations', icon: Award, gradient: 'from-[#1e40af] to-[#3b82f6]' },
+          { id: 'my-leave', label: 'Leave & Relief Duty', desc: '', category: 'operations', icon: UserCheck, gradient: 'from-[#334155] to-[#1e293b]' },
+          { id: 'exam-seating', label: 'Exam Seating Planner', desc: '', category: 'operations', icon: Grid, gradient: 'from-[#1d4ed8] to-[#4338ca]' },
+          { id: 'sports', label: 'Sports & Extracurriculars', desc: '', category: 'campus', icon: Trophy, gradient: 'from-[#0f766e] to-[#0284c7]' },
+          { id: 'textbooks', label: 'Textbook Inventory', desc: '', category: 'operations', icon: BookMarked, gradient: 'from-[#0284c7] to-[#0369a1]' },
+          { id: 'timetable', label: 'Teacher Timetable', desc: '', category: 'operations', icon: Clock, gradient: 'from-[#0ea5e9] to-[#2563eb]' },
+          { id: 'calendar', label: 'School Calendar', desc: '', category: 'campus', icon: Calendar, gradient: 'from-[#2563eb] to-[#4f46e5]' },
+          { id: 'announcements', label: 'Broadcast Notices', desc: '', category: 'campus', icon: Megaphone, gradient: 'from-[#0284c7] to-[#3b82f6]' },
+          { id: 'messages', label: 'Communication Hub', desc: '', category: 'chat', icon: MessageSquare, gradient: 'from-[#0284c7] to-[#2563eb]', badge: 'CHAT' },
+          { id: 'settings', label: 'Technical Settings', desc: '', category: 'operations', icon: Settings, gradient: 'from-[#334155] to-[#475569]' },
         ];
       case 'admin':
         return [
@@ -110,38 +109,38 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
         ];
       case 'parent':
         return [
-          { id: 'overview', label: 'Family Dashboard', desc: 'Child academic summary, attendance & school alerts', category: 'academic', icon: LayoutDashboard, gradient: 'from-[#0284c7] to-[#2563eb]' },
-          { id: 'children', label: 'Linked Learners', desc: 'Overview of all your enrolled children at Geleza SA', category: 'academic', icon: GraduationCap, gradient: 'from-[#0ea5e9] to-[#0284c7]' },
-          { id: 'finance', label: 'School Fees', desc: 'Fee statements. Card, instant EFT, bank EFT, and cash wait for the school bank account', category: 'operations', icon: CreditCard, gradient: 'from-[#0f766e] to-[#0284c7]', badge: 'PAY' },
-          { id: 'bursaries', label: 'NSFAS & Bursaries', desc: 'Tertiary scholarships, funding coverage & checklist tracker', category: 'academic', icon: GraduationCap, gradient: 'from-[#2563eb] to-[#4338ca]', badge: 'FUND' },
-          { id: 'reports', label: 'CAPS Report Cards', desc: 'Official term report cards & educator remarks', category: 'academic', icon: Award, gradient: 'from-[#0f766e] to-[#2563eb]', badge: 'PDF' },
-          { id: 'ptc', label: 'Parent Conferences (PTC)', desc: 'Book consultations with your child’s subject teachers', category: 'chat', icon: Users, gradient: 'from-[#0284c7] to-[#1e40af]' },
-          { id: 'attendance', label: 'Attendance Records', desc: 'Real-time daily presence, late & absence history', category: 'operations', icon: CalendarCheck, gradient: 'from-[#1e40af] to-[#3b82f6]' },
-          { id: 'sports', label: 'Sports & Fixtures', desc: 'Extracurricular fixtures, match scores & teams', category: 'campus', icon: Trophy, gradient: 'from-[#0f766e] to-[#0284c7]' },
-          { id: 'timetable', label: 'Child Timetable', desc: 'Weekly class schedule & classroom periods', category: 'operations', icon: Clock, gradient: 'from-[#0ea5e9] to-[#2563eb]' },
-          { id: 'calendar', label: 'School Calendar', desc: 'School events, exam dates & term holidays', category: 'campus', icon: Calendar, gradient: 'from-[#2563eb] to-[#4f46e5]' },
-          { id: 'announcements', label: 'School Notices', desc: 'Urgent notices, newsletters & circulars', category: 'campus', icon: Megaphone, gradient: 'from-[#0284c7] to-[#3b82f6]' },
-          { id: 'messages', label: 'Teacher Chat', desc: 'Direct secure messaging with classroom educators', category: 'chat', icon: MessageSquare, gradient: 'from-[#0284c7] to-[#2563eb]', badge: 'CHAT' },
-          { id: 'settings', label: 'Technical Settings', desc: 'Theme colors, dark/light mode, typography fonts & preferences', category: 'operations', icon: Settings, gradient: 'from-[#334155] to-[#475569]' },
+          { id: 'overview', label: 'Family Dashboard', desc: '', category: 'academic', icon: LayoutDashboard, gradient: 'from-[#0284c7] to-[#2563eb]' },
+          { id: 'children', label: 'Linked Learners', desc: '', category: 'academic', icon: GraduationCap, gradient: 'from-[#0ea5e9] to-[#0284c7]' },
+          { id: 'finance', label: 'School Fees', desc: '', category: 'operations', icon: CreditCard, gradient: 'from-[#0f766e] to-[#0284c7]', badge: 'PAY' },
+          { id: 'bursaries', label: 'NSFAS & Bursaries', desc: '', category: 'academic', icon: GraduationCap, gradient: 'from-[#2563eb] to-[#4338ca]', badge: 'FUND' },
+          { id: 'reports', label: 'CAPS Report Cards', desc: '', category: 'academic', icon: Award, gradient: 'from-[#0f766e] to-[#2563eb]', badge: 'PDF' },
+          { id: 'ptc', label: 'Parent Conferences (PTC)', desc: '', category: 'chat', icon: Users, gradient: 'from-[#0284c7] to-[#1e40af]' },
+          { id: 'attendance', label: 'Attendance Records', desc: '', category: 'operations', icon: CalendarCheck, gradient: 'from-[#1e40af] to-[#3b82f6]' },
+          { id: 'sports', label: 'Sports & Fixtures', desc: '', category: 'campus', icon: Trophy, gradient: 'from-[#0f766e] to-[#0284c7]' },
+          { id: 'timetable', label: 'Child Timetable', desc: '', category: 'operations', icon: Clock, gradient: 'from-[#0ea5e9] to-[#2563eb]' },
+          { id: 'calendar', label: 'School Calendar', desc: '', category: 'campus', icon: Calendar, gradient: 'from-[#2563eb] to-[#4f46e5]' },
+          { id: 'announcements', label: 'School Notices', desc: '', category: 'campus', icon: Megaphone, gradient: 'from-[#0284c7] to-[#3b82f6]' },
+          { id: 'messages', label: 'Teacher Chat', desc: '', category: 'chat', icon: MessageSquare, gradient: 'from-[#0284c7] to-[#2563eb]', badge: 'CHAT' },
+          { id: 'settings', label: 'Technical Settings', desc: '', category: 'operations', icon: Settings, gradient: 'from-[#334155] to-[#475569]' },
         ];
       case 'learner':
       default:
         return [
-          { id: 'overview', label: 'Learner Home', desc: 'Daily academic schedule, tasks & achievements', category: 'academic', icon: Home, gradient: 'from-[#0284c7] to-[#2563eb]' },
-          { id: 'subjects', label: 'My Subjects & AI Tutor', desc: 'Syllabus, topics, interactive AI tutor & study notes', category: 'academic', icon: BookOpen, gradient: 'from-[#0ea5e9] to-[#0284c7]', badge: 'AI' },
-          { id: 'assignments', label: 'Homework & Submissions', desc: 'Download worksheets, upload solutions & get AI concept pre-grading', category: 'academic', icon: BookOpen, gradient: 'from-[#2563eb] to-[#4338ca]', badge: 'AI Live' },
-          { id: 'career-advisor', label: 'Matric APS & Careers', desc: 'APS point calculator, university requirements & fields', category: 'academic', icon: Compass, gradient: 'from-[#4f46e5] to-[#2563eb]', badge: 'Gr12 APS' },
-          { id: 'bursaries', label: 'NSFAS & Bursaries', desc: 'AI tertiary bursary matches, document checklists & funding', category: 'academic', icon: GraduationCap, gradient: 'from-[#2563eb] to-[#4338ca]', badge: 'FUND' },
-          { id: 'finance', label: 'Fee Statements', desc: 'Official school fee statements & settled payment receipts', category: 'operations', icon: CreditCard, gradient: 'from-[#0f766e] to-[#0284c7]' },
-          { id: 'reports', label: 'CAPS Report Cards', desc: 'Term mark sheets, subject levels & official transcripts', category: 'academic', icon: Award, gradient: 'from-[#0f766e] to-[#2563eb]', badge: 'PDF' },
-          { id: 'exam-seating', label: 'Exam Seating & Card', desc: 'Personal exam hall allocation & student smart ID card', category: 'operations', icon: Grid, gradient: 'from-[#1d4ed8] to-[#4338ca]' },
-          { id: 'sports', label: 'Sports & Clubs', desc: 'House athletics, extracurricular teams & events', category: 'campus', icon: Trophy, gradient: 'from-[#0f766e] to-[#0284c7]' },
-          { id: 'textbooks', label: 'My Textbooks', desc: 'Issued textbooks, digital study e-books & guides', category: 'operations', icon: BookMarked, gradient: 'from-[#0284c7] to-[#0369a1]' },
-          { id: 'timetable', label: 'Weekly Timetable', desc: 'Classroom periods, room numbers & educator timetable', category: 'operations', icon: Clock, gradient: 'from-[#0ea5e9] to-[#2563eb]' },
-          { id: 'calendar', label: 'School Calendar', desc: 'Academic terms, test weeks & school holidays', category: 'campus', icon: Calendar, gradient: 'from-[#2563eb] to-[#4f46e5]' },
-          { id: 'announcements', label: 'Announcements', desc: 'School alerts, sports updates & event notices', category: 'campus', icon: Megaphone, gradient: 'from-[#0284c7] to-[#3b82f6]' },
-          { id: 'messages', label: 'Teacher Messages', desc: 'Direct private chats with subject teachers', category: 'chat', icon: MessageSquare, gradient: 'from-[#0284c7] to-[#2563eb]', badge: 'CHAT' },
-          { id: 'settings', label: 'Technical Settings', desc: 'Theme colors, dark/light mode, typography fonts & preferences', category: 'operations', icon: Settings, gradient: 'from-[#334155] to-[#475569]' },
+          { id: 'overview', label: 'Learner Home', desc: '', category: 'academic', icon: Home, gradient: 'from-[#0284c7] to-[#2563eb]' },
+          { id: 'subjects', label: 'My Subjects', desc: '', category: 'academic', icon: BookOpen, gradient: 'from-[#0ea5e9] to-[#0284c7]' },
+          { id: 'assignments', label: 'Homework & Submissions', desc: '', category: 'academic', icon: BookOpen, gradient: 'from-[#2563eb] to-[#4338ca]' },
+          { id: 'career-advisor', label: 'Matric APS & Careers', desc: '', category: 'academic', icon: Compass, gradient: 'from-[#4f46e5] to-[#2563eb]', badge: 'Gr12 APS' },
+          { id: 'bursaries', label: 'NSFAS & Bursaries', desc: '', category: 'academic', icon: GraduationCap, gradient: 'from-[#2563eb] to-[#4338ca]', badge: 'FUND' },
+          { id: 'finance', label: 'Fee Statements', desc: '', category: 'operations', icon: CreditCard, gradient: 'from-[#0f766e] to-[#0284c7]' },
+          { id: 'reports', label: 'CAPS Report Cards', desc: '', category: 'academic', icon: Award, gradient: 'from-[#0f766e] to-[#2563eb]', badge: 'PDF' },
+          { id: 'exam-seating', label: 'Exam Seating & Card', desc: '', category: 'operations', icon: Grid, gradient: 'from-[#1d4ed8] to-[#4338ca]' },
+          { id: 'sports', label: 'Sports & Clubs', desc: '', category: 'campus', icon: Trophy, gradient: 'from-[#0f766e] to-[#0284c7]' },
+          { id: 'textbooks', label: 'My Textbooks', desc: '', category: 'operations', icon: BookMarked, gradient: 'from-[#0284c7] to-[#0369a1]' },
+          { id: 'timetable', label: 'Weekly Timetable', desc: '', category: 'operations', icon: Clock, gradient: 'from-[#0ea5e9] to-[#2563eb]' },
+          { id: 'calendar', label: 'School Calendar', desc: '', category: 'campus', icon: Calendar, gradient: 'from-[#2563eb] to-[#4f46e5]' },
+          { id: 'announcements', label: 'Announcements', desc: '', category: 'campus', icon: Megaphone, gradient: 'from-[#0284c7] to-[#3b82f6]' },
+          { id: 'messages', label: 'Teacher Messages', desc: '', category: 'chat', icon: MessageSquare, gradient: 'from-[#0284c7] to-[#2563eb]', badge: 'CHAT' },
+          { id: 'settings', label: 'Technical Settings', desc: '', category: 'operations', icon: Settings, gradient: 'from-[#334155] to-[#475569]' },
         ];
     }
   };
