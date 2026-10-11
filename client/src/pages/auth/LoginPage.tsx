@@ -81,11 +81,7 @@ export const LoginPage: React.FC = () => {
 
   useEffect(() => {
     try {
-      const reason = sessionStorage.getItem('logout_reason');
       sessionStorage.removeItem('logout_reason');
-      if (reason === 'session') {
-        setError('You were signed out because this account signed in on another device or tab. Sign in again here to continue.');
-      }
     } catch (_) {}
   }, []);
 

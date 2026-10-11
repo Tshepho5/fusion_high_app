@@ -641,6 +641,8 @@ export const assignmentService = {
     api.post(`/api/assignments/submissions/${submissionId}/grade`, payload).then(res => res.data),
   batchAIGrade: (assignmentId: number | string) =>
     api.post(`/api/assignments/${assignmentId}/batch-ai-grade`).then(res => res.data),
+  updateAssignmentStatus: (assignmentId: number | string, status: string) =>
+    api.patch(`/api/assignments/${assignmentId}/status`, { status }).then(res => res.data),
 };
 
 // Digital School Fees & Online Payments APIs

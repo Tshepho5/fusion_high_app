@@ -383,42 +383,13 @@ export const TeacherAITools: React.FC = () => {
       formData.append('description', `AI Generated ${quizQuestions.length}-question interactive practice quiz on ${topic}.`);
       formData.append('questions', JSON.stringify(quizQuestions));
 
-      try {
-        await assignmentService.createAssignment(formData);
-      } catch (err: any) {
-        console.warn('[ASSIGNMENT API WARN]:', err?.message);
-      }
-
-      // 2. Also cache in local storage for teacher assessment dashboard
-      const newAssessmentItem = {
-        id: `ai-${Date.now()}`,
-        title: `${subject}: ${topic} Interactive Quiz`,
-        subject,
-        grade,
-        due_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-        total_marks: calculatedTotal,
-        description: `AI Generated ${quizQuestions.length}-question practice module on ${topic}.`,
-        item_type: 'ai_assessment',
-        assignment_type: 'quiz',
-        total_submissions: 0,
-        pending_marking: 0,
-        signed_submissions: 0,
-        status: 'ungraded',
-        questions: quizQuestions
-      };
-
-      try {
-        let existingList = [];
-        const stored = localStorage.getItem('fusion_teacher_ai_assessments');
-        if (stored) existingList = JSON.parse(stored);
-        existingList.unshift(newAssessmentItem);
-        localStorage.setItem('fusion_teacher_ai_assessments', JSON.stringify(existingList));
-      } catch (_) {}
+      await assignmentService.createAssignment(formData);
 
       setPublishSuccess(`Published ${subject} quiz (${quizQuestions.length} questions, ${calculatedTotal} Total Marks) to Grade ${grade} learners!`);
       setTimeout(() => setPublishSuccess(null), 6000);
-    } catch (_) {
-      setPublishSuccess(`Published ${subject} quiz to Grade ${grade} learners!`);
+    } catch (err: any) {
+      console.error('[ASSIGNMENT API ERROR]:', err);
+      setPublishSuccess(`Failed to publish quiz: ${err.response?.data?.error || err.message}`);
     } finally {
       setPublishing(false);
     }

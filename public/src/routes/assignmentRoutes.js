@@ -42,6 +42,13 @@ router.post(
   assignmentController.batchAIGrade
 );
 
+// Teacher: Update assignment status (graded / ungraded)
+router.patch(
+  '/:id/status',
+  requireRole(['teacher', 'admin']),
+  assignmentController.updateAssignmentStatus
+);
+
 // Learner: Get homework assignments for learner's grade and enrolled subjects
 router.get(
   '/learner',

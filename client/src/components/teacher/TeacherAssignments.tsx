@@ -132,57 +132,8 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
         }
       });
 
-      // Fetch any locally published AI assessments or defaults
-      let localAiList: any[] = [];
-      try {
-        const stored = localStorage.getItem('fusion_teacher_ai_assessments');
-        if (stored) localAiList = JSON.parse(stored);
-      } catch (_) {}
-
-      if (dbAiList.length === 0 && localAiList.length === 0) {
-        localAiList = [
-          {
-            id: 'ai-1',
-            title: 'Algebraic Expressions & Factorization Diagnostic Quiz',
-            subject: 'Mathematics',
-            grade: 10,
-            due_date: new Date().toISOString(),
-            total_marks: 20,
-            description: 'AI Generated non-repeating practice quiz on trinomial factorization and quadratic roots.',
-            item_type: 'ai_assessment',
-            assignment_type: 'quiz',
-            total_submissions: 28,
-            pending_marking: 0,
-            signed_submissions: 28,
-            status: 'graded'
-          },
-          {
-            id: 'ai-2',
-            title: 'Electric Circuits & Ohm\'s Law Interactive Evaluation',
-            subject: 'Physical Sciences',
-            grade: 10,
-            due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-            total_marks: 30,
-            description: 'AI Lesson Builder practice paper testing current, potential difference, and internal resistance.',
-            item_type: 'ai_assessment',
-            assignment_type: 'test',
-            total_submissions: 19,
-            pending_marking: 5,
-            signed_submissions: 14,
-            status: 'ungraded'
-          }
-        ];
-      }
-
-      // Combine dbAiList and localAiList without duplicate IDs
-      const seenIds = new Set(dbAiList.map((x: any) => String(x.id)));
-      const combinedAi = [
-        ...dbAiList,
-        ...localAiList.filter((x: any) => !seenIds.has(String(x.id)))
-      ];
-
       setAssignments(hwList);
-      setAiAssessments(combinedAi);
+      setAiAssessments(dbAiList);
     } catch (err: any) {
       console.error('Error loading teacher assignments:', err);
       setError(err.response?.data?.error || 'Failed to load homework assignments.');
@@ -195,26 +146,26 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
     fetchAssignments();
   }, []);
 
-  // Manual Status Change Handler (Graded vs Ungraded)
-  const handleToggleStatus = (itemId: string | number, itemType: string, currentStatus: string) => {
+  // Manual Status Change Handler (Graded vs Ungraded) - Persisted to PostgreSQL
+  const handleToggleStatus = async (itemId: string | number, itemType: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'graded' ? 'ungraded' : 'graded';
 
-    if (itemType === 'ai_assessment') {
-      const updated = aiAssessments.map(a => a.id === itemId ? { ...a, status: nextStatus } : a);
-      setAiAssessments(updated);
-      try {
-        localStorage.setItem('fusion_teacher_ai_assessments', JSON.stringify(updated));
-      } catch (_) {}
-      setSuccessMessage(`Assessment status updated to "${nextStatus.toUpperCase()}".`);
-      setTimeout(() => setSuccessMessage(null), 3000);
-      return;
-    }
+    try {
+      await assignmentService.updateAssignmentStatus(itemId, nextStatus);
 
-    // Homework item
-    const updated = assignments.map(a => a.id === itemId ? { ...a, status: nextStatus } : a);
-    setAssignments(updated);
-    setSuccessMessage(`Homework status updated to "${nextStatus.toUpperCase()}".`);
-    setTimeout(() => setSuccessMessage(null), 3000);
+      if (itemType === 'ai_assessment') {
+        setAiAssessments(prev => prev.map(a => a.id === itemId ? { ...a, status: nextStatus } : a));
+        setSuccessMessage(`Assessment status updated to "${nextStatus.toUpperCase()}".`);
+      } else {
+        setAssignments(prev => prev.map(a => a.id === itemId ? { ...a, status: nextStatus } : a));
+        setSuccessMessage(`Homework status updated to "${nextStatus.toUpperCase()}".`);
+      }
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to update status:', err);
+      setError(err.response?.data?.error || 'Failed to update assignment status in database.');
+      setTimeout(() => setError(null), 4000);
+    }
   };
 
   const handleOpenSubmissions = async (assignment: any) => {
@@ -315,42 +266,18 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
       body.append('questions', JSON.stringify(generatedQuestions));
 
       await assignmentService.createAssignment(body);
+      setSuccessMessage(`Published "${quizTitle}" (${generatedQuestions.length} Questions, ${calculatedTotal} Marks) to learner AI assessments!`);
+      setIsAiQuizModalOpen(false);
+      setGeneratedQuestions([]);
+      setQuizTopic('');
+      setActiveFilter('ai');
+      await fetchAssignments();
     } catch (e: any) {
-      console.warn('Backend assignment creation fallback to localStorage:', e);
+      console.error('Backend assignment creation error:', e);
+      setError(e.response?.data?.error || 'Failed to publish AI assessment.');
+    } finally {
+      setPublishingQuiz(false);
     }
-
-    const newAiItem = {
-      id: `ai-${Date.now()}`,
-      title: quizTitle,
-      subject: quizSubject,
-      grade: parseInt(quizGrade, 10),
-      due_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-      total_marks: calculatedTotal,
-      description: `AI Generated ${generatedQuestions.length}-question interactive practice quiz on ${quizTopic || quizSubject}.`,
-      item_type: 'ai_assessment',
-      assignment_type: 'quiz',
-      total_submissions: 0,
-      pending_marking: 0,
-      signed_submissions: 0,
-      status: 'ungraded',
-      questions: generatedQuestions
-    };
-
-    try {
-      let storedList = [];
-      const stored = localStorage.getItem('fusion_teacher_ai_assessments');
-      if (stored) storedList = JSON.parse(stored);
-      storedList.unshift(newAiItem);
-      localStorage.setItem('fusion_teacher_ai_assessments', JSON.stringify(storedList));
-    } catch (_) {}
-
-    setSuccessMessage(`Published "${quizTitle}" (${generatedQuestions.length} Questions, ${calculatedTotal} Marks) to learner AI assessments!`);
-    setIsAiQuizModalOpen(false);
-    setGeneratedQuestions([]);
-    setQuizTopic('');
-    setActiveFilter('ai');
-    fetchAssignments();
-    setPublishingQuiz(false);
   };
 
   const handleCreateAssignment = async (e: React.FormEvent) => {
@@ -381,32 +308,6 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
     try {
       await assignmentService.createAssignment(body);
 
-      // If published as a quiz or test, also store in local AI assessments cache
-      if (formData.assignment_type !== 'homework') {
-        const localItem = {
-          id: `ai-${Date.now()}`,
-          title: formData.title,
-          subject: formData.subject,
-          grade: parseInt(formData.grade, 10),
-          due_date: new Date(`${formData.due_date}T${formData.due_time || '23:59'}`).toISOString(),
-          total_marks: parseFloat(formData.total_marks) || 50,
-          description: formData.description || `${formData.subject} assessment task.`,
-          item_type: 'ai_assessment',
-          assignment_type: formData.assignment_type,
-          total_submissions: 0,
-          pending_marking: 0,
-          signed_submissions: 0,
-          status: 'ungraded'
-        };
-        try {
-          let storedList = [];
-          const stored = localStorage.getItem('fusion_teacher_ai_assessments');
-          if (stored) storedList = JSON.parse(stored);
-          storedList.unshift(localItem);
-          localStorage.setItem('fusion_teacher_ai_assessments', JSON.stringify(storedList));
-        } catch (_) {}
-      }
-
       const typeLabel = formData.assignment_type === 'quiz' ? 'Quiz' : (formData.assignment_type === 'test' ? 'Test' : (formData.assignment_type === 'ai_assessment' ? 'AI Assessment' : 'Homework'));
       setSuccessMessage(`${typeLabel} published successfully! Enrolled learners and parents notified.`);
       setIsCreateModalOpen(false);
@@ -414,6 +315,7 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
       if (formData.assignment_type !== 'homework') {
         setActiveFilter('ai');
       }
+      await fetchAssignments();
       setFormData({
         title: '',
         subject: 'Mathematics',

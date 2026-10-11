@@ -196,37 +196,75 @@ exports.getOverviewStats = async (req, res) => {
     try {
         const teacherId = req.user.id;
 
-        const empRes = await db.query(
-            'SELECT full_name, surname, subjects, grades_taught, classes_taught FROM employees WHERE user_id = $1',
-            [teacherId]
-        );
+        const [empRes, taRes] = await Promise.all([
+            db.query(
+                'SELECT full_name, surname, subjects, grades_taught, classes_taught FROM employees WHERE user_id = $1',
+                [teacherId]
+            ).catch(() => ({ rows: [] })),
+            db.query(
+                'SELECT DISTINCT subject_name, class_name, grade_level FROM teacher_assignments WHERE teacher_id = $1',
+                [teacherId]
+            ).catch(() => ({ rows: [] }))
+        ]);
+
         const emp = empRes.rows[0] || {};
         const teacherName = `${emp.full_name || req.user.full_name || ''} ${emp.surname || req.user.surname || ''}`.trim();
-        const subjectsList = emp.subjects || [];
-        const gradesList = emp.grades_taught || [];
+        
+        const assignedSubjects = new Set([
+            ...(emp.subjects || []),
+            ...taRes.rows.map(r => r.subject_name).filter(Boolean)
+        ]);
+        const assignedGrades = Array.from(new Set([
+            ...(emp.grades_taught || []),
+            ...taRes.rows.map(r => r.grade_level).filter(Boolean)
+        ]));
+        const assignedClasses = Array.from(new Set([
+            ...(emp.classes_taught || []),
+            ...taRes.rows.map(r => r.class_name).filter(Boolean)
+        ]));
+
         const schoolId = resolveSchoolId(req);
 
-        const [learnersRes, announcementsRes, assignmentsRes] = await Promise.all([
+        const [learnersRes, announcementsRes, assignmentsRes, pendingMarkingRes, upcomingTestsRes] = await Promise.all([
             db.query(
-                `SELECT COUNT(DISTINCT id) FROM children WHERE school_id = $3 AND (($1::int[] IS NULL OR grade = ANY($1::int[])) OR ($2::text[] IS NULL OR subjects && $2::text[]))`,
-                [gradesList.length ? gradesList : null, subjectsList.length ? subjectsList : null, schoolId]
-            ),
-            db.query('SELECT COUNT(*) FROM announcements WHERE (school_id = $1 OR is_inter_school = TRUE) AND created_at >= NOW() - INTERVAL \'30 days\'', [schoolId]),
-            db.query('SELECT COUNT(*) FROM announcements WHERE school_id = $1 AND is_assignment = TRUE', [schoolId])
+                `SELECT COUNT(DISTINCT id) FROM children WHERE (school_id = $3 OR $3 IS NULL) AND (($1::int[] IS NULL OR grade = ANY($1::int[])) OR ($2::text[] IS NULL OR subjects && $2::text[]))`,
+                [assignedGrades.length ? assignedGrades : null, assignedSubjects.size ? Array.from(assignedSubjects) : null, schoolId]
+            ).catch(() => ({ rows: [{ count: 0 }] })),
+            db.query(
+                'SELECT COUNT(*) FROM announcements WHERE (school_id = $1 OR is_inter_school = TRUE) AND created_at >= NOW() - INTERVAL \'30 days\'',
+                [schoolId]
+            ).catch(() => ({ rows: [{ count: 0 }] })),
+            db.query(
+                'SELECT COUNT(*) FROM homework_assignments WHERE teacher_id = $1',
+                [teacherId]
+            ).catch(() => ({ rows: [{ count: 0 }] })),
+            db.query(
+                `SELECT COUNT(*) FROM homework_submissions s 
+                 JOIN homework_assignments a ON s.assignment_id::text = a.id::text 
+                 WHERE a.teacher_id = $1 AND (s.status IS NULL OR s.status != 'teacher_signed')`,
+                [teacherId]
+            ).catch(() => ({ rows: [{ count: 0 }] })),
+            db.query(
+                `SELECT COUNT(*) FROM homework_assignments 
+                 WHERE teacher_id = $1 AND (assignment_type IN ('quiz', 'test', 'ai_assessment')) AND (due_date >= CURRENT_DATE OR due_date IS NULL)`,
+                [teacherId]
+            ).catch(() => ({ rows: [{ count: 0 }] }))
         ]);
 
         const totalLearners = parseInt(learnersRes.rows[0]?.count, 10) || 0;
         const totalAnnouncements = parseInt(announcementsRes.rows[0]?.count, 10) || 0;
         const totalAssignments = parseInt(assignmentsRes.rows[0]?.count, 10) || 0;
+        const assessmentsAwaitingMarking = parseInt(pendingMarkingRes.rows[0]?.count, 10) || 0;
+        const upcomingTests = parseInt(upcomingTestsRes.rows[0]?.count, 10) || 0;
 
         const stats = {
             teacher_name: teacherName || 'Teacher',
-            subjects_assigned: subjectsList.length || 1,
+            subjects_assigned: assignedSubjects.size,
             total_learners: totalLearners,
-            classes_today: (emp.classes_taught && emp.classes_taught.length) ? emp.classes_taught.length : 2,
+            classes_today: assignedClasses.length,
             attendance_outstanding: 0,
-            assessments_awaiting_marking: totalAssignments,
-            upcoming_tests: Math.min(totalAssignments, 4),
+            assessments_awaiting_marking: assessmentsAwaitingMarking,
+            upcoming_tests: upcomingTests,
             recent_messages: 0,
             school_announcements: totalAnnouncements
         };
@@ -593,7 +631,9 @@ exports.getMySubjectsOverview = async (req, res) => {
             let ungradedSubmissions = 0;
             try {
                 const pendingRes = await db.query(
-                    `SELECT COUNT(*) FROM assignments WHERE LOWER(subject) = LOWER($1) AND grade = $2`,
+                    `SELECT COUNT(*) FROM homework_submissions s
+                     JOIN homework_assignments a ON s.assignment_id::text = a.id::text
+                     WHERE LOWER(a.subject) = LOWER($1) AND a.grade = $2 AND (s.status IS NULL OR s.status != 'teacher_signed')`,
                     [subjectName, gradeNum]
                 );
                 ungradedSubmissions = parseInt(pendingRes.rows[0]?.count, 10) || 0;
@@ -602,13 +642,16 @@ exports.getMySubjectsOverview = async (req, res) => {
             let upcomingTests = 0;
             try {
                 const testRes = await db.query(
-                    `SELECT COUNT(*) FROM announcements WHERE is_assignment = TRUE AND (LOWER(subject_target) = LOWER($1) OR subject_target IS NULL) AND (grade_target = $2 OR grade_target IS NULL)`,
+                    `SELECT COUNT(*) FROM homework_assignments
+                     WHERE LOWER(subject) = LOWER($1) AND grade = $2
+                       AND (assignment_type IN ('quiz', 'test', 'ai_assessment'))
+                       AND (due_date >= CURRENT_DATE OR due_date IS NULL)`,
                     [subjectName, gradeNum]
                 );
                 upcomingTests = parseInt(testRes.rows[0]?.count, 10) || 0;
             } catch (e) {}
 
-            let curriculumPace = 45;
+            let curriculumPace = 0;
             try {
                 const paceRes = await db.query(
                     `SELECT COUNT(DISTINCT p.notes) as task_count, COUNT(*) as total_marks 
@@ -622,12 +665,12 @@ exports.getMySubjectsOverview = async (req, res) => {
                 const totalMarks = parseInt(paceRes.rows[0]?.total_marks, 10) || 0;
 
                 if (totalMarks > 0) {
-                    curriculumPace = Math.min(100, Math.max(40, 30 + (taskCount * 20)));
+                    curriculumPace = Math.min(100, Math.max(10, Math.round((taskCount / Math.max(totalMarks, 1)) * 100)));
                 }
             } catch (e) {}
 
-            // Live Subject Attendance Rate calculated from real database records
-            let subjectAttendanceRate = 100;
+            // Live Subject Attendance Rate calculated from real database records (null if no records yet)
+            let subjectAttendanceRate = null;
             try {
                 const attRes = await db.query(
                     `SELECT 
