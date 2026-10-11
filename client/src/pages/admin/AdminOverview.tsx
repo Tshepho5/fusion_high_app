@@ -52,6 +52,7 @@ import {
   Sparkles,
   Layers,
   Filter,
+  User,
   UserCheck,
   MapPin,
   School,
@@ -1570,17 +1571,22 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           </span>
                         </div>
 
-                        {/* Bottom Banner Title */}
-                        <div className="absolute bottom-2 inset-x-3">
+                        {/* Bottom Banner Title with high contrast frosted container */}
+                        <div data-theme-preserve="true" className="absolute bottom-2 inset-x-2.5 p-2.5 rounded-xl bg-slate-950/85 backdrop-blur-md border border-white/20 shadow-lg">
                           <h3
                             onClick={() => setViewMoreSubject(sub)}
-                            className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors cursor-pointer truncate drop-shadow-md"
+                            style={{ color: '#FFFFFF' }}
+                            className="!text-white font-black text-sm md:text-base group-hover:!text-cyan-300 transition-colors cursor-pointer truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] tracking-tight leading-snug"
                             title={`Inspect ${sub.name}`}
                           >
                             {sub.name}
                           </h3>
-                          <p className="text-[11px] text-slate-200 font-medium truncate">
-                            {sub.teacher_name || 'Educator not assigned'}
+                          <p 
+                            style={{ color: '#67E8F9' }}
+                            className="!text-cyan-300 font-bold text-xs truncate mt-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] flex items-center gap-1.5"
+                          >
+                            <User className="w-3.5 h-3.5 shrink-0 text-cyan-400" />
+                            <span>{sub.teacher_name || 'Educator not assigned'}</span>
                           </p>
                         </div>
                       </div>
@@ -1673,17 +1679,22 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           </span>
                         </div>
 
-                        {/* Bottom Banner Title */}
-                        <div className="absolute bottom-2 inset-x-3">
+                        {/* Bottom Banner Title with high contrast frosted container */}
+                        <div data-theme-preserve="true" className="absolute bottom-2 inset-x-2.5 p-2.5 rounded-xl bg-slate-950/85 backdrop-blur-md border border-white/20 shadow-lg">
                           <h3
                             onClick={() => setViewMoreSubject(sub)}
-                            className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors cursor-pointer truncate drop-shadow-md"
+                            style={{ color: '#FFFFFF' }}
+                            className="!text-white font-black text-sm md:text-base group-hover:!text-cyan-300 transition-colors cursor-pointer truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] tracking-tight leading-snug"
                             title={`Inspect ${sub.name}`}
                           >
                             {sub.name}
                           </h3>
-                          <p className="text-[11px] text-slate-200 font-medium truncate">
-                            {sub.teacher_name || 'Educator not assigned'}
+                          <p 
+                            style={{ color: '#67E8F9' }}
+                            className="!text-cyan-300 font-bold text-xs truncate mt-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] flex items-center gap-1.5"
+                          >
+                            <User className="w-3.5 h-3.5 shrink-0 text-cyan-400" />
+                            <span>{sub.teacher_name || 'Educator not assigned'}</span>
                           </p>
                         </div>
                       </div>

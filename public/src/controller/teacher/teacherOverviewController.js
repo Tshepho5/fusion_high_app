@@ -64,12 +64,20 @@ function cleanClassName(clsStr, grade) {
     if (!clsStr) return `${grade || 10}A`;
     let s = String(clsStr).trim();
     s = s.replace(/\s*•\s*School\s*\d+/i, '').trim();
+    if (/^(10|11|12)(13|\d{2})$/.test(s)) {
+        const lead = s.substring(0, 2);
+        return `${lead}A`;
+    }
+    if (s === '13') return `${grade || 10}A`;
     if (s.toLowerCase().startsWith('grade ')) {
         const after = s.replace(/grade\s*/i, '').trim();
         if (/^\d{1,2}$/.test(after)) {
             return `${after}A`;
         }
         return after;
+    }
+    if (/^\d{1,2}$/.test(s)) {
+        return `${s}A`;
     }
     return s || `${grade || 10}A`;
 }
@@ -338,7 +346,7 @@ exports.getMySubjectsOverview = async (req, res) => {
                         const g = extractGradeFromClass(c);
                         return g !== null && !isNaN(g) ? g === gNum : false;
                     }).map(c => cleanClassName(c, gNum));
-                    const toAdd = gradeClasses.length > 0 ? gradeClasses : [`${gNum}A`];
+                    const toAdd = gradeClasses.length > 0 ? gradeClasses : (empClasses.length === 0 ? [`${gNum}A`] : []);
                     for (const cName of toAdd) {
                         const already = itemsToProcess.some(x => 
                             x.subjectName.toLowerCase() === sName.toLowerCase() && 
@@ -437,6 +445,23 @@ exports.getMySubjectsOverview = async (req, res) => {
                 console.error('Error auto-healing teacher assignments from staff_invites:', err);
             }
         }
+
+        // Deduplicate items strictly and clean class names
+        const deduplicatedItems = [];
+        const seenKeys = new Set();
+        for (const item of itemsToProcess) {
+            const cleanC = cleanClassName(item.className, item.gradeNum);
+            if (['1013', '1113', '1213', '13'].includes(cleanC)) continue;
+            const key = `${item.subjectName.toLowerCase()}_${item.gradeNum}_${cleanC.toLowerCase()}`;
+            if (!seenKeys.has(key)) {
+                seenKeys.add(key);
+                deduplicatedItems.push({
+                    ...item,
+                    className: cleanC
+                });
+            }
+        }
+        itemsToProcess = deduplicatedItems;
 
         // Strict isolation: if teacher has zero assigned subjects across all sources, return empty array
         if (itemsToProcess.length === 0) {
@@ -620,26 +645,39 @@ exports.getMySubjectsOverview = async (req, res) => {
                 }
             } catch (e) {}
 
-            // Resolve Timetable slot / room / period dynamically
-            let assignedPeriod = ((idx * 2) % 7) + 1;
-            let assignedRoom = `Room ${className}`;
-            if (subLower.includes('physic') || subLower.includes('chemistry') || subLower.includes('science')) {
-                assignedRoom = gradeNum === 10 ? 'Science Lab 1' : (gradeNum === 11 ? 'Science Lab 2' : 'Science Lab 3');
-            } else if (subLower.includes('account') || subLower.includes('commerce') || subLower.includes('econom')) {
-                assignedRoom = `Commerce Wing C${className.replace(/[^0-9]/g, '') || '10'}`;
-            }
+            // Authentic Room Lookup from classes table: DO NOT hardcode or invent fake rooms!
+            let authenticRoom = null;
+            try {
+                const roomRes = await db.query(
+                    `SELECT room_number FROM classes 
+                     WHERE (school_id = $1 OR $1 IS NULL) 
+                       AND (name ILIKE $2 OR name ILIKE $3)
+                     LIMIT 1`,
+                    [schoolId, className, `${gradeNum}${className}`]
+                );
+                if (roomRes.rows[0]?.room_number && roomRes.rows[0].room_number.trim()) {
+                    authenticRoom = roomRes.rows[0].room_number.trim();
+                }
+            } catch (e) {}
 
-            // Check actual timetable slot match
+            // Check if actual timetable slot has an admin-assigned room
+            let assignedPeriod = null;
             const matchedSlot = timetableSlots.find(s =>
                 s.grade === gradeNum &&
                 s.class_name === className &&
                 (s.subject.toLowerCase() === subLower || (teacherFullName && s.teacher.includes(teacherFullName)))
             );
             if (matchedSlot) {
-                const parsed = parsePeriodFromSlot(matchedSlot.period, assignedPeriod);
-                assignedPeriod = (parsed >= 1 && parsed <= 12) ? parsed : assignedPeriod;
-                if (matchedSlot.room) assignedRoom = matchedSlot.room;
+                const parsed = parsePeriodFromSlot(matchedSlot.period, 0);
+                if (parsed >= 1 && parsed <= 12) assignedPeriod = parsed;
+                if (matchedSlot.room && matchedSlot.room.trim()) {
+                    authenticRoom = matchedSlot.room.trim();
+                }
             }
+
+            const periodRoomText = authenticRoom
+                ? (assignedPeriod ? `Period ${assignedPeriod} • Room ${authenticRoom}` : `Room ${authenticRoom} • Scheduled`)
+                : 'Scheduled • Room Unassigned';
 
             subjectCards.push({
                 subject_name: subjectName,
@@ -652,8 +690,8 @@ exports.getMySubjectsOverview = async (req, res) => {
                 learner_count: learnerCount,
                 enrolled_count: learnerCount,
                 period: assignedPeriod,
-                room: assignedRoom,
-                period_room: `Period ${assignedPeriod} • ${assignedRoom}`,
+                room: authenticRoom,
+                period_room: periodRoomText,
                 ungraded_submissions: ungradedSubmissions,
                 upcoming_tests: upcomingTests,
                 recent_class_avg: avgMark,

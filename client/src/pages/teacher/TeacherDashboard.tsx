@@ -25,6 +25,7 @@ import { GelezaEarlyWarningRadar } from '../../components/teacher/GelezaEarlyWar
 import { ModulePageHeader } from '../../components/layout/WorkspaceChrome';
 import { TeacherMoreHub } from './TeacherMoreHub';
 import { TeacherDiscoverHub } from './TeacherDiscoverHub';
+import { ParentChildren } from '../parent/ParentChildren';
 import { useSchool } from '../../context/SchoolContext';
 import { moduleAllowed } from '../../utils/schoolModules';
 
@@ -125,6 +126,9 @@ export const TeacherDashboard: React.FC = () => {
         return 'App & Technical Settings';
       case 'profile':
         return 'Educator Profile';
+      case 'parent':
+      case 'my-children':
+        return 'My Children & Academic Performance';
       default:
         return 'Educator Workspace';
     }
@@ -135,6 +139,8 @@ export const TeacherDashboard: React.FC = () => {
       overview: 'Home',
       home: 'Home',
       more: 'Menu',
+      parent: 'My Children',
+      'my-children': 'My Children',
       discover: 'Discover',
       subjects: 'Subjects',
       classes: 'Subjects',
@@ -277,6 +283,9 @@ export const TeacherDashboard: React.FC = () => {
       {activeTab === 'early-warning' && <GelezaEarlyWarningRadar onNavigateTab={handleSelectTab} />}
       {activeTab === 'announcements' && <AnnouncementsFeed />}
       {activeTab === 'settings' && <LearnerSettings />}
+      {(activeTab === 'parent' || activeTab === 'my-children') && (
+        <ParentChildren onNavigateTab={handleSelectTab} />
+      )}
     </DashboardLayout>
   );
 };

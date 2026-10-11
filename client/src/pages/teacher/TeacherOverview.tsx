@@ -126,6 +126,24 @@ const classAverageLabel = (value: unknown): string | null => {
   return `${n % 1 === 0 ? n.toFixed(0) : n.toFixed(1)}%`;
 };
 
+export const formatCleanClass = (cls: any, grade: any = 10): string => {
+  const s = String(cls || '').trim();
+  if (/^(10|11|12)(13|\d{2})$/.test(s)) {
+    return s.replace(/^(10|11|12)(13|\d{2})$/, '$1A');
+  }
+  return s || `${grade}A`;
+};
+
+export const getPeriodRoomDisplay = (card: any): string => {
+  if (card?.period_room && !/room\s*(null|undefined|\d{3,4})/i.test(card.period_room) && !card.period_room.toLowerCase().includes('room null')) {
+    return card.period_room;
+  }
+  if (card?.room) {
+    return card.period ? `Period ${card.period} • Room ${card.room}` : `Room ${card.room} • Scheduled`;
+  }
+  return 'Scheduled • Room Unassigned';
+};
+
 interface TeacherOverviewProps {
   onNavigateTab: (tabId: string, params?: any) => void;
 }
@@ -352,11 +370,12 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
               id: `${c.subject_name || c.name}-${c.grade || 10}-${c.name || '10A'}`,
               subject_name: c.subject_name || 'Physical Sciences',
               grade: c.grade || 10,
-              class_name: c.name || c.class_name || `${c.grade || 10}A`,
+              class_name: formatCleanClass(c.name || c.class_name, c.grade || 10),
               code: c.subject_code || `${(c.subject_name || 'SUBJ').substring(0, 4).toUpperCase()}${c.grade || 10}`,
               stream: c.stream || 'Science',
               learner_count: 0,
-              period_room: `Room ${c.name || '10A'} • Scheduled`
+              room: c.room || null,
+              period_room: c.room ? `Room ${c.room} • Scheduled` : 'Scheduled • Room Unassigned'
             }));
             setSubjectsOverview(mapped);
           }
@@ -387,7 +406,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
             const digits = (c || '').replace(/•\s*school\s*\d+/i, '').replace(/school\s*\d+/i, '');
             return digits.includes(String(g)) || c.toLowerCase().includes(`grade ${g}`);
           }) || `${g}A`;
-          const matchedClass = rawClass.replace(/\s*•\s*School\s*\d+/i, '').trim();
+          const matchedClass = formatCleanClass(rawClass.replace(/\s*•\s*School\s*\d+/i, '').trim(), g);
           fallbackList.push({
             id: `${subName}-${g}-${matchedClass}`,
             subject_name: subName,
@@ -396,7 +415,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
             code: `${subName.substring(0, 4).toUpperCase()}${g}`,
             stream: subName.toLowerCase().includes('scien') || subName.toLowerCase().includes('physic') ? 'Science' : 'General',
             learner_count: 0,
-            period_room: `Room ${matchedClass} • Scheduled`
+            room: null,
+            period_room: 'Scheduled • Room Unassigned'
           });
         });
       });
@@ -415,7 +435,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
             const digits = (c || '').replace(/•\s*school\s*\d+/i, '').replace(/school\s*\d+/i, '');
             return digits.includes(String(g)) || c.toLowerCase().includes(`grade ${g}`);
           }) || `${g}A`;
-          const matchedClass = rawClass.replace(/\s*•\s*School\s*\d+/i, '').trim();
+          const matchedClass = formatCleanClass(rawClass.replace(/\s*•\s*School\s*\d+/i, '').trim(), g);
           fallbackList.push({
             id: `${subName}-${g}-${matchedClass}`,
             subject_name: subName,
@@ -424,7 +444,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
             code: `${subName.substring(0, 4).toUpperCase()}${g}`,
             stream: subName.toLowerCase().includes('scien') || subName.toLowerCase().includes('physic') ? 'Science' : 'General',
             learner_count: 0,
-            period_room: `Room ${matchedClass} • Scheduled`
+            room: null,
+            period_room: 'Scheduled • Room Unassigned'
           });
         });
       });
@@ -475,6 +496,14 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
             >
               <AlertCircle className="w-3.5 h-3.5 text-teal-800" />
               <span>Class Risk Briefing</span>
+            </button>
+            <button
+              onClick={() => onNavigateTab('parent')}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              title="Parent Portal: View your own children's performance and records"
+            >
+              <Users className="w-3.5 h-3.5 text-slate-950" />
+              <span>Parent View: My Children</span>
             </button>
           </div>
         </div>
@@ -595,7 +624,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
               >
             {displayCards.map((card: any, idx: number) => {
               const enrolledCount = card.learner_count ?? card.enrolled_count ?? 0;
-              const periodRoomText = card.period_room || (card.period ? `Period ${card.period} • ${card.room || 'Room ' + card.class_name}` : `Room ${card.room || card.class_name} • Scheduled`);
+              const periodRoomText = getPeriodRoomDisplay(card);
+              const cleanClass = formatCleanClass(card.class_name, card.grade);
               const coverImage = getSubjectCoverImage(card.subject_name);
 
               return (
@@ -617,7 +647,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-600 text-white shadow-sm">
-                          Grade {card.grade} • Class {card.class_name}
+                          Grade {card.grade} • Class {cleanClass}
                         </span>
                         {card.stream && (
                           <span className="px-1.5 py-0.5 rounded-md text-[9.5px] font-bold bg-amber-500/80 text-white uppercase tracking-wider">
@@ -634,7 +664,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     {/* Bottom Banner Title: Subject Name */}
                     <div className="absolute bottom-2 inset-x-3">
                       <h3
-                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
                         className="text-base font-extrabold text-white text-always-white group-hover:text-indigo-200 transition-colors cursor-pointer truncate drop-shadow-md"
                         title={`Open ${card.subject_name} Marksheet`}
                       >
@@ -663,7 +693,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     {/* Primary Action Buttons (Register & Marks) */}
                     <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => handleOpenSubjectAttendance(card)}
+                        onClick={() => handleOpenSubjectAttendance({ ...card, class_name: cleanClass })}
                         className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-cyan-500/10 text-slate-800 hover:text-cyan-700 dark:bg-white/5 dark:hover:bg-cyan-500/15 dark:text-slate-100 dark:hover:text-[#18E2EC] text-xs font-semibold border border-slate-200 hover:border-cyan-500/50 dark:border-white/10 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
                         title={`Class Attendance Register & QR Roll-Call for ${card.subject_name}`}
                       >
@@ -671,7 +701,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                         <span>Register</span>
                       </button>
                       <button
-                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
                         className="px-2.5 py-1.5 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
                         title={`Enter SBA Marks for ${card.subject_name}`}
                       >
@@ -684,7 +714,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     <div className="flex items-center justify-between gap-1.5 pt-2 border-t border-white/5">
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                          onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
                           className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-cyan-500/15 hover:border-cyan-500/50 text-slate-700 hover:text-cyan-700 dark:bg-white/5 dark:hover:bg-cyan-500/15 dark:text-slate-200 dark:hover:text-[#18E2EC] border border-slate-200 dark:border-white/10 transition-all flex items-center gap-1 text-[11px] font-medium shadow-sm cursor-pointer"
                           title={`Homework for ${card.subject_name}`}
                         >
@@ -708,7 +738,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       </div>
 
                       <button
-                        onClick={() => setViewAllSubject(card)}
+                        onClick={() => setViewAllSubject({ ...card, class_name: cleanClass })}
                         className="text-[11px] font-semibold text-slate-400 hover:text-white flex items-center gap-1 hover:underline pl-1 shrink-0 transition-colors cursor-pointer"
                         title="View all modules & tools for this subject"
                       >
@@ -729,7 +759,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
             {displayCards.map((card: any, idx: number) => {
               const enrolledCount = card.learner_count ?? card.enrolled_count ?? 0;
-              const periodRoomText = card.period_room || (card.period ? `Period ${card.period} • ${card.room || 'Room ' + card.class_name}` : `Room ${card.room || card.class_name} • Scheduled`);
+              const periodRoomText = getPeriodRoomDisplay(card);
+              const cleanClass = formatCleanClass(card.class_name, card.grade);
               const coverImage = getSubjectCoverImage(card.subject_name);
 
               return (
@@ -751,7 +782,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-600 text-white shadow-sm">
-                          Grade {card.grade} • Class {card.class_name}
+                          Grade {card.grade} • Class {cleanClass}
                         </span>
                         {card.stream && (
                           <span className="px-1.5 py-0.5 rounded-md text-[9.5px] font-bold bg-amber-500/80 text-white uppercase tracking-wider">
@@ -768,7 +799,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     {/* Bottom Banner Title */}
                     <div className="absolute bottom-2 inset-x-3">
                       <h3
-                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
                         className="text-base font-extrabold text-white text-always-white group-hover:text-indigo-200 transition-colors cursor-pointer truncate drop-shadow-md"
                         title={`Open ${card.subject_name} Marksheet`}
                       >
@@ -795,7 +826,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
 
                     <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => handleOpenSubjectAttendance(card)}
+                        onClick={() => handleOpenSubjectAttendance({ ...card, class_name: cleanClass })}
                         className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-cyan-500/10 text-slate-800 hover:text-cyan-700 dark:bg-white/5 dark:hover:bg-cyan-500/15 dark:text-slate-100 dark:hover:text-[#18E2EC] text-xs font-semibold border border-slate-200 hover:border-cyan-500/50 dark:border-white/10 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
                         title={`Register & QR Roll-Call for ${card.subject_name}`}
                       >
@@ -803,7 +834,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                         <span>Register</span>
                       </button>
                       <button
-                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
                         className="px-2.5 py-1.5 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
                         title={`Enter SBA Marks for ${card.subject_name}`}
                       >
@@ -815,7 +846,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     <div className="flex items-center justify-between gap-1.5 pt-2 border-t border-white/5">
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                          onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
                           className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-cyan-500/15 hover:border-cyan-500/50 text-slate-700 hover:text-cyan-700 dark:bg-white/5 dark:hover:bg-cyan-500/15 dark:text-slate-200 dark:hover:text-[#18E2EC] border border-slate-200 dark:border-white/10 transition-all flex items-center gap-1 text-[11px] font-medium shadow-sm cursor-pointer"
                           title={`Homework for ${card.subject_name}`}
                         >
@@ -839,7 +870,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       </div>
 
                       <button
-                        onClick={() => setViewAllSubject(card)}
+                        onClick={() => setViewAllSubject({ ...card, class_name: cleanClass })}
                         className="text-[11px] font-semibold text-slate-400 hover:text-white flex items-center gap-1 hover:underline pl-1 shrink-0 transition-colors cursor-pointer"
                         title="View all modules & tools for this subject"
                       >
@@ -860,7 +891,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
             {displayCards.map((card: any, idx: number) => {
               const enrolledCount = card.learner_count ?? card.enrolled_count ?? 0;
-              const periodRoomText = card.period_room || (card.period ? `Period ${card.period} • ${card.room || 'Room ' + card.class_name}` : `Room ${card.room || card.class_name} • Scheduled`);
+              const periodRoomText = getPeriodRoomDisplay(card);
+              const cleanClass = formatCleanClass(card.class_name, card.grade);
               const coverImage = getSubjectCoverImage(card.subject_name);
 
               return (
@@ -878,7 +910,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     <div data-theme-preserve="true" className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/20" />
                     <div className="absolute top-2 left-2">
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-600 text-white">
-                        Grade {card.grade} • {card.class_name}
+                        Grade {card.grade} • {cleanClass}
                       </span>
                     </div>
                     <div className="absolute bottom-1.5 inset-x-2.5">
@@ -899,7 +931,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
 
                     <div className="pt-1.5 border-t border-white/5 flex items-center justify-between">
                       <button
-                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
                         className="text-[10.5px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
                         title="Enter Marks"
                       >
@@ -907,7 +939,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                         <span>Marks</span>
                       </button>
                       <button
-                        onClick={() => setViewAllSubject(card)}
+                        onClick={() => setViewAllSubject({ ...card, class_name: cleanClass })}
                         className="text-[10.5px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-0.5 cursor-pointer"
                         title="View All Tools"
                       >
@@ -927,7 +959,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
           <div className="space-y-2.5">
             {displayCards.map((card: any, idx: number) => {
               const enrolledCount = card.learner_count ?? card.enrolled_count ?? 0;
-              const periodRoomText = card.period_room || (card.period ? `Period ${card.period} • ${card.room || 'Room ' + card.class_name}` : `Room ${card.room || card.class_name}`);
+              const periodRoomText = getPeriodRoomDisplay(card);
+              const cleanClass = formatCleanClass(card.class_name, card.grade);
               const coverImage = getSubjectCoverImage(card.subject_name);
 
               return (
@@ -945,7 +978,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                       <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-600 text-white">
-                        {card.class_name}
+                        {cleanClass}
                       </span>
                     </div>
 
@@ -955,7 +988,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                           Grade {card.grade}
                         </span>
                         <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                          Class {card.class_name}
+                          Class {cleanClass}
                         </span>
                         {card.stream && (
                           <span className="px-1.5 py-0.5 rounded-md text-[9.5px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">
@@ -969,7 +1002,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       </div>
 
                       <h3
-                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
                         className="text-base font-extrabold text-white group-hover:text-cyan-700 dark:group-hover:text-[#18E2EC] transition-colors cursor-pointer"
                       >
                         {card.subject_name}
@@ -984,7 +1017,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                   {/* Direct Module Action Buttons & View All */}
                   <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
                     <button
-                      onClick={() => handleOpenSubjectAttendance(card)}
+                      onClick={() => handleOpenSubjectAttendance({ ...card, class_name: cleanClass })}
                       className="px-3 py-1.5 rounded-xl bg-white hover:bg-cyan-500/10 text-slate-800 hover:text-cyan-700 dark:bg-white/5 dark:hover:bg-cyan-500/15 dark:text-slate-100 dark:hover:text-[#18E2EC] border border-slate-200 hover:border-cyan-500/50 dark:border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                       title="Register"
                     >
@@ -992,7 +1025,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       <span>Register</span>
                     </button>
                     <button
-                      onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                      onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
                       className="px-3 py-1.5 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                       title="Marks"
                     >
@@ -1000,7 +1033,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       <span>Marks</span>
                     </button>
                     <button
-                      onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                      onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
                       className="px-3 py-1.5 rounded-xl bg-white hover:bg-cyan-500/10 text-slate-800 hover:text-cyan-700 dark:bg-white/5 dark:hover:bg-cyan-500/15 dark:text-slate-100 dark:hover:text-[#18E2EC] border border-slate-200 hover:border-cyan-500/50 dark:border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                       title="Homework"
                     >
@@ -1008,7 +1041,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       <span>Homework</span>
                     </button>
                     <button
-                      onClick={() => setViewAllSubject(card)}
+                      onClick={() => setViewAllSubject({ ...card, class_name: cleanClass })}
                       className="px-3 py-1.5 rounded-xl bg-white hover:bg-cyan-500/10 text-slate-800 hover:text-cyan-700 dark:bg-white/5 dark:hover:bg-cyan-500/15 dark:text-slate-100 dark:hover:text-[#18E2EC] border border-slate-200 hover:border-cyan-500/50 dark:border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                       title="View All Functions"
                     >
@@ -1062,7 +1095,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>{attendanceModal.period_room || `Period ${attendanceModal.period || 1} • ${attendanceModal.room || 'Classroom'}`}</span>
+                  <span>{getPeriodRoomDisplay(attendanceModal)}</span>
                 </p>
               </div>
 
@@ -1330,7 +1363,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       Grade {viewAllSubject.grade}
                     </span>
                     <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-cyan-600 text-white shadow-sm">
-                      Class {viewAllSubject.class_name || `${viewAllSubject.grade}A`}
+                      Class {formatCleanClass(viewAllSubject.class_name, viewAllSubject.grade)}
                     </span>
                     {viewAllSubject.stream && (
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/80 text-white uppercase tracking-wider">
@@ -1343,7 +1376,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                   </h3>
                   <div className="text-xs text-slate-300 mt-1 flex items-center gap-2">
                     <Clock className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>{viewAllSubject.period_room || `Period ${viewAllSubject.period || 1} • ${viewAllSubject.room || 'Room ' + viewAllSubject.class_name}`}</span>
+                    <span>{getPeriodRoomDisplay(viewAllSubject)}</span>
                   </div>
                 </div>
 

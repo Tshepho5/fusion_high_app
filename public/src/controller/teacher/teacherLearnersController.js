@@ -457,9 +457,10 @@ exports.saveClassMarks = async (req, res) => {
 
             if (rawId && !isNaN(rawScore)) {
                 // Resolve canonical child record
+                // Resolve canonical child record with fallback verification
                 const idStr = rawId.toString().trim();
                 let childRes = await db.query(
-                    `SELECT id, learner_user_id, parent_id, grade, full_name, surname, learner_number 
+                    `SELECT id, learner_user_id, parent_id, grade, full_name, surname, learner_number, school_id 
                      FROM children 
                      WHERE id::text = $1 OR learner_user_id::text = $1 OR learner_number = $1 
                      LIMIT 1`,
@@ -471,6 +472,7 @@ exports.saveClassMarks = async (req, res) => {
                 let parentId = null;
                 let learnerFullName = 'Learner';
                 let childGrade = grade;
+                let childSchoolId = null;
 
                 if (childRes.rows.length > 0) {
                     const row = childRes.rows[0];
@@ -479,11 +481,58 @@ exports.saveClassMarks = async (req, res) => {
                     parentId = row.parent_id;
                     learnerFullName = `${row.full_name || ''} ${row.surname || ''}`.trim();
                     childGrade = row.grade || grade;
+                    childSchoolId = row.school_id;
                 } else if (!isNaN(parseInt(idStr, 10))) {
-                    childId = parseInt(idStr, 10);
+                    const parsedNum = parseInt(idStr, 10);
+                    const chCheck = await db.query(
+                        `SELECT id, learner_user_id, parent_id, grade, full_name, surname, school_id 
+                         FROM children WHERE id = $1`,
+                        [parsedNum]
+                    );
+                    if (chCheck.rows.length > 0) {
+                        const row = chCheck.rows[0];
+                        childId = row.id;
+                        learnerUserId = row.learner_user_id;
+                        parentId = row.parent_id;
+                        childGrade = row.grade || grade;
+                        childSchoolId = row.school_id;
+                    } else {
+                        // Check if it's a user in users table (e.g. role_id = 3 learner)
+                        const uCheck = await db.query(
+                            `SELECT id, full_name, surname, school_id FROM users WHERE id = $1`,
+                            [parsedNum]
+                        );
+                        if (uCheck.rows.length > 0) {
+                            const uRow = uCheck.rows[0];
+                            const chByUser = await db.query(
+                                `SELECT id, grade, school_id FROM children WHERE learner_user_id = $1`,
+                                [uRow.id]
+                            );
+                            if (chByUser.rows.length > 0) {
+                                childId = chByUser.rows[0].id;
+                                learnerUserId = uRow.id;
+                                childGrade = chByUser.rows[0].grade || grade;
+                                childSchoolId = chByUser.rows[0].school_id;
+                            } else {
+                                // Insert linked child record to satisfy FK
+                                const newChild = await db.query(
+                                    `INSERT INTO children (full_name, surname, learner_user_id, school_id, grade, created_at, updated_at)
+                                     VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+                                     RETURNING id`,
+                                    [uRow.full_name || 'Learner', uRow.surname || '', uRow.id, uRow.school_id || 14, grade]
+                                );
+                                childId = newChild.rows[0].id;
+                                learnerUserId = uRow.id;
+                                childSchoolId = uRow.school_id || 14;
+                            }
+                        }
+                    }
                 }
 
-                if (!childId) continue;
+                if (!childId) {
+                    console.warn(`[SAVE MARKS] Could not resolve valid child record for rawId: ${rawId}, skipping.`);
+                    continue;
+                }
 
                 // Calculate percentage score (0 - 100)
                 let pctScore = rawScore;
@@ -494,65 +543,69 @@ exports.saveClassMarks = async (req, res) => {
                 }
                 pctScore = Math.min(100, Math.max(0, pctScore));
 
-                // Display percentage instead of raw/total (e.g. (80%) instead of (80/50))
+                // Display percentage with exact assessment title (e.g. Controlled Test 1 (80%))
                 const remarkNote = `${assessmentTitle} (${pctScore}%)`;
 
-                // 1. UPSERT into progress table
-                const existingProgressRes = await db.query(
-                    `SELECT id FROM progress 
-                     WHERE child_id = $1 AND LOWER(subject) = LOWER($2) AND term = $3 
-                       AND (assessment_name = $4 OR notes ILIKE $5)
-                     ORDER BY id DESC LIMIT 1`,
-                    [childId, subject, term || 'Term 3 2026', assessmentTitle, `%${assessmentTitle}%`]
-                );
+                try {
+                    // 1. UPSERT into progress table (keyed by child_id, subject, term, and assessment_name)
+                    const existingProgressRes = await db.query(
+                        `SELECT id FROM progress 
+                         WHERE child_id = $1 AND LOWER(subject) = LOWER($2) AND term = $3 
+                           AND (assessment_name = $4 OR notes ILIKE $5)
+                         ORDER BY id DESC LIMIT 1`,
+                        [childId, subject, term || 'Term 3 2026', assessmentTitle, `%${assessmentTitle}%`]
+                    );
 
-                if (existingProgressRes.rows.length > 0) {
-                    await db.query(
-                        `UPDATE progress 
-                         SET grade = $1, score = $2, total_marks = $3, notes = $4, employee_id = COALESCE($5, employee_id),
-                             is_published = $6, assessment_name = $7, is_formal = $8, updated_at = NOW(), date = NOW()
-                         WHERE id = $9`,
-                        [pctScore, rawScore, maxMark, remarkNote, employeeId, isPublished, assessmentTitle, isFormal, existingProgressRes.rows[0].id]
+                    if (existingProgressRes.rows.length > 0) {
+                        await db.query(
+                            `UPDATE progress 
+                             SET grade = $1, score = $2, total_marks = $3, notes = $4, employee_id = COALESCE($5, employee_id),
+                                 is_published = $6, assessment_name = $7, is_formal = $8, updated_at = NOW(), date = NOW()
+                             WHERE id = $9`,
+                            [pctScore, rawScore, maxMark, remarkNote, employeeId, isPublished, assessmentTitle, isFormal, existingProgressRes.rows[0].id]
+                        );
+                    } else {
+                        await db.query(
+                            `INSERT INTO progress (child_id, subject, term, grade, score, total_marks, notes, employee_id, is_published, assessment_name, is_formal, date, updated_at)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())`,
+                            [childId, subject, term || 'Term 3 2026', pctScore, rawScore, maxMark, remarkNote, employeeId, isPublished, assessmentTitle, isFormal]
+                        );
+                    }
+
+                    // 2. UPSERT into marks table (distinguish Controlled Test 1, Controlled Test 2, Assignment, Exam)
+                    const existingMarksRes = await db.query(
+                        `SELECT id FROM marks
+                         WHERE (child_id = $1 OR learner_id = $1) AND (LOWER(subject) = LOWER($2) OR LOWER(subject_name) = LOWER($2))
+                           AND term = $3
+                           AND (
+                             LOWER(assessment_name) = LOWER($4)
+                             OR (COALESCE($4, '') = '' AND LOWER(assessment_type) = LOWER($5))
+                           )
+                         LIMIT 1`,
+                        [childId, subject, termNum, assessmentTitle, assessmentType]
                     );
-                } else {
-                    await db.query(
-                        `INSERT INTO progress (child_id, subject, term, grade, score, total_marks, notes, employee_id, is_published, assessment_name, is_formal, date, updated_at)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())`,
-                        [childId, subject, term || 'Term 3 2026', pctScore, rawScore, maxMark, remarkNote, employeeId, isPublished, assessmentTitle, isFormal]
-                    );
+
+                    if (existingMarksRes.rows.length > 0) {
+                        await db.query(
+                            `UPDATE marks
+                             SET score = $1, max_score = $2, percentage = $3, grade = $4, is_published = $5,
+                                 published_to_admin = $5, status = $6, assessment_name = $7, weight = $8,
+                                 is_formal = $9, assessment_type = $10, school_id = COALESCE($11, school_id), updated_at = NOW()
+                             WHERE id = $12`,
+                            [rawScore, maxMark, pctScore, childGrade, isPublished, isPublished ? 'published' : 'draft', assessmentTitle, customWeight, isFormal, assessmentType, childSchoolId, existingMarksRes.rows[0].id]
+                        );
+                    } else {
+                        await db.query(
+                            `INSERT INTO marks (learner_id, child_id, subject, subject_name, term, mark_type, score, max_score, percentage, grade, is_published, published_to_admin, status, assessment_name, weight, is_formal, assessment_type, recorded_by, school_id, recorded_at, updated_at)
+                             VALUES ($1, $1, $2, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW())`,
+                            [childId, subject, termNum, assessmentType, rawScore, maxMark, pctScore, childGrade, isPublished, isPublished ? 'published' : 'draft', assessmentTitle, customWeight, isFormal, assessmentType, teacherId, childSchoolId]
+                        );
+                    }
+
+                    savedCount++;
+                } catch (rowErr) {
+                    console.error(`[SAVE MARKS ROW ERROR] Error saving marks for child ${childId}:`, rowErr.message);
                 }
-
-                // 2. UPSERT into marks table (distinguish Controlled Test 1, Controlled Test 2, Assignment, Project, Exam)
-                const existingMarksRes = await db.query(
-                    `SELECT id FROM marks
-                     WHERE (child_id = $1 OR learner_id = $1) AND (LOWER(subject) = LOWER($2) OR LOWER(subject_name) = LOWER($2))
-                       AND term = $3
-                       AND (
-                         LOWER(assessment_name) = LOWER($4)
-                         OR (COALESCE($4, '') = '' AND LOWER(assessment_type) = LOWER($5))
-                       )
-                     LIMIT 1`,
-                    [childId, subject, termNum, assessmentTitle, assessmentType]
-                );
-
-                if (existingMarksRes.rows.length > 0) {
-                    await db.query(
-                        `UPDATE marks
-                         SET score = $1, max_score = $2, percentage = $3, grade = $4, is_published = $5,
-                             published_to_admin = $5, status = $6, assessment_name = $7, weight = $8,
-                             is_formal = $9, assessment_type = $10, updated_at = NOW()
-                         WHERE id = $11`,
-                        [rawScore, maxMark, pctScore, childGrade, isPublished, isPublished ? 'published' : 'draft', assessmentTitle, customWeight, isFormal, assessmentType, existingMarksRes.rows[0].id]
-                    );
-                } else {
-                    await db.query(
-                        `INSERT INTO marks (learner_id, child_id, subject, subject_name, term, mark_type, score, max_score, percentage, grade, is_published, published_to_admin, status, assessment_name, weight, is_formal, assessment_type, recorded_by, recorded_at, updated_at)
-                         VALUES ($1, $1, $2, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10, $11, $12, $13, $14, $15, NOW(), NOW())`,
-                        [childId, subject, termNum, assessmentType, rawScore, maxMark, pctScore, childGrade, isPublished, isPublished ? 'published' : 'draft', assessmentTitle, customWeight, isFormal, assessmentType, teacherId]
-                    );
-                }
-
-                savedCount++;
 
                 // If published, notify learner and parent
                 // When published, individual notification is dispatched via targeted notification service

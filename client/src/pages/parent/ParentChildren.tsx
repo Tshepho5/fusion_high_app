@@ -42,9 +42,10 @@ const SA_OFFICIAL_LANGUAGES = [
 
 interface ParentChildrenProps {
   childId?: string | number | null;
+  onNavigateTab?: (tabId: string, params?: any) => void;
 }
 
-export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId }) => {
+export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId, onNavigateTab }) => {
   const { currentSchool, schoolsList } = useSchool();
   const [children, setChildren] = useState<any[]>([]);
   const [selectedChild, setSelectedChild] = useState<any>(null);

@@ -691,13 +691,18 @@ exports.updateSchoolModules = async (req, res) => {
     if (!schoolId) {
       return res.status(400).json({ error: 'A school is required.' });
     }
-    if (!req.user?.is_superadmin && Number(req.user?.school_id) !== schoolId) {
+    const isAdmin = Boolean(req.user?.is_superadmin || req.user?.role_id === 1 || req.user?.role === 'admin');
+    if (!isAdmin && Number(req.user?.school_id) !== schoolId) {
       return res.status(403).json({ error: 'You can only choose modules for your own school.' });
     }
 
-    const linkedModules = linkSchoolModules(req.body.teacher_modules, req.body.learner_modules);
-    const teacherModules = linkedModules.teacher;
-    const learnerModules = linkedModules.learner;
+    const rawTeacher = Array.isArray(req.body.teacher_modules) ? req.body.teacher_modules.map(String) : [];
+    const rawLearner = Array.isArray(req.body.learner_modules) ? req.body.learner_modules.map(String) : [];
+
+    const linked = linkSchoolModules(rawTeacher, rawLearner);
+    const teacherModules = linked.teacher && linked.teacher.length > 0 ? linked.teacher : rawTeacher;
+    const learnerModules = linked.learner && linked.learner.length > 0 ? linked.learner : rawLearner;
+
     const updated = await db.query(
       `UPDATE schools
        SET teacher_modules = $1::jsonb, learner_modules = $2::jsonb
@@ -711,7 +716,7 @@ exports.updateSchoolModules = async (req, res) => {
     res.json({ success: true, school: updated.rows[0] });
   } catch (err) {
     console.error('Error saving school modules:', err.message);
-    res.status(500).json({ error: 'The school modules could not be saved.' });
+    res.status(500).json({ error: 'The modules could not be saved: ' + (err.message || 'Server error') });
   }
 };
 

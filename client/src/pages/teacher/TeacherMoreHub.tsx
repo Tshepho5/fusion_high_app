@@ -129,6 +129,15 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
 
     // 2. Classroom & Learner Management
     {
+      id: 'parent',
+      title: 'My Children & Academic Performance',
+      category: 'classroom',
+      icon: Users,
+      badge: 'Parent Role',
+      color: 'text-emerald-400',
+      iconBg: 'bg-emerald-500/15 border-emerald-500/30',
+    },
+    {
       id: 'messages',
       title: 'Message Hub',
       category: 'classroom',

@@ -8,7 +8,7 @@ import {
   defaultTeacherModules,
   readModuleList,
 } from '../../utils/schoolModules';
-import { Building2, Layers, CheckCircle2, X } from 'lucide-react';
+import { Building2, Layers, CheckCircle2, AlertCircle, X } from 'lucide-react';
 
 interface SchoolModulePreferencesProps {
   school?: SchoolProfile | null;
@@ -33,6 +33,7 @@ export const SchoolModulePreferences: React.FC<SchoolModulePreferencesProps> = (
   const [learnerModules, setLearnerModules] = useState<string[]>(defaultLearnerModules());
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [isError, setIsError] = useState(false);
 
   useEffect(() => {
     if (!activeSchool) return;
@@ -51,12 +52,15 @@ export const SchoolModulePreferences: React.FC<SchoolModulePreferencesProps> = (
   const save = async () => {
     setSaving(true);
     setMessage(null);
+    setIsError(false);
     try {
       await schoolRegistrationService.updateModules(schoolId, teacherModules, learnerModules);
       await refreshSchools();
+      setIsError(false);
       setMessage(`Saved! ${activeSchool.name} now has ${teacherModules.length} teacher modules and ${learnerModules.length} learner modules active.`);
       if (onSaved) onSaved();
     } catch (err: any) {
+      setIsError(true);
       setMessage(err?.response?.data?.error || 'The modules could not be saved.');
     } finally {
       setSaving(false);
@@ -99,8 +103,8 @@ export const SchoolModulePreferences: React.FC<SchoolModulePreferencesProps> = (
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-200 dark:border-white/10">
         {message ? (
-          <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+          <p className={`text-xs font-semibold flex items-center gap-1.5 ${isError ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-300'}`}>
+            {isError ? <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" /> : <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />}
             <span>{message}</span>
           </p>
         ) : <div />}
