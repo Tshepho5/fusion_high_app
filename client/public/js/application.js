@@ -175,56 +175,98 @@ function initSchoolSelector() {
   }
   updateSchoolDisplay();
 
+  function showLoadingSchools() {
+    schoolSelect.innerHTML = '';
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.disabled = true;
+    opt.selected = true;
+    opt.textContent = '⏳ Loading registered partner schools...';
+    schoolSelect.appendChild(opt);
+    if (emisTag) emisTag.textContent = 'Connecting...';
+    if (circuitText) circuitText.textContent = '📍 Loading registered schools...';
+    if (brandBadge) brandBadge.textContent = '⚡ Geleza SA Admissions';
+  }
+
   function showNoSchools() {
     schoolSelect.innerHTML = '';
     const opt = document.createElement('option');
     opt.value = '';
     opt.disabled = true;
     opt.selected = true;
-    opt.textContent = 'No approved school is registered yet';
+    opt.textContent = 'No approved school registered yet';
     schoolSelect.appendChild(opt);
-    if (emisTag) emisTag.textContent = 'Awaiting a principal';
-    if (circuitText) circuitText.textContent = 'A principal registers the school from the Geleza SA portal. It appears here after Geleza SA approves it.';
+    if (emisTag) emisTag.textContent = 'Awaiting registration';
+    if (circuitText) circuitText.textContent = 'Registered schools will automatically appear here once onboarded.';
     if (mottoText) mottoText.textContent = '';
     if (brandBadge) brandBadge.textContent = '⚡ Geleza SA Admissions';
     if (portalTitle) portalTitle.textContent = 'Learner Admission Application';
   }
 
-  showNoSchools();
+  showLoadingSchools();
 
-  fetch(`${API_BASE}/api/schools`)
-    .then(res => res.json())
-    .then(schools => {
-      if (!Array.isArray(schools) || schools.length === 0) {
-        showNoSchools();
-        return;
-      }
-      const currentVal = schoolSelect.value;
-      schoolSelect.innerHTML = '';
-      schools.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.id;
-        opt.setAttribute('data-slug', s.slug);
-        opt.setAttribute('data-emis', s.emis_number || '');
-        opt.setAttribute('data-circuit', s.circuit || '');
-        opt.setAttribute('data-motto', s.motto || '');
-        opt.textContent = s.name;
-        if (String(s.id) === String(currentVal) || (targetSchool && (s.slug === targetSchool || String(s.id) === targetSchool))) {
-          opt.selected = true;
+  const loadSchoolsData = async () => {
+    let schools = null;
+    const endpoints = [
+      `${API_BASE}/api/schools`,
+      '/api/schools',
+      'https://fusion-high-backend.onrender.com/api/schools'
+    ];
+
+    for (const ep of endpoints) {
+      try {
+        const res = await fetch(ep, { cache: 'no-cache' });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            schools = data;
+            break;
+          }
         }
-        schoolSelect.appendChild(opt);
-      });
-      updateSchoolDisplay();
-    })
-    .catch(err => console.warn('School list could not be loaded:', err));
+      } catch (_) {}
+    }
+
+    if (!schools || schools.length === 0) {
+      showNoSchools();
+      return;
+    }
+
+    const currentVal = schoolSelect.value;
+    schoolSelect.innerHTML = '';
+    schools.forEach((s, idx) => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.setAttribute('data-slug', s.slug || '');
+      opt.setAttribute('data-emis', s.emis_number || '');
+      opt.setAttribute('data-circuit', s.circuit || '');
+      opt.setAttribute('data-motto', s.motto || '');
+      opt.textContent = s.name;
+      if (
+        String(s.id) === String(currentVal) ||
+        (targetSchool && (s.slug === targetSchool || String(s.id) === targetSchool)) ||
+        (!currentVal && idx === 0)
+      ) {
+        opt.selected = true;
+      }
+      schoolSelect.appendChild(opt);
+    });
+    updateSchoolDisplay();
+  };
+
+  loadSchoolsData().catch(err => {
+    console.warn('School list fetch error:', err);
+    showNoSchools();
+  });
 }
 
 function initPaymentChoices() {
   const hidden = document.getElementById('payment_method_input');
   const payNow = document.getElementById('pay_now_input');
+  if (hidden) hidden.value = 'fee_waived';
+  if (payNow) payNow.value = 'false';
+
   const cardNow = document.getElementById('payment-choice-card-now');
   const cardLater = document.getElementById('payment-choice-card-later');
-  if (payNow) payNow.value = 'false';
   const paintChoice = (value) => {
     if (cardNow) cardNow.classList.toggle('payment-choice-card--active', value === 'pay_now');
     if (cardLater) cardLater.classList.toggle('payment-choice-card--active', value === 'eft_later');

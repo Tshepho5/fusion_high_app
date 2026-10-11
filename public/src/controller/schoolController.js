@@ -32,13 +32,14 @@ async function viewerFromRequest(req) {
 
 async function ensureGradeClasses(schoolId) {
   await db.query('ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id INTEGER');
+  await db.query('ALTER TABLE classes DROP CONSTRAINT IF EXISTS classes_name_key');
   for (let grade = 8; grade <= 12; grade += 1) {
-    const name = `${grade}`;
+    const name = `${grade}A`;
     await db.query(
       `INSERT INTO classes (name, grade, stream, school_id)
        SELECT $1, $2, 'General', $3
        WHERE NOT EXISTS (
-         SELECT 1 FROM classes WHERE school_id = $3 AND grade = $2 AND stream = 'General'
+         SELECT 1 FROM classes WHERE school_id = $3 AND grade = $2
        )`,
       [name, grade, schoolId]
     );
@@ -50,6 +51,8 @@ async function ensureGradeClasses(schoolId) {
  */
 exports.getAllSchools = async (req, res) => {
   try {
+    const { ensureDatabaseSchema } = require('../../../db/schemaEnsurer');
+    await ensureDatabaseSchema().catch(() => {});
     await ensureSchoolModuleColumns();
     const query = `
       SELECT 
@@ -456,6 +459,94 @@ exports.applySchool = async (req, res) => {
     ]);
 
     const createdApp = result.rows[0];
+
+    // Auto-provision school into schools table immediately so it is available everywhere in the system
+    let provisionedSchool = null;
+    try {
+      let slug = school_name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const existingSlug = await db.query('SELECT id FROM schools WHERE slug = $1', [slug]);
+      if (existingSlug.rows.length > 0) {
+        slug = `${slug}-${cleanEmis.slice(-4)}`;
+      }
+
+      const schoolInsert = await db.query(`
+        INSERT INTO schools (
+          name, slug, domain, emis_number, circuit, district, province,
+          physical_address, contact_email, contact_phone, principal_name,
+          primary_color, secondary_color, motto, curriculum_type, grade_range,
+          offered_streams, offered_languages, offered_subjects, sace_number, is_active,
+          teacher_modules, learner_modules
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, TRUE, $21::jsonb, $22::jsonb)
+        ON CONFLICT (emis_number) DO UPDATE SET
+          name = EXCLUDED.name,
+          is_active = TRUE
+        RETURNING *;
+      `, [
+        school_name.trim(), slug, `${slug}.co.za`, cleanEmis, circuit ? circuit.trim() : null, district.trim(), province.trim(),
+        physical_address.trim(), (contact_email || principal_email || '').trim().toLowerCase(), (contact_phone || principal_phone || '').trim(), `${firstName} ${surname}`,
+        primary_color || '#0284c7', secondary_color || '#06b6d4', (motto || 'Excellence in Education').trim(),
+        curriculum_type || 'CAPS (DBE)', grade_range || '8-12',
+        offered_streams || ['General', 'Science', 'Commerce', 'Tourism'],
+        offered_languages || ['English Home Language', 'English FAL', 'Sepedi Home Language', 'isiZulu Home Language'],
+        offered_subjects || [], (principal_sace_number || req.body.principal_sace || '').toString().trim() || null,
+        JSON.stringify(chosenTeacherModules),
+        JSON.stringify(chosenLearnerModules)
+      ]);
+
+      provisionedSchool = schoolInsert.rows[0];
+      await ensureGradeClasses(provisionedSchool.id);
+
+      // Create Principal User Account
+      const userInsert = await db.query(`
+        INSERT INTO users (
+          email, password_hash, role_id, school_id, is_superadmin,
+          full_name, surname, id_number, phone, country
+        )
+        VALUES ($1, $2, (SELECT id FROM roles WHERE name = 'admin'), $3, FALSE, $4, $5, $6, $7, 'South Africa')
+        ON CONFLICT (email) DO UPDATE SET
+          password_hash = EXCLUDED.password_hash,
+          role_id = EXCLUDED.role_id,
+          school_id = EXCLUDED.school_id,
+          full_name = EXCLUDED.full_name,
+          surname = EXCLUDED.surname
+        RETURNING id;
+      `, [
+        principal_email.trim().toLowerCase(), passHash, provisionedSchool.id,
+        firstName, surname, cleanId, principal_phone.trim()
+      ]);
+
+      const principalUserId = userInsert.rows[0].id;
+
+      // Create Employee Record
+      await db.query(`
+        INSERT INTO employees (user_id, full_name, surname, department_id, school_id, phone, email)
+        VALUES ($1, $2, $3, (SELECT id FROM departments ORDER BY id ASC LIMIT 1), $4, $5, $6)
+        ON CONFLICT (user_id) DO UPDATE SET
+          school_id = EXCLUDED.school_id,
+          full_name = EXCLUDED.full_name,
+          surname = EXCLUDED.surname;
+      `, [
+        principalUserId, firstName, surname,
+        provisionedSchool.id, principal_phone.trim(), principal_email.trim().toLowerCase()
+      ]).catch(() => {});
+
+      // Update school_applications to approved
+      await db.query(`
+        UPDATE school_applications
+        SET status = 'approved',
+            created_school_id = $1,
+            reviewed_at = CURRENT_TIMESTAMP,
+            executive_notes = 'Auto-approved and provisioned upon registration'
+        WHERE id = $2;
+      `, [provisionedSchool.id, createdApp.id]);
+
+      createdApp.status = 'approved';
+      createdApp.created_school_id = provisionedSchool.id;
+    } catch (provErr) {
+      console.warn('[SCHOOL REGISTER] Auto-provision warning:', provErr.message);
+    }
+
     delete createdApp.password_hash;
 
     emailService.sendSchoolApplicationReceivedNotice({
@@ -470,8 +561,9 @@ exports.applySchool = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: `School "${school_name.trim()}" is with Geleza SA for approval. Families can select it only after that approval.`,
+      message: `School "${school_name.trim()}" has been successfully registered and activated on Geleza SA. Families and learners can now select it immediately on application forms.`,
       application_number: appNumber,
+      school: provisionedSchool,
       application: createdApp
     });
   } catch (err) {

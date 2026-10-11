@@ -581,82 +581,21 @@
           <div class="upload-preview"></div>
         </div>
 
-        <!-- ================= APPLICATION FEE PAYMENT SELECTION ================= -->
-        <div class="form-group full-width panel-tint panel-tint-success">
-          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+        <!-- ================= APPLICATION FEES CURRENTLY PAUSED ================= -->
+        <div class="form-group full-width panel-tint panel-tint-success" style="border: 1px solid rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.08); border-radius: 12px; padding: 18px 20px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
             <h3 style="color: #34d399; font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; margin: 0;">
-              💳 Application Fee Processing (R250.00)
+              ✨ Admissions Application Fee Paused (100% Free Application)
             </h3>
             <span style="background: rgba(16, 185, 129, 0.2); color: #34d399; font-size: 12px; font-weight: 700; padding: 4px 14px; border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.4);">
-              Admission Fee: R250.00
+              Fee: R0.00 (Waived)
             </span>
           </div>
-          <p style="color: #94a3b8; font-size: 12.5px; line-height: 1.6; margin-bottom: 16px;">
-            To expedite processing, you can pay the <strong>R250.00 application fee</strong> immediately online, or opt to receive official school banking details via email to pay via EFT or ATM deposit within <strong>7 days</strong>.
+          <p style="color: #cbd5e1; font-size: 13px; line-height: 1.6; margin: 0;">
+            Application fees are currently paused across all partner high schools. You do not need to make any payment or enter banking details. Your application will be processed immediately upon submission at zero cost.
           </p>
-
-          <input type="hidden" id="payment_method_input" name="payment_method" value="card">
-          <input type="hidden" id="pay_now_input" name="pay_now" value="true">
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;" class="payment-method-grid">
-            <!-- Option A: Pay Now -->
-            <label id="payment-choice-card-now" class="payment-choice-card payment-choice-card--active">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <input type="radio" name="payment_choice_radio" id="pay_choice_now" value="pay_now" checked style="accent-color: #6366f1;">
-                <span style="font-weight: 700; color: #fff; font-size: 13px;">💳 Pay Online Immediately</span>
-              </div>
-              <span style="font-size: 11px; color: #94a3b8; margin-left: 24px; line-height: 1.4;">
-                Instant card / EFT payment. Application fee verified immediately for fast-track processing.
-              </span>
-            </label>
-
-            <!-- Option B: Pay Later via EFT (7 days) -->
-            <label id="payment-choice-card-later" class="payment-choice-card">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <input type="radio" name="payment_choice_radio" id="pay_choice_later" value="eft_later" style="accent-color: #6366f1;">
-                <span style="font-weight: 700; color: #fff; font-size: 13px;">🏦 Pay via School Bank Account (7 Days)</span>
-              </div>
-              <span style="font-size: 11px; color: #94a3b8; margin-left: 24px; line-height: 1.4;">
-                Receive an email with school banking details & reference. You have 7 days to pay. A reminder is sent 3 days before deadline.
-              </span>
-            </label>
-          </div>
-
-          <!-- Instant Card Checkout Details (Shown when Pay Now is active) -->
-          <div id="pay-now-details-card" style="margin-top: 14px; padding: 14px; background: rgba(30, 41, 59, 0.5); border-radius: 10px; border: 1px solid rgba(99, 102, 241, 0.3);">
-            <div style="font-size: 12px; color: #cbd5e1; font-weight: 600; margin-bottom: 8px;">
-              Demo Secure Card Payment (Fee: R250.00):
-            </div>
-            <div class="grid-3">
-              <div class="form-group">
-                <label for="demo_card_number" style="font-size: 11px;">Card Number</label>
-                <input type="text" id="demo_card_number" placeholder="4000 1234 5678 9010 (numbers only)" maxlength="19" data-type="numeric-only" value="4000123456789010">
-                <div class="field-error"></div>
-              </div>
-              <div class="form-group">
-                <label for="demo_card_exp" style="font-size: 11px;">Expiry (MM/YY)</label>
-                <input type="text" id="demo_card_exp" placeholder="12/28" maxlength="5" value="12/28">
-              </div>
-              <div class="form-group">
-                <label for="demo_card_cvv" style="font-size: 11px;">CVV</label>
-                <input type="text" id="demo_card_cvv" placeholder="123 (numbers only)" maxlength="4" data-type="numeric-only" value="888">
-                <div class="field-error"></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- EFT Banking Details Preview (Shown when Pay Later is active) -->
-          <div id="pay-later-details-card" style="display: none; margin-top: 14px; padding: 14px; background: rgba(30, 41, 59, 0.5); border-radius: 10px; border: 1px solid rgba(245, 158, 11, 0.3);">
-            <div style="font-size: 12px; color: #fbbf24; font-weight: 700; margin-bottom: 6px;">
-              🏛️ School Banking Details Preview:
-            </div>
-            <div id="school-bank-info-box" style="font-size: 12px; color: #cbd5e1; line-height: 1.6;">
-              Loading official banking details for selected school...
-            </div>
-            <div style="margin-top: 8px; font-size: 11px; color: #94a3b8; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;">
-              ⏳ <strong>7-Day Payment Deadline:</strong> Payment must reflect within 7 days. You will receive an automated email reminder 3 days before the deadline.
-            </div>
-          </div>
+          <input type="hidden" id="payment_method_input" name="payment_method" value="fee_waived">
+          <input type="hidden" id="pay_now_input" name="pay_now" value="false">
         </div>
 
         <!-- AI Verification Guarantee Notice -->

@@ -498,10 +498,10 @@ exports.linkSibling = async (req, res) => {
             if (!parent.email || parentIdNumber.length !== 13) {
                 return res.status(400).json({ error: 'The parent profile needs an email address and a 13-digit ID before an EFT sibling application can be held.' });
             }
+            const { ensureDatabaseSchema } = require('../../../db/schemaEnsurer');
+            await ensureDatabaseSchema().catch(() => {});
             const applicationService = require('../services/applicationService');
             const applicationNumber = applicationService.generateApplicationNumber(school.name || 'fusion-high');
-            const dueDate = new Date();
-            dueDate.setDate(dueDate.getDate() + 7);
             const address = (parent.physical_address || 'Address held on the parent account').trim();
             await db.query(
                 `INSERT INTO applications (
@@ -519,9 +519,9 @@ exports.linkSibling = async (req, res) => {
                     $9, $10, 'Parent',
                     $11, $12, $13, $14,
                     $15, $16,
-                    250, 'unpaid', $17,
-                    1500, 'unpaid',
-                    'sibling', $18, $19
+                    0.00, 'waived', NULL,
+                    0.00, 'waived',
+                    'sibling', $17, 'fee_waived'
                 )`,
                 [
                     applicationNumber,
@@ -540,9 +540,7 @@ exports.linkSibling = async (req, res) => {
                     address,
                     homeLangVal,
                     targetSchoolId,
-                    dueDate,
-                    parentId,
-                    method
+                    parentId
                 ]
             );
             const bankingInfo = siblingHold.banking_details || {

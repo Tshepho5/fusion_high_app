@@ -13,6 +13,7 @@ const curriculumService = require('../services/curriculumService');
 const paymentHold = require('../services/paymentHold');
 const { generateLearnerPasswordFromID } = require('./authController');
 const { isControlLocked } = require('./systemController');
+const { ensureDatabaseSchema } = require('../../../db/schemaEnsurer');
 
 // Ensure upload directory exists
 const appUploadDir = path.join(process.cwd(), 'uploads', 'applications');
@@ -175,7 +176,10 @@ const getRequestBaseUrl = (req) => {
  */
 exports.submitApplication = async (req, res) => {
   try {
-    // 0. Geleza SA Executive & Admin Portal Lock Verification
+    // 0. Auto-Ensure Database Schema & Tables/Columns exist
+    await ensureDatabaseSchema().catch(() => {});
+
+    // Geleza SA Executive & Admin Portal Lock Verification
     const lockState = await isControlLocked('parent_application');
     if (lockState && lockState.is_locked) {
       return res.status(403).json({
@@ -198,7 +202,7 @@ exports.submitApplication = async (req, res) => {
       });
     }
 
-    // Resolve School Tenant ID (Default: 1 - Fusion High, or 2..12 for partner schools)
+    // Resolve School Tenant ID (Default: 1 - Fusion High, or 2..15 for partner schools)
     const schoolId = parseInt(body.school_id || req.headers['x-school-id'], 10);
     let targetSchool = null;
     try {
@@ -263,13 +267,19 @@ exports.submitApplication = async (req, res) => {
     const stream = gradeApplied >= 10 ? (body.stream || 'Science') : 'General';
     const selectedSubjects = curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
 
-    const appFeeAmount = parseFloat(targetSchool.application_fee) || 250.00;
-    const regFeeAmount = parseFloat(targetSchool.registration_fee) || 1500.00;
-    const feeDueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7-day payment window
-    const paymentRef = body.payment_reference || `PAY-APP-${Date.now().toString().slice(-8)}`;
-    const hold = paymentHold.describe(body.payment_method, targetSchool, appFeeAmount, applicationNumber);
-    const feeStatus = 'unpaid';
-    const feePaidAt = null;
+    // Payments paused per system update: Application & Registration are 100% free / waived
+    const appFeeAmount = 0.00;
+    const regFeeAmount = 0.00;
+    const feeDueDate = null;
+    const paymentRef = body.payment_reference || `FREE-APP-${Date.now().toString().slice(-8)}`;
+    const hold = {
+      method: 'fee_waived',
+      status: 'waived',
+      message: 'Application fee waived (Admissions payments currently paused). Your application has been submitted for fast-track processing.',
+      banking_details: null
+    };
+    const feeStatus = 'waived';
+    const feePaidAt = new Date();
 
     // 2. Prepare Uploaded Documents Metadata
     const uploadedDocs = [];
@@ -464,7 +474,7 @@ exports.submitApplication = async (req, res) => {
       feePaidAt,
       feeDueDate,
       regFeeAmount,
-      'unpaid',
+      'waived',
       body.scenario || 'public_new_applicant',
       body.existing_parent_id ? parseInt(body.existing_parent_id, 10) : null,
       body.existing_learner_id ? parseInt(body.existing_learner_id, 10) : null,
@@ -646,12 +656,12 @@ exports.submitApplication = async (req, res) => {
       registrationUrl,
       application_fee_status: feeStatus,
       application_fee_amount: appFeeAmount,
-      application_fee_due_date: feeDueDate,
-      banking_details: bankingInfo,
-      payment_url: paymentUrl,
-      payment_held: true,
-      payment_method: hold.method,
-      message: hold.message
+      application_fee_due_date: null,
+      banking_details: null,
+      payment_url: null,
+      payment_held: false,
+      payment_method: 'fee_waived',
+      message: 'Admissions application received and submitted successfully! Application fees are currently waived / 100% free.'
     });
 
   } catch (err) {

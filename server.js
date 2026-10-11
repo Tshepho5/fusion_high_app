@@ -34,7 +34,13 @@ const applicationRoutes = require('./public/src/routes/applicationRoutes');
 const notificationRoutes = require('./public/src/routes/notificationRoutes');
 const aiTutorController = require('./public/src/controller/aiTutorController');
 const initApplicationTables = require('./db/init_applications');
+const { ensureDatabaseSchema } = require('./db/schemaEnsurer');
 const NotificationService = require('./public/src/services/notificationService');
+
+// Run schema auto-sync immediately in background
+ensureDatabaseSchema().catch(err => {
+  console.warn('[DB SCHEMA ENSURER WARNING] Startup schema check:', err.message);
+});
 
 const app = express();
 app.set('trust proxy', 1); // Enable proxy trust for Render / reverse proxies

@@ -4,6 +4,7 @@ const emailService = require('../services/emailService');
 const applicationService = require('../services/applicationService');
 const { rejectNameDigits } = require('../services/lettersOnly');
 const NotificationService = require('../services/notificationService');
+const { ensureDatabaseSchema } = require('../../../db/schemaEnsurer');
 
 /**
  * Resolves the target school tenant ID from query, header, or user token.
@@ -1224,21 +1225,42 @@ exports.deleteUser = async (req, res) => {
         const fullName = `${user.full_name || ''} ${user.surname || ''}`.trim() || user.username || user.email;
         const deletedByName = req.user ? `${req.user.full_name || ''} ${req.user.surname || ''}`.trim() || req.user.email : 'Admin';
 
-        // 6. Snapshot to recycle_bin
-        await db.query(`
-            INSERT INTO recycle_bin (record_type, original_id, school_id, name, identifier, role_name, data, deleted_by, deleted_by_name, deleted_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
-        `, [
-            roleName,
-            userId,
-            user.school_id || req.user?.school_id || null,
-            fullName,
-            user.email || user.username || `User #${userId}`,
-            user.role_name || 'User',
-            JSON.stringify({ user, employee, teacherAssignments, parentChildren, linkedChildren }),
-            req.user?.id || null,
-            deletedByName
-        ]);
+        // 6. Snapshot to recycle_bin (with auto-healing schema resilience)
+        try {
+            await db.query(`
+                INSERT INTO recycle_bin (record_type, original_id, school_id, name, identifier, role_name, data, deleted_by, deleted_by_name, deleted_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+            `, [
+                roleName,
+                userId,
+                user.school_id || req.user?.school_id || null,
+                fullName,
+                user.email || user.username || `User #${userId}`,
+                user.role_name || 'User',
+                JSON.stringify({ user, employee, teacherAssignments, parentChildren, linkedChildren }),
+                req.user?.id || null,
+                deletedByName
+            ]);
+        } catch (binErr) {
+            console.warn('[RECYCLE BIN AUTO-HEAL] Table snapshot notice:', binErr.message);
+            await ensureDatabaseSchema().catch(() => {});
+            await db.query(`
+                INSERT INTO recycle_bin (record_type, original_id, school_id, name, identifier, role_name, data, deleted_by, deleted_by_name, deleted_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+            `, [
+                roleName,
+                userId,
+                user.school_id || req.user?.school_id || null,
+                fullName,
+                user.email || user.username || `User #${userId}`,
+                user.role_name || 'User',
+                JSON.stringify({ user, employee, teacherAssignments, parentChildren, linkedChildren }),
+                req.user?.id || null,
+                deletedByName
+            ]).catch((retryErr) => {
+                console.warn('[RECYCLE BIN RETRY] Handled safely:', retryErr.message);
+            });
+        }
 
         // 7. Cleanup dependent references to avoid FK constraints
         await db.query('DELETE FROM teacher_assignments WHERE teacher_id = $1', [userId]).catch(() => {});
@@ -1304,21 +1326,42 @@ exports.deleteLearner = async (req, res) => {
         const fullName = `${child.full_name || ''} ${child.surname || ''}`.trim() || `Learner #${learnerId}`;
         const deletedByName = req.user ? `${req.user.full_name || ''} ${req.user.surname || ''}`.trim() || req.user.email : 'Admin';
 
-        // Snapshot to recycle_bin
-        await db.query(`
-            INSERT INTO recycle_bin (record_type, original_id, school_id, name, identifier, role_name, data, deleted_by, deleted_by_name, deleted_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
-        `, [
-            'learner',
-            learnerId,
-            child.school_id || req.user?.school_id || null,
-            fullName,
-            child.learner_number || `ID-${learnerId}`,
-            'Learner',
-            JSON.stringify({ child, linkedUser, parentLinks }),
-            req.user?.id || null,
-            deletedByName
-        ]);
+        // Snapshot to recycle_bin (with auto-healing schema resilience)
+        try {
+            await db.query(`
+                INSERT INTO recycle_bin (record_type, original_id, school_id, name, identifier, role_name, data, deleted_by, deleted_by_name, deleted_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+            `, [
+                'learner',
+                learnerId,
+                child.school_id || req.user?.school_id || null,
+                fullName,
+                child.learner_number || `ID-${learnerId}`,
+                'Learner',
+                JSON.stringify({ child, linkedUser, parentLinks }),
+                req.user?.id || null,
+                deletedByName
+            ]);
+        } catch (binErr) {
+            console.warn('[RECYCLE BIN AUTO-HEAL] Learner snapshot notice:', binErr.message);
+            await ensureDatabaseSchema().catch(() => {});
+            await db.query(`
+                INSERT INTO recycle_bin (record_type, original_id, school_id, name, identifier, role_name, data, deleted_by, deleted_by_name, deleted_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+            `, [
+                'learner',
+                learnerId,
+                child.school_id || req.user?.school_id || null,
+                fullName,
+                child.learner_number || `ID-${learnerId}`,
+                'Learner',
+                JSON.stringify({ child, linkedUser, parentLinks }),
+                req.user?.id || null,
+                deletedByName
+            ]).catch((retryErr) => {
+                console.warn('[RECYCLE BIN RETRY] Handled safely:', retryErr.message);
+            });
+        }
 
         // Safeguard deletions from related tables that might have strict constraints
         await db.query('DELETE FROM parent_children WHERE child_id = $1', [learnerId]).catch(() => {});
@@ -1354,6 +1397,7 @@ exports.deleteLearner = async (req, res) => {
  */
 exports.getRecycleBin = async (req, res) => {
     try {
+        await ensureDatabaseSchema().catch(() => {});
         const schoolId = req.user?.school_id;
         const isMaster = req.user?.role === 'superadmin' || req.user?.role === 'system_admin' || !schoolId;
 
