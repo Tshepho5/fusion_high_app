@@ -2252,6 +2252,9 @@ exports.updateUserProfile = async (req, res) => {
                     WHERE id = $9
                 `, [updatedFullName, updatedSurname, updatedEmail, updatedPhone, cleanSubjects, subjectCodes, cleanGrades, cleanClasses, emp.id]);
 
+                // Sync teacher_assignments table so educator mark registers and dropdowns immediately update
+                await syncTeacherAssignments(existingUser.id, existingUser.school_id, cleanSubjects, cleanGrades, cleanClasses);
+
                 // Dispatch email and in-app notifications if subjects were added
                 if (addedSubjects.length > 0) {
                     try {
@@ -2368,6 +2371,9 @@ exports.updateTeacherSubjects = async (req, res) => {
         `;
         const result = await db.query(updateQuery, [cleanSubjects, subjectCodes, cleanGrades, cleanClasses, emp.employee_id]);
         const updatedEmp = result.rows[0];
+
+        // Sync teacher_assignments table so educator mark registers and dropdowns immediately update
+        await syncTeacherAssignments(emp.user_id || emp.uid, emp.school_id, cleanSubjects, cleanGrades, cleanClasses);
 
         // If new subjects were added, send email and in-app message
         if (addedSubjects.length > 0) {
@@ -3670,6 +3676,45 @@ function cleanClassName(clsStr, grade) {
     return after;
   }
   return s || `${grade || 10}A`;
+}
+
+/**
+ * Helper to synchronize teacher_assignments table whenever an educator's subjects/classes are created or updated.
+ */
+async function syncTeacherAssignments(userId, schoolId, subjects, grades, classesList) {
+  if (!userId || !Array.isArray(subjects) || subjects.length === 0) return;
+  try {
+    await db.query('DELETE FROM teacher_assignments WHERE teacher_id = $1', [userId]);
+    const activeGrades = (Array.isArray(grades) && grades.length > 0) ? grades : [10];
+    const rawClasses = (Array.isArray(classesList) && classesList.length > 0) ? classesList : [];
+
+    for (const subj of subjects) {
+      for (const grade of activeGrades) {
+        const matchingClasses = rawClasses.filter(c => {
+          const g = extractGradeFromClass(c);
+          return g === null || isNaN(g) || g === grade;
+        }).map(c => cleanClassName(c, grade));
+        const classesToAssign = matchingClasses.length > 0 ? matchingClasses : [`${grade}A`];
+
+        for (const clsName of classesToAssign) {
+          const classLookup = await db.query(
+            'SELECT id FROM classes WHERE name = $1 AND (school_id = $2 OR school_id IS NULL) LIMIT 1',
+            [clsName, schoolId]
+          ).catch(() => ({ rows: [] }));
+          const classId = classLookup.rows[0]?.id || null;
+
+          await db.query(`
+            INSERT INTO teacher_assignments (teacher_id, subject_name, grade_level, class_name, class_id)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (teacher_id, subject_name, grade_level, class_name) 
+            DO UPDATE SET class_id = COALESCE(EXCLUDED.class_id, teacher_assignments.class_id);
+          `, [userId, subj, grade, clsName, classId]).catch(e => console.warn('Teacher assignment insert note:', e.message));
+        }
+      }
+    }
+  } catch (syncErr) {
+    console.warn('[syncTeacherAssignments error]', syncErr.message);
+  }
 }
 
 /**
