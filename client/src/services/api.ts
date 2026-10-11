@@ -328,7 +328,8 @@ export const teacherService = {
   getClassList: () => api.get('/api/teacher/classlist').then(res => res.data),
   getClassRoster: (params?: { grade?: number; class?: string; subject?: string; term?: string }) => 
     api.get(`/api/teacher/class-roster?grade=${params?.grade || ''}&class=${params?.class || ''}&subject=${encodeURIComponent(params?.subject || '')}&term=${encodeURIComponent(params?.term || '')}`).then(res => res.data),
-  getMyLearners: () => api.get('/api/teacher/my-learners').then(res => res.data),
+  getMyLearners: (params?: { subject?: string; grade?: number; class?: string }) => 
+    api.get('/api/teacher/my-learners', { params }).then(res => res.data),
   getAttendanceRoster: (params?: { grade?: number; class?: string; date?: string; subject?: string }) => 
     api.get(`/api/teacher/attendance-roster?grade=${params?.grade || ''}&class=${params?.class || ''}&date=${params?.date || ''}&subject=${params?.subject || ''}`).then(res => res.data),
   getAttendanceHistory: (params?: { class?: string; class_id?: string; date?: string; startDate?: string; endDate?: string; status?: string }) =>

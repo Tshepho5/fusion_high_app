@@ -154,9 +154,9 @@ exports.getClassList = async (req, res) => {
 
     try {
         const params = [subjectParam, schoolId];
-        let conditions = [`c.school_id = $2`];
+        let conditions = [`(c.school_id = $2 OR $2 IS NULL)`];
 
-        if (classParam) {
+        if (classParam && classParam !== 'None Selected' && classParam.toLowerCase() !== 'all') {
             params.push(classParam);
             const pIdx = params.length;
             conditions.push(`(cl.name ILIKE $${pIdx} OR cl.id::text = $${pIdx} OR CONCAT(c.grade, 'A') ILIKE $${pIdx} OR CONCAT('Grade ', c.grade, 'A') ILIKE $${pIdx})`);
@@ -231,7 +231,7 @@ exports.getClassList = async (req, res) => {
                        (SELECT p.is_published FROM progress p WHERE p.child_id = c.id ORDER BY p.id DESC LIMIT 1) as is_published
                 FROM children c
                 LEFT JOIN classes cl ON c.class_id = cl.id
-                WHERE c.grade = $1 AND c.school_id = $2
+                WHERE c.grade = $1 AND (c.school_id = $2 OR $2 IS NULL)
                 ORDER BY c.grade ASC, c.surname ASC, c.full_name ASC
             `, [parseInt(gradeParam, 10), schoolId]);
         }
@@ -252,7 +252,7 @@ exports.getClassList = async (req, res) => {
                        (SELECT p.is_published FROM progress p WHERE p.child_id = c.id ORDER BY p.id DESC LIMIT 1) as is_published
                 FROM children c
                 LEFT JOIN classes cl ON c.class_id = cl.id
-                WHERE c.school_id = $1
+                WHERE (c.school_id = $1 OR $1 IS NULL)
                 ORDER BY c.grade ASC, c.surname ASC, c.full_name ASC
             `, [schoolId]);
         }

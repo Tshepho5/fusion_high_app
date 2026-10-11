@@ -128,15 +128,18 @@ export const ASSESSMENT_COMPONENTS = [
   }
 ];
 
+const DEFAULT_SUBJECTS = ['Mathematics', 'Physical Sciences', 'Life Sciences', 'Accounting', 'Business Studies', 'Economics', 'English FAL'];
+const DEFAULT_CLASSES = ['10A', '10B', '11A', '12A'];
+
 export const TeacherAssessments: React.FC = () => {
   const [searchParams] = useSearchParams();
   const querySubject = searchParams.get('subject');
   const queryClass = searchParams.get('class');
 
-  const [subjects, setSubjects] = useState<string[]>(querySubject ? [querySubject] : []);
-  const [classes, setClasses] = useState<string[]>(queryClass ? [queryClass] : []);
-  const [selectedSubject, setSelectedSubject] = useState<string>(querySubject || '');
-  const [selectedClass, setSelectedClass] = useState<string>(queryClass || '');
+  const [subjects, setSubjects] = useState<string[]>(querySubject ? [querySubject, ...DEFAULT_SUBJECTS.filter(s => s !== querySubject)] : DEFAULT_SUBJECTS);
+  const [classes, setClasses] = useState<string[]>(queryClass ? [queryClass, ...DEFAULT_CLASSES.filter(c => c !== queryClass)] : DEFAULT_CLASSES);
+  const [selectedSubject, setSelectedSubject] = useState<string>(querySubject || DEFAULT_SUBJECTS[0]);
+  const [selectedClass, setSelectedClass] = useState<string>(queryClass || DEFAULT_CLASSES[0]);
 
   // Active Category View: 'formal' | 'term' | 'ai' | 'entry' | 'history'
   const [activeCategory, setActiveCategory] = useState<'formal' | 'term' | 'ai' | 'entry' | 'history'>('formal');
@@ -172,81 +175,150 @@ export const TeacherAssessments: React.FC = () => {
     return { level: 1, label: 'Not Achieved (0-29%)', variant: 'rose' as const };
   };
 
-  // 1. Load teacher assigned workload (strictly deduplicated and matching assigned subjects/grades)
+  // 1. Load teacher assigned workload, classes, and available subjects
   useEffect(() => {
     let isMounted = true;
-    teacherService.getMySubjectsOverview()
-      .then((res) => {
+
+    const loadWorkloadAndClasses = async () => {
+      try {
+        let extractedSubjects: string[] = [];
+        let extractedClasses: string[] = [];
+
+        // Source A: getMySubjectsOverview (active workload cards)
+        try {
+          const overview = await teacherService.getMySubjectsOverview();
+          const list = Array.isArray(overview) ? overview : [];
+          list.forEach((c: any) => {
+            if (c.subject_name) extractedSubjects.push(c.subject_name);
+            if (c.class_name) extractedClasses.push(c.class_name);
+            else if (c.grade) extractedClasses.push(`${c.grade}A`);
+          });
+        } catch (_) {}
+
+        // Source B: getClasses (teacher assigned class list)
+        try {
+          const clsRes = await teacherService.getClasses();
+          const list = Array.isArray(clsRes) ? clsRes : [];
+          list.forEach((c: any) => {
+            if (c.subject_name || c.subject) extractedSubjects.push(c.subject_name || c.subject);
+            if (c.name || c.class_name) extractedClasses.push(c.name || c.class_name);
+          });
+        } catch (_) {}
+
+        // Source C: getMyLearners (roster and mark register source)
+        try {
+          const learnersRes = await teacherService.getMyLearners();
+          const list = Array.isArray(learnersRes) ? learnersRes : (learnersRes?.learners || []);
+          list.forEach((l: any) => {
+            if (l.class_name) extractedClasses.push(l.class_name);
+            else if (l.grade) extractedClasses.push(`${l.grade}A`);
+            if (Array.isArray(l.subjects)) {
+              l.subjects.forEach((s: string) => extractedSubjects.push(s));
+            }
+          });
+        } catch (_) {}
+
         if (!isMounted) return;
-        const list = Array.isArray(res) ? res : [];
-        if (list.length > 0) {
-          const subNames = Array.from(new Set(list.map((c: any) => c.subject_name).filter(Boolean))) as string[];
-          const classNames = Array.from(new Set(list.map((c: any) => c.class_name || `${c.grade}A`).filter(Boolean))) as string[];
-          if (subNames.length > 0) {
-            setSubjects(subNames);
-            if (!querySubject || !subNames.includes(querySubject)) {
-              setSelectedSubject(subNames[0]);
-            }
-          }
-          if (classNames.length > 0) {
-            setClasses(classNames);
-            if (!queryClass || !classNames.includes(queryClass)) {
-              setSelectedClass(classNames[0]);
-            }
-          }
-          return;
-        }
-        return teacherService.getClasses();
-      })
-      .then((res: any) => {
-        if (!isMounted || !res) return;
-        const list = Array.isArray(res) ? res : [];
-        if (list.length > 0) {
-          const subNames = Array.from(new Set(list.map((c: any) => c.subject_name).filter(Boolean))) as string[];
-          const classNames = Array.from(new Set(list.map((c: any) => c.name || c.class_name).filter(Boolean))) as string[];
-          if (subNames.length > 0) {
-            setSubjects(subNames);
-            if (!selectedSubject) setSelectedSubject(subNames[0]);
-          }
-          if (classNames.length > 0) {
-            setClasses(classNames);
-            if (!selectedClass) setSelectedClass(classNames[0]);
-          }
-        }
-      })
-      .catch((err) => {
+
+        // Deduplicate and combine with default curriculum
+        const uniqueSubjects = Array.from(new Set([...extractedSubjects.filter(Boolean), ...DEFAULT_SUBJECTS]));
+        const uniqueClasses = Array.from(new Set([...extractedClasses.filter(Boolean), ...DEFAULT_CLASSES]));
+
+        setSubjects(uniqueSubjects);
+        setClasses(uniqueClasses);
+
+        setSelectedSubject(prev => {
+          if (querySubject && uniqueSubjects.includes(querySubject)) return querySubject;
+          if (prev && uniqueSubjects.includes(prev)) return prev;
+          return uniqueSubjects[0] || 'Mathematics';
+        });
+
+        setSelectedClass(prev => {
+          if (queryClass && uniqueClasses.includes(queryClass)) return queryClass;
+          if (prev && uniqueClasses.includes(prev)) return prev;
+          return uniqueClasses[0] || '10A';
+        });
+      } catch (err) {
         console.warn('Teacher workload load notice:', err);
-      })
-      .finally(() => {
+      } finally {
         if (isMounted) {
-          // If no classes exist or query is done, stop loading immediately
           setLoading(false);
           setLoadingHistory(false);
         }
-      });
+      }
+    };
+
+    loadWorkloadAndClasses();
 
     return () => { isMounted = false; };
   }, [searchParams]);
 
-  // 2. Load learners roster for selected class, subject, and term
-  const fetchRoster = () => {
-    if (!selectedClass) {
-      setLoading(false);
-      setLearners([]);
-      return;
-    }
+  // 2. Load learners roster for selected class, subject, and term (with multi-tier fallback to Mark Register & Roster)
+  const fetchRoster = async () => {
     setLoading(true);
     setError(null);
 
-    // Safeguard timeout: never allow infinite loading
     const safetyTimer = setTimeout(() => {
       setLoading(false);
-    }, 4000);
+    }, 5000);
 
-    teacherService.getClassRoster({ class: selectedClass, subject: selectedSubject, term })
-      .then((res: any) => {
-        clearTimeout(safetyTimer);
-        const roster = Array.isArray(res) ? res : res?.roster || res?.learners || [];
+    const targetClass = selectedClass || classes[0] || '10A';
+    const targetSubject = selectedSubject || subjects[0] || 'Mathematics';
+
+    try {
+      let roster: any[] = [];
+
+      // Tier 1: Primary class-roster endpoint
+      try {
+        const res = await teacherService.getClassRoster({
+          class: targetClass,
+          subject: targetSubject,
+          term
+        });
+        roster = Array.isArray(res) ? res : (res?.roster || res?.learners || []);
+      } catch (err) {
+        console.warn('Tier 1 getClassRoster notice:', err);
+      }
+
+      // Tier 2: Attendance Roster (Exact endpoint powering "Mark Register")
+      if (roster.length === 0) {
+        try {
+          const attRes = await teacherService.getAttendanceRoster({
+            class: targetClass === 'all' ? '' : targetClass,
+            date: new Date().toISOString().split('T')[0],
+            subject: targetSubject
+          });
+          const attList = Array.isArray(attRes) ? attRes : (attRes?.roster || []);
+          if (attList.length > 0) {
+            roster = attList;
+          }
+        } catch (err) {
+          console.warn('Tier 2 getAttendanceRoster notice:', err);
+        }
+      }
+
+      // Tier 3: Enrolled learners list (Exact endpoint powering "Roster")
+      if (roster.length === 0) {
+        try {
+          const myRes = await teacherService.getMyLearners({ subject: targetSubject });
+          const allList = Array.isArray(myRes) ? myRes : (myRes?.learners || []);
+          if (allList.length > 0) {
+            const filtered = (targetClass && targetClass !== 'all')
+              ? allList.filter((l: any) => 
+                  (l.class_name && l.class_name.toLowerCase() === targetClass.toLowerCase()) ||
+                  String(l.grade) === targetClass.replace(/[^0-9]/g, '')
+                )
+              : allList;
+            roster = filtered.length > 0 ? filtered : allList;
+          }
+        } catch (err) {
+          console.warn('Tier 3 getMyLearners notice:', err);
+        }
+      }
+
+      clearTimeout(safetyTimer);
+
+      if (roster.length > 0) {
         setLearners(roster.map((s: any) => {
           const baseMark = s.final_calculated_mark !== null && s.final_calculated_mark !== undefined 
             ? Math.round(parseFloat(s.final_calculated_mark)) 
@@ -269,9 +341,9 @@ export const TeacherAssessments: React.FC = () => {
             id: s.id || s.child_id,
             full_name: s.full_name || s.learner_name || s.name || 'Learner',
             surname: s.surname || s.learner_surname || '',
-            learner_number: s.learner_number || `2026${String(s.id).padStart(3, '0')}`,
-            grade: s.grade || parseInt(selectedClass.replace(/[^0-9]/g, ''), 10) || 10,
-            class_name: s.class_name || selectedClass || 'N/A',
+            learner_number: s.learner_number || (s.id ? `2026-FHS-${String(s.id).padStart(3, '0')}` : '2026-001'),
+            grade: s.grade || parseInt(targetClass.replace(/[^0-9]/g, ''), 10) || 10,
+            class_name: s.class_name || targetClass || '10A',
             test1: s.test1 || null,
             test2: s.test2 || null,
             assignment: s.assignment || null,
@@ -292,26 +364,22 @@ export const TeacherAssessments: React.FC = () => {
             inputMark: currentCompMark,
           };
         }));
-      })
-      .catch((err) => {
-        clearTimeout(safetyTimer);
-        console.error('Error fetching class roster for assessments:', err);
-        setError('Could not load class roster from database.');
+      } else {
         setLearners([]);
-      })
-      .finally(() => {
-        clearTimeout(safetyTimer);
-        setLoading(false);
-      });
+      }
+    } catch (err) {
+      clearTimeout(safetyTimer);
+      console.error('Error fetching class roster for assessments:', err);
+      setError('Could not load class roster from database.');
+      setLearners([]);
+    } finally {
+      clearTimeout(safetyTimer);
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    if (selectedClass) {
-      fetchRoster();
-    } else {
-      setLoading(false);
-      setLearners([]);
-    }
+    fetchRoster();
   }, [selectedClass, selectedSubject, term]);
 
   const handleSelectComponent = (compKey: 'test1' | 'test2' | 'assignment' | 'project' | 'exam' | 'quiz') => {
@@ -505,8 +573,8 @@ export const TeacherAssessments: React.FC = () => {
     return learners.reduce((sum, l) => sum + (l.ai_completed_count || 0), 0);
   }, [learners]);
 
-  const activeSubjectDisplay = selectedSubject || 'None Selected';
-  const activeClassDisplay = selectedClass || 'None Selected';
+  const activeSubjectDisplay = selectedSubject || subjects[0] || 'Mathematics';
+  const activeClassDisplay = selectedClass === 'all' ? 'All Classes' : (selectedClass || classes[0] || '10A');
 
   return (
     <div className="space-y-6 animate-fade-in text-slate-100 pb-12">
@@ -555,6 +623,7 @@ export const TeacherAssessments: React.FC = () => {
                 onChange={(e) => setSelectedClass(e.target.value)}
                 className="rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-[#13C8D9] cursor-pointer"
               >
+                <option value="all">All Classes</option>
                 {classes.map((cls) => (
                   <option key={cls} value={cls}>Class {cls}</option>
                 ))}
@@ -588,7 +657,7 @@ export const TeacherAssessments: React.FC = () => {
 
         <div className="text-xs text-slate-400 font-mono font-medium flex items-center gap-2">
           <Users className="w-3.5 h-3.5 text-[#13C8D9]" />
-          <span>{learners.length} Enrolled Learners in {selectedClass || 'Class'}</span>
+          <span>{learners.length} Enrolled Learners in {activeClassDisplay}</span>
         </div>
       </div>
 
@@ -1453,7 +1522,34 @@ export const TeacherAssessments: React.FC = () => {
             </div>
 
             {/* Assessment Config Controls Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 pt-3 border-t border-white/5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-white/5">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Target Class</label>
+                <select
+                  value={selectedClass}
+                  onChange={(e) => setSelectedClass(e.target.value)}
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-[#13C8D9] cursor-pointer"
+                >
+                  <option value="all">All Classes</option>
+                  {classes.map(c => (
+                    <option key={c} value={c}>Class {c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Target Subject</label>
+                <select
+                  value={selectedSubject}
+                  onChange={(e) => setSelectedSubject(e.target.value)}
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-[#13C8D9] cursor-pointer"
+                >
+                  {subjects.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Assessment Title</label>
                 <input
@@ -1538,7 +1634,7 @@ export const TeacherAssessments: React.FC = () => {
 
           {/* REQUIREMENT 4: Mark Input Table - Display list of learners in their respective classes */}
           <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 pb-4">
               <div>
                 <h3 className="text-base font-bold text-white">
                   Enter Scores: {assessmentName} — {activeClassDisplay}
@@ -1546,6 +1642,40 @@ export const TeacherAssessments: React.FC = () => {
                 <p className="text-xs text-slate-400 mt-0.5">
                   Subject: {activeSubjectDisplay} • Total: {totalMarks} Marks • {term} • Displaying learners in their respective classes
                 </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1 bg-surface-darker p-1 rounded-xl border border-white/10">
+                  <button
+                    onClick={() => setSelectedClass('all')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      selectedClass === 'all' ? 'bg-[#13C8D9] text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    All Classes
+                  </button>
+                  {classes.map(cls => (
+                    <button
+                      key={cls}
+                      onClick={() => setSelectedClass(cls)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                        selectedClass === cls ? 'bg-[#13C8D9] text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {cls}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={fetchRoster}
+                  disabled={loading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-darker hover:bg-white/5 border border-white/10 text-xs font-bold text-slate-300 hover:text-white transition-all cursor-pointer"
+                  title="Reload learners from class register and roster"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-[#13C8D9] ${loading ? 'animate-spin' : ''}`} />
+                  <span>Refresh List</span>
+                </button>
               </div>
             </div>
 
@@ -1606,9 +1736,24 @@ export const TeacherAssessments: React.FC = () => {
                 </table>
               </div>
             ) : (
-              <div className="p-8 text-center text-slate-400 text-xs bg-surface-darker rounded-2xl border border-white/5 space-y-1">
-                <p className="font-bold text-white">0 Learners Available</p>
+              <div className="p-8 text-center text-slate-400 text-xs bg-surface-darker rounded-2xl border border-white/5 space-y-3">
+                <p className="font-bold text-white text-sm">0 Learners Available</p>
                 <p>None available for class {activeClassDisplay}.</p>
+                <div className="flex items-center justify-center gap-2 pt-2">
+                  <button
+                    onClick={() => setSelectedClass('all')}
+                    className="px-3.5 py-2 rounded-xl bg-surface-dark hover:bg-white/5 border border-white/10 text-white font-bold text-xs transition-all cursor-pointer"
+                  >
+                    View All Classes
+                  </button>
+                  <button
+                    onClick={fetchRoster}
+                    className="px-4 py-2 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 font-bold text-xs transition-all shadow-md cursor-pointer inline-flex items-center gap-1.5"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Load Enrolled Learners</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
