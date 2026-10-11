@@ -59,6 +59,8 @@ interface TemplateLearner {
   teacher_comment: string;
   principal_comment: string;
   ai_advisory?: any;
+  has_missing_marks?: boolean;
+  missing_subjects?: string[];
 }
 
 interface TeacherSubmission {
@@ -88,6 +90,9 @@ export const ReportCardStudio: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [transferring, setTransferring] = useState(false);
+  const [downloadingBatch, setDownloadingBatch] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [downloadingLearnerId, setDownloadingLearnerId] = useState<number | null>(null);
 
   // Filters
   const [selectedGrade, setSelectedGrade] = useState<string>('10');
@@ -156,7 +161,9 @@ export const ReportCardStudio: React.FC = () => {
           promotion_decision: l.promotion_status || l.promotion_decision || (avg === null ? 'PENDING TEACHER MARKS' : (avg >= 50 ? "PROMOTED — PASS WITH BACHELOR'S DEGREE ADMISSION (CAPS REG. 3(1))" : 'PROMOTED — DIPLOMA PASS')),
           teacher_comment: l.teacher_comment || '',
           principal_comment: l.principal_comment || '',
-          ai_advisory: l.ai_advisory || null
+          ai_advisory: l.ai_advisory || null,
+          has_missing_marks: Boolean(l.has_missing_marks),
+          missing_subjects: Array.isArray(l.missing_subjects) ? l.missing_subjects : []
         };
       });
 
@@ -320,6 +327,84 @@ export const ReportCardStudio: React.FC = () => {
     }
   };
 
+  const triggerDownload = (data: BlobPart, filename: string, mimeType: string) => {
+    const blob = new Blob([data], { type: mimeType });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadBatchZip = async () => {
+    setDownloadingBatch(true);
+    try {
+      const res = await adminService.downloadBatchReportCardsZip({
+        grade: selectedGrade,
+        class_name: selectedClass !== 'All' ? selectedClass : undefined,
+        term: selectedTerm,
+        academicYear: academicYear
+      });
+      const termNum = String(selectedTerm).replace(/\D/g, '') || '1';
+      const classSuffix = selectedClass !== 'All' ? `_Class${selectedClass}` : '';
+      const filename = `ReportCards_${academicYear}_Grade${selectedGrade}${classSuffix}_Term${termNum}.zip`;
+      triggerDownload(res.data, filename, 'application/zip');
+      setToastMessage('✓ Downloaded Class Batch Report Cards (ZIP)!');
+      setTimeout(() => setToastMessage(null), 4000);
+    } catch (err: any) {
+      console.error('Failed to download batch ZIP:', err);
+      setToastMessage(`Batch download failed: ${err.message || 'Unknown error'}`);
+      setTimeout(() => setToastMessage(null), 5000);
+    } finally {
+      setDownloadingBatch(false);
+    }
+  };
+
+  const handleApproveReports = async () => {
+    setApproving(true);
+    try {
+      const res = await adminService.approveGradeReports({
+        grade: selectedGrade,
+        class_name: selectedClass !== 'All' ? selectedClass : undefined,
+        term: selectedTerm,
+        academic_year: academicYear
+      });
+      setToastMessage(`✓ ${res.message || `Grade ${selectedGrade} reports approved and locked!`}`);
+      setTimeout(() => setToastMessage(null), 5000);
+    } catch (err: any) {
+      console.error('Failed to approve reports:', err);
+      setToastMessage(`Approval failed: ${err.message || 'Unknown error'}`);
+      setTimeout(() => setToastMessage(null), 5000);
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const handleDownloadLearnerPdf = async (l: TemplateLearner) => {
+    setDownloadingLearnerId(l.child_id);
+    try {
+      const res = await adminService.downloadLearnerReportPdf(l.child_id, {
+        term: selectedTerm,
+        academicYear: academicYear
+      });
+      const termNum = String(selectedTerm).replace(/\D/g, '') || '1';
+      const cleanName = `${l.surname}_${l.full_name}`.replace(/\s+/g, '_');
+      const filename = `Report_${academicYear}_Grade${selectedGrade}_${cleanName}_Term${termNum}.pdf`;
+      triggerDownload(res.data, filename, 'application/pdf');
+      setToastMessage(`✓ Downloaded PDF report card for ${l.full_name} ${l.surname}`);
+      setTimeout(() => setToastMessage(null), 4000);
+    } catch (err: any) {
+      console.error('Failed to download PDF:', err);
+      setToastMessage(`PDF download failed: ${err.message || 'Unknown error'}`);
+      setTimeout(() => setToastMessage(null), 5000);
+    } finally {
+      setDownloadingLearnerId(null);
+    }
+  };
+
   const handleOpenPreview = (l: TemplateLearner) => {
     setPreviewLearner(l);
     setPreviewModalOpen(true);
@@ -378,6 +463,24 @@ export const ReportCardStudio: React.FC = () => {
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
+            </button>
+            <button
+              onClick={handleDownloadBatchZip}
+              disabled={downloadingBatch || learners.length === 0}
+              title="Download all report cards for this grade/class in a single ZIP file"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs shadow-md transition-all active:scale-95 disabled:opacity-50"
+            >
+              <Download className={`w-3.5 h-3.5 ${downloadingBatch ? 'animate-bounce' : ''}`} />
+              <span>{downloadingBatch ? 'Zipping...' : 'Batch ZIP'}</span>
+            </button>
+            <button
+              onClick={handleApproveReports}
+              disabled={approving || learners.length === 0}
+              title="Officially approve and sign off report cards for this grade"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-extrabold text-xs shadow-md transition-all active:scale-95 disabled:opacity-50"
+            >
+              <ShieldCheck className={`w-3.5 h-3.5 ${approving ? 'animate-spin' : ''}`} />
+              <span>{approving ? 'Approving...' : 'Approve Reports'}</span>
             </button>
             <button
               onClick={handleSaveTemplate}
@@ -636,11 +739,22 @@ export const ReportCardStudio: React.FC = () => {
                     <tr key={l.child_id} className="hover:bg-white/5 transition-colors">
                       {/* Learner Info */}
                       <td className="py-2.5 px-3 bg-surface-dark/60">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2">
                           <div>
-                            <p className="font-bold text-white leading-tight">
-                              {l.full_name} {l.surname}
-                            </p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-bold text-white leading-tight">
+                                {l.full_name} {l.surname}
+                              </p>
+                              {l.has_missing_marks && (
+                                <span
+                                  title={`Missing marks in: ${l.missing_subjects && l.missing_subjects.length > 0 ? l.missing_subjects.join(', ') : 'One or more subjects'}`}
+                                  className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-0.5 shrink-0"
+                                >
+                                  <AlertCircle className="w-3 h-3 text-amber-400" />
+                                  <span>Missing Marks</span>
+                                </span>
+                              )}
+                            </div>
                             <p className="text-[10px] font-mono text-slate-400">
                               {l.learner_number}
                             </p>
@@ -755,7 +869,7 @@ export const ReportCardStudio: React.FC = () => {
                         />
                       </td>
 
-                      {/* Actions: Preview Official Report Card & View AI Advisory */}
+                      {/* Actions: Preview Official Report Card, Download PDF & View AI Advisory */}
                       <td className="py-2.5 px-3 text-center">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
@@ -764,6 +878,14 @@ export const ReportCardStudio: React.FC = () => {
                             className="p-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/25 transition-all cursor-pointer"
                           >
                             <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDownloadLearnerPdf(l)}
+                            disabled={downloadingLearnerId === l.child_id}
+                            title="Download Official South African CAPS Report Card PDF"
+                            className="p-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/30 text-blue-300 border border-blue-500/25 transition-all cursor-pointer disabled:opacity-50"
+                          >
+                            <Download className={`w-4 h-4 ${downloadingLearnerId === l.child_id ? 'animate-bounce' : ''}`} />
                           </button>
                           <button
                             onClick={() => {

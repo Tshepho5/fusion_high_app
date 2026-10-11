@@ -3,6 +3,7 @@ const { resolveSchoolId } = require('../services/schoolScope');
 const emailService = require('../services/emailService');
 const { assertChildAccess } = require('../services/familyAccess');
 const aiAdvisorService = require('../services/aiAdvisorService');
+const reportCardPdfService = require('../services/reportCardPdfService');
 
 /**
  * Maps percentage mark to South African CAPS official 7-Point Achievement Rating Level
@@ -66,6 +67,9 @@ const calculateSouthAfricanPromotion = (subjects, overallAverage) => {
   }
 };
 
+exports.calculateSouthAfricanPromotion = calculateSouthAfricanPromotion;
+exports.getCapsLevel = getCapsLevel;
+
 /**
  * Compiles and fetches the Report Card Template Data for a specific Grade, Class, and Stream.
  * Aggregates all teacher-uploaded assessment marks and calculates the percentage each assessment holds.
@@ -88,23 +92,28 @@ exports.getGradeTemplateMarks = async (req, res) => {
       return res.status(403).json({ error: 'This account is not linked to a school.' });
     }
 
-    // 1. Fetch School Information safely
+    // 1. Fetch School Information strictly for the authenticated school
     let schoolInfo = {
-      name: 'Fusion High School',
-      emis_number: '911220001',
-      circuit: 'Polokwane Central Circuit',
-      district: 'Capricorn South District',
-      province: 'Limpopo',
-      physical_address: 'Polokwane Central, Limpopo, 0700',
-      postal_address: 'P.O. Box 1024, Polokwane, 0700',
-      contact_email: 'admin@fusionhigh.co.za',
-      contact_phone: '+27 15 291 0000',
-      principal_name: 'Dr. T. Makola'
+      id: schoolId,
+      name: 'Registered School',
+      emis_number: '',
+      circuit: '',
+      district: '',
+      province: '',
+      physical_address: '',
+      postal_address: '',
+      contact_email: '',
+      contact_phone: '',
+      principal_name: 'Principal',
+      logo_url: null,
+      badge_url: null,
+      report_settings: {}
     };
     try {
       const schoolRes = await db.query(
         `SELECT id, name, emis_number, circuit, district, province, physical_address,
-                contact_email, contact_phone, principal_name, logo_url, badge_url, motto
+                postal_address, contact_email, contact_phone, principal_name, logo_url,
+                badge_url, motto, report_settings
          FROM schools WHERE id = $1 LIMIT 1`,
         [schoolId]
       );
@@ -149,7 +158,7 @@ exports.getGradeTemplateMarks = async (req, res) => {
       }
     }
 
-    // 3. Fetch all enrolled learners for this Grade, Class, and Stream
+    // 3. Fetch all enrolled learners strictly for this School, Grade, Class, and Stream
     const params = [schoolId, grade];
     let classClause = '';
     if (className && className !== 'All') {
@@ -165,13 +174,14 @@ exports.getGradeTemplateMarks = async (req, res) => {
 
     const learnersQuery = `
       SELECT c.id, c.learner_user_id, c.full_name, c.surname, c.learner_number, c.grade, c.stream, c.subjects,
+             c.admission_number, c.id_number, c.dob,
              COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name,
              p.email as parent_email, CONCAT(p.full_name, ' ', p.surname) as parent_name, p.phone as parent_phone
       FROM children c
       LEFT JOIN classes cl ON c.class_id = cl.id
       LEFT JOIN parent_children pc ON c.id = pc.child_id
       LEFT JOIN users p ON pc.parent_id = p.id OR c.parent_id = p.id
-      WHERE (c.school_id = $1 OR $1 IS NULL) AND c.grade = $2
+      WHERE c.school_id = $1 AND c.grade = $2
       ${classClause}
       ${streamClause}
       ORDER BY c.surname ASC, c.full_name ASC;
@@ -179,37 +189,13 @@ exports.getGradeTemplateMarks = async (req, res) => {
 
     let { rows: learners } = await db.query(learnersQuery, params);
 
-    // Fallback: If no learners found for this specific school, load enrolled learners for this grade across the database
-    if (learners.length === 0) {
-      const fallbackParams = [grade];
-      let fallbackStream = '';
-      if (stream && stream !== 'All') {
-        fallbackParams.push(stream);
-        fallbackStream = `AND (c.stream = $${fallbackParams.length} OR c.stream IS NULL)`;
-      }
-      const fallbackQuery = `
-        SELECT c.id, c.learner_user_id, c.full_name, c.surname, c.learner_number, c.grade, c.stream, c.subjects,
-               COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name,
-               p.email as parent_email, CONCAT(p.full_name, ' ', p.surname) as parent_name, p.phone as parent_phone
-        FROM children c
-        LEFT JOIN classes cl ON c.class_id = cl.id
-        LEFT JOIN parent_children pc ON c.id = pc.child_id
-        LEFT JOIN users p ON pc.parent_id = p.id OR c.parent_id = p.id
-        WHERE c.grade = $1
-        ${fallbackStream}
-        ORDER BY c.surname ASC, c.full_name ASC;
-      `;
-      const fallbackRes = await db.query(fallbackQuery, fallbackParams);
-      learners = fallbackRes.rows;
-    }
-
-    // 4. Fetch already saved report_cards records if admin compiled before
+    // 4. Fetch already saved report_cards records strictly for this school
     let existingCardsMap = new Map();
     try {
       const existingCardsRes = await db.query(
         `SELECT * FROM report_cards
-         WHERE grade = $1 AND term = $2 AND academic_year = $3`,
-        [grade, termNum, academicYear]
+         WHERE school_id = $1 AND grade = $2 AND term = $3 AND academic_year = $4`,
+        [schoolId, grade, termNum, academicYear]
       );
       existingCardsRes.rows.forEach(rc => {
         existingCardsMap.set(rc.child_id, rc);
@@ -464,9 +450,13 @@ exports.getGradeTemplateMarks = async (req, res) => {
         promotion_status: existingCard?.promotion_status || promotionDecision,
         teacher_comment: existingCard?.teacher_comment || defaultTeacherComment,
         principal_comment: existingCard?.principal_comment || defaultPrincipalComment,
-        principal_signature: existingCard?.principal_signature || 'Dr. T. Makola (Signed)',
+        principal_signature: existingCard?.principal_signature || (schoolInfo?.principal_name ? `${schoolInfo.principal_name} (Signed)` : 'Principal (Signed)'),
         ai_advisory: existingCard?.ai_advisory || null,
-        is_published: existingCard ? !!existingCard.is_published : false
+        is_published: existingCard ? !!existingCard.is_published : false,
+        status: existingCard?.status || (existingCard?.is_published ? 'published' : (existingCard ? 'generated' : 'draft')),
+        has_missing_marks: (subjectOutcomes || []).some(s => s.mark === null || s.is_pending),
+        missing_marks_count: (subjectOutcomes || []).filter(s => s.mark === null || s.is_pending).length,
+        missing_subjects: (subjectOutcomes || []).filter(s => s.mark === null || s.is_pending).map(s => s.subject)
       });
     }
 
@@ -819,6 +809,365 @@ exports.publishGradeReportCards = async (req, res) => {
 };
 
 /**
+ * Builds the canonical South African DBE Multi-Term Report Card Data structure.
+ * Supports Term 1, Term 2, Term 3, Term 4 and Final for Year.
+ * Calculates real Grade Averages per subject across the school.
+ * Enforces strict school isolation.
+ */
+async function buildFullReportCardData(schoolId, childId, academicYear = 2026, targetTerm = 3) {
+  const tNum = parseInt(String(targetTerm || '3').replace(/[^0-9]/g, ''), 10) || 3;
+  const yr = parseInt(String(academicYear || '2026'), 10) || 2026;
+  const targetChildId = parseInt(childId, 10);
+  if (!targetChildId) return null;
+
+  // 1. Fetch Child and School Details
+  const childRes = await db.query(
+    `SELECT c.id, c.learner_user_id, c.full_name, c.surname, c.learner_number,
+            c.admission_number, c.id_number, c.dob, c.grade, c.stream, c.subjects,
+            c.home_language, c.school_id,
+            COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name,
+            u.id_number as user_id_number, u.dob as user_dob,
+            p.email as parent_email, CONCAT(p.full_name, ' ', p.surname) as parent_name,
+            p.phone as parent_phone
+     FROM children c
+     LEFT JOIN classes cl ON c.class_id = cl.id
+     LEFT JOIN users u ON c.learner_user_id = u.id
+     LEFT JOIN parent_children pc ON c.id = pc.child_id
+     LEFT JOIN users p ON pc.parent_id = p.id OR c.parent_id = p.id
+     WHERE c.id = $1
+     LIMIT 1`,
+    [targetChildId]
+  );
+
+  if (childRes.rows.length === 0) return null;
+  const child = childRes.rows[0];
+
+  // Strictly enforce school isolation
+  const resolvedSchoolId = child.school_id || schoolId;
+  if (schoolId && child.school_id && Number(schoolId) !== Number(child.school_id)) {
+    return { unauthorized_school: true };
+  }
+
+  // 2. Fetch School Record
+  const schoolRes = await db.query(
+    `SELECT id, name, emis_number, circuit, district, province, physical_address,
+            postal_address, contact_email, contact_phone, principal_name, logo_url,
+            badge_url, report_settings
+     FROM schools WHERE id = $1 LIMIT 1`,
+    [resolvedSchoolId]
+  );
+  const school = schoolRes.rows[0] || {
+    id: resolvedSchoolId,
+    name: 'Geleza SA Partner School',
+    emis_number: '',
+    circuit: '',
+    district: '',
+    province: '',
+    physical_address: '',
+    postal_address: '',
+    contact_email: '',
+    contact_phone: '',
+    principal_name: 'Principal',
+    logo_url: null,
+    badge_url: null,
+    report_settings: {}
+  };
+
+  // 3. Determine enrolled subjects
+  let studentSubjects = Array.isArray(child.subjects) && child.subjects.length > 0
+    ? [...child.subjects]
+    : [];
+
+  if (studentSubjects.length === 0) {
+    const subRes = await db.query(
+      `SELECT DISTINCT name FROM subjects WHERE grade = $1 ORDER BY name ASC`,
+      [child.grade]
+    );
+    studentSubjects = subRes.rows.map(s => s.name);
+  }
+
+  if (studentSubjects.length === 0) {
+    if (child.grade <= 6) {
+      studentSubjects = ['English First Additional Language', 'Life Skills', 'Mathematics', 'Natural Sciences and Technology', 'Sepedi Home Language', 'Social Sciences'];
+    } else if (child.stream === 'Commerce') {
+      studentSubjects = ['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Home Language', 'Life Orientation'];
+    } else {
+      studentSubjects = ['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation'];
+    }
+  }
+
+  // 4. Fetch grade-wide averages for each subject and term across this school
+  const gradeAvesRes = await db.query(
+    `SELECT LOWER(m.subject) as subject_lower, m.term,
+            ROUND(AVG(
+              CASE
+                WHEN m.percentage IS NOT NULL THEN m.percentage
+                WHEN m.max_score > 0 THEN (m.score::numeric / m.max_score::numeric) * 100
+                ELSE m.score
+              END
+            )) as grade_ave
+     FROM marks m
+     JOIN children c ON (m.child_id = c.id OR m.learner_id = c.id)
+     WHERE c.school_id = $1 AND c.grade = $2
+     GROUP BY LOWER(m.subject), m.term`,
+    [resolvedSchoolId, child.grade]
+  );
+  const gradeAveMap = {};
+  gradeAvesRes.rows.forEach(r => {
+    gradeAveMap[`${r.subject_lower}_term${r.term}`] = Number(r.grade_ave);
+  });
+
+  // 5. Fetch all marks recorded for this child across all terms
+  const childMarksRes = await db.query(
+    `SELECT subject, term, score, max_score, percentage, weight, is_formal, assessment_name
+     FROM marks
+     WHERE (child_id = $1 OR learner_id = $1)
+     ORDER BY term ASC, recorded_at ASC`,
+    [targetChildId]
+  );
+
+  const marksMap = {};
+  childMarksRes.rows.forEach(m => {
+    const subKey = (m.subject || '').trim().toLowerCase();
+    const t = parseInt(String(m.term).replace(/[^0-9]/g, ''), 10) || 1;
+    if (!marksMap[subKey]) marksMap[subKey] = {};
+    if (!marksMap[subKey][t]) marksMap[subKey][t] = [];
+    marksMap[subKey][t].push(m);
+  });
+
+  // 6. Fetch attendance by term
+  const attRes = await db.query(
+    `SELECT term,
+            COUNT(CASE WHEN status = 'absent' THEN 1 END) as days_absent,
+            COUNT(CASE WHEN status IN ('present', 'late') THEN 1 END) as days_present,
+            COUNT(*) as total_days
+     FROM attendance
+     WHERE child_id = $1
+     GROUP BY term`,
+    [targetChildId]
+  );
+  const attMap = {};
+  let totalAbsent = 0;
+  attRes.rows.forEach(r => {
+    const t = parseInt(String(r.term).replace(/[^0-9]/g, ''), 10) || 1;
+    const abs = parseInt(r.days_absent || 0, 10);
+    attMap[`term${t}`] = abs;
+    totalAbsent += abs;
+  });
+
+  // 7. Fetch existing saved report_cards record if present
+  const rcRes = await db.query(
+    `SELECT * FROM report_cards
+     WHERE child_id = $1 AND academic_year = $2 AND (term = $3 OR term IS NULL)
+     ORDER BY id DESC LIMIT 1`,
+    [targetChildId, yr, tNum]
+  );
+  const existingRc = rcRes.rows[0] || null;
+
+  // Build subject-by-subject multi-term data
+  const multiTermSubjects = [];
+  const termTotals = { term1: 0, term2: 0, term3: 0, term4: 0, final: 0 };
+  const termSubjectCounts = { term1: 0, term2: 0, term3: 0, term4: 0, final: 0 };
+
+  for (const sName of studentSubjects) {
+    const subKey = sName.trim().toLowerCase();
+    const subjectMarks = marksMap[subKey] || {};
+
+    const subjectRow = {
+      subject: sName,
+      term1: null,
+      term2: null,
+      term3: null,
+      term4: null,
+      final: null
+    };
+
+    const evaluatedTerms = [];
+
+    for (let t = 1; t <= 4; t++) {
+      const termMarks = subjectMarks[t] || [];
+      if (termMarks.length > 0) {
+        let totalW = 0;
+        let weightedSum = 0;
+        let scoreSum = 0;
+        let maxScoreSum = 0;
+
+        termMarks.forEach(m => {
+          const rawScore = Number(m.score) || 0;
+          const maxScore = Number(m.max_score) || 100;
+          const pct = m.percentage !== null && m.percentage !== undefined
+            ? Number(m.percentage)
+            : Math.round((rawScore / (maxScore || 100)) * 100);
+          const w = Number(m.weight) || maxScore || 100;
+
+          totalW += w;
+          weightedSum += pct * w;
+          scoreSum += rawScore;
+          maxScoreSum += maxScore;
+        });
+
+        const finalPct = totalW > 0 ? Math.round(weightedSum / totalW) : Math.round(scoreSum / (maxScoreSum || 100) * 100);
+        const caps = getCapsLevel(finalPct);
+        const gradeAve = gradeAveMap[`${subKey}_term${t}`] ?? null;
+
+        subjectRow[`term${t}`] = {
+          mark: finalPct,
+          level: caps.level,
+          grade_ave: gradeAve,
+          rating: caps.rating
+        };
+
+        termTotals[`term${t}`] += finalPct;
+        termSubjectCounts[`term${t}`]++;
+        evaluatedTerms.push(finalPct);
+      } else {
+        // Fallback: Check if existing compiled report_cards has marks_breakdown
+        if (existingRc && t === tNum && Array.isArray(existingRc.marks_breakdown)) {
+          const existingSub = existingRc.marks_breakdown.find(es => (es.subject || '').toLowerCase() === subKey);
+          if (existingSub && existingSub.mark !== null && existingSub.mark !== undefined) {
+            const mVal = Number(existingSub.mark);
+            const caps = getCapsLevel(mVal);
+            subjectRow[`term${t}`] = {
+              mark: mVal,
+              level: caps.level,
+              grade_ave: existingSub.grade_ave || gradeAveMap[`${subKey}_term${t}`] || null,
+              rating: caps.rating
+            };
+            termTotals[`term${t}`] += mVal;
+            termSubjectCounts[`term${t}`]++;
+            evaluatedTerms.push(mVal);
+          }
+        }
+      }
+    }
+
+    // Calculate Final for Year across evaluated terms
+    if (evaluatedTerms.length > 0) {
+      const finalMark = Math.round(evaluatedTerms.reduce((a, b) => a + b, 0) / evaluatedTerms.length);
+      const caps = getCapsLevel(finalMark);
+      const finalGradeAve = Math.round(
+        [1, 2, 3, 4]
+          .map(t => gradeAveMap[`${subKey}_term${t}`])
+          .filter(v => v !== null && v !== undefined)
+          .reduce((a, b, _, arr) => a + b / arr.length, 0)
+      ) || null;
+
+      subjectRow.final = {
+        mark: finalMark,
+        level: caps.level,
+        grade_ave: finalGradeAve,
+        rating: caps.rating
+      };
+
+      termTotals.final += finalMark;
+      termSubjectCounts.final++;
+    }
+
+    multiTermSubjects.push(subjectRow);
+  }
+
+  // Calculate Term Averages
+  const termAverages = {};
+  for (const tk of ['term1', 'term2', 'term3', 'term4', 'final']) {
+    termAverages[tk] = termSubjectCounts[tk] > 0
+      ? Math.round(termTotals[tk] / termSubjectCounts[tk])
+      : null;
+  }
+
+  // Determine Progression / Outcomes
+  const outcomes = {};
+  for (const tk of ['term1', 'term2', 'term3', 'term4']) {
+    const avg = termAverages[tk];
+    outcomes[tk] = avg !== null ? (avg >= 40 ? 'Achieved' : 'Not Achieved') : '-';
+  }
+  const finalAvg = termAverages.final;
+  outcomes.final = existingRc?.promotion_status || (finalAvg !== null ? (finalAvg >= 50 ? 'Promoted' : (finalAvg >= 40 ? 'Progressed' : 'Not Promoted')) : '-');
+
+  // Dates
+  const repSettings = school.report_settings || {};
+  const closingDate = existingRc?.closing_date || repSettings.closing_date || '2026/09/23';
+  const reopeningDate = existingRc?.reopening_date || repSettings.reopening_date || '2026/10/06';
+  const issueDate = existingRc?.issue_date || new Date().toISOString().substring(0, 10).replace(/-/g, '/');
+
+  // Teacher & Principal comments
+  const teacherComment = existingRc?.teacher_comment || (finalAvg !== null && finalAvg >= 70 ? 'Outstanding academic commitment demonstrated this term.' : (finalAvg !== null && finalAvg >= 50 ? 'Satisfactory academic progress shown. Continue working consistently.' : 'Needs focused academic intervention and regular revision.'));
+  const principalComment = existingRc?.principal_comment || (outcomes.final === 'Promoted' ? 'Promoted with commendation.' : 'Verified by School Administration.');
+
+  const cleanSurname = (child.surname || '').trim().toUpperCase();
+  const cleanFirst = (child.full_name || '').trim().toUpperCase();
+  const cleanName = cleanSurname ? `${cleanSurname}, ${cleanFirst}` : cleanFirst;
+
+  return {
+    school: {
+      id: school.id,
+      name: school.name || 'Geleza SA Registered School',
+      physical_address: school.physical_address || '',
+      postal_address: school.postal_address || '',
+      contact_phone: school.contact_phone || '',
+      contact_email: school.contact_email || '',
+      emis_number: school.emis_number || '',
+      principal_name: school.principal_name || 'Principal',
+      logo_url: school.logo_url || null,
+      badge_url: school.badge_url || null
+    },
+    learner: {
+      id: child.id,
+      full_name: cleanName,
+      first_name: child.full_name || '',
+      surname: child.surname || '',
+      learner_number: child.learner_number || '',
+      admission_number: child.admission_number || child.learner_number || 'N/A',
+      id_number: child.id_number || child.user_id_number || '',
+      dob: child.dob || child.user_dob || null,
+      grade: child.grade,
+      class_name: child.class_name || `${child.grade}A`,
+      stream: child.stream || 'General',
+      home_language: child.home_language || 'Sepedi'
+    },
+    meta: {
+      academic_year: yr,
+      current_term: tNum,
+      closing_date: closingDate,
+      reopening_date: reopeningDate,
+      issue_date: issueDate
+    },
+    subjects: multiTermSubjects,
+    summary: {
+      totals: {
+        term1: termSubjectCounts.term1 > 0 ? termTotals.term1 : null,
+        term2: termSubjectCounts.term2 > 0 ? termTotals.term2 : null,
+        term3: termSubjectCounts.term3 > 0 ? termTotals.term3 : null,
+        term4: termSubjectCounts.term4 > 0 ? termTotals.term4 : null,
+        final: termSubjectCounts.final > 0 ? termTotals.final : null
+      },
+      averages: termAverages,
+      outcome: outcomes,
+      attendance: {
+        term1_absent: attMap.term1 ?? 0,
+        term2_absent: attMap.term2 ?? 0,
+        term3_absent: attMap.term3 ?? 0,
+        term4_absent: attMap.term4 ?? 0,
+        total_absent: totalAbsent
+      }
+    },
+    remarks: {
+      teacher_comment: teacherComment,
+      principal_comment: principalComment,
+      general_remarks: existingRc?.general_remarks || teacherComment
+    },
+    signatures: {
+      educator_name: 'Class Educator',
+      hod_name: 'Department Head',
+      principal_name: school.principal_name || 'Principal',
+      parent_name: child.parent_name || 'Parent / Guardian'
+    },
+    status: existingRc?.status || (existingRc?.is_published ? 'published' : 'draft'),
+    is_published: Boolean(existingRc?.is_published),
+    ai_advisory: existingRc?.ai_advisory || null
+  };
+}
+
+/**
  * Returns full South African CAPS Report Card Data for a single learner (for printable view / PDF).
  */
 exports.getOfficialReportCardView = async (req, res) => {
@@ -826,6 +1175,7 @@ exports.getOfficialReportCardView = async (req, res) => {
     const childId = parseInt(req.query.childId || req.query.child_id || req.params?.childId, 10);
     const termNum = parseInt(String(req.query.term || '3').replace(/[^0-9]/g, ''), 10) || 3;
     const academicYear = parseInt(req.query.academic_year || req.query.academicYear || '2026', 10);
+    const userSchoolId = resolveSchoolId(req);
 
     if (!childId) {
       return res.status(400).json({ error: 'Child ID is required.' });
@@ -833,242 +1183,228 @@ exports.getOfficialReportCardView = async (req, res) => {
 
     if (!(await assertChildAccess(req, res, childId))) return;
 
-    // 1. Fetch learner and school data
-    const childRes = await db.query(
-      `SELECT c.*, s.name as school_name, s.emis_number, s.circuit, s.district, s.province,
-              s.physical_address, s.postal_address, s.contact_email, s.contact_phone, s.principal_name,
-              s.logo_url, s.badge_url,
-              cl.name as class_name,
-              p.full_name as parent_full_name, p.surname as parent_surname, p.phone as parent_phone
-       FROM children c
-       LEFT JOIN schools s ON c.school_id = s.id
-       LEFT JOIN classes cl ON c.class_id = cl.id
-       LEFT JOIN parent_children pc ON c.id = pc.child_id
-       LEFT JOIN users p ON pc.parent_id = p.id OR c.parent_id = p.id
-       WHERE c.id = $1 LIMIT 1`,
-      [childId]
-    );
+    const reportData = await buildFullReportCardData(userSchoolId, childId, academicYear, termNum);
 
-    if (childRes.rows.length === 0) {
+    if (!reportData) {
       return res.status(404).json({ error: 'Learner record not found.' });
     }
-    const child = childRes.rows[0];
 
-    // 2. Fetch report card record from report_cards
-    const cardRes = await db.query(
-      `SELECT * FROM report_cards
-       WHERE child_id = $1 AND term = $2
-       ORDER BY academic_year DESC, id DESC LIMIT 1`,
-      [childId, termNum]
-    );
+    if (reportData.unauthorized_school && !req.user?.is_superadmin) {
+      return res.status(403).json({ error: 'Access denied: learner belongs to a different school.' });
+    }
 
     const userRole = (req.user?.role || '').toLowerCase();
-    let reportCard = cardRes.rows[0];
-
     // If requester is a parent or learner and the card is not published:
-    if ((userRole === 'parent' || userRole === 'learner') && (!reportCard || !reportCard.is_published)) {
+    if ((userRole === 'parent' || userRole === 'learner') && (!reportData.is_published && reportData.status !== 'published')) {
       return res.json({
         success: true,
         is_published: false,
         not_published: true,
         message: 'Report Card for this term has not yet been published by the school administration.',
-        learner: {
-          full_name: `${child.full_name} ${child.surname}`.trim(),
-          learner_number: child.learner_number || '',
-          grade: child.grade,
-          stream: child.stream || 'Science',
-          class_name: child.class_name || `${child.grade}A`
-        }
+        learner: reportData.learner
       });
     }
 
-    let subjects = [];
-
-    if (reportCard && Array.isArray(reportCard.marks_breakdown)) {
-      subjects = reportCard.marks_breakdown;
-    } else {
-      // Fallback compile from marks table
-      const marksRes = await db.query(
-        `SELECT subject, score, max_score, percentage
-         FROM marks WHERE child_id = $1 AND (term = $2 OR term IS NULL)`,
-        [childId, termNum]
-      );
-      let studentSubs = Array.isArray(child.subjects) && child.subjects.length > 0
-        ? [...child.subjects]
-        : (child.stream === 'Commerce'
-          ? ['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Home Language', 'Life Orientation']
-          : ['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation']);
-
-      if (child.grade >= 10 && child.stream === 'Science' && !studentSubs.some(s => s.toLowerCase() === 'geography')) {
-        studentSubs.push('Geography');
-      }
-
-      subjects = studentSubs.map(s => {
-        const m = marksRes.rows.find(row => (row.subject || '').toLowerCase() === s.toLowerCase());
-        const rawScore = m ? Number(m.score) : null;
-        const maxScore = m ? (Number(m.max_score) || 100) : null;
-        const pct = m ? (m.percentage !== null && m.percentage !== undefined ? Number(m.percentage) : (rawScore !== null ? Math.round((rawScore / maxScore) * 100) : null)) : null;
-        const caps = pct !== null ? getCapsLevel(pct) : { level: '-', rating: 'Pending', descriptor: 'Pending Teacher Mark' };
-        return {
-          subject: s,
-          code: s.substring(0, 4).toUpperCase(),
-          mark_display: rawScore !== null && maxScore !== null ? `${rawScore} / ${maxScore}` : (pct !== null ? `${pct}%` : '-'),
-          raw_score: rawScore,
-          max_score: maxScore,
-          mark: pct,
-          percentage: pct,
-          average: null,
-          sba_mark: pct,
-          exam_mark: null,
-          level: caps.level,
-          rating: caps.rating,
-          descriptor: caps.descriptor,
-          comment: pct !== null ? 'Diligent academic performance shown.' : 'Awaiting marks upload.'
-        };
-      });
-    }
-
-    const gradedSubs = subjects.filter(s => s.mark !== null && s.mark !== undefined);
-    const totalMarks = gradedSubs.reduce((sum, s) => sum + Number(s.mark), 0);
-    const avg = reportCard?.overall_average !== null && reportCard?.overall_average !== undefined
-      ? Number(reportCard.overall_average)
-      : (gradedSubs.length > 0 ? Math.round(totalMarks / gradedSubs.length) : null);
-    const overallCaps = avg !== null ? getCapsLevel(avg) : { level: '-', rating: 'Pending', descriptor: 'Pending Teacher Mark' };
-    const promotionStatus = reportCard?.promotion_status || (avg !== null ? calculateSouthAfricanPromotion(subjects, avg) : 'PENDING TEACHER MARKS');
-
-    // Attendance
-    const daysPresent = reportCard?.days_present ?? 0;
-    const daysAbsent = reportCard?.days_absent ?? 0;
-    const totalDays = reportCard?.total_days ?? (daysPresent + daysAbsent);
-    const attRate = reportCard?.attendance_percentage ?? (totalDays > 0 ? Math.round((daysPresent / totalDays) * 100) : null);
-
-    const schoolData = {
-      name: child.school_name || 'Fusion High School',
-      emis_number: child.emis_number || '911220001',
-      circuit: child.circuit || 'Polokwane Central Circuit',
-      district: child.district || 'Capricorn South District',
-      province: child.province || 'Limpopo',
-      physical_address: child.physical_address || 'Polokwane Central, Limpopo, 0700',
-      postal_address: child.postal_address || 'P.O. Box 1024, Polokwane, 0700',
-      contact_email: child.contact_email || 'admin@fusionhigh.co.za',
-      contact_phone: child.contact_phone || '+27 15 291 0000',
-      principal_name: child.principal_name || 'Dr. T. Makola',
-      watermark_url: '/assets/fusion-app-icon.png',
-      logo_url: child.logo_url || '/assets/fusion-app-icon.png'
-    };
-
-    const rawChildName = (child.full_name || '').trim();
-    const rawChildSur = (child.surname || '').trim();
-    const cleanChildName = rawChildName.toLowerCase().endsWith(rawChildSur.toLowerCase())
-      ? rawChildName
-      : `${rawChildName} ${rawChildSur}`.trim();
-
-    const learnerData = {
-      full_name: cleanChildName,
-      first_name: rawChildName,
-      surname: rawChildSur,
-      learner_number: child.learner_number || `2026-FHS-${String(child.id).padStart(3, '0')}`,
-      grade: child.grade,
-      class_name: child.class_name || `${child.grade}A`,
-      stream: child.stream || 'Science',
-      parent_name: `${child.parent_full_name || ''} ${child.parent_surname || ''}`.trim() || 'Parent/Guardian',
-      parent_phone: child.parent_phone || 'N/A'
-    };
-
-    const formattedSubjects = subjects.map(s => {
-      const hasMark = s.mark !== null && s.mark !== undefined && !s.is_pending;
-      const numMark = hasMark ? Number(s.mark) : null;
-      const caps = numMark !== null ? getCapsLevel(numMark) : { level: '-', rating: 'Pending', descriptor: 'Pending Teacher Mark' };
+    // Flat subjects array for legacy component compatibility
+    const currentTermKey = `term${termNum}`;
+    const formattedSubjects = (reportData.subjects || []).map(s => {
+      const t = s[currentTermKey] || {};
+      const hasMark = t.mark !== null && t.mark !== undefined;
+      const numMark = hasMark ? Number(t.mark) : null;
+      const caps = numMark !== null ? getCapsLevel(numMark) : { level: '-', rating: 'Pending' };
       return {
         subject: s.subject,
-        code: s.code || s.subject.substring(0, 4).toUpperCase(),
-        mark_display: s.mark_display || (hasMark ? `${numMark}%` : '-'),
-        raw_score: s.raw_score ?? numMark,
-        max_score: s.max_score ?? (hasMark ? 100 : null),
+        code: s.subject.substring(0, 4).toUpperCase(),
+        mark_display: hasMark ? `${numMark}%` : '-',
         mark: numMark,
         percentage: numMark,
-        average: s.average ?? null,
-        sba_mark: s.sba_mark ?? numMark,
-        exam_mark: s.exam_mark ?? null,
+        average: t.grade_ave ?? null,
         level: caps.level,
         rating: caps.rating,
-        descriptor: caps.descriptor,
-        comment: s.comment || (hasMark ? 'Diligent academic performance shown.' : 'Awaiting marks upload.')
+        descriptor: caps.descriptor || caps.rating,
+        multi_term: {
+          term1: s.term1,
+          term2: s.term2,
+          term3: s.term3,
+          term4: s.term4,
+          final: s.final
+        }
       };
     });
 
-    const attendanceData = {
-      days_present: daysPresent,
-      days_absent: daysAbsent,
-      total_days: totalDays,
-      attendance_percentage: attRate
-    };
-
-    // Fetch or compute AI Advisory (Option A)
-    let aiAdvisory = reportCard?.ai_advisory || null;
-    if (!aiAdvisory && formattedSubjects.length > 0) {
-      const scoresMap = {};
-      formattedSubjects.forEach(s => { scoresMap[(s.subject || '').toLowerCase()] = s.mark; });
-      const aiPayload = {
-        math_score: scoresMap['mathematics'] || scoresMap['maths'] || scoresMap['math'] || avg || 75,
-        physics_score: scoresMap['physical sciences'] || scoresMap['physics'] || avg || 70,
-        chemistry_score: scoresMap['chemistry'] || scoresMap['physical sciences'] || avg || 70,
-        biology_score: scoresMap['life sciences'] || scoresMap['biology'] || avg || 72,
-        english_score: scoresMap['english fal'] || scoresMap['english'] || scoresMap['home language'] || avg || 75,
-        history_score: scoresMap['history'] || scoresMap['social sciences'] || avg || 70,
-        geography_score: scoresMap['geography'] || avg || 70,
-        absence_days: daysAbsent,
-        weekly_self_study_hours: 18,
-        extracurricular_activities: 1
-      };
-      try {
-        aiAdvisory = await aiAdvisorService.predictStudent(aiPayload);
-      } catch (_) {}
-    }
+    const overallAvg = reportData.summary?.averages?.[currentTermKey] ?? reportData.summary?.averages?.final;
+    const overallCaps = overallAvg !== null ? getCapsLevel(overallAvg) : { level: '-', rating: 'Pending' };
 
     res.json({
       success: true,
-      school: schoolData,
-      learner: learnerData,
+      school: reportData.school,
+      learner: reportData.learner,
       subjects: formattedSubjects,
-      attendance: attendanceData,
-      overall_average: avg,
+      attendance: {
+        days_present: 0,
+        days_absent: reportData.summary?.attendance?.total_absent ?? 0,
+        total_days: 0,
+        attendance_percentage: null
+      },
+      summary: reportData.summary,
+      overall_average: overallAvg,
       overall_level: overallCaps.level,
       overall_rating: overallCaps.rating,
-      promotion_status: promotionStatus,
+      promotion_status: reportData.summary?.outcome?.final || 'PROMOTED',
       term: `Term ${termNum}`,
       academic_year: academicYear,
-      ai_advisory: aiAdvisory,
-      report_card: {
-        school: schoolData,
-        learner: learnerData,
-        ai_advisory: aiAdvisory,
-        academic: {
-          term: termNum,
-          term_name: `Term ${termNum} ${academicYear}`,
-          academic_year: academicYear,
-          date_issued: new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
-          subjects: formattedSubjects,
-          total_marks: totalMarks,
-          overall_average: avg,
-          overall_level: overallCaps.level,
-          overall_rating: overallCaps.rating,
-          promotion_status: promotionStatus
-        },
-        attendance: attendanceData,
-        endorsements: {
-          teacher_comment: reportCard?.teacher_comment || 'An outstanding term with consistent dedication and positive progress.',
-          principal_comment: reportCard?.principal_comment || 'Promoted with commendation. Continue the high academic standard.',
-          principal_signature: reportCard?.principal_signature || 'Dr. T. Makola (Signed)',
-          principal_name: child.principal_name || 'Dr. T. Makola',
-          school_stamp: 'OFFICIAL SCHOOL EMBLEM & REGISTRAR SEAL'
-        }
-      }
+      ai_advisory: reportData.ai_advisory,
+      report_card: reportData
     });
 
   } catch (err) {
     console.error('Error fetching official report card view:', err);
     res.status(500).json({ error: 'Failed to retrieve report card view: ' + err.message });
+  }
+};
+
+/**
+ * Downloads a clean, official South African DBE Learner Report Card PDF.
+ */
+exports.downloadLearnerReportPdf = async (req, res) => {
+  try {
+    const childId = parseInt(req.query.childId || req.query.child_id || req.params?.childId, 10);
+    const termNum = parseInt(String(req.query.term || '3').replace(/[^0-9]/g, ''), 10) || 3;
+    const academicYear = parseInt(req.query.academic_year || req.query.academicYear || '2026', 10);
+    const userSchoolId = resolveSchoolId(req);
+
+    if (!childId) {
+      return res.status(400).json({ error: 'Child ID is required.' });
+    }
+
+    if (!(await assertChildAccess(req, res, childId))) return;
+
+    const reportData = await buildFullReportCardData(userSchoolId, childId, academicYear, termNum);
+
+    if (!reportData) {
+      return res.status(404).json({ error: 'Learner record not found.' });
+    }
+
+    if (reportData.unauthorized_school && !req.user?.is_superadmin) {
+      return res.status(403).json({ error: 'Access denied: learner belongs to a different school.' });
+    }
+
+    const userRole = (req.user?.role || '').toLowerCase();
+    if ((userRole === 'parent' || userRole === 'learner') && (!reportData.is_published && reportData.status !== 'published')) {
+      return res.status(403).json({ error: 'Report card has not yet been published by school administration.' });
+    }
+
+    const pdfBuffer = await reportCardPdfService.generateLearnerReportCardPdf(reportData);
+
+    const safeLearnerName = reportCardPdfService.sanitizeFilename(`${reportData.learner.surname}_${reportData.learner.first_name}`);
+    const safeGrade = reportCardPdfService.sanitizeFilename(String(reportData.learner.grade));
+    const safeClass = reportCardPdfService.sanitizeFilename(String(reportData.learner.class_name));
+    const filename = `GelezaSA_Report_${academicYear}_Grade${safeGrade}_Class${safeClass}_${safeLearnerName}_Term${termNum}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error('Error generating learner report PDF:', err);
+    res.status(500).json({ error: 'Failed to generate report card PDF: ' + err.message });
+  }
+};
+
+/**
+ * Downloads a batch ZIP of official South African DBE Report Card PDFs for an entire grade/class.
+ */
+exports.downloadBatchReportCardsZip = async (req, res) => {
+  try {
+    const grade = parseInt(req.query.grade || '10', 10);
+    const className = (req.query.class_name || req.query.class || req.query.className || '').trim();
+    const termNum = parseInt(String(req.query.term || '3').replace(/[^0-9]/g, ''), 10) || 3;
+    const academicYear = parseInt(req.query.academic_year || req.query.academicYear || '2026', 10);
+    const schoolId = parseInt(resolveSchoolId(req), 10);
+
+    if (!Number.isInteger(schoolId)) {
+      return res.status(403).json({ error: 'This account is not linked to a school.' });
+    }
+
+    const params = [schoolId, grade];
+    let classClause = '';
+    if (className && className !== 'All') {
+      params.push(className);
+      classClause = `AND (cl.name = $${params.length} OR c.class_id::text = $${params.length})`;
+    }
+
+    const { rows: learners } = await db.query(
+      `SELECT c.id FROM children c
+       LEFT JOIN classes cl ON c.class_id = cl.id
+       WHERE c.school_id = $1 AND c.grade = $2
+       ${classClause}
+       ORDER BY c.surname ASC, c.full_name ASC`,
+      params
+    );
+
+    if (learners.length === 0) {
+      return res.status(404).json({ error: 'No enrolled learners found for this grade and class.' });
+    }
+
+    const reportsList = [];
+    for (const l of learners) {
+      const rep = await buildFullReportCardData(schoolId, l.id, academicYear, termNum);
+      if (rep && !rep.unauthorized_school) {
+        reportsList.push(rep);
+      }
+    }
+
+    if (reportsList.length === 0) {
+      return res.status(404).json({ error: 'No report card data could be generated.' });
+    }
+
+    const zipBuffer = await reportCardPdfService.generateBatchReportCardsZip(reportsList);
+
+    const safeGrade = reportCardPdfService.sanitizeFilename(String(grade));
+    const safeClass = reportCardPdfService.sanitizeFilename(className || 'All');
+    const filename = `GelezaSA_Batch_Reports_${academicYear}_Grade${safeGrade}_Class${safeClass}_Term${termNum}.zip`;
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', zipBuffer.length);
+    res.send(zipBuffer);
+  } catch (err) {
+    console.error('Error generating batch report cards ZIP:', err);
+    res.status(500).json({ error: 'Failed to generate batch report cards: ' + err.message });
+  }
+};
+
+/**
+ * Approves compiled Grade Report Cards in the database (Admin only).
+ */
+exports.approveGradeReportCards = async (req, res) => {
+  try {
+    const { grade = 10, term = 3, academic_year = 2026, class_name } = req.body;
+    const targetSchoolId = resolveSchoolId(req);
+    const tNum = parseInt(term, 10);
+    const yr = parseInt(academic_year, 10);
+
+    let query = `
+      UPDATE report_cards
+      SET status = 'approved', approved_by = $1, approved_at = NOW(), updated_at = NOW()
+      WHERE school_id = $2 AND grade = $3 AND term = $4 AND academic_year = $5
+    `;
+    const params = [req.user?.id || null, targetSchoolId, grade, tNum, yr];
+    if (class_name && class_name !== 'All') {
+      params.push(class_name);
+      query += ` AND class_name = $${params.length}`;
+    }
+    query += ` RETURNING id`;
+
+    const result = await db.query(query, params);
+    res.json({
+      success: true,
+      message: `Successfully approved ${result.rows.length} report cards for Grade ${grade} Term ${tNum}. Ready for publication.`,
+      approved_count: result.rows.length
+    });
+  } catch (err) {
+    console.error('Error approving report cards:', err);
+    res.status(500).json({ success: false, error: 'Failed to approve report cards: ' + err.message });
   }
 };
 

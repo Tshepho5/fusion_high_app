@@ -449,6 +449,12 @@ export const adminService = {
     api.post('/api/report-cards/publish-grade-reports', payload).then(res => res.data),
   getOfficialReportCardView: (params: { childId: number | string; term?: string; academicYear?: string | number }) => 
     api.get('/api/report-cards/view-card', { params }).then(res => res.data),
+  approveGradeReports: (payload: { grade: string | number; class_name?: string; term?: string | number; academic_year?: string | number }) =>
+    api.post('/api/report-cards/approve', payload).then(res => res.data),
+  downloadLearnerReportPdf: (childId: number | string, params?: { term?: string | number; academic_year?: string | number; academicYear?: string | number }) =>
+    api.get(`/api/report-cards/download-pdf/${childId}`, { params, responseType: 'blob' }),
+  downloadBatchReportCardsZip: (params: { grade: string | number; class_name?: string; term?: string | number; academic_year?: string | number; academicYear?: string | number }) =>
+    api.get('/api/report-cards/batch-pdf', { params, responseType: 'blob' }),
 };
 
 // Parent Portal APIs (children, progress, attendance, messages)
