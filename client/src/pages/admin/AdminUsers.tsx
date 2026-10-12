@@ -1046,7 +1046,7 @@ export const AdminUsers: React.FC = () => {
 
           <button
             onClick={() => setIsAddLearnerModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-sm transition-all"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all"
           >
             <GraduationCap className="w-4 h-4 text-white" />
             <span>+ Enroll Learner</span>
@@ -3031,7 +3031,7 @@ export const AdminUsers: React.FC = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-extrabold shadow-sm transition-all disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold shadow-sm transition-all disabled:opacity-50"
             >
               {submitting ? 'Enrolling in Database...' : 'Enroll Learner'}
             </button>
