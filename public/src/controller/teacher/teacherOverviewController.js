@@ -49,6 +49,8 @@ function extractGradeFromClass(clsStr) {
     const str = String(clsStr).trim();
     const gMatch = str.match(/\bgrade\s*(\d{1,2})\b/i);
     if (gMatch) return parseInt(gMatch[1], 10);
+    const classDistorted = str.match(/\b(?:class\s*)?(10|11|12)(?:13|\d{2})\b/i);
+    if (classDistorted) return parseInt(classDistorted[1], 10);
     const leadMatch = str.match(/^(\d{1,2})/);
     if (leadMatch) return parseInt(leadMatch[1], 10);
     const cleanStr = str.replace(/•\s*school\s*\d+/i, '').replace(/school\s*\d+/i, '');
@@ -63,23 +65,39 @@ function extractGradeFromClass(clsStr) {
 function cleanClassName(clsStr, grade) {
     if (!clsStr) return `${grade || 10}A`;
     let s = String(clsStr).trim();
-    s = s.replace(/\s*•\s*School\s*\d+/i, '').trim();
-    if (/^(10|11|12)(13|\d{2})$/.test(s)) {
-        const lead = s.substring(0, 2);
-        return `${lead}A`;
+    s = s.replace(/\s*•\s*School\s*\d+/i, '').replace(/\s*School\s*\d+/i, '').trim();
+
+    // Pattern: "Class 1013", "Class 1113", "Class 1213" or "1013"
+    const classDistortedMatch = s.match(/^(?:class\s*)?(10|11|12)(?:13|\d{2})$/i);
+    if (classDistortedMatch) {
+        return `${classDistortedMatch[1]}A`;
     }
+
+    // Pattern: "Class 10A" or "Class 10"
+    const classMatch = s.match(/^class\s*(\d{1,2})\s*([a-z])?$/i);
+    if (classMatch) {
+        const g = classMatch[1];
+        const section = classMatch[2] ? classMatch[2].toUpperCase() : 'A';
+        return `${g}${section}`;
+    }
+
     if (s === '13') return `${grade || 10}A`;
+
+    // Pattern: "Grade 10" or "Grade 10A"
     if (s.toLowerCase().startsWith('grade ')) {
         const after = s.replace(/grade\s*/i, '').trim();
         if (/^\d{1,2}$/.test(after)) {
             return `${after}A`;
         }
-        return after;
+        return after.toUpperCase();
     }
+
+    // Pure digits like "10" or "11" -> "10A", "11A"
     if (/^\d{1,2}$/.test(s)) {
         return `${s}A`;
     }
-    return s || `${grade || 10}A`;
+
+    return s.toUpperCase() || `${grade || 10}A`;
 }
 
 /**
@@ -329,8 +347,8 @@ exports.getMySubjectsOverview = async (req, res) => {
             }));
         }
 
-        // 2. Scheduled timetable subjects for this teacher
-        if (ttTeacherRes.rows.length > 0) {
+        // 2. Scheduled timetable subjects for this teacher (fallback if no teacher_assignments)
+        if (itemsToProcess.length === 0 && ttTeacherRes.rows.length > 0) {
             for (const r of ttTeacherRes.rows) {
                 const already = itemsToProcess.some(x => 
                     x.subjectName.toLowerCase() === r.subject_name.toLowerCase() && 
@@ -348,8 +366,8 @@ exports.getMySubjectsOverview = async (req, res) => {
             }
         }
 
-        // 3. Classes where teacher is assigned or homeroom teacher
-        if (classTeacherRes.rows.length > 0) {
+        // 3. Classes where teacher is assigned or homeroom teacher (fallback)
+        if (itemsToProcess.length === 0 && classTeacherRes.rows.length > 0) {
             for (const r of classTeacherRes.rows) {
                 if (r.subject_name) {
                     const already = itemsToProcess.some(x => 
@@ -369,8 +387,8 @@ exports.getMySubjectsOverview = async (req, res) => {
             }
         }
 
-        // 4. Employee record subjects & classes (matched by user_id or email)
-        if (emp.subjects && Array.isArray(emp.subjects) && emp.subjects.length > 0) {
+        // 4. Employee record subjects & classes (fallback if items still empty)
+        if (itemsToProcess.length === 0 && emp.subjects && Array.isArray(emp.subjects) && emp.subjects.length > 0) {
             const empSubs = emp.subjects;
             const empGrades = (emp.grades_taught && emp.grades_taught.length > 0) ? emp.grades_taught : [10, 11, 12];
             const empClasses = emp.classes_taught || [];

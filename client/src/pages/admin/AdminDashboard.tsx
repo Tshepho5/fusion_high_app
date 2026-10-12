@@ -142,7 +142,7 @@ export const AdminDashboard: React.FC = () => {
       return { target: 'overview', label: 'Back to Home', parentLabel: 'Home' };
     }
     if (activeTab === 'command-center' || activeTab === 'inter-school' || activeTab === 'bursaries') {
-      return { target: 'discover', label: 'Back to Discover', parentLabel: 'Discover' };
+      return { target: 'more', label: 'Back to Menu', parentLabel: 'Menu' };
     }
     if (activeTab === 'announcements' || activeTab === 'consultations') {
       return { target: 'messages', label: 'Back to Messages', parentLabel: 'Messages' };

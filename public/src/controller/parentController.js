@@ -562,7 +562,7 @@ exports.linkSibling = async (req, res) => {
                     schoolName: school.name,
                     applicationNumber,
                     feeAmount: 1500,
-                    dueDateStr: dueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
+                    dueDateStr: 'Fee Waived / Sibling Fast-Track',
                     bankDetails: bankingInfo,
                     paymentUrl: `${req.protocol}://${req.get('host')}/dashboard/parent`
                 });

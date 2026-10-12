@@ -8,14 +8,14 @@ const teacherAttendanceController = require('../public/src/controller/teacher/te
 
 describe('Geleza SA: Learner Class & Grade Strict Isolation', () => {
 
-  test('Classes table for School 14 contains isolated numeric grade names (10, 11, 12)', async () => {
+  test('Classes table for School 14 contains isolated standardized class names (10A, 11A, 12A)', async () => {
     const res = await db.query(
       `SELECT id, name, grade FROM classes WHERE school_id = 14 ORDER BY grade`
     );
     assert.ok(res.rows.length >= 3, 'Must have at least Grade 10, 11, 12');
     res.rows.forEach(r => {
       assert.ok(!r.name.includes('School'), `Class name "${r.name}" must not contain "School"`);
-      assert.ok(/^[0-9]+$/.test(r.name), `Class name "${r.name}" must be pure number without alphabets`);
+      assert.ok(/^[0-9]+[A-Z]?$/.test(r.name), `Class name "${r.name}" must be standardized format (e.g. 10A)`);
     });
   });
 
@@ -53,7 +53,7 @@ describe('Geleza SA: Learner Class & Grade Strict Isolation', () => {
     assert.ok(roster.length > 0, 'Grade 10 should have learners');
     roster.forEach(l => {
       assert.equal(Number(l.grade), 10, 'All returned learners must be in Grade 10');
-      assert.equal(String(l.class_name), '10', 'Class name must be pure number "10"');
+      assert.ok(String(l.class_name).startsWith('10'), `Class name "${l.class_name}" must correspond to Grade 10 (e.g. 10A)`);
     });
 
     // Verify deduplication: no duplicate learner IDs

@@ -1264,7 +1264,23 @@ function handleSubmissionResult(result) {
 
   if (!modal) return;
 
-  if (result.status === 'approved') {
+  if (result.status === 'submitted' || result.status === 'pending' || (result.success && result.status !== 'approved' && result.status !== 'waitlisted' && result.status !== 'action_required')) {
+    modalIcon.innerHTML = `<svg style="width:52px;height:52px;color:#10b981;margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+    modalTitle.textContent = 'Application Submitted Successfully!';
+    modalBody.innerHTML = `
+      ${result.message || 'Your admission application and supporting documents have been received and accepted.'}
+      <br><br>
+      Your application is now <strong>awaiting review and approval</strong> by the school administration. You will receive an official notification via email once reviewed.
+    `;
+    modalRef.innerHTML = `
+      <div>Application Ref: <strong>${result.applicationNumber || ''}</strong></div>
+      <div style="margin-top: 6px; color: #38bdf8; font-weight: 700;">Status: Awaiting School Approval</div>
+    `;
+    modalRef.style.display = 'block';
+    modalCta.style.display = 'inline-block';
+    modalCta.textContent = 'Return to Home';
+    modalCta.href = '/';
+  } else if (result.status === 'approved') {
     modalIcon.innerHTML = '🎉';
     modalTitle.textContent = 'Application Approved!';
     modalBody.innerHTML = `

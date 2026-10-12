@@ -305,24 +305,24 @@ async function verifyApplicationWithAI(applicationData, uploadedDocs = []) {
   const docTypes = uploadedDocs.map(d => d.document_type);
 
   if (learnerAge !== null && learnerAge >= 16) {
-    // Learners 16 years and older MUST provide official SA ID Document (Smart ID Card or Green ID Book)
-    if (!docTypes.includes('learner_id')) {
+    // Learners 16 years and older should provide SA ID Document or Birth Certificate
+    if (!docTypes.includes('learner_id') && !docTypes.includes('birth_certificate')) {
       issues.push({
         field: 'learner_id_doc',
         type: 'ID_DOCUMENT_REQUIRED_FOR_16_PLUS',
-        message: `Learner is ${learnerAge} years old (16+). South African Home Affairs requires an official ID Document (Smart ID Card or Green Book), not a Birth Certificate.`,
-        details: 'Please upload a certified copy of the learner’s official South African Smart ID Card (Front & Back) or Green Barcoded ID Book.'
+        message: `Learner identification document (Smart ID Card, Green Book, or Birth Certificate) is required.`,
+        details: 'Please upload a certified copy of the learner’s official South African ID or Birth Certificate.'
       });
       overallScore -= 35;
     }
   } else {
-    // Learners under 16 MUST provide official Birth Certificate
+    // Learners under 16 provide Birth Certificate or ID Document
     if (!docTypes.includes('birth_certificate') && !docTypes.includes('learner_id')) {
       issues.push({
         field: 'birth_certificate',
         type: 'BIRTH_CERTIFICATE_REQUIRED',
-        message: `Official Birth Certificate is required for learners under 16 years of age (Learner Age: ${learnerAge !== null ? learnerAge : 'Under 16'}).`,
-        details: 'Please upload an official Unabridged or Abridged Birth Certificate issued by the Department of Home Affairs.'
+        message: `Official Birth Certificate or Learner ID is required for the applicant.`,
+        details: 'Please upload an official Birth Certificate or ID Document.'
       });
       overallScore -= 30;
     }

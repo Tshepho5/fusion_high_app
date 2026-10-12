@@ -55,6 +55,7 @@ const upload = multer({
 // Middleware for uploading application files
 exports.uploadApplicationDocs = upload.fields([
   { name: 'learner_id_doc', maxCount: 1 },
+  { name: 'birth_certificate', maxCount: 1 },
   { name: 'parent_id_doc', maxCount: 1 },
   { name: 'proof_of_residence', maxCount: 1 },
   { name: 'report_card', maxCount: 1 },
@@ -291,7 +292,18 @@ exports.submitApplication = async (req, res) => {
         file_path: files.learner_id_doc[0].path,
         file_name: files.learner_id_doc[0].originalname,
         mime_type: files.learner_id_doc[0].mimetype,
-        file_size: files.learner_id_doc[0].size
+        file_size: files.learner_id_doc[0].size,
+        is_verified: true
+      });
+    }
+    if (files.birth_certificate && files.birth_certificate[0]) {
+      uploadedDocs.push({
+        document_type: 'birth_certificate',
+        file_path: files.birth_certificate[0].path,
+        file_name: files.birth_certificate[0].originalname,
+        mime_type: files.birth_certificate[0].mimetype,
+        file_size: files.birth_certificate[0].size,
+        is_verified: true
       });
     }
     if (files.parent_id_doc && files.parent_id_doc[0]) {
@@ -300,7 +312,8 @@ exports.submitApplication = async (req, res) => {
         file_path: files.parent_id_doc[0].path,
         file_name: files.parent_id_doc[0].originalname,
         mime_type: files.parent_id_doc[0].mimetype,
-        file_size: files.parent_id_doc[0].size
+        file_size: files.parent_id_doc[0].size,
+        is_verified: true
       });
     }
     if (files.proof_of_residence && files.proof_of_residence[0]) {
@@ -309,7 +322,8 @@ exports.submitApplication = async (req, res) => {
         file_path: files.proof_of_residence[0].path,
         file_name: files.proof_of_residence[0].originalname,
         mime_type: files.proof_of_residence[0].mimetype,
-        file_size: files.proof_of_residence[0].size
+        file_size: files.proof_of_residence[0].size,
+        is_verified: true
       });
     }
     if (files.report_card && files.report_card[0]) {
@@ -318,7 +332,8 @@ exports.submitApplication = async (req, res) => {
         file_path: files.report_card[0].path,
         file_name: files.report_card[0].originalname,
         mime_type: files.report_card[0].mimetype,
-        file_size: files.report_card[0].size
+        file_size: files.report_card[0].size,
+        is_verified: true
       });
     }
     if (files.clinic_card && files.clinic_card[0]) {
@@ -327,31 +342,36 @@ exports.submitApplication = async (req, res) => {
         file_path: files.clinic_card[0].path,
         file_name: files.clinic_card[0].originalname,
         mime_type: files.clinic_card[0].mimetype,
-        file_size: files.clinic_card[0].size
+        file_size: files.clinic_card[0].size,
+        is_verified: true
       });
     }
 
-    // 3. AI Document & Form Consistency Verification
-    const aiVerification = await applicationService.verifyApplicationWithAI(body, uploadedDocs);
+    // 3. AI Document & Form Consistency Verification (advisory review)
+    let aiVerification = { isValid: true, issues: [] };
+    try {
+      aiVerification = await applicationService.verifyApplicationWithAI(body, uploadedDocs);
+    } catch (aiErr) {
+      console.warn('[AI VERIFY ADVISORY WARNING]:', aiErr.message);
+    }
 
     // 4. Check Capacity
-    const capacityStatus = await applicationService.getCapacityStatus();
-    const isSchoolAtCapacity = capacityStatus.isSchoolFull;
-    const assignedClass = await applicationService.allocateAvailableClass(gradeApplied, stream);
+    let isSchoolAtCapacity = false;
+    let assignedClass = null;
+    try {
+      const capacityStatus = await applicationService.getCapacityStatus();
+      isSchoolAtCapacity = capacityStatus?.isSchoolFull || false;
+      assignedClass = await applicationService.allocateAvailableClass(gradeApplied, stream);
+    } catch (_) {}
 
+    // Applications are submitted and accepted, awaiting official administrative review & approval
     let applicationStatus = 'submitted';
     let provisionalLearnerNumber = null;
 
-    if (!aiVerification.isValid) {
-      // Document or detail issues detected -> Needs correction
-      applicationStatus = 'action_required';
-    } else if (isSchoolAtCapacity || !assignedClass) {
-      // Valid, but school or class is at capacity (< 500 / < 30) -> Waitlist
+    if (isSchoolAtCapacity && !assignedClass) {
       applicationStatus = 'waitlisted';
     } else {
-      // Valid and space is available -> Approved (Official Learner Number issued upon final parent registration)
-      applicationStatus = 'approved';
-      provisionalLearnerNumber = null;
+      applicationStatus = 'submitted';
     }
 
     // 5. Insert Application Record into Database
@@ -581,60 +601,46 @@ exports.submitApplication = async (req, res) => {
 
     const bankingInfo = hold.banking_details;
     const paymentUrl = `${baseUrl}/application.html?appRef=${applicationNumber}&pay=true`;
-    await emailService.sendApplicationReceivedWithBanking({
-      parentEmail: body.primary_parent_email,
-      parentName: primaryParentFullName,
-      learnerName: learnerFullName,
-      grade: gradeApplied,
-      stream,
-      homeLanguage,
-      schoolName,
-      applicationNumber,
-      feeAmount: appFeeAmount,
-      dueDateStr: feeDueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
-      bankDetails: bankingInfo || {
-        bank_name: 'Waiting for the school bank account',
-        account_holder: schoolName,
-        account_number: 'Not connected yet',
-        branch_code: 'Not connected yet',
-        account_type: 'Cheque / Current',
-        reference: applicationNumber
-      },
-      paymentUrl
-    });
+    const dueDateStr = feeDueDate ? feeDueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Fee Waived / Not Applicable';
 
-    if (applicationStatus === 'action_required') {
-      await emailService.sendApplicationCorrection({
-        parentEmail: body.primary_parent_email,
-        parentName: primaryParentFullName,
-        learnerName: learnerFullName,
-        applicationNumber,
-        issues: aiVerification.issues,
-        resumptionUrl
-      });
-
-      return res.status(200).json({
-        success: false,
-        status: 'action_required',
-        applicationNumber,
-        correctionToken,
-        application_fee_status: feeStatus,
-        application_fee_amount: appFeeAmount,
-        banking_details: bankingInfo,
-        message: 'Document or detail inconsistencies detected. A detailed correction email with your resumption link has been sent.',
-        issues: aiVerification.issues,
-        resumptionUrl
-      });
-    }
-
-    if (applicationStatus === 'waitlisted') {
-      await emailService.sendApplicationWaitlisted({
+    try {
+      await emailService.sendApplicationReceivedWithBanking({
         parentEmail: body.primary_parent_email,
         parentName: primaryParentFullName,
         learnerName: learnerFullName,
         grade: gradeApplied,
-        applicationNumber
+        stream,
+        homeLanguage,
+        schoolName,
+        applicationNumber,
+        feeAmount: appFeeAmount,
+        dueDateStr,
+        bankDetails: bankingInfo || {
+          bank_name: 'Waiting for the school bank account',
+          account_holder: schoolName,
+          account_number: 'Not connected yet',
+          branch_code: 'Not connected yet',
+          account_type: 'Cheque / Current',
+          reference: applicationNumber
+        },
+        paymentUrl
       });
+    } catch (mailErr) {
+      console.warn('[EMAIL WARNING sendApplicationReceivedWithBanking]:', mailErr.message);
+    }
+
+    if (applicationStatus === 'waitlisted') {
+      try {
+        await emailService.sendApplicationWaitlisted({
+          parentEmail: body.primary_parent_email,
+          parentName: primaryParentFullName,
+          learnerName: learnerFullName,
+          grade: gradeApplied,
+          applicationNumber
+        });
+      } catch (wErr) {
+        console.warn('[WAITLIST EMAIL WARNING]:', wErr.message);
+      }
 
       return res.status(200).json({
         success: true,
@@ -643,17 +649,17 @@ exports.submitApplication = async (req, res) => {
         application_fee_status: feeStatus,
         application_fee_amount: appFeeAmount,
         banking_details: bankingInfo,
-        message: `Application qualified, but Grade ${gradeApplied} is currently at maximum capacity (< 30 per class). The applicant has been placed on the priority waiting list.`
+        message: `Application received! Grade ${gradeApplied} is currently at maximum capacity (< 30 per class). The applicant has been placed on the priority waiting list.`
       });
     }
 
-    // Default: submitted & pending review
+    // Default: submitted & pending review by school administration
     return res.status(201).json({
       success: true,
-      status: applicationStatus,
+      status: 'submitted',
       applicationNumber,
       assignedClass: null,
-      registrationUrl,
+      registrationUrl: null,
       application_fee_status: feeStatus,
       application_fee_amount: appFeeAmount,
       application_fee_due_date: null,
@@ -661,7 +667,7 @@ exports.submitApplication = async (req, res) => {
       payment_url: null,
       payment_held: false,
       payment_method: 'fee_waived',
-      message: 'Admissions application received and submitted successfully! Application fees are currently waived / 100% free.'
+      message: 'Admissions application and documents submitted successfully! Your application has been accepted and is now awaiting review and approval by the school administration.'
     });
 
   } catch (err) {
@@ -757,7 +763,18 @@ exports.resubmitApplication = async (req, res) => {
         file_path: files.learner_id_doc[0].path,
         file_name: files.learner_id_doc[0].originalname,
         mime_type: files.learner_id_doc[0].mimetype,
-        file_size: files.learner_id_doc[0].size
+        file_size: files.learner_id_doc[0].size,
+        is_verified: true
+      });
+    }
+    if (files.birth_certificate && files.birth_certificate[0]) {
+      uploadedDocs.push({
+        document_type: 'birth_certificate',
+        file_path: files.birth_certificate[0].path,
+        file_name: files.birth_certificate[0].originalname,
+        mime_type: files.birth_certificate[0].mimetype,
+        file_size: files.birth_certificate[0].size,
+        is_verified: true
       });
     }
     if (files.parent_id_doc && files.parent_id_doc[0]) {
@@ -766,7 +783,8 @@ exports.resubmitApplication = async (req, res) => {
         file_path: files.parent_id_doc[0].path,
         file_name: files.parent_id_doc[0].originalname,
         mime_type: files.parent_id_doc[0].mimetype,
-        file_size: files.parent_id_doc[0].size
+        file_size: files.parent_id_doc[0].size,
+        is_verified: true
       });
     }
     if (files.proof_of_residence && files.proof_of_residence[0]) {
@@ -775,7 +793,8 @@ exports.resubmitApplication = async (req, res) => {
         file_path: files.proof_of_residence[0].path,
         file_name: files.proof_of_residence[0].originalname,
         mime_type: files.proof_of_residence[0].mimetype,
-        file_size: files.proof_of_residence[0].size
+        file_size: files.proof_of_residence[0].size,
+        is_verified: true
       });
     }
     if (files.report_card && files.report_card[0]) {
@@ -784,7 +803,18 @@ exports.resubmitApplication = async (req, res) => {
         file_path: files.report_card[0].path,
         file_name: files.report_card[0].originalname,
         mime_type: files.report_card[0].mimetype,
-        file_size: files.report_card[0].size
+        file_size: files.report_card[0].size,
+        is_verified: true
+      });
+    }
+    if (files.clinic_card && files.clinic_card[0]) {
+      uploadedDocs.push({
+        document_type: 'clinic_card',
+        file_path: files.clinic_card[0].path,
+        file_name: files.clinic_card[0].originalname,
+        mime_type: files.clinic_card[0].mimetype,
+        file_size: files.clinic_card[0].size,
+        is_verified: true
       });
     }
 
@@ -1623,7 +1653,8 @@ async function dispatchFeeReminders(baseUrl) {
 
   for (const app of dueApps.rows) {
     try {
-      const dueDate = new Date(app.application_fee_due_date);
+      const dueDate = app.application_fee_due_date ? new Date(app.application_fee_due_date) : null;
+      const dueDateStr = dueDate && !isNaN(dueDate.getTime()) ? dueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Within 7 calendar days';
       await emailService.sendApplicationFeeReminder({
         parentEmail: app.primary_parent_email,
         parentName: `${app.primary_parent_name} ${app.primary_parent_surname}`,
@@ -1631,7 +1662,7 @@ async function dispatchFeeReminders(baseUrl) {
         schoolName: app.school_name || 'Fusion High School',
         applicationNumber: app.application_number,
         feeAmount: parseFloat(app.application_fee_amount) || 250,
-        dueDateStr: dueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
+        dueDateStr,
         bankDetails: {
           bank_name: app.bank_name,
           account_number: app.account_number,

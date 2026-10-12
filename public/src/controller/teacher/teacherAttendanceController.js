@@ -66,7 +66,7 @@ exports.getAttendanceRoster = async (req, res) => {
                 c.grade,
                 c.stream,
                 c.parent_id,
-                COALESCE(c.grade::text, '10') as class_name,
+                COALESCE(cl.name, CONCAT(c.grade::text, 'A'), '10A') as class_name,
                 COALESCE(a.status, 'present') as status,
                 a.created_at as marked_at
             FROM children c
@@ -91,7 +91,7 @@ exports.getAttendanceRoster = async (req, res) => {
                     c.grade,
                     c.stream,
                     c.parent_id,
-                    COALESCE(c.grade::text, '10') as class_name,
+                    COALESCE(cl.name, CONCAT(c.grade::text, 'A'), '10A') as class_name,
                     COALESCE(a.status, 'present') as status,
                     a.created_at as marked_at
                 FROM children c
