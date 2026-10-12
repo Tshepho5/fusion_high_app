@@ -641,6 +641,72 @@ function goToStep(step) {
 }
 
 /**
+ * Helper to get clean human labels for form fields
+ */
+function getFieldLabel(field) {
+  const labels = {
+    school_id: 'Target High School',
+    first_name: 'Learner First Name',
+    surname: 'Learner Surname',
+    id_number: 'Learner ID / Passport',
+    dob: 'Date of Birth',
+    gender: 'Gender',
+    citizenship: 'Citizenship',
+    grade_applied: 'Grade Applied For',
+    home_language: 'Official Home Language',
+    physical_address: 'Learner Physical Address',
+    learner_phone: 'Learner Phone',
+    learner_email: 'Learner Email',
+    primary_parent_name: 'Primary Parent Name',
+    primary_parent_surname: 'Primary Parent Surname',
+    primary_parent_relationship: 'Parent Relationship',
+    primary_parent_id_number: 'Parent ID / Passport',
+    primary_parent_phone: 'Parent Mobile Phone',
+    primary_parent_email: 'Parent Email Address',
+    primary_parent_address: 'Parent Physical Address',
+    secondary_parent_name: 'Secondary Parent Name',
+    secondary_parent_surname: 'Secondary Parent Surname',
+    secondary_parent_phone: 'Secondary Parent Phone',
+    secondary_parent_email: 'Secondary Parent Email',
+    previous_school: 'Previous School Name',
+    learner_id_doc: 'Learner ID Copy / Smart Card',
+    birth_certificate: 'Birth Certificate Document',
+    parent_id_doc: 'Parent Certified ID Copy',
+    proof_of_residence: 'Proof of Residence'
+  };
+  return labels[field] || (field ? field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Form Field');
+}
+
+/**
+ * Global Modal Dialog Trigger
+ */
+function showModal(type, title, message) {
+  const modal = document.getElementById('resultModal');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalIcon = document.getElementById('modalIcon');
+  const modalBody = document.getElementById('modalBody');
+  const modalRef = document.getElementById('modalRef');
+  const modalCta = document.getElementById('modalCta');
+
+  if (!modal) return;
+
+  if (type === 'error') {
+    modalIcon.innerHTML = `<svg style="width:48px;height:48px;color:#ef4444;margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`;
+  } else if (type === 'success') {
+    modalIcon.innerHTML = `<svg style="width:52px;height:52px;color:#10b981;margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+  } else {
+    modalIcon.innerHTML = 'ℹ️';
+  }
+
+  modalTitle.textContent = title || 'Notice';
+  modalBody.innerHTML = `<div style="color: #fca5a5; font-size: 0.92rem; line-height: 1.6;">${message || ''}</div>`;
+  if (modalRef) modalRef.style.display = 'none';
+  if (modalCta) modalCta.style.display = 'none';
+
+  modal.classList.add('active');
+}
+
+/**
  * Step Validation
  */
 function validateStep(step) {
@@ -648,6 +714,13 @@ function validateStep(step) {
   let firstInvalidElement = null;
 
   if (step === 1) {
+    const schoolSelect = document.getElementById('school_id');
+    if (schoolSelect && (!schoolSelect.value || schoolSelect.value === '')) {
+      showError('school_id', 'Please choose the target secondary school.');
+      if (!firstInvalidElement) firstInvalidElement = schoolSelect;
+      isValid = false;
+    }
+
     const isExistingRadio = document.getElementById('enrollment_status_existing');
     if (isExistingRadio && isExistingRadio.checked) {
       if (!isEnrolledLearnerVerified) {
@@ -710,13 +783,13 @@ function validateStep(step) {
       isValid = false;
     }
 
-    if (!address.value.trim() || address.value.trim().length < 6) {
+    if (!address.value.trim() || address.value.trim().length < 4) {
       showError('physical_address', 'Please provide a complete physical residential address.');
       if (!firstInvalidElement) firstInvalidElement = address;
       isValid = false;
     }
 
-    if (phone.value.trim() && !PHONE_PATTERN.test(phone.value.trim().replace(/[\s-]/g, ''))) {
+    if (phone.value.trim() && !PHONE_PATTERN.test(phone.value.trim().replace(/[\s\-\(\)\.]/g, ''))) {
       showError('learner_phone', 'Invalid phone number. Must start with +27 or 0, followed by 9 digits.');
       if (!firstInvalidElement) firstInvalidElement = phone;
       isValid = false;
@@ -748,12 +821,13 @@ function validateStep(step) {
       if (!firstInvalidElement) firstInvalidElement = pRel;
       isValid = false;
     }
-    if (!pId.value.trim() || pId.value.trim().length < 6) {
-      showError('primary_parent_id_number', 'Please enter a valid parent ID number (numbers only).');
+    const cleanPId = (pId.value || '').replace(/\D/g, '');
+    if (!cleanPId || cleanPId.length < 6) {
+      showError('primary_parent_id_number', 'Please enter a valid parent ID number (at least 6 digits).');
       if (!firstInvalidElement) firstInvalidElement = pId;
       isValid = false;
     }
-    const cleanPhone = (pPhone.value || '').replace(/[\s-]/g, '');
+    const cleanPhone = (pPhone.value || '').replace(/[\s\-\(\)\.]/g, '');
     if (!cleanPhone || !PHONE_PATTERN.test(cleanPhone)) {
       showError('primary_parent_phone', 'Phone must start with +27 or 0 followed by 9 digits.');
       if (!firstInvalidElement) firstInvalidElement = pPhone;
@@ -764,10 +838,36 @@ function validateStep(step) {
       if (!firstInvalidElement) firstInvalidElement = pEmail;
       isValid = false;
     }
-    if (!pAddress.value.trim() || pAddress.value.trim().length < 6) {
+    if (!pAddress.value.trim() || pAddress.value.trim().length < 4) {
       showError('primary_parent_address', 'Primary parent physical address is required.');
       if (!firstInvalidElement) firstInvalidElement = pAddress;
       isValid = false;
+    }
+
+    // Secondary parent check
+    const hasSecParent = document.getElementById('has_secondary_parent');
+    if (hasSecParent && hasSecParent.checked) {
+      const sName = document.getElementById('secondary_parent_name');
+      const sPhone = document.getElementById('secondary_parent_phone');
+      const sEmail = document.getElementById('secondary_parent_email');
+      if (sName && sName.value.trim() && !NAME_PATTERN.test(sName.value.trim())) {
+        showError('secondary_parent_name', 'Secondary parent name must only contain letters.');
+        if (!firstInvalidElement) firstInvalidElement = sName;
+        isValid = false;
+      }
+      if (sPhone && sPhone.value.trim()) {
+        const cleanSPhone = sPhone.value.trim().replace(/[\s\-\(\)\.]/g, '');
+        if (!PHONE_PATTERN.test(cleanSPhone)) {
+          showError('secondary_parent_phone', 'Secondary parent phone must start with +27 or 0 followed by 9 digits.');
+          if (!firstInvalidElement) firstInvalidElement = sPhone;
+          isValid = false;
+        }
+      }
+      if (sEmail && sEmail.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sEmail.value.trim())) {
+        showError('secondary_parent_email', 'Please enter a valid secondary parent email.');
+        if (!firstInvalidElement) firstInvalidElement = sEmail;
+        isValid = false;
+      }
     }
   }
 
@@ -789,41 +889,41 @@ function validateStep(step) {
     const birthCertDoc = document.getElementById('birth_certificate');
     const parentIdDoc = document.getElementById('parent_id_doc');
     const proofResDoc = document.getElementById('proof_of_residence');
-    const reportCardDoc = document.getElementById('report_card');
-    const gradeVal = parseInt(document.getElementById('grade_applied').value, 10);
 
-    // 16+ Strict SA ID requirement vs Under 16 Birth Certificate
-    if (age !== null && age >= 16) {
-      if (!learnerIdDoc.files || learnerIdDoc.files.length === 0) {
-        showModal('error', 'Document Required', `Learner is ${age} years old (16+). South African law requires an official ID Document (Smart ID Card or Green Book), not a Birth Certificate.`);
-        const cardLearnerId = document.getElementById('card-learner-id');
-        cardLearnerId.scrollIntoView({ behavior: 'smooth' });
-        shakeElement(cardLearnerId);
-        return false;
-      }
-    } else {
-      if ((!birthCertDoc.files || birthCertDoc.files.length === 0) && (!learnerIdDoc.files || learnerIdDoc.files.length === 0)) {
-        showModal('error', 'Document Required', `Learner is under 16 years old. An official Birth Certificate is required.`);
-        const cardBirthCert = document.getElementById('card-birth-cert');
-        cardBirthCert.scrollIntoView({ behavior: 'smooth' });
-        shakeElement(cardBirthCert);
-        return false;
-      }
-    }
+    // Either Learner Smart Card / Green Book ID OR Birth Certificate is accepted
+    const hasLearnerDoc = (learnerIdDoc && learnerIdDoc.files && learnerIdDoc.files.length > 0) ||
+                          (birthCertDoc && birthCertDoc.files && birthCertDoc.files.length > 0);
 
-    if (!parentIdDoc.files || parentIdDoc.files.length === 0) {
-      showModal('error', 'Document Required', 'Parent / Legal Guardian certified ID document is required.');
-      const cardParentId = document.getElementById('card-parent-id');
-      cardParentId.scrollIntoView({ behavior: 'smooth' });
-      shakeElement(cardParentId);
+    if (!hasLearnerDoc) {
+      const msg = (age !== null && age >= 16)
+        ? `Official ID Document (Smart ID Card / Green Book) or certified Birth Certificate is required for the learner.`
+        : `Official Birth Certificate or ID Document is required for the learner.`;
+      showModal('error', 'Document Required', msg);
+      const card = (age !== null && age >= 16) ? document.getElementById('card-learner-id') : document.getElementById('card-birth-cert');
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth' });
+        shakeElement(card);
+      }
       return false;
     }
 
-    if (!proofResDoc.files || proofResDoc.files.length === 0) {
+    if (!parentIdDoc || !parentIdDoc.files || parentIdDoc.files.length === 0) {
+      showModal('error', 'Document Required', 'Parent / Legal Guardian certified ID copy is required.');
+      const cardParentId = document.getElementById('card-parent-id');
+      if (cardParentId) {
+        cardParentId.scrollIntoView({ behavior: 'smooth' });
+        shakeElement(cardParentId);
+      }
+      return false;
+    }
+
+    if (!proofResDoc || !proofResDoc.files || proofResDoc.files.length === 0) {
       showModal('error', 'Document Required', 'Proof of Residential Address (< 3 months old) is required.');
       const cardProofRes = document.getElementById('card-proof-residence');
-      cardProofRes.scrollIntoView({ behavior: 'smooth' });
-      shakeElement(cardProofRes);
+      if (cardProofRes) {
+        cardProofRes.scrollIntoView({ behavior: 'smooth' });
+        shakeElement(cardProofRes);
+      }
       return false;
     }
   }
@@ -1210,7 +1310,20 @@ function initFormSubmission() {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      if (!validateStep(1) || !validateStep(2) || !validateStep(3) || !validateStep(4)) {
+      if (!validateStep(1)) {
+        goToStep(1);
+        return;
+      }
+      if (!validateStep(2)) {
+        goToStep(2);
+        return;
+      }
+      if (!validateStep(3)) {
+        goToStep(3);
+        return;
+      }
+      if (!validateStep(4)) {
+        goToStep(4);
         return;
       }
 
@@ -1270,7 +1383,7 @@ function handleSubmissionResult(result) {
     modalBody.innerHTML = `
       ${result.message || 'Your admission application and supporting documents have been received and accepted.'}
       <br><br>
-      Your application is now <strong>awaiting review and approval</strong> by the school administration. You will receive an official notification via email once reviewed.
+      Your application is now <strong>awaiting review and approval</strong> by the school administration. You will receive an official notification via email once your application has been reviewed.
     `;
     modalRef.innerHTML = `
       <div>Application Ref: <strong>${result.applicationNumber || ''}</strong></div>
@@ -1322,9 +1435,64 @@ function handleSubmissionResult(result) {
     modalRef.style.display = 'block';
     modalCta.style.display = 'none';
   } else {
+    // Validation or Submission Failure Handler
     modalIcon.innerHTML = `<svg style="width:48px;height:48px;color:#ef4444;margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`;
     modalTitle.textContent = 'Validation Notice';
-    modalBody.innerHTML = result.error || 'Please correct errors on the form.';
+
+    const fieldErrors = Array.isArray(result.errors) ? result.errors : (Array.isArray(result.issues) ? result.issues : []);
+
+    if (fieldErrors.length > 0) {
+      let firstErrorField = null;
+      fieldErrors.forEach(err => {
+        if (err.field) {
+          showError(err.field, err.message);
+          if (!firstErrorField) firstErrorField = err.field;
+        }
+      });
+
+      const errItemsHtml = fieldErrors.map(err => {
+        const label = getFieldLabel(err.field);
+        return `<li style="margin-bottom: 6px;"><strong>${label}:</strong> ${err.message}</li>`;
+      }).join('');
+
+      modalBody.innerHTML = `
+        <div style="text-align: left; margin-bottom: 10px; color: #f87171; font-weight: 700;">
+          Please correct the highlighted ${fieldErrors.length} item${fieldErrors.length > 1 ? 's' : ''} on the form:
+        </div>
+        <ul style="text-align: left; margin: 8px 0 14px; padding-left: 20px; color: #fca5a5; font-size: 0.88rem; line-height: 1.5;">
+          ${errItemsHtml}
+        </ul>
+        <div style="font-size: 0.82rem; color: #94a3b8; margin-top: 10px;">
+          Click "Close" to jump directly to the field needing attention.
+        </div>
+      `;
+
+      // Navigate to the step containing the first invalid field
+      if (firstErrorField) {
+        const el = document.getElementById(firstErrorField);
+        if (el) {
+          const stepCard = el.closest('.form-step-card');
+          if (stepCard && stepCard.id) {
+            const stepNum = parseInt(stepCard.id.replace('step-', ''), 10);
+            if (!isNaN(stepNum)) {
+              goToStep(stepNum);
+              setTimeout(() => {
+                el.focus();
+                shakeElement(el);
+              }, 400);
+            }
+          }
+        }
+      }
+    } else {
+      const errorMsg = result.error || result.message || 'Please verify that all required information across Steps 1 to 4 is complete and correct.';
+      modalBody.innerHTML = `
+        <div style="color: #fca5a5; font-size: 0.92rem; line-height: 1.6; padding: 4px 0;">
+          ${errorMsg}
+        </div>
+      `;
+    }
+
     modalRef.style.display = 'none';
     modalCta.style.display = 'none';
   }

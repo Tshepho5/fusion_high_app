@@ -63,7 +63,7 @@ exports.uploadApplicationDocs = upload.fields([
 ]);
 
 // Helper Validation Functions
-const NAME_REGEX = /^[A-Za-z\s\-']+$/;
+const NAME_REGEX = /^[\p{L}\s\-']+$/u;
 const PHONE_REGEX = /^(\+27|0)[0-9]{9}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -71,11 +71,13 @@ function validateFormFields(body) {
   const errors = [];
 
   // Learner Names
-  if (!body.first_name || !NAME_REGEX.test(body.first_name.trim())) {
-    errors.push({ field: 'first_name', message: body.first_name && /\d/.test(body.first_name) ? 'Numbers are not allowed in this field. Please use letters only.' : 'Learner first name must only contain letters, spaces, or hyphens (no numbers).' });
+  const firstName = (body.first_name || '').trim();
+  if (!firstName || !NAME_REGEX.test(firstName)) {
+    errors.push({ field: 'first_name', message: firstName && /\d/.test(firstName) ? 'Numbers are not allowed in first name. Please use letters only.' : 'Learner first name must only contain letters, spaces, or hyphens.' });
   }
-  if (!body.surname || !NAME_REGEX.test(body.surname.trim())) {
-    errors.push({ field: 'surname', message: body.surname && /\d/.test(body.surname) ? 'Numbers are not allowed in this field. Please use letters only.' : 'Learner surname must only contain letters, spaces, or hyphens (no numbers).' });
+  const surname = (body.surname || '').trim();
+  if (!surname || !NAME_REGEX.test(surname)) {
+    errors.push({ field: 'surname', message: surname && /\d/.test(surname) ? 'Numbers are not allowed in surname. Please use letters only.' : 'Learner surname must only contain letters, spaces, or hyphens.' });
   }
 
   // Learner ID
@@ -105,50 +107,55 @@ function validateFormFields(body) {
   ];
   if (!body.home_language || !body.home_language.trim()) {
     errors.push({ field: 'home_language', message: 'Please select an official South African Home Language.' });
-  } else {
-    const matchedLang = validLanguages.find(l => l.toLowerCase() === body.home_language.trim().toLowerCase());
-    if (!matchedLang) {
-      errors.push({ field: 'home_language', message: `Invalid Home Language selected. Must be an official South African language.` });
-    }
   }
 
   // Address
-  if (!body.physical_address || body.physical_address.trim().length < 5) {
+  const physAddress = (body.physical_address || '').trim();
+  if (!physAddress || physAddress.length < 3) {
     errors.push({ field: 'physical_address', message: 'Please provide a complete physical address.' });
   }
 
   // Primary Parent Validation
-  if (!body.primary_parent_name || !NAME_REGEX.test(body.primary_parent_name.trim())) {
-    errors.push({ field: 'primary_parent_name', message: body.primary_parent_name && /\d/.test(body.primary_parent_name) ? 'Numbers are not allowed in this field. Please use letters only.' : 'Primary parent full name must only contain letters, spaces, or hyphens.' });
+  const pName = (body.primary_parent_name || '').trim();
+  if (!pName || !NAME_REGEX.test(pName)) {
+    errors.push({ field: 'primary_parent_name', message: pName && /\d/.test(pName) ? 'Numbers are not allowed in parent name. Please use letters only.' : 'Primary parent full name must only contain letters, spaces, or hyphens.' });
   }
-  if (!body.primary_parent_surname || !NAME_REGEX.test(body.primary_parent_surname.trim())) {
-    errors.push({ field: 'primary_parent_surname', message: body.primary_parent_surname && /\d/.test(body.primary_parent_surname) ? 'Numbers are not allowed in this field. Please use letters only.' : 'Primary parent surname must only contain letters, spaces, or hyphens.' });
+  const pSurname = (body.primary_parent_surname || '').trim();
+  if (!pSurname || !NAME_REGEX.test(pSurname)) {
+    errors.push({ field: 'primary_parent_surname', message: pSurname && /\d/.test(pSurname) ? 'Numbers are not allowed in parent surname. Please use letters only.' : 'Primary parent surname must only contain letters, spaces, or hyphens.' });
   }
-  if (!body.primary_parent_relationship) {
+  if (!body.primary_parent_relationship || !body.primary_parent_relationship.trim()) {
     errors.push({ field: 'primary_parent_relationship', message: 'Please specify the relationship of the primary parent/guardian (e.g. Mother, Father, Guardian).' });
   }
-  if (!body.primary_parent_email || !EMAIL_REGEX.test(body.primary_parent_email.trim())) {
+  const pEmail = (body.primary_parent_email || '').trim();
+  if (!pEmail || !EMAIL_REGEX.test(pEmail)) {
     errors.push({ field: 'primary_parent_email', message: 'Please provide a valid primary parent email address.' });
   }
-  if (!body.primary_parent_phone || !PHONE_REGEX.test(body.primary_parent_phone.replace(/[\s-]/g, ''))) {
+  const cleanPhone = (body.primary_parent_phone || '').replace(/[\s\-\(\)\.]/g, '');
+  if (!cleanPhone || !PHONE_REGEX.test(cleanPhone)) {
     errors.push({ field: 'primary_parent_phone', message: 'Primary parent phone must start with +27 or 0, followed by 9 digits (no letters).' });
   }
-  if (!body.primary_parent_id_number || body.primary_parent_id_number.trim().length < 6) {
-    errors.push({ field: 'primary_parent_id_number', message: 'Primary parent ID or Passport number is required.' });
+  const cleanPId = (body.primary_parent_id_number || '').replace(/\D/g, '');
+  if (!cleanPId || cleanPId.length < 6) {
+    errors.push({ field: 'primary_parent_id_number', message: 'Primary parent ID or Passport number is required (at least 6 digits).' });
   }
-  if (!body.primary_parent_address || body.primary_parent_address.trim().length < 5) {
+  const pAddress = (body.primary_parent_address || '').trim();
+  if (!pAddress || pAddress.length < 3) {
     errors.push({ field: 'primary_parent_address', message: 'Primary parent physical address is required.' });
   }
 
   // Optional Secondary Parent Validation
   if (body.has_secondary_parent === 'true' || body.has_secondary_parent === true) {
-    if (body.secondary_parent_name && !NAME_REGEX.test(body.secondary_parent_name.trim())) {
-      errors.push({ field: 'secondary_parent_name', message: /\d/.test(body.secondary_parent_name) ? 'Numbers are not allowed in this field. Please use letters only.' : 'Secondary parent name must only contain letters, spaces, or hyphens.' });
+    const sName = (body.secondary_parent_name || '').trim();
+    if (sName && !NAME_REGEX.test(sName)) {
+      errors.push({ field: 'secondary_parent_name', message: /\d/.test(sName) ? 'Numbers are not allowed in secondary parent name.' : 'Secondary parent name must only contain letters, spaces, or hyphens.' });
     }
-    if (body.secondary_parent_phone && !PHONE_REGEX.test(body.secondary_parent_phone.replace(/[\s-]/g, ''))) {
+    const cleanSPhone = (body.secondary_parent_phone || '').replace(/[\s\-\(\)\.]/g, '');
+    if (cleanSPhone && !PHONE_REGEX.test(cleanSPhone)) {
       errors.push({ field: 'secondary_parent_phone', message: 'Secondary parent phone must start with +27 or 0, followed by 9 digits.' });
     }
-    if (body.secondary_parent_email && !EMAIL_REGEX.test(body.secondary_parent_email.trim())) {
+    const sEmail = (body.secondary_parent_email || '').trim();
+    if (sEmail && !EMAIL_REGEX.test(sEmail)) {
       errors.push({ field: 'secondary_parent_email', message: 'Secondary parent email format is invalid.' });
     }
   }
@@ -204,61 +211,48 @@ exports.submitApplication = async (req, res) => {
     }
 
     // Resolve School Tenant ID (Default: 1 - Fusion High, or 2..15 for partner schools)
-    const schoolId = parseInt(body.school_id || req.headers['x-school-id'], 10);
+    let schoolId = parseInt(body.school_id || req.headers['x-school-id'], 10);
     let targetSchool = null;
-    try {
-      const sRes = await db.query('SELECT * FROM schools WHERE id = $1', [schoolId]);
-      if (sRes.rows.length > 0) {
-        targetSchool = sRes.rows[0];
-      }
-    } catch (_) {}
+    if (!isNaN(schoolId) && schoolId > 0) {
+      try {
+        const sRes = await db.query('SELECT * FROM schools WHERE id = $1', [schoolId]);
+        if (sRes.rows.length > 0) {
+          targetSchool = sRes.rows[0];
+        }
+      } catch (_) {}
+    }
+
+    // Dynamic fallback to the primary active school if none specified or ID changed across environments
+    if (!targetSchool) {
+      try {
+        const sFallback = await db.query('SELECT * FROM schools WHERE is_active = TRUE ORDER BY id ASC LIMIT 1');
+        if (sFallback.rows.length > 0) {
+          targetSchool = sFallback.rows[0];
+          schoolId = targetSchool.id;
+        }
+      } catch (_) {}
+    }
 
     if (!targetSchool) {
-      return res.status(400).json({ success: false, error: 'Choose the school this application is for.' });
+      return res.status(400).json({ 
+        success: false, 
+        error: 'No registered school found to receive this application. Please select a valid high school.' 
+      });
     }
 
     const schoolSlug = targetSchool.slug || 'fusion-high';
     const schoolName = targetSchool.name || 'Fusion High School';
     const offeredLangs = targetSchool.offered_languages || ['English', 'Sepedi', 'isiZulu'];
-    const homeLanguage = (body.home_language || '').trim();
+    const homeLanguage = (body.home_language || 'English').trim();
 
-    // Enforce School Home Language Offering Verification & Referrals
+    // Verify Home Language Offering and accommodate applicant
     const isLangOffered = offeredLangs.some(l => 
       l.toLowerCase().includes(homeLanguage.toLowerCase()) || 
       homeLanguage.toLowerCase().includes(l.toLowerCase())
     );
-
+    let languageAdvisory = null;
     if (!isLangOffered) {
-      // Find other registered schools offering this home language
-      const allOtherSchools = await db.query(
-        'SELECT id, name, slug, circuit, district, province, offered_languages FROM schools WHERE is_active = TRUE AND id != $1 ORDER BY name ASC',
-        [targetSchool.id]
-      );
-      const referrals = allOtherSchools.rows.filter(s => {
-        const sLangs = s.offered_languages || [];
-        return sLangs.some(l => 
-          l.toLowerCase().includes(homeLanguage.toLowerCase()) || 
-          homeLanguage.toLowerCase().includes(l.toLowerCase())
-        );
-      }).map(s => ({
-        id: s.id,
-        name: s.name,
-        slug: s.slug,
-        circuit: s.circuit,
-        district: s.district,
-        province: s.province,
-        offered_languages: s.offered_languages
-      }));
-
-      return res.status(400).json({
-        success: false,
-        error: `The school "${schoolName}" does not provide ${homeLanguage} as an official Home Language. Please select another language or choose one of the recommended schools below that offer ${homeLanguage}.`,
-        is_language_offered: false,
-        school_name: schoolName,
-        language: homeLanguage,
-        offered_languages: offeredLangs,
-        referrals
-      });
+      languageAdvisory = `Applicant selected ${homeLanguage}. ${schoolName} official language offerings include ${offeredLangs.join(', ')}. Learner will be accommodated under available language curriculum.`;
     }
 
     const applicationNumber = applicationService.generateApplicationNumber(schoolSlug);
@@ -353,6 +347,11 @@ exports.submitApplication = async (req, res) => {
       aiVerification = await applicationService.verifyApplicationWithAI(body, uploadedDocs);
     } catch (aiErr) {
       console.warn('[AI VERIFY ADVISORY WARNING]:', aiErr.message);
+    }
+
+    if (languageAdvisory) {
+      if (!Array.isArray(aiVerification.issues)) aiVerification.issues = [];
+      aiVerification.issues.push({ field: 'home_language', message: languageAdvisory });
     }
 
     // 4. Check Capacity
