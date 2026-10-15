@@ -867,10 +867,10 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm sm:text-base xl:text-xl font-extrabold font-display text-slate-900 dark:text-white tracking-tight">
+              <h2 className="text-sm sm:text-base xl:text-xl font-extrabold font-display text-[#101820] dark:text-[#F5F7FA] tracking-tight">
                 Favorite Modules
               </h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/25 font-mono">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#168BFF]/10 text-[#168BFF] border border-[#168BFF]/30 font-mono">
                 {favoriteModules.length} Pinned
               </span>
             </div>
@@ -882,7 +882,7 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
-            className="px-3 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+            className="px-3 py-1.5 rounded-xl bg-[#168BFF]/10 hover:bg-[#168BFF]/20 text-[#168BFF] border border-[#168BFF]/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
             title="Add or remove favorite modules from your home page"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -891,7 +891,7 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
           <button
             type="button"
             onClick={() => onNavigateTab('more')}
-            className="hidden sm:flex px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 text-xs font-semibold transition-all items-center gap-1 cursor-pointer active:scale-95"
+            className="hidden sm:flex px-3 py-1.5 rounded-xl bg-white dark:bg-[#111821] hover:bg-slate-50 dark:hover:bg-[#171F29] text-[#526071] dark:text-[#AAB5C2] border border-[#C7D1DC] dark:border-[#2C3948] text-xs font-semibold transition-all items-center gap-1 cursor-pointer active:scale-95"
             title="Browse all modules in the Menu page"
           >
             <span>All in Menu</span>
@@ -915,25 +915,25 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
                     onNavigateTab(mod.id);
                   }
                 }}
-                className="group relative p-3.5 xl:p-4 rounded-2xl xl:rounded-3xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-cyan-500/50 dark:hover:border-cyan-500/40 hover:shadow-lg dark:hover:shadow-cyan-950/20 transition-all cursor-pointer flex items-center gap-3 overflow-hidden min-h-[72px] xl:min-h-[92px]"
+                className="group relative p-3.5 xl:p-4 rounded-2xl xl:rounded-3xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] hover:border-[#168BFF]/60 dark:hover:border-[#168BFF]/60 hover:bg-white dark:hover:bg-[#171F29] transition-all cursor-pointer flex items-center gap-3 overflow-hidden min-h-[72px] xl:min-h-[92px] shadow-sm"
               >
                 {/* Remove Quick Button (Stop Propagation) */}
                 <button
                   type="button"
                   onClick={(e) => handleRemoveFavorite(e, mod.id)}
                   title="Remove from home page favorites"
-                  className="absolute top-2.5 right-2.5 w-6 h-6 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-rose-500 hover:text-white text-slate-400 dark:text-slate-400 border border-slate-200/80 dark:border-white/10 flex items-center justify-center transition-all opacity-80 group-hover:opacity-100 active:scale-90 cursor-pointer z-10"
+                  className="absolute top-2.5 right-2.5 w-6 h-6 rounded-lg bg-white dark:bg-[#171F29] hover:bg-rose-500 hover:text-white text-[#697586] dark:text-[#8794A5] border border-[#C7D1DC] dark:border-[#2C3948] flex items-center justify-center transition-all opacity-80 group-hover:opacity-100 active:scale-90 cursor-pointer z-10"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
 
                 {/* Top Info */}
                 <div className="flex items-start gap-2.5">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border bg-cyan-500/15 border-cyan-500/30">
-                    <IconComp className="w-4.5 h-4.5 text-cyan-700 dark:text-[#18E2EC]" />
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border bg-white dark:bg-[#171F29] border-[#C7D1DC] dark:border-[#2C3948]">
+                    <IconComp className="w-4.5 h-4.5 text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] transition-colors" />
                   </div>
                   <div className="pr-6">
-                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors line-clamp-2">
+                    <h3 className="text-xs sm:text-sm font-bold text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] dark:group-hover:text-[#168BFF] transition-colors line-clamp-2">
                       {mod.title}
                     </h3>
                   </div>
@@ -946,26 +946,26 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
-            className="p-3.5 rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#1B2E3D] hover:border-cyan-500/50 hover:bg-cyan-500/5 transition-all flex flex-col items-center justify-center gap-2 text-center group cursor-pointer min-h-[92px]"
+            className="p-3.5 rounded-2xl border-2 border-dashed border-[#C7D1DC] dark:border-[#2C3948] hover:border-[#168BFF]/60 hover:bg-[#168BFF]/5 transition-all flex flex-col items-center justify-center gap-2 text-center group cursor-pointer min-h-[92px]"
             title="Click to add more favorite modules"
           >
-            <div className="w-7 h-7 rounded-xl bg-slate-100 dark:bg-white/5 group-hover:bg-cyan-500/20 text-slate-400 dark:text-slate-400 group-hover:text-cyan-500 flex items-center justify-center transition-colors">
+            <div className="w-7 h-7 rounded-xl bg-white dark:bg-[#171F29] group-hover:bg-[#168BFF]/20 text-[#697586] dark:text-[#8794A5] group-hover:text-[#168BFF] flex items-center justify-center transition-colors border border-[#C7D1DC] dark:border-[#2C3948]">
               <Plus className="w-4 h-4" />
             </div>
-            <span className="text-xs font-bold text-slate-600 dark:text-slate-300 group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
+            <span className="text-xs font-bold text-[#526071] dark:text-[#AAB5C2] group-hover:text-[#168BFF] dark:group-hover:text-[#168BFF] transition-colors">
               Add More
             </span>
           </button>
         </div>
       ) : (
         /* Empty State */
-        <div className="p-5 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left shadow-xs">
+        <div className="p-5 rounded-2xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left shadow-sm">
           <div className="flex items-center gap-3.5">
             <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-500 flex items-center justify-center shrink-0">
               <Sparkles className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+              <h3 className="text-xs sm:text-sm font-bold text-[#101820] dark:text-[#F5F7FA]">
                 No favorite modules added yet
               </h3>
             </div>
@@ -973,7 +973,7 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95 shrink-0"
+            className="px-4 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-bold text-xs transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95 shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>Add Favorite Modules</span>
@@ -988,11 +988,11 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="relative w-full max-w-2xl max-h-[88vh] rounded-3xl bg-white dark:bg-[#0B151F] border border-slate-200 dark:border-[#1B2E3D] shadow-2xl flex flex-col overflow-hidden text-slate-900 dark:text-white animate-in zoom-in-95 duration-150"
+            className="relative w-full max-w-2xl max-h-[88vh] rounded-3xl bg-white dark:bg-[#0D121A] border border-[#C7D1DC] dark:border-[#2C3948] shadow-2xl flex flex-col overflow-hidden text-[#101820] dark:text-[#F5F7FA] animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-[#1B2E3D] flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-[#0F1A24]/70">
+            <div className="p-4 sm:p-5 border-b border-[#C7D1DC] dark:border-[#2C3948] flex items-center justify-between gap-3 bg-[#E5EBF1] dark:bg-[#080B10]">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
                   <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
@@ -1006,7 +1006,7 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-xl bg-white hover:bg-slate-100 dark:bg-[#171F29] dark:hover:bg-white/10 text-[#526071] dark:text-[#AAB5C2] hover:text-[#101820] dark:hover:text-white border border-[#C7D1DC] dark:border-[#2C3948] flex items-center justify-center transition-colors cursor-pointer"
                 title="Close"
               >
                 <X className="w-4 h-4" />
@@ -1014,16 +1014,16 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
             </div>
 
             {/* Search & Filter Toolbar */}
-            <div className="p-3.5 sm:px-5 border-b border-slate-100 dark:border-[#1B2E3D] space-y-2.5 bg-slate-50/30 dark:bg-[#0F1A24]/40">
+            <div className="p-3.5 sm:px-5 border-b border-[#C7D1DC] dark:border-[#2C3948] space-y-2.5 bg-[#F4F6F8] dark:bg-[#111821]">
               {/* Search input */}
               <div className="relative">
-                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#697586] dark:text-[#8794A5]" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search modules by name, topic, or keyword..."
-                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-white dark:bg-[#070D14] border border-slate-200 dark:border-[#1B2E3D] text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 transition-colors"
+                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-white dark:bg-[#171F29] border border-[#C7D1DC] dark:border-[#2C3948] text-xs text-[#101820] dark:text-[#F5F7FA] placeholder-[#697586] dark:placeholder-[#8794A5] focus:outline-none focus:border-[#168BFF] transition-colors"
                 />
               </div>
 
@@ -1036,8 +1036,8 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
                     onClick={() => setSelectedCategory(cat)}
                     className={`px-2.5 py-1 rounded-lg font-bold capitalize transition-all shrink-0 cursor-pointer ${
                       selectedCategory === cat
-                        ? 'bg-cyan-500 text-slate-950 shadow-xs'
-                        : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/10'
+                        ? 'bg-[#168BFF] text-white shadow-xs'
+                        : 'bg-white dark:bg-[#171F29] text-[#526071] dark:text-[#AAB5C2] hover:bg-slate-50 dark:hover:bg-white/10 border border-[#C7D1DC] dark:border-[#2C3948]'
                     }`}
                   >
                     {cat === 'all' ? 'All Modules' : cat}
@@ -1047,7 +1047,7 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
             </div>
 
             {/* Modules Selection List */}
-            <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-2">
+            <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-2 bg-[#F4F6F8]/50 dark:bg-[#111821]/50">
               {modalFilteredModules.length > 0 ? (
                 modalFilteredModules.map((mod) => {
                   const isFav = favoriteIds.includes(mod.id);
@@ -1058,17 +1058,17 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
                       onClick={() => handleToggleFavorite(mod.id)}
                       className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                         isFav
-                          ? 'bg-cyan-500/10 border-cyan-500/40 shadow-xs'
-                          : 'bg-white dark:bg-[#0F1A24]/60 border-slate-200/90 dark:border-[#1B2E3D] hover:border-slate-300 dark:hover:border-cyan-500/30'
+                          ? 'bg-[#168BFF]/10 border-[#168BFF]/40 shadow-xs'
+                          : 'bg-white dark:bg-[#171F29] border-[#C7D1DC] dark:border-[#2C3948] hover:border-[#168BFF]/50'
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border bg-cyan-500/15 border-cyan-500/30">
-                          <IconComp className="w-4.5 h-4.5 text-cyan-700 dark:text-[#18E2EC]" />
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border bg-[#F4F6F8] dark:bg-[#111821] border-[#C7D1DC] dark:border-[#2C3948]">
+                          <IconComp className="w-4.5 h-4.5 text-[#101820] dark:text-[#F5F7FA]" />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                            <h4 className="text-xs sm:text-sm font-bold text-[#101820] dark:text-[#F5F7FA]">
                               {mod.title}
                             </h4>
                           </div>
@@ -1084,8 +1084,8 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
                         }}
                         className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                           isFav
-                            ? 'bg-cyan-500 hover:bg-cyan-600 text-slate-950 shadow-xs'
-                            : 'bg-slate-100 hover:bg-cyan-500/15 dark:bg-white/5 dark:hover:bg-cyan-500/15 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10'
+                            ? 'bg-[#168BFF] hover:bg-[#0878E8] text-white shadow-xs'
+                            : 'bg-[#F4F6F8] hover:bg-[#168BFF]/15 dark:bg-[#111821] dark:hover:bg-[#168BFF]/15 text-[#526071] dark:text-[#AAB5C2] border border-[#C7D1DC] dark:border-[#2C3948]'
                         }`}
                       >
                         {isFav ? (

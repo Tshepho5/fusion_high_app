@@ -20,10 +20,10 @@ export const HomeGreeting: React.FC = () => {
 
   return (
     <header className="pt-1">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700 dark:text-cyan-300">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#168BFF]">
         {dateLabel}
       </p>
-      <h1 className="mt-1 text-2xl md:text-3xl xl:text-4xl font-display font-extrabold tracking-tight text-[#1C252C] dark:text-white">
+      <h1 className="mt-1 text-2xl md:text-3xl xl:text-4xl font-display font-extrabold tracking-tight text-[#101820] dark:text-[#F5F7FA]">
         {greetingForHour(now.getHours())}, {firstName}
       </h1>
     </header>
@@ -46,7 +46,7 @@ export const ModulePageHeader: React.FC<ModulePageHeaderProps> = ({
       <button
         type="button"
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 rounded-full bg-white/80 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-cyan-700 dark:hover:text-cyan-300 hover:border-cyan-400/50 transition-colors cursor-pointer shadow-sm"
+        className="inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] px-3.5 py-1.5 text-xs font-bold text-[#526071] dark:text-[#AAB5C2] hover:text-[#101820] dark:hover:text-[#F5F7FA] hover:border-[#168BFF]/50 transition-colors cursor-pointer shadow-sm"
         title={backLabel}
       >
         <ArrowLeft className="w-3.5 h-3.5" />

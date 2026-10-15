@@ -341,13 +341,13 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
 
           {/* View Mode Switcher (3D Flow / Carousel / Visual Hero Cards / Grid / Compact / List) */}
           <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
-            <div className="flex items-center gap-1 p-1 bg-[#EDF4F7] dark:bg-[#0A121A] rounded-2xl border border-slate-200/90 dark:border-[#1B2E3D]">
+            <div className="flex items-center gap-1 p-1 bg-[#F4F6F8] dark:bg-[#111821] rounded-2xl border border-[#C7D1DC] dark:border-[#2C3948]">
               <button
                 onClick={() => handleSetSubjectViewMode('3d-flow')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   subjectViewMode === '3d-flow'
                     ? 'bg-[#168BFF] text-white shadow-xs'
-                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#168BFF]'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="3D Perspective Flow View"
               >
@@ -359,7 +359,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   subjectViewMode === 'carousel'
                     ? 'bg-[#168BFF] text-white shadow-xs'
-                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#168BFF]'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Horizontal Carousel View"
               >
@@ -371,7 +371,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   subjectViewMode === 'visual'
                     ? 'bg-[#168BFF] text-white shadow-xs'
-                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#168BFF]'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Visual Showcase with Subject Pictures"
               >
@@ -383,7 +383,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   subjectViewMode === 'grid'
                     ? 'bg-[#168BFF] text-white shadow-xs'
-                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#168BFF]'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Responsive Grid"
               >
@@ -395,7 +395,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   subjectViewMode === 'compact'
                     ? 'bg-[#168BFF] text-white shadow-xs'
-                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#168BFF]'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Compact Tiles"
               >
@@ -407,7 +407,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   subjectViewMode === 'list'
                     ? 'bg-[#168BFF] text-white shadow-xs'
-                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#168BFF]'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Detailed List"
               >
@@ -422,7 +422,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 <button
                   type="button"
                   onClick={() => scrollSubjectCarousel(-1)}
-                  className="p-2 rounded-xl bg-white dark:bg-[#0A121A] border border-slate-200/90 dark:border-[#1B2E3D] text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-[#168BFF]/50 transition-all shadow-xs active:scale-95 cursor-pointer"
+                  className="p-2 rounded-xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-[#168BFF]/50 transition-all shadow-xs active:scale-95 cursor-pointer"
                   title="Scroll Left"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -430,7 +430,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 <button
                   type="button"
                   onClick={() => scrollSubjectCarousel(1)}
-                  className="p-2 rounded-xl bg-white dark:bg-[#0A121A] border border-slate-200/90 dark:border-[#1B2E3D] text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-[#168BFF]/50 transition-all shadow-xs active:scale-95 cursor-pointer"
+                  className="p-2 rounded-xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-[#168BFF]/50 transition-all shadow-xs active:scale-95 cursor-pointer"
                   title="Scroll Right"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -451,7 +451,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
                   subjectCategoryFilter === cat.id
                     ? 'bg-[#168BFF] text-white border-[#168BFF] shadow-xs'
-                    : 'bg-[#EDF4F7] dark:bg-[#121F2C] text-slate-700 dark:text-slate-300 hover:text-cyan-700 dark:hover:text-[#168BFF] hover:bg-cyan-500/10 hover:border-cyan-500/50 border-slate-200/60 dark:border-[#1B2E3D]'
+                    : 'bg-[#F4F6F8] dark:bg-[#171F29] text-slate-700 dark:text-slate-300 hover:text-[#168BFF] dark:hover:text-[#168BFF] hover:bg-[#168BFF]/10 hover:border-[#168BFF]/50 border-[#C7D1DC] dark:border-[#2C3948]'
                 }`}
               >
                 {cat.label}
@@ -467,7 +467,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
               value={subjectSearchQuery}
               onChange={(e) => setSubjectSearchQuery(e.target.value)}
               placeholder="Find subject..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-[#EDF4F7] dark:bg-[#0A121A] border border-slate-200/90 dark:border-[#1B2E3D] text-xs text-[#1C252C] dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#168BFF] transition-all"
+              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] text-xs text-[#101820] dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#168BFF] transition-all"
             />
           </div>
         </div>
@@ -593,14 +593,14 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                       <div className="grid grid-cols-3 gap-1.5">
                         <button
                           onClick={() => openResourcesModal(name, grade)}
-                          className="px-2 py-1.5 rounded-xl bg-white hover:bg-cyan-500/15 text-slate-800 hover:text-cyan-700 dark:bg-white/5 dark:hover:bg-cyan-500/15 dark:text-slate-100 dark:hover:text-[#168BFF] text-[11px] font-semibold border border-slate-200 hover:border-cyan-500/50 dark:border-white/10 transition-colors text-center cursor-pointer"
+                          className="px-2 py-1.5 rounded-xl bg-white hover:bg-[#168BFF]/10 text-slate-800 hover:text-[#168BFF] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-slate-100 dark:hover:text-[#168BFF] text-[11px] font-semibold border border-[#C7D1DC] hover:border-[#168BFF]/50 dark:border-[#2C3948] dark:border-white/10 transition-colors text-center cursor-pointer"
                           title="Textbooks & Notes"
                         >
                           Resources
                         </button>
                         <button
                           onClick={() => onNavigateTab('ai-tutor')}
-                          className="px-2 py-1.5 rounded-xl bg-white hover:bg-cyan-500/15 text-cyan-700 hover:text-cyan-800 dark:bg-white/5 dark:hover:bg-cyan-500/15 dark:text-[#168BFF] text-[11px] font-semibold border border-cyan-500/30 hover:border-cyan-500/60 transition-colors text-center flex items-center justify-center gap-1 cursor-pointer"
+                          className="px-2 py-1.5 rounded-xl bg-white hover:bg-[#168BFF]/10 text-[#168BFF] hover:text-[#0878E8] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-[#168BFF] text-[11px] font-semibold border border-[#168BFF]/30 hover:border-[#168BFF]/60 transition-colors text-center flex items-center justify-center gap-1 cursor-pointer"
                           title="Ask Tutor"
                         >
                           <BookOpen className="w-3 h-3 text-cyan-400" />
@@ -731,14 +731,14 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                       <div className="grid grid-cols-3 gap-1.5">
                         <button
                           onClick={() => openResourcesModal(name, grade)}
-                          className="px-2 py-1.5 rounded-xl bg-white hover:bg-cyan-500/15 text-slate-800 hover:text-cyan-700 dark:bg-white/5 dark:hover:bg-cyan-500/15 dark:text-slate-100 dark:hover:text-[#168BFF] text-[11px] font-semibold border border-slate-200 hover:border-cyan-500/50 dark:border-white/10 transition-colors text-center cursor-pointer"
+                          className="px-2 py-1.5 rounded-xl bg-white hover:bg-[#168BFF]/10 text-slate-800 hover:text-[#168BFF] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-slate-100 dark:hover:text-[#168BFF] text-[11px] font-semibold border border-[#C7D1DC] hover:border-[#168BFF]/50 dark:border-[#2C3948] dark:border-white/10 transition-colors text-center cursor-pointer"
                           title="Textbooks & Notes"
                         >
                           Resources
                         </button>
                         <button
                           onClick={() => onNavigateTab('ai-tutor')}
-                          className="px-2 py-1.5 rounded-xl bg-white hover:bg-cyan-500/15 text-cyan-700 hover:text-cyan-800 dark:bg-white/5 dark:hover:bg-cyan-500/15 dark:text-[#168BFF] text-[11px] font-semibold border border-cyan-500/30 hover:border-cyan-500/60 transition-colors text-center flex items-center justify-center gap-1 cursor-pointer"
+                          className="px-2 py-1.5 rounded-xl bg-white hover:bg-[#168BFF]/10 text-[#168BFF] hover:text-[#0878E8] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-[#168BFF] text-[11px] font-semibold border border-[#168BFF]/30 hover:border-[#168BFF]/60 transition-colors text-center flex items-center justify-center gap-1 cursor-pointer"
                           title="Ask Tutor"
                         >
                           <BookOpen className="w-3 h-3 text-cyan-400" />
@@ -994,7 +994,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                         href={res.file_path}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition-colors shrink-0 flex items-center gap-1"
+                        className="px-3 py-1.5 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-semibold text-xs transition-colors shrink-0 flex items-center gap-1"
                       >
                         <span>Open</span>
                         <ExternalLink className="w-3 h-3" />
