@@ -298,14 +298,14 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
   return (
     <div className="space-y-6 animate-fade-in text-slate-900 dark:text-slate-100 pb-20">
       {/* Control Header Strip */}
-      <div className="p-5 sm:p-6 xl:px-1 xl:bg-transparent xl:dark:bg-transparent xl:border-transparent xl:shadow-none rounded-3xl bg-white/80 dark:bg-[#0F1A24]/90 backdrop-blur-xl border border-slate-200/90 dark:border-[#1B2E3D] shadow-sm relative overflow-hidden transition-colors">
+      <div className="p-5 sm:p-6 xl:px-1 xl:bg-transparent xl:dark:bg-transparent xl:border-transparent xl:shadow-none rounded-3xl bg-[#E5EBF1] dark:bg-[#080B10] border border-[#C7D1DC] dark:border-[#2C3948] shadow-sm relative overflow-hidden transition-colors">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl xl:text-4xl font-black font-display text-slate-900 dark:text-white tracking-tight">
+              <h1 className="text-xl sm:text-2xl xl:text-4xl font-black font-display text-[#101820] dark:text-[#F5F7FA] tracking-tight">
                 Main Navigation Menu
               </h1>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-600 dark:text-[#18E2EC] border border-cyan-500/20 uppercase tracking-wider">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#168BFF]/10 text-[#168BFF] border border-[#168BFF]/30 uppercase tracking-wider">
                 Executive Portal
               </span>
             </div>
@@ -314,24 +314,24 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
           {/* Search & View Mode Switcher */}
           <div className="flex items-center gap-2">
             <div className="relative flex-1 md:w-64">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#697586] dark:text-[#8794A5] pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search administrative tools..."
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-100 dark:bg-[#0A121A] border border-slate-200/90 dark:border-[#1B2E3D] text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/60 transition-all"
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-[#171F29] border border-[#C7D1DC] dark:border-[#2C3948] text-xs text-[#101820] dark:text-[#F5F7FA] placeholder-[#697586] dark:placeholder-[#8794A5] focus:outline-none focus:border-[#168BFF] focus:ring-1 focus:ring-[#168BFF] transition-all"
               />
             </div>
 
-            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-[#0A121A] rounded-xl border border-slate-200/90 dark:border-[#1B2E3D] shrink-0">
+            <div className="flex items-center gap-1 p-1 bg-white dark:bg-[#111821] rounded-xl border border-[#C7D1DC] dark:border-[#2C3948] shrink-0">
               <button
                 type="button"
                 onClick={() => handleSetViewMode('grid')}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   viewMode === 'grid'
-                    ? 'bg-cyan-500 text-slate-950 shadow-xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    ? 'bg-[#168BFF] text-white shadow-xs font-bold'
+                    : 'text-[#526071] hover:text-[#101820] dark:text-[#AAB5C2] dark:hover:text-white'
                 }`}
                 title="Detailed Cards"
               >
@@ -342,8 +342,8 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
                 onClick={() => handleSetViewMode('compact')}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   viewMode === 'compact'
-                    ? 'bg-cyan-500 text-slate-950 shadow-xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    ? 'bg-[#168BFF] text-white shadow-xs font-bold'
+                    : 'text-[#526071] hover:text-[#101820] dark:text-[#AAB5C2] dark:hover:text-white'
                 }`}
                 title="Compact App Tiles"
               >
@@ -354,8 +354,8 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
                 onClick={() => handleSetViewMode('list')}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   viewMode === 'list'
-                    ? 'bg-cyan-500 text-slate-950 shadow-xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    ? 'bg-[#168BFF] text-white shadow-xs font-bold'
+                    : 'text-[#526071] hover:text-[#101820] dark:text-[#AAB5C2] dark:hover:text-white'
                 }`}
                 title="List View"
               >
@@ -374,8 +374,8 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
               onClick={() => setSelectedCategory(cat.id)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 selectedCategory === cat.id
-                  ? 'bg-cyan-500 text-slate-950 shadow-xs'
-                  : 'bg-slate-100 dark:bg-[#121F2C] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5 border border-slate-200/80 dark:border-[#1B2E3D]'
+                  ? 'bg-[#168BFF] text-white shadow-xs'
+                  : 'bg-white dark:bg-[#111821] text-[#526071] dark:text-[#AAB5C2] hover:text-[#101820] dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5 border border-[#C7D1DC] dark:border-[#2C3948]'
               }`}
             >
               {cat.label}
@@ -383,15 +383,15 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
           ))}
         </div>
 
-        {/* Cyan Underline Bar */}
-        <div className="w-full h-1 bg-slate-200/70 dark:bg-white/10 rounded-full mt-3 overflow-hidden">
-          <div className="h-full w-28 bg-[#13C8D9] rounded-full transition-all duration-300" />
+        {/* Electric Blue Underline Bar */}
+        <div className="w-full h-1 bg-[#C7D1DC]/60 dark:bg-white/10 rounded-full mt-3 overflow-hidden">
+          <div className="h-full w-28 bg-[#168BFF] rounded-full transition-all duration-300" />
         </div>
       </div>
 
       {/* Modules Rendering Container based on viewMode */}
       {filteredModules.length === 0 ? (
-        <div className="p-12 text-center rounded-3xl bg-white dark:bg-[#0F1A24] border border-slate-200 dark:border-[#1B2E3D] text-slate-500 text-xs">
+        <div className="p-12 text-center rounded-3xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] text-[#526071] dark:text-[#AAB5C2] text-xs">
           No modules found matching "{searchQuery}"
         </div>
       ) : viewMode === 'grid' ? (
@@ -404,14 +404,14 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
               <div
                 key={m.id}
                 onClick={() => onNavigateTab(m.id)}
-                className="p-4 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-cyan-500/50 dark:hover:border-cyan-400/50 hover:bg-slate-50/50 dark:hover:bg-[#132230] transition-all flex items-center justify-between text-left group cursor-pointer card-interactive shadow-sm relative"
+                className="p-4 rounded-2xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] hover:border-[#168BFF]/60 dark:hover:border-[#168BFF]/60 hover:bg-white dark:hover:bg-[#171F29] transition-all flex items-center justify-between text-left group cursor-pointer card-interactive shadow-sm relative"
               >
                 <div className="flex items-center gap-3.5 min-w-0 pr-8">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-[#152535] border border-slate-200/70 dark:border-[#1B2E3D] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-xs">
-                    <IconComp className="w-6 h-6 text-slate-800 dark:text-[#18E2EC]" />
+                  <div className="w-12 h-12 rounded-2xl bg-white dark:bg-[#171F29] border border-[#C7D1DC] dark:border-[#2C3948] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-xs">
+                    <IconComp className="w-6 h-6 text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] transition-colors" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors leading-snug line-clamp-2">
+                    <h3 className="text-xs sm:text-sm font-bold text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] dark:group-hover:text-[#168BFF] transition-colors leading-snug line-clamp-2">
                       {m.title}
                     </h3>
                   </div>
@@ -429,7 +429,7 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
                   >
                     <Star className={`w-4 h-4 ${isFav ? 'fill-amber-400' : ''}`} />
                   </button>
-                  <ArrowRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] group-hover:translate-x-0.5 transition-all" />
+                  <ArrowRight className="w-4 h-4 text-[#697586] dark:text-[#8794A5] group-hover:text-[#168BFF] dark:group-hover:text-[#168BFF] group-hover:translate-x-0.5 transition-all" />
                 </div>
               </div>
             );
@@ -445,7 +445,7 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
               <div
                 key={m.id}
                 onClick={() => onNavigateTab(m.id)}
-                className="p-3.5 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-cyan-500/50 dark:hover:border-cyan-400/50 hover:bg-slate-50/50 dark:hover:bg-[#132230] transition-all flex flex-col items-center text-center gap-2 group cursor-pointer card-interactive relative shadow-sm"
+                className="p-3.5 rounded-2xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] hover:border-[#168BFF]/60 dark:hover:border-[#168BFF]/60 hover:bg-white dark:hover:bg-[#171F29] transition-all flex flex-col items-center text-center gap-2 group cursor-pointer card-interactive relative shadow-sm"
                 title={m.title}
               >
                 <button
@@ -458,13 +458,13 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
                 >
                   <Star className={`w-3 h-3 ${isFav ? 'fill-amber-400' : ''}`} />
                 </button>
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-[#152535] border border-slate-200/70 dark:border-[#1B2E3D] flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
-                  <IconComp className="w-6 h-6 text-slate-800 dark:text-[#18E2EC]" />
+                <div className="w-12 h-12 rounded-2xl bg-white dark:bg-[#171F29] border border-[#C7D1DC] dark:border-[#2C3948] flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
+                  <IconComp className="w-6 h-6 text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] transition-colors" />
                 </div>
-                <h3 className="text-[11px] font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2 leading-tight">
+                <h3 className="text-[11px] font-bold text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] dark:group-hover:text-[#168BFF] transition-colors line-clamp-2 leading-tight">
                   {m.title}
                 </h3>
-                <ChevronRight className="w-3 h-3 text-slate-400 dark:text-slate-500 absolute right-1.5 top-1/2 -translate-y-1/2 hidden dark:block pointer-events-none opacity-60 group-hover:opacity-100 group-hover:text-cyan-400" />
+                <ChevronRight className="w-3 h-3 text-[#697586] dark:text-[#8794A5] absolute right-1.5 top-1/2 -translate-y-1/2 hidden dark:block pointer-events-none opacity-60 group-hover:opacity-100 group-hover:text-[#168BFF]" />
               </div>
             );
           })}
@@ -479,13 +479,13 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
               <div
                 key={m.id}
                 onClick={() => onNavigateTab(m.id)}
-                className="w-full p-3.5 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-cyan-500/50 dark:hover:border-cyan-400/50 hover:bg-slate-50/50 dark:hover:bg-[#132230] transition-all flex items-center justify-between text-left group cursor-pointer shadow-sm"
+                className="w-full p-3.5 rounded-2xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] hover:border-[#168BFF]/60 dark:hover:border-[#168BFF]/60 hover:bg-white dark:hover:bg-[#171F29] transition-all flex items-center justify-between text-left group cursor-pointer shadow-sm"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-[#152535] border border-slate-200/70 dark:border-[#1B2E3D] flex items-center justify-center shrink-0 shadow-xs">
-                    <IconComp className="w-5 h-5 text-slate-800 dark:text-[#18E2EC]" />
+                  <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#171F29] border border-[#C7D1DC] dark:border-[#2C3948] flex items-center justify-center shrink-0 shadow-xs">
+                    <IconComp className="w-5 h-5 text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] transition-colors" />
                   </div>
-                  <span className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors truncate">
+                  <span className="text-xs font-bold text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] dark:group-hover:text-[#168BFF] transition-colors truncate">
                     {m.title}
                   </span>
                 </div>
@@ -502,7 +502,7 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
                   >
                     <Star className={`w-4 h-4 ${isFav ? 'fill-amber-400' : ''}`} />
                   </button>
-                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-4 h-4 text-[#697586] dark:text-[#8794A5] group-hover:text-[#168BFF] dark:group-hover:text-[#168BFF] group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
             );

@@ -463,13 +463,13 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
       <HomeGreeting />
 
       {/* GELEZA AI EDUCATOR COPILOT QUICK LAUNCHER */}
-      <section className="p-4 md:p-5 rounded-2xl bg-gradient-to-r from-slate-900/95 via-[#0c2431]/80 to-slate-900/95 border border-[#13C8D9]/25 shadow-lg relative overflow-hidden backdrop-blur-sm">
+      <section className="p-4 md:p-5 rounded-2xl bg-[#111821] border border-[#2C3948] shadow-lg relative overflow-hidden backdrop-blur-sm">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center space-x-3.5">
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-white tracking-tight">Geleza AI Teacher Copilot</h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#13C8D9]/15 text-[#13C8D9] border border-[#13C8D9]/30">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#168BFF]/15 text-[#168BFF] border border-[#168BFF]/30">
                   CAPS & Bloom's
                 </span>
               </div>
@@ -478,23 +478,23 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
           <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
             <button
               onClick={() => { setCopilotTab('lesson'); setIsCopilotOpen(true); }}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#168BFF] hover:bg-[#0878E8] text-white shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
             >
-              <BookOpen className="w-3.5 h-3.5 text-teal-800" />
+              <BookOpen className="w-3.5 h-3.5 text-white" />
               <span>Lesson Planner</span>
             </button>
             <button
               onClick={() => { setCopilotTab('test'); setIsCopilotOpen(true); }}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#168BFF] hover:bg-[#0878E8] text-white shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-teal-800" />
+              <FileSpreadsheet className="w-3.5 h-3.5 text-white" />
               <span>Test & Memo</span>
             </button>
             <button
               onClick={() => { setCopilotTab('risk'); setIsCopilotOpen(true); }}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#168BFF] hover:bg-[#0878E8] text-white shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
             >
-              <AlertCircle className="w-3.5 h-3.5 text-teal-800" />
+              <AlertCircle className="w-3.5 h-3.5 text-white" />
               <span>Class Risk Briefing</span>
             </button>
             <button
@@ -513,7 +513,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
       <section className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#13C8D9]/15 text-[#13C8D9] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-[#168BFF]/15 text-[#168BFF] flex items-center justify-center">
               <BookOpen className="w-4 h-4" />
             </div>
             <div>
@@ -531,8 +531,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                 onClick={() => handleSetSubjectsViewMode('carousel')}
                 className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
                   subjectsViewMode === 'carousel'
-                    ? 'bg-[#13C8D9] text-slate-950 shadow-sm'
-                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#18E2EC]'
+                    ? 'bg-[#168BFF] text-white shadow-sm'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Carousel View"
               >
@@ -545,8 +545,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                 onClick={() => handleSetSubjectsViewMode('grid')}
                 className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
                   subjectsViewMode === 'grid'
-                    ? 'bg-[#13C8D9] text-slate-950 shadow-sm'
-                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#18E2EC]'
+                    ? 'bg-[#168BFF] text-white shadow-sm'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Grid View"
               >
@@ -559,8 +559,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                 onClick={() => handleSetSubjectsViewMode('compact')}
                 className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
                   subjectsViewMode === 'compact'
-                    ? 'bg-[#13C8D9] text-slate-950 shadow-sm'
-                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#18E2EC]'
+                    ? 'bg-[#168BFF] text-white shadow-sm'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Compact Tiles"
               >
@@ -573,8 +573,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                 onClick={() => handleSetSubjectsViewMode('list')}
                 className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
                   subjectsViewMode === 'list'
-                    ? 'bg-[#13C8D9] text-slate-950 shadow-sm'
-                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#18E2EC]'
+                    ? 'bg-[#168BFF] text-white shadow-sm'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="List View"
               >
@@ -702,7 +702,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       </button>
                       <button
                         onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
-                        className="px-2.5 py-1.5 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
                         title={`Enter SBA Marks for ${card.subject_name}`}
                       >
                         <FileSpreadsheet className="w-3.5 h-3.5 text-white shrink-0" />
@@ -835,7 +835,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       </button>
                       <button
                         onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
-                        className="px-2.5 py-1.5 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
                         title={`Enter SBA Marks for ${card.subject_name}`}
                       >
                         <FileSpreadsheet className="w-3.5 h-3.5 text-white shrink-0" />
@@ -1026,7 +1026,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     </button>
                     <button
                       onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
-                      className="px-3 py-1.5 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                       title="Marks"
                     >
                       <FileSpreadsheet className="w-3.5 h-3.5" />

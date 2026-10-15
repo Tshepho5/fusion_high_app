@@ -143,7 +143,7 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
       {/* Header Banner */}
       <div className="p-6 rounded-3xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="p-3.5 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-700 dark:text-[#18E2EC] shadow-sm">
+          <div className="p-3.5 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-700 dark:text-[#168BFF] shadow-sm">
             <GraduationCap className="w-6 h-6" />
           </div>
           <div>
@@ -193,7 +193,7 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
               onClick={() => setSelectedCategory(tab.id)}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                 selectedCategory === tab.id
-                  ? 'bg-cyan-600 dark:bg-[#13C8D9] text-white dark:text-[#0A121A] shadow-xs'
+                  ? 'bg-cyan-600 dark:bg-[#168BFF] text-white dark:text-[#0A121A] shadow-xs'
                   : 'bg-white dark:bg-surface-dark text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200/80 dark:border-white/5'
               }`}
             >
@@ -262,7 +262,7 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
                       </span>
                     )}
                   </div>
-                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors">
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#168BFF] transition-colors">
                     {bursary.name}
                   </h3>
                   <p className="text-xs text-slate-600 dark:text-slate-400 font-medium flex items-center gap-1.5">
@@ -367,7 +367,7 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
                     href={bursary.application_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 rounded-xl bg-[#13C8D9] hover:bg-[#0891B2] text-[#0A121A] font-extrabold text-xs shadow-md shadow-cyan-500/20 transition-all flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-extrabold text-xs shadow-md shadow-cyan-500/20 transition-all flex items-center gap-1.5"
                   >
                     <span>Apply Online</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />
@@ -517,7 +517,7 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
                 type="button"
                 onClick={handleSaveTracking}
                 disabled={isSaving}
-                className="px-6 py-2.5 rounded-xl bg-[#13C8D9] hover:bg-[#0891B2] text-[#0A121A] font-extrabold shadow-md transition-all disabled:opacity-50 cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-extrabold shadow-md transition-all disabled:opacity-50 cursor-pointer"
               >
                 {isSaving ? 'Saving...' : 'Save Checklist & Status'}
               </button>

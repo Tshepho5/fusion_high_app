@@ -516,7 +516,7 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
                       onClick={() => setTestSource('question_bank')}
                       className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         testSource === 'question_bank'
-                          ? 'bg-[#13C8D9] text-slate-950 shadow-md font-extrabold'
+                          ? 'bg-[#168BFF] text-white shadow-md font-extrabold'
                           : 'text-slate-600 dark:text-slate-400 hover:text-white'
                       }`}
                     >
@@ -528,7 +528,7 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
                       onClick={() => setTestSource('ai')}
                       className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         testSource === 'ai'
-                          ? 'bg-[#13C8D9] text-slate-950 shadow-md font-extrabold'
+                          ? 'bg-[#168BFF] text-white shadow-md font-extrabold'
                           : 'text-slate-600 dark:text-slate-400 hover:text-white'
                       }`}
                     >
@@ -617,8 +617,8 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
                           </select>
                         </div>
 
-                        <div className="p-3 rounded-xl bg-[#13C8D9]/10 border border-[#13C8D9]/30 text-xs text-slate-300 flex items-center gap-2.5">
-                          <Award className="w-5 h-5 text-[#13C8D9] shrink-0" />
+                        <div className="p-3 rounded-xl bg-[#168BFF]/10 border border-[#168BFF]/30 text-xs text-slate-300 flex items-center gap-2.5">
+                          <Award className="w-5 h-5 text-[#168BFF] shrink-0" />
                           <span>Official DBE past examination items with verified mark breakdowns and marking memorandums.</span>
                         </div>
                       </div>
@@ -664,7 +664,7 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
                   <button
                     onClick={handleGenerateAssessment}
                     disabled={loading || (testSource === 'ai' && !topic.trim())}
-                    className="w-full py-3.5 px-6 rounded-xl font-bold text-sm bg-gradient-to-r from-teal-600 to-[#13C8D9] hover:from-teal-700 hover:to-[#18E2EC] text-slate-950 shadow-lg shadow-teal-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer active:scale-[0.99]"
+                    className="w-full py-3.5 px-6 rounded-xl font-bold text-sm bg-gradient-to-r from-teal-600 to-[#168BFF] hover:from-teal-700 hover:to-[#168BFF] text-slate-950 shadow-lg shadow-teal-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer active:scale-[0.99]"
                   >
                     {loading ? <LoadingSpinner size="sm" /> : <Award className="w-4 h-4 text-slate-950" />}
                     <span>{testSource === 'question_bank' ? 'Assemble Test & Memo from Question Bank' : 'Generate Assessment Paper & Memorandum'}</span>
@@ -688,7 +688,7 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
                           onClick={() => setViewMode('paper')}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                             viewMode === 'paper'
-                              ? 'bg-[#13C8D9] text-slate-950 font-bold shadow-sm'
+                              ? 'bg-[#168BFF] text-white font-bold shadow-sm'
                               : 'text-slate-600 dark:text-slate-400'
                           }`}
                         >
@@ -698,7 +698,7 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
                           onClick={() => setViewMode('memo')}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                             viewMode === 'memo'
-                              ? 'bg-[#13C8D9] text-slate-950 font-bold shadow-sm'
+                              ? 'bg-[#168BFF] text-white font-bold shadow-sm'
                               : 'text-slate-600 dark:text-slate-400'
                           }`}
                         >
@@ -740,7 +740,7 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
 
                       <button
                         onClick={() => setTestResult(null)}
-                        className="p-2 text-xs font-medium rounded-lg bg-[#13C8D9]/20 text-[#13C8D9] border border-[#13C8D9]/30 hover:bg-[#13C8D9]/30 cursor-pointer font-bold"
+                        className="p-2 text-xs font-medium rounded-lg bg-[#168BFF]/20 text-[#168BFF] border border-[#168BFF]/30 hover:bg-[#168BFF]/30 cursor-pointer font-bold"
                       >
                         New Paper
                       </button>
@@ -773,7 +773,7 @@ export const TeacherAICopilotModal: React.FC<TeacherAICopilotModalProps> = ({
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-2 pl-3">
                                 {Object.entries(q.options).map(([k, v]) => (
                                   <div key={k} className="text-xs text-slate-700 dark:text-slate-300 font-mono">
-                                    <strong className="text-[#13C8D9]">{k}.</strong> {String(v)}
+                                    <strong className="text-[#168BFF]">{k}.</strong> {String(v)}
                                   </div>
                                 ))}
                               </div>

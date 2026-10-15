@@ -224,7 +224,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
       <section className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#EDF4F7] dark:bg-[#152535] text-[#13C8D9] flex items-center justify-center border border-slate-200/80 dark:border-[#1B2E3D]">
+            <div className="w-8 h-8 rounded-xl bg-[#EDF4F7] dark:bg-[#152535] text-[#168BFF] flex items-center justify-center border border-slate-200/80 dark:border-[#1B2E3D]">
               <GraduationCap className="w-4 h-4" />
             </div>
             <h2 className="text-base md:text-lg xl:text-2xl font-bold font-display text-[#1C252C] dark:text-white tracking-tight">
@@ -241,7 +241,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                 setLinkSuccess(null);
                 setIsLinkModalOpen(true);
               }}
-              className="px-3 py-1.5 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-[#0A121A] text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 shrink-0"
+              className="px-3 py-1.5 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 shrink-0"
               title="Link a new or additional learner"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -255,8 +255,8 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                 onClick={() => handleSetChildrenViewMode('carousel')}
                 className={`p-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
                   childrenViewMode === 'carousel'
-                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
-                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#18E2EC]'
+                    ? 'bg-[#168BFF] text-white shadow-xs'
+                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Carousel View"
               >
@@ -268,8 +268,8 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                 onClick={() => handleSetChildrenViewMode('grid')}
                 className={`p-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
                   childrenViewMode === 'grid'
-                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
-                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#18E2EC]'
+                    ? 'bg-[#168BFF] text-white shadow-xs'
+                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Grid View"
               >
@@ -281,8 +281,8 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                 onClick={() => handleSetChildrenViewMode('compact')}
                 className={`p-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
                   childrenViewMode === 'compact'
-                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
-                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#18E2EC]'
+                    ? 'bg-[#168BFF] text-white shadow-xs'
+                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Compact Tiles"
               >
@@ -294,8 +294,8 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                 onClick={() => handleSetChildrenViewMode('list')}
                 className={`p-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
                   childrenViewMode === 'list'
-                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
-                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#18E2EC]'
+                    ? 'bg-[#168BFF] text-white shadow-xs'
+                    : 'text-slate-500 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Detailed List"
               >
@@ -310,7 +310,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                 <button
                   type="button"
                   onClick={() => scrollCarousel(-1)}
-                  className="p-2 rounded-xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-[#13C8D9]/50 transition-all shadow-xs active:scale-95 cursor-pointer"
+                  className="p-2 rounded-xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-[#168BFF]/50 transition-all shadow-xs active:scale-95 cursor-pointer"
                   title="Scroll Left"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -318,7 +318,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                 <button
                   type="button"
                   onClick={() => scrollCarousel(1)}
-                  className="p-2 rounded-xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-[#13C8D9]/50 transition-all shadow-xs active:scale-95 cursor-pointer"
+                  className="p-2 rounded-xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-[#168BFF]/50 transition-all shadow-xs active:scale-95 cursor-pointer"
                   title="Scroll Right"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -344,12 +344,12 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                     key={idx}
                     className={
                       solo
-                        ? 'min-w-[290px] max-w-[320px] shrink-0 snap-start xl:max-w-none xl:min-w-0 xl:w-full xl:shrink xl:flex-row xl:items-center xl:justify-between xl:gap-6 xl:p-5 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#13C8D9]/50 p-4 transition-all shadow-sm flex flex-col justify-between group space-y-3 xl:space-y-0'
-                        : 'min-w-[290px] max-w-[320px] shrink-0 snap-start xl:max-w-[420px] xl:min-w-[320px] xl:flex-1 xl:basis-[340px] rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#13C8D9]/50 p-4 transition-all shadow-sm flex flex-col justify-between group space-y-3'
+                        ? 'min-w-[290px] max-w-[320px] shrink-0 snap-start xl:max-w-none xl:min-w-0 xl:w-full xl:shrink xl:flex-row xl:items-center xl:justify-between xl:gap-6 xl:p-5 rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#168BFF]/50 p-4 transition-all shadow-sm flex flex-col justify-between group space-y-3 xl:space-y-0'
+                        : 'min-w-[290px] max-w-[320px] shrink-0 snap-start xl:max-w-[420px] xl:min-w-[320px] xl:flex-1 xl:basis-[340px] rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#168BFF]/50 p-4 transition-all shadow-sm flex flex-col justify-between group space-y-3'
                     }
                   >
                     <div className={`flex items-start justify-between gap-2 ${solo ? 'xl:shrink-0 xl:w-40 xl:flex-col xl:items-start' : ''}`}>
-                      <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#EDF4F7] dark:bg-[#142230] text-[#13C8D9] border border-slate-200/80 dark:border-[#1B2E3D]">
+                      <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#EDF4F7] dark:bg-[#142230] text-[#168BFF] border border-slate-200/80 dark:border-[#1B2E3D]">
                         Grade {child.grade || 10} • {child.stream || 'General'}
                       </span>
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30">
@@ -358,13 +358,13 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                     </div>
 
                     <div className={`flex items-center gap-3 ${solo ? 'xl:flex-1 xl:min-w-[200px]' : ''}`}>
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#13C8D9] to-cyan-400 border border-white/20 flex items-center justify-center text-white font-bold text-lg overflow-hidden shrink-0 shadow-xs">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#168BFF] to-cyan-400 border border-white/20 flex items-center justify-center text-white font-bold text-lg overflow-hidden shrink-0 shadow-xs">
                         {pfp ? <img src={pfp} alt={fullName} className="w-full h-full object-cover" /> : fullName.charAt(0)}
                       </div>
                       <div>
                         <h3
                           onClick={() => onNavigateTab('reports', child.id)}
-                          className="text-base font-bold text-[#1C252C] dark:text-white group-hover:text-[#13C8D9] dark:group-hover:text-[#18E2EC] transition-colors cursor-pointer leading-snug"
+                          className="text-base font-bold text-[#1C252C] dark:text-white group-hover:text-[#168BFF] dark:group-hover:text-[#168BFF] transition-colors cursor-pointer leading-snug"
                         >
                           {fullName}
                         </h3>
@@ -389,11 +389,11 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                       <button
                         onClick={() => onNavigateTab('reports', child.id)}
                         data-theme-preserve="true"
-                        className="report-card-btn px-2 py-1.5 rounded-lg bg-[#1C252C] hover:bg-slate-800 dark:bg-[#13C8D9] dark:hover:bg-[#18E2EC] text-white dark:text-[#0A121A] text-always-white font-bold text-xs transition-colors flex items-center justify-center gap-1 shadow-sm cursor-pointer"
+                        className="report-card-btn px-2 py-1.5 rounded-lg bg-[#1C252C] hover:bg-slate-800 dark:bg-[#168BFF] dark:hover:bg-[#0878E8] text-white text-always-white font-bold text-xs transition-colors flex items-center justify-center gap-1 shadow-sm cursor-pointer"
                         title="View Official Report Card"
                       >
-                        <span className="text-white dark:text-[#0A121A] text-always-white font-bold">Report Card</span>
-                        <ArrowRight className="w-3 h-3 text-white dark:text-[#0A121A] text-always-white" />
+                        <span className="text-white dark:text-white text-always-white font-bold">Report Card</span>
+                        <ArrowRight className="w-3 h-3 text-white dark:text-white text-always-white" />
                       </button>
                     </div>
 
@@ -419,7 +419,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                     setLinkSuccess(null);
                     setIsLinkModalOpen(true);
                   }}
-                  className="px-4 py-2 rounded-xl bg-[#13C8D9] text-[#0A121A] text-xs font-bold shadow-md hover:bg-[#18E2EC] transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-[#168BFF] text-white text-xs font-bold shadow-md hover:bg-[#0878E8] transition-colors cursor-pointer"
                 >
                   Link Child
                 </button>
@@ -438,10 +438,10 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                 return (
                   <div
                     key={idx}
-                    className="rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#13C8D9]/50 p-4 transition-all shadow-sm flex flex-col justify-between group space-y-3"
+                    className="rounded-2xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#168BFF]/50 p-4 transition-all shadow-sm flex flex-col justify-between group space-y-3"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#EDF4F7] dark:bg-[#142230] text-[#13C8D9] border border-slate-200/80 dark:border-[#1B2E3D]">
+                      <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#EDF4F7] dark:bg-[#142230] text-[#168BFF] border border-slate-200/80 dark:border-[#1B2E3D]">
                         Grade {child.grade || 10} • {child.stream || 'General'}
                       </span>
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30">
@@ -450,13 +450,13 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#13C8D9] to-cyan-400 border border-white/20 flex items-center justify-center text-white font-bold text-lg overflow-hidden shrink-0 shadow-xs">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#168BFF] to-cyan-400 border border-white/20 flex items-center justify-center text-white font-bold text-lg overflow-hidden shrink-0 shadow-xs">
                         {pfp ? <img src={pfp} alt={fullName} className="w-full h-full object-cover" /> : fullName.charAt(0)}
                       </div>
                       <div>
                         <h3
                           onClick={() => onNavigateTab('reports', child.id)}
-                          className="text-base font-bold text-[#1C252C] dark:text-white group-hover:text-[#13C8D9] dark:group-hover:text-[#18E2EC] transition-colors cursor-pointer leading-snug"
+                          className="text-base font-bold text-[#1C252C] dark:text-white group-hover:text-[#168BFF] dark:group-hover:text-[#168BFF] transition-colors cursor-pointer leading-snug"
                         >
                           {fullName}
                         </h3>
@@ -481,11 +481,11 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                       <button
                         onClick={() => onNavigateTab('reports', child.id)}
                         data-theme-preserve="true"
-                        className="report-card-btn px-2 py-1.5 rounded-lg bg-[#1C252C] hover:bg-slate-800 dark:bg-[#13C8D9] dark:hover:bg-[#18E2EC] text-white dark:text-[#0A121A] text-always-white font-bold text-xs transition-colors flex items-center justify-center gap-1 shadow-sm cursor-pointer"
+                        className="report-card-btn px-2 py-1.5 rounded-lg bg-[#1C252C] hover:bg-slate-800 dark:bg-[#168BFF] dark:hover:bg-[#0878E8] text-white text-always-white font-bold text-xs transition-colors flex items-center justify-center gap-1 shadow-sm cursor-pointer"
                         title="View Official Report Card"
                       >
-                        <span className="text-white dark:text-[#0A121A] text-always-white font-bold">Report Card</span>
-                        <ArrowRight className="w-3 h-3 text-white dark:text-[#0A121A] text-always-white" />
+                        <span className="text-white dark:text-white text-always-white font-bold">Report Card</span>
+                        <ArrowRight className="w-3 h-3 text-white dark:text-white text-always-white" />
                       </button>
                     </div>
                   </div>
@@ -505,13 +505,13 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                 <div
                   key={idx}
                   onClick={() => onNavigateTab('reports', child.id)}
-                  className="rounded-xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#13C8D9]/50 p-3 transition-all shadow-xs flex items-center gap-3 cursor-pointer group"
+                  className="rounded-xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#168BFF]/50 p-3 transition-all shadow-xs flex items-center gap-3 cursor-pointer group"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-[#13C8D9] to-cyan-400 text-white font-bold flex items-center justify-center overflow-hidden shrink-0 text-sm">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-[#168BFF] to-cyan-400 text-white font-bold flex items-center justify-center overflow-hidden shrink-0 text-sm">
                     {pfp ? <img src={pfp} alt={fullName} className="w-full h-full object-cover" /> : fullName.charAt(0)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h4 className="text-xs font-bold text-[#1C252C] dark:text-white truncate group-hover:text-[#13C8D9] transition-colors">
+                    <h4 className="text-xs font-bold text-[#1C252C] dark:text-white truncate group-hover:text-[#168BFF] transition-colors">
                       {fullName}
                     </h4>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -533,16 +533,16 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
               return (
                 <div
                   key={idx}
-                  className="rounded-xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#13C8D9]/50 p-3.5 transition-all shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 group"
+                  className="rounded-xl bg-white dark:bg-[#0F1A24] border border-slate-200/90 dark:border-[#1B2E3D] hover:border-[#168BFF]/50 p-3.5 transition-all shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-[#13C8D9] to-cyan-400 text-white font-bold flex items-center justify-center overflow-hidden shrink-0 text-sm">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-[#168BFF] to-cyan-400 text-white font-bold flex items-center justify-center overflow-hidden shrink-0 text-sm">
                       {pfp ? <img src={pfp} alt={fullName} className="w-full h-full object-cover" /> : fullName.charAt(0)}
                     </div>
                     <div>
                       <h4
                         onClick={() => onNavigateTab('reports', child.id)}
-                        className="text-sm font-bold text-[#1C252C] dark:text-white group-hover:text-[#13C8D9] transition-colors cursor-pointer"
+                        className="text-sm font-bold text-[#1C252C] dark:text-white group-hover:text-[#168BFF] transition-colors cursor-pointer"
                       >
                         {fullName}
                       </h4>
@@ -571,11 +571,11 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                       <button
                         onClick={() => onNavigateTab('reports', child.id)}
                         data-theme-preserve="true"
-                        className="report-card-btn px-3 py-1.5 rounded-lg bg-[#1C252C] hover:bg-slate-800 dark:bg-[#13C8D9] dark:hover:bg-[#18E2EC] text-white dark:text-[#0A121A] text-always-white text-xs font-bold transition-colors shadow-xs flex items-center gap-1 cursor-pointer"
+                        className="report-card-btn px-3 py-1.5 rounded-lg bg-[#1C252C] hover:bg-slate-800 dark:bg-[#168BFF] dark:hover:bg-[#0878E8] text-white text-always-white text-xs font-bold transition-colors shadow-xs flex items-center gap-1 cursor-pointer"
                         title="View Official Report Card"
                       >
-                        <span className="text-white dark:text-[#0A121A] text-always-white font-bold">Report Card</span>
-                        <ArrowRight className="w-3.5 h-3.5 text-white dark:text-[#0A121A] text-always-white" />
+                        <span className="text-white dark:text-white text-always-white font-bold">Report Card</span>
+                        <ArrowRight className="w-3.5 h-3.5 text-white dark:text-white text-always-white" />
                       </button>
                     </div>
                   </div>
@@ -598,13 +598,13 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
           }}
         >
           <div
-            className="w-full max-w-lg rounded-3xl bg-white dark:bg-[#0B1520] border border-slate-200 dark:border-[#13C8D9]/30 p-5 sm:p-6 shadow-2xl animate-scale-in text-slate-900 dark:text-white"
+            className="w-full max-w-lg rounded-3xl bg-white dark:bg-[#0B1520] border border-slate-200 dark:border-[#168BFF]/30 p-5 sm:p-6 shadow-2xl animate-scale-in text-slate-900 dark:text-white"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-[#1B2E3D]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#13C8D9]/15 border border-[#13C8D9]/30 text-[#13C8D9] flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-2xl bg-[#168BFF]/15 border border-[#168BFF]/30 text-[#168BFF] flex items-center justify-center font-bold">
                   <GraduationCap className="w-5 h-5" />
                 </div>
                 <div>
@@ -617,7 +617,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                 type="button"
                 disabled={linkLoading}
                 onClick={() => setIsLinkModalOpen(false)}
-                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-cyan-500/15 hover:text-cyan-700 dark:bg-white/5 dark:hover:bg-cyan-500/15 text-slate-500 dark:text-slate-300 dark:hover:text-[#18E2EC] flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50"
+                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-cyan-500/15 hover:text-cyan-700 dark:bg-white/5 dark:hover:bg-cyan-500/15 text-slate-500 dark:text-slate-300 dark:hover:text-[#168BFF] flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50"
                 title="Close"
               >
                 <X className="w-4 h-4" />
@@ -654,7 +654,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                       value={linkForm.first_name}
                       onChange={(e) => setLinkName('first_name', e.target.value)}
                       placeholder="e.g. Sipho"
-                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#13C8D9]"
+                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#168BFF]"
                     />
                   </div>
                   {linkFieldErrors.first_name && (
@@ -674,7 +674,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                       value={linkForm.surname}
                       onChange={(e) => setLinkName('surname', e.target.value)}
                       placeholder="e.g. Nkosi"
-                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#13C8D9]"
+                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#168BFF]"
                     />
                   </div>
                   {linkFieldErrors.surname && (
@@ -693,7 +693,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                   value={linkForm.learner_number}
                   onChange={(e) => setLinkForm({ ...linkForm, learner_number: e.target.value })}
                   placeholder="e.g. 2026001"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#13C8D9]"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#168BFF]"
                 />
               </div>
 
@@ -710,7 +710,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                     value={linkForm.id_number}
                     onChange={(e) => setLinkForm({ ...linkForm, id_number: e.target.value.replace(/\D/g, '').slice(0, 13) })}
                     placeholder="13 digits"
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#13C8D9]"
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#168BFF]"
                   />
                 </div>
               </div>
@@ -723,7 +723,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                   <select
                     value={linkForm.grade}
                     onChange={(e) => setLinkForm({ ...linkForm, grade: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#13C8D9]"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#168BFF]"
                   >
                     {[8, 9, 10, 11, 12].map((g) => (
                       <option key={g} value={String(g)}>Grade {g}</option>
@@ -738,7 +738,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                   <select
                     value={linkForm.relationship}
                     onChange={(e) => setLinkForm({ ...linkForm, relationship: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#13C8D9]"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#121F2C] border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#168BFF]"
                   >
                     <option value="Mother">Mother</option>
                     <option value="Father">Father</option>
@@ -756,14 +756,14 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                   type="button"
                   disabled={linkLoading}
                   onClick={() => setIsLinkModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-cyan-500/15 hover:text-cyan-700 hover:border-cyan-500/40 dark:bg-white/5 dark:hover:bg-cyan-500/15 text-slate-700 dark:text-slate-200 dark:hover:text-[#18E2EC] text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 border border-transparent"
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-cyan-500/15 hover:text-cyan-700 hover:border-cyan-500/40 dark:bg-white/5 dark:hover:bg-cyan-500/15 text-slate-700 dark:text-slate-200 dark:hover:text-[#168BFF] text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 border border-transparent"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={linkLoading}
-                  className="px-5 py-2 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-[#0A121A] text-xs font-extrabold shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
+                  className="px-5 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white text-xs font-extrabold shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
                 >
                   {linkLoading ? (
                     <>

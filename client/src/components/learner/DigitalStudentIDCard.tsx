@@ -362,7 +362,7 @@ export const DigitalStudentIDCard: React.FC<DigitalStudentIDCardProps> = ({ lear
 
         <button
           onClick={handleDownloadCard}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#13C8D9] hover:bg-[#0891B2] text-[#0A121A] font-extrabold text-xs shadow-md shadow-cyan-500/20 transition-all cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-extrabold text-xs shadow-md shadow-cyan-500/20 transition-all cursor-pointer"
         >
           <Download className="w-3.5 h-3.5" />
           <span>Save Digital ID Card</span>

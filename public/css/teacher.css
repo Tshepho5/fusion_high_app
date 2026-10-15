@@ -1,37 +1,37 @@
 :root {
-  --primary: #111111;
-  --secondary: #111111;
-  --bg: #F5F5F7;
-  --sidebar: #FFFFFF;
-  --text-main: #111111;
-  --text-muted: #71717A;
-  --white: #FFFFFF;
-  --card-border: #E4E4E7;
-  --accent: #9333EA;
-  --accent-soft: #F3E8FF;
-  --btn-cta-bg: #111111;
+  --primary: var(--text-primary, #101820);
+  --secondary: var(--text-secondary, #526071);
+  --bg: var(--app-background, #E5EBF1);
+  --sidebar: var(--surface-background, #DCE4EC);
+  --text-main: var(--text-primary, #101820);
+  --text-muted: var(--text-secondary, #526071);
+  --white: var(--card-background, #F4F6F8);
+  --card-border: var(--border-color, #C7D1DC);
+  --accent: var(--accent-primary, #168BFF);
+  --accent-soft: var(--accent-soft, #DCEEFF);
+  --btn-cta-bg: var(--accent-primary, #168BFF);
   --btn-cta-text: #FFFFFF;
-  --btn-secondary-bg: #FFFFFF;
-  --btn-secondary-text: #111111;
-  --btn-secondary-border: #E4E4E7;
+  --btn-secondary-bg: var(--input-background, #FFFFFF);
+  --btn-secondary-text: var(--text-primary, #101820);
+  --btn-secondary-border: var(--border-color, #C7D1DC);
 }
 
 [data-theme="dark"] {
-  --primary: #FFFFFF;
-  --secondary: #FFFFFF;
-  --bg: #0A0A0C;
-  --sidebar: #16161A;
-  --text-main: #FFFFFF;
-  --text-muted: #A1A1AA;
-  --white: #16161A;
-  --card-border: #27272E;
-  --accent: #C084FC;
-  --accent-soft: #261B35;
-  --btn-cta-bg: #FFFFFF;
-  --btn-cta-text: #000000;
-  --btn-secondary-bg: #16161A;
-  --btn-secondary-text: #FFFFFF;
-  --btn-secondary-border: #27272E;
+  --primary: var(--text-primary, #F5F7FA);
+  --secondary: var(--text-secondary, #AAB5C2);
+  --bg: var(--app-background, #080B10);
+  --sidebar: var(--surface-background, #0D121A);
+  --text-main: var(--text-primary, #F5F7FA);
+  --text-muted: var(--icon-muted, #8794A5);
+  --white: var(--card-background, #111821);
+  --card-border: var(--border-color, #2C3948);
+  --accent: var(--accent-primary, #168BFF);
+  --accent-soft: var(--accent-soft, #102B45);
+  --btn-cta-bg: var(--accent-primary, #168BFF);
+  --btn-cta-text: #FFFFFF;
+  --btn-secondary-bg: var(--input-background, #171F29);
+  --btn-secondary-text: var(--text-primary, #F5F7FA);
+  --btn-secondary-border: var(--border-color, #2C3948);
 }
 
 body {

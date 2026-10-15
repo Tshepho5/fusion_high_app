@@ -6,139 +6,189 @@
 @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Dancing+Script:wght@600;700&family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Canvas & Layout (Light Mode - soft ice blue / pale cyan gradient) */
-  --wave-bg: #CBDDE3;
-  --wave-canvas: #CBDDE3;
-  --wave-surface: #FFFFFF;
-  --wave-surface-translucent: rgba(255, 255, 255, 0.94);
-  --wave-surface-subtle: #EDF4F7;
-  --wave-surface-elevated: #FFFFFF;
-  --wave-border: rgba(180, 205, 218, 0.5);
-  --wave-border-subtle: #E1ECF0;
+  /* ==========================================================================
+     GELEZA SA OFFICIAL PALETTE — LIGHT MODE
+     Soft, professional light theme: cool grey-blue background, off-white cards,
+     white elevated elements, dark text, restrained electric blue accent.
+     ========================================================================== */
+  --app-background: #E5EBF1;
+  --surface-background: #DCE4EC;
+  --card-background: #F4F6F8;
+  --input-background: #FFFFFF;
+  --text-primary: #101820;
+  --text-secondary: #526071;
+  --border-color: #C7D1DC;
+  --icon-muted: #697586;
+  --accent-primary: #168BFF;
+  --accent-hover: #0878E8;
+  --accent-soft: #DCEEFF;
+  --focus-ring: #168BFF;
+  --disabled-background: #D4DCE5;
+  --disabled-text: #9AA5B4;
+
+  /* Functional status indicators */
+  --status-success: #10B981;
+  --status-success-soft: #D1FAE5;
+  --status-warning: #F59E0B;
+  --status-warning-soft: #FEF3C7;
+  --status-danger: #EF4444;
+  --status-danger-soft: #FEE2E2;
+  --status-info: #168BFF;
+  --status-info-soft: #DCEEFF;
+
+  /* Canonical Wave Theme Mappings */
+  --wave-bg: var(--app-background);
+  --wave-canvas: var(--app-background);
+  --wave-surface: var(--card-background);
+  --wave-surface-translucent: rgba(244, 246, 248, 0.95);
+  --wave-surface-subtle: var(--surface-background);
+  --wave-surface-elevated: var(--input-background);
+  --wave-border: var(--border-color);
+  --wave-border-subtle: var(--border-color);
   
   /* Text */
-  --wave-text-primary: #1C252C;
-  --wave-text-secondary: #52525B;
-  --wave-text-muted: #71717A;
+  --wave-text-primary: var(--text-primary);
+  --wave-text-secondary: var(--text-secondary);
+  --wave-text-muted: var(--icon-muted);
   --wave-text-inverse: #FFFFFF;
   
   /* Accent & Badges */
-  --wave-accent-purple: #13C8D9;
-  --wave-accent-badge-bg: #E1ECF0;
-  --wave-accent-badge-border: #CBDDE3;
-  --wave-accent-blue: #13C8D9;
-  --wave-accent-sky: #52525B;
-  --wave-accent-navy: #1C252C;
-  --wave-accent-cyan: #13C8D9;
-  --wave-accent-neon: #18E2EC;
+  --wave-accent-purple: var(--accent-primary);
+  --wave-accent-badge-bg: var(--accent-soft);
+  --wave-accent-badge-border: var(--border-color);
+  --wave-accent-badge-text: var(--accent-primary);
+  --wave-accent-blue: var(--accent-primary);
+  --wave-accent-sky: var(--text-secondary);
+  --wave-accent-navy: var(--text-primary);
+  --wave-accent-cyan: var(--accent-primary);
+  --wave-accent-neon: var(--accent-primary);
   
-  /* Buttons (Dark Charcoal Action Circles with Bright Cyan Glyphs) */
-  --wave-btn-primary-bg: #1C252C;
-  --wave-btn-primary-text: #13C8D9;
-  --wave-btn-primary-border: #1C252C;
-  --wave-btn-secondary-bg: #FFFFFF;
-  --wave-btn-secondary-text: #1C252C;
-  --wave-btn-secondary-border: rgba(180, 205, 218, 0.6);
+  /* Buttons */
+  --wave-btn-primary-bg: var(--accent-primary);
+  --wave-btn-primary-text: #FFFFFF;
+  --wave-btn-primary-border: var(--accent-primary);
+  --wave-btn-secondary-bg: var(--input-background);
+  --wave-btn-secondary-text: var(--text-primary);
+  --wave-btn-secondary-border: var(--border-color);
 
   /* Module Chips */
-  --wave-chip-bg: #E1ECF0;
-  --wave-chip-text: #232B32;
+  --wave-chip-bg: var(--surface-background);
+  --wave-chip-text: var(--text-primary);
   
   /* Sidebar */
-  --wave-sidebar-bg: #FFFFFF;
-  --wave-sidebar-border: rgba(180, 205, 218, 0.5);
-  --wave-sidebar-item-active: #13C8D9;
-  --wave-sidebar-item-text: #52525B;
-  --wave-sidebar-item-text-active: #1C252C;
+  --wave-sidebar-bg: var(--surface-background);
+  --wave-sidebar-border: var(--border-color);
+  --wave-sidebar-item-active: var(--accent-primary);
+  --wave-sidebar-item-text: var(--text-secondary);
+  --wave-sidebar-item-text-active: var(--accent-primary);
   
   /* Cards */
-  --wave-card-bg: #FFFFFF;
-  --wave-card-border: rgba(180, 205, 218, 0.45);
-  --wave-card-shadow: 0 2px 10px rgba(18, 38, 58, 0.05), 0 1px 3px rgba(18, 38, 58, 0.08);
-  --wave-card-hover-shadow: 0 12px 28px rgba(18, 38, 58, 0.12);
+  --wave-card-bg: var(--card-background);
+  --wave-card-border: var(--border-color);
+  --wave-card-shadow: 0 2px 8px rgba(16, 24, 32, 0.05), 0 1px 2px rgba(16, 24, 32, 0.06);
+  --wave-card-hover-shadow: 0 8px 24px rgba(16, 24, 32, 0.09);
   
-  /* Fluid Wave Backdrop (Soft Pale Cyan Ambient Light) */
-  --wave-color-1: rgba(19, 200, 217, 0.15);
-  --wave-color-2: rgba(203, 221, 227, 0.45);
-  --wave-color-3: rgba(235, 242, 245, 0.5);
-  --wave-color-deep: #CBDDE3;
+  /* Ambient Backdrop */
+  --wave-color-1: rgba(22, 139, 255, 0.08);
+  --wave-color-2: rgba(220, 228, 236, 0.5);
+  --wave-color-3: rgba(229, 235, 241, 0.7);
+  --wave-color-deep: var(--app-background);
 
   /* Floating Bottom Dock */
-  --wave-dock-bg: #0D1620;
-  --wave-dock-border: rgba(255, 255, 255, 0.1);
-  --wave-dock-item-active: #13C8D9;
+  --wave-dock-bg: var(--surface-background);
+  --wave-dock-border: var(--border-color);
+  --wave-dock-item-active: var(--accent-primary);
 }
 
 /* ==========================================================================
-   Dark Mode Calibration (Midnight Navy-Black Canvas + Slate Cards + Glowing Cyan)
+   GELEZA SA OFFICIAL PALETTE — DARK MODE
+   Premium black and charcoal theme: deep near-black background, charcoal cards,
+   elevated panels, crisp readable light text, electric blue accent.
    ========================================================================== */
-[data-theme="dark"] {
-  --wave-bg: #060D14;
-  --wave-canvas: #060D14;
-  --wave-surface: #0F1A24;
-  --wave-surface-translucent: rgba(15, 26, 36, 0.94);
-  --wave-surface-subtle: #0A121A;
-  --wave-surface-elevated: #13202E;
-  --wave-border: #1B2E3D;
-  --wave-border-subtle: #142230;
+[data-theme="dark"], html[data-theme="dark"], body.dark {
+  --app-background: #080B10;
+  --surface-background: #0D121A;
+  --card-background: #111821;
+  --input-background: #171F29;
+  --text-primary: #F5F7FA;
+  --text-secondary: #AAB5C2;
+  --border-color: #2C3948;
+  --icon-muted: #8794A5;
+  --accent-primary: #168BFF;
+  --accent-hover: #0878E8;
+  --accent-soft: #102B45;
+  --focus-ring: #168BFF;
+  --disabled-background: #141C26;
+  --disabled-text: #5B6878;
+
+  /* Functional status indicators */
+  --status-success: #10B981;
+  --status-success-soft: #064E3B;
+  --status-warning: #F59E0B;
+  --status-warning-soft: #78350F;
+  --status-danger: #EF4444;
+  --status-danger-soft: #7F1D1D;
+  --status-info: #168BFF;
+  --status-info-soft: #102B45;
+
+  /* Canonical Wave Theme Mappings */
+  --wave-bg: var(--app-background);
+  --wave-canvas: var(--app-background);
+  --wave-surface: var(--card-background);
+  --wave-surface-translucent: rgba(17, 24, 33, 0.95);
+  --wave-surface-subtle: var(--surface-background);
+  --wave-surface-elevated: var(--input-background);
+  --wave-border: var(--border-color);
+  --wave-border-subtle: var(--border-color);
   
-  --wave-text-primary: #FFFFFF;
-  --wave-text-secondary: #94A3B8;
-  --wave-text-muted: #64748B;
-  --wave-text-inverse: #060D14;
+  --wave-text-primary: var(--text-primary);
+  --wave-text-secondary: var(--text-secondary);
+  --wave-text-muted: var(--icon-muted);
+  --wave-text-inverse: #080B10;
   
-  --wave-accent-purple: #18E2EC;
-  --wave-accent-badge-bg: #152535;
-  --wave-accent-badge-border: #1B2E3D;
-  --wave-accent-blue: #13C8D9;
-  --wave-accent-sky: #94A3B8;
-  --wave-accent-navy: #060D14;
-  --wave-accent-cyan: #13C8D9;
-  --wave-accent-neon: #18E2EC;
+  --wave-accent-purple: var(--accent-primary);
+  --wave-accent-badge-bg: var(--accent-soft);
+  --wave-accent-badge-border: var(--border-color);
+  --wave-accent-badge-text: var(--accent-primary);
+  --wave-accent-blue: var(--accent-primary);
+  --wave-accent-sky: var(--text-secondary);
+  --wave-accent-navy: var(--app-background);
+  --wave-accent-cyan: var(--accent-primary);
+  --wave-accent-neon: var(--accent-primary);
   
-  /* Buttons (Dark Charcoal Action Circles with Glowing Cyan Glyphs) */
-  --wave-btn-primary-bg: #1C252C;
-  --wave-btn-primary-text: #18E2EC;
-  --wave-btn-primary-border: #1B2E3D;
-  --wave-btn-secondary-bg: #0F1A24;
-  --wave-btn-secondary-text: #FFFFFF;
-  --wave-btn-secondary-border: #1B2E3D;
+  /* Buttons */
+  --wave-btn-primary-bg: var(--accent-primary);
+  --wave-btn-primary-text: #FFFFFF;
+  --wave-btn-primary-border: var(--accent-primary);
+  --wave-btn-secondary-bg: var(--card-background);
+  --wave-btn-secondary-text: var(--text-primary);
+  --wave-btn-secondary-border: var(--border-color);
 
   /* Module Chips */
-  --wave-chip-bg: #152535;
-  --wave-chip-text: #18E2EC;
+  --wave-chip-bg: var(--input-background);
+  --wave-chip-text: var(--text-primary);
   
-  --wave-sidebar-bg: #0F1A24;
-  --wave-sidebar-border: #1B2E3D;
-  --wave-sidebar-item-active: #13C8D9;
-  --wave-sidebar-item-text: #94A3B8;
-  --wave-sidebar-item-text-active: #060D14;
+  --wave-sidebar-bg: var(--surface-background);
+  --wave-sidebar-border: var(--border-color);
+  --wave-sidebar-item-active: var(--accent-primary);
+  --wave-sidebar-item-text: var(--text-secondary);
+  --wave-sidebar-item-text-active: var(--accent-primary);
   
-  --wave-card-bg: #0F1A24;
-  --wave-card-border: #1B2E3D;
-  --wave-card-shadow: 0 4px 20px rgba(0, 0, 0, 0.55);
-  --wave-card-hover-shadow: 0 10px 32px rgba(0, 0, 0, 0.75);
+  --wave-card-bg: var(--card-background);
+  --wave-card-border: var(--border-color);
+  --wave-card-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+  --wave-card-hover-shadow: 0 8px 28px rgba(0, 0, 0, 0.65);
 
   /* Fluid Wave Backdrop */
-  --wave-color-1: rgba(19, 200, 217, 0.12);
-  --wave-color-2: rgba(11, 21, 32, 0.7);
-  --wave-color-3: rgba(6, 13, 20, 0.9);
-  --wave-color-deep: #060D14;
+  --wave-color-1: rgba(22, 139, 255, 0.08);
+  --wave-color-2: rgba(13, 18, 26, 0.7);
+  --wave-color-3: rgba(8, 11, 16, 0.9);
+  --wave-color-deep: var(--app-background);
 
   /* Floating Bottom Dock */
-  --wave-dock-bg: #070E16;
-  --wave-dock-border: rgba(255, 255, 255, 0.08);
-  --wave-dock-item-active: #18E2EC;
-}
-  
-  /* Luminous Wave Ribbons (Dark) */
-  --wave-color-1: rgba(38, 27, 53, 0.28);
-  --wave-color-2: rgba(22, 22, 26, 0.25);
-  --wave-color-3: rgba(10, 10, 12, 0.18);
-  --wave-color-deep: #0A0A0C;
-
-  --wave-dock-bg: rgba(22, 22, 26, 0.94);
-  --wave-dock-border: #27272E;
+  --wave-dock-bg: var(--surface-background);
+  --wave-dock-border: var(--border-color);
+  --wave-dock-item-active: var(--accent-primary);
 }
 
 /* ==========================================================================
@@ -1509,15 +1559,15 @@ body.sidebar-collapsed .bottom-nav-dock {
 }
 
 .wave-launcher-tap-close-btn {
-  background: linear-gradient(135deg, #0284c7, #2563eb);
+  background: #168BFF;
   color: #ffffff;
-  border: 1px solid rgba(24, 226, 236, 0.4);
-  padding: 8px 26px;
+  border: 1px solid rgba(22, 139, 255, 0.5);
+  padding: 9px 28px;
   border-radius: 9999px;
   font-size: 0.85rem;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4);
+  box-shadow: 0 4px 18px rgba(22, 139, 255, 0.45);
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -1525,9 +1575,10 @@ body.sidebar-collapsed .bottom-nav-dock {
 }
 
 .wave-launcher-tap-close-btn:hover {
+  background: #0878E8;
   transform: translateY(-2px);
-  box-shadow: 0 6px 22px rgba(2, 132, 199, 0.6);
-  border-color: #18E2EC;
+  box-shadow: 0 6px 24px rgba(22, 139, 255, 0.65);
+  border-color: #168BFF;
 }
 
 /* Single Menu Pill on Bottom Dock */
@@ -1560,7 +1611,7 @@ body.sidebar-collapsed .bottom-nav-dock {
 .bottom-nav-menu-pill span {
   font-size: 0.95rem !important;
   font-weight: 800 !important;
-  color: #18E2EC !important;
+  color: #168BFF !important;
   letter-spacing: 0.5px;
 }
 
@@ -1588,7 +1639,7 @@ body.sidebar-collapsed .bottom-nav-dock {
   user-select: none;
 }
 
-/* Ambient Cyan Floor Pedestal Bloom */
+/* Ambient Electric Blue Floor Pedestal Bloom */
 .fusion-menu-pedestal-bloom {
   position: absolute;
   bottom: -6px;
@@ -1596,14 +1647,14 @@ body.sidebar-collapsed .bottom-nav-dock {
   transform: translateX(-50%);
   width: 72px;
   height: 18px;
-  background: rgba(24, 226, 236, 0.45);
+  background: rgba(22, 139, 255, 0.35);
   filter: blur(12px);
   border-radius: 9999px;
   pointer-events: none;
   transition: all 0.3s ease;
 }
 
-/* Flower Petals Halo when Open (Image 2) */
+/* Halo Bloom when Open (Image 2) */
 .fusion-menu-petals {
   position: absolute;
   inset: 0;
@@ -1639,9 +1690,9 @@ body.sidebar-collapsed .bottom-nav-dock {
   width: 36px;
   height: 72px;
   border-radius: 9999px;
-  background: linear-gradient(to top, rgba(24, 226, 236, 0.45) 0%, rgba(6, 182, 212, 0.22) 60%, transparent 100%);
-  border: 1px solid rgba(24, 226, 236, 0.4);
-  box-shadow: 0 0 14px rgba(6, 182, 212, 0.35);
+  background: linear-gradient(to top, rgba(22, 139, 255, 0.35) 0%, rgba(8, 120, 232, 0.15) 60%, transparent 100%);
+  border: 1px solid rgba(22, 139, 255, 0.3);
+  box-shadow: 0 0 14px rgba(22, 139, 255, 0.25);
   transform-origin: center center;
   transform: rotate(var(--rot, 0deg)) translateY(-20px);
 }
@@ -1658,21 +1709,22 @@ body.sidebar-collapsed .bottom-nav-dock {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #e11d48, #2563eb, #06b6d4);
-  box-shadow: 0 0 22px rgba(6, 182, 212, 0.75), 0 10px 24px rgba(0, 0, 0, 0.5);
+  background: #168BFF;
+  box-shadow: 0 0 22px rgba(22, 139, 255, 0.65), 0 10px 24px rgba(0, 0, 0, 0.45);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   outline: none;
 }
 
 .fusion-menu-hero-wrapper.is-open .fusion-menu-hero-btn {
-  background: linear-gradient(135deg, #e11d48, #a855f7, #06b6d4);
-  box-shadow: 0 0 28px rgba(6, 182, 212, 0.95), 0 12px 28px rgba(0, 0, 0, 0.6);
+  background: #168BFF;
+  box-shadow: 0 0 28px rgba(22, 139, 255, 0.85), 0 12px 28px rgba(0, 0, 0, 0.55);
   transform: scale(1.04);
 }
 
 .fusion-menu-hero-btn:hover {
+  background: #0878E8;
   transform: scale(1.06);
-  box-shadow: 0 0 30px rgba(6, 182, 212, 0.95);
+  box-shadow: 0 0 30px rgba(22, 139, 255, 0.9);
 }
 
 .fusion-menu-hero-btn:active {
@@ -1684,7 +1736,7 @@ body.sidebar-collapsed .bottom-nav-dock {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: #080e16;
+  background: #168BFF;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1697,7 +1749,7 @@ body.sidebar-collapsed .bottom-nav-dock {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 25%, rgba(255, 255, 255, 0.12), transparent 70%);
+  background: radial-gradient(circle at 50% 25%, rgba(255, 255, 255, 0.2), transparent 70%);
   pointer-events: none;
 }
 
@@ -1706,9 +1758,9 @@ body.sidebar-collapsed .bottom-nav-dock {
   font-family: 'Outfit', sans-serif;
   font-size: 1.05rem;
   font-weight: 900;
-  color: #18e2ec;
+  color: #FFFFFF;
   letter-spacing: -0.02em;
-  text-shadow: 0 0 12px rgba(24, 226, 236, 0.95);
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
   display: block;
   transition: all 0.2s ease;
 }
@@ -1726,7 +1778,7 @@ body.sidebar-collapsed .bottom-nav-dock {
   color: #ffffff;
   line-height: 1.15;
   text-align: center;
-  text-shadow: 0 0 8px rgba(24, 226, 236, 0.95);
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
   transition: all 0.2s ease;
 }
 

@@ -147,8 +147,8 @@ export const LearnerNavigationBar: React.FC<LearnerNavigationBarProps> = ({
     >
       {/* Outer Floating Bar Container (Deep Navy Dock) */}
       <div className="relative flex items-center justify-between sm:justify-center xl:justify-between xl:px-8 gap-1 sm:gap-2.5 p-1.5 sm:p-2 rounded-full bg-[#0D1620]/95 backdrop-blur-2xl border border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.65)] ring-1 ring-white/5 transition-all duration-300">
-        {/* Ambient Subtle Cyan Underlay Glow */}
-        <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-cyan-500/15 via-teal-500/15 to-cyan-500/15 blur-lg -z-10 pointer-events-none" />
+        {/* Ambient Subtle Electric Blue Underlay Glow */}
+        <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-[#168BFF]/15 via-[#0878E8]/10 to-[#168BFF]/15 blur-lg -z-10 pointer-events-none" />
 
         {/* Nav Items */}
         {navItems.filter((item) => moduleAllowed('learner', item.targetTab, currentSchool.learner_modules, currentSchool.teacher_modules)).map((item) => {
@@ -162,7 +162,7 @@ export const LearnerNavigationBar: React.FC<LearnerNavigationBarProps> = ({
               onClick={() => onSelectTab(item.targetTab)}
               className={`group relative flex flex-col items-center justify-center min-w-[54px] sm:min-w-[70px] md:min-w-[80px] py-1.5 px-2 sm:px-3 rounded-2xl transition-all duration-200 ease-out cursor-pointer active:scale-95 ${
                 isActive
-                  ? 'text-[#18E2EC] font-bold'
+                  ? 'text-[#168BFF] font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
               title={`${item.label} (${isActive ? 'Currently Active' : 'Switch Tab'})`}
@@ -171,10 +171,10 @@ export const LearnerNavigationBar: React.FC<LearnerNavigationBarProps> = ({
               {isActive && (
                 <>
                   {/* Top Glowing Indicator Pill */}
-                  <div className="absolute top-1 left-1/2 -translate-x-1/2 w-6 sm:w-8 h-[2.5px] rounded-full bg-[#13C8D9] shadow-[0_0_8px_#13c8d9,0_0_14px_rgba(24,226,236,0.6)] z-10" />
+                  <div className="absolute top-1 left-1/2 -translate-x-1/2 w-6 sm:w-8 h-[2.5px] rounded-full bg-[#168BFF] shadow-[0_0_8px_#168BFF,0_0_14px_rgba(22,139,255,0.6)] z-10" />
 
                   {/* Semi-Transparent Pill Backdrop */}
-                  <div className="absolute inset-0 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 pointer-events-none -z-10" />
+                  <div className="absolute inset-0 rounded-2xl bg-[#168BFF]/15 border border-[#168BFF]/30 pointer-events-none -z-10" />
                 </>
               )}
 
@@ -184,7 +184,7 @@ export const LearnerNavigationBar: React.FC<LearnerNavigationBarProps> = ({
                   <div
                     className={`w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full overflow-hidden border transition-all duration-200 ${
                       isActive
-                        ? 'border-[#18E2EC] ring-2 ring-cyan-500/50 scale-105'
+                        ? 'border-[#168BFF] ring-2 ring-[#168BFF]/50 scale-105'
                         : 'border-slate-600 group-hover:border-slate-400 group-hover:scale-105'
                     }`}
                   >
@@ -199,7 +199,7 @@ export const LearnerNavigationBar: React.FC<LearnerNavigationBarProps> = ({
                   <IconComp
                     className={`w-5 h-5 sm:w-5.5 sm:h-5.5 transition-all duration-200 ${
                       isActive
-                        ? 'text-[#18E2EC] scale-110 drop-shadow-[0_0_8px_rgba(24,226,236,0.7)]'
+                        ? 'text-[#168BFF] scale-110 drop-shadow-[0_0_8px_rgba(22,139,255,0.7)]'
                         : 'text-slate-400 group-hover:text-slate-200 group-hover:scale-110'
                     }`}
                   />
@@ -214,7 +214,7 @@ export const LearnerNavigationBar: React.FC<LearnerNavigationBarProps> = ({
 
                 {/* Sub-module Active Indicator on "More" */}
                 {item.subIndicator && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#18E2EC] ring-2 ring-[#0D1620] shadow-[0_0_6px_#18e2ec]" />
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#168BFF] ring-2 ring-[#0D1620] shadow-[0_0_6px_#168BFF]" />
                 )}
               </div>
 
@@ -222,7 +222,7 @@ export const LearnerNavigationBar: React.FC<LearnerNavigationBarProps> = ({
               <span
                 className={`text-[10px] sm:text-[11px] tracking-wide mt-1 transition-all duration-200 ${
                   isActive
-                    ? 'font-bold text-[#18E2EC]'
+                    ? 'font-bold text-[#168BFF]'
                     : 'font-medium text-slate-400 group-hover:text-slate-200'
                 }`}
               >

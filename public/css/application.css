@@ -1,21 +1,21 @@
-/* Application Portal - Fusion High School */
+/* Application Portal - Geleza SA */
 :root {
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --secondary: #06b6d4;
+  --primary: #168BFF;
+  --primary-hover: #0878E8;
+  --secondary: #168BFF;
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
-  --bg-dark: #07080d;
-  --card-bg: rgba(2, 6, 23, 0.86);
-  --card-border: rgba(255, 255, 255, 0.24);
-  --text-main: #f8fafc;
-  --text-muted: #e2e8f0;
-  --input-bg: rgba(0, 0, 0, 0.82);
-  --input-border: rgba(255, 255, 255, 0.4);
-  --heading: #ffffff;
-  --input-focus: #6366f1;
-  --panel-tint: rgba(0, 0, 0, 0.7);
+  --bg-dark: #080B10;
+  --card-bg: #111821;
+  --card-border: #2C3948;
+  --text-main: #F5F7FA;
+  --text-muted: #AAB5C2;
+  --input-bg: #171F29;
+  --input-border: #2C3948;
+  --heading: #F5F7FA;
+  --input-focus: #168BFF;
+  --panel-tint: #0D121A;
 }
 
 * {
@@ -594,29 +594,32 @@ body {
   }
 }
 
-/* Same campus scene as the sign-in page, with fields that stay readable. */
-html.light {
-  --bg-dark: #f6f1e6;
-  --card-bg: rgba(255, 255, 255, 0.88);
-  --card-border: rgba(15, 23, 42, 0.16);
-  --text-main: #0f172a;
-  --text-muted: #334155;
-  --input-bg: rgba(255, 255, 255, 0.95);
-  --input-border: rgba(15, 23, 42, 0.24);
-  --heading: #0f172a;
-  --panel-tint: rgba(255, 255, 255, 0.86);
+html.light, html[data-theme="light"] {
+  --bg-dark: #E5EBF1;
+  --card-bg: #F4F6F8;
+  --card-border: #C7D1DC;
+  --text-main: #101820;
+  --text-muted: #526071;
+  --input-bg: #FFFFFF;
+  --input-border: #C7D1DC;
+  --heading: #101820;
+  --panel-tint: #DCE4EC;
+  --primary: #168BFF;
+  --primary-hover: #0878E8;
 }
 
-html.dark {
-  --bg-dark: #07080d;
-  --card-bg: rgba(2, 6, 23, 0.86);
-  --card-border: rgba(255, 255, 255, 0.24);
-  --text-main: #f8fafc;
-  --text-muted: #e2e8f0;
-  --input-bg: rgba(0, 0, 0, 0.82);
-  --input-border: rgba(255, 255, 255, 0.4);
-  --heading: #ffffff;
-  --panel-tint: rgba(0, 0, 0, 0.7);
+html.dark, html[data-theme="dark"] {
+  --bg-dark: #080B10;
+  --card-bg: #111821;
+  --card-border: #2C3948;
+  --text-main: #F5F7FA;
+  --text-muted: #AAB5C2;
+  --input-bg: #171F29;
+  --input-border: #2C3948;
+  --heading: #F5F7FA;
+  --panel-tint: #0D121A;
+  --primary: #168BFF;
+  --primary-hover: #0878E8;
 }
 
 body {

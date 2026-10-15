@@ -325,7 +325,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                   <button
                     type="button"
                     onClick={() => setIsSubjectQuizOpen(true)}
-                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#13C8D9] hover:bg-[#0891B2] text-[#0A121A] font-extrabold text-xs shadow-md shadow-cyan-500/20 transition-all cursor-pointer self-start sm:self-center"
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-extrabold text-xs shadow-md shadow-cyan-500/20 transition-all cursor-pointer self-start sm:self-center"
                   >
                     <BrainCircuit className="w-4 h-4" />
                     <span>Practice Quiz with Geleza AI</span>
@@ -477,7 +477,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                               download={res.file_name || `${resTitle.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#13C8D9] hover:bg-[#0891B2] text-[#0A121A] font-extrabold text-xs shadow-md shadow-cyan-500/20 transition-all hover:scale-105 cursor-pointer"
+                              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-extrabold text-xs shadow-md shadow-cyan-500/20 transition-all hover:scale-105 cursor-pointer"
                             >
                               <Download className="w-3.5 h-3.5" />
                               <span>Download PDF</span>
@@ -493,7 +493,7 @@ export const LearnerSubjects: React.FC<LearnerSubjectsProps> = ({ onStartAITopic
                     <p className="text-sm text-slate-800 dark:text-slate-200 font-bold">Official Question Papers & Study Materials for Grade {selectedGrade} {selectedSubName}</p>
                     <button
                       onClick={() => setActiveTab('past-papers')}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#13C8D9] hover:bg-[#0891B2] text-[#0A121A] font-extrabold text-xs transition-all mt-2 cursor-pointer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-extrabold text-xs transition-all mt-2 cursor-pointer"
                     >
                       <BookOpen className="w-4 h-4" />
                       <span>Open Grade {selectedGrade} Question Bank</span>

@@ -4,7 +4,7 @@ import React from 'react';
 export const GELEZA_AI = {
   black: '#000000',
   navy: '#0B1F33',
-  cyan: '#13C8D9',
+  cyan: '#168BFF',
   white: '#FFFFFF',
 } as const;
 

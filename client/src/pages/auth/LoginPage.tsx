@@ -335,7 +335,7 @@ export const LoginPage: React.FC = () => {
             className={`absolute -inset-2 rounded-[38px] blur-2xl pointer-events-none opacity-50 transition-colors duration-500 ${
               isLight
                 ? 'bg-gradient-to-r from-sky-400/20 via-blue-500/15 to-amber-300/20'
-                : 'bg-gradient-to-r from-[#18E2EC]/20 via-sky-500/10 to-[#13C8D9]/20'
+                : 'bg-gradient-to-r from-[#168BFF]/20 via-[#0878E8]/10 to-[#168BFF]/20'
             }`}
           />
 
@@ -576,12 +576,12 @@ export const LoginPage: React.FC = () => {
                   accountReady && !fieldErrors.identifier ? 'login-sign-in-pulse' : ''
                 } ${
                   isLight
-                    ? 'login-sign-in--light bg-blue-600 hover:bg-blue-700 text-always-white border-blue-500/40 shadow-blue-600/30'
-                    : 'login-sign-in--dark bg-gradient-to-r from-[#18E2EC] to-[#13C8D9] hover:from-[#5eecf4] hover:to-[#18E2EC] text-slate-950 border-[#18E2EC]/60 shadow-[#13C8D9]/40'
+                    ? 'login-sign-in--light bg-[#168BFF] hover:bg-[#0878E8] text-white border-[#168BFF]/40 shadow-[#168BFF]/30'
+                    : 'login-sign-in--dark bg-[#168BFF] hover:bg-[#0878E8] text-white border-[#168BFF]/60 shadow-[#168BFF]/40'
                 }`}
               >
                 {loading ? (
-                  <div className={`w-4 h-4 border-2 border-t-transparent rounded-full animate-spin ${isLight ? 'border-white' : 'border-slate-950'}`} />
+                  <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin" />
                 ) : (
                   <>
                     <ShieldCheck className="w-4 h-4" />

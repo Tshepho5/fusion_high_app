@@ -308,8 +308,8 @@ export const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ initialCla
             onClick={() => setActiveSubTab('register')}
             className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer ${
               activeSubTab === 'register'
-                ? 'bg-[#13C8D9] text-slate-950 shadow-sm'
-                : 'text-slate-600 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#18E2EC]'
+                ? 'bg-[#168BFF] text-white shadow-sm'
+                : 'text-slate-600 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
             }`}
           >
             <CalendarCheck className="w-4 h-4" />
@@ -320,8 +320,8 @@ export const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ initialCla
             onClick={() => setActiveSubTab('history')}
             className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer ${
               activeSubTab === 'history'
-                ? 'bg-[#13C8D9] text-slate-950 shadow-sm'
-                : 'text-slate-600 hover:text-cyan-700 hover:bg-cyan-500/15 dark:text-slate-400 dark:hover:text-[#18E2EC]'
+                ? 'bg-[#168BFF] text-white shadow-sm'
+                : 'text-slate-600 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
             }`}
           >
             <History className="w-4 h-4" />

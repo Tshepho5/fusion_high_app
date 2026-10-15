@@ -138,7 +138,7 @@ export const AdminNavigationBar: React.FC<AdminNavigationBarProps> = ({
       {/* Outer Floating Bar Container */}
       <div className="relative flex items-center justify-between sm:justify-center xl:justify-between xl:px-8 gap-1 sm:gap-3 p-1.5 sm:p-2 rounded-2xl md:rounded-full bg-[#0D1620]/95 backdrop-blur-2xl border border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.65)] ring-1 ring-white/5 transition-all duration-300">
         {/* Ambient Subtle Underlay Glow */}
-        <div className="absolute -inset-0.5 rounded-2xl md:rounded-full bg-gradient-to-r from-cyan-500/15 via-teal-500/15 to-cyan-500/15 blur-md -z-10 pointer-events-none" />
+        <div className="absolute -inset-0.5 rounded-2xl md:rounded-full bg-gradient-to-r from-[#168BFF]/15 via-[#0878E8]/10 to-[#168BFF]/15 blur-md -z-10 pointer-events-none" />
 
         {/* Nav Items */}
         {navItems.map((item) => {
@@ -151,7 +151,7 @@ export const AdminNavigationBar: React.FC<AdminNavigationBarProps> = ({
               onClick={() => onSelectTab(item.targetTab)}
               className={`group relative flex flex-col items-center justify-center min-w-[56px] sm:min-w-[72px] md:min-w-[84px] py-1.5 px-2 sm:px-3 rounded-xl sm:rounded-full transition-all duration-300 ease-out cursor-pointer active:scale-95 ${
                 isActive
-                  ? 'text-[#18E2EC] font-bold'
+                  ? 'text-[#168BFF] font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
               title={`${item.label} (${isActive ? 'Currently Active' : 'Switch Tab'})`}
@@ -160,18 +160,18 @@ export const AdminNavigationBar: React.FC<AdminNavigationBarProps> = ({
               {isActive && (
                 <>
                   {/* 1. Top Glowing Horizontal Light Bar Emitter */}
-                  <div className="absolute -top-[1.5px] left-1/2 -translate-x-1/2 w-8 sm:w-10 h-[3px] rounded-full bg-[#13C8D9] shadow-[0_0_10px_#13c8d9,0_0_20px_#18e2ec,0_0_30px_rgba(24,226,236,0.85)] z-20" />
+                  <div className="absolute -top-[1.5px] left-1/2 -translate-x-1/2 w-8 sm:w-10 h-[3px] rounded-full bg-[#168BFF] shadow-[0_0_10px_#168BFF,0_0_20px_#168BFF,0_0_30px_rgba(22,139,255,0.85)] z-20" />
 
                   {/* 2. Downward Projector Light Beam Cone (Shoots light down onto the active icon) */}
                   <div className="absolute inset-0 pointer-events-none -z-10 overflow-hidden rounded-xl sm:rounded-full">
                     <div
-                      className="w-full h-full bg-gradient-to-b from-[#18E2EC]/35 via-[#18E2EC]/12 to-transparent blur-[1px]"
+                      className="w-full h-full bg-gradient-to-b from-[#168BFF]/35 via-[#168BFF]/12 to-transparent blur-[1px]"
                       style={{
                         clipPath: 'polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)',
                       }}
                     />
                     {/* Soft Ambient Radial Lamp Bloom */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-14 h-10 bg-[#18E2EC]/20 blur-md rounded-full pointer-events-none" />
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-14 h-10 bg-[#168BFF]/20 blur-md rounded-full pointer-events-none" />
                   </div>
                 </>
               )}
@@ -181,7 +181,7 @@ export const AdminNavigationBar: React.FC<AdminNavigationBarProps> = ({
                 <IconComp
                   className={`w-5 h-5 sm:w-5.5 sm:h-5.5 transition-all duration-300 ease-out ${
                     isActive
-                      ? 'text-[#18E2EC] scale-110 drop-shadow-[0_0_10px_rgba(24,226,236,0.85)]'
+                      ? 'text-[#168BFF] scale-110 drop-shadow-[0_0_10px_rgba(22,139,255,0.85)]'
                       : 'text-slate-400 group-hover:text-slate-200 group-hover:scale-115 group-hover:-translate-y-0.5'
                   }`}
                 />
@@ -195,7 +195,7 @@ export const AdminNavigationBar: React.FC<AdminNavigationBarProps> = ({
 
                 {/* Sub-module Active Indicator on "More" */}
                 {item.subIndicator && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#18E2EC] ring-2 ring-[#0D1620] shadow-[0_0_6px_#18e2ec]" />
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#168BFF] ring-2 ring-[#0D1620] shadow-[0_0_6px_#168BFF]" />
                 )}
               </div>
 
@@ -203,7 +203,7 @@ export const AdminNavigationBar: React.FC<AdminNavigationBarProps> = ({
               <span
                 className={`text-[10px] sm:text-[11px] tracking-wide mt-1 transition-all duration-300 ${
                   isActive
-                    ? 'font-black text-[#18E2EC] drop-shadow-[0_0_6px_rgba(24,226,236,0.5)] scale-105'
+                    ? 'font-black text-[#168BFF] drop-shadow-[0_0_6px_rgba(22,139,255,0.5)] scale-105'
                     : 'font-medium text-slate-400 group-hover:text-slate-200'
                 }`}
               >

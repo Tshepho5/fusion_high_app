@@ -174,25 +174,23 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/80 backdrop-blur-xl animate-fade-in">
-      <div className="relative w-full max-w-5xl max-h-[92vh] rounded-3xl bg-[#0F1A24]/95 border border-[#13C8D9]/40 p-5 md:p-7 shadow-2xl shadow-[#13C8D9]/10 flex flex-col overflow-hidden mx-auto">
+      <div className="relative w-full max-w-5xl max-h-[92vh] rounded-3xl bg-[#0F1A24]/95 border border-[#168BFF]/40 p-5 md:p-7 shadow-2xl shadow-[#168BFF]/10 flex flex-col overflow-hidden mx-auto">
         {/* Glow Auras */}
-        <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-[#13C8D9]/15 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-cyan-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-[#168BFF]/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-[#0878E8]/15 blur-3xl pointer-events-none" />
 
         {/* Modal Header */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/10 pb-4 shrink-0">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#13C8D9] via-cyan-500 to-teal-400 p-0.5 shadow-glow-cyan flex items-center justify-center shrink-0">
-              <div className="w-full h-full rounded-[14px] bg-[#0A121A] flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-[#18E2EC] animate-pulse" />
-              </div>
+            <div className="w-12 h-12 rounded-2xl bg-[#168BFF] shadow-glow-brand flex items-center justify-center shrink-0">
+              <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg md:text-xl font-black font-display text-white tracking-tight">
                   Main Navigation Menu
                 </h3>
-                <span className="px-2.5 py-0.5 rounded-full bg-[#13C8D9]/15 border border-[#13C8D9]/40 text-[#18E2EC] text-[10px] font-mono font-extrabold uppercase">
+                <span className="px-2.5 py-0.5 rounded-full bg-[#168BFF]/15 border border-[#168BFF]/40 text-[#168BFF] text-[10px] font-mono font-extrabold uppercase">
                   {role} Hub
                 </span>
               </div>
@@ -208,7 +206,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search modules..."
-                className="w-full pl-9 pr-3 py-1.5 bg-[#0A121A] border border-[#1B2E3D] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#13C8D9] font-medium"
+                className="w-full pl-9 pr-3 py-1.5 bg-[#0D121A] border border-[#2C3948] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#168BFF] font-medium"
               />
               {searchQuery && (
                 <button
@@ -221,12 +219,12 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
             </div>
 
             {/* 🌟 VIEW MODE SELECTOR (Launchpad Grid / Detailed Cards / Compact List) */}
-            <div className="flex items-center p-1 rounded-xl bg-[#0A121A] border border-[#1B2E3D] shrink-0">
+            <div className="flex items-center p-1 rounded-xl bg-[#0D121A] border border-[#2C3948] shrink-0">
               <button
                 onClick={() => handleSetViewMode('launchpad')}
                 className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   viewMode === 'launchpad'
-                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
+                    ? 'bg-[#168BFF] text-white shadow-xs'
                     : 'text-slate-400 hover:text-white'
                 }`}
                 title="Launchpad App Icon Grid"
@@ -239,7 +237,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                 onClick={() => handleSetViewMode('cards')}
                 className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   viewMode === 'cards'
-                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
+                    ? 'bg-[#168BFF] text-white shadow-xs'
                     : 'text-slate-400 hover:text-white'
                 }`}
                 title="Detailed Feature Cards"
@@ -252,7 +250,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                 onClick={() => handleSetViewMode('list')}
                 className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   viewMode === 'list'
-                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
+                    ? 'bg-[#168BFF] text-white shadow-xs'
                     : 'text-slate-400 hover:text-white'
                 }`}
                 title="Compact List View"
@@ -290,7 +288,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
               onClick={() => setCategory(cat.id as CategoryFilter)}
               className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 category === cat.id
-                  ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
+                  ? 'bg-[#168BFF] text-white shadow-xs'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
               }`}
             >
@@ -319,12 +317,12 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                     }}
                     className={`group relative flex flex-col items-center justify-center p-3.5 rounded-3xl text-center border transition-all duration-300 hover:scale-105 active:scale-95 card-interactive cursor-pointer ${
                       isActive
-                        ? 'bg-[#152535] border-[#13C8D9] shadow-glow-cyan'
-                        : 'bg-[#0A121A]/80 hover:bg-[#152535] border-[#1B2E3D] hover:border-[#13C8D9]/40'
+                        ? 'bg-[#152535] border-[#168BFF] shadow-[0_0_15px_rgba(22,139,255,0.3)]'
+                        : 'bg-[#0A121A]/80 hover:bg-[#152535] border-[#1B2E3D] hover:border-[#168BFF]/40'
                     }`}
                   >
                     {item.badge && (
-                      <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-[#13C8D9]/20 text-[#18E2EC] font-mono font-black text-[8px] uppercase tracking-wider border border-[#13C8D9]/30">
+                      <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-[#168BFF]/20 text-[#168BFF] font-mono font-black text-[8px] uppercase tracking-wider border border-[#168BFF]/30">
                         {item.badge}
                       </span>
                     )}
@@ -334,13 +332,13 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                     >
                       <Icon className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow-md" />
                       {isActive && (
-                        <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#18E2EC] ring-2 ring-slate-900 flex items-center justify-center">
-                          <CheckCircle2 className="w-3 h-3 text-[#0A121A]" />
+                        <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#168BFF] ring-2 ring-slate-900 flex items-center justify-center">
+                          <CheckCircle2 className="w-3 h-3 text-white" />
                         </span>
                       )}
                     </div>
 
-                    <span className="text-xs font-black text-white mt-2.5 line-clamp-2 group-hover:text-[#18E2EC] transition-colors font-display leading-tight">
+                    <span className="text-xs font-black text-white mt-2.5 line-clamp-2 group-hover:text-[#168BFF] transition-colors font-display leading-tight">
                       {item.label}
                     </span>
                   </button>
@@ -367,8 +365,8 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                     }}
                     className={`group relative p-4 rounded-2xl text-left border transition-all duration-200 flex flex-col justify-between overflow-hidden card-interactive cursor-pointer ${
                       isActive
-                        ? 'bg-[#152535] border-[#13C8D9] shadow-glow-cyan'
-                        : 'bg-[#0A121A]/80 hover:bg-[#152535] border-[#1B2E3D] hover:border-[#13C8D9]/40 hover:scale-[1.02] shadow-md'
+                        ? 'bg-[#152535] border-[#168BFF] shadow-[0_0_15px_rgba(22,139,255,0.3)]'
+                        : 'bg-[#0A121A]/80 hover:bg-[#152535] border-[#1B2E3D] hover:border-[#168BFF]/40 hover:scale-[1.02] shadow-md'
                     }`}
                   >
                     <div>
@@ -381,17 +379,17 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
 
                         <div className="flex items-center gap-1.5">
                           {item.badge && (
-                            <span className="px-2 py-0.5 rounded-md bg-[#13C8D9]/20 text-[#18E2EC] font-mono font-bold text-[9px] uppercase tracking-wider border border-[#13C8D9]/30">
+                            <span className="px-2 py-0.5 rounded-md bg-[#168BFF]/20 text-[#168BFF] font-mono font-bold text-[9px] uppercase tracking-wider border border-[#168BFF]/30">
                               {item.badge}
                             </span>
                           )}
                           {isActive && (
-                            <span className="w-2 h-2 rounded-full bg-[#18E2EC] animate-ping" />
+                            <span className="w-2 h-2 rounded-full bg-[#168BFF] animate-ping" />
                           )}
                         </div>
                       </div>
 
-                      <h4 className="text-sm font-black text-white mt-3 group-hover:text-[#18E2EC] transition-colors font-display leading-snug">
+                      <h4 className="text-sm font-black text-white mt-3 group-hover:text-[#168BFF] transition-colors font-display leading-snug">
                         {item.label}
                       </h4>
                     </div>
@@ -419,8 +417,8 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                     }}
                     className={`group w-full flex items-center justify-between p-3 rounded-2xl border text-left transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-[#152535] border-[#13C8D9] text-white shadow-glow-cyan'
-                        : 'bg-[#0A121A]/80 hover:bg-[#152535] border-[#1B2E3D] hover:border-[#13C8D9]/40'
+                        ? 'bg-[#152535] border-[#168BFF] text-white shadow-[0_0_15px_rgba(22,139,255,0.3)]'
+                        : 'bg-[#0A121A]/80 hover:bg-[#152535] border-[#1B2E3D] hover:border-[#168BFF]/40'
                     }`}
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
@@ -431,11 +429,11 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <h4 className="text-xs font-bold text-white truncate group-hover:text-[#18E2EC]">
+                          <h4 className="text-xs font-bold text-white truncate group-hover:text-[#168BFF]">
                             {item.label}
                           </h4>
                           {item.badge && (
-                            <span className="px-1.5 py-0.2 rounded bg-[#13C8D9]/20 text-[#18E2EC] font-mono text-[8px] font-bold border border-[#13C8D9]/30">
+                            <span className="px-1.5 py-0.2 rounded bg-[#168BFF]/20 text-[#168BFF] font-mono text-[8px] font-bold border border-[#168BFF]/30">
                               {item.badge}
                             </span>
                           )}
@@ -443,7 +441,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
                       </div>
                     </div>
 
-                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#18E2EC] group-hover:translate-x-1 transition-all shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#168BFF] group-hover:translate-x-1 transition-all shrink-0" />
                   </button>
                 );
               })}
@@ -465,36 +463,24 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
             <span className="text-[11px] font-medium">{filteredModules.length} Modules Active</span>
           </div>
 
-          {/* Center Petal Close Button (Strictly centered) */}
+          {/* Center Close Button (Strictly centered) */}
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
-            {/* Flower Petals Halo */}
-            <div className="absolute inset-0 -m-3 pointer-events-none flex items-center justify-center animate-pulse">
-              {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
-                <div
-                  key={deg}
-                  className="absolute w-6 h-12 rounded-full bg-gradient-to-t from-cyan-400/40 via-teal-400/20 to-transparent blur-[0.5px] border border-cyan-300/40"
-                  style={{
-                    transform: `rotate(${deg}deg) translateY(-10px)`,
-                    transformOrigin: 'center center',
-                  }}
-                />
-              ))}
-            </div>
-
             <button
               type="button"
               onClick={() => {
                 onClose();
                 onSelectTab('overview');
               }}
-              className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-[#0284c7] via-[#2563eb] to-[#06B6D4] p-[2px] shadow-[0_0_20px_rgba(6,182,212,0.85)] hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center z-10"
+              className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#168BFF] hover:bg-[#0878E8] shadow-[0_0_24px_rgba(22,139,255,0.7)] hover:scale-105 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center text-white z-10 p-1"
               title="Tap to close and return to Home"
             >
-              <div className="w-full h-full rounded-full bg-[#080E16] flex flex-col items-center justify-center p-1 text-center">
-                <span className="text-[9px] sm:text-[10px] font-black leading-tight text-[#18E2EC] drop-shadow-[0_0_6px_rgba(24,226,236,0.95)]">
-                  Tap to<br />close
-                </span>
-              </div>
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+              <span className="text-[9px] sm:text-[10px] font-black leading-tight tracking-tight text-white">
+                Tap to<br />close
+              </span>
             </button>
           </div>
 

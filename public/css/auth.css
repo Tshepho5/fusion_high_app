@@ -1,26 +1,26 @@
 /* Styles for authentication pages (login, registration) */
 :root {
-    --auth-bg: #F5F5F7;
-    --auth-card-bg: #FFFFFF;
-    --auth-border: #E4E4E7;
-    --auth-input-bg: #F4F4F6;
-    --auth-text-primary: #111111;
-    --auth-text-secondary: #52525B;
-    --auth-btn-bg: #111111;
+    --auth-bg: var(--app-background, #E5EBF1);
+    --auth-card-bg: var(--card-background, #F4F6F8);
+    --auth-border: var(--border-color, #C7D1DC);
+    --auth-input-bg: var(--input-background, #FFFFFF);
+    --auth-text-primary: var(--text-primary, #101820);
+    --auth-text-secondary: var(--text-secondary, #526071);
+    --auth-btn-bg: var(--accent-primary, #168BFF);
     --auth-btn-text: #FFFFFF;
-    --auth-accent: #9333EA;
+    --auth-accent: var(--accent-primary, #168BFF);
 }
 
 [data-theme="dark"] {
-    --auth-bg: #0A0A0C;
-    --auth-card-bg: #16161A;
-    --auth-border: #27272E;
-    --auth-input-bg: #1E1E24;
-    --auth-text-primary: #FFFFFF;
-    --auth-text-secondary: #A1A1AA;
-    --auth-btn-bg: #FFFFFF;
-    --auth-btn-text: #000000;
-    --auth-accent: #C084FC;
+    --auth-bg: var(--app-background, #080B10);
+    --auth-card-bg: var(--card-background, #111821);
+    --auth-border: var(--border-color, #2C3948);
+    --auth-input-bg: var(--input-background, #171F29);
+    --auth-text-primary: var(--text-primary, #F5F7FA);
+    --auth-text-secondary: var(--text-secondary, #AAB5C2);
+    --auth-btn-bg: var(--accent-primary, #168BFF);
+    --auth-btn-text: #FFFFFF;
+    --auth-accent: var(--accent-primary, #168BFF);
 }
 
 body {

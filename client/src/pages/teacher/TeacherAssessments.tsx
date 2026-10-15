@@ -680,10 +680,10 @@ export const TeacherAssessments: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in text-slate-100 pb-12">
       {/* Header Banner - Cool Monochromatic Teal Theme */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-3xl bg-gradient-to-r from-slate-900/95 via-[#0A1D27]/85 to-slate-900/95 border border-[#13C8D9]/25 shadow-xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-3xl bg-gradient-to-r from-slate-900/95 via-[#0A1D27]/85 to-slate-900/95 border border-[#168BFF]/25 shadow-xl">
         <div>
           <h2 className="text-xl md:text-2xl font-extrabold font-display text-white tracking-tight flex items-center gap-2.5">
-            <FileSpreadsheet className="w-6 h-6 text-[#13C8D9]" />
+            <FileSpreadsheet className="w-6 h-6 text-[#168BFF]" />
             <span>Learner Assessment & Performance Matrix</span>
           </h2>
         </div>
@@ -691,7 +691,7 @@ export const TeacherAssessments: React.FC = () => {
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setActiveCategory('entry')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 font-extrabold text-xs shadow-md transition-all transform hover:scale-[1.02] active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-extrabold text-xs shadow-md transition-all transform hover:scale-[1.02] active:scale-95 cursor-pointer"
           >
             <Save className="w-4 h-4 text-teal-800" />
             <span>Capture New Marks</span>
@@ -722,7 +722,7 @@ export const TeacherAssessments: React.FC = () => {
               <select
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
-                className="rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-[#13C8D9] cursor-pointer"
+                className="rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-[#168BFF] cursor-pointer"
               >
                 <option value="all">All Classes</option>
                 {classes.map((cls) => (
@@ -742,7 +742,7 @@ export const TeacherAssessments: React.FC = () => {
               <select
                 value={selectedSubject}
                 onChange={(e) => setSelectedSubject(e.target.value)}
-                className="rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-[#13C8D9] cursor-pointer"
+                className="rounded-xl bg-surface-darker border border-white/10 px-3.5 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-[#168BFF] cursor-pointer"
               >
                 {subjects.map((sub) => (
                   <option key={sub} value={sub}>{sub}</option>
@@ -757,7 +757,7 @@ export const TeacherAssessments: React.FC = () => {
         </div>
 
         <div className="text-xs text-slate-400 font-mono font-medium flex items-center gap-2">
-          <Users className="w-3.5 h-3.5 text-[#13C8D9]" />
+          <Users className="w-3.5 h-3.5 text-[#168BFF]" />
           <span>{learners.length} Enrolled Learners in {activeClassDisplay}</span>
         </div>
       </div>
@@ -765,10 +765,10 @@ export const TeacherAssessments: React.FC = () => {
       {/* Class Averages Summary KPI Cards - Monochromatic Teal */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Card 1: Formal Assessments Average */}
-        <div className="p-5 rounded-3xl bg-surface-dark border border-[#13C8D9]/20 shadow-xl space-y-2">
+        <div className="p-5 rounded-3xl bg-surface-dark border border-[#168BFF]/20 shadow-xl space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#13C8D9] uppercase tracking-wider flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-[#13C8D9]" />
+            <span className="text-[11px] font-bold text-[#168BFF] uppercase tracking-wider flex items-center gap-1.5">
+              <Award className="w-4 h-4 text-[#168BFF]" />
               Formal Assessments Average
             </span>
             <Badge variant={getCapsLevel(formalAvg).variant} size="sm">
@@ -782,10 +782,10 @@ export const TeacherAssessments: React.FC = () => {
         </div>
 
         {/* Card 2: Term Marks Cumulative Average */}
-        <div className="p-5 rounded-3xl bg-surface-dark border border-[#13C8D9]/20 shadow-xl space-y-2">
+        <div className="p-5 rounded-3xl bg-surface-dark border border-[#168BFF]/20 shadow-xl space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#13C8D9] uppercase tracking-wider flex items-center gap-1.5">
-              <TrendingUp className="w-4 h-4 text-[#13C8D9]" />
+            <span className="text-[11px] font-bold text-[#168BFF] uppercase tracking-wider flex items-center gap-1.5">
+              <TrendingUp className="w-4 h-4 text-[#168BFF]" />
               Term Marks Average
             </span>
             <Badge variant={getCapsLevel(termAvg).variant} size="sm">
@@ -799,10 +799,10 @@ export const TeacherAssessments: React.FC = () => {
         </div>
 
         {/* Card 3: In-App Activities Average */}
-        <div className="p-5 rounded-3xl bg-surface-dark border border-[#13C8D9]/20 shadow-xl space-y-2">
+        <div className="p-5 rounded-3xl bg-surface-dark border border-[#168BFF]/20 shadow-xl space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#13C8D9] uppercase tracking-wider flex items-center gap-1.5">
-              <Activity className="w-4 h-4 text-[#13C8D9]" />
+            <span className="text-[11px] font-bold text-[#168BFF] uppercase tracking-wider flex items-center gap-1.5">
+              <Activity className="w-4 h-4 text-[#168BFF]" />
               In-App Activities Average
             </span>
             <Badge variant={getCapsLevel(aiAvg).variant} size="sm">
@@ -822,11 +822,11 @@ export const TeacherAssessments: React.FC = () => {
           onClick={() => setActiveCategory('formal')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
             activeCategory === 'formal'
-              ? 'bg-[#13C8D9] text-slate-950 shadow-md font-extrabold'
+              ? 'bg-[#168BFF] text-white shadow-md font-extrabold'
               : 'bg-surface-dark text-slate-400 hover:text-white border border-white/5'
           }`}
         >
-          <Award className={`w-4 h-4 ${activeCategory === 'formal' ? 'text-teal-900' : 'text-[#13C8D9]'}`} />
+          <Award className={`w-4 h-4 ${activeCategory === 'formal' ? 'text-teal-900' : 'text-[#168BFF]'}`} />
           <span>Formal Assessments</span>
           <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${activeCategory === 'formal' ? 'bg-black/20 text-slate-950 font-bold' : 'bg-white/10 text-slate-300'}`}>
             {formalAvg > 0 ? `${formalAvg}%` : '0%'} Avg
@@ -837,11 +837,11 @@ export const TeacherAssessments: React.FC = () => {
           onClick={() => setActiveCategory('term')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
             activeCategory === 'term'
-              ? 'bg-[#13C8D9] text-slate-950 shadow-md font-extrabold'
+              ? 'bg-[#168BFF] text-white shadow-md font-extrabold'
               : 'bg-surface-dark text-slate-400 hover:text-white border border-white/5'
           }`}
         >
-          <TrendingUp className={`w-4 h-4 ${activeCategory === 'term' ? 'text-teal-900' : 'text-[#13C8D9]'}`} />
+          <TrendingUp className={`w-4 h-4 ${activeCategory === 'term' ? 'text-teal-900' : 'text-[#168BFF]'}`} />
           <span>Term Marks Breakdown</span>
           <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${activeCategory === 'term' ? 'bg-black/20 text-slate-950 font-bold' : 'bg-white/10 text-slate-300'}`}>
             {termAvg > 0 ? `${termAvg}%` : '0%'} Avg
@@ -852,11 +852,11 @@ export const TeacherAssessments: React.FC = () => {
           onClick={() => setActiveCategory('ai')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
             activeCategory === 'ai'
-              ? 'bg-[#13C8D9] text-slate-950 shadow-md font-extrabold'
+              ? 'bg-[#168BFF] text-white shadow-md font-extrabold'
               : 'bg-surface-dark text-slate-400 hover:text-white border border-white/5'
           }`}
         >
-          <Activity className={`w-4 h-4 ${activeCategory === 'ai' ? 'text-teal-900' : 'text-[#13C8D9]'}`} />
+          <Activity className={`w-4 h-4 ${activeCategory === 'ai' ? 'text-teal-900' : 'text-[#168BFF]'}`} />
           <span>In-App Activities</span>
           <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${activeCategory === 'ai' ? 'bg-black/20 text-slate-950 font-bold' : 'bg-white/10 text-slate-300'}`}>
             {aiAvg > 0 ? `${aiAvg}%` : '0%'} Avg
@@ -867,11 +867,11 @@ export const TeacherAssessments: React.FC = () => {
           onClick={() => setActiveCategory('entry')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
             activeCategory === 'entry'
-              ? 'bg-[#13C8D9] text-slate-950 shadow-md font-extrabold'
+              ? 'bg-[#168BFF] text-white shadow-md font-extrabold'
               : 'bg-surface-dark text-slate-400 hover:text-white border border-white/5'
           }`}
         >
-          <Save className={`w-4 h-4 ${activeCategory === 'entry' ? 'text-teal-900' : 'text-[#13C8D9]'}`} />
+          <Save className={`w-4 h-4 ${activeCategory === 'entry' ? 'text-teal-900' : 'text-[#168BFF]'}`} />
           <span>Capture Marks Form</span>
         </button>
 
@@ -879,11 +879,11 @@ export const TeacherAssessments: React.FC = () => {
           onClick={() => setActiveCategory('history')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
             activeCategory === 'history'
-              ? 'bg-[#13C8D9] text-slate-950 shadow-md font-extrabold'
+              ? 'bg-[#168BFF] text-white shadow-md font-extrabold'
               : 'bg-surface-dark text-slate-400 hover:text-white border border-white/5'
           }`}
         >
-          <History className={`w-4 h-4 ${activeCategory === 'history' ? 'text-teal-900' : 'text-[#13C8D9]'}`} />
+          <History className={`w-4 h-4 ${activeCategory === 'history' ? 'text-teal-900' : 'text-[#168BFF]'}`} />
           <span>History Marks</span>
           <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${activeCategory === 'history' ? 'bg-black/20 text-slate-950 font-bold' : 'bg-white/10 text-slate-300'}`}>
             {historyMarks.length} Records
@@ -900,13 +900,13 @@ export const TeacherAssessments: React.FC = () => {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/10 pb-4">
             <div>
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-[#13C8D9]/15 text-[#13C8D9] border border-[#13C8D9]/30">
-                  <Award className="w-5 h-5 text-[#13C8D9]" />
+                <div className="p-2 rounded-xl bg-[#168BFF]/15 text-[#168BFF] border border-[#168BFF]/30">
+                  <Award className="w-5 h-5 text-[#168BFF]" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white flex items-center gap-2 flex-wrap">
                     <span>CAPS Formal Assessment Schedule — {activeSubjectDisplay} ({activeClassDisplay})</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#13C8D9]/15 text-[#13C8D9] border border-[#13C8D9]/30 font-bold">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#168BFF]/15 text-[#168BFF] border border-[#168BFF]/30 font-bold">
                       {term}
                     </span>
                   </h3>
@@ -923,7 +923,7 @@ export const TeacherAssessments: React.FC = () => {
                     onClick={() => handleSelectTerm(t)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       term === t
-                        ? 'bg-[#13C8D9] text-slate-950 shadow-md font-bold'
+                        ? 'bg-[#168BFF] text-white shadow-md font-bold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -939,13 +939,13 @@ export const TeacherAssessments: React.FC = () => {
           </div>
 
           {/* REQUIREMENT 1: Number of formal assessments available & list of formal assessments available */}
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-[#071922] via-[#0B2533] to-[#071922] border border-[#13C8D9]/25 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-[#071922] via-[#0B2533] to-[#071922] border border-[#168BFF]/25 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2.5">
               <span className="font-bold text-white flex items-center gap-1.5">
-                <Award className="w-4 h-4 text-[#13C8D9]" />
+                <Award className="w-4 h-4 text-[#168BFF]" />
                 Formal Assessments Available:
               </span>
-              <span className="px-2.5 py-0.5 rounded-full font-mono font-extrabold bg-[#13C8D9]/20 text-[#13C8D9] border border-[#13C8D9]/35 text-xs">
+              <span className="px-2.5 py-0.5 rounded-full font-mono font-extrabold bg-[#168BFF]/20 text-[#168BFF] border border-[#168BFF]/35 text-xs">
                 {availableFormalAssessments.length > 0 ? availableFormalAssessments.length : 0}
               </span>
             </div>
@@ -955,11 +955,11 @@ export const TeacherAssessments: React.FC = () => {
                 availableFormalAssessments.map((comp) => (
                   <span
                     key={comp.key}
-                    className="px-2.5 py-1 rounded-xl bg-surface-dark border border-[#13C8D9]/30 text-white font-medium text-[11px] flex items-center gap-1.5 shadow-xs"
+                    className="px-2.5 py-1 rounded-xl bg-surface-dark border border-[#168BFF]/30 text-white font-medium text-[11px] flex items-center gap-1.5 shadow-xs"
                   >
-                    <span className="w-2 h-2 rounded-full bg-[#13C8D9]" />
+                    <span className="w-2 h-2 rounded-full bg-[#168BFF]" />
                     <span>{comp.label}:</span>
-                    <span className="text-[#13C8D9] font-mono font-bold">{comp.recordedCount} Recorded</span>
+                    <span className="text-[#168BFF] font-mono font-bold">{comp.recordedCount} Recorded</span>
                   </span>
                 ))
               ) : (
@@ -971,9 +971,9 @@ export const TeacherAssessments: React.FC = () => {
           </div>
 
           {/* CAPS Assessment Weighting & Calculation Formula Explainer */}
-          <div className="p-3.5 rounded-2xl bg-[#091E28]/60 border border-[#13C8D9]/20 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+          <div className="p-3.5 rounded-2xl bg-[#091E28]/60 border border-[#168BFF]/20 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2 text-cyan-300 font-semibold">
-              <span className="w-2 h-2 rounded-full bg-[#13C8D9] animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-[#168BFF] animate-pulse" />
               <span>CAPS Formula: Final Mark = SBA (40%) + Exam (60%) [or 100% SBA if no examination is scheduled]</span>
             </div>
             <div className="flex items-center gap-2 text-[11px] text-slate-300 font-mono">
@@ -998,7 +998,7 @@ export const TeacherAssessments: React.FC = () => {
                     <th className="py-3 px-2 text-center text-cyan-300">Assignment</th>
                     <th className="py-3 px-2 text-center text-cyan-300">Project</th>
                     <th className="py-3 px-2 text-center text-cyan-300">Exam</th>
-                    <th className="py-3 px-2 text-center text-[#13C8D9] font-bold">SBA (%)</th>
+                    <th className="py-3 px-2 text-center text-[#168BFF] font-bold">SBA (%)</th>
                     <th className="py-3 px-2 text-center text-emerald-400 font-extrabold bg-emerald-500/10">Final Mark</th>
                     <th className="py-3 px-2 text-center">CAPS Level</th>
                     <th className="py-3 px-2">Calculation Breakdown</th>
@@ -1016,7 +1016,7 @@ export const TeacherAssessments: React.FC = () => {
                     return (
                       <tr key={learner.id} className="hover:bg-white/5 transition-colors">
                         <td className="py-3 px-2 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
-                        <td className="py-3 px-2 font-mono font-bold text-[#13C8D9] text-[11px]">{learner.learner_number}</td>
+                        <td className="py-3 px-2 font-mono font-bold text-[#168BFF] text-[11px]">{learner.learner_number}</td>
                         <td className="py-3 px-2 font-mono text-slate-300 text-[11px]">
                           <span className="px-2 py-0.5 rounded-lg bg-surface-darker border border-white/5 font-semibold text-slate-200">
                             {normalizeClassGrade(learner.class_name || learner.grade) || '10'}
@@ -1027,7 +1027,7 @@ export const TeacherAssessments: React.FC = () => {
                         {/* Controlled Test 1 */}
                         <td className="py-3 px-2 text-center font-mono">
                           {learner.test1 ? (
-                            <span className="px-1.5 py-0.5 rounded bg-[#13C8D9]/15 text-[#13C8D9] font-bold text-[11px]" title={`Score: ${learner.test1.score}/${learner.test1.max_score} (Weight: ${learner.test1.weight})`}>
+                            <span className="px-1.5 py-0.5 rounded bg-[#168BFF]/15 text-[#168BFF] font-bold text-[11px]" title={`Score: ${learner.test1.score}/${learner.test1.max_score} (Weight: ${learner.test1.weight})`}>
                               {learner.test1.score}/{learner.test1.max_score} <span className="text-[9.5px]">({learner.test1.percentage}%)</span>
                             </span>
                           ) : (
@@ -1038,7 +1038,7 @@ export const TeacherAssessments: React.FC = () => {
                         {/* Controlled Test 2 */}
                         <td className="py-3 px-2 text-center font-mono">
                           {learner.test2 ? (
-                            <span className="px-1.5 py-0.5 rounded bg-[#13C8D9]/15 text-[#13C8D9] font-bold text-[11px]" title={`Score: ${learner.test2.score}/${learner.test2.max_score} (Weight: ${learner.test2.weight})`}>
+                            <span className="px-1.5 py-0.5 rounded bg-[#168BFF]/15 text-[#168BFF] font-bold text-[11px]" title={`Score: ${learner.test2.score}/${learner.test2.max_score} (Weight: ${learner.test2.weight})`}>
                               {learner.test2.score}/{learner.test2.max_score} <span className="text-[9.5px]">({learner.test2.percentage}%)</span>
                             </span>
                           ) : (
@@ -1049,7 +1049,7 @@ export const TeacherAssessments: React.FC = () => {
                         {/* Assignment */}
                         <td className="py-3 px-2 text-center font-mono">
                           {learner.assignment ? (
-                            <span className="px-1.5 py-0.5 rounded bg-[#13C8D9]/15 text-[#13C8D9] font-bold text-[11px]" title={`Score: ${learner.assignment.score}/${learner.assignment.max_score}`}>
+                            <span className="px-1.5 py-0.5 rounded bg-[#168BFF]/15 text-[#168BFF] font-bold text-[11px]" title={`Score: ${learner.assignment.score}/${learner.assignment.max_score}`}>
                               {learner.assignment.score}/{learner.assignment.max_score} <span className="text-[9.5px]">({learner.assignment.percentage}%)</span>
                             </span>
                           ) : (
@@ -1060,7 +1060,7 @@ export const TeacherAssessments: React.FC = () => {
                         {/* Project / Investigation */}
                         <td className="py-3 px-2 text-center font-mono">
                           {learner.project ? (
-                            <span className="px-1.5 py-0.5 rounded bg-[#13C8D9]/15 text-[#13C8D9] font-bold text-[11px]" title={`Score: ${learner.project.score}/${learner.project.max_score}`}>
+                            <span className="px-1.5 py-0.5 rounded bg-[#168BFF]/15 text-[#168BFF] font-bold text-[11px]" title={`Score: ${learner.project.score}/${learner.project.max_score}`}>
                               {learner.project.score}/{learner.project.max_score} <span className="text-[9.5px]">({learner.project.percentage}%)</span>
                             </span>
                           ) : (
@@ -1071,7 +1071,7 @@ export const TeacherAssessments: React.FC = () => {
                         {/* Controlled Examination */}
                         <td className="py-3 px-2 text-center font-mono">
                           {learner.exam ? (
-                            <span className="px-1.5 py-0.5 rounded bg-[#13C8D9]/15 text-[#13C8D9] font-bold text-[11px]" title={`Score: ${learner.exam.score}/${learner.exam.max_score}`}>
+                            <span className="px-1.5 py-0.5 rounded bg-[#168BFF]/15 text-[#168BFF] font-bold text-[11px]" title={`Score: ${learner.exam.score}/${learner.exam.max_score}`}>
                               {learner.exam.score}/{learner.exam.max_score} <span className="text-[9.5px]">({learner.exam.percentage}%)</span>
                             </span>
                           ) : (
@@ -1112,7 +1112,7 @@ export const TeacherAssessments: React.FC = () => {
                             onClick={() => {
                               setActiveCategory('entry');
                             }}
-                            className="px-2.5 py-1 rounded-lg bg-surface-darker hover:bg-white/10 text-[#13C8D9] hover:text-white border border-[#13C8D9]/30 text-[10px] font-bold transition-all cursor-pointer"
+                            className="px-2.5 py-1 rounded-lg bg-surface-darker hover:bg-white/10 text-[#168BFF] hover:text-white border border-[#168BFF]/30 text-[10px] font-bold transition-all cursor-pointer"
                           >
                             Allocate Marks
                           </button>
@@ -1140,7 +1140,7 @@ export const TeacherAssessments: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-[#13C8D9]" />
+                <TrendingUp className="w-5 h-5 text-[#168BFF]" />
                 <span>Term Cumulative Marks — {activeSubjectDisplay} ({activeClassDisplay})</span>
               </h3>
             </div>
@@ -1152,12 +1152,12 @@ export const TeacherAssessments: React.FC = () => {
           {/* REQUIREMENT 2: Cumulative marks available & averages for each term task */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
             {/* Cumulative Marks Available */}
-            <div className="p-3.5 rounded-2xl bg-surface-darker border border-[#13C8D9]/20 space-y-1">
+            <div className="p-3.5 rounded-2xl bg-surface-darker border border-[#168BFF]/20 space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                 Cumulative Marks Available
               </span>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-xl font-extrabold font-mono text-[#13C8D9]">
+                <span className="text-xl font-extrabold font-mono text-[#168BFF]">
                   {cumulativeMarksCount > 0 ? cumulativeMarksCount : 0}
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">
@@ -1247,7 +1247,7 @@ export const TeacherAssessments: React.FC = () => {
                     <th className="pb-3 px-3 text-center">Term 1</th>
                     <th className="pb-3 px-3 text-center">Term 2</th>
                     <th className="pb-3 px-3 text-center">Term 3</th>
-                    <th className="pb-3 px-3 text-center font-bold text-[#13C8D9]">Cumulative Avg</th>
+                    <th className="pb-3 px-3 text-center font-bold text-[#168BFF]">Cumulative Avg</th>
                     <th className="pb-3 px-3 text-right">CAPS Level</th>
                   </tr>
                 </thead>
@@ -1259,7 +1259,7 @@ export const TeacherAssessments: React.FC = () => {
                     return (
                       <tr key={learner.id} className="hover:bg-white/5 transition-colors">
                         <td className="py-3.5 px-3 text-slate-400 font-mono">{idx + 1}</td>
-                        <td className="py-3.5 px-3 font-mono font-bold text-[#13C8D9]">{learner.learner_number}</td>
+                        <td className="py-3.5 px-3 font-mono font-bold text-[#168BFF]">{learner.learner_number}</td>
                         <td className="py-3.5 px-3 font-mono text-slate-300">
                           <span className="px-2 py-0.5 rounded-lg bg-surface-darker border border-white/5 font-semibold text-slate-200">
                             {normalizeClassGrade(learner.class_name || learner.grade) || '10'}
@@ -1269,7 +1269,7 @@ export const TeacherAssessments: React.FC = () => {
                         <td className="py-3.5 px-3 text-center font-mono text-slate-300">{learner.term1_mark > 0 ? `${learner.term1_mark}%` : '0%'}</td>
                         <td className="py-3.5 px-3 text-center font-mono text-slate-300">{learner.term2_mark > 0 ? `${learner.term2_mark}%` : '0%'}</td>
                         <td className="py-3.5 px-3 text-center font-mono text-slate-300">{learner.term3_mark > 0 ? `${learner.term3_mark}%` : '0%'}</td>
-                        <td className="py-3.5 px-3 text-center font-mono font-bold text-sm text-[#13C8D9]">{avg > 0 ? `${avg}%` : '0%'}</td>
+                        <td className="py-3.5 px-3 text-center font-mono font-bold text-sm text-[#168BFF]">{avg > 0 ? `${avg}%` : '0%'}</td>
                         <td className="py-3.5 px-3 text-right">
                           <Badge variant={caps.variant} size="sm">Level {caps.level}</Badge>
                         </td>
@@ -1286,7 +1286,7 @@ export const TeacherAssessments: React.FC = () => {
                     <td className="py-3 px-3 text-center text-white">{term1Avg > 0 ? `${term1Avg}%` : '0%'}</td>
                     <td className="py-3 px-3 text-center text-white">{term2Avg > 0 ? `${term2Avg}%` : '0%'}</td>
                     <td className="py-3 px-3 text-center text-white">{term3Avg > 0 ? `${term3Avg}%` : '0%'}</td>
-                    <td className="py-3 px-3 text-center text-[#13C8D9] text-sm font-extrabold">{termAvg > 0 ? `${termAvg}%` : '0%'}</td>
+                    <td className="py-3 px-3 text-center text-[#168BFF] text-sm font-extrabold">{termAvg > 0 ? `${termAvg}%` : '0%'}</td>
                     <td className="py-3 px-3 text-right text-[11px] text-slate-400">Class Overall</td>
                   </tr>
                 </tfoot>
@@ -1310,7 +1310,7 @@ export const TeacherAssessments: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Activity className="w-5 h-5 text-[#13C8D9]" />
+                <Activity className="w-5 h-5 text-[#168BFF]" />
                 <span>In-App Activities & Historic Published Assessments — {activeSubjectDisplay} ({activeClassDisplay})</span>
               </h3>
             </div>
@@ -1321,12 +1321,12 @@ export const TeacherAssessments: React.FC = () => {
 
           {/* Summary Strip for In-App Activities History & Historic Assessments Published */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 rounded-2xl bg-surface-darker border border-[#13C8D9]/20 space-y-1">
+            <div className="p-4 rounded-2xl bg-surface-darker border border-[#168BFF]/20 space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <Activity className="w-3.5 h-3.5 text-[#13C8D9]" />
+                <Activity className="w-3.5 h-3.5 text-[#168BFF]" />
                 In-App Activities Completed
               </span>
-              <div className="text-2xl font-extrabold font-mono text-[#13C8D9]">
+              <div className="text-2xl font-extrabold font-mono text-[#168BFF]">
                 {totalAiActivitiesCount > 0 ? totalAiActivitiesCount : 0}
               </div>
               <span className="text-[11px] text-slate-400 font-mono">
@@ -1365,7 +1365,7 @@ export const TeacherAssessments: React.FC = () => {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                <Activity className="w-4 h-4 text-[#13C8D9]" />
+                <Activity className="w-4 h-4 text-[#168BFF]" />
                 <span>In-App Activities History ({learners.length > 0 ? learners.length : 0} Learners)</span>
               </h4>
             </div>
@@ -1395,7 +1395,7 @@ export const TeacherAssessments: React.FC = () => {
                       return (
                         <tr key={learner.id} className="hover:bg-white/5 transition-colors">
                           <td className="py-3 px-3 text-slate-400 font-mono">{idx + 1}</td>
-                          <td className="py-3 px-3 font-mono font-bold text-[#13C8D9]">{learner.learner_number}</td>
+                          <td className="py-3 px-3 font-mono font-bold text-[#168BFF]">{learner.learner_number}</td>
                           <td className="py-3 px-3 font-mono text-slate-300">
                             <span className="px-2 py-0.5 rounded-lg bg-surface-dark border border-white/5 font-semibold text-slate-200">
                               {normalizeClassGrade(learner.class_name || learner.grade) || '10'}
@@ -1412,7 +1412,7 @@ export const TeacherAssessments: React.FC = () => {
                             <Badge variant={caps.variant} size="sm">Level {caps.level}</Badge>
                           </td>
                           <td className="py-3 px-3 text-right">
-                            <span className={`text-xs font-semibold ${hasCompleted ? 'text-[#13C8D9]' : 'text-slate-500'}`}>
+                            <span className={`text-xs font-semibold ${hasCompleted ? 'text-[#168BFF]' : 'text-slate-500'}`}>
                               {hasCompleted ? 'Active in App' : 'None available'}
                             </span>
                           </td>
@@ -1469,19 +1469,19 @@ export const TeacherAssessments: React.FC = () => {
                             <span className="text-sm font-extrabold text-white">
                               {batch.assessment_name ? batch.assessment_name.replace(/\(\s*(\d+)\s*\/\s*\d+\s*\)/g, '($1%)') : 'Class Assessment'}
                             </span>
-                            <span className="px-2 py-0.5 rounded-md bg-[#13C8D9]/15 text-[#13C8D9] font-mono text-[10px] font-bold border border-[#13C8D9]/30">
+                            <span className="px-2 py-0.5 rounded-md bg-[#168BFF]/15 text-[#168BFF] font-mono text-[10px] font-bold border border-[#168BFF]/30">
                               {batch.term || 'Term 3'}
                             </span>
                             <Badge variant={batchLevel.variant} size="sm">Avg {batch.class_average > 0 ? `${batch.class_average}%` : '0%'}</Badge>
                           </div>
                           <div className="flex items-center gap-3 text-[11px] text-slate-400 font-mono">
                             <span className="flex items-center gap-1">
-                              <Calendar className="w-3.5 h-3.5 text-[#13C8D9]" />
+                              <Calendar className="w-3.5 h-3.5 text-[#168BFF]" />
                               {batch.date_str || new Date(batch.recorded_at).toLocaleDateString()}
                             </span>
                             <span>•</span>
                             <span className="flex items-center gap-1">
-                              <Users className="w-3.5 h-3.5 text-[#13C8D9]" />
+                              <Users className="w-3.5 h-3.5 text-[#168BFF]" />
                               {batch.total_learners} Learners Published
                             </span>
                           </div>
@@ -1518,7 +1518,7 @@ export const TeacherAssessments: React.FC = () => {
                                   return (
                                     <tr key={m.child_id || mIdx} className="hover:bg-white/5 transition-colors">
                                       <td className="py-2 px-3 text-slate-400 font-mono">{mIdx + 1}</td>
-                                      <td className="py-2 px-3 font-mono font-bold text-[#13C8D9]">{m.learner_number || `2026-${m.child_id}`}</td>
+                                      <td className="py-2 px-3 font-mono font-bold text-[#168BFF]">{m.learner_number || `2026-${m.child_id}`}</td>
                                       <td className="py-2 px-3 font-bold text-white">{`${m.full_name || ''} ${m.surname || ''}`.trim()}</td>
                                       <td className="py-2 px-3 text-center font-mono font-bold text-white">{pVal > 0 ? `${pVal}%` : '0%'}</td>
                                       <td className="py-2 px-3 text-right">
@@ -1555,12 +1555,12 @@ export const TeacherAssessments: React.FC = () => {
           <div className="p-5 rounded-3xl bg-surface-dark border border-white/10 shadow-xl space-y-4">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-white/10 pb-4">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#13C8D9] block mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#168BFF] block mb-1">
                   Step 1: Select Academic Term & Assessment Task Component
                 </span>
                 <h3 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
                   <span>Allocate Marks: {ASSESSMENT_COMPONENTS.find(c => c.key === selectedComponent)?.label || 'Assessment'}</span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#13C8D9]/20 text-[#13C8D9] border border-[#13C8D9]/30">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#168BFF]/20 text-[#168BFF] border border-[#168BFF]/30">
                     {term}
                   </span>
                 </h3>
@@ -1575,7 +1575,7 @@ export const TeacherAssessments: React.FC = () => {
                     onClick={() => handleSelectTerm(t)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       term === t
-                        ? 'bg-[#13C8D9] text-slate-950 font-bold shadow-md'
+                        ? 'bg-[#168BFF] text-white font-bold shadow-md'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1600,17 +1600,17 @@ export const TeacherAssessments: React.FC = () => {
                       onClick={() => handleSelectComponent(comp.key)}
                       className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
                         isSelected
-                          ? 'bg-gradient-to-br from-[#13C8D9]/25 to-slate-900 border-[#13C8D9] shadow-md'
+                          ? 'bg-gradient-to-br from-[#168BFF]/25 to-slate-900 border-[#168BFF] shadow-md'
                           : 'bg-surface-darker border-white/10 hover:border-white/20 text-slate-400 hover:text-white'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
-                          comp.isFormal ? 'bg-[#13C8D9]/20 text-[#13C8D9]' : 'bg-slate-700/40 text-slate-300'
+                          comp.isFormal ? 'bg-[#168BFF]/20 text-[#168BFF]' : 'bg-slate-700/40 text-slate-300'
                         }`}>
                           {comp.isFormal ? 'Formal SBA' : 'Practice'}
                         </span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-[#13C8D9]" />}
+                        {isSelected && <Check className="w-3.5 h-3.5 text-[#168BFF]" />}
                       </div>
                       <p className="text-xs font-bold text-white truncate">{comp.label}</p>
                       <p className="text-[10px] text-slate-400 mt-0.5">
@@ -1629,7 +1629,7 @@ export const TeacherAssessments: React.FC = () => {
                 <select
                   value={selectedClass}
                   onChange={(e) => setSelectedClass(e.target.value)}
-                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-[#13C8D9] cursor-pointer"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-[#168BFF] cursor-pointer"
                 >
                   <option value="all">All Classes</option>
                   {classes.map(c => (
@@ -1643,7 +1643,7 @@ export const TeacherAssessments: React.FC = () => {
                 <select
                   value={selectedSubject}
                   onChange={(e) => setSelectedSubject(e.target.value)}
-                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-[#13C8D9] cursor-pointer"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-[#168BFF] cursor-pointer"
                 >
                   {subjects.map(s => (
                     <option key={s} value={s}>{s}</option>
@@ -1658,7 +1658,7 @@ export const TeacherAssessments: React.FC = () => {
                   value={assessmentName}
                   onChange={(e) => setAssessmentName(e.target.value)}
                   placeholder="e.g. Term 3 Controlled Test 1"
-                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#13C8D9] font-medium"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#168BFF] font-medium"
                 />
               </div>
 
@@ -1667,7 +1667,7 @@ export const TeacherAssessments: React.FC = () => {
                 <select
                   value={isFormal ? 'formal' : 'informal'}
                   onChange={(e) => setIsFormal(e.target.value === 'formal')}
-                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-[#13C8D9] cursor-pointer"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-[#168BFF] cursor-pointer"
                 >
                   <option value="formal">Formal Assessment (Report Card)</option>
                   <option value="informal">Informal (Practice / Quiz)</option>
@@ -1679,7 +1679,7 @@ export const TeacherAssessments: React.FC = () => {
                 <select
                   value={assessmentType}
                   onChange={(e) => setAssessmentType(e.target.value)}
-                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-[#13C8D9] cursor-pointer"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-[#168BFF] cursor-pointer"
                 >
                   <option value="Formal SBA Test">Formal SBA Test</option>
                   <option value="Term Assignment">Term Assignment</option>
@@ -1697,7 +1697,7 @@ export const TeacherAssessments: React.FC = () => {
                   onChange={(e) => setTotalMarks(Math.max(1, parseInt(e.target.value) || 50))}
                   min={1}
                   max={300}
-                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#13C8D9]"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#168BFF]"
                 />
               </div>
 
@@ -1709,7 +1709,7 @@ export const TeacherAssessments: React.FC = () => {
                   onChange={(e) => setWeight(Math.max(1, parseInt(e.target.value) || totalMarks))}
                   min={1}
                   max={500}
-                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-[#13C8D9] font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#13C8D9]"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-xs text-[#168BFF] font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#168BFF]"
                   title="Weights control non-uniform contribution to the final report mark (e.g. Exam: 100, Test: 50, Assignment: 30)"
                 />
               </div>
@@ -1718,7 +1718,7 @@ export const TeacherAssessments: React.FC = () => {
                 <button
                   onClick={handleSaveMarks}
                   disabled={saving || learners.length === 0}
-                  className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 font-extrabold text-xs shadow-md transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                  className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-extrabold text-xs shadow-md transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer"
                 >
                   {saving ? (
                     <LoadingSpinner size="sm" />
@@ -1750,7 +1750,7 @@ export const TeacherAssessments: React.FC = () => {
                   <button
                     onClick={() => setSelectedClass('all')}
                     className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                      selectedClass === 'all' ? 'bg-[#13C8D9] text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                      selectedClass === 'all' ? 'bg-[#168BFF] text-white shadow-sm' : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     All Classes
@@ -1760,7 +1760,7 @@ export const TeacherAssessments: React.FC = () => {
                       key={cls}
                       onClick={() => setSelectedClass(cls)}
                       className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                        selectedClass === cls ? 'bg-[#13C8D9] text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                        selectedClass === cls ? 'bg-[#168BFF] text-white shadow-sm' : 'text-slate-400 hover:text-white'
                       }`}
                     >
                       {cls}
@@ -1774,7 +1774,7 @@ export const TeacherAssessments: React.FC = () => {
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-darker hover:bg-white/5 border border-white/10 text-xs font-bold text-slate-300 hover:text-white transition-all cursor-pointer"
                   title="Reload learners from class register and roster"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 text-[#13C8D9] ${loading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-3.5 h-3.5 text-[#168BFF] ${loading ? 'animate-spin' : ''}`} />
                   <span>Refresh List</span>
                 </button>
               </div>
@@ -1807,7 +1807,7 @@ export const TeacherAssessments: React.FC = () => {
                       return (
                         <tr key={learner.id} className="hover:bg-white/5 transition-colors">
                           <td className="py-3.5 px-3 text-slate-400 font-mono">{idx + 1}</td>
-                          <td className="py-3.5 px-3 font-mono font-bold text-[#13C8D9]">{learner.learner_number}</td>
+                          <td className="py-3.5 px-3 font-mono font-bold text-[#168BFF]">{learner.learner_number}</td>
                           <td className="py-3.5 px-3 font-mono text-slate-300">
                             <span className="px-2 py-0.5 rounded-lg bg-surface-darker border border-white/5 font-semibold text-slate-200">
                               {normalizeClassGrade(learner.class_name || learner.grade) || '10'}
@@ -1821,7 +1821,7 @@ export const TeacherAssessments: React.FC = () => {
                               onChange={(e) => handleInputChange(learner.id, e.target.value)}
                               min={0}
                               max={totalMarks}
-                              className="w-28 rounded-xl bg-surface-darker border border-white/10 px-3 py-1.5 text-xs text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#13C8D9]"
+                              className="w-28 rounded-xl bg-surface-darker border border-white/10 px-3 py-1.5 text-xs text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#168BFF]"
                             />
                           </td>
                           <td className="py-3.5 px-3 text-center font-mono font-bold text-white">
@@ -1849,7 +1849,7 @@ export const TeacherAssessments: React.FC = () => {
                   </button>
                   <button
                     onClick={fetchRoster}
-                    className="px-4 py-2 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 font-bold text-xs transition-all shadow-md cursor-pointer inline-flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-bold text-xs transition-all shadow-md cursor-pointer inline-flex items-center gap-1.5"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
                     <span>Load Enrolled Learners</span>
@@ -1869,7 +1869,7 @@ export const TeacherAssessments: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-surface-dark border border-white/10">
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <History className="w-5 h-5 text-[#13C8D9]" />
+                <History className="w-5 h-5 text-[#168BFF]" />
                 <span>Recorded Assessment History — {activeSubjectDisplay} ({activeClassDisplay})</span>
               </h3>
             </div>
@@ -1887,7 +1887,7 @@ export const TeacherAssessments: React.FC = () => {
             <LoadingSpinner text="Retrieving assessment mark history from database..." />
           ) : historyMarks.length === 0 ? (
             <div className="p-12 rounded-3xl bg-surface-dark border border-white/10 text-center space-y-3 shadow-xl">
-              <div className="w-14 h-14 rounded-2xl bg-[#13C8D9]/10 border border-[#13C8D9]/30 text-[#13C8D9] flex items-center justify-center mx-auto">
+              <div className="w-14 h-14 rounded-2xl bg-[#168BFF]/10 border border-[#168BFF]/30 text-[#168BFF] flex items-center justify-center mx-auto">
                 <History className="w-7 h-7" />
               </div>
               <div className="max-w-md mx-auto space-y-1">
@@ -1898,7 +1898,7 @@ export const TeacherAssessments: React.FC = () => {
               </div>
               <button
                 onClick={() => setActiveCategory('entry')}
-                className="px-4 py-2 rounded-xl bg-[#13C8D9] hover:bg-[#18E2EC] text-slate-950 font-bold text-xs transition-all shadow-md cursor-pointer active:scale-95"
+                className="px-4 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-bold text-xs transition-all shadow-md cursor-pointer active:scale-95"
               >
                 Capture Marks Now
               </button>
@@ -1923,19 +1923,19 @@ export const TeacherAssessments: React.FC = () => {
                           <span className="text-sm font-extrabold text-white">
                             {batch.assessment_name ? batch.assessment_name.replace(/\(\s*(\d+)\s*\/\s*\d+\s*\)/g, '($1%)') : 'Class Assessment'}
                           </span>
-                          <span className="px-2 py-0.5 rounded-md bg-[#13C8D9]/15 text-[#13C8D9] font-mono text-[10px] font-bold border border-[#13C8D9]/30">
+                          <span className="px-2 py-0.5 rounded-md bg-[#168BFF]/15 text-[#168BFF] font-mono text-[10px] font-bold border border-[#168BFF]/30">
                             {batch.term || 'Term 3'}
                           </span>
                           <Badge variant={batchLevel.variant} size="sm">Avg {batch.class_average > 0 ? `${batch.class_average}%` : '0%'}</Badge>
                         </div>
                         <div className="flex items-center gap-3 text-[11px] text-slate-400 font-mono">
                           <span className="flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5 text-[#13C8D9]" />
+                            <Calendar className="w-3.5 h-3.5 text-[#168BFF]" />
                             {batch.date_str || new Date(batch.recorded_at).toLocaleDateString()}
                           </span>
                           <span>•</span>
                           <span className="flex items-center gap-1">
-                            <Users className="w-3.5 h-3.5 text-[#13C8D9]" />
+                            <Users className="w-3.5 h-3.5 text-[#168BFF]" />
                             {batch.total_learners} Learners Recorded
                           </span>
                         </div>
@@ -1972,7 +1972,7 @@ export const TeacherAssessments: React.FC = () => {
                                 return (
                                   <tr key={m.child_id || mIdx} className="hover:bg-white/5 transition-colors">
                                     <td className="py-2.5 px-3 text-slate-400 font-mono">{mIdx + 1}</td>
-                                    <td className="py-2.5 px-3 font-mono font-bold text-[#13C8D9]">{m.learner_number || `2026-${m.child_id}`}</td>
+                                    <td className="py-2.5 px-3 font-mono font-bold text-[#168BFF]">{m.learner_number || `2026-${m.child_id}`}</td>
                                     <td className="py-2.5 px-3 font-bold text-white">{`${m.full_name || ''} ${m.surname || ''}`.trim()}</td>
                                     <td className="py-2.5 px-3 text-center font-mono font-bold text-white">{pVal > 0 ? `${pVal}%` : '0%'}</td>
                                     <td className="py-2.5 px-3 text-right">

@@ -1,12 +1,8 @@
 :root {
-  --admin-color: #8b5cf6;
-  /* Purple */
-  --teacher-color: #3b82f6;
-  /* Blue */
-  --parent-color: #f59e0b;
-  /* Amber */
-  --learner-color: #10b981;
-  /* Green */
+  --admin-color: var(--accent-primary, #168BFF);
+  --teacher-color: var(--accent-primary, #168BFF);
+  --parent-color: var(--accent-primary, #168BFF);
+  --learner-color: var(--accent-primary, #168BFF);
 }
 
 .dashboard-body .section {

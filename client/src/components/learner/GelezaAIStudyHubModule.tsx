@@ -85,7 +85,7 @@ export const GelezaAIStudyHubModule: React.FC<GelezaAIStudyHubModuleProps> = ({
       {/* Hero Module Banner */}
       <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-600 dark:text-[#18E2EC] flex items-center justify-center shrink-0 shadow-sm">
+          <div className="w-14 h-14 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-600 dark:text-[#168BFF] flex items-center justify-center shrink-0 shadow-sm">
             <BrainCircuit className="w-7 h-7" />
           </div>
           <div className="space-y-1.5">
@@ -108,7 +108,7 @@ export const GelezaAIStudyHubModule: React.FC<GelezaAIStudyHubModuleProps> = ({
             setSelectedTopic(availableTopics[0] || 'Core Concepts');
             setIsQuizModalOpen(true);
           }}
-          className="px-5 py-3 rounded-2xl bg-[#13C8D9] hover:bg-[#0891B2] text-[#0A121A] font-extrabold text-xs sm:text-sm shadow-md shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer shrink-0 self-start lg:self-center"
+          className="px-5 py-3 rounded-2xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-extrabold text-xs sm:text-sm shadow-md shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer shrink-0 self-start lg:self-center"
         >
           <Sparkles className="w-4 h-4" />
           <span>Launch Practice Quiz</span>
@@ -131,7 +131,7 @@ export const GelezaAIStudyHubModule: React.FC<GelezaAIStudyHubModuleProps> = ({
                 onClick={() => setSelectedGrade(g)}
                 className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   selectedGrade === g
-                    ? 'bg-cyan-600 dark:bg-[#13C8D9] text-white dark:text-[#0A121A]'
+                    ? 'bg-cyan-600 dark:bg-[#168BFF] text-white dark:text-[#0A121A]'
                     : 'bg-slate-100 dark:bg-surface-darker text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/5 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -149,7 +149,7 @@ export const GelezaAIStudyHubModule: React.FC<GelezaAIStudyHubModuleProps> = ({
               onClick={() => setSelectedSubject(sub)}
               className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                 selectedSubject === sub
-                  ? 'bg-cyan-600 dark:bg-[#13C8D9] text-white dark:text-[#0A121A] shadow-xs'
+                  ? 'bg-cyan-600 dark:bg-[#168BFF] text-white dark:text-[#0A121A] shadow-xs'
                   : 'bg-slate-100 dark:bg-surface-darker text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/5'
               }`}
             >
@@ -182,7 +182,7 @@ export const GelezaAIStudyHubModule: React.FC<GelezaAIStudyHubModuleProps> = ({
                 <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-700 dark:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
                   Topic {idx + 1}
                 </span>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#18E2EC] transition-colors leading-snug">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#168BFF] transition-colors leading-snug">
                   {top}
                 </h4>
               </div>
@@ -202,7 +202,7 @@ export const GelezaAIStudyHubModule: React.FC<GelezaAIStudyHubModuleProps> = ({
       {/* Highlights Feature Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
         <div className="p-5 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 shadow-xs space-y-2">
-          <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-[#18E2EC]">
+          <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-[#168BFF]">
             <Lightbulb className="w-5 h-5" />
           </div>
           <h4 className="text-sm font-bold text-slate-900 dark:text-white">Socratic Hints</h4>
@@ -212,7 +212,7 @@ export const GelezaAIStudyHubModule: React.FC<GelezaAIStudyHubModuleProps> = ({
         </div>
 
         <div className="p-5 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 shadow-xs space-y-2">
-          <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-[#18E2EC]">
+          <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-[#168BFF]">
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <h4 className="text-sm font-bold text-slate-900 dark:text-white">CAPS Exam Marking</h4>
@@ -222,7 +222,7 @@ export const GelezaAIStudyHubModule: React.FC<GelezaAIStudyHubModuleProps> = ({
         </div>
 
         <div className="p-5 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 shadow-xs space-y-2">
-          <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-[#18E2EC]">
+          <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-[#168BFF]">
             <BrainCircuit className="w-5 h-5" />
           </div>
           <h4 className="text-sm font-bold text-slate-900 dark:text-white">Real-Time Study Sync</h4>
