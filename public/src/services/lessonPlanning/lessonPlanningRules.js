@@ -162,7 +162,10 @@ function normalisePlanInput(body) {
 
   const stages = asArray(source.stages).map((item) => ({
     stage_name: cleanText(item && item.stage_name, LIMITS.stage),
-    duration_minutes: cleanInt(item && item.duration_minutes),
+    duration_minutes: (() => {
+      const minutes = cleanInt(item && item.duration_minutes);
+      return minutes && minutes > 0 ? minutes : null;
+    })(),
     teacher_activities: cleanMultiline(item && item.teacher_activities, LIMITS.text),
     learner_activities: cleanMultiline(item && item.learner_activities, LIMITS.text)
   })).filter((item) => item.stage_name);

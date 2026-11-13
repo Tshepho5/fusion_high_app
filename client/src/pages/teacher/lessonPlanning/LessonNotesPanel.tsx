@@ -19,6 +19,8 @@ interface NoteDraft {
   class_id: number | null;
   class_name: string;
   grade: number | '';
+  academic_year: number | '';
+  term: number | '';
   title: string;
   topic: string;
   sub_topic: string;
@@ -38,6 +40,8 @@ function blankNote(context: LessonContext): NoteDraft {
     class_id: first?.class_id || null,
     class_name: first?.class_name || '',
     grade: first?.grade || '',
+    academic_year: context.suggested_year,
+    term: context.suggested_term,
     title: '',
     topic: '',
     sub_topic: '',
@@ -125,7 +129,7 @@ export const LessonNotesPanel: React.FC<{ context: LessonContext; readOnly?: boo
           {notes.map((note) => (
             <button key={note.id} type="button" className={`${card} w-full p-3 text-left`} onClick={async () => setDraft(noteFromRecord(await lessonPlanningService.getNote(note.id)))}>
               <p className="text-sm font-bold text-slate-900 dark:text-white">{note.title}</p>
-              <p className="text-xs text-slate-500">{note.subject_name} · Grade {note.grade} · {note.status}</p>
+              <p className="text-xs text-slate-500">{note.subject_name} · Grade {note.grade} · Term {note.term || '—'} {note.academic_year || ''} · {note.status}</p>
             </button>
           ))}
         </div>
@@ -144,6 +148,20 @@ export const LessonNotesPanel: React.FC<{ context: LessonContext; readOnly?: boo
                 ))}
               </select>
             </label>
+            <div className="grid sm:grid-cols-2 gap-2">
+              <label>
+                <span className={label}>Academic year</span>
+                <select className={field} disabled={readOnly} value={draft.academic_year} onChange={(event) => setDraft({ ...draft, academic_year: Number(event.target.value) })}>
+                  {context.academic_years.map((year) => <option key={year} value={year}>{year}</option>)}
+                </select>
+              </label>
+              <label>
+                <span className={label}>Term</span>
+                <select className={field} disabled={readOnly} value={draft.term} onChange={(event) => setDraft({ ...draft, term: Number(event.target.value) })}>
+                  {context.terms.map((term) => <option key={term} value={term}>Term {term}</option>)}
+                </select>
+              </label>
+            </div>
             <label>
               <span className={label}>Linked lesson plan</span>
               <select className={field} disabled={readOnly} value={draft.lesson_plan_id || ''} onChange={(event) => setDraft({ ...draft, lesson_plan_id: event.target.value ? Number(event.target.value) : null })}>
@@ -211,6 +229,8 @@ function noteFromRecord(note: any): NoteDraft {
     class_id: note.class_id,
     class_name: note.class_name || '',
     grade: note.grade,
+    academic_year: note.academic_year || '',
+    term: note.term || '',
     title: note.title || '',
     topic: note.topic || '',
     sub_topic: note.sub_topic || '',

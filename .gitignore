@@ -20,6 +20,7 @@ yarn-error.log*
 # Uploads & Media Files
 uploads/
 public/uploads/
+storage/
 
 # Build Artifacts
 dist/

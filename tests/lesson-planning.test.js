@@ -54,6 +54,13 @@ describe('lesson planning preparation rules', () => {
     assert.equal(rules.resolveStatus(input, null), 'draft');
   });
 
+  it('drops a zero or negative presentation-stage duration', () => {
+    const input = rules.normalisePlanInput({
+      stages: [{ stage_name: 'Introduction', duration_minutes: 0 }]
+    });
+    assert.equal(input.stages[0].duration_minutes, null);
+  });
+
   it('does not mark objectives achieved unless the teacher records it', () => {
     const input = rules.normalisePlanInput({ reflection: { what_went_well: 'The examples landed.' } });
     assert.equal(input.reflection.objectives_achieved_flag, null);

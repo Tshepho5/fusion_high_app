@@ -6,7 +6,7 @@ const rules = require('../../services/lessonPlanning/lessonPlanningRules');
 const { renderLessonPlanPdf } = require('../../services/lessonPlanning/lessonPlanPdfService');
 const aiProvider = require('../../services/ai/aiProvider');
 
-const uploadRoot = path.join(process.cwd(), 'uploads', 'lesson-materials');
+const uploadRoot = service.materialDirectory;
 
 function ensureUploadDir() {
   if (!fs.existsSync(uploadRoot)) fs.mkdirSync(uploadRoot, { recursive: true });

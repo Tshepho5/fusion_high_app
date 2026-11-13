@@ -1,21 +1,24 @@
 -- Lesson planning and lesson notes.
 -- Idempotent forward migration. Does not alter existing school, teacher, learner, or timetable rows.
--- Reverse with db/migrations/20261113_lesson_planning.down.sql
+-- Databases created from the first version of this file also run
+-- db/migrations/20261113_lesson_planning_corrections.sql.
+-- Reverse with db/migrations/20261113_lesson_planning.down.sql.
+-- Rolling back deletes lesson-planning rows. It does not delete existing school records.
 
 CREATE TABLE IF NOT EXISTS lesson_plans (
   id SERIAL PRIMARY KEY,
-  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-  teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,
+  teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
   subject_id INTEGER REFERENCES subjects(id) ON DELETE SET NULL,
   subject_name VARCHAR(150) NOT NULL,
   class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
   class_name VARCHAR(100),
-  grade INTEGER NOT NULL,
-  academic_year INTEGER NOT NULL,
+  grade INTEGER NOT NULL CHECK (grade BETWEEN 1 AND 12),
+  academic_year INTEGER NOT NULL CHECK (academic_year BETWEEN 2000 AND 2100),
   term INTEGER NOT NULL CHECK (term BETWEEN 1 AND 4),
   scheduled_date DATE,
   scheduled_time TIME,
-  duration_minutes INTEGER,
+  duration_minutes INTEGER CHECK (duration_minutes IS NULL OR duration_minutes BETWEEN 1 AND 300),
   topic VARCHAR(500),
   sub_topic VARCHAR(500),
   previous_knowledge TEXT,
@@ -74,7 +77,7 @@ CREATE TABLE IF NOT EXISTS lesson_presentation_stages (
   id SERIAL PRIMARY KEY,
   lesson_plan_id INTEGER NOT NULL REFERENCES lesson_plans(id) ON DELETE CASCADE,
   stage_name VARCHAR(150) NOT NULL,
-  duration_minutes INTEGER,
+  duration_minutes INTEGER CHECK (duration_minutes IS NULL OR duration_minutes BETWEEN 1 AND 300),
   teacher_activities TEXT,
   learner_activities TEXT,
   display_order INTEGER NOT NULL DEFAULT 0
@@ -85,7 +88,7 @@ CREATE TABLE IF NOT EXISTS lesson_evaluations (
   id SERIAL PRIMARY KEY,
   lesson_plan_id INTEGER NOT NULL REFERENCES lesson_plans(id) ON DELETE CASCADE,
   question TEXT NOT NULL,
-  question_type VARCHAR(40) NOT NULL DEFAULT 'short_answer',
+  question_type VARCHAR(40) NOT NULL DEFAULT 'short_answer' CHECK (question_type IN ('short_answer', 'multiple_choice', 'practical', 'oral', 'written')),
   display_order INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_lesson_evaluations_plan ON lesson_evaluations(lesson_plan_id, display_order);
@@ -117,14 +120,16 @@ CREATE TABLE IF NOT EXISTS lesson_reflections (
 
 CREATE TABLE IF NOT EXISTS lesson_notes (
   id SERIAL PRIMARY KEY,
-  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-  teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,
+  teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
   lesson_plan_id INTEGER REFERENCES lesson_plans(id) ON DELETE SET NULL,
   subject_id INTEGER REFERENCES subjects(id) ON DELETE SET NULL,
   subject_name VARCHAR(150) NOT NULL,
   class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
   class_name VARCHAR(100),
-  grade INTEGER NOT NULL,
+  grade INTEGER NOT NULL CHECK (grade BETWEEN 1 AND 12),
+  academic_year INTEGER CHECK (academic_year IS NULL OR academic_year BETWEEN 2000 AND 2100),
+  term INTEGER CHECK (term IS NULL OR term BETWEEN 1 AND 4),
   title VARCHAR(255) NOT NULL,
   topic VARCHAR(500),
   sub_topic VARCHAR(500),
@@ -151,8 +156,8 @@ CREATE INDEX IF NOT EXISTS idx_lesson_note_sections_note ON lesson_note_sections
 
 CREATE TABLE IF NOT EXISTS lesson_plan_templates (
   id SERIAL PRIMARY KEY,
-  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-  teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,
+  teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
   template_name VARCHAR(200) NOT NULL,
   template_content JSONB NOT NULL DEFAULT '{}'::jsonb,
   visibility VARCHAR(20) NOT NULL DEFAULT 'private' CHECK (visibility IN ('private', 'school')),

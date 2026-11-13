@@ -1,3 +1,4 @@
+const fs = require('fs');
 const path = require('path');
 const db = require('../../../../db/db');
 const { withTransaction } = require('../../../../db/transaction');
@@ -5,6 +6,25 @@ const { ensureLessonPlanningSchema } = require('../../../../db/migrate_lesson_pl
 const { resolveSchoolId } = require('../schoolScope');
 const NotificationService = require('../notificationService');
 const rules = require('./lessonPlanningRules');
+
+const materialDirectory = path.join(process.cwd(), 'storage', 'lesson-materials');
+const legacyMaterialDirectory = path.join(process.cwd(), 'uploads', 'lesson-materials');
+const STORED_NAME = /^[0-9]+-[a-f0-9]{32}(?:\.[a-z0-9]{1,8})?$/;
+
+function safeStoredName(name) {
+  const base = path.basename(String(name || ''));
+  return STORED_NAME.test(base) ? base : null;
+}
+
+function materialFilePath(storedName) {
+  const base = safeStoredName(storedName);
+  if (!base) throw httpError(404, 'File not found.');
+  const current = path.join(materialDirectory, base);
+  if (fs.existsSync(current)) return current;
+  const legacy = path.join(legacyMaterialDirectory, base);
+  if (fs.existsSync(legacy)) return legacy;
+  return current;
+}
 
 function httpError(status, message) {
   const error = new Error(message);
@@ -37,7 +57,8 @@ async function loadAllocations(teacherId, schoolId) {
         COALESCE(ta.class_id, c.id) AS class_id,
         COALESCE(c.stream, 'General') AS stream,
         c.school_id,
-        s.id AS subject_id
+        s.id AS subject_id,
+        s.school_id AS subject_school_id
      FROM teacher_assignments ta
      LEFT JOIN classes c ON (
        (ta.class_id IS NOT NULL AND c.id = ta.class_id)
@@ -48,7 +69,15 @@ async function loadAllocations(teacherId, schoolId) {
          AND (c.school_id = $2 OR c.school_id IS NULL)
        )
      )
-     LEFT JOIN subjects s ON LOWER(s.name) = LOWER(ta.subject_name) AND s.grade = ta.grade_level
+     LEFT JOIN LATERAL (
+       SELECT id, school_id
+       FROM subjects
+       WHERE LOWER(name) = LOWER(ta.subject_name)
+         AND grade = ta.grade_level
+         AND (school_id = $2 OR school_id IS NULL)
+       ORDER BY CASE WHEN school_id = $2 THEN 0 ELSE 1 END, id
+       LIMIT 1
+     ) s ON TRUE
      WHERE ta.teacher_id = $1`,
     [teacherId, schoolId]
   );
@@ -164,7 +193,7 @@ async function fetchPlanRow(id, schoolId) {
     `SELECT ${PLAN_COLUMNS}
      FROM lesson_plans p
      JOIN schools sch ON sch.id = p.school_id
-     JOIN users u ON u.id = p.teacher_id
+     LEFT JOIN users u ON u.id = p.teacher_id
      WHERE p.id = $1 AND p.school_id = $2`,
     [id, schoolId]
   );
@@ -253,7 +282,7 @@ async function listPlans(actor, query) {
     `SELECT ${PLAN_COLUMNS}
      FROM lesson_plans p
      JOIN schools sch ON sch.id = p.school_id
-     JOIN users u ON u.id = p.teacher_id
+     LEFT JOIN users u ON u.id = p.teacher_id
      WHERE ${whereSql}
      ORDER BY p.updated_at DESC
      LIMIT $${pageParams.length - 1} OFFSET $${pageParams.length}`,
@@ -374,15 +403,13 @@ async function replaceChildren(client, planId, input, actor) {
   }
   for (let i = 0; i < input.materials.length; i += 1) {
     const item = input.materials[i];
-    const stored = item.attachment_stored_name && allowedFiles.has(item.attachment_stored_name)
-      ? item.attachment_stored_name
-      : null;
-    const original = stored ? item.attachment_original_name : null;
+    const stored = safeStoredName(item.attachment_stored_name);
+    const kept = stored && allowedFiles.has(stored) ? stored : null;
     await client.query(
       `INSERT INTO lesson_materials
         (lesson_plan_id, material_name, description, attachment_original_name, attachment_stored_name, display_order)
        VALUES ($1, $2, $3, $4, $5, $6)`,
-      [planId, item.material_name, item.description || null, original, stored, i]
+      [planId, item.material_name, item.description || null, kept ? item.attachment_original_name : null, kept, i]
     );
   }
   for (let i = 0; i < input.methods.length; i += 1) {
@@ -458,16 +485,49 @@ async function replaceChildren(client, planId, input, actor) {
 
 async function assertAuthorisedAllocation(actor, input) {
   const allocations = await loadAllocations(actor.userId, actor.schoolId);
-  if (!rules.allocationMatches(allocations, input)) {
+  const matches = allocations.filter((row) => rules.allocationMatches([row], input));
+  if (!matches.length) {
     throw httpError(403, 'You can only plan lessons for subjects and classes assigned to you.');
   }
-  if (input.class_id) await assertClassInSchool(input.class_id, actor.schoolId);
-  const match = allocations.find((row) => rules.allocationMatches([row], input));
-  if (match) {
-    input.subject_id = match.subject_id || null;
-    if (!input.class_id && match.class_id) input.class_id = match.class_id;
-    if (!input.class_name && match.class_name) input.class_name = match.class_name;
+  const chosen = matches.find((row) => input.class_id && Number(row.class_id) === Number(input.class_id)) || matches[0];
+  input.subject_name = chosen.subject_name;
+  input.grade = Number(chosen.grade);
+  input.class_name = chosen.class_name || input.class_name;
+  input.class_id = chosen.class_id || null;
+  input.subject_id = chosen.subject_id || null;
+  if (chosen.subject_school_id && Number(chosen.subject_school_id) !== Number(actor.schoolId)) {
+    input.subject_id = null;
   }
+  await assertClassInSchool(input.class_id, actor.schoolId);
+}
+
+async function assertTimetableSlot(actor, input) {
+  if (!input.timetable_id) return;
+  const { rows } = await db.query(
+    'SELECT id, school_id, timetable_data FROM timetables WHERE id = $1',
+    [input.timetable_id]
+  );
+  if (!rows.length) throw httpError(400, 'That timetable does not exist.');
+  if (rows[0].school_id && Number(rows[0].school_id) !== Number(actor.schoolId)) {
+    throw httpError(403, 'That timetable belongs to another school.');
+  }
+  const user = await db.query('SELECT full_name, surname FROM users WHERE id = $1 AND school_id = $2', [actor.userId, actor.schoolId]);
+  if (!user.rows.length) throw httpError(403, 'Your account is not linked to this school.');
+  const full = `${user.rows[0].full_name || ''} ${user.rows[0].surname || ''}`.trim().toLowerCase();
+  const surname = (user.rows[0].surname || '').toLowerCase();
+  const data = typeof rows[0].timetable_data === 'string' ? JSON.parse(rows[0].timetable_data) : rows[0].timetable_data;
+  const mentions = (value) => {
+    const teacher = String(value || '').toLowerCase();
+    return Boolean(teacher) && ((full && teacher.includes(full)) || (surname && surname.length >= 3 && teacher.includes(surname)));
+  };
+  if (input.timetable_class && input.timetable_day && input.timetable_period) {
+    const slot = data?.[input.timetable_class]?.[input.timetable_day]?.[input.timetable_period];
+    if (!mentions(slot && slot.teacher)) throw httpError(403, 'That timetable period is not on your schedule.');
+    return;
+  }
+  const blob = JSON.stringify(data || {}).toLowerCase();
+  const listed = (full && blob.includes(full)) || (surname && surname.length >= 3 && blob.includes(surname));
+  if (!listed) throw httpError(403, 'That timetable is not on your schedule.');
 }
 
 async function savePlan(actor, planId, body) {
@@ -476,6 +536,7 @@ async function savePlan(actor, planId, body) {
   const errors = rules.validatePlanInput(input, { forComplete: input.save_as === 'completed' });
   if (errors.length) throw httpError(400, errors.join(' '));
   await assertAuthorisedAllocation(actor, input);
+  await assertTimetableSlot(actor, input);
 
   const id = await withTransaction(async (client) => {
     let existing = null;
@@ -710,7 +771,7 @@ async function calendar(actor, query) {
             p.timetable_day, p.timetable_period, p.timetable_class,
             u.full_name AS teacher_first_name, u.surname AS teacher_surname
      FROM lesson_plans p
-     JOIN users u ON u.id = p.teacher_id
+     LEFT JOIN users u ON u.id = p.teacher_id
      WHERE p.school_id = $1 AND p.scheduled_date BETWEEN $2 AND $3 ${teacherSql}
      ORDER BY p.scheduled_date, p.scheduled_time NULLS LAST`,
     params
@@ -761,7 +822,7 @@ async function materialFile(actor, materialId) {
     throw httpError(404, 'File not found.');
   }
   return {
-    absolutePath: path.join(process.cwd(), 'uploads', 'lesson-materials', path.basename(row.attachment_stored_name)),
+    absolutePath: materialFilePath(row.attachment_stored_name),
     downloadName: row.attachment_original_name || 'material'
   };
 }
@@ -781,6 +842,8 @@ function normaliseNote(body) {
     class_id: rules.cleanInt(source.class_id),
     class_name: rules.cleanText(source.class_name, 100),
     grade: rules.cleanInt(source.grade),
+    academic_year: rules.cleanInt(source.academic_year),
+    term: rules.cleanInt(source.term),
     title: rules.cleanText(source.title, 255),
     topic: rules.cleanText(source.topic, 500),
     sub_topic: rules.cleanText(source.sub_topic, 500),
@@ -832,7 +895,7 @@ async function listNotes(actor, query) {
   const { rows } = await db.query(
     `SELECT n.*, u.full_name AS teacher_first_name, u.surname AS teacher_surname
      FROM lesson_notes n
-     JOIN users u ON u.id = n.teacher_id
+     LEFT JOIN users u ON u.id = n.teacher_id
      WHERE n.school_id = $1 ${teacherSql} ${searchSql}
      ORDER BY n.updated_at DESC
      LIMIT ${page.limit} OFFSET ${page.offset}`,
@@ -849,6 +912,12 @@ async function saveNote(actor, noteId, body) {
     throw httpError(400, 'Subject, grade, and class are required.');
   }
   await assertAuthorisedAllocation(actor, input);
+  if (!input.academic_year || input.academic_year < 2000 || input.academic_year > 2100) {
+    throw httpError(400, 'Academic year is required.');
+  }
+  if (!input.term || input.term < 1 || input.term > 4) {
+    throw httpError(400, 'Term must be between 1 and 4.');
+  }
   if (input.lesson_plan_id) {
     const plan = await fetchPlanRow(input.lesson_plan_id, actor.schoolId);
     if (!plan || !rules.canReadPlan(actor, plan)) throw httpError(403, 'That lesson plan cannot be linked.');
@@ -875,13 +944,13 @@ async function saveNote(actor, noteId, body) {
       await client.query(
         `UPDATE lesson_notes SET
            lesson_plan_id = $1, subject_id = $2, subject_name = $3, class_id = $4, class_name = $5,
-           grade = $6, title = $7, topic = $8, sub_topic = $9, introduction = $10, content = $11,
-           summary = $12, status = $13, updated_at = CURRENT_TIMESTAMP
-         WHERE id = $14 AND teacher_id = $15`,
+           grade = $6, academic_year = $7, term = $8, title = $9, topic = $10, sub_topic = $11,
+           introduction = $12, content = $13, summary = $14, status = $15, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $16 AND teacher_id = $17`,
         [
           input.lesson_plan_id, input.subject_id, input.subject_name, input.class_id, input.class_name,
-          input.grade, input.title, input.topic || null, input.sub_topic || null, input.introduction || null,
-          input.content || null, input.summary || null, input.status, existing.id, actor.userId
+          input.grade, input.academic_year, input.term, input.title, input.topic || null, input.sub_topic || null,
+          input.introduction || null, input.content || null, input.summary || null, input.status, existing.id, actor.userId
         ]
       );
       savedId = existing.id;
@@ -889,13 +958,14 @@ async function saveNote(actor, noteId, body) {
       const inserted = await client.query(
         `INSERT INTO lesson_notes (
            school_id, teacher_id, lesson_plan_id, subject_id, subject_name, class_id, class_name,
-           grade, title, topic, sub_topic, introduction, content, summary, status
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+           grade, academic_year, term, title, topic, sub_topic, introduction, content, summary, status
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
          RETURNING id`,
         [
           actor.schoolId, actor.userId, input.lesson_plan_id, input.subject_id, input.subject_name,
-          input.class_id, input.class_name, input.grade, input.title, input.topic || null,
-          input.sub_topic || null, input.introduction || null, input.content || null, input.summary || null, input.status
+          input.class_id, input.class_name, input.grade, input.academic_year, input.term, input.title,
+          input.topic || null, input.sub_topic || null, input.introduction || null, input.content || null,
+          input.summary || null, input.status
         ]
       );
       savedId = inserted.rows[0].id;
@@ -908,9 +978,8 @@ async function saveNote(actor, noteId, body) {
     await client.query('DELETE FROM lesson_note_sections WHERE lesson_note_id = $1', [savedId]);
     for (let i = 0; i < input.sections.length; i += 1) {
       const section = input.sections[i];
-      const stored = section.attachment_stored_name && allowed.has(section.attachment_stored_name)
-        ? section.attachment_stored_name
-        : null;
+      const candidate = safeStoredName(section.attachment_stored_name);
+      const stored = candidate && allowed.has(candidate) ? candidate : null;
       await client.query(
         `INSERT INTO lesson_note_sections
           (lesson_note_id, heading, body, attachment_original_name, attachment_stored_name, display_order)
@@ -956,7 +1025,7 @@ async function noteFile(actor, sectionId) {
   const row = rows[0];
   if (!row || !rules.canReadPlan(actor, row) || !row.attachment_stored_name) throw httpError(404, 'File not found.');
   return {
-    absolutePath: path.join(process.cwd(), 'uploads', 'lesson-materials', path.basename(row.attachment_stored_name)),
+    absolutePath: materialFilePath(row.attachment_stored_name),
     downloadName: row.attachment_original_name || 'diagram'
   };
 }
@@ -967,7 +1036,7 @@ async function listTemplates(actor) {
     `SELECT t.id, t.school_id, t.teacher_id, t.template_name, t.visibility, t.created_at, t.updated_at,
             u.full_name AS teacher_first_name, u.surname AS teacher_surname
      FROM lesson_plan_templates t
-     JOIN users u ON u.id = t.teacher_id
+     LEFT JOIN users u ON u.id = t.teacher_id
      WHERE t.school_id = $1 AND (t.teacher_id = $2 OR t.visibility = 'school' OR $3 = TRUE)
      ORDER BY t.updated_at DESC`,
     [actor.schoolId, actor.userId, actor.role === 'admin' || actor.isSuperadmin]
@@ -1073,6 +1142,7 @@ async function homeworkOptions(actor, query) {
 }
 
 module.exports = {
+  materialDirectory,
   httpError,
   actorFromReq,
   getContext,
