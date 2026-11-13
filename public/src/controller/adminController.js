@@ -905,13 +905,13 @@ exports.createLearner = async (req, res) => {
         // Determine class_id
         let targetClassId = class_id ? parseInt(class_id, 10) : null;
         if (!targetClassId && class_name) {
-            const classRes = await db.query('SELECT id FROM classes WHERE name = $1 LIMIT 1', [class_name.trim()]);
+            const classRes = await db.query('SELECT id FROM classes WHERE name = $1 AND COALESCE(ownership_quarantine, FALSE) = FALSE LIMIT 1', [class_name.trim()]);
             if (classRes.rows.length > 0) {
                 targetClassId = classRes.rows[0].id;
             }
         }
         if (!targetClassId) {
-            const fallbackClass = await db.query('SELECT id FROM classes WHERE grade = $1 LIMIT 1', [learnerGrade]);
+            const fallbackClass = await db.query('SELECT id FROM classes WHERE grade = $1 AND COALESCE(ownership_quarantine, FALSE) = FALSE LIMIT 1', [learnerGrade]);
             if (fallbackClass.rows.length > 0) {
                 targetClassId = fallbackClass.rows[0].id;
             }
@@ -2314,7 +2314,7 @@ exports.updateAdmissionStatus = async (req, res) => {
             setImmediate(async () => {
                 try {
                     if (status === 'approved') {
-                        const registrationUrl = `${baseUrl}/register?appRef=${app.application_number}&email=${encodeURIComponent(app.primary_parent_email)}&firstName=${encodeURIComponent(app.first_name)}&surname=${encodeURIComponent(app.surname)}&idNumber=${encodeURIComponent(app.id_number || '')}&grade=${encodeURIComponent(app.grade_applied)}&stream=${encodeURIComponent(app.stream || 'General')}`;
+                        const registrationUrl = `${baseUrl}/register?appRef=${encodeURIComponent(app.application_number)}`;
                         await emailService.sendApplicationAccepted({
                             parentEmail: app.primary_parent_email,
                             parentName: parentFullName,

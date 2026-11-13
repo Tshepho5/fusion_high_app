@@ -126,8 +126,9 @@ async function loadAllocations(teacherId, schoolId) {
 
 async function assertClassInSchool(classId, schoolId) {
   if (!classId) return;
-  const { rows } = await db.query('SELECT id, school_id, name, grade, stream FROM classes WHERE id = $1', [classId]);
+  const { rows } = await db.query('SELECT id, school_id, name, grade, stream, ownership_quarantine FROM classes WHERE id = $1', [classId]);
   if (!rows.length) throw httpError(400, 'The selected class does not exist.');
+  if (rows[0].ownership_quarantine) throw httpError(403, 'That class is not available until its original school has been identified.');
   if (rows[0].school_id && Number(rows[0].school_id) !== Number(schoolId)) {
     throw httpError(403, 'That class belongs to another school.');
   }

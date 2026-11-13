@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controller/authController');
+const principalActivationController = require('../controller/principalActivationController');
 const webauthnController = require('../controller/webauthnController');
 const parentAppController = require('../controller/parentApplicationController');
 
@@ -17,6 +18,8 @@ router.get('/check-email', authController.checkEmail);
 router.post('/check-email', authController.checkEmail);
 router.post('/verify-learner', authController.verifyLearner);
 router.get('/verify-learner', authController.verifyLearner);
+router.post('/activate', principalActivationController.activate);
+router.post('/activation/resend', principalActivationController.resendPublic);
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/verify-otp', authController.verifyOTP);
 router.post('/reset-password', authController.resetPassword);

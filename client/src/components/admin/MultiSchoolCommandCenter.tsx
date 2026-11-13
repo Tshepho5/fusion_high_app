@@ -362,7 +362,7 @@ export const MultiSchoolCommandCenter: React.FC<MultiSchoolCommandCenterProps> =
       if (res.success) {
         setReviewSuccessMsg(
           reviewAction === 'approve'
-            ? `Accreditation approved for ${selectedApp.school_name}! School campus created and Principal credentials dispatched.`
+            ? `Accreditation approved for ${selectedApp.school_name}. The principal receives an invitation to create a password.`
             : `Application for ${selectedApp.school_name} has been declined. Advisory email dispatched.`
         );
         setSelectedApp(null);

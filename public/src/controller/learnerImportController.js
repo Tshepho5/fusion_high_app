@@ -30,17 +30,7 @@ async function resolveClassId(schoolId, grade, className) {
     );
     if (created.rows[0]) return created.rows[0].id;
   } catch (_) {
-    try {
-      const created2 = await db.query(
-        `INSERT INTO classes (name, grade, stream)
-         VALUES ($1, $2, $3)
-         RETURNING id`,
-        [normalizedName, g, stream]
-      );
-      if (created2.rows[0]) return created2.rows[0].id;
-    } catch (__) {
-      // fall through
-    }
+    // A class is not created without its school.
   }
   const any = await db.query(
     `SELECT id FROM classes WHERE school_id::text = $1::text ORDER BY id ASC LIMIT 1`,

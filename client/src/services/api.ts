@@ -1,20 +1,17 @@
 import axios from 'axios';
 
 export const getApiBaseUrl = (): string => {
-  // If explicitly requested to use local Express backend
-  if ((import.meta as any).env?.VITE_USE_LOCAL_BACKEND === 'true') {
+  const onLocalHost = typeof window !== 'undefined'
+    && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const localBackendFlag = (import.meta as any).env?.VITE_USE_LOCAL_BACKEND;
+  if (localBackendFlag === 'true' || (onLocalHost && localBackendFlag !== 'false')) {
     return '';
   }
-  // If custom API URL provided in environment, use it
   const envUrl = (import.meta as any).env?.VITE_API_URL;
   if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
     return envUrl.trim();
   }
-  // In local development on localhost or 127.0.0.1, use relative URL ('') so Vite proxies directly to the local backend on port 4000
-  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    return '';
-  }
-  // Follow the cloud database data (Render production backend with Supabase Cloud DB)
+  if (onLocalHost) return '';
   return 'https://fusion-high-backend.onrender.com';
 };
 
@@ -834,8 +831,10 @@ export const schoolRegistrationService = {
   apply: (data: any) => api.post('/api/schools/apply', data).then(res => res.data),
   getAllApplications: (status?: string) => 
     api.get(`/api/schools/applications/all${status ? `?status=${status}` : ''}`).then(res => res.data),
-  reviewApplication: (id: number | string, decision: 'approve' | 'decline', reason?: string, executive_notes?: string, temporary_password?: string) =>
-    api.post(`/api/schools/applications/${id}/decision`, { decision, reason, executive_notes, temporary_password }).then(res => res.data),
+  reviewApplication: (id: number | string, decision: 'approve' | 'decline', reason?: string, executive_notes?: string, authority_review?: Record<string, unknown>) =>
+    api.post(`/api/schools/applications/${id}/decision`, { decision, reason, executive_notes, authority_review }).then(res => res.data),
+  getAuthorisedPaymentAccount: (schoolId: number | string) =>
+    api.get(`/api/schools/${schoolId}/payment-account`).then(res => res.data),
   updateModules: (schoolId: number, teacher_modules: string[], learner_modules: string[]) =>
     api.put(`/api/schools/${schoolId}/modules`, { teacher_modules, learner_modules }).then(res => res.data),
   updateCurriculum: (schoolId: number, data: { offered_subjects?: string[]; offered_streams?: string[]; offered_languages?: string[] }) =>

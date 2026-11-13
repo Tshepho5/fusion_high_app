@@ -4,7 +4,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
-const JWT_SECRET = process.env.JWT_SECRET || '#Butcher#$5$#Letlalo#$5$';
+const JWT_SECRET = String(process.env.JWT_SECRET || '').trim();
+if (!JWT_SECRET) throw new Error('JWT_SECRET is required. Refusing to sign tokens with a fallback secret.');
 const BASE_URL = 'http://localhost:4000/api';
 
 async function runVerification() {

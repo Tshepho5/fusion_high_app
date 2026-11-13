@@ -89,7 +89,13 @@ export const SchoolAdmissionsManager: React.FC<SchoolAdmissionsManagerProps> = (
   // Decision Modal State
   const [selectedApp, setSelectedApp] = useState<SchoolApplication | null>(null);
   const [reviewAction, setReviewAction] = useState<'approve' | 'decline' | null>(null);
-  const [customPassword, setCustomPassword] = useState<string>('');
+  const emptyAuthority = {
+    emis_checked: false,
+    name_and_location_checked: false,
+    independent_contact_checked: false,
+    applicant_authority_checked: false
+  };
+  const [authorityReview, setAuthorityReview] = useState(emptyAuthority);
   const [declineReason, setDeclineReason] = useState<string>('Discrepancy in DBE EMIS or SACE Accreditation records');
   const [executiveNotes, setExecutiveNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -173,7 +179,7 @@ export const SchoolAdmissionsManager: React.FC<SchoolAdmissionsManagerProps> = (
   const handleOpenDecision = (app: SchoolApplication, action: 'approve' | 'decline') => {
     setSelectedApp(app);
     setReviewAction(action);
-    setCustomPassword(`Geleza@${app.emis_number || '2026'}`);
+    setAuthorityReview(emptyAuthority);
     setExecutiveNotes('');
     setDeclineReason('Discrepancy in DBE EMIS or SACE Accreditation records');
   };
@@ -188,13 +194,13 @@ export const SchoolAdmissionsManager: React.FC<SchoolAdmissionsManagerProps> = (
         reviewAction,
         reviewAction === 'decline' ? declineReason : undefined,
         executiveNotes,
-        reviewAction === 'approve' ? (customPassword.trim() || undefined) : undefined
+        { ...authorityReview, notes: executiveNotes }
       );
 
       if (res.success || res.status) {
         setActionSuccessMsg(
           reviewAction === 'approve'
-            ? `Successfully admitted "${selectedApp.school_name}"! Campus created and Principal account activated.`
+            ? `School "${selectedApp.school_name}" is approved. The principal receives an invitation and creates a password before signing in.`
             : `Application for "${selectedApp.school_name}" has been declined with formal notice.`
         );
         setSelectedApp(null);
@@ -665,20 +671,25 @@ export const SchoolAdmissionsManager: React.FC<SchoolAdmissionsManagerProps> = (
                   </ul>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Principal Initial Password (Used to Log In)
-                  </label>
-                  <input
-                    type="text"
-                    value={customPassword}
-                    onChange={(e) => setCustomPassword(e.target.value)}
-                    placeholder="e.g. Geleza@923987654"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0A121A] border border-slate-200 dark:border-[#1B2E3D] text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    The Principal will be asked to change this password on initial login.
-                  </p>
+                <div className="space-y-2 rounded-2xl border border-slate-200 dark:border-[#1B2E3D] p-3">
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Record the checks you made</p>
+                  <p className="text-[10px] text-slate-500">These notes stay with the decision. An ID number does not prove who the applicant is or that they lead the school. Leaving a box empty does not approve or decline the application.</p>
+                  {[
+                    ['emis_checked', 'EMIS number checked against the school record'],
+                    ['name_and_location_checked', 'School name and location checked'],
+                    ['independent_contact_checked', 'School contact checked independently'],
+                    ['applicant_authority_checked', 'Applicant authority to register the school checked']
+                  ].map(([key, label]) => (
+                    <label key={key} className="flex items-start gap-2 text-[11px] text-slate-600 dark:text-slate-300">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(authorityReview[key as keyof typeof authorityReview])}
+                        onChange={(e) => setAuthorityReview((current) => ({ ...current, [key]: e.target.checked }))}
+                        className="mt-0.5"
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
             ) : (
@@ -797,6 +808,13 @@ export const SchoolAdmissionsManager: React.FC<SchoolAdmissionsManagerProps> = (
                   School Campus Profile
                 </h4>
                 <div className="space-y-1 text-slate-600 dark:text-slate-300">
+                  {dossierApp.logo_stored_name && /^[0-9]+-[a-f0-9]{32}\.(png|jpe?g|webp)$/.test(dossierApp.logo_stored_name) && (
+                    <img
+                      src={`/api/schools/logos/${dossierApp.logo_stored_name}`}
+                      alt={`${dossierApp.school_name} logo`}
+                      className="mb-2 h-16 w-16 rounded-xl border border-slate-200 bg-white object-contain dark:border-white/10"
+                    />
+                  )}
                   <p><strong className="text-slate-900 dark:text-white">EMIS Number:</strong> {dossierApp.emis_number}</p>
                   <p><strong className="text-slate-900 dark:text-white">Province:</strong> {dossierApp.province}</p>
                   <p><strong className="text-slate-900 dark:text-white">District:</strong> {dossierApp.district}</p>
@@ -819,6 +837,7 @@ export const SchoolAdmissionsManager: React.FC<SchoolAdmissionsManagerProps> = (
                   <p><strong className="text-slate-900 dark:text-white">SACE Number:</strong> {dossierApp.principal_sace_number || dossierApp.principal_sace || 'Pending check'}</p>
                   <p><strong className="text-slate-900 dark:text-white">Work Email:</strong> {dossierApp.principal_email}</p>
                   <p><strong className="text-slate-900 dark:text-white">Cellphone:</strong> {dossierApp.principal_phone}</p>
+                  <p className="pt-1 text-[11px] text-slate-500">The ID number recorded here does not prove that this person is the principal. Compare the EMIS number, school name, and logo with the Department of Basic Education before approving.</p>
                 </div>
               </div>
 

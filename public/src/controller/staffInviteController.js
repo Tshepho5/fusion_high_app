@@ -434,7 +434,7 @@ exports.confirmTeacherInvite = async (req, res) => {
         const classesToAssign = matchingClasses.length > 0 ? matchingClasses : [`${grade}A`];
         for (const clsName of classesToAssign) {
           const classLookup = await db.query(
-            'SELECT id FROM classes WHERE name = $1 AND (school_id = $2 OR school_id IS NULL) LIMIT 1',
+            'SELECT id FROM classes WHERE name = $1 AND (school_id = $2 OR school_id IS NULL) AND COALESCE(ownership_quarantine, FALSE) = FALSE LIMIT 1',
             [clsName, invite.school_id]
           ).catch(() => ({ rows: [] }));
           const classId = classLookup.rows[0]?.id || null;
@@ -488,7 +488,10 @@ exports.confirmTeacherInvite = async (req, res) => {
     }
 
     // 7. Generate JWT session token for instant login
-    const signingSecret = process.env.JWT_SECRET || 'fusion_high_secret_signing_key_2026';
+    const signingSecret = String(process.env.JWT_SECRET || '').trim();
+    if (!signingSecret) {
+      return res.status(500).json({ success: false, error: 'Sign-in is not configured.' });
+    }
     const sessionId = require('crypto').randomBytes(16).toString('hex');
     const tokenPayload = {
       id: user.id,

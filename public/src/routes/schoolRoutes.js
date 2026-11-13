@@ -1,33 +1,59 @@
 const express = require('express');
+const multer = require('multer');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const schoolController = require('../controller/schoolController');
+const schoolLogo = require('../services/schoolLogo');
 const { auth, requireRole } = require('../../../authMiddleware');
 
-// Public school application route (Principal registration)
-router.post('/apply', schoolController.applySchool);
+const logoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: schoolLogo.MAX_LOGO_BYTES }
+});
+
+const registrationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  message: { error: 'Too many school registration attempts. Please wait and try again.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false, default: false }
+});
+
+function acceptLogo(req, res, next) {
+  logoUpload.single('logo')(req, res, (error) => {
+    if (!error) return next();
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'The school logo must be 2 MB or smaller.' });
+    }
+    return res.status(400).json({ error: 'The school logo could not be uploaded.' });
+  });
+}
+
+router.post('/apply', registrationLimiter, acceptLogo, schoolController.applySchool);
 
 const canReviewSchoolRegistrations = (req, res, next) => {
-  const isSuper = Boolean(req.user?.is_superadmin);
-  if (isSuper) {
-    return next();
-  }
+  if (req.user?.is_superadmin) return next();
   return res.status(403).json({ error: 'Only Geleza SA platform administrators can review school admissions and registrations.' });
 };
 
-// Geleza SA and system administrators review principal registrations.
+router.get('/applications/retention-dry-run', auth, canReviewSchoolRegistrations, schoolController.retentionDryRun);
 router.get('/applications/all', auth, canReviewSchoolRegistrations, schoolController.getSchoolApplications);
+router.post('/applications/:id/hold', auth, canReviewSchoolRegistrations, schoolController.setApplicationHold);
 router.post('/applications/:id/decision', auth, canReviewSchoolRegistrations, schoolController.reviewSchoolApplication);
+router.post('/applications/:id/activation', auth, canReviewSchoolRegistrations, schoolController.resendPrincipalActivation);
 
-// Public route to list schools and view current active school
 router.get('/', schoolController.getAllSchools);
 router.get('/current', schoolController.getCurrentSchool);
 router.get('/check-language', schoolController.checkLanguageOffer);
+router.get('/logos/:name', schoolController.schoolLogoFile);
 router.get('/:slug', schoolController.getSchoolBySlug);
 
-// Admin-only route to update school settings and colors
 router.put('/:id/branding', auth, requireRole(['admin']), schoolController.updateSchoolBranding);
+router.post('/:id/logo', auth, requireRole(['admin']), acceptLogo, schoolController.replaceSchoolLogo);
 router.put('/:id/modules', auth, requireRole(['admin']), schoolController.updateSchoolModules);
 router.put('/:id/curriculum', auth, requireRole(['admin']), schoolController.updateSchoolCurriculum);
+router.get('/:id/payment-account', auth, schoolController.getAuthorisedPaymentAccount);
 router.get('/:id/banking', auth, requireRole(['admin']), schoolController.getSchoolBank);
 router.put('/:id/banking', auth, requireRole(['admin']), schoolController.updateSchoolBank);
 

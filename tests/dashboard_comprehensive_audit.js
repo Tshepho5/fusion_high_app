@@ -2,7 +2,9 @@ const path = require('path');
 const db = require('../db/db');
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fusion_jwt_secret_key_2024_secure';
+require('dotenv').config();
+const JWT_SECRET = String(process.env.JWT_SECRET || '').trim();
+if (!JWT_SECRET) throw new Error('JWT_SECRET is required. Refusing to sign tokens with a fallback secret.');
 const baseUrl = 'http://127.0.0.1:4000';
 
 async function runFullAudit() {

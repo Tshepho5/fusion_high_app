@@ -95,6 +95,8 @@ if (!process.env.VERCEL) {
       await migrateSportsCoachEvents();
       const { migrateSchoolOnboardingAndCleanRoster } = require('./db/migrate_school_onboarding_and_clean_roster');
       await migrateSchoolOnboardingAndCleanRoster();
+      const { applyBatch0CredentialRotation } = require('./db/batch0_credential_rotation');
+      await applyBatch0CredentialRotation();
       const migrateTextbookInventorySchema = require('./db/migrate_textbook_inventory_schema');
       await migrateTextbookInventorySchema();
       const migrateLeaveAndExamSchema = require('./db/migrate_leave_and_exam_schema');
@@ -114,8 +116,19 @@ if (!process.env.VERCEL) {
       gelezaAutomationJob.startPeriodicAutomation();
     } catch (err) {
       console.error('[DB BOOTSTRAP] Initialization error:', err.message);
+      try {
+        const { applyBatch0CredentialRotation } = require('./db/batch0_credential_rotation');
+        await applyBatch0CredentialRotation();
+      } catch (rotateErr) {
+        console.error('[SECURITY] Batch 0 credential rotation did not complete:', rotateErr.message);
+      }
     }
   })();
+} else {
+  const { applyBatch0CredentialRotation } = require('./db/batch0_credential_rotation');
+  applyBatch0CredentialRotation().catch((rotateErr) => {
+    console.error('[SECURITY] Batch 0 credential rotation did not complete:', rotateErr.message);
+  });
 }
 
 const normalizePayload = require('./public/src/middleware/normalizePayload');
@@ -211,6 +224,19 @@ const supportLimiter = rateLimit({
   validate: { xForwardedForHeader: false, default: false }
 });
 
+const activationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many activation attempts. Please wait 15 minutes and try again.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false, default: false }
+});
+
+app.use('/api/activate', activationLimiter);
+app.use('/api/activation/resend', activationLimiter);
+app.use('/api/auth/activate', activationLimiter);
+app.use('/api/auth/activation/resend', activationLimiter);
 app.use('/api/login', authLimiter);
 app.use('/api/webauthn/login', authLimiter);
 app.use('/api/auth/webauthn/login', authLimiter);

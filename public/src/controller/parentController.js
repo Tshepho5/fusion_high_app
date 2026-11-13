@@ -502,6 +502,7 @@ exports.linkSibling = async (req, res) => {
             await ensureDatabaseSchema().catch(() => {});
             const applicationService = require('../services/applicationService');
             const applicationNumber = applicationService.generateApplicationNumber(school.name || 'fusion-high');
+            const correctionToken = applicationService.generateCorrectionToken();
             const address = (parent.physical_address || 'Address held on the parent account').trim();
             await db.query(
                 `INSERT INTO applications (
@@ -525,7 +526,7 @@ exports.linkSibling = async (req, res) => {
                 )`,
                 [
                     applicationNumber,
-                    applicationService.generateCorrectionToken(),
+                    correctionToken,
                     cleanFirstName,
                     cleanSurname,
                     cleanIdNum,
@@ -543,14 +544,6 @@ exports.linkSibling = async (req, res) => {
                     parentId
                 ]
             );
-            const bankingInfo = siblingHold.banking_details || {
-                bank_name: 'Waiting for the school bank account',
-                account_holder: school.name,
-                account_number: 'Not connected yet',
-                branch_code: 'Not connected yet',
-                account_type: 'Cheque / Current',
-                reference: applicationNumber
-            };
             try {
                 await emailService.sendApplicationReceivedWithBanking({
                     parentEmail: parent.email,
@@ -563,8 +556,8 @@ exports.linkSibling = async (req, res) => {
                     applicationNumber,
                     feeAmount: 1500,
                     dueDateStr: 'Fee Waived / Sibling Fast-Track',
-                    bankDetails: bankingInfo,
-                    paymentUrl: `${req.protocol}://${req.get('host')}/dashboard/parent`
+                    bankDetails: {},
+                    paymentUrl: `${req.protocol}://${req.get('host')}/application.html?resume=${encodeURIComponent(correctionToken)}`
                 });
             } catch (mailErr) {
                 console.warn('[SIBLING EFT EMAIL]:', mailErr.message);

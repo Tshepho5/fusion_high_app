@@ -11,6 +11,7 @@ const { validateSAID } = require('./saIDvalidations');
 const applicationService = require('../services/applicationService');
 const curriculumService = require('../services/curriculumService');
 const paymentHold = require('../services/paymentHold');
+const paymentAccess = require('../services/paymentAccess');
 const { generateLearnerPasswordFromID } = require('./authController');
 const { isControlLocked } = require('./systemController');
 const { ensureDatabaseSchema } = require('../../../db/schemaEnsurer');
@@ -596,10 +597,10 @@ exports.submitApplication = async (req, res) => {
     const learnerFullName = `${body.first_name} ${body.surname}`;
     const primaryParentFullName = `${body.primary_parent_name} ${body.primary_parent_surname}`;
     const resumptionUrl = `${baseUrl}/application.html?resume=${correctionToken}`;
-    const registrationUrl = `${baseUrl}/register?appRef=${applicationNumber}&email=${encodeURIComponent(body.primary_parent_email)}&firstName=${encodeURIComponent(body.first_name)}&surname=${encodeURIComponent(body.surname)}&idNumber=${encodeURIComponent(body.id_number || '')}&grade=${encodeURIComponent(body.grade_applied)}&stream=${encodeURIComponent(body.stream || 'General')}`;
+    const registrationUrl = `${baseUrl}/register?appRef=${encodeURIComponent(applicationNumber)}`;
 
     const bankingInfo = hold.banking_details;
-    const paymentUrl = `${baseUrl}/application.html?appRef=${applicationNumber}&pay=true`;
+    const paymentUrl = resumptionUrl;
     const dueDateStr = feeDueDate ? feeDueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Fee Waived / Not Applicable';
 
     try {
@@ -614,14 +615,7 @@ exports.submitApplication = async (req, res) => {
         applicationNumber,
         feeAmount: appFeeAmount,
         dueDateStr,
-        bankDetails: bankingInfo || {
-          bank_name: 'Waiting for the school bank account',
-          account_holder: schoolName,
-          account_number: 'Not connected yet',
-          branch_code: 'Not connected yet',
-          account_type: 'Cheque / Current',
-          reference: applicationNumber
-        },
+        bankDetails: {},
         paymentUrl
       });
     } catch (mailErr) {
@@ -647,7 +641,7 @@ exports.submitApplication = async (req, res) => {
         applicationNumber,
         application_fee_status: feeStatus,
         application_fee_amount: appFeeAmount,
-        banking_details: bankingInfo,
+        banking_details: paymentHold.publicBank(bankingInfo),
         message: `Application received! Grade ${gradeApplied} is currently at maximum capacity (< 30 per class). The applicant has been placed on the priority waiting list.`
       });
     }
@@ -701,6 +695,13 @@ exports.getApplicationByToken = async (req, res) => {
     }
 
     const application = appRes.rows[0];
+    const schoolRes = application.school_id
+      ? await db.query('SELECT bank_name, account_holder, account_number, branch_code, account_type FROM schools WHERE id = $1', [application.school_id])
+      : { rows: [] };
+    const access = req.query.payment_access || req.get('x-payment-access');
+    const allowed = await paymentAccess.grantCovers(application.id, token, access);
+    const schoolBank = schoolRes.rows[0];
+    for (const key of ['account_number', 'bank_name', 'branch_code', 'account_holder', 'account_type']) delete application[key];
 
     const docsRes = await db.query(
       `SELECT id, document_type, file_name, is_verified, issues, uploaded_at 
@@ -712,7 +713,8 @@ exports.getApplicationByToken = async (req, res) => {
     res.json({
       success: true,
       application,
-      documents: docsRes.rows
+      documents: docsRes.rows,
+      banking_details: allowed && paymentHold.realBank(schoolBank) ? paymentHold.realBank(schoolBank) : paymentHold.publicBank(schoolBank)
     });
   } catch (err) {
     console.error('[GET APP BY TOKEN ERROR]:', err);
@@ -953,7 +955,7 @@ exports.resubmitApplication = async (req, res) => {
 
     const learnerFullName = `${merged.first_name} ${merged.surname}`;
     const primaryParentFullName = `${merged.primary_parent_name} ${merged.primary_parent_surname}`;
-    const registrationUrl = `${baseUrl}/register?learnerNumber=${provNumber}&appRef=${application.application_number}&email=${encodeURIComponent(merged.primary_parent_email)}&firstName=${encodeURIComponent(merged.first_name)}&surname=${encodeURIComponent(merged.surname)}&idNumber=${encodeURIComponent(merged.id_number || '')}&grade=${encodeURIComponent(merged.grade_applied)}&stream=${encodeURIComponent(merged.stream || 'General')}`;
+    const registrationUrl = `${baseUrl}/register?appRef=${encodeURIComponent(application.application_number)}`;
 
     if (newStatus === 'approved') {
       await emailService.sendApplicationAccepted({
@@ -1244,7 +1246,7 @@ exports.reviewApplication = async (req, res) => {
     const baseUrl = getRequestBaseUrl(req);
     const parentFullName = `${app.primary_parent_name} ${app.primary_parent_surname}`;
     const learnerFullName = `${app.first_name} ${app.surname}`;
-    const registrationUrl = `${baseUrl}/register?appRef=${app.application_number}&email=${encodeURIComponent(app.primary_parent_email)}&firstName=${encodeURIComponent(app.first_name)}&surname=${encodeURIComponent(app.surname)}&idNumber=${encodeURIComponent(app.id_number || '')}&grade=${encodeURIComponent(app.grade_applied)}&stream=${encodeURIComponent(app.stream || 'General')}`;
+    const registrationUrl = `${baseUrl}/register?appRef=${encodeURIComponent(app.application_number)}`;
 
     if (status === 'rejected') {
       try {
@@ -1397,13 +1399,14 @@ exports.payApplicationFee = async (req, res) => {
       `${app.primary_parent_name} ${app.primary_parent_surname}`, app.primary_parent_email, hold.status
     ]);
 
+    const feeAccess = await paymentAccess.grantCovers(app.id, req.body?.resume_token || req.body?.token, req.body?.payment_access || req.get('x-payment-access'));
     return res.status(202).json({
       success: true,
       held: true,
       paid: false,
       message: hold.message,
       payment_method: hold.method,
-      banking_details: hold.banking_details,
+      banking_details: feeAccess && hold.banking_details ? hold.banking_details : paymentHold.publicBank(schoolRes.rows[0]),
       application_fee_status: 'unpaid'
     });
   } catch (err) {
@@ -1454,6 +1457,7 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
       await db.query(`
         UPDATE applications SET payment_method = $1, payment_reference = $2, updated_at = NOW() WHERE id = $3
       `, [hold.method, payment_reference || `PAY-REG-${Date.now().toString().slice(-8)}`, app.id]);
+      const registrationAccess = await paymentAccess.grantCovers(app.id, req.body?.resume_token || req.body?.token, req.body?.payment_access || req.get('x-payment-access'));
       return res.status(202).json({
         success: true,
         enrolled: false,
@@ -1461,7 +1465,7 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
         paid: false,
         message: hold.message,
         payment_method: hold.method,
-        banking_details: hold.banking_details,
+        banking_details: registrationAccess && hold.banking_details ? hold.banking_details : paymentHold.publicBank(schoolBankRes.rows[0]),
         registration_fee_status: app.registration_fee_status || 'unpaid'
       });
     }
@@ -1638,7 +1642,7 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
 
 async function dispatchFeeReminders(baseUrl) {
   const dueApps = await db.query(`
-    SELECT a.*, s.name as school_name, s.bank_name, s.account_number, s.branch_code, s.account_holder
+    SELECT a.*, s.name as school_name
     FROM applications a
     LEFT JOIN schools s ON a.school_id = s.id
     WHERE a.application_fee_status = 'unpaid'
@@ -1662,13 +1666,10 @@ async function dispatchFeeReminders(baseUrl) {
         applicationNumber: app.application_number,
         feeAmount: parseFloat(app.application_fee_amount) || 250,
         dueDateStr,
-        bankDetails: {
-          bank_name: app.bank_name,
-          account_number: app.account_number,
-          branch_code: app.branch_code,
-          account_holder: app.account_holder
-        },
-        paymentUrl: `${origin}/application.html?appRef=${app.application_number}&pay=true`
+        bankDetails: {},
+        paymentUrl: app.correction_token
+          ? `${origin}/application.html?resume=${encodeURIComponent(app.correction_token)}`
+          : `${origin}/application.html`
       });
 
       await db.query('UPDATE applications SET application_fee_reminder_sent = TRUE WHERE id = $1', [app.id]);
@@ -1680,6 +1681,36 @@ async function dispatchFeeReminders(baseUrl) {
 
   return sentCount;
 }
+
+exports.requestPaymentAccess = async (req, res) => {
+  try {
+    const result = await paymentAccess.requestCode({
+      token: req.body?.token || req.body?.resume_token,
+      channel: req.body?.channel,
+      suppliedEmail: req.body?.email,
+      suppliedPhone: req.body?.phone
+    });
+    if (!result.ok) return res.status(result.status).json({ error: result.error, code: result.code });
+    return res.status(result.status).json(result.body);
+  } catch (err) {
+    console.error('Payment verification could not be started.');
+    res.status(500).json({ error: 'The verification code could not be sent.' });
+  }
+};
+
+exports.confirmPaymentAccess = async (req, res) => {
+  try {
+    const result = await paymentAccess.confirmCode({
+      token: req.body?.token || req.body?.resume_token,
+      code: req.body?.code
+    });
+    if (!result.ok) return res.status(result.status).json({ error: result.error, code: result.code });
+    return res.status(result.status).json(result.body);
+  } catch (err) {
+    console.error('Payment verification could not be confirmed.');
+    res.status(500).json({ error: 'The verification code could not be checked.' });
+  }
+};
 
 exports.runScheduledFeeReminders = (baseUrl) => dispatchFeeReminders(baseUrl);
 

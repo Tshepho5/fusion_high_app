@@ -6,7 +6,8 @@ const PDFDocument = require('pdfkit');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fusion_high_super_secret_jwt_key_2026';
+const JWT_SECRET = String(process.env.JWT_SECRET || '').trim();
+if (!JWT_SECRET) throw new Error('JWT_SECRET is required. Refusing to sign tokens with a fallback secret.');
 const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const SCREENSHOTS_DIR = path.join(__dirname, '..', 'presentation_assets', 'screenshots');
 

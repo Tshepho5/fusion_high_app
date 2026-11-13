@@ -6,7 +6,13 @@ async function seedAllSchoolsData() {
   console.log('🚀 SEEDING COMPREHENSIVE DATA FOR ALL 12 SCHOOLS (TEACHERS & LEARNERS)');
   console.log('===============================================================\n');
 
-  const defaultPassword = 'password123';
+  if (process.env.ALLOW_DEMO_SEED !== 'true') {
+    throw new Error('Demo school seeding is disabled. Do not load published passwords into a database.');
+  }
+  const defaultPassword = String(process.env.DEMO_SEED_PASSWORD || '');
+  if (defaultPassword.length < 12) {
+    throw new Error('Set DEMO_SEED_PASSWORD to at least 12 characters before seeding.');
+  }
   const passwordHash = await bcrypt.hash(defaultPassword, 10);
 
   const schools = [
@@ -133,7 +139,7 @@ async function seedAllSchoolsData() {
 
   // School Administrator Roster
   const adminRoster = [
-    { schoolId: 1, email: 'admin@fusionhigh.co.za', name: 'Tshepho Letlalo', surname: 'Makula', phone: '0692606618', isSuper: true },
+    { schoolId: 1, email: 'admin@fusionhigh.co.za', name: 'School', surname: 'Admin', phone: '0000000000', isSuper: true },
     { schoolId: 2, email: 'admin@mountainviewhigh.co.za', name: 'M. S.', surname: 'Phasha', phone: '0152671100', isSuper: false },
     { schoolId: 2, email: 'admin@mountainview.co.za', name: 'M. S.', surname: 'Phasha', phone: '0152671100', isSuper: false },
     { schoolId: 3, email: 'admin@makgoka.co.za', name: 'K. E.', surname: 'Molepo', phone: '0152660022', isSuper: false },
@@ -156,7 +162,6 @@ async function seedAllSchoolsData() {
       INSERT INTO users (email, password_hash, role_id, school_id, full_name, surname, phone, is_superadmin)
       VALUES ($1, $2, (SELECT id FROM roles WHERE name = 'admin'), $3, $4, $5, $6, $7)
       ON CONFLICT (email) DO UPDATE SET
-        password_hash = EXCLUDED.password_hash,
         school_id = EXCLUDED.school_id,
         full_name = EXCLUDED.full_name,
         surname = EXCLUDED.surname,
@@ -176,7 +181,6 @@ async function seedAllSchoolsData() {
         INSERT INTO users (email, password_hash, role_id, school_id, full_name, surname, phone, gender)
         VALUES ($1, $2, (SELECT id FROM roles WHERE name = 'teacher'), $3, $4, $5, $6, $7)
         ON CONFLICT (email) DO UPDATE SET
-          password_hash = EXCLUDED.password_hash,
           school_id = EXCLUDED.school_id,
           full_name = EXCLUDED.full_name,
           surname = EXCLUDED.surname,
@@ -220,7 +224,6 @@ async function seedAllSchoolsData() {
             INSERT INTO users (email, password_hash, role_id, school_id, full_name, surname, dob, gender)
             VALUES ($1, $2, (SELECT id FROM roles WHERE name = 'learner'), $3, $4, $5, $6::DATE, $7)
             ON CONFLICT (email) DO UPDATE SET
-              password_hash = EXCLUDED.password_hash,
               school_id = EXCLUDED.school_id,
               full_name = EXCLUDED.full_name,
               surname = EXCLUDED.surname

@@ -18,9 +18,7 @@ import {
   Award,
   Globe,
   Palette,
-  Lock,
-  Eye,
-  EyeOff
+  ImagePlus
 } from 'lucide-react';
 import { schoolRegistrationService } from '../../services/api';
 import { useSchool } from '../../context/SchoolContext';
@@ -189,8 +187,8 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   // Form State
   const [form, setForm] = useState({
@@ -228,8 +226,6 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
     principal_sace_number: '',
     principal_email: '',
     principal_phone: '',
-    password: '',
-    confirm_password: '',
 
     // Step 4: Branding & Fees Checkpoint
     motto: 'Knowledge is Power, Education is Freedom',
@@ -256,8 +252,44 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
-  // Name Validation: Strictly prevent numbers
-  const handleNameInput = (field: 'school_name' | 'principal_first_name' | 'principal_surname', value: string) => {
+  const handleSchoolName = (value: string) => {
+    const cleaned = value.replace(/[\u0000-\u001F\u007F]/g, '').slice(0, 255);
+    setFieldErrors(prev => {
+      if (!prev.school_name) return prev;
+      const next = { ...prev };
+      delete next.school_name;
+      return next;
+    });
+    setForm(prev => ({ ...prev, school_name: cleaned }));
+  };
+
+  const chooseLogo = (file: File | null) => {
+    if (logoPreview) URL.revokeObjectURL(logoPreview);
+    if (!file) {
+      setLogoFile(null);
+      setLogoPreview(null);
+      return;
+    }
+    const allowed = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      setFieldErrors(prev => ({ ...prev, logo: 'Use a PNG, JPEG, or WebP logo.' }));
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setFieldErrors(prev => ({ ...prev, logo: 'The school logo must be 2 MB or smaller.' }));
+      return;
+    }
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+    setFieldErrors(prev => {
+      const next = { ...prev };
+      delete next.logo;
+      return next;
+    });
+  };
+
+  // Name Validation: Strictly prevent numbers in a person's name
+  const handleNameInput = (field: 'principal_first_name' | 'principal_surname', value: string) => {
     if (/\d/.test(value)) {
       setFieldErrors(prev => ({ ...prev, [field]: 'Numbers are not allowed in this field. Please use letters only.' }));
       setForm(prev => ({ ...prev, [field]: value.replace(/\d/g, '') }));
@@ -314,8 +346,9 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
     const errors: Record<string, string> = {};
     if (!form.school_name.trim()) {
       errors.school_name = 'Please enter the official School Name.';
-    } else if (/\d/.test(form.school_name)) {
-      errors.school_name = 'Numbers are not allowed in this field. Please use letters only.';
+    }
+    if (!logoFile) {
+      errors.logo = 'Upload the official school logo. PNG, JPEG, or WebP, up to 2 MB.';
     }
     const cleanEmis = form.emis_number.replace(/\D/g, '');
     if (cleanEmis.length !== 9) {
@@ -324,11 +357,12 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
     if (!form.physical_address.trim()) {
       errors.physical_address = 'Physical school address is required.';
     }
-    if (!form.contact_email.trim() || !form.contact_email.includes('@')) {
+    if (!form.contact_email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contact_email.trim())) {
       errors.contact_email = 'A valid institutional contact email is required.';
     }
-    if (!form.contact_phone.trim()) {
-      errors.contact_phone = 'Official school telephone number is required.';
+    const schoolPhone = form.contact_phone.replace(/[\s()-]/g, '');
+    if (!/^\+?[0-9]{10,15}$/.test(schoolPhone)) {
+      errors.contact_phone = 'Enter a school phone number of 10 to 15 digits.';
     }
 
     setFieldErrors(errors);
@@ -372,21 +406,12 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
     if (!idCheck.valid) {
       errors.principal_id_number = idCheck.error || 'Please enter a valid 13-digit South African ID number.';
     }
-    if (!form.principal_email.trim() || !form.principal_email.includes('@')) {
+    if (!form.principal_email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.principal_email.trim())) {
       errors.principal_email = 'A valid Principal work email address is required.';
     }
-    if (!form.principal_phone.trim()) {
-      errors.principal_phone = 'Principal direct cellphone number is required.';
-    }
-    if (!form.password) {
-      errors.password = 'Master password is required.';
-    } else if (form.password.length < 6) {
-      errors.password = 'Master password must be at least 6 characters.';
-    }
-    if (!form.confirm_password) {
-      errors.confirm_password = 'Confirmation password is required.';
-    } else if (form.password !== form.confirm_password) {
-      errors.confirm_password = 'Passwords do not match.';
+    const principalPhone = form.principal_phone.replace(/[\s()-]/g, '');
+    if (!/^\+?[0-9]{10,15}$/.test(principalPhone)) {
+      errors.principal_phone = 'Enter a principal phone number of 10 to 15 digits.';
     }
 
     setFieldErrors(errors);
@@ -411,10 +436,22 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
   };
 
   const handleSubmitApplication = async () => {
+    if (loading) return;
+    if (!validateStep1() || !validateStep3()) {
+      setError('Go back and correct the highlighted school or principal details.');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const res = await schoolRegistrationService.apply(form);
+      const payload = new FormData();
+      Object.entries(form).forEach(([key, val]) => {
+        if (key === 'password' || key === 'confirm_password') return;
+        if (Array.isArray(val)) payload.append(key, JSON.stringify(val));
+        else if (val != null) payload.append(key, String(val));
+      });
+      if (logoFile) payload.append('logo', logoFile);
+      const res = await schoolRegistrationService.apply(payload);
       setSubmittedApp(res.application || {
         application_number: res.application_number,
         school_name: form.school_name,
@@ -448,7 +485,7 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
                   DBE Multi-School Network
                 </span>
-                <span className="text-xs text-slate-400">Step {step} of 4</span>
+                {step < 5 && <span className="text-xs text-slate-400">Step {step} of 4</span>}
               </div>
               <h2 className="text-lg md:text-xl font-black text-white tracking-tight">
                 {step === 5 ? 'Application Submitted' : 'Register Your School on Geleza SA'}
@@ -515,7 +552,7 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
                     type="text"
                     placeholder="e.g. Makgoka High School / Fusion Secondary"
                     value={form.school_name}
-                    onChange={(e) => handleNameInput('school_name', e.target.value)}
+                    onChange={(e) => handleSchoolName(e.target.value)}
                     className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-950/70 border text-sm text-white placeholder:text-slate-500 transition-all outline-hidden ${
                       fieldErrors.school_name ? 'border-rose-500 focus:border-rose-400' : 'border-slate-700 focus:border-cyan-400'
                     }`}
@@ -524,6 +561,38 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
                     <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                       <span>{fieldErrors.school_name}</span>
+                    </p>
+                  )}
+                  <p className="text-[11px] text-slate-500">Numbers and punctuation such as “No. 2” or “St. Mary’s” are allowed.</p>
+                </div>
+
+                <div className="sm:col-span-2 space-y-1.5">
+                  <label htmlFor="school-logo" className="text-xs font-bold text-slate-300">
+                    Official school logo <span className="text-red-400">*</span>
+                  </label>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                    <div className="h-20 w-20 shrink-0 rounded-2xl border border-slate-700 bg-slate-950/70 overflow-hidden flex items-center justify-center">
+                      {logoPreview ? (
+                        <img src={logoPreview} alt="Selected school logo preview" className="h-full w-full object-contain" />
+                      ) : (
+                        <ImagePlus className="w-6 h-6 text-slate-500" />
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <input
+                        id="school-logo"
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="block w-full text-xs text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-cyan-500 file:px-3 file:py-2 file:text-xs file:font-bold file:text-slate-950"
+                        onChange={(event) => chooseLogo(event.target.files?.[0] || null)}
+                      />
+                      <p className="text-[11px] text-slate-500">PNG, JPEG, or WebP. Maximum 2 MB and 4096 pixels on each side. This logo is shown as the school’s identity.</p>
+                    </div>
+                  </div>
+                  {fieldErrors.logo && (
+                    <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{fieldErrors.logo}</span>
                     </p>
                   )}
                 </div>
@@ -897,76 +966,8 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
                   )}
                 </div>
 
-                {/* Create Master Password */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-300">
-                    Create Master Password <span className="text-red-400">*</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
-                      <Lock className="w-4 h-4" />
-                    </div>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="Create master password (min 6 chars)"
-                      value={form.password}
-                      onChange={(e) => handleFieldChange('password', e.target.value)}
-                      className={`w-full pl-10 pr-11 py-2.5 rounded-xl bg-slate-950/70 border text-sm text-white placeholder:text-slate-500 transition-all outline-hidden ${
-                        fieldErrors.password ? 'border-rose-500 focus:border-rose-400' : 'border-slate-700 focus:border-cyan-400'
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-7 h-7 flex items-center justify-center p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      title={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  {fieldErrors.password && (
-                    <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                      <span>{fieldErrors.password}</span>
-                    </p>
-                  )}
-                </div>
-
-                {/* Confirm Master Password */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-300">
-                    Confirm Master Password <span className="text-red-400">*</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
-                      <Lock className="w-4 h-4" />
-                    </div>
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      placeholder="Confirm master password"
-                      value={form.confirm_password}
-                      onChange={(e) => handleFieldChange('confirm_password', e.target.value)}
-                      className={`w-full pl-10 pr-11 py-2.5 rounded-xl bg-slate-950/70 border text-sm text-white placeholder:text-slate-500 transition-all outline-hidden ${
-                        fieldErrors.confirm_password ? 'border-rose-500 focus:border-rose-400' : 'border-slate-700 focus:border-cyan-400'
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-7 h-7 flex items-center justify-center p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors"
-                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                      title={showConfirmPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  {fieldErrors.confirm_password && (
-                    <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                      <span>{fieldErrors.confirm_password}</span>
-                    </p>
-                  )}
+                <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3 text-[11px] text-cyan-100">
+                  No password is created with this application. After Geleza SA approves the school, the principal receives one email link and chooses a password then.
                 </div>
               </div>
             </div>
@@ -1066,7 +1067,7 @@ export const SchoolRegistrationModal: React.FC<SchoolRegistrationModalProps> = (
               <div className="space-y-1.5">
                 <h3 className="text-xl font-black text-white">Sent to Geleza SA</h3>
                 <p className="text-xs text-slate-400 max-w-md mx-auto">
-                  The registration for <strong>{form.school_name}</strong> is waiting for Geleza SA. Families can select this school only after that approval. You sign in with the password you chose once the approval arrives.
+                  The registration for <strong>{form.school_name}</strong> is waiting for Geleza SA. The school is not active yet. After approval, the principal receives a single-use email link and creates a password before signing in.
                 </p>
               </div>
 

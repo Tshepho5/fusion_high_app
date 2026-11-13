@@ -8,8 +8,40 @@ const nodemailer = require('nodemailer');
 const tls = require('tls');
 const net = require('net');
 
-const getSmtpUser = () => (process.env.SMTP_USER || 'tshepomakola23@gmail.com').trim().replace(/^["']|["']$/g, '');
-const getSmtpPass = () => (process.env.SMTP_PASS || 'ayauhdlmlzouiguh').trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '');
+const getSmtpUser = () => String(process.env.SMTP_USER || '').trim().replace(/^["']|["']$/g, '');
+const getSmtpPass = () => String(process.env.SMTP_PASS || '').trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '');
+
+function paymentInstructions({ schoolName, applicationNumber }) {
+  return `
+    <p style="margin: 0 0 12px 0; color: #cbd5e1; font-size: 13px; line-height: 1.5;">
+      The school bank account number is not included in this email, its subject, or any attachment.
+      Open the application link and confirm the email address already stored on the application.
+      Geleza SA then sends a short verification code. The account number is shown only after that code matches.
+    </p>
+    <p style="margin: 0; color: #cbd5e1; font-size: 13px;">
+      School: <strong style="color: #ffffff;">${schoolName || 'Your school'}</strong><br>
+      Payment reference: <strong style="color: #fbbf24; font-family: monospace;">${applicationNumber || 'Your application reference'}</strong>
+    </p>
+  `;
+}
+
+function redactSensitiveMail(value) {
+  return String(value || '')
+    .replace(/https?:\/\/[^\s"'<>]*activate\?token=[^\s"'<>]*/gi, '[invitation removed]')
+    .replace(/([?&](?:resume|token|correction_token|idNumber|id_number)=)[^&\s"'<>]+/gi, '$1[removed]')
+    .replace(/\b\d{13}\b/g, '[id removed]')
+    .replace(/(verification code is\s*)\d{4,10}/gi, '$1[removed]')
+    .replace(/(password reset code(?: is|:)\s*)\d{4,10}/gi, '$1[removed]')
+    .replace(/(password(?:<\/strong>)?\s*:\s*)([^<\n]+)/gi, '$1[removed]');
+}
+
+function getFromAddress() {
+  const from = String(process.env.SMTP_FROM || '').trim().replace(/^["']|["']$/g, '');
+  const named = from.match(/<([^>]+)>/);
+  if (named && named[1].includes('@')) return named[1].trim();
+  if (from.includes('@')) return from;
+  return getSmtpUser();
+}
 
 function sendViaDirectTls({ user, pass, to, subject, html, replyTo, fromName = 'Geleza SA' }) {
   return new Promise((resolve, reject) => {
@@ -288,7 +320,7 @@ async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = '
         subject,
         html,
         text,
-        replyTo: replyTo || getSmtpUser(),
+        replyTo: replyTo || getFromAddress() || undefined,
         fromName
       });
       const first = await axios.post(googleScriptUrl, payload, {
@@ -356,12 +388,12 @@ async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = '
   if (brevoKey) {
     try {
       const payload = JSON.stringify({
-        sender: { name: fromName, email: getSmtpUser() },
+        sender: { name: fromName, email: getFromAddress() },
         to: [{ email: to }],
         subject,
         htmlContent: html,
         textContent: text || undefined,
-        replyTo: { email: replyTo || getSmtpUser() }
+        replyTo: { email: replyTo || getFromAddress() }
       });
       const resp = await httpsJson('https://api.brevo.com/v3/smtp/email', {
         headers: {
@@ -390,10 +422,13 @@ const emailService = {
   relayReady: async () => Boolean(await resolveGoogleScriptUrl()),
 
   verifyConnection: async () => {
+    if (!getSmtpUser() || !getSmtpPass()) {
+      return { ready: false, error: 'SMTP is not configured' };
+    }
     try {
       const transporter = getTransporter();
       await transporter.verify();
-      console.log(`[SMTP READY] High-speed email delivery transport verified (${getSmtpUser()}).`);
+      console.log('[SMTP READY] Email transport verified.');
       return { ready: true };
     } catch (err) {
       console.warn(`[SMTP NOTICE] Primary transport notice (${err.message}). Fallback transports active.`);
@@ -439,22 +474,25 @@ const emailService = {
       }
     }
 
-    // Queue a Firestore copy without delaying the inbox send. The Trigger Email extension is not installed, so SMTP is the delivery path.
-    setImmediate(() => {
-      try {
-        const { db: firestore } = require('../../../db/firebase');
-        if (!firestore) return;
-        firestore.collection('mail').add({
-          to: [targetRecipient],
-          message: {
-            subject: subject,
-            html: body,
-            text: text || undefined
-          },
-          created_at: new Date()
-        }).catch(() => {});
-      } catch (_) {}
-    });
+    const rawMessage = `${subject || ''}\n${body || ''}\n${text || ''}`;
+    const keepOutOfQueue = /activate\?token=|verification code is|password reset code/i.test(rawMessage);
+    if (!keepOutOfQueue) {
+      setImmediate(() => {
+        try {
+          const { db: firestore } = require('../../../db/firebase');
+          if (!firestore) return;
+          firestore.collection('mail').add({
+            to: [targetRecipient],
+            message: {
+              subject: redactSensitiveMail(subject),
+              html: redactSensitiveMail(body),
+              text: text ? redactSensitiveMail(text) : undefined
+            },
+            created_at: new Date()
+          }).catch(() => {});
+        } catch (_) {}
+      });
+    }
 
     const senderUser = getSmtpUser();
     const senderPass = getSmtpPass();
@@ -473,17 +511,28 @@ const emailService = {
           googleScriptUrl
         });
         console.log(`[EMAIL DISPATCH SUCCESS] Delivered via ${httpResult.provider} HTTPS API`);
+        if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.forgetDeliveredInvitation(targetRecipient);
         return { success: true, provider: httpResult.provider, recipient: targetRecipient };
       } catch (httpErr) {
-        const safeNotice = String(httpErr.message || '')
+        const safeNotice = redactSensitiveMail(httpErr.message)
           .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[redacted]')
           .replace(/https?:\/\/\S+/gi, '[url]')
           .slice(0, 300);
         console.warn(`[EMAIL NOTICE] HTTPS API dispatch attempt notice (${safeNotice}).`);
         if (process.env.RENDER && googleScriptUrl) {
+          if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.retainFailedInvitation(targetRecipient, body).catch(() => {});
           return { success: false, error: 'The verification email could not be sent. Try again in a moment.' };
         }
       }
+    }
+
+    if (!senderUser || !senderPass) {
+      if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.retainFailedInvitation(targetRecipient, body).catch(() => {});
+      return {
+        success: false,
+        error: 'Email is not configured. Set SMTP_USER and SMTP_PASS, or RESEND_API_KEY, BREVO_API_KEY, or GOOGLE_SCRIPT_EMAIL_URL.',
+        recipient: targetRecipient
+      };
     }
 
     // 2. Primary SMTP Transport (Port 587 STARTTLS)
@@ -499,9 +548,10 @@ const emailService = {
       });
 
       console.log(`[EMAIL DISPATCH SUCCESS] SMTP delivered.`);
+      if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.forgetDeliveredInvitation(targetRecipient);
       return { success: true, messageId: info.messageId, recipient: targetRecipient };
     } catch (nodemailerErr) {
-      console.warn(`[EMAIL NOTICE] SMTP port 587 notice for ${targetRecipient} (${nodemailerErr.message}).`);
+      console.warn(`[EMAIL NOTICE] SMTP port 587 notice (${redactSensitiveMail(nodemailerErr.message).slice(0, 300)}).`);
 
       // 3. Fallback: Direct TLS Socket (Port 465)
       try {
@@ -515,16 +565,54 @@ const emailService = {
           fromName: 'Geleza SA'
         });
         console.log(`[EMAIL DISPATCH SUCCESS] Direct TLS 465 delivered.`);
+        if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.forgetDeliveredInvitation(targetRecipient);
         return { success: true, messageId: result.messageId, recipient: targetRecipient };
       } catch (tlsErr) {
-        console.warn(`[EMAIL NOTICE] All outbound SMTP ports (587, 465) blocked by hosting provider: ${tlsErr.message}`);
+        console.warn(`[EMAIL NOTICE] All outbound SMTP ports (587, 465) blocked by hosting provider: ${redactSensitiveMail(tlsErr.message).slice(0, 300)}`);
+        if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.retainFailedInvitation(targetRecipient, body).catch(() => {});
         return { 
           success: false, 
-          error: `SMTP ports blocked by host (${tlsErr.message}). Set RESEND_API_KEY or BREVO_API_KEY for instant HTTPS delivery.`,
+          error: `SMTP ports blocked by host (${redactSensitiveMail(tlsErr.message).slice(0, 300)}). Set RESEND_API_KEY or BREVO_API_KEY for instant HTTPS delivery.`,
           recipient: targetRecipient 
         };
       }
     }
+  },
+
+  redactInvitation(value) {
+    return redactSensitiveMail(value);
+  },
+
+  redactSensitiveMail,
+
+  async retainFailedInvitation(recipient, body) {
+    const crypto = require('crypto');
+    const db = require('../../../db/db');
+    const recipientHash = crypto.createHash('sha256').update(String(recipient).toLowerCase()).digest('hex');
+    await db.query(
+      `INSERT INTO sensitive_email_queue (kind, recipient_hash, body, expires_at)
+       VALUES ('principal_invitation', $1, $2, NOW() + INTERVAL '72 hours')`,
+      [recipientHash, body]
+    );
+    await emailService.purgeExpiredInvitationMail();
+  },
+
+  async forgetDeliveredInvitation(recipient) {
+    const crypto = require('crypto');
+    const db = require('../../../db/db');
+    const recipientHash = crypto.createHash('sha256').update(String(recipient).toLowerCase()).digest('hex');
+    await db.query(
+      `UPDATE sensitive_email_queue
+       SET body = NULL, delivered_at = NOW()
+       WHERE kind = 'principal_invitation' AND recipient_hash = $1 AND body IS NOT NULL`,
+      [recipientHash]
+    );
+    await emailService.purgeExpiredInvitationMail();
+  },
+
+  async purgeExpiredInvitationMail() {
+    const db = require('../../../db/db');
+    await db.query('DELETE FROM sensitive_email_queue WHERE expires_at <= NOW()');
   },
 
   /**
@@ -917,7 +1005,7 @@ const emailService = {
       `;
 
       return {
-        subject: `Geleza SA password reset code: ${otp}`,
+        subject: 'Geleza SA password reset code',
         text: `Your Geleza SA password reset code is ${otp}. It is valid for 5 minutes.\n\nEnter it here: ${resetLink}\n\nIf you did not ask to reset your password, you can ignore this email.`,
         body: createBaseEmailTemplate({
           preheader: `Your verification code is ${otp}. It is valid for 5 minutes.`,
@@ -2168,20 +2256,13 @@ const emailService = {
           <p style="margin: 0 0 12px 0; color: #cbd5e1; font-size: 13px;">
             To ensure the fast processing and administrative verification of your application, please settle the non-refundable application fee of <strong style="color: #34d399; font-size: 15px;">R${Number(feeAmount).toFixed(2)}</strong> within <strong>7 days</strong> (Due date: <strong>${dueDateStr}</strong>).
           </p>
-          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
-            <tr><td style="padding: 5px 0; color: #94a3b8; width: 140px;">Bank Name:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'Not connected yet'}</td></tr>
-            <tr><td style="padding: 5px 0; color: #94a3b8;">Account Holder:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.account_holder || schoolName}</td></tr>
-            <tr><td style="padding: 5px 0; color: #94a3b8;">Account Number:</td><td style="color: #34d399; font-family: monospace; font-weight: 700;">${bankDetails.account_number || 'Not connected yet'}</td></tr>
-            <tr><td style="padding: 5px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-family: monospace;">${bankDetails.branch_code || 'Not connected yet'}</td></tr>
-            <tr><td style="padding: 5px 0; color: #94a3b8;">Account Type:</td><td style="color: #ffffff;">${bankDetails.account_type || 'Cheque / Current'}</td></tr>
-            <tr><td style="padding: 5px 0; color: #94a3b8;">Payment Reference:</td><td style="color: #fbbf24; font-family: monospace; font-weight: 800; font-size: 14px;">${applicationNumber}</td></tr>
-          </table>
+          ${paymentInstructions({ schoolName, applicationNumber })}
         </div>
 
         <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 14px 18px; margin: 18px 0;">
           <p style="margin: 0; font-size: 13px; color: #fbbf24; font-weight: 700;">Automated Reminder Notice</p>
           <p style="margin: 4px 0 0 0; font-size: 12px; color: #cbd5e1; line-height: 1.5;">
-            You can pay immediately online by clicking below or make an EFT transfer using the details above. If payment has not been received, our automated system will dispatch a reminder email 3 days before the deadline.
+            Use the button below. The account number stays behind the application link and email verification. If payment has not been received, a reminder is sent 3 days before the deadline.
           </p>
         </div>
       `;
@@ -2255,13 +2336,7 @@ const emailService = {
           <p style="margin: 0 0 12px 0; color: #cbd5e1; font-size: 13px;">
             The application fee payment of <strong style="color: #34d399; font-size: 15px;">R${Number(feeAmount).toFixed(2)}</strong> is due on <strong>${dueDateStr}</strong>. Please ensure payment is completed so the admissions committee can process and verify the application without cancellation.
           </p>
-          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
-            <tr><td style="padding: 4px 0; color: #94a3b8; width: 140px;">Bank:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'Not connected yet'}</td></tr>
-            <tr><td style="padding: 4px 0; color: #94a3b8;">Account:</td><td style="color: #34d399; font-family: monospace; font-weight: 700;">${bankDetails.account_number || 'Not connected yet'}</td></tr>
-            <tr><td style="padding: 4px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-family: monospace;">${bankDetails.branch_code || 'Not connected yet'}</td></tr>
-            <tr><td style="padding: 4px 0; color: #94a3b8;">Account Holder:</td><td style="color: #ffffff;">${bankDetails.account_holder || schoolName}</td></tr>
-            <tr><td style="padding: 4px 0; color: #94a3b8;">Reference:</td><td style="color: #fbbf24; font-family: monospace; font-weight: 800;">${applicationNumber}</td></tr>
-          </table>
+          ${paymentInstructions({ schoolName, applicationNumber })}
         </div>
       `;
 
@@ -2935,7 +3010,7 @@ const emailService = {
         </ul>
       </div>
       <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;">
-        Our Executive Accreditation Team is verifying your EMIS credentials against provincial DBE registries. You will receive an immediate decision notification and temporary master access credentials once review is complete.
+        Geleza SA is reviewing the application. The school is not active yet. If it is approved, the principal receives a single-use email link to create a password.
       </p>
     `;
     const html = createBaseEmailTemplate({
@@ -2949,41 +3024,24 @@ const emailService = {
     return await emailService.send(principalEmail, subject, html);
   },
 
-  sendSchoolApplicationApprovedNotice: async ({ principalEmail, principalName, schoolName, emisNumber, temporaryPassword, loginUrl }) => {
-    const subject = `Accreditation Approved: Welcome to Geleza SA - ${schoolName}`;
+  sendSchoolApplicationApprovedNotice: async ({ principalEmail, principalName, schoolName, emisNumber, activationUrl }) => {
+    const subject = `Accreditation Approved: Create your Geleza SA password - ${schoolName}`;
     const contentHtml = `
       <p style="margin: 0 0 16px 0; font-size: 15px;">Dear Principal <strong>${principalName}</strong>,</p>
       <p style="margin: 0 0 16px 0; font-size: 14px; color: #cbd5e1; line-height: 1.6;">
-        We are thrilled to inform you that your school accreditation application for <strong>${schoolName}</strong> (EMIS: <code style="color: #38bdf8; background: rgba(56, 189, 248, 0.1); padding: 2px 6px; border-radius: 4px;">${emisNumber}</code>) has been <strong style="color: #10b981;">OFFICIALLY APPROVED</strong> by the Geleza SA Executive Board.
+        Geleza SA has approved <strong>${schoolName}</strong> (EMIS: <code style="color: #38bdf8; background: rgba(56, 189, 248, 0.1); padding: 2px 6px; border-radius: 4px;">${emisNumber}</code>).
       </p>
-      <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 20px; margin: 20px 0;">
-        <h4 style="margin: 0 0 12px 0; color: #34d399; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Master Principal Credentials</h4>
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="font-size: 13px; color: #cbd5e1; line-height: 1.8;">
-          <tr>
-            <td style="padding-right: 16px; color: #94a3b8; font-weight: 600;">School Portal:</td>
-            <td><strong style="color: #ffffff;">${schoolName}</strong></td>
-          </tr>
-          <tr>
-            <td style="padding-right: 16px; color: #94a3b8; font-weight: 600;">Login Email:</td>
-            <td><code style="color: #38bdf8; font-size: 13px;">${principalEmail}</code></td>
-          </tr>
-          <tr>
-            <td style="padding-right: 16px; color: #94a3b8; font-weight: 600;">Password:</td>
-            <td><span style="color: #fbbf24; font-size: 13px; font-weight: 700;">${temporaryPassword || 'The password you chose when you registered the school'}</span></td>
-          </tr>
-        </table>
-      </div>
       <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;">
-        <strong>Next Steps:</strong> Please sign in to activate your master school dashboard, configure your dynamic classes and streams, and invite your teachers and coaches via the staff invitation engine.
+        Use the button below to create your password. The link works once, expires after 72 hours, and is only for this principal account. It does not give platform administrator access.
       </p>
     `;
     const html = createBaseEmailTemplate({
-      preheader: `Welcome to Geleza SA! Master portal active for ${schoolName}`,
-      title: 'School Accreditation Approved',
-      subtitle: `Master School Admin portal is ready for ${schoolName}`,
+      preheader: `Create your password for ${schoolName}`,
+      title: 'Create your principal password',
+      subtitle: `${schoolName} has been approved`,
       contentHtml,
-      ctaText: 'Access School Portal',
-      ctaLink: loginUrl || 'https://gelezasa.co.za/login'
+      ctaText: 'Create password',
+      ctaLink: activationUrl || 'https://gelezasa.co.za/activate'
     });
     return await emailService.send(principalEmail, subject, html);
   },
@@ -3271,14 +3329,7 @@ Object.assign(emailService.templates, {
         <p style="color: #e2e8f0; font-size: 13px; margin: 0 0 14px 0; line-height: 1.5;">
           For fast processing, an application fee of <strong style="color: #10b981; font-size: 16px;">R${parseFloat(feeAmount).toFixed(2)}</strong> must be paid within <strong style="color: #f59e0b;">7 days</strong> (Deadline: <strong>${dueDateStr || 'Within 7 calendar days'}</strong>).
         </p>
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1; border-top: 1px dashed #334155; padding-top: 12px;">
-          <tr><td style="padding: 5px 0; color: #94a3b8; width: 140px;">Bank Name:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'Not connected yet'}</td></tr>
-          <tr><td style="padding: 5px 0; color: #94a3b8;">Account Name:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.account_holder || schoolName}</td></tr>
-          <tr><td style="padding: 5px 0; color: #94a3b8;">Account Number:</td><td style="color: #38bdf8; font-weight: 800; font-family: monospace;">${bankDetails.account_number || 'Not connected yet'}</td></tr>
-          <tr><td style="padding: 5px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-weight: 600;">${bankDetails.branch_code || 'Not connected yet'}</td></tr>
-          <tr><td style="padding: 5px 0; color: #94a3b8;">Account Type:</td><td style="color: #cbd5e1;">${bankDetails.account_type || 'Cheque / Current'}</td></tr>
-          <tr><td style="padding: 5px 0; color: #f59e0b; font-weight: 700;">Payment Reference:</td><td style="color: #fbbf24; font-weight: 900; font-family: monospace; font-size: 14px;">${applicationNumber}</td></tr>
-        </table>
+        ${paymentInstructions({ schoolName, applicationNumber })}
       </div>
 
       <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 10px; padding: 14px 18px; margin: 18px 0;">
@@ -3314,12 +3365,7 @@ Object.assign(emailService.templates, {
         <p style="color: #cbd5e1; font-size: 13px; margin: 0 0 12px 0;">
           Due Date: <strong style="color: #ffffff;">${dueDateStr}</strong>. Please ensure the application fee is settled promptly to prevent automatic cancellation of your application place.
         </p>
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
-          <tr><td style="padding: 4px 0; color: #94a3b8; width: 140px;">Bank:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'FNB'}</td></tr>
-          <tr><td style="padding: 4px 0; color: #94a3b8;">Account Number:</td><td style="color: #38bdf8; font-weight: 800; font-family: monospace;">${bankDetails.account_number || 'Not connected yet'}</td></tr>
-          <tr><td style="padding: 4px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff;">${bankDetails.branch_code || 'Not connected yet'}</td></tr>
-          <tr><td style="padding: 4px 0; color: #f87171; font-weight: 700;">Reference:</td><td style="color: #fbbf24; font-weight: 900; font-family: monospace;">${applicationNumber}</td></tr>
-        </table>
+        ${paymentInstructions({ schoolName, applicationNumber })}
       </div>
     `;
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { parentService, conductService, systemControlService } from '../../services/api';
+import { parentService, conductService, systemControlService, schoolRegistrationService } from '../../services/api';
 import { intakeClosed, intakeReason } from '../../utils/admissionGate';
 import { Badge } from '../../components/common/Badge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -70,6 +70,7 @@ export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId, onNavig
   // Sibling Form Data & School Verification (Scenario 2)
   const [selectedSchoolId, setSelectedSchoolId] = useState<number>(currentSchool?.id || 1);
   const [siblingPaymentChoice, setSiblingPaymentChoice] = useState<'card' | 'instant_eft' | 'eft' | 'cash'>('eft');
+  const [authorisedBank, setAuthorisedBank] = useState<any>(null);
   const [siblingLangCheck, setSiblingLangCheck] = useState<{
     is_offered?: boolean;
     language?: string;
@@ -179,6 +180,13 @@ export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId, onNavig
       .then(data => setSiblingLangCheck(data))
       .catch(err => console.warn('Sibling language check error:', err));
   }, [selectedSchoolId, siblingForm.home_language]);
+
+  useEffect(() => {
+    if (!selectedSchoolId) return;
+    schoolRegistrationService.getAuthorisedPaymentAccount(selectedSchoolId)
+      .then((data: any) => setAuthorisedBank(data?.banking_details || null))
+      .catch(() => setAuthorisedBank(null));
+  }, [selectedSchoolId]);
 
   const handleEnrollSibling = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1557,10 +1565,16 @@ export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId, onNavig
                         </label>
                       </div>
 
-                      {siblingLangCheck?.banking_details ? (
+                      {authorisedBank?.account_number ? (
                         <div className="p-3 rounded-xl bg-slate-950/70 border border-amber-500/30 text-[11px] text-slate-300 space-y-1">
                           <div className="font-bold text-amber-400">School bank account</div>
-                          <div>Bank: <strong>{siblingLangCheck.banking_details.bank_name}</strong> | Acc: <span className="font-mono text-cyan-300 font-bold">{siblingLangCheck.banking_details.account_number}</span> | Branch: <span className="font-mono">{siblingLangCheck.banking_details.branch_code}</span></div>
+                          <div>Bank: <strong>{authorisedBank.bank_name}</strong> | Acc: <span className="font-mono text-cyan-300 font-bold">{authorisedBank.account_number}</span> | Branch: <span className="font-mono">{authorisedBank.branch_code}</span></div>
+                        </div>
+                      ) : siblingLangCheck?.banking_details?.has_bank_account ? (
+                        <div className="p-3 rounded-xl bg-slate-950/70 border border-amber-500/30 text-[11px] text-slate-300 space-y-1">
+                          <div className="font-bold text-amber-400">School bank account</div>
+                          <div>Account ending <span className="font-mono text-cyan-300 font-bold">{siblingLangCheck.banking_details.account_hint}</span></div>
+                          <div>The full account is shown after you submit this application, or if you already have a child at this school.</div>
                         </div>
                       ) : (
                         <div className="p-3 rounded-xl bg-slate-950/70 border border-amber-500/30 text-[11px] text-amber-100">
