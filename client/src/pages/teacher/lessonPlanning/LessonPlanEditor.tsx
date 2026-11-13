@@ -162,7 +162,12 @@ export const LessonPlanEditor: React.FC<LessonPlanEditorProps> = ({
         return next;
       });
       if (!silent) {
-        setNotice(saveAs === 'completed' ? 'Lesson marked as completed.' : 'Lesson plan saved.');
+        const message = saveAs === 'completed'
+          ? 'Lesson marked as completed.'
+          : saveAs === 'scheduled'
+            ? 'Lesson plan scheduled.'
+            : 'Lesson plan saved.';
+        setNotice(message);
         onSaved(saved);
       }
     } catch (err: any) {
@@ -357,7 +362,19 @@ export const LessonPlanEditor: React.FC<LessonPlanEditorProps> = ({
         <button type="button" className={primaryBtn} disabled={locked || saving} onClick={() => persist('draft')}>
           {saving ? 'Saving…' : 'Save draft'}
         </button>
-        <button type="button" className={quietBtn} disabled={locked || saving} onClick={() => persist(draft.scheduled_date ? 'scheduled' : 'scheduled')}>
+        <button
+          type="button"
+          className={quietBtn}
+          disabled={locked || saving}
+          onClick={() => {
+            if (!draft.scheduled_date) {
+              setNotice(null);
+              setError('Choose a lesson date before scheduling.');
+              return;
+            }
+            persist('scheduled');
+          }}
+        >
           Save and schedule
         </button>
         <button type="button" className={quietBtn} disabled={locked || saving} onClick={() => persist('completed')}>Mark as completed</button>

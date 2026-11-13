@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { lessonPlanningService } from '../../../services/api';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { LessonDraft, card, field, primaryBtn, quietBtn } from './lessonPlanningModel';
@@ -20,19 +20,25 @@ export const LessonCalendarPanel: React.FC<LessonCalendarPanelProps> = ({ onPrep
     return date.toISOString().slice(0, 10);
   });
 
-  async function load() {
+  const loadRequest = useRef(0);
+
+  const load = useCallback(async () => {
+    const request = ++loadRequest.current;
     setLoading(true);
     setError(null);
     try {
-      setData(await lessonPlanningService.getCalendar({ from, to }));
+      const next = await lessonPlanningService.getCalendar({ from, to });
+      if (request !== loadRequest.current) return;
+      setData(next);
     } catch (err: any) {
+      if (request !== loadRequest.current) return;
       setError(err?.response?.data?.error || 'The lesson calendar could not be loaded.');
     } finally {
-      setLoading(false);
+      if (request === loadRequest.current) setLoading(false);
     }
-  }
+  }, [from, to]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   async function reschedule(plan: any) {
     const nextDate = window.prompt('New lesson date (YYYY-MM-DD)', plan.scheduled_date || from);
