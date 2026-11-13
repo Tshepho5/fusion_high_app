@@ -57,6 +57,7 @@ export interface SchoolApplication {
   principal_email: string;
   principal_phone: string;
   motto?: string;
+  logo_stored_name?: string;
   primary_color?: string;
   secondary_color?: string;
   application_fee_paid?: string | number;
