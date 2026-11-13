@@ -14,22 +14,55 @@ async function initApplicationTables() {
         homeroom_teacher_id INTEGER
       );
 
-      INSERT INTO classes (name, grade, stream)
-      VALUES 
-        ('8A', 8, 'General'),
-        ('8B', 8, 'General'),
-        ('9A', 9, 'General'),
-        ('9B', 9, 'General'),
-        ('10A', 10, 'Science'),
-        ('10B', 10, 'Commerce'),
-        ('10C', 10, 'Tourism'),
-        ('11A', 11, 'Science'),
-        ('11B', 11, 'Tourism'),
-        ('11C', 11, 'Commerce'),
-        ('12A', 12, 'Science'),
-        ('12B', 12, 'Commerce'),
-        ('12C', 12, 'Tourism')
-      ON CONFLICT (name) DO NOTHING;
+      DO $$
+      BEGIN
+        PERFORM pg_advisory_xact_lock(hashtext('fusion-seed-default-classes')::bigint);
+        IF EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conrelid = 'classes'::regclass
+            AND contype = 'u'
+            AND pg_get_constraintdef(oid) = 'UNIQUE (name)'
+        ) THEN
+          INSERT INTO classes (name, grade, stream)
+          VALUES
+            ('8A', 8, 'General'),
+            ('8B', 8, 'General'),
+            ('9A', 9, 'General'),
+            ('9B', 9, 'General'),
+            ('10A', 10, 'Science'),
+            ('10B', 10, 'Commerce'),
+            ('10C', 10, 'Tourism'),
+            ('11A', 11, 'Science'),
+            ('11B', 11, 'Tourism'),
+            ('11C', 11, 'Commerce'),
+            ('12A', 12, 'Science'),
+            ('12B', 12, 'Commerce'),
+            ('12C', 12, 'Tourism')
+          ON CONFLICT (name) DO NOTHING;
+        ELSE
+          INSERT INTO classes (name, grade, stream)
+          SELECT v.name, v.grade, v.stream
+          FROM (VALUES
+            ('8A', 8, 'General'),
+            ('8B', 8, 'General'),
+            ('9A', 9, 'General'),
+            ('9B', 9, 'General'),
+            ('10A', 10, 'Science'),
+            ('10B', 10, 'Commerce'),
+            ('10C', 10, 'Tourism'),
+            ('11A', 11, 'Science'),
+            ('11B', 11, 'Tourism'),
+            ('11C', 11, 'Commerce'),
+            ('12A', 12, 'Science'),
+            ('12B', 12, 'Commerce'),
+            ('12C', 12, 'Tourism')
+          ) AS v(name, grade, stream)
+          WHERE NOT EXISTS (
+            SELECT 1 FROM classes c WHERE c.name = v.name
+          );
+        END IF;
+      END $$;
     `);
 
     // 2. Applications Table

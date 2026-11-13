@@ -5,6 +5,7 @@ const webauthnController = require('../controller/webauthnController');
 const parentAppController = require('../controller/parentApplicationController');
 
 const { auth: authMiddleware } = require('../../../authMiddleware');
+const { maintenanceAuthorized } = require('../services/maintenanceGate');
 
 // Public routes
 router.post('/register', authController.register);
@@ -22,13 +23,16 @@ router.post('/reset-password', authController.resetPassword);
 router.post('/webauthn/login/options', webauthnController.loginOptions);
 router.post('/webauthn/login/verify', webauthnController.loginVerify);
 router.all('/sync-roster', async (req, res) => {
+    if (!maintenanceAuthorized(req.get('x-maintenance-token'))) {
+        return res.status(404).json({ success: false, error: 'Not found' });
+    }
     try {
         const { migrateSchoolOnboardingAndCleanRoster } = require('../../../db/migrate_school_onboarding_and_clean_roster');
         await migrateSchoolOnboardingAndCleanRoster();
-        res.json({ success: true, message: 'Roster synced successfully' });
+        res.json({ success: true, message: 'Schema sync completed. Account passwords were not changed.' });
     } catch (err) {
         console.error('Sync roster route error:', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(500).json({ success: false, error: 'Schema sync failed.' });
     }
 });
 

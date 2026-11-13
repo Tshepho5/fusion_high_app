@@ -67,6 +67,7 @@ ensureDir(appUploadDir);
 
 // Initialize all database tables, multi-parent, and notification schemas on server startup (local/dedicated server only)
 const initializeAllDatabaseTables = require('./db/init_full_schema');
+const { maintenanceAuthorized } = require('./public/src/services/maintenanceGate');
 const createAiConversationsTables = require('./db/create_ai_conversations_tables');
 const createGelezaAiTables = require('./db/create_geleza_ai_tables');
 const createRagKnowledgeTables = require('./db/create_rag_knowledge_tables');
@@ -616,13 +617,16 @@ app.get('/api/health', async (req, res) => {
 
 // Database schema auto-bootstrap endpoint (safe & idempotent)
 app.all('/api/init-db', async (req, res) => {
+  if (!maintenanceAuthorized(req.get('x-maintenance-token'))) {
+    return res.status(404).json({ success: false, error: 'Not found' });
+  }
   try {
     await initializeAllDatabaseTables();
     await initApplicationTables();
     res.json({ success: true, message: 'Database schema initialized. Existing user passwords were not changed.' });
   } catch (err) {
     console.error('[INIT-DB ERROR]:', err);
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, error: 'Database schema initialization failed.' });
   }
 });
 
