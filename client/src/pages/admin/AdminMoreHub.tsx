@@ -199,6 +199,13 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
       badge: 'Mark Audits',
     },
     {
+      id: 'lesson-planning',
+      title: 'Lesson Planning Oversight',
+      category: 'academics',
+      icon: BookOpen,
+      badge: 'Teachers',
+    },
+    {
       id: 'reports',
       title: 'CAPS Report Card Studio',
       category: 'academics',

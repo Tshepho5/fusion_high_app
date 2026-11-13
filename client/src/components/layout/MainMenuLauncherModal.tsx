@@ -75,6 +75,7 @@ export const MainMenuLauncherModal: React.FC<MainMenuLauncherModalProps> = ({
           { id: 'assignments', label: 'Homework & Submissions', desc: '', category: 'academic', icon: BookOpen, gradient: 'from-[#2563eb] to-[#4338ca]' },
           { id: 'classes', label: 'Class Registers & Marks', desc: '', category: 'operations', icon: Users, gradient: 'from-[#0f766e] to-[#0284c7]', badge: 'QR LIVE' },
           { id: 'ai-tools', label: 'Lesson & Test Builder', desc: '', category: 'academic', icon: BookOpen, gradient: 'from-[#4f46e5] to-[#2563eb]' },
+          { id: 'lesson-planning', label: 'Lesson Planning & Notes', desc: '', category: 'academic', icon: BookOpen, gradient: 'from-[#0284c7] to-[#0f766e]' },
           { id: 'ptc', label: 'Parent Conferences (PTC)', desc: '', category: 'chat', icon: Users, gradient: 'from-[#0284c7] to-[#1e40af]' },
           { id: 'conduct', label: 'Merits & Conduct Logs', desc: '', category: 'operations', icon: Award, gradient: 'from-[#1e40af] to-[#3b82f6]' },
           { id: 'my-leave', label: 'Leave & Relief Duty', desc: '', category: 'operations', icon: UserCheck, gradient: 'from-[#334155] to-[#1e293b]' },

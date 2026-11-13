@@ -33,6 +33,7 @@ import { AdminMessagesHub } from './AdminMessagesHub';
 import { ModulePageHeader } from '../../components/layout/WorkspaceChrome';
 import { MasterAdminExecutiveHub } from '../../components/admin/MasterAdminExecutiveHub';
 import { SchoolPerformanceMetricsView } from '../../components/admin/SchoolPerformanceMetricsView';
+import { TeacherLessonPlanning } from '../teacher/lessonPlanning/TeacherLessonPlanning';
 import { useAuth } from '../../context/AuthContext';
 import { ShieldAlert } from 'lucide-react';
 
@@ -126,6 +127,8 @@ export const AdminDashboard: React.FC = () => {
         return 'Executive Master Controls & Beta Testers Hub';
       case 'metrics':
         return 'School Performance Metrics & Indicators';
+      case 'lesson-planning':
+        return 'Lesson Planning Oversight';
       case 'settings':
         return 'App & Technical Settings';
       default:
@@ -290,6 +293,7 @@ export const AdminDashboard: React.FC = () => {
       {activeTab === 'metrics' && (
         <SchoolPerformanceMetricsView onNavigateTab={handleSelectTab} />
       )}
+      {activeTab === 'lesson-planning' && <TeacherLessonPlanning mode="oversight" />}
       {activeTab === 'settings' && <LearnerSettings />}
     </DashboardLayout>
   );

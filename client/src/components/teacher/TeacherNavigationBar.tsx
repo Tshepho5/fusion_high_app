@@ -49,6 +49,7 @@ export const getPrimaryTabFromActive = (tab: string): TeacherPrimaryTab => {
     case 'assessments':
     case 'early-warning':
     case 'assignments':
+    case 'lesson-planning':
     case 'attendance':
     case 'conduct':
     case 'my-leave':

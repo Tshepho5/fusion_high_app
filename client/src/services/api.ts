@@ -369,6 +369,46 @@ export const teacherService = {
     api.post('/api/teacher/question-bank/generate', payload).then(res => res.data),
 };
 
+export const lessonPlanningService = {
+  getContext: () => api.get('/api/teacher/lesson-plans/context').then(res => res.data),
+  getDashboard: (params?: Record<string, string | number | undefined>) =>
+    api.get('/api/teacher/lesson-plans/dashboard', { params }).then(res => res.data),
+  listPlans: (params?: Record<string, string | number | undefined>) =>
+    api.get('/api/teacher/lesson-plans', { params }).then(res => res.data),
+  getPlan: (id: number | string) => api.get(`/api/teacher/lesson-plans/${id}`).then(res => res.data),
+  createPlan: (payload: unknown) => api.post('/api/teacher/lesson-plans', payload).then(res => res.data),
+  updatePlan: (id: number | string, payload: unknown) => api.put(`/api/teacher/lesson-plans/${id}`, payload).then(res => res.data),
+  deletePlan: (id: number | string) => api.delete(`/api/teacher/lesson-plans/${id}`).then(res => res.data),
+  duplicatePlan: (id: number | string) => api.post(`/api/teacher/lesson-plans/${id}/duplicate`).then(res => res.data),
+  downloadPlanPdf: (id: number | string) =>
+    api.get(`/api/teacher/lesson-plans/${id}/pdf`, { responseType: 'blob' }),
+  saveAsTemplate: (id: number | string, payload: { template_name: string; visibility?: string }) =>
+    api.post(`/api/teacher/lesson-plans/${id}/template`, payload).then(res => res.data),
+  uploadMaterial: (id: number | string, formData: FormData) =>
+    api.post(`/api/teacher/lesson-plans/${id}/materials`, formData).then(res => res.data),
+  assist: (payload: unknown) => api.post('/api/teacher/lesson-plans/ai-assist', payload).then(res => res.data),
+  getCalendar: (params?: Record<string, string | undefined>) =>
+    api.get('/api/teacher/lesson-plans/calendar', { params }).then(res => res.data),
+  getProgress: (params?: Record<string, string | number | undefined>) =>
+    api.get('/api/teacher/lesson-plans/progress', { params }).then(res => res.data),
+  getHomeworkOptions: (params?: { subject?: string; grade?: number | string }) =>
+    api.get('/api/teacher/lesson-plans/homework-options', { params }).then(res => res.data),
+  listNotes: (params?: Record<string, string | number | undefined>) =>
+    api.get('/api/teacher/lesson-notes', { params }).then(res => res.data),
+  getNote: (id: number | string) => api.get(`/api/teacher/lesson-notes/${id}`).then(res => res.data),
+  createNote: (payload: unknown) => api.post('/api/teacher/lesson-notes', payload).then(res => res.data),
+  updateNote: (id: number | string, payload: unknown) => api.put(`/api/teacher/lesson-notes/${id}`, payload).then(res => res.data),
+  deleteNote: (id: number | string) => api.delete(`/api/teacher/lesson-notes/${id}`).then(res => res.data),
+  uploadNoteFile: (id: number | string, formData: FormData) =>
+    api.post(`/api/teacher/lesson-notes/${id}/attachments`, formData).then(res => res.data),
+  listTemplates: () => api.get('/api/teacher/lesson-templates').then(res => res.data),
+  createTemplate: (payload: unknown) => api.post('/api/teacher/lesson-templates', payload).then(res => res.data),
+  updateTemplate: (id: number | string, payload: unknown) => api.put(`/api/teacher/lesson-templates/${id}`, payload).then(res => res.data),
+  deleteTemplate: (id: number | string) => api.delete(`/api/teacher/lesson-templates/${id}`).then(res => res.data),
+  applyTemplate: (id: number | string, payload: unknown) =>
+    api.post(`/api/teacher/lesson-templates/${id}/apply`, payload).then(res => res.data),
+};
+
 // Notification APIs
 export const notificationService = {
   getNotifications: (limit?: number) => api.get('/api/notifications', { params: { limit } }).then(res => res.data),

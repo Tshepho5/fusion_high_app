@@ -24,6 +24,7 @@ import { TeacherAssignments } from '../../components/teacher/TeacherAssignments'
 import { GelezaEarlyWarningRadar } from '../../components/teacher/GelezaEarlyWarningRadar';
 import { ModulePageHeader } from '../../components/layout/WorkspaceChrome';
 import { TeacherMoreHub } from './TeacherMoreHub';
+import { TeacherLessonPlanning } from './lessonPlanning/TeacherLessonPlanning';
 import { TeacherDiscoverHub } from './TeacherDiscoverHub';
 import { ParentChildren } from '../parent/ParentChildren';
 import { useSchool } from '../../context/SchoolContext';
@@ -118,6 +119,8 @@ export const TeacherDashboard: React.FC = () => {
         return 'Geleza AI Early-Warning Academic Radar';
       case 'assignments':
         return 'Homework & Digital Assignment Submission Hub';
+      case 'lesson-planning':
+        return 'Lesson Planning & Lesson Notes';
       case 'announcements':
         return 'School Notices & Broadcasts';
       case 'messages':
@@ -163,6 +166,7 @@ export const TeacherDashboard: React.FC = () => {
       assessments: 'Marksheets',
       'early-warning': 'Early Warning',
       assignments: 'Homework',
+      'lesson-planning': 'Lesson planning',
       settings: 'Settings',
       profile: 'Profile',
     };
@@ -258,6 +262,7 @@ export const TeacherDashboard: React.FC = () => {
           autoOpenCreate={searchParams.get('create') === 'true'}
         />
       )}
+      {activeTab === 'lesson-planning' && <TeacherLessonPlanning />}
       {activeTab === 'resources' && (
         <TeacherResources onNavigateTab={handleSelectTab} />
       )}

@@ -183,6 +183,16 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           keywords: ['ai', 'lesson', 'plan', 'test', 'rubric', 'caps', 'generator']
         },
         {
+          id: 'tab-lesson-planning',
+          title: 'Lesson Planning & Notes',
+          subtitle: 'Plan lessons, write notes, and review the teaching calendar',
+          category: 'Pages & Portals',
+          icon: BookOpen,
+          iconColor: 'text-sky-400',
+          action: () => onNavigateTab('lesson-planning'),
+          keywords: ['lesson', 'plan', 'notes', 'reflection', 'calendar']
+        },
+        {
           id: 'tab-calendar',
           title: 'School Event Calendar',
           subtitle: 'View term dates, exams, holidays & school fixtures',

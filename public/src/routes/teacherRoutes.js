@@ -119,4 +119,6 @@ router.get('/recipients/:role', teacherController.getRecipientsByRole);
 router.get('/profile-details', teacherController.getTeacherProfileDetails);
 router.put('/profile-update', teacherController.updateTeacherProfileDetails);
 
+router.use(require('./lessonPlanningRoutes'));
+
 module.exports = router;

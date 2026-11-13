@@ -214,6 +214,15 @@ export const TeacherMoreHub: React.FC<TeacherMoreHubProps> = ({ onNavigateTab })
       iconBg: 'bg-purple-500/15 border-purple-500/30',
     },
     {
+      id: 'lesson-planning',
+      title: 'Lesson Planning & Notes',
+      category: 'curriculum',
+      icon: BookOpen,
+      badge: 'Plans',
+      color: 'text-sky-400',
+      iconBg: 'bg-sky-500/15 border-sky-500/30',
+    },
+    {
       id: 'resources',
       title: 'Past Papers & Learning Vault',
       category: 'curriculum',

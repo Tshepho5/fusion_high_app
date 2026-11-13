@@ -6,6 +6,7 @@
  */
 
 const db = require('./db');
+const { ensureLessonPlanningSchema } = require('./migrate_lesson_planning');
 
 let isEnsured = false;
 
@@ -280,6 +281,8 @@ async function ensureDatabaseSchema() {
         console.warn(`[SCHEMA SYNC] Failed to provision school ${app.school_name}:`, err.message);
       }
     }
+
+    await ensureLessonPlanningSchema();
 
     isEnsured = true;
     console.log('[SCHEMA ENSURER] All database tables, columns, and registered schools verified and synced.');

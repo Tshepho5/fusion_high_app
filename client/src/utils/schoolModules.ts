@@ -56,6 +56,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
   calendar: CalendarDays,
   announcements: Megaphone,
   messages: MessageSquare,
+  'lesson-planning': BookOpen,
 
   // Learner-specific modules
   performance: TrendingUp,
@@ -115,7 +116,7 @@ export const LEARNER_MODULES: SchoolModuleOption[] = [
 ];
 
 const ALWAYS_ON: Record<'teacher' | 'learner', string[]> = {
-  teacher: ['overview', 'home', 'settings', 'profile', 'more', 'subjects', 'classes', 'workload', 'parent', 'my-children'],
+  teacher: ['overview', 'home', 'settings', 'profile', 'more', 'subjects', 'classes', 'workload', 'parent', 'my-children', 'lesson-planning'],
   learner: ['overview', 'home', 'settings', 'profile', 'more', 'subjects'],
 };
 

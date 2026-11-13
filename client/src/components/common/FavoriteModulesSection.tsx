@@ -112,6 +112,17 @@ export const ROLE_MODULE_CATALOGS: Record<string, CatalogModule[]> = {
       iconBg: 'bg-purple-500/15 border-purple-500/30'
     },
     {
+      id: 'lesson-planning',
+      title: 'Lesson Planning & Notes',
+      description: 'Write lesson plans, lesson notes, and reflections for your allocated classes.',
+      category: 'academics',
+      categoryLabel: 'Academics',
+      icon: BookOpen,
+      badge: 'Plans',
+      color: 'text-sky-400',
+      iconBg: 'bg-sky-500/15 border-sky-500/30'
+    },
+    {
       id: 'assignments',
       title: 'Digital Homework & Tasks',
       description: 'Create homework tasks with file attachments and voice notes.',
