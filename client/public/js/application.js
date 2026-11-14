@@ -1110,30 +1110,112 @@ function updateAgeRequirementUI(dobString) {
  */
 function initGradeAndStream() {
   const gradeSelect = document.getElementById('grade_applied');
+  const yearSelect = document.getElementById('academic_year');
+  const schoolSelect = document.getElementById('school_id');
   const streamGroup = document.getElementById('stream-selection-group');
+  const additionalGroup = document.getElementById('additional-language-group');
   const streamSelect = document.getElementById('stream');
+  const streamIdInput = document.getElementById('academic_stream_id');
   const homeLangSelect = document.getElementById('home_language');
+  const additionalSelect = document.getElementById('first_additional_language');
   const gradeCapacityNotice = document.getElementById('grade-capacity-indicator');
-  const streamHint = document.getElementById('stream-compulsory-hint');
+  const emptyState = document.getElementById('streams-empty-state');
+  const packageReview = document.getElementById('subject-package-review');
+  const policyHint = document.getElementById('language-policy-hint');
+  let publishedStreams = [];
 
-  function updateStreamHint() {
-    const lang = (homeLangSelect && homeLangSelect.value) ? homeLangSelect.value : 'Selected Home Language';
-    const stream = streamSelect ? streamSelect.value : 'Science';
-    if (streamHint) {
-      streamHint.innerHTML = `Compulsory Core: English FAL, <strong>${lang} (Home Language)</strong>, Life Orientation + ${stream} Electives.`;
+  if (yearSelect && !yearSelect.options.length) {
+    const now = new Date();
+    const start = now.getMonth() >= 9 ? now.getFullYear() + 1 : now.getFullYear();
+    for (let year = start; year <= start + 1; year += 1) {
+      const option = document.createElement('option');
+      option.value = String(year);
+      option.textContent = String(year);
+      yearSelect.appendChild(option);
     }
   }
 
+  function fillSelect(select, rows, placeholder) {
+    if (!select) return;
+    const current = select.value;
+    select.innerHTML = '';
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = placeholder;
+    select.appendChild(blank);
+    rows.forEach((row) => {
+      const option = document.createElement('option');
+      option.value = row.value;
+      option.textContent = row.label;
+      select.appendChild(option);
+    });
+    if ([...select.options].some((option) => option.value === current)) select.value = current;
+  }
+
+  function renderPackage() {
+    const stream = publishedStreams.find((item) => String(item.id) === String(streamSelect && streamSelect.value));
+    if (streamIdInput) streamIdInput.value = stream ? String(stream.id) : '';
+    if (!packageReview) return;
+    if (!stream || !homeLangSelect.value || !additionalSelect.value) {
+      packageReview.textContent = 'Select both languages and a stream to see the seven-subject package.';
+      return;
+    }
+    const subjects = [
+      `${homeLangSelect.value} Home Language`,
+      `${additionalSelect.value} First Additional Language`,
+      stream.mathematics,
+      'Life Orientation',
+      ...stream.electives
+    ];
+    packageReview.innerHTML = `<strong>${subjects.length} subjects:</strong> ${subjects.join(' · ')}`;
+  }
+
+  async function loadPublishedStreams() {
+    const grade = parseInt(gradeSelect && gradeSelect.value, 10);
+    const fet = grade >= 10;
+    if (streamGroup) streamGroup.style.display = fet ? 'block' : 'none';
+    if (additionalGroup) additionalGroup.style.display = fet ? 'block' : 'none';
+    if (!fet) return;
+    const schoolId = schoolSelect && schoolSelect.value;
+    const year = yearSelect && yearSelect.value;
+    publishedStreams = [];
+    fillSelect(streamSelect, [], 'Select a published stream');
+    if (!schoolId || !year) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/schools/${encodeURIComponent(schoolId)}/published-streams?year=${encodeURIComponent(year)}&grade=${grade}`);
+      const data = await response.json();
+      const homes = (data.languages || []).filter((row) => row.level === 'Home Language');
+      const additionals = (data.languages || []).filter((row) => row.level === 'First Additional Language');
+      fillSelect(homeLangSelect, homes.map((row) => ({ value: row.language, label: row.language })), 'Select Official Home Language');
+      fillSelect(additionalSelect, additionals.map((row) => ({ value: row.language, label: row.language })), 'Select a First Additional Language');
+      const required = additionals.find((row) => row.required);
+      if (policyHint) {
+        policyHint.textContent = required ? `This school requires ${required.language} First Additional Language.` : '';
+      }
+      publishedStreams = data.streams || [];
+      fillSelect(streamSelect, publishedStreams.map((stream) => ({
+        value: String(stream.id),
+        label: `${stream.name}: ${stream.mathematics}; ${stream.electives.join(', ')}`
+      })), 'Select a published stream');
+      if (emptyState) emptyState.style.display = data.empty ? 'block' : 'none';
+    } catch (_) {
+      if (emptyState) {
+        emptyState.style.display = 'block';
+        emptyState.textContent = 'Subject streams have not yet been made available by this school. Please contact the school for assistance.';
+      }
+    }
+    renderPackage();
+  }
+
+  [gradeSelect, yearSelect, schoolSelect].forEach((element) => {
+    if (element) element.addEventListener('change', loadPublishedStreams);
+  });
+  [homeLangSelect, additionalSelect, streamSelect].forEach((element) => {
+    if (element) element.addEventListener('change', renderPackage);
+  });
   if (gradeSelect) {
     gradeSelect.addEventListener('change', () => {
       const grade = parseInt(gradeSelect.value, 10);
-      if (grade >= 10) {
-        if (streamGroup) streamGroup.style.display = 'block';
-        updateStreamHint();
-      } else {
-        if (streamGroup) streamGroup.style.display = 'none';
-      }
-
       if (gradeCapacityNotice && gradeCapacities[grade]) {
         const gInfo = gradeCapacities[grade];
         gradeCapacityNotice.innerHTML = `Grade ${grade} capacity: <strong>${gInfo.availableSpace} spots remaining</strong> (< 30 learners per class limit)`;
@@ -1141,19 +1223,6 @@ function initGradeAndStream() {
       } else if (gradeCapacityNotice) {
         gradeCapacityNotice.style.display = 'none';
       }
-    });
-  }
-
-  if (homeLangSelect) {
-    homeLangSelect.addEventListener('change', () => {
-      clearFieldError('home_language');
-      updateStreamHint();
-    });
-  }
-
-  if (streamSelect) {
-    streamSelect.addEventListener('change', () => {
-      updateStreamHint();
     });
   }
 }

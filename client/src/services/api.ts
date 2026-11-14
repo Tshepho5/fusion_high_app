@@ -860,6 +860,21 @@ export const schoolRegistrationService = {
     api.put(`/api/schools/${schoolId}/banking`, data).then(res => res.data),
 };
 
+export const academicStreamService = {
+  configuration: (schoolId: number, year: number, grade: number) =>
+    api.get(`/api/schools/${schoolId}/academic-configuration`, { params: { year, grade } }).then(res => res.data),
+  saveOfferings: (schoolId: number, data: unknown) =>
+    api.put(`/api/schools/${schoolId}/academic-offerings`, data).then(res => res.data),
+  saveStream: (schoolId: number, data: unknown, streamId?: number | null) =>
+    streamId
+      ? api.put(`/api/schools/${schoolId}/academic-streams/${streamId}`, data).then(res => res.data)
+      : api.post(`/api/schools/${schoolId}/academic-streams`, data).then(res => res.data),
+  publish: (schoolId: number, streamId: number) =>
+    api.post(`/api/schools/${schoolId}/academic-streams/${streamId}/publish`).then(res => res.data),
+  archive: (schoolId: number, streamId: number) =>
+    api.post(`/api/schools/${schoolId}/academic-streams/${streamId}/archive`).then(res => res.data),
+};
+
 // Dynamic Class & Staff Invitation API
 export const classStaffService = {
   getClasses: () => api.get('/api/admin/classes').then(res => res.data),

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geleza-sa-cache-v2.7';
+const CACHE_NAME = 'geleza-sa-cache-v2.8';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/favicon.svg',

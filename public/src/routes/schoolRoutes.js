@@ -3,6 +3,7 @@ const multer = require('multer');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const schoolController = require('../controller/schoolController');
+const academicStreamController = require('../controller/academicStreamController');
 const schoolLogo = require('../services/schoolLogo');
 const { auth, requireRole } = require('../../../authMiddleware');
 
@@ -42,6 +43,16 @@ router.get('/applications/all', auth, canReviewSchoolRegistrations, schoolContro
 router.post('/applications/:id/hold', auth, canReviewSchoolRegistrations, schoolController.setApplicationHold);
 router.post('/applications/:id/decision', auth, canReviewSchoolRegistrations, schoolController.reviewSchoolApplication);
 router.post('/applications/:id/activation', auth, canReviewSchoolRegistrations, schoolController.resendPrincipalActivation);
+
+router.get('/catalogue/nsc', academicStreamController.catalogue);
+router.get('/:id/published-streams', academicStreamController.published);
+router.get('/:id/academic-configuration', auth, requireRole(['admin']), academicStreamController.configuration);
+router.put('/:id/academic-offerings', auth, requireRole(['admin']), academicStreamController.saveOfferings);
+router.post('/:id/academic-streams', auth, requireRole(['admin']), academicStreamController.saveStream);
+router.put('/:id/academic-streams/:streamId', auth, requireRole(['admin']), academicStreamController.saveStream);
+router.post('/:id/academic-streams/:streamId/publish', auth, requireRole(['admin']), academicStreamController.publishStream);
+router.post('/:id/academic-streams/:streamId/archive', auth, requireRole(['admin']), academicStreamController.archiveStream);
+router.post('/:id/subject-changes', auth, requireRole(['admin']), academicStreamController.approveSubjectChange);
 
 router.get('/', schoolController.getAllSchools);
 router.get('/current', schoolController.getCurrentSchool);

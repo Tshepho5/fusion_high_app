@@ -185,6 +185,13 @@ export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => 
 
     // 2. Curriculum & Academics
     {
+      id: 'academic-streams',
+      title: 'Subject Streams',
+      category: 'academics',
+      icon: BookOpen,
+      badge: 'Grades 10-12',
+    },
+    {
       id: 'subjects',
       title: 'School Curriculum & Subjects',
       category: 'academics',

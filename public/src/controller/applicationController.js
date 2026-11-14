@@ -11,6 +11,7 @@ const { validateSAID } = require('./saIDvalidations');
 const applicationService = require('../services/applicationService');
 const { canDecideApplication } = require('../services/schoolScope');
 const curriculumService = require('../services/curriculumService');
+const academicStreams = require('../services/academicStreamService');
 const paymentHold = require('../services/paymentHold');
 const paymentAccess = require('../services/paymentAccess');
 const { generateLearnerPasswordFromID } = require('./authController');
@@ -245,24 +246,55 @@ exports.submitApplication = async (req, res) => {
     const schoolSlug = targetSchool.slug || 'fusion-high';
     const schoolName = targetSchool.name || 'Fusion High School';
     const offeredLangs = targetSchool.offered_languages || ['English', 'Sepedi', 'isiZulu'];
-    const homeLanguage = (body.home_language || 'English').trim();
-
-    // Verify Home Language Offering and accommodate applicant
-    const isLangOffered = offeredLangs.some(l => 
-      l.toLowerCase().includes(homeLanguage.toLowerCase()) || 
-      homeLanguage.toLowerCase().includes(l.toLowerCase())
-    );
-    let languageAdvisory = null;
-    if (!isLangOffered) {
-      languageAdvisory = `Applicant selected ${homeLanguage}. ${schoolName} official language offerings include ${offeredLangs.join(', ')}. Learner will be accommodated under available language curriculum.`;
-    }
+    const homeLanguageInput = (body.home_language || '').trim();
 
     const applicationNumber = applicationService.generateApplicationNumber(schoolSlug);
     const correctionToken = applicationService.generateCorrectionToken();
 
     const gradeApplied = parseInt(body.grade_applied, 10);
-    const stream = gradeApplied >= 10 ? (body.stream || 'Science') : 'General';
-    const selectedSubjects = curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
+    const academicYear = parseInt(body.academic_year, 10) || new Date().getFullYear();
+    let stream = 'General';
+    let selectedSubjects = [];
+    let homeLanguage = homeLanguageInput || 'English';
+    let languageAdvisory = null;
+    let subjectPackage = null;
+    let academicStreamId = null;
+    let firstAdditionalLanguage = null;
+
+    if (gradeApplied >= 10) {
+      try {
+        const resolved = await academicStreams.resolveApplicantPackage({
+          schoolId,
+          grade: gradeApplied,
+          academicYear,
+          streamId: body.academic_stream_id,
+          homeLanguage: homeLanguageInput,
+          additionalLanguage: body.first_additional_language,
+          idNumber: body.id_number
+        });
+        stream = resolved.streamName;
+        selectedSubjects = resolved.selectedSubjects;
+        homeLanguage = resolved.homeLanguage;
+        firstAdditionalLanguage = resolved.additionalLanguage;
+        subjectPackage = resolved.subjectPackage;
+        academicStreamId = resolved.streamId;
+      } catch (streamError) {
+        return res.status(streamError.status || 400).json({
+          success: false,
+          error: streamError.message || 'The subject selection could not be saved.',
+          errors: streamError.errors || undefined
+        });
+      }
+    } else {
+      const isLangOffered = offeredLangs.some(l =>
+        l.toLowerCase().includes(homeLanguage.toLowerCase()) ||
+        homeLanguage.toLowerCase().includes(l.toLowerCase())
+      );
+      if (!isLangOffered) {
+        languageAdvisory = `Applicant selected ${homeLanguage}. ${schoolName} official language offerings include ${offeredLangs.join(', ')}. Learner will be accommodated under available language curriculum.`;
+      }
+      selectedSubjects = curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
+    }
 
     // Payments paused per system update: Application & Registration are 100% free / waived
     const appFeeAmount = 0.00;
@@ -505,6 +537,14 @@ exports.submitApplication = async (req, res) => {
 
     const appInsertResult = await db.query(insertQuery, values);
     const applicationId = appInsertResult.rows[0].id;
+    if (academicStreamId) {
+      await db.query(
+        `UPDATE applications
+         SET first_additional_language = $1, academic_stream_id = $2, subject_package = $3
+         WHERE id = $4`,
+        [firstAdditionalLanguage, academicStreamId, JSON.stringify(subjectPackage), applicationId]
+      );
+    }
 
     const receiptNo = `HOLD-APP-${Date.now().toString().slice(-6)}`;
     try {
@@ -833,7 +873,28 @@ exports.resubmitApplication = async (req, res) => {
     const aiVerification = await applicationService.verifyApplicationWithAI(merged, allDocs);
     const capacityStatus = await applicationService.getCapacityStatus();
     const gradeApplied = parseInt(merged.grade_applied, 10);
-    const stream = gradeApplied >= 10 ? (merged.stream || 'Science') : 'General';
+    let stream = gradeApplied >= 10 ? (application.stream || 'General') : 'General';
+    let resolvedPackage = null;
+    if (gradeApplied >= 10 && merged.academic_stream_id) {
+      try {
+        resolvedPackage = await academicStreams.resolveApplicantPackage({
+          schoolId: application.school_id,
+          grade: gradeApplied,
+          academicYear: parseInt(merged.academic_year, 10) || new Date().getFullYear(),
+          streamId: merged.academic_stream_id,
+          homeLanguage: merged.home_language,
+          additionalLanguage: merged.first_additional_language,
+          idNumber: merged.id_number || application.id_number
+        });
+        stream = resolvedPackage.streamName;
+      } catch (streamError) {
+        return res.status(streamError.status || 400).json({
+          success: false,
+          error: streamError.message || 'The subject selection could not be saved.',
+          errors: streamError.errors || undefined
+        });
+      }
+    }
     const assignedClass = await applicationService.allocateAvailableClass(gradeApplied, stream);
 
     let newStatus = 'submitted';
@@ -924,6 +985,26 @@ exports.resubmitApplication = async (req, res) => {
       provNumber,
       application.id
     ]);
+
+    if (resolvedPackage) {
+      await db.query(
+        `UPDATE applications
+         SET selected_subjects = $1,
+             home_language = $2,
+             first_additional_language = $3,
+             academic_stream_id = $4,
+             subject_package = $5
+         WHERE id = $6`,
+        [
+          resolvedPackage.selectedSubjects,
+          resolvedPackage.homeLanguage,
+          resolvedPackage.additionalLanguage,
+          resolvedPackage.streamId,
+          JSON.stringify(resolvedPackage.subjectPackage),
+          application.id
+        ]
+      );
+    }
 
     // Save newly uploaded documents
     for (const doc of uploadedDocs) {
@@ -1099,7 +1180,9 @@ exports.reviewApplication = async (req, res) => {
       const gradeApplied = parseInt(app.grade_applied, 10) || 10;
       const stream = app.stream || 'General';
       const homeLanguage = (app.home_language || 'Sepedi').trim();
-      const subjects = curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
+      const subjects = Array.isArray(app.selected_subjects) && app.selected_subjects.length === 7
+        ? app.selected_subjects
+        : curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
       
       const learnerInitialPw = (app.id_number && app.id_number.trim().length >= 6) ? generateLearnerPasswordFromID(app.id_number.trim()) : '123456';
       const defaultPassword = learnerInitialPw;
@@ -1531,7 +1614,9 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
     }
 
     // 3. Curriculum allocation
-    const allocatedSubjects = curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
+    const allocatedSubjects = Array.isArray(app.selected_subjects) && app.selected_subjects.length === 7
+      ? app.selected_subjects
+      : curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
 
     // 4. Create Parent User if doesn't exist
     let parentUserId = null;

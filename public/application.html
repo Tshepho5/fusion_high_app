@@ -261,21 +261,32 @@
               <option value="English">English (Home Language)</option>
               <option value="Afrikaans">Afrikaans (Huistaal)</option>
             </select>
-            <div class="hint">Official South African Home Language for CAPS subjects & curriculum allocation.</div>
+            <div class="hint">Choose a Home Language offered by the selected school.</div>
             <div class="field-error"></div>
             <!-- School Language Compatibility & Referrals Banner -->
             <div id="language-referral-banner" style="margin-top: 10px; display: none;"></div>
           </div>
 
-          <!-- Stream Selection (Grades 10-12 only) -->
-          <div class="form-group full-width" id="stream-selection-group" style="display: none;">
-            <label for="stream">Curriculum Academic Stream <span class="required">*</span></label>
-            <select id="stream" name="stream">
-              <option value="Science">Science Stream (Mathematics, Physical Sciences, Life Sciences)</option>
-              <option value="Commerce">Commerce Stream (Accounting, Business Studies, Economics)</option>
-              <option value="Tourism">Tourism & Services Stream (Tourism, Mathematical Literacy, Business Studies)</option>
+          <div class="form-group" id="academic-year-group">
+            <label for="academic_year">Academic year <span class="required">*</span></label>
+            <select id="academic_year" name="academic_year" required></select>
+          </div>
+          <div class="form-group" id="additional-language-group" style="display: none;">
+            <label for="first_additional_language">First Additional Language <span class="required">*</span></label>
+            <select id="first_additional_language" name="first_additional_language">
+              <option value="">Select a First Additional Language</option>
             </select>
-            <div class="hint" id="stream-compulsory-hint">Compulsory Core: English First Additional Language, Selected Home Language, Life Orientation.</div>
+            <div class="hint" id="language-policy-hint"></div>
+            <div class="field-error"></div>
+          </div>
+          <div class="form-group full-width" id="stream-selection-group" style="display: none;">
+            <label for="stream">Academic stream <span class="required">*</span></label>
+            <select id="stream" name="stream">
+              <option value="">Select a published stream</option>
+            </select>
+            <input type="hidden" id="academic_stream_id" name="academic_stream_id">
+            <div class="hint" id="streams-empty-state" style="display: none;">Subject streams have not yet been made available by this school. Please contact the school for assistance.</div>
+            <div id="subject-package-review" class="hint"></div>
           </div>
 
           <!-- Learner Contact Number (Optional) -->

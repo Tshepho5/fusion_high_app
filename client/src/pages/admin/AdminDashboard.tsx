@@ -18,6 +18,7 @@ import { MatricPassRateProjector } from '../../components/admin/MatricPassRatePr
 import { EducatorLeaveReliefManager } from '../../components/admin/EducatorLeaveReliefManager';
 import { AcademicAssessmentAudits } from '../../components/admin/AcademicAssessmentAudits';
 import { SchoolSubjectsManager } from '../../components/admin/SchoolSubjectsManager';
+import { AcademicStreamsManager } from '../../components/admin/AcademicStreamsManager';
 import { ReportCardStudio } from '../../components/admin/ReportCardStudio';
 import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
 import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
@@ -256,6 +257,7 @@ export const AdminDashboard: React.FC = () => {
       {activeTab === 'subjects' && (
         <SchoolSubjectsManager onOpenReportCardStudio={(g, s) => handleSelectTab('reports')} />
       )}
+      {activeTab === 'academic-streams' && <AcademicStreamsManager />}
       {activeTab === 'reports' && <ReportCardStudio />}
       {activeTab === 'marks' && <AcademicAssessmentAudits />}
       {activeTab === 'finance' && <SchoolFeesManager userRole="admin" />}
