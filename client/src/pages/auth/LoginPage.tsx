@@ -211,8 +211,12 @@ export const LoginPage: React.FC = () => {
         rememberMe,
       };
 
-      const { role } = await login(credentials);
-      navigate(`/dashboard/${role || 'learner'}`);
+      const session = await login(credentials);
+      if (!session?.data?.token || typeof session.data.token !== 'string') {
+        setError('The authentication service returned an invalid response.');
+        return;
+      }
+      navigate(`/dashboard/${session.role || 'learner'}`);
     } catch (err: any) {
       console.error('Login error:', err);
       const code = err.response?.data?.code;
@@ -246,8 +250,12 @@ export const LoginPage: React.FC = () => {
         challengeId: started.challengeId,
         response: assertion,
       });
-      const { role } = await establishSession(data, rememberMe);
-      navigate(`/dashboard/${role || 'learner'}`);
+      const session = await establishSession(data, rememberMe);
+      if (!session?.data?.token || typeof session.data.token !== 'string') {
+        setError('The authentication service returned an invalid response.');
+        return;
+      }
+      navigate(`/dashboard/${session.role || 'learner'}`);
     } catch (err: any) {
       const cancelled = err?.name === 'NotAllowedError' || err?.code === 'ERROR_CEREMONY_ABORTED';
       const message = cancelled

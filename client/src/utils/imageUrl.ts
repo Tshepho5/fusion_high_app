@@ -7,7 +7,11 @@ export const getProfilePictureUrl = (path?: string | null): string => {
     return path;
   }
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  
+
+  if (import.meta.env.PROD) {
+    return `https://fusion-high-backend.onrender.com${cleanPath}`;
+  }
+
   // If running on local server (Express port 4000 or Vite dev port 5173/3000), route locally
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
     if (window.location.port === '5173' || window.location.port === '3000') {

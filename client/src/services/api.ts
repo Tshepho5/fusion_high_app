@@ -1,18 +1,27 @@
 import axios from 'axios';
+import { acceptAuthResponse, InvalidAuthResponseError } from './authResponse';
+
+const PRODUCTION_API_URL = 'https://fusion-high-backend.onrender.com';
+
+const isHostedApiUrl = (value: string) => (
+  value.startsWith('https://') && !/localhost|127\.0\.0\.1/i.test(value)
+);
 
 export const getApiBaseUrl = (): string => {
+  const env = import.meta.env;
+  const configured = String(env.VITE_API_URL || '').trim();
+  if (env.PROD) {
+    return isHostedApiUrl(configured) ? configured : PRODUCTION_API_URL;
+  }
   const onLocalHost = typeof window !== 'undefined'
     && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  const localBackendFlag = (import.meta as any).env?.VITE_USE_LOCAL_BACKEND;
+  const localBackendFlag = env.VITE_USE_LOCAL_BACKEND;
   if (localBackendFlag === 'true' || (onLocalHost && localBackendFlag !== 'false')) {
     return '';
   }
-  const envUrl = (import.meta as any).env?.VITE_API_URL;
-  if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
-    return envUrl.trim();
-  }
+  if (isHostedApiUrl(configured)) return configured;
   if (onLocalHost) return '';
-  return 'https://fusion-high-backend.onrender.com';
+  return PRODUCTION_API_URL;
 };
 
 export const API_URL = getApiBaseUrl();
@@ -49,7 +58,14 @@ api.interceptors.request.use((config) => {
 
 // Handle response normalization and unauthorized responses
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    try {
+      response.data = acceptAuthResponse(response.config?.url, response.data);
+      return response;
+    } catch (err) {
+      return Promise.reject(err instanceof InvalidAuthResponseError ? err : new InvalidAuthResponseError());
+    }
+  },
   (error) => {
     // Sanitize any nested error objects (e.g. { error: { code, message } } from Vercel edge/serverless)
     if (error?.response?.data) {

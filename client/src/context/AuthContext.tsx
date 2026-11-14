@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { authService, userService } from '../services/api';
+import { canEnterDashboard, InvalidAuthResponseError, isSessionToken } from '../services/authResponse';
 
 export type UserRole = 'learner' | 'teacher' | 'admin' | 'parent' | null;
 
@@ -33,7 +34,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem('token') || sessionStorage.getItem('token') || null;
+    const stored = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (isSessionToken(stored)) return stored;
+    if (stored) {
+      localStorage.removeItem('token');
+      sessionStorage.removeItem('token');
+    }
+    return null;
   });
 
   const [role, setRole] = useState<UserRole>(() => {
@@ -194,6 +201,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [token]);
 
   const establishSession = async (data: any, rememberMe: boolean = true) => {
+    if (!canEnterDashboard(data)) {
+      throw new InvalidAuthResponseError();
+    }
     const userToken = data.token;
     const userRole = (data.role || 'learner').toLowerCase() as UserRole;
     const userData = data.user || { id: data.id, role: userRole, email: data.email };
