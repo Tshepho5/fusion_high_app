@@ -2,6 +2,7 @@ const db = require('../../../db/db');
 const { resolveSchoolId } = require('../services/schoolScope');
 const bcrypt = require('bcryptjs');
 const emailService = require('../services/emailService');
+const { findLinkableLearner, materializeAcceptedLearner } = require('../services/learnerMatch');
 const { validateSAID } = require('./saIDvalidations');
 const { isControlLocked } = require('./systemController');
 
@@ -15,17 +16,7 @@ function generateParentAppNumber(year = new Date().getFullYear()) {
 }
 
 async function findExactEnrolledChild({ learnerNumber, idNumber, firstName, surname }) {
-    const { rows } = await db.query(`
-        SELECT c.id, c.full_name, c.surname, c.learner_number, c.grade, c.stream, c.parent_id, u.email AS learner_email
-        FROM children c
-        JOIN users u ON c.learner_user_id = u.id
-        WHERE LOWER(TRIM(c.learner_number)) = LOWER(TRIM($1))
-          AND regexp_replace(COALESCE(u.id_number, ''), '\\D', '', 'g') = $2
-          AND LOWER(TRIM(c.full_name)) = LOWER(TRIM($3))
-          AND LOWER(TRIM(c.surname)) = LOWER(TRIM($4))
-        LIMIT 1
-    `, [learnerNumber, idNumber, firstName, surname]);
-    return rows[0] || null;
+    return findLinkableLearner({ learnerNumber, idNumber, firstName, surname });
 }
 
 /**
@@ -258,7 +249,7 @@ exports.submitParentApplication = async (req, res) => {
             const found = await findExactEnrolledChild(child);
             if (!found) {
                 return res.status(404).json({
-                    error: 'The learner number, 13-digit ID, first name, and surname must all match an enrolled learner. A new learner is not created from parent registration.'
+                    error: 'Those four details do not match an accepted or enrolled learner. Use the application reference from the acceptance letter, or the learner number, with the same ID, first name, and surname.'
                 });
             }
             matches.push(found);
@@ -285,7 +276,10 @@ exports.submitParentApplication = async (req, res) => {
             ]
         );
         const parentUserId = inserted.rows[0].id;
-        for (const child of matches) {
+        for (const pending of matches) {
+            const child = pending.kind === 'application'
+                ? await materializeAcceptedLearner(pending, { parentUserId, schoolId: validSchoolId, parentEmail: normalizedEmail })
+                : pending;
             const isPrimary = !child.parent_id;
             if (isPrimary) {
                 await db.query('UPDATE children SET parent_id = $1 WHERE id = $2', [parentUserId, child.id]);

@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { attachSessionCookie, ensureActiveSessionColumn } = require('../../../authMiddleware');
 const emailService = require('../services/emailService');
+const { findLinkableLearner, materializeAcceptedLearner } = require('../services/learnerMatch');
 const { validateSAID } = require('./saIDvalidations');
 const curriculumService = require('../services/curriculumService');
 const { isControlLocked } = require('./systemController');
@@ -159,26 +160,13 @@ exports.verifyLearner = async (req, res) => {
     }
 
     try {
-        const { rows } = await db.query(`
-            SELECT c.id, c.full_name, c.surname, c.learner_number, c.grade, c.stream, c.subjects, c.parent_id, c.secondary_parent_id,
-                   u.id_number, u.email as learner_email, cl.name as class_name
-            FROM children c
-            JOIN users u ON c.learner_user_id = u.id
-            LEFT JOIN classes cl ON c.class_id = cl.id
-            WHERE LOWER(TRIM(c.learner_number)) = LOWER(TRIM($1))
-              AND regexp_replace(COALESCE(u.id_number, ''), '\\D', '', 'g') = $2
-              AND LOWER(TRIM(c.full_name)) = LOWER(TRIM($3))
-              AND LOWER(TRIM(c.surname)) = LOWER(TRIM($4))
-            LIMIT 1
-        `, [learnerNumber, idNumber, firstName, surname]);
+        const learner = await findLinkableLearner({ learnerNumber, idNumber, firstName, surname });
 
-        if (rows.length === 0) {
+        if (!learner) {
             return res.status(404).json({
-                error: 'Those four details do not match an enrolled learner. A new learner is not created from this check.'
+                error: 'Those four details do not match an accepted or enrolled learner. Use the application reference from the acceptance letter, or the learner number, with the same ID, first name, and surname.'
             });
         }
-
-        const learner = rows[0];
         res.json({
             verified: true,
             learner: {
@@ -407,33 +395,22 @@ exports.registerUser = async (req, res) => {
                 });
             }
 
-            const cRes = await db.query(
-                `SELECT c.id, c.learner_user_id, c.full_name, c.surname, c.grade, c.stream, c.subjects, c.learner_number, c.parent_id,
-                        u.id_number as user_id_num, u.email as learner_email
-                 FROM children c
-                 JOIN users u ON c.learner_user_id = u.id
-                 WHERE LOWER(TRIM(c.learner_number)) = LOWER(TRIM($1))
-                   AND regexp_replace(COALESCE(u.id_number, ''), '\\D', '', 'g') = $2
-                   AND LOWER(TRIM(c.full_name)) = LOWER(TRIM($3))
-                   AND LOWER(TRIM(c.surname)) = LOWER(TRIM($4))
-                 LIMIT 1`,
-                [learnerNumber, childIdNum, childFirstName, childSurname]
-            );
+            const found = await findLinkableLearner({
+                learnerNumber,
+                idNumber: childIdNum,
+                firstName: childFirstName,
+                surname: childSurname
+            });
 
-            if (cRes.rows.length === 0) {
+            if (!found) {
                 return res.status(404).json({
-                    error: 'Those four details do not match an enrolled learner. Parent registration does not create a new learner.'
+                    error: 'Those four details do not match an accepted or enrolled learner. Use the application reference from the acceptance letter, or the learner number, with the same ID, first name, and surname.'
                 });
             }
 
-            const found = cRes.rows[0];
             validatedChildren.push({
                 ...found,
-                learner_number: found.learner_number,
-                id_number: childIdNum,
-                learner_email: found.learner_email,
-                grade: found.grade,
-                stream: found.stream
+                id_number: childIdNum
             });
         }
 
@@ -485,93 +462,30 @@ exports.registerUser = async (req, res) => {
             throw insertErr;
         }
 
-        // Link/create all verified children to the parent
         const finalLinkedChildren = [];
-        const learnerRoleRes = await db.query("SELECT id FROM roles WHERE name = 'learner'");
-        const learnerRoleId = learnerRoleRes.rows[0]?.id || 3;
 
-        for (const child of validatedChildren) {
-            if (child.is_from_application || child.is_new) {
-            const childPwHash = await bcrypt.hash(child.generated_password, 10);
-                // 1. Create or update user account for child
-                let learnerUserId;
-                const existingChildUser = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [child.learner_email]);
-                if (existingChildUser.rows.length === 0) {
-                    const newChildUserRes = await db.query(
-                        `INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, school_id)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-                        [child.learner_email, childPwHash, learnerRoleId, child.full_name, child.surname, child.id_number, targetSchoolId]
-                    );
-                    learnerUserId = newChildUserRes.rows[0].id;
-                } else {
-                    learnerUserId = existingChildUser.rows[0].id;
-                }
+        for (const pending of validatedChildren) {
+            const child = pending.kind === 'application'
+                ? await materializeAcceptedLearner(pending, { parentUserId: newUserId, schoolId: targetSchoolId, parentEmail: normalizedEmail })
+                : pending;
 
-                let childHomeLang = child.home_language || '';
-                if (child.application_number) {
-                    const appLangRes = await db.query('SELECT home_language FROM applications WHERE application_number = $1', [child.application_number]);
-                    if (appLangRes.rows.length > 0 && appLangRes.rows[0].home_language) {
-                        childHomeLang = appLangRes.rows[0].home_language;
-                    }
-                }
-                if (!childHomeLang) {
-                    childHomeLang = (targetSchoolId <= 6) ? 'Sepedi' : 'Setswana';
-                }
-                const officialSubjects = curriculumService.getSubjectsForGradeAndStream(child.grade, child.stream, childHomeLang);
-
-                // 2. Create or update children record
-                let childDbId;
-                const existingChildInDb = await db.query('SELECT id FROM children WHERE learner_number = $1 OR (full_name ILIKE $2 AND surname ILIKE $3)', [child.learner_number, child.full_name, child.surname]);
-                if (existingChildInDb.rows.length === 0) {
-                    const newChildRes = await db.query(
-                        `INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, stream, subjects, class_id, application_number, home_language, school_id)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
-                        [learnerUserId, child.full_name, child.surname, newUserId, child.learner_number, child.grade, child.stream, officialSubjects, child.assigned_class_id || null, child.application_number || null, childHomeLang, targetSchoolId]
-                    );
-                    childDbId = newChildRes.rows[0].id;
-                } else {
-                    childDbId = existingChildInDb.rows[0].id;
-                    await db.query('UPDATE children SET parent_id = $1, learner_user_id = $2, subjects = $3, grade = $4, stream = $5, home_language = $6, school_id = COALESCE(school_id, $7) WHERE id = $8', [newUserId, learnerUserId, officialSubjects, child.grade, child.stream, childHomeLang, targetSchoolId, childDbId]);
-                }
-
-                // 3. Insert into parent_children junction table
-                await db.query(
-                    `INSERT INTO parent_children (parent_id, child_id, relationship, is_primary)
-                     VALUES ($1, $2, $3, TRUE) ON CONFLICT (parent_id, child_id) DO NOTHING`,
-                    [newUserId, childDbId, parent_type || 'Parent']
-                );
-
-                if (child.application_number) {
-                    await db.query(`UPDATE applications SET status = 'enrolled' WHERE application_number = $1`, [child.application_number]);
-                }
-
-                finalLinkedChildren.push({ ...child, id: childDbId, subjects: officialSubjects });
-            } else {
-                // Dual-parent linking: Set primary parent_id if empty, otherwise secondary_parent_id
-                const existingChildRes = await db.query('SELECT id, parent_id, secondary_parent_id FROM children WHERE id = $1', [child.id]);
-                const existingChild = existingChildRes.rows[0];
-
-                let isPrimary = true;
-                if (!existingChild.parent_id) {
-                    await db.query('UPDATE children SET parent_id = $1 WHERE id = $2', [newUserId, child.id]);
-                } else if (existingChild.parent_id !== newUserId) {
-                    await db.query('UPDATE children SET secondary_parent_id = $1 WHERE id = $2', [newUserId, child.id]);
-                    isPrimary = false;
-                }
-
-                // Insert into parent_children junction table
-                await db.query(
-                    `INSERT INTO parent_children (parent_id, child_id, relationship, is_primary)
-                     VALUES ($1, $2, $3, $4) ON CONFLICT (parent_id, child_id) DO NOTHING`,
-                    [newUserId, child.id, parent_type || 'Parent', isPrimary]
-                );
-
-                if (child.application_number) {
-                    await db.query(`UPDATE applications SET status = 'enrolled' WHERE application_number = $1`, [child.application_number]);
-                }
-
-                finalLinkedChildren.push(child);
+            const existingChildRes = await db.query('SELECT id, parent_id, secondary_parent_id FROM children WHERE id = $1', [child.id]);
+            const existingChild = existingChildRes.rows[0];
+            let isPrimary = true;
+            if (existingChild && !existingChild.parent_id) {
+                await db.query('UPDATE children SET parent_id = $1 WHERE id = $2', [newUserId, child.id]);
+            } else if (existingChild && existingChild.parent_id && existingChild.parent_id !== newUserId) {
+                await db.query('UPDATE children SET secondary_parent_id = $1 WHERE id = $2', [newUserId, child.id]);
+                isPrimary = false;
             }
+
+            await db.query(
+                `INSERT INTO parent_children (parent_id, child_id, relationship, is_primary)
+                 VALUES ($1, $2, $3, $4) ON CONFLICT (parent_id, child_id) DO NOTHING`,
+                [newUserId, child.id, parent_type || 'Parent', isPrimary]
+            );
+
+            finalLinkedChildren.push(child);
         }
 
         // Dynamically determine baseUrl for email links

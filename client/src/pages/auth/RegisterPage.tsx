@@ -1718,7 +1718,7 @@ export const RegisterPage: React.FC = () => {
                   <div>
                     <p className="font-bold">Link an enrolled learner</p>
                     <p className="text-[11px] text-slate-300 mt-0.5">
-                      The official learner number, 13-digit ID, first name, and surname must all match a learner who is already enrolled.
+                      Enter the application reference from the acceptance letter, or the learner number, with the same 13-digit ID, first name, and surname.
                     </p>
                   </div>
                 </div>
