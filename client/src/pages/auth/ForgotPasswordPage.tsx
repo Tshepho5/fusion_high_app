@@ -298,12 +298,6 @@ export const ForgotPasswordPage: React.FC = () => {
                   }`}
                 />
               </div>
-              {error && step === 'request' && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>{typeof error === 'string' ? error : (error as any)?.message || String(error)}</span>
-                </p>
-              )}
             </div>
 
             <button

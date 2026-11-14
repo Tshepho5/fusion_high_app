@@ -84,12 +84,10 @@ async function domainCanReceiveMail(email) {
   }
 }
 
-function googleRelayAccepted(parsed, recipient) {
-  if (!parsed || typeof parsed !== 'object' || parsed.success !== true) return false;
-  if (parsed.sent === true) return true;
-  if (parsed.id || parsed.messageId) return true;
-  const echoed = String(parsed.to || parsed.recipient || '').trim().toLowerCase();
-  return Boolean(echoed) && echoed === String(recipient || '').trim().toLowerCase();
+function googleRelayAccepted(parsed) {
+  if (!parsed || typeof parsed !== 'object') return false;
+  if (parsed.success === false || parsed.sent === false || parsed.ok === false) return false;
+  return parsed.success === true || parsed.sent === true || parsed.ok === true || Boolean(parsed.id || parsed.messageId);
 }
 
 function sendViaDirectTls({ user, pass, to, subject, html, replyTo, fromName = 'Geleza SA' }) {
@@ -382,6 +380,28 @@ async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = '
       if (resp.status >= 200 && resp.status < 300) {
         return { success: true, provider: 'resend' };
       }
+      const configuredFrom = resendFromHeader(fromName);
+      if (resp.status === 403 && !/@resend\.dev>?$/i.test(configuredFrom)) {
+        const sandboxPayload = JSON.stringify({
+          from: `${fromName} <onboarding@resend.dev>`,
+          to: [to],
+          subject,
+          html,
+          text: text || undefined,
+          reply_to: replyTo
+        });
+        const sandbox = await httpsJson('https://api.resend.com/emails', {
+          headers: {
+            Authorization: `Bearer ${resendKey}`,
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(sandboxPayload)
+          },
+          body: sandboxPayload
+        });
+        if (sandbox.status >= 200 && sandbox.status < 300) {
+          return { success: true, provider: 'resend' };
+        }
+      }
       let detail = '';
       try {
         const parsed = JSON.parse(resp.body || '{}');
@@ -603,6 +623,16 @@ const emailService = {
           .replace(/https?:\/\/\S+/gi, '[url]')
           .slice(0, 300);
         console.warn(`[EMAIL NOTICE] HTTPS API dispatch attempt notice (${safeNotice}).`);
+      }
+    }
+
+    // Render blocks Gmail's SMTP ports. The Apps Script mailbox is the path that can still send.
+    if (process.env.RENDER) {
+      const relayResult = await deliverByConfirmedRelay();
+      if (relayResult && relayResult.success) {
+        console.log(`[EMAIL DISPATCH SUCCESS] Delivered via ${relayResult.provider} HTTPS API`);
+        if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.forgetDeliveredInvitation(targetRecipient);
+        return { success: true, provider: relayResult.provider, recipient: targetRecipient };
       }
     }
 
