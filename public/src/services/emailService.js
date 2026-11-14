@@ -43,6 +43,55 @@ function getFromAddress() {
   return getSmtpUser();
 }
 
+function resendFromHeader(fromName = 'Geleza SA') {
+  const explicit = String(process.env.RESEND_FROM || '').trim().replace(/^["']|["']$/g, '');
+  const candidate = explicit || getFromAddress();
+  const email = (String(candidate).match(/<([^>]+)>/) || [])[1] || String(candidate).trim();
+  if (email.includes('@') && !/@resend\.dev$/i.test(email)) {
+    return `${fromName} <${email}>`;
+  }
+  return `${fromName} <onboarding@resend.dev>`;
+}
+
+const mailDns = new dns.promises.Resolver({ timeout: 2000, tries: 1 });
+mailDns.setServers(['1.1.1.1', '8.8.8.8']);
+
+function lookupWithin(work, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(Object.assign(new Error('DNS lookup timed out'), { code: 'ETIMEOUT' })), ms);
+    work.then((value) => {
+      clearTimeout(timer);
+      resolve(value);
+    }, (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+
+async function domainCanReceiveMail(email) {
+  const domain = String(email || '').split('@')[1]?.trim().toLowerCase().replace(/\.+$/, '');
+  if (!domain || !domain.includes('.')) return false;
+  try {
+    const mx = await lookupWithin(mailDns.resolveMx(domain), 4000);
+    if (Array.isArray(mx) && mx.some((row) => row && row.exchange)) return true;
+  } catch (_) {}
+  try {
+    const addresses = await lookupWithin(mailDns.resolve4(domain), 4000);
+    return Array.isArray(addresses) && addresses.length > 0;
+  } catch (_) {
+    return false;
+  }
+}
+
+function googleRelayAccepted(parsed, recipient) {
+  if (!parsed || typeof parsed !== 'object' || parsed.success !== true) return false;
+  if (parsed.sent === true) return true;
+  if (parsed.id || parsed.messageId) return true;
+  const echoed = String(parsed.to || parsed.recipient || '').trim().toLowerCase();
+  return Boolean(echoed) && echoed === String(recipient || '').trim().toLowerCase();
+}
+
 function sendViaDirectTls({ user, pass, to, subject, html, replyTo, fromName = 'Geleza SA' }) {
   return new Promise((resolve, reject) => {
     const socket = tls.connect(465, 'smtp.gmail.com', { servername: 'smtp.gmail.com' });
@@ -306,57 +355,16 @@ async function resolveGoogleScriptUrl() {
   return '';
 }
 
-async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = 'Geleza SA', googleScriptUrl = '' }) {
+async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = 'Geleza SA', googleScriptUrl = '', skipGoogle = false, onlyGoogle = false }) {
   const errors = [];
   const resendKey = process.env.RESEND_API_KEY;
   const brevoKey = process.env.BREVO_API_KEY;
-  if (!googleScriptUrl) googleScriptUrl = await resolveGoogleScriptUrl();
+  if (!skipGoogle && !googleScriptUrl) googleScriptUrl = await resolveGoogleScriptUrl();
 
-  if (googleScriptUrl) {
-    try {
-      const axios = require('axios');
-      const payload = JSON.stringify({
-        to,
-        subject,
-        html,
-        text,
-        replyTo: replyTo || getFromAddress() || undefined,
-        fromName
-      });
-      const first = await axios.post(googleScriptUrl, payload, {
-        timeout: 45000,
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        maxRedirects: 0,
-        validateStatus: () => true
-      });
-      let status = first.status;
-      let data = first.data;
-      if (status >= 300 && status < 400 && first.headers.location) {
-        const second = await axios.get(first.headers.location, {
-          timeout: 45000,
-          maxRedirects: 0,
-          validateStatus: () => true
-        });
-        status = second.status;
-        data = second.data;
-      }
-      const parsed = typeof data === 'string'
-        ? (() => { try { return JSON.parse(data); } catch { return data; } })()
-        : data;
-      if (parsed && parsed.success === true) {
-        return { success: true, provider: 'google-apps-script' };
-      }
-      const reason = parsed && parsed.error ? String(parsed.error) : `HTTP ${status}`;
-      errors.push(`Google Apps Script: ${reason}`);
-    } catch (err) {
-      errors.push(`Google Apps Script: ${err.message}`);
-    }
-  }
-
-  if (resendKey) {
+  if (!onlyGoogle && resendKey) {
     try {
       const payload = JSON.stringify({
-        from: `${fromName} <onboarding@resend.dev>`,
+        from: resendFromHeader(fromName),
         to: [to],
         subject,
         html,
@@ -385,7 +393,7 @@ async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = '
     }
   }
 
-  if (brevoKey) {
+  if (!onlyGoogle && brevoKey) {
     try {
       const payload = JSON.stringify({
         sender: { name: fromName, email: getFromAddress() },
@@ -409,6 +417,47 @@ async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = '
       errors.push(`Brevo HTTP ${resp.status}`);
     } catch (err) {
       errors.push(`Brevo: ${err.message}`);
+    }
+  }
+
+  if (!skipGoogle && googleScriptUrl) {
+    try {
+      const axios = require('axios');
+      const payload = JSON.stringify({
+        to,
+        subject,
+        html,
+        text,
+        replyTo: replyTo || getFromAddress() || undefined,
+        fromName
+      });
+      const first = await axios.post(googleScriptUrl, payload, {
+        timeout: 15000,
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        maxRedirects: 0,
+        validateStatus: () => true
+      });
+      let status = first.status;
+      let data = first.data;
+      if (status >= 300 && status < 400 && first.headers.location) {
+        const second = await axios.get(first.headers.location, {
+          timeout: 15000,
+          maxRedirects: 0,
+          validateStatus: () => true
+        });
+        status = second.status;
+        data = second.data;
+      }
+      const parsed = typeof data === 'string'
+        ? (() => { try { return JSON.parse(data); } catch { return data; } })()
+        : data;
+      if (googleRelayAccepted(parsed, to)) {
+        return { success: true, provider: 'google-apps-script' };
+      }
+      const reason = parsed && parsed.error ? String(parsed.error) : `HTTP ${status}`;
+      errors.push(`Google Apps Script: ${reason}`);
+    } catch (err) {
+      errors.push(`Google Apps Script: ${err.message}`);
     }
   }
 
@@ -496,10 +545,45 @@ const emailService = {
 
     const senderUser = getSmtpUser();
     const senderPass = getSmtpPass();
-
-    // 1. High-Priority HTTPS REST API Delivery (Port 443, immune to cloud host SMTP port blocks)
     const googleScriptUrl = await resolveGoogleScriptUrl();
-    if (googleScriptUrl || process.env.RESEND_API_KEY || process.env.BREVO_API_KEY) {
+
+    const deliverByConfirmedRelay = async () => {
+      if (!googleScriptUrl) return null;
+      try {
+        return await sendViaHttpsRest({
+          to: targetRecipient,
+          subject,
+          html: body,
+          text,
+          replyTo: replyTo || senderUser,
+          fromName: 'Geleza SA',
+          googleScriptUrl,
+          onlyGoogle: true
+        });
+      } catch (relayErr) {
+        const safeNotice = redactSensitiveMail(relayErr.message)
+          .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[redacted]')
+          .replace(/https?:\/\/\S+/gi, '[url]')
+          .slice(0, 300);
+        console.warn(`[EMAIL NOTICE] Relay did not confirm delivery (${safeNotice}).`);
+        return null;
+      }
+    };
+
+    const failedDelivery = async (error) => {
+      const relayResult = await deliverByConfirmedRelay();
+      if (relayResult && relayResult.success) {
+        console.log(`[EMAIL DISPATCH SUCCESS] Delivered via ${relayResult.provider} HTTPS API`);
+        if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.forgetDeliveredInvitation(targetRecipient);
+        return { success: true, provider: relayResult.provider, recipient: targetRecipient };
+      }
+      if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.retainFailedInvitation(targetRecipient, body).catch(() => {});
+      return { success: false, error, recipient: targetRecipient };
+    };
+
+    // Resend and Brevo go out over HTTPS. The Google relay is only used after they
+    // and the mailbox fail, and only when it confirms the recipient.
+    if (process.env.RESEND_API_KEY || process.env.BREVO_API_KEY) {
       try {
         const httpResult = await sendViaHttpsRest({
           to: targetRecipient,
@@ -508,7 +592,7 @@ const emailService = {
           text,
           replyTo: replyTo || senderUser,
           fromName: 'Geleza SA',
-          googleScriptUrl
+          skipGoogle: true
         });
         console.log(`[EMAIL DISPATCH SUCCESS] Delivered via ${httpResult.provider} HTTPS API`);
         if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.forgetDeliveredInvitation(targetRecipient);
@@ -519,20 +603,11 @@ const emailService = {
           .replace(/https?:\/\/\S+/gi, '[url]')
           .slice(0, 300);
         console.warn(`[EMAIL NOTICE] HTTPS API dispatch attempt notice (${safeNotice}).`);
-        if (process.env.RENDER && googleScriptUrl) {
-          if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.retainFailedInvitation(targetRecipient, body).catch(() => {});
-          return { success: false, error: 'The verification email could not be sent. Try again in a moment.' };
-        }
       }
     }
 
     if (!senderUser || !senderPass) {
-      if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.retainFailedInvitation(targetRecipient, body).catch(() => {});
-      return {
-        success: false,
-        error: 'Email is not configured. Set SMTP_USER and SMTP_PASS, or RESEND_API_KEY, BREVO_API_KEY, or GOOGLE_SCRIPT_EMAIL_URL.',
-        recipient: targetRecipient
-      };
+      return failedDelivery('The verification email could not be sent. Try again in a moment.');
     }
 
     // 2. Primary SMTP Transport (Port 587 STARTTLS)
@@ -569,12 +644,7 @@ const emailService = {
         return { success: true, messageId: result.messageId, recipient: targetRecipient };
       } catch (tlsErr) {
         console.warn(`[EMAIL NOTICE] All outbound SMTP ports (587, 465) blocked by hosting provider: ${redactSensitiveMail(tlsErr.message).slice(0, 300)}`);
-        if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.retainFailedInvitation(targetRecipient, body).catch(() => {});
-        return { 
-          success: false, 
-          error: `SMTP ports blocked by host (${redactSensitiveMail(tlsErr.message).slice(0, 300)}). Set RESEND_API_KEY or BREVO_API_KEY for instant HTTPS delivery.`,
-          recipient: targetRecipient 
-        };
+        return failedDelivery('The verification email could not be sent. Try again in a moment.');
       }
     }
   },
@@ -982,7 +1052,7 @@ const emailService = {
 
       const contentHtml = `
         <p style="font-size: 14px; color: #cbd5e1; margin-top: 0;">
-          We received a request to reset your password for your Geleza SA account. Please use the 10-digit verification code below:
+          We received a request to reset your Geleza SA password. Use this 10-digit verification code:
         </p>
 
         <div style="background: #0f172a; border: 1px dashed #6366f1; border-radius: 12px; padding: 22px; text-align: center; margin: 20px 0;">
@@ -994,7 +1064,7 @@ const emailService = {
           </span>
           <div style="margin-top: 10px; display: inline-block; padding: 4px 12px; border-radius: 20px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);">
             <span style="font-size: 11px; color: #f87171; font-weight: 700; letter-spacing: 0.2px;">
-              VALID FOR 5 MINUTES
+              VALID FOR 15 MINUTES
             </span>
           </div>
         </div>
@@ -1006,11 +1076,11 @@ const emailService = {
 
       return {
         subject: 'Geleza SA password reset code',
-        text: `Your Geleza SA password reset code is ${otp}. It is valid for 5 minutes.\n\nEnter it here: ${resetLink}\n\nIf you did not ask to reset your password, you can ignore this email.`,
+        text: `Your Geleza SA password reset code is ${otp}. It is valid for 15 minutes.\n\nEnter it here: ${resetLink}\n\nIf you did not ask to reset your password, you can ignore this email.`,
         body: createBaseEmailTemplate({
-          preheader: `Your verification code is ${otp}. It is valid for 5 minutes.`,
+          preheader: `Your verification code is ${otp}. It is valid for 15 minutes.`,
           title,
-          subtitle: 'One-time security recovery code (5-minute limit)',
+          subtitle: 'One-time security recovery code (15-minute limit)',
           contentHtml,
           ctaText: 'Verify OTP & Reset Password',
           ctaLink: resetLink
@@ -3546,3 +3616,5 @@ emailService.sendRegistrationSuccessWithAllocation = async (params) => {
 };
 
 module.exports = emailService;
+module.exports.googleRelayAccepted = googleRelayAccepted;
+module.exports.domainCanReceiveMail = domainCanReceiveMail;

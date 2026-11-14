@@ -32,8 +32,9 @@ export const ForgotPasswordPage: React.FC = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Timer state: 300 seconds (5 minutes) countdown
-  const [timeLeft, setTimeLeft] = useState<number>(300);
+  const [sentTo, setSentTo] = useState('');
+  // Timer state: 900 seconds (15 minutes) countdown
+  const [timeLeft, setTimeLeft] = useState<number>(900);
   const [timerActive, setTimerActive] = useState<boolean>(false);
 
   const [loading, setLoading] = useState(false);
@@ -51,7 +52,7 @@ export const ForgotPasswordPage: React.FC = () => {
       if (urlStep === 'verify') {
         setStep('verify');
         setOtp('');
-        setTimeLeft(300);
+        setTimeLeft(900);
         setTimerActive(true);
         setMessage(null);
       }
@@ -85,11 +86,11 @@ export const ForgotPasswordPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await authService.forgotPassword({ email: email.trim(), channel: 'email' });
-      if (res.email) setEmail(res.email);
+      setSentTo(res.delivery_email || '');
       setOtp('');
-      setMessage(null);
+      setMessage(res.message || null);
       setStep('verify');
-      setTimeLeft(300);
+      setTimeLeft(900);
       setTimerActive(true);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to send recovery code. Please check your email or learner details.');
@@ -108,10 +109,10 @@ export const ForgotPasswordPage: React.FC = () => {
     setError(null);
     try {
       const res = await authService.forgotPassword({ email: email.trim(), channel: 'email' });
-      if (res.email) setEmail(res.email);
+      setSentTo(res.delivery_email || sentTo);
       setOtp('');
-      setMessage(null);
-      setTimeLeft(300);
+      setMessage(res.message || null);
+      setTimeLeft(900);
       setTimerActive(true);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to resend code.');
@@ -207,8 +208,8 @@ export const ForgotPasswordPage: React.FC = () => {
             {step === 'reset' ? 'Create New Password' : 'Account Recovery'}
           </h2>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-            {step === 'request' && 'Enter your registered email to receive a 5-minute recovery code'}
-            {step === 'verify' && 'Enter the 10-digit code'}
+            {step === 'request' && 'Enter the email, learner number, or ID number on the account'}
+            {step === 'verify' && (sentTo ? `Enter the 10-digit code sent to ${sentTo}` : 'Enter the 10-digit code from your email')}
             {step === 'reset' && 'Create your new password. Take your time to set a secure password.'}
           </p>
         </div>
@@ -263,7 +264,7 @@ export const ForgotPasswordPage: React.FC = () => {
           </div>
         )}
 
-        {message && step !== 'verify' && (
+        {message && (
           <div className="mb-6 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs flex items-center gap-3 animate-fade-in">
             <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span>{message}</span>
@@ -314,7 +315,7 @@ export const ForgotPasswordPage: React.FC = () => {
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>Send 5-Minute Recovery Code</span>
+                  <span>Send Recovery Code</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -407,7 +408,7 @@ export const ForgotPasswordPage: React.FC = () => {
                   className={`h-full transition-all duration-1000 ${
                     timeLeft > 60 ? 'bg-blue-600' : 'bg-rose-500'
                   }`}
-                  style={{ width: `${(timeLeft / 300) * 100}%` }}
+                  style={{ width: `${(timeLeft / 900) * 100}%` }}
                 />
               </div>
             </div>
@@ -440,11 +441,11 @@ export const ForgotPasswordPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleResendOtp}
-                disabled={resending || (timeLeft > 0 && timeLeft > 270)}
+                disabled={resending || (timeLeft > 870)}
                 className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-bold transition-colors disabled:opacity-40"
               >
                 <RefreshCw className={`w-3 h-3 ${resending ? 'animate-spin' : ''}`} />
-                <span>{resending ? 'Sending...' : 'Resend Code (5 mins)'}</span>
+                <span>{resending ? 'Sending...' : 'Resend Code'}</span>
               </button>
             </div>
           </form>

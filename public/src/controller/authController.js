@@ -835,19 +835,21 @@ exports.forgotPassword = async (req, res) => {
             });
         }
 
-        // Resolve real destination email strictly from verified account data in database
+        // Use the first saved address whose domain can actually accept mail.
+        const candidates = [user.email, user.parent_user_email]
+            .map((value) => String(value || '').trim())
+            .filter((value) => value.includes('@') && !value.toLowerCase().endsWith('@fusion.high') && !value.toLowerCase().endsWith('@fusionhigh.co.za'));
         let targetDeliveryEmail = '';
-        if (user.email && user.email.includes('@') && !user.email.toLowerCase().endsWith('@fusion.high') && !user.email.toLowerCase().endsWith('@fusionhigh.co.za')) {
-            targetDeliveryEmail = user.email.trim();
-        } else if (user.parent_user_email && user.parent_user_email.includes('@') && !user.parent_user_email.toLowerCase().endsWith('@fusion.high') && !user.parent_user_email.toLowerCase().endsWith('@fusionhigh.co.za')) {
-            targetDeliveryEmail = user.parent_user_email.trim();
-        } else if (user.email && user.email.includes('@')) {
-            targetDeliveryEmail = user.email.trim();
+        for (const candidate of candidates) {
+            if (await emailService.domainCanReceiveMail(candidate)) {
+                targetDeliveryEmail = candidate;
+                break;
+            }
         }
 
-        if (!targetDeliveryEmail || !targetDeliveryEmail.includes('@')) {
-            return res.status(400).json({ 
-                error: 'No valid recovery email address is registered on this account in the database. Please contact school administration for password reset assistance.' 
+        if (!targetDeliveryEmail) {
+            return res.status(400).json({
+                error: 'This account has no inbox that can receive mail. The saved address uses a domain that is not set up to accept email, so a reset code cannot be delivered.'
             });
         }
 
@@ -855,9 +857,8 @@ exports.forgotPassword = async (req, res) => {
         if (process.env.NODE_ENV !== 'production') {
             console.log(`[AUTH DEV] Recovery code for user ${user.id} is ${otp}. This is printed only when NODE_ENV is not production.`);
         }
-        // Set OTP expiry to 5 minutes (300 seconds) so users have sufficient time across all email clients
         await db.query(
-            "UPDATE users SET reset_code = $1, reset_expiry = NOW() + INTERVAL '5 minutes' WHERE id = $2",
+            "UPDATE users SET reset_code = $1, reset_expiry = NOW() + INTERVAL '15 minutes' WHERE id = $2",
             [otp, user.id]
         );
 
@@ -871,7 +872,7 @@ exports.forgotPassword = async (req, res) => {
                 email: user.email,
                 target_email: targetDeliveryEmail,
                 created_at: new Date(),
-                expires_at: new Date(Date.now() + 5 * 60 * 1000)
+                expires_at: new Date(Date.now() + 15 * 60 * 1000)
             };
             setImmediate(() => {
                 firestore.collection('password_resets').doc(String(user.id)).set(resetRecord).catch((fbErr) => {
@@ -925,11 +926,11 @@ exports.forgotPassword = async (req, res) => {
         console.log(`[AUTH FORGOT PW SUCCESS] Recovery code delivered to destination email.`);
 
         res.status(200).json({ 
-            message: `A 10-digit reset code has been sent to your registered email (${masked}). Please check your Inbox and Spam/Junk folder (valid for 5 minutes).`,
+            message: `A 10-digit reset code has been sent to ${masked}. Check that inbox and the spam folder. The code stays valid for 15 minutes.`,
             email: user.email,
             channel: 'email',
             delivery_email: masked,
-            expires_in: 300
+            expires_in: 900
         });
     } catch (err) { 
         console.error('[AUTH FORGOT PW ERROR]:', err);
@@ -988,7 +989,7 @@ exports.verifyOTP = async (req, res) => {
         const user = result.rows[0];
         const now = new Date();
         if (user.reset_expiry && new Date(user.reset_expiry) < now) {
-            return res.status(400).json({ error: 'OTP code has expired (5-minute limit). Please click Resend Code to receive a new OTP.' });
+            return res.status(400).json({ error: 'That code has expired. Choose Resend Code to receive a new one.' });
         }
         
         // Once verified, extend reset_expiry so user has sufficient time (15 mins) to enter new password
