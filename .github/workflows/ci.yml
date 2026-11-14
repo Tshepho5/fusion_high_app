@@ -38,8 +38,8 @@ jobs:
       - name: Typecheck & build
         run: npm run build
         env:
-          # Build should not require live API secrets
-          VITE_API_URL: http://localhost:4000
+          # An unset URL uses the Render API. A localhost URL is rejected.
+          VITE_API_URL: https://fusion-high-backend.onrender.com
 
   secrets-scan:
     name: Secrets hygiene scan

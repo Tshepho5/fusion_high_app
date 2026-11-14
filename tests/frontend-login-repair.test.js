@@ -36,6 +36,11 @@ test('production build guard accepts the Render API', async () => {
   }));
 });
 
+test('production build guard accepts a missing API URL', async () => {
+  const { assertProductionApiConfig } = await import(guardUrl);
+  assert.doesNotThrow(() => assertProductionApiConfig({}));
+});
+
 test('HTML and malformed authentication responses are rejected', async () => {
   const { acceptAuthResponse, canEnterDashboard, INVALID_AUTH_RESPONSE } = await import(responseUrl);
   assert.throws(() => acceptAuthResponse('/api/login', '<!doctype html><html></html>'), new RegExp(INVALID_AUTH_RESPONSE));
