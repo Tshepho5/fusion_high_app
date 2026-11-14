@@ -365,6 +365,16 @@ exports.registerUser = async (req, res) => {
     }
     role = 'parent';
 
+    const existingAccount = await db.query(
+        'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+        [normalizedEmail]
+    );
+    if (existingAccount.rows.length > 0) {
+        return res.status(409).json({
+            error: 'An account with this email already exists. Sign in or reset the password.'
+        });
+    }
+
     if (!parent_type) {
         parent_type = 'Guardian';
     }
@@ -447,26 +457,32 @@ exports.registerUser = async (req, res) => {
             }
         }
 
-        await db.query('BEGIN');
-
+        const { withTransaction } = require('../../../db/transaction');
         let newUserId;
-        if (existingUserRes.rows.length > 0) {
-            // Update existing user profile and set password
-            newUserId = existingUserRes.rows[0].id;
-            await db.query(
-                `UPDATE users SET password_hash = $1, full_name = COALESCE($2, full_name), surname = COALESCE($3, surname),
-                        id_number = COALESCE($4, id_number), dob = COALESCE($5, dob), gender = COALESCE($6, gender),
-                        phone = COALESCE($7, phone), physical_address = COALESCE($8, physical_address), country = COALESCE($9, country),
-                        race = COALESCE($10, race), parent_type = COALESCE($11, parent_type)
-                 WHERE id = $12`,
-                [hash, full_name, surname, id_number, dobForDb, gender, phone, physical_address, country, race, parent_type || null, newUserId]
-            );
-        } else {
-            // Insert new parent user
-            const query = `INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, phone, physical_address, country, race, parent_type, school_id)
-                           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id, email, full_name, surname`;
-            const result = await db.query(query, [normalizedEmail, hash, parentRoleId, full_name, surname, id_number, dobForDb, gender, phone, physical_address, country, race, parent_type || null, targetSchoolId]);
-            newUserId = result.rows[0].id;
+        try {
+            newUserId = await withTransaction(async (client) => {
+                await client.query('SELECT pg_advisory_xact_lock(hashtext(lower($1)))', [normalizedEmail]);
+                const stillThere = await client.query(
+                    'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+                    [normalizedEmail]
+                );
+                if (stillThere.rows.length > 0) {
+                    const exists = new Error('email exists');
+                    exists.code = 'EMAIL_EXISTS';
+                    throw exists;
+                }
+                const query = `INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, phone, physical_address, country, race, parent_type, school_id)
+                               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id, email, full_name, surname`;
+                const result = await client.query(query, [normalizedEmail, hash, parentRoleId, full_name, surname, id_number, dobForDb, gender, phone, physical_address, country, race, parent_type || null, targetSchoolId]);
+                return result.rows[0].id;
+            });
+        } catch (insertErr) {
+            if (insertErr && (insertErr.code === 'EMAIL_EXISTS' || insertErr.code === '23505')) {
+                return res.status(409).json({
+                    error: 'An account with this email already exists. Sign in or reset the password.'
+                });
+            }
+            throw insertErr;
         }
 
         // Link/create all verified children to the parent
@@ -489,7 +505,6 @@ exports.registerUser = async (req, res) => {
                     learnerUserId = newChildUserRes.rows[0].id;
                 } else {
                     learnerUserId = existingChildUser.rows[0].id;
-                    await db.query('UPDATE users SET password_hash = $1, school_id = COALESCE(school_id, $2) WHERE id = $3', [childPwHash, targetSchoolId, learnerUserId]);
                 }
 
                 let childHomeLang = child.home_language || '';
@@ -559,8 +574,6 @@ exports.registerUser = async (req, res) => {
             }
         }
 
-        await db.query('COMMIT');
-
         // Dynamically determine baseUrl for email links
         let baseUrl = typeof req.get === 'function' ? req.get('origin') : null;
         if (!baseUrl && typeof req.get === 'function' && req.get('referer')) {
@@ -617,8 +630,13 @@ exports.registerUser = async (req, res) => {
         });
     } catch (err) { 
         await db.query('ROLLBACK');
+        if (err && (err.code === '23505' || err.code === 'EMAIL_EXISTS')) {
+            return res.status(409).json({
+                error: 'An account with this email already exists. Sign in or reset the password.'
+            });
+        }
         console.error('Registration error:', err);
-        res.status(400).json({ error: err.message }); 
+        res.status(400).json({ error: 'Registration could not be completed.' }); 
     }
 };
 

@@ -19,6 +19,7 @@ const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { auth: authenticateToken, isAdmin } = require('./authMiddleware');
+const protectedFiles = require('./public/src/controller/protectedFileController');
 
 // Route and Controller Imports
 const authController = require('./public/src/controller/authController');
@@ -296,7 +297,14 @@ if (fs.existsSync(clientDistPath)) {
   app.use(express.static(clientDistPath));
 }
 
-// Static Assets & Uploads: Serve media, audio voice notes, profile pictures, and learning resources publicly with CORS & byte ranges
+// Admission files, profile pictures, and message attachments require a signed-in user.
+// Textbooks and other learning files stay on the public static path.
+app.get('/uploads/applications/:filename', authenticateToken, protectedFiles.sendApplicationFile);
+app.get('/uploads/pfp/:filename', authenticateToken, protectedFiles.sendProfileFile);
+app.get('/uploads/messages/:subfolder/:filename', authenticateToken, protectedFiles.sendMessageFile);
+app.get('/uploads/messages/:filename', authenticateToken, protectedFiles.sendMessageFile);
+
+// Static Assets & Uploads: learning resources stay public. Sensitive folders are refused here.
 const setStaticMediaHeaders = (res, filePath) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
@@ -309,40 +317,14 @@ const setStaticMediaHeaders = (res, filePath) => {
   else if (filePath.endsWith('.pdf')) res.setHeader('Content-Type', 'application/pdf');
 };
 
-app.use('/uploads', (req, res, next) => {
+app.use('/uploads', protectedFiles.rejectSensitiveStatic, (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 }, express.static(path.join(__dirname, 'uploads'), { setHeaders: setStaticMediaHeaders }));
 
-app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'), { setHeaders: setStaticMediaHeaders }));
+app.use('/uploads', protectedFiles.rejectSensitiveStatic, express.static(path.join(__dirname, 'public', 'uploads'), { setHeaders: setStaticMediaHeaders }));
 app.use(express.static('public'));
-
-// Smart resolver for /uploads/messages/ supporting both flat filenames and nested folders (/voice, /images, /documents)
-const resolveMessageFile = (req, res, next) => {
-  const sub = req.params.subfolder || '';
-  const file = req.params.filename || '';
-  const targetName = path.basename(file || sub);
-
-  const searchPaths = [
-    path.join(__dirname, 'uploads', 'messages', sub, file),
-    path.join(__dirname, 'uploads', 'messages', 'voice', targetName),
-    path.join(__dirname, 'uploads', 'messages', 'images', targetName),
-    path.join(__dirname, 'uploads', 'messages', 'documents', targetName),
-    path.join(__dirname, 'uploads', 'messages', targetName),
-  ];
-
-  for (const p of searchPaths) {
-    if (fs.existsSync(p) && fs.statSync(p).isFile()) {
-      setStaticMediaHeaders(res, p);
-      return res.sendFile(p);
-    }
-  }
-  next();
-};
-
-app.get('/uploads/messages/:subfolder/:filename', resolveMessageFile);
-app.get('/uploads/messages/:filename', resolveMessageFile);
 
 app.use('/downloads', express.static(path.join(__dirname, 'public', 'downloads')));
 

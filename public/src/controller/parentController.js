@@ -259,6 +259,15 @@ exports.linkChild = async (req, res) => {
     if (rejectNameDigits(res, targetFirstName, targetSurname)) return;
 
     try {
+        const parentAccount = await db.query(
+            'SELECT id, school_id, email, full_name, surname FROM users WHERE id = $1',
+            [parentId]
+        );
+        const parentSchoolId = parseInt(parentAccount.rows[0] && parentAccount.rows[0].school_id, 10);
+        if (!Number.isInteger(parentSchoolId) || parentSchoolId <= 0) {
+            return res.status(403).json({ error: 'Your account is not linked to a school.' });
+        }
+
         const query = `
             SELECT 
                 c.id as child_id, 
@@ -270,19 +279,19 @@ exports.linkChild = async (req, res) => {
                 c.stream,
                 c.subjects,
                 c.learner_number,
+                c.school_id,
                 u.id as user_id,
-                u.email as learner_email,
-                u.id_number as user_id_number,
-                TO_CHAR(u.dob, 'YYYY-MM-DD') as dob_string
+                u.email as learner_email
             FROM children c
             JOIN users u ON c.learner_user_id = u.id
             WHERE LOWER(TRIM(c.learner_number)) = LOWER(TRIM($1))
               AND regexp_replace(COALESCE(u.id_number, ''), '\\D', '', 'g') = $2
               AND LOWER(TRIM(c.full_name)) = LOWER(TRIM($3))
               AND LOWER(TRIM(c.surname)) = LOWER(TRIM($4))
+              AND c.school_id = $5
             LIMIT 1
         `;
-        const params = [targetLearnerNum, targetIdNumber, targetFirstName, targetSurname];
+        const params = [targetLearnerNum, targetIdNumber, targetFirstName, targetSurname, parentSchoolId];
 
         const { rows } = await db.query(query, params);
 
@@ -307,57 +316,35 @@ exports.linkChild = async (req, res) => {
             });
         }
 
-        // Link learner in parent_children table
-        await db.query(
-            `INSERT INTO parent_children (parent_id, child_id, relationship, is_primary, created_at)
-             VALUES ($1, $2, $3, true, NOW())
-             ON CONFLICT (parent_id, child_id) DO NOTHING`,
-            [parentId, child.child_id, relationship || 'Parent/Guardian']
-        );
+        const { withTransaction } = require('../../../db/transaction');
+        await withTransaction(async (client) => {
+            await client.query(
+                `INSERT INTO parent_children (parent_id, child_id, relationship, is_primary, created_at)
+                 VALUES ($1, $2, $3, true, NOW())
+                 ON CONFLICT (parent_id, child_id) DO NOTHING`,
+                [parentId, child.child_id, relationship || 'Parent/Guardian']
+            );
 
-        // Update parent_id on children records
-        if (!child.parent_id) {
-            await db.query('UPDATE children SET parent_id = $1 WHERE id = $2', [parentId, child.child_id]);
-        } else if (!child.secondary_parent_id && child.parent_id !== parentId) {
-            await db.query('UPDATE children SET secondary_parent_id = $1 WHERE id = $2', [parentId, child.child_id]);
-        }
-
-        // Retrieve parent info and dispatch credentials email
-        const parentUserRes = await db.query('SELECT email, full_name, surname FROM users WHERE id = $1', [parentId]);
-        const parentUser = parentUserRes.rows[0];
-
-        const learnerIdNum = child.user_id_number || targetIdNumber || '';
-        const generatedPassword = generateLearnerPasswordFromID(learnerIdNum);
-        const learnerEmail = child.learner_email || `${(child.learner_number || '').toLowerCase().replace(/[\s-]/g, '')}@fusion.high`;
-
-        // Update learner user password hash so generated password is valid for immediate login
-        if (child.user_id && generatedPassword) {
-            try {
-                const childPwHash = await bcrypt.hash(generatedPassword, 10);
-                await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [childPwHash, child.user_id]);
-            } catch (pwErr) {
-                console.warn('[LINK CHILD PW HASH]:', pwErr.message);
+            if (!child.parent_id) {
+                await client.query('UPDATE children SET parent_id = $1 WHERE id = $2 AND school_id = $3', [parentId, child.child_id, parentSchoolId]);
+            } else if (!child.secondary_parent_id && child.parent_id !== parentId) {
+                await client.query('UPDATE children SET secondary_parent_id = $1 WHERE id = $2 AND school_id = $3', [parentId, child.child_id, parentSchoolId]);
             }
-        }
+        });
 
-        // Send Linkage Confirmation & Credentials Email to Parent
+        const parentUser = parentAccount.rows[0];
         if (parentUser && parentUser.email) {
             try {
                 const parentFullName = `${parentUser.full_name || ''} ${parentUser.surname || ''}`.trim() || 'Parent / Guardian';
-                const tpl = emailService.templates.childLinkageWithCredentials({
-                    parentName: parentFullName,
-                    childName: child.full_name,
+                const tpl = emailService.templates.childLinkageSuccess(parentFullName, {
+                    full_name: child.full_name,
                     surname: child.surname,
-                    learnerNumber: child.learner_number || targetLearnerNum || `ID-${child.child_id}`,
-                    loginEmail: learnerEmail,
-                    password: generatedPassword,
+                    learner_number: child.learner_number || targetLearnerNum,
                     grade: child.grade,
                     stream: child.stream || 'General',
-                    subjects: child.subjects,
-                    baseUrl: req.protocol + '://' + req.get('host')
-                });
+                    id: child.child_id
+                }, req.protocol + '://' + req.get('host'));
                 await emailService.send(parentUser.email, tpl.subject, tpl.body);
-                console.log(`[LINK CHILD EMAIL] Sent confirmation & credentials to ${parentUser.email} for ${child.full_name}`);
             } catch (mailErr) {
                 console.warn('Linkage email notification error:', mailErr.message);
             }
@@ -368,7 +355,7 @@ exports.linkChild = async (req, res) => {
             await NotificationService.sendToUsers({
                 userIds: [parentId],
                 title: `Learner Linked: ${childFullName}`,
-                message: `Successfully linked ${childFullName} (Grade ${child.grade}) to your parent portal. Credentials have been dispatched to your email.`,
+                message: `Successfully linked ${childFullName} (Grade ${child.grade}) to your parent portal. Their existing sign-in was left unchanged.`,
                 type: 'system',
                 targetTab: 'children',
                 metadata: { child_id: child.child_id }
@@ -376,7 +363,7 @@ exports.linkChild = async (req, res) => {
         } catch (_) {}
 
         res.json({
-            message: `Successfully linked ${childFullName} to your parent portal! An email with their login credentials (Learner Number & password) has been dispatched.`,
+            message: `Successfully linked ${childFullName} to your parent portal. Their existing sign-in was left unchanged.`,
             child: {
                 id: child.child_id,
                 full_name: child.full_name,
@@ -384,17 +371,12 @@ exports.linkChild = async (req, res) => {
                 learner_number: child.learner_number,
                 grade: child.grade,
                 stream: child.stream
-            },
-            credentials: {
-                learner_name: `${child.full_name} ${child.surname}`,
-                learner_number: child.learner_number,
-                learner_email: learnerEmail,
-                generated_password: generatedPassword,
-                grade: child.grade,
-                stream: child.stream
             }
         });
     } catch (err) {
+        if (err && err.code === '23505') {
+            return res.status(400).json({ error: 'This learner is already linked to your parent portal account.' });
+        }
         console.error('Error linking child to parent:', err);
         res.status(500).json({ error: 'Failed to link learner to your account. Please try again.' });
     }

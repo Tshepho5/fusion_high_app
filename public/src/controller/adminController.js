@@ -1,5 +1,5 @@
 const db = require('../../../db/db');
-const { resolveSchoolId } = require('../services/schoolScope');
+const { resolveSchoolId, canDecideApplication } = require('../services/schoolScope');
 const emailService = require('../services/emailService');
 const applicationService = require('../services/applicationService');
 const { rejectNameDigits } = require('../services/lettersOnly');
@@ -2272,8 +2272,18 @@ exports.getAdmissionById = async (req, res) => {
         }
 
         const app = appRes.rows[0];
+        if (!canDecideApplication(req.user, app.school_id)) {
+            return res.status(404).json({ error: 'Application not found.' });
+        }
         const docRes = await db.query(`SELECT * FROM application_documents WHERE application_id = $1`, [app.id]);
-        app.documents = docRes.rows;
+        app.documents = docRes.rows.map((doc) => {
+            const raw = String(doc.file_path || '').replace(/\\/g, '/');
+            const base = raw.split('/').pop();
+            const safe = base && base !== '.' && base !== '..' && !base.includes('..') && !base.includes('/')
+                ? `/uploads/applications/${base}`
+                : null;
+            return { ...doc, file_path: safe };
+        });
 
         res.json(app);
     } catch (err) {
@@ -2290,15 +2300,23 @@ exports.updateAdmissionStatus = async (req, res) => {
         const { id } = req.params;
         const { status, assigned_class_id, notes } = req.body;
 
+        const existingRes = await db.query(
+            `SELECT id, school_id FROM applications WHERE id::text = $1::text OR application_number = $1::text`,
+            [id]
+        );
+        if (existingRes.rows.length === 0 || !canDecideApplication(req.user, existingRes.rows[0].school_id)) {
+            return res.status(404).json({ error: 'Application not found.' });
+        }
+
         const updateRes = await db.query(`
             UPDATE applications
             SET status = COALESCE($1, status),
                 assigned_class_id = COALESCE($2, assigned_class_id),
                 ai_verification_notes = COALESCE($3, ai_verification_notes),
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id::text = $4::text OR application_number = $4::text
+            WHERE id = $4
             RETURNING *;
-        `, [status || null, assigned_class_id || null, notes ? JSON.stringify(notes) : null, id]);
+        `, [status || null, assigned_class_id || null, notes ? JSON.stringify(notes) : null, existingRes.rows[0].id]);
 
         if (updateRes.rows.length === 0) {
             return res.status(404).json({ error: 'Application not found.' });
@@ -2378,6 +2396,9 @@ exports.inspectAdmissionDocOCR = async (req, res) => {
             return res.status(404).json({ error: 'Application not found.' });
         }
         const app = appRes.rows[0];
+        if (!canDecideApplication(req.user, app.school_id)) {
+            return res.status(404).json({ error: 'Application not found.' });
+        }
 
         let doc = null;
         if (documentId) {
@@ -4231,10 +4252,19 @@ exports.approveStaffInvite = async (req, res) => {
       [invite.email.toLowerCase().trim()]
     ).catch(() => ({ rows: [] }));
     const existingUser = userExistingRes.rows[0];
-    const effectivePasswordHash = invite.password_hash || existingUser?.password_hash || null;
+    if (existingUser) {
+      return res.status(409).json({
+        error: 'This email already belongs to an account. The invitation was not used to change that account. Ask the person to sign in, or send a new invitation to a different email.'
+      });
+    }
+    const effectivePasswordHash = invite.password_hash || null;
 
-    // 1. Create or update user in users table (role_id = 4 for teacher)
-    // If neither invite nor existingUser has a password, generate a secure random placeholder hash
+    const teacherRoleRes = await db.query("SELECT id FROM roles WHERE LOWER(name) = 'teacher' LIMIT 1");
+    const teacherRoleId = teacherRoleRes.rows[0] && teacherRoleRes.rows[0].id;
+    if (!teacherRoleId) {
+      return res.status(500).json({ error: 'Teacher registration is not available.' });
+    }
+
     const finalPasswordHash = effectivePasswordHash || await bcrypt.hash(require('crypto').randomBytes(16).toString('hex'), 10);
 
     const userRes = await db.query(`
@@ -4242,19 +4272,12 @@ exports.approveStaffInvite = async (req, res) => {
         email, password_hash, role_id, school_id, is_superadmin,
         full_name, surname, id_number, phone, country
       )
-      VALUES ($1, $2, 4, $3, FALSE, $4, $5, $6, $7, 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        password_hash = COALESCE(users.password_hash, EXCLUDED.password_hash),
-        role_id = 4,
-        school_id = EXCLUDED.school_id,
-        full_name = COALESCE(NULLIF(EXCLUDED.full_name, ''), users.full_name),
-        surname = COALESCE(NULLIF(EXCLUDED.surname, ''), users.surname),
-        id_number = COALESCE(EXCLUDED.id_number, users.id_number),
-        phone = COALESCE(EXCLUDED.phone, users.phone)
+      VALUES ($1, $2, $3, $4, FALSE, $5, $6, $7, $8, 'South Africa')
       RETURNING id, email, full_name, surname, role_id, school_id;
     `, [
       invite.email.toLowerCase().trim(),
       finalPasswordHash,
+      teacherRoleId,
       invite.school_id,
       finalFullName,
       finalSurname,
@@ -4354,8 +4377,13 @@ exports.approveStaffInvite = async (req, res) => {
       user
     });
   } catch (err) {
+    if (err && err.code === '23505') {
+      return res.status(409).json({
+        error: 'This email already belongs to an account. The invitation was not used to change that account. Ask the person to sign in, or send a new invitation to a different email.'
+      });
+    }
     console.error('Error approving staff application:', err);
-    res.status(500).json({ error: 'Failed to approve staff application: ' + err.message });
+    res.status(500).json({ error: 'Failed to approve staff application.' });
   }
 };
 

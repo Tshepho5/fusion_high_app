@@ -374,57 +374,78 @@ exports.confirmTeacherInvite = async (req, res) => {
       });
     }
 
-    // IF ALREADY APPROVED: Immediately activate user account in users & employees
-    const userRes = await db.query(`
-      INSERT INTO users (
-        email, password_hash, role_id, school_id, is_superadmin,
-        full_name, surname, id_number, phone, country
-      )
-      VALUES ($1, $2, 4, $3, FALSE, $4, $5, $6, $7, 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        password_hash = EXCLUDED.password_hash,
-        role_id = 4,
-        school_id = EXCLUDED.school_id,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname,
-        id_number = COALESCE(EXCLUDED.id_number, users.id_number),
-        phone = COALESCE(EXCLUDED.phone, users.phone)
-      RETURNING id, email, full_name, surname, role_id, school_id;
-    `, [
-      invite.email.toLowerCase().trim(),
-      passwordHash,
-      invite.school_id,
-      finalFullName,
-      finalSurname,
-      finalIdNumber || null,
-      finalPhone || null
-    ]);
+    const inviteEmail = invite.email.toLowerCase().trim();
+    const existingAccount = await db.query(
+      'SELECT id, password_hash, role_id, school_id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+      [inviteEmail]
+    );
+    if (existingAccount.rows.length > 0) {
+      return res.status(409).json({
+        error: 'This email already belongs to an account. Sign in with that account, or ask the school to send a new invitation to a different email.'
+      });
+    }
 
-    const user = userRes.rows[0];
+    const teacherRoleRes = await db.query("SELECT id FROM roles WHERE LOWER(name) = 'teacher' LIMIT 1");
+    const teacherRoleId = teacherRoleRes.rows[0] && teacherRoleRes.rows[0].id;
+    if (!teacherRoleId) {
+      return res.status(500).json({ error: 'Teacher registration is not available.' });
+    }
 
-    // 2. Create or update employee record with assigned subjects, grades, and classes!
-    await db.query(`
-      INSERT INTO employees (
-        user_id, full_name, surname, department_id, school_id, phone, email,
-        subjects, grades_taught, classes_taught
-      )
-      VALUES ($1, $2, $3, 2, $4, $5, $6, $7, $8, $9)
-      ON CONFLICT (user_id) DO UPDATE SET
-        school_id = EXCLUDED.school_id,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname,
-        email = EXCLUDED.email,
-        phone = EXCLUDED.phone,
-        subjects = EXCLUDED.subjects,
-        grades_taught = EXCLUDED.grades_taught,
-        classes_taught = EXCLUDED.classes_taught;
-    `, [
-      user.id, finalFullName, finalSurname,
-      invite.school_id, finalPhone || null, invite.email,
-      activeSubjects, activeGrades, activeClasses.map(c => cleanClassName(c, 10))
-    ]);
+    const { withTransaction } = require('../../../db/transaction');
+    let user;
+    try {
+      user = await withTransaction(async (client) => {
+        await client.query('SELECT pg_advisory_xact_lock(hashtext(lower($1)))', [inviteEmail]);
+        const raced = await client.query(
+          'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+          [inviteEmail]
+        );
+        if (raced.rows.length > 0) {
+          const exists = new Error('email exists');
+          exists.code = '23505';
+          throw exists;
+        }
+        const userRes = await client.query(`
+          INSERT INTO users (
+            email, password_hash, role_id, school_id, is_superadmin,
+            full_name, surname, id_number, phone, country
+          )
+          VALUES ($1, $2, $3, $4, FALSE, $5, $6, $7, $8, 'South Africa')
+          RETURNING id, email, full_name, surname, role_id, school_id
+        `, [
+          inviteEmail,
+          passwordHash,
+          teacherRoleId,
+          invite.school_id,
+          finalFullName,
+          finalSurname,
+          finalIdNumber || null,
+          finalPhone || null
+        ]);
+        const created = userRes.rows[0];
+        await client.query(`
+          INSERT INTO employees (
+            user_id, full_name, surname, department_id, school_id, phone, email,
+            subjects, grades_taught, classes_taught
+          )
+          VALUES ($1, $2, $3, 2, $4, $5, $6, $7, $8, $9)
+        `, [
+          created.id, finalFullName, finalSurname,
+          invite.school_id, finalPhone || null, invite.email,
+          activeSubjects, activeGrades, activeClasses.map(c => cleanClassName(c, 10))
+        ]);
+        return created;
+      });
+    } catch (createErr) {
+      if (createErr && createErr.code === '23505') {
+        return res.status(409).json({
+          error: 'This email already belongs to an account. Sign in with that account, or ask the school to send a new invitation to a different email.'
+        });
+      }
+      throw createErr;
+    }
 
-    // 3. Populate teacher_assignments table for each subject, grade, and class
+    // Assign subjects after the account and employee row exist.
     for (const subj of activeSubjects) {
       for (const grade of activeGrades) {
         const matchingClasses = activeClasses.filter(c => {
@@ -524,7 +545,7 @@ exports.confirmTeacherInvite = async (req, res) => {
     });
   } catch (err) {
     console.error('Error confirming teacher invite:', err);
-    res.status(500).json({ error: 'Failed to confirm invitation and activate teacher account: ' + err.message });
+    res.status(500).json({ error: 'Failed to confirm invitation and activate teacher account.' });
   }
 };
 

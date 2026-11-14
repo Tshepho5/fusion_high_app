@@ -16,4 +16,19 @@ function resolveSchoolId(req) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-module.exports = { resolveSchoolId };
+/**
+ * Admission decisions use the school stored on the application.
+ * A client-supplied school id is never consulted.
+ * A superadmin is the only account that may decide an application outside their own school.
+ */
+function canDecideApplication(user, applicationSchoolId) {
+  if (!user) return false;
+  if (user.is_superadmin === true) return true;
+  const own = parseInt(user.school_id, 10);
+  const applicationSchool = parseInt(applicationSchoolId, 10);
+  if (!Number.isInteger(own) || own <= 0) return false;
+  if (!Number.isInteger(applicationSchool) || applicationSchool <= 0) return false;
+  return own === applicationSchool;
+}
+
+module.exports = { resolveSchoolId, canDecideApplication };

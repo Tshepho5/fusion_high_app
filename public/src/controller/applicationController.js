@@ -9,6 +9,7 @@ const multer = require('multer');
 const emailService = require('../services/emailService');
 const { validateSAID } = require('./saIDvalidations');
 const applicationService = require('../services/applicationService');
+const { canDecideApplication } = require('../services/schoolScope');
 const curriculumService = require('../services/curriculumService');
 const paymentHold = require('../services/paymentHold');
 const paymentAccess = require('../services/paymentAccess');
@@ -1063,13 +1064,23 @@ exports.reviewApplication = async (req, res) => {
   const { status, admin_notes, assigned_class_id } = req.body;
 
   try {
-    const appRes = await db.query('SELECT * FROM applications WHERE id = $1', [id]);
+    const appRes = await db.query(
+      'SELECT * FROM applications WHERE id::text = $1::text OR application_number = $1::text',
+      [id]
+    );
     if (appRes.rows.length === 0) {
       return res.status(404).json({ error: 'Application not found.' });
     }
 
     const app = appRes.rows[0];
+    if (!canDecideApplication(req.user, app.school_id)) {
+      return res.status(404).json({ error: 'Application not found.' });
+    }
     let provNumber = app.provisional_learner_number;
+
+    if ((status === 'enrolled') && (app.school_id === null || app.school_id === undefined || app.school_id === '')) {
+      return res.status(400).json({ error: 'This application is not linked to a school.' });
+    }
 
     if ((status === 'approved' || status === 'enrolled') && !provNumber) {
       provNumber = await applicationService.generateProvisionalLearnerNumber(app.grade_applied);
@@ -1160,15 +1171,16 @@ exports.reviewApplication = async (req, res) => {
         await db.query(
           `UPDATE children SET
              full_name = $1, surname = $2, grade = $3, stream = $4, home_language = $5,
-             subjects = $6, parent_id = $7, learner_user_id = $8, is_active = TRUE
-           WHERE id = $9`,
-          [app.first_name, app.surname, gradeApplied, stream, homeLanguage, subjects, parentUserId, learnerUserId, childId]
+             subjects = $6, parent_id = $7, learner_user_id = $8, is_active = TRUE,
+             school_id = $9
+           WHERE id = $10`,
+          [app.first_name, app.surname, gradeApplied, stream, homeLanguage, subjects, parentUserId, learnerUserId, app.school_id, childId]
         );
       } else {
         const childInsert = await db.query(
-          `INSERT INTO children (full_name, surname, learner_number, grade, stream, home_language, subjects, parent_id, learner_user_id, application_number, is_active, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, TRUE, NOW()) RETURNING id`,
-          [app.first_name, app.surname, provNumber, gradeApplied, stream, homeLanguage, subjects, parentUserId, learnerUserId, app.application_number]
+          `INSERT INTO children (full_name, surname, learner_number, grade, stream, home_language, subjects, parent_id, learner_user_id, application_number, school_id, is_active, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, TRUE, NOW()) RETURNING id`,
+          [app.first_name, app.surname, provNumber, gradeApplied, stream, homeLanguage, subjects, parentUserId, learnerUserId, app.application_number, app.school_id]
         );
         childId = childInsert.rows[0].id;
       }
@@ -1240,7 +1252,7 @@ exports.reviewApplication = async (req, res) => {
         provisional_learner_number = $4,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $5
-    `, [finalStatus, admin_notes || app.admin_notes, assigned_class_id || app.assigned_class_id, provNumber, id]);
+    `, [finalStatus, admin_notes || app.admin_notes, assigned_class_id || app.assigned_class_id, provNumber, app.id]);
 
     // Send Rejection or Approval Email
     const baseUrl = getRequestBaseUrl(req);
@@ -1309,7 +1321,7 @@ exports.reviewApplication = async (req, res) => {
     });
   } catch (err) {
     console.error('[ADMIN REVIEW ERROR]:', err);
-    res.status(500).json({ error: 'Failed to process application enrollment: ' + err.message });
+    res.status(500).json({ error: 'Failed to process application enrollment.' });
   }
 };
 
@@ -1329,8 +1341,8 @@ exports.confirmSchoolReceipt = async (req, res) => {
       return res.status(404).json({ error: 'Application not found.' });
     }
     const app = appRes.rows[0];
-    if (!req.user?.is_superadmin && String(req.user?.school_id || '') !== String(app.school_id || '')) {
-      return res.status(403).json({ error: 'Only this school can record money in its bank account.' });
+    if (!canDecideApplication(req.user, app.school_id)) {
+      return res.status(404).json({ error: 'Application not found.' });
     }
     const schoolRes = await db.query('SELECT * FROM schools WHERE id = $1', [app.school_id]);
     if (!paymentHold.realBank(schoolRes.rows[0])) {
@@ -1475,6 +1487,12 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
         error: 'Connect this school\'s own bank account before recording that the fee arrived.'
       });
     }
+    if (app.school_id === null || app.school_id === undefined || app.school_id === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'This application is not linked to a school.'
+      });
+    }
     const regFeeAmount = parseFloat(app.registration_fee_amount) || 1500.00;
     const payRef = payment_reference || `PAY-REG-${Date.now().toString().slice(-8)}`;
     const receiptNo = `REC-REG-${Date.now().toString().slice(-6)}`;
@@ -1563,15 +1581,16 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
       await db.query(
         `UPDATE children SET
            full_name = $1, surname = $2, grade = $3, stream = $4, home_language = $5,
-           subjects = $6, parent_id = $7, learner_user_id = $8, class_id = $9, is_active = TRUE
-         WHERE id = $10`,
-        [app.first_name, app.surname, gradeApplied, stream, homeLanguage, allocatedSubjects, parentUserId, learnerUserId, assignedClassId, childId]
+           subjects = $6, parent_id = $7, learner_user_id = $8, class_id = $9, is_active = TRUE,
+           school_id = $10
+         WHERE id = $11`,
+        [app.first_name, app.surname, gradeApplied, stream, homeLanguage, allocatedSubjects, parentUserId, learnerUserId, assignedClassId, app.school_id, childId]
       );
     } else {
       const childInsert = await db.query(
-        `INSERT INTO children (full_name, surname, learner_number, grade, stream, home_language, subjects, parent_id, learner_user_id, application_number, class_id, is_active, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, TRUE, NOW()) RETURNING id`,
-        [app.first_name, app.surname, officialLearnerNo, gradeApplied, stream, homeLanguage, allocatedSubjects, parentUserId, learnerUserId, app.application_number, assignedClassId]
+        `INSERT INTO children (full_name, surname, learner_number, grade, stream, home_language, subjects, parent_id, learner_user_id, application_number, class_id, school_id, is_active, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, TRUE, NOW()) RETURNING id`,
+        [app.first_name, app.surname, officialLearnerNo, gradeApplied, stream, homeLanguage, allocatedSubjects, parentUserId, learnerUserId, app.application_number, assignedClassId, app.school_id]
       );
       childId = childInsert.rows[0].id;
     }
