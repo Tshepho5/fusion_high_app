@@ -155,10 +155,16 @@ export const AnnouncementsFeed: React.FC = () => {
     adminService.getAnnouncements()
       .then(res => {
         const list = Array.isArray(res) ? res : res.announcements || [];
+        const cleanNoticeText = (value: string) => String(value || '')
+          .replace(/[\u{1F600}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F300}-\u{1F5FF}\u{1F900}-\u{1F9FF}\u{1F1E0}-\u{1F1FF}]/gu, '')
+          .replace(/\s*[•·-]\s*school\s*\d+/gi, '')
+          .replace(/\(\s*multi-stream\s*\)/gi, '')
+          .replace(/\s{2,}/g, ' ')
+          .trim();
         const cleanList = list.map((a: any) => ({
           ...a,
-          title: (a.title || '').replace(/[\u{1F600}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F300}-\u{1F5FF}\u{1F900}-\u{1F9FF}\u{1F1E0}-\u{1F1FF}]/gu, '').trim(),
-          content: (a.content || '').replace(/[\u{1F600}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F300}-\u{1F5FF}\u{1F900}-\u{1F9FF}\u{1F1E0}-\u{1F1FF}]/gu, '').trim()
+          title: cleanNoticeText(a.title),
+          content: cleanNoticeText(a.content)
         }));
         setAnnouncements(cleanList);
       })
@@ -478,14 +484,14 @@ export const AnnouncementsFeed: React.FC = () => {
           isSelected
             ? 'ring-2 ring-brand-400 bg-brand-500/10 border-brand-400/40'
             : isPinned
-            ? 'bg-gradient-to-br from-surface-dark via-surface-dark to-amber-950/20 border-amber-500/40 shadow-amber-500/10 ring-1 ring-amber-500/20'
+            ? 'bg-[var(--card-background)] border-amber-500 shadow-sm ring-1 ring-amber-500/40'
             : isArchived
-            ? 'bg-surface-dark/30 border-white/5 opacity-70 hover:opacity-95'
+            ? 'bg-[var(--card-background)] border-[var(--border-color)] opacity-70 hover:opacity-95'
             : isRead
-            ? 'bg-surface-dark/50 border-white/5 opacity-85 hover:opacity-100'
+            ? 'bg-[var(--card-background)] border-[var(--border-color)] opacity-85 hover:opacity-100'
             : isUrgent
             ? 'bg-amber-500/10 border-amber-500/30 shadow-amber-500/5'
-            : 'bg-surface-dark border-white/10 hover:border-white/20'
+            : 'bg-[var(--card-background)] border-[var(--border-color)] hover:border-[var(--text-secondary)]'
         }`}
       >
         {/* Card Header: Selection Checkbox + Title + Badges + Date/Pin/Delete */}
@@ -507,7 +513,7 @@ export const AnnouncementsFeed: React.FC = () => {
 
             <div className="space-y-1.5 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className={`text-sm md:text-base font-bold font-display ${isRead || isArchived ? 'text-slate-300' : 'text-white'}`}>
+                <h3 className={`text-sm md:text-base font-bold font-display ${isRead || isArchived ? 'text-[var(--text-secondary)]' : 'text-[var(--text-primary)]'}`}>
                   {item.title}
                 </h3>
 
@@ -580,7 +586,7 @@ export const AnnouncementsFeed: React.FC = () => {
         </div>
 
         {/* Notice Content with Read More Clamp */}
-        <div className="text-xs md:text-sm text-slate-300 leading-relaxed whitespace-pre-wrap pl-6 sm:pl-6">
+        <div className="text-xs md:text-sm text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap pl-6 sm:pl-6">
           {isLong && !isExpanded ? (
             <>
               <p className="line-clamp-3">{item.content}</p>
@@ -611,10 +617,10 @@ export const AnnouncementsFeed: React.FC = () => {
         </div>
 
         {/* Standardized Bottom Action Bar: [ Pin ] [ Mark Read ] [ Archive ] [ Delete ] */}
-        <div className="pt-3 border-t border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px] text-slate-500">
+        <div className="pt-3 border-t border-[var(--border-color)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px] text-[var(--text-secondary)]">
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-brand-400 shrink-0" />
-            <span>Official Fusion High Broadcast</span>
+            <span>{user?.school?.name || user?.school_name || 'Official school notice'}</span>
           </span>
 
           <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
@@ -651,7 +657,7 @@ export const AnnouncementsFeed: React.FC = () => {
                   className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
                     isPinned
                       ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40 shadow-sm'
-                      : 'bg-surface-darker hover:bg-white/10 text-slate-300 hover:text-amber-300 border-white/10'
+                      : 'bg-[var(--input-background)] hover:bg-[var(--accent-soft)] text-[var(--text-primary)] border-[var(--border-color)]'
                   }`}
                   title={isPinned ? 'Unpin notice from top' : 'Pin notice to top'}
                 >
@@ -673,7 +679,7 @@ export const AnnouncementsFeed: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => markAsRead(item.id)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-300 hover:text-emerald-400 font-semibold text-xs border border-white/10 transition-colors"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[var(--input-background)] hover:bg-[var(--accent-soft)] text-[var(--text-primary)] font-semibold text-xs border border-[var(--border-color)] transition-colors"
                     title="Mark notice as read"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -706,7 +712,7 @@ export const AnnouncementsFeed: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => archiveNotice(item.id)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-surface-darker hover:bg-amber-500/20 text-slate-400 hover:text-amber-300 font-medium text-xs border border-white/5 transition-colors"
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[var(--input-background)] hover:bg-[var(--accent-soft)] text-[var(--text-primary)] font-medium text-xs border border-[var(--border-color)] transition-colors"
                     title="Archive notice"
                   >
                     <Archive className="w-3.5 h-3.5" />
@@ -718,7 +724,7 @@ export const AnnouncementsFeed: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => openDeleteModal(item.id, false)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-surface-darker hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 font-medium text-xs border border-white/5 transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[var(--input-background)] hover:bg-[var(--accent-soft)] text-[var(--text-primary)] font-medium text-xs border border-[var(--border-color)] transition-colors"
                   title="Move notice to Trash"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -737,7 +743,7 @@ export const AnnouncementsFeed: React.FC = () => {
       {/* Header with Title & Top Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
         <div>
-          <h2 className="text-xl md:text-2xl font-extrabold font-display text-white tracking-tight flex items-center gap-2">
+          <h2 className="text-xl md:text-2xl font-extrabold font-display text-[var(--text-primary)] tracking-tight flex items-center gap-2">
             <Megaphone className="w-6 h-6 text-brand-400" />
             <span>School Notices & Broadcasts</span>
           </h2>
@@ -884,7 +890,7 @@ export const AnnouncementsFeed: React.FC = () => {
       )}
 
       {/* Main Navigation Tabs: Unread / Read / Archive / Trash / All */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-surface-dark/80 p-2 rounded-2xl border border-white/10">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-[var(--card-background)] p-2 rounded-2xl border border-[var(--border-color)]">
         {/* Navigation Tabs */}
         <div className="flex items-center gap-1.5 w-full md:w-auto overflow-x-auto no-scrollbar">
           <button
@@ -893,7 +899,7 @@ export const AnnouncementsFeed: React.FC = () => {
             className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
               activeView === 'unread'
                 ? 'bg-brand-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--accent-soft)]'
             }`}
           >
             <Inbox className="w-3.5 h-3.5" />
@@ -911,7 +917,7 @@ export const AnnouncementsFeed: React.FC = () => {
             className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
               activeView === 'read'
                 ? 'bg-brand-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--accent-soft)]'
             }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
@@ -929,7 +935,7 @@ export const AnnouncementsFeed: React.FC = () => {
             className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
               activeView === 'archive'
                 ? 'bg-amber-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--accent-soft)]'
             }`}
           >
             <Archive className="w-3.5 h-3.5" />
@@ -947,7 +953,7 @@ export const AnnouncementsFeed: React.FC = () => {
             className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
               activeView === 'trash'
                 ? 'bg-rose-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--accent-soft)]'
             }`}
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -965,7 +971,7 @@ export const AnnouncementsFeed: React.FC = () => {
             className={`flex-1 md:flex-none px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
               activeView === 'all'
                 ? 'bg-brand-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--accent-soft)]'
             }`}
           >
             All ({activeNotices.length})
@@ -978,7 +984,7 @@ export const AnnouncementsFeed: React.FC = () => {
             type="button"
             onClick={() => setFilterCategory('all')}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              filterCategory === 'all' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'
+              filterCategory === 'all' ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
             All Categories

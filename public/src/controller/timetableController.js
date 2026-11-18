@@ -1121,36 +1121,61 @@ exports.getTimetableById = async (req, res) => {
     }
 };
 
+function cleanTimetableClassName(name) {
+    return String(name || '')
+        .replace(/\s*[•·-]\s*school\s*\d+/gi, '')
+        .replace(/\bschool\s*\d+\b/gi, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+}
+
+function describeTimetable(grade, stream, classNames = []) {
+    const classes = [...new Set(classNames.map(cleanTimetableClassName).filter(Boolean))];
+    const who = classes.length ? classes.join(', ') : `Grade ${grade}`;
+    const streamText = stream && !/multi-stream/i.test(String(stream)) ? String(stream) : '';
+    return streamText ? `${who} (${streamText})` : who;
+}
+
 exports.deleteTimetable = async (req, res) => {
     const { id } = req.params;
     const adminId = req.user ? req.user.id : null;
     const schoolId = getSchoolIdFromReq(req);
 
     try {
-        let grade = 10;
-        let stream = 'General';
-        let classSummary = 'Class Schedule';
+        let grade = null;
+        let stream = '';
+        let classNames = [];
+        let deleted = false;
 
         // 1. Fetch timetable details before deletion if present
         if (id && !isNaN(parseInt(id, 10))) {
             const ttRes = await db.query('SELECT * FROM timetables WHERE id = $1 AND school_id = $2', [parseInt(id, 10), schoolId]);
             if (ttRes.rows.length > 0) {
                 const tt = ttRes.rows[0];
-                grade = tt.grade || 10;
-                stream = tt.stream || 'General';
+                grade = tt.grade;
+                stream = tt.stream || '';
                 try {
                     const data = typeof tt.timetable_data === 'string' ? JSON.parse(tt.timetable_data) : tt.timetable_data;
-                    const classKeys = Object.keys(data || {});
-                    if (classKeys.length > 0) {
-                        classSummary = classKeys.join(', ');
-                    }
+                    classNames = Object.keys(data || {});
                 } catch (e) {}
+                await db.query('DELETE FROM timetables WHERE id = $1 AND school_id = $2', [parseInt(id, 10), schoolId]);
+                deleted = true;
             }
-            // 2. Delete timetable from database
-            await db.query('DELETE FROM timetables WHERE id = $1 AND school_id = $2', [parseInt(id, 10), schoolId]);
         } else {
-            await db.query('DELETE FROM timetables WHERE (name ILIKE $1 OR id::text = $1) AND school_id = $2', [`%${id}%`, schoolId]);
+            const named = await db.query('SELECT * FROM timetables WHERE (name ILIKE $1 OR id::text = $1) AND school_id = $2', [`%${id}%`, schoolId]);
+            if (named.rows[0]) {
+                grade = named.rows[0].grade;
+                stream = named.rows[0].stream || '';
+                await db.query('DELETE FROM timetables WHERE id = $1 AND school_id = $2', [named.rows[0].id, schoolId]);
+                deleted = true;
+            }
         }
+
+        if (!deleted) {
+            return res.status(404).json({ error: 'Timetable not found for this school.' });
+        }
+
+        const timetableLabel = describeTimetable(grade, stream, classNames);
 
         // 3. Post notification to announcements specifically for educators of this deleted class/grade
         try {
@@ -1158,11 +1183,11 @@ exports.deleteTimetable = async (req, res) => {
                 `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, school_id, created_at)
                  VALUES ($1, $2, 'teacher', $3, $4, $5, $6, NOW())`,
                 [
-                    `Timetable Deleted: Grade ${grade} (${stream})`,
-                    `Notice to Educators: The class timetable for ${classSummary} (${stream}) has been removed and reset by Administration. Previous teaching allocations for these classes are now open for new schedule generation.`,
+                    `Timetable Deleted: ${timetableLabel}`,
+                    `Notice to Educators: The class timetable for ${timetableLabel} has been removed and reset by Administration. Previous teaching allocations for these classes are now open for new schedule generation.`,
                     adminId,
                     grade,
-                    stream,
+                    stream && !/multi-stream/i.test(stream) ? stream : null,
                     schoolId
                 ]
             );
@@ -1180,8 +1205,8 @@ exports.deleteTimetable = async (req, res) => {
                 [grade, schoolId]
             );
 
-            const notifySubject = `Timetable Reset Notice: ${classSummary}`;
-            const notifyBody = `Administration has deleted and reset the timetable for ${classSummary} (${stream}). A new conflict-free schedule will be published shortly.`;
+            const notifySubject = `Timetable Reset Notice: ${timetableLabel}`;
+            const notifyBody = `Administration has deleted and reset the timetable for ${timetableLabel}. A new schedule will be published when it is ready.`;
 
             const resetTeacherIds = teachersRes.rows.map(t => t.id).filter(Boolean);
             if (resetTeacherIds.length > 0) {

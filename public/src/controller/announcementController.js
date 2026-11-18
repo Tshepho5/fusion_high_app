@@ -1,13 +1,19 @@
 const db = require('../../../db/db');
 const { db: firestore } = require('../../../db/firebase');
 const NotificationService = require('../services/notificationService');
+const { resolveSchoolId } = require('../services/schoolScope');
 
 exports.createAnnouncement = async (req, res) => {
     const { title, content, role_target = 'all', grade_target, stream_target, subject_target, priority = 'Normal' } = req.body;
+    const schoolId = resolveSchoolId(req);
+    if (!Number.isInteger(schoolId)) {
+        return res.status(403).json({ error: 'This account is not linked to a school.' });
+    }
     try {
         const result = await db.query(
-            'INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, subject_target) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-            [title, content, role_target, req.user.id, grade_target, stream_target, subject_target]
+            `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, subject_target, school_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+            [title, content, role_target, req.user.id, grade_target, stream_target, subject_target, schoolId]
         );
 
         // Fetch author name for notice preview
@@ -70,17 +76,9 @@ exports.getAnnouncements = async (req, res) => {
     try {
         const userRole = (req.user?.role || '').toLowerCase();
         const userId = req.user?.id;
-
-        // Auto-seed default school notices if table is empty
-        const countRes = await db.query('SELECT COUNT(*) FROM announcements');
-        if (parseInt(countRes.rows[0].count, 10) === 0) {
-            await db.query(`
-                INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, created_at)
-                VALUES
-                  ('Term 3 Academic Assessment Schedule & SBA Guidelines', 'All learners and parents are reminded that formal Term 3 CAPS assessments commence next week. Please consult your timetable and subject study guides.', 'all', $1, NULL, 'General', NOW() - INTERVAL '2 days'),
-                  ('Parent-Teacher Consultations & Academic Progress Review', 'Term 3 PTC booking slots are now open in the Parent Portal. Please book a 15-minute slot with your child subject educators.', 'parent', $1, NULL, 'General', NOW() - INTERVAL '1 day'),
-                  ('National Senior Certificate (NSFAS & Tertiary Bursaries)', 'Grade 12 matriculants are encouraged to view the Bursary & Scholarship Matching Hub to track open higher education funding opportunities.', 'learner', $1, 12, 'General', NOW())
-            `, [userId || null]);
+        const schoolId = resolveSchoolId(req);
+        if (!Number.isInteger(schoolId)) {
+            return res.status(403).json({ error: 'This account is not linked to a school.' });
         }
 
         let query = `
@@ -96,9 +94,9 @@ exports.getAnnouncements = async (req, res) => {
                 COALESCE(CONCAT(u.full_name, ' ', u.surname), 'School Administration') AS author_name
             FROM announcements a
             LEFT JOIN users u ON a.author_id::text = u.id::text
-            WHERE 1=1
+            WHERE a.school_id = $1
         `;
-        const params = [];
+        const params = [schoolId];
 
         if (userRole === 'admin') {
             // Admins see all announcements
@@ -170,8 +168,15 @@ exports.getAnnouncements = async (req, res) => {
 
 exports.deleteAnnouncement = async (req, res) => {
     try {
+        const schoolId = resolveSchoolId(req);
+        if (!Number.isInteger(schoolId)) {
+            return res.status(403).json({ error: 'This account is not linked to a school.' });
+        }
         const { id } = req.params;
-        await db.query('DELETE FROM announcements WHERE id = $1', [id]);
+        const result = await db.query('DELETE FROM announcements WHERE id = $1 AND school_id = $2', [id, schoolId]);
+        if (!result.rowCount) {
+            return res.status(404).json({ error: 'Notice not found for this school.' });
+        }
         res.json({ success: true, message: 'Announcement deleted successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
