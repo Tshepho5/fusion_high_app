@@ -3385,16 +3385,32 @@ exports.getSchoolSubjectsSummary = async (req, res) => {
         const gradeFilter = req.query.grade ? parseInt(req.query.grade, 10) : null;
         const streamFilter = (req.query.stream || '').trim();
 
-        // 1. Fetch subjects directly from the database subjects table
-        let subjQuery = `
-            SELECT s.id, s.name, s.code, s.grade, s.stream
-            FROM subjects s
-            WHERE 1=1
-        `;
-        const params = [];
+        // Saved school offerings are the curriculum. Learner subject lists fill grades the offerings table does not cover.
+        const offerings = await db.query(
+            `SELECT id, subject_name AS name, NULL::text AS code, grade, NULL::text AS stream
+             FROM school_subject_offerings
+             WHERE school_id = $1 AND is_active = TRUE
+             ORDER BY grade ASC, subject_name ASC`,
+            [schoolId]
+        ).catch(() => ({ rows: [] }));
+        const coveredGrades = new Set(offerings.rows.map((row) => Number(row.grade)));
+        const enrolled = await db.query(
+            `SELECT DISTINCT NULL::int AS id, subject_name AS name, NULL::text AS code, grade, stream
+             FROM (
+               SELECT unnest(COALESCE(c.subjects, ARRAY[]::text[])) AS subject_name, c.grade, c.stream
+               FROM children c
+               WHERE c.school_id = $1 AND c.subjects IS NOT NULL
+             ) enrolled_subjects
+             WHERE subject_name IS NOT NULL AND subject_name <> ''
+             ORDER BY grade ASC, subject_name ASC`,
+            [schoolId]
+        ).catch(() => ({ rows: [] }));
+        let subjects = offerings.rows.concat(
+            enrolled.rows.filter((row) => !coveredGrades.has(Number(row.grade)))
+        );
+
         if (gradeFilter) {
-            params.push(gradeFilter);
-            subjQuery += ` AND s.grade = $${params.length}`;
+            subjects = subjects.filter((row) => Number(row.grade) === gradeFilter);
         }
         if (streamFilter && streamFilter !== 'All') {
             let normStream = streamFilter;
@@ -3402,12 +3418,8 @@ exports.getSchoolSubjectsSummary = async (req, res) => {
             else if (normStream.toLowerCase().includes('commerce')) normStream = 'Commerce';
             else if (normStream.toLowerCase().includes('tourism')) normStream = 'Tourism';
             else if (normStream.toLowerCase().includes('general')) normStream = 'General';
-            params.push(normStream);
-            subjQuery += ` AND (s.stream = $${params.length} OR s.stream = 'General' OR s.stream IS NULL)`;
+            subjects = subjects.filter((row) => !row.stream || row.stream === normStream);
         }
-        subjQuery += ` ORDER BY s.grade ASC, s.name ASC;`;
-
-        const { rows: subjects } = await db.query(subjQuery, params);
 
         // 2. Fetch all educators and their assigned subjects
         const empRes = await db.query(`
@@ -3455,27 +3467,33 @@ exports.getSchoolSubjectsSummary = async (req, res) => {
             try {
                 marksStatsRes = await db.query(`
                     SELECT 
-                        COUNT(id) as total_marks_recorded,
-                        COUNT(DISTINCT assessment_name) as assessments_count,
-                        ROUND(AVG(percentage)) as avg_mark,
-                        COUNT(CASE WHEN percentage >= 50 THEN 1 END) as passed_count,
-                        COUNT(CASE WHEN published_to_admin = TRUE OR is_published = TRUE THEN 1 END) as published_count
-                    FROM marks
-                    WHERE grade = $1 AND LOWER(subject) = LOWER($2) AND (is_formal = TRUE OR is_formal IS NULL);
-                `, [sub.grade, sub.name]);
+                        COUNT(m.id) as total_marks_recorded,
+                        COUNT(DISTINCT m.assessment_name) as assessments_count,
+                        ROUND(AVG(m.percentage)) as avg_mark,
+                        COUNT(CASE WHEN m.percentage >= 50 THEN 1 END) as passed_count,
+                        COUNT(CASE WHEN m.published_to_admin = TRUE OR m.is_published = TRUE THEN 1 END) as published_count
+                    FROM marks m
+                    JOIN children c ON c.id = COALESCE(m.child_id, m.learner_id)
+                    WHERE c.school_id = $1 AND c.grade = $2
+                      AND LOWER(COALESCE(m.subject, m.subject_name, '')) = LOWER($3)
+                      AND (m.is_formal = TRUE OR m.is_formal IS NULL)
+                      AND m.percentage IS NOT NULL;
+                `, [schoolId, sub.grade, sub.name]);
             } catch (queryErr) {
-                // Defensive fallback if is_formal or published_to_admin column is not present
                 try {
                     marksStatsRes = await db.query(`
                         SELECT 
-                            COUNT(id) as total_marks_recorded,
-                            COUNT(DISTINCT assessment_name) as assessments_count,
-                            ROUND(AVG(percentage)) as avg_mark,
-                            COUNT(CASE WHEN percentage >= 50 THEN 1 END) as passed_count,
-                            COUNT(CASE WHEN is_published = TRUE THEN 1 END) as published_count
-                        FROM marks
-                        WHERE grade = $1 AND LOWER(subject) = LOWER($2);
-                    `, [sub.grade, sub.name]);
+                            COUNT(m.id) as total_marks_recorded,
+                            COUNT(DISTINCT m.assessment_name) as assessments_count,
+                            ROUND(AVG(m.percentage)) as avg_mark,
+                            COUNT(CASE WHEN m.percentage >= 50 THEN 1 END) as passed_count,
+                            COUNT(CASE WHEN m.is_published = TRUE THEN 1 END) as published_count
+                        FROM marks m
+                        JOIN children c ON c.id = COALESCE(m.child_id, m.learner_id)
+                        WHERE c.school_id = $1 AND c.grade = $2
+                          AND LOWER(COALESCE(m.subject, m.subject_name, '')) = LOWER($3)
+                          AND m.percentage IS NOT NULL;
+                    `, [schoolId, sub.grade, sub.name]);
                 } catch (fallbackErr) {
                     marksStatsRes = { rows: [{ total_marks_recorded: '0', assessments_count: '0', avg_mark: null, passed_count: '0', published_count: '0' }] };
                 }

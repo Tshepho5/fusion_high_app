@@ -107,6 +107,8 @@ export const ReportCardStudio: React.FC = () => {
   const [submissionsOverview, setSubmissionsOverview] = useState<SubmissionsOverview | null>(null);
   const [searchFilter, setSearchFilter] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [submissionsError, setSubmissionsError] = useState<string | null>(null);
 
   // Preview Modal State
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
@@ -120,6 +122,7 @@ export const ReportCardStudio: React.FC = () => {
   // Fetch / Load Template Marks
   const handleLoadTemplateMarks = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await adminService.getGradeTemplateMarks({
         grade: selectedGrade,
@@ -158,7 +161,7 @@ export const ReportCardStudio: React.FC = () => {
           subjects: subjectsDict,
           average_mark: avg,
           overall_caps_level: l.overall_level !== undefined ? l.overall_level : (avg !== null ? (avg >= 80 ? 7 : avg >= 70 ? 6 : avg >= 60 ? 5 : avg >= 50 ? 4 : avg >= 40 ? 3 : avg >= 30 ? 2 : 1) : '-'),
-          promotion_decision: l.promotion_status || l.promotion_decision || (avg === null ? 'PENDING TEACHER MARKS' : (avg >= 50 ? "PROMOTED — PASS WITH BACHELOR'S DEGREE ADMISSION (CAPS REG. 3(1))" : 'PROMOTED — DIPLOMA PASS')),
+          promotion_decision: l.promotion_status || l.promotion_decision || (avg === null ? 'PENDING TEACHER MARKS' : 'PROMOTED'),
           teacher_comment: l.teacher_comment || '',
           principal_comment: l.principal_comment || '',
           ai_advisory: l.ai_advisory || null,
@@ -171,9 +174,10 @@ export const ReportCardStudio: React.FC = () => {
       setSubjectColumns(res.subjects || res.schoolSubjects || []);
     } catch (err: any) {
       console.error('Failed to load grade template marks:', err);
-      const errMsg = err.response?.data?.error || err.message;
-      setToastMessage(`Error: ${errMsg}`);
-      setTimeout(() => setToastMessage(null), 6000);
+      const errMsg = err.response?.data?.error || err.message || 'The grade template could not be prepared.';
+      setLoadError(errMsg);
+      setLearners([]);
+      setSubjectColumns([]);
     } finally {
       setLoading(false);
     }
@@ -189,8 +193,11 @@ export const ReportCardStudio: React.FC = () => {
         stream: selectedStream
       });
       setSubmissionsOverview(res);
-    } catch (err) {
+      setSubmissionsError(null);
+    } catch (err: any) {
       console.warn('Failed to load teacher submissions overview:', err);
+      setSubmissionsOverview(null);
+      setSubmissionsError(err.response?.data?.error || 'Teacher submissions could not be loaded.');
     }
   };
 
@@ -206,7 +213,10 @@ export const ReportCardStudio: React.FC = () => {
         academicYear: academicYear
       });
 
-      setToastMessage(`✓ Transferred teacher marks for ${res.transferred_count || learners.length} learners! AI Advisories & CAPS rankings generated.`);
+      const transferred = Number(res?.transferred_count);
+      setToastMessage(Number.isFinite(transferred)
+        ? `Transferred teacher marks for ${transferred} learners.`
+        : 'The transfer finished, but the server did not confirm how many learners were updated.');
       setTimeout(() => setToastMessage(null), 6000);
 
       // Refresh both template grid and teacher submissions overview
@@ -255,10 +265,9 @@ export const ReportCardStudio: React.FC = () => {
           else if (avg >= 30) level = 2;
           else level = 1;
 
-          if (avg >= 50 && level >= 4) decision = 'Bachelor Pass Eligible';
-          else if (avg >= 40 && level >= 3) decision = 'Diploma Pass Eligible';
-          else if (avg >= 33.3) decision = 'Higher Certificate Pass';
-          else decision = 'Progressed (At Risk)';
+          if (avg >= 50) decision = 'PROMOTED';
+          else if (avg >= 40) decision = 'PROGRESSION';
+          else decision = 'NOT PROMOTED';
         }
 
         return {
@@ -432,7 +441,7 @@ export const ReportCardStudio: React.FC = () => {
       )}
 
       {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-950/70 via-surface-dark to-surface-dark border border-emerald-500/20 p-6 shadow-xl">
+      <div className="relative overflow-hidden rounded-3xl bg-[var(--card-background)] border border-emerald-500/20 p-6 shadow-xl">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-glow-emerald shrink-0">
@@ -440,7 +449,7 @@ export const ReportCardStudio: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl md:text-2xl font-black font-display text-white tracking-tight">
+                <h2 className="text-xl md:text-2xl font-black font-display text-[var(--text-primary)] tracking-tight">
                   Official South African CAPS Report Card Studio
                 </h2>
               </div>
@@ -502,8 +511,21 @@ export const ReportCardStudio: React.FC = () => {
         </div>
       </div>
 
+      {loadError && (
+        <div className="p-4 rounded-2xl border border-rose-500 bg-rose-50 text-rose-950 dark:bg-rose-950/40 dark:text-rose-50 flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold">{loadError}</p>
+          <button type="button" onClick={handleLoadTemplateMarks} className="px-3 py-1.5 rounded-lg bg-rose-700 text-white text-xs font-bold">Try again</button>
+        </div>
+      )}
+      {submissionsError && (
+        <div className="p-4 rounded-2xl border border-amber-500 bg-amber-50 text-amber-950 dark:bg-amber-950/40 dark:text-amber-50 flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold">{submissionsError}</p>
+          <button type="button" onClick={fetchSubmissionsOverview} className="px-3 py-1.5 rounded-lg bg-amber-700 text-white text-xs font-bold">Try again</button>
+        </div>
+      )}
+
       {/* Teacher Mark Submissions Status & Transfer Control Card */}
-      <div className="p-5 rounded-3xl bg-surface-dark border border-white/10 space-y-4 shadow-xl">
+      <div className="p-5 rounded-3xl bg-[var(--card-background)] border border-[var(--border-color)] space-y-4 shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-white/5">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-400 border border-brand-500/30 flex items-center justify-center shrink-0">
@@ -551,14 +573,14 @@ export const ReportCardStudio: React.FC = () => {
                   key={idx}
                   className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
                     isSubmitted
-                      ? 'bg-emerald-950/20 border-emerald-500/30 text-white'
+                      ? 'bg-emerald-50 border-emerald-600 text-emerald-950 dark:bg-emerald-950/40 dark:border-emerald-400 dark:text-emerald-50'
                       : isPartial
-                      ? 'bg-amber-950/20 border-amber-500/30 text-white'
-                      : 'bg-surface-darker/60 border-white/5 text-slate-400'
+                      ? 'bg-amber-50 border-amber-600 text-amber-950 dark:bg-amber-950/40 dark:border-amber-300 dark:text-amber-50'
+                      : 'bg-[var(--card-background)] border-[var(--border-color)] text-[var(--text-primary)]'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-1 mb-1">
-                    <span className="text-xs font-bold truncate text-slate-200" title={sub.subject}>
+                    <span className="text-xs font-bold truncate text-[var(--text-primary)]" title={sub.subject}>
                       {sub.subject}
                     </span>
                     <span className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-black uppercase ${
@@ -566,7 +588,7 @@ export const ReportCardStudio: React.FC = () => {
                         ? 'bg-emerald-500/20 text-emerald-300'
                         : isPartial
                         ? 'bg-amber-500/20 text-amber-300'
-                        : 'bg-slate-800 text-slate-400'
+                        : 'bg-[var(--accent-soft)] text-[var(--text-primary)]'
                     }`}>
                       {sub.status}
                     </span>
@@ -587,7 +609,7 @@ export const ReportCardStudio: React.FC = () => {
       </div>
 
       {/* Control & Filter Strip */}
-      <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 space-y-4">
+      <div className="p-4 rounded-2xl bg-[var(--card-background)] border border-[var(--border-color)] space-y-4">
         {/* Grade Buttons */}
         <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-white/5">
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -626,7 +648,7 @@ export const ReportCardStudio: React.FC = () => {
               <select
                 value={selectedStream}
                 onChange={(e) => setSelectedStream(e.target.value)}
-                className="px-3 py-1.5 rounded-xl bg-surface-darker border border-white/10 text-xs font-bold text-white focus:ring-2 focus:ring-emerald-500"
+                className="px-3 py-1.5 rounded-xl bg-[var(--input-background)] border border-[var(--border-color)] text-xs font-bold text-[var(--text-primary)] focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="Science">Science Stream</option>
                 <option value="Commerce">Commerce Stream</option>
@@ -641,7 +663,7 @@ export const ReportCardStudio: React.FC = () => {
               <select
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
-                className="px-3 py-1.5 rounded-xl bg-surface-darker border border-white/10 text-xs font-bold text-white focus:ring-2 focus:ring-emerald-500"
+                className="px-3 py-1.5 rounded-xl bg-[var(--input-background)] border border-[var(--border-color)] text-xs font-bold text-[var(--text-primary)] focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="All">All Classes</option>
                 <option value={selectedGrade}>Class {selectedGrade}</option>
@@ -654,7 +676,7 @@ export const ReportCardStudio: React.FC = () => {
               <select
                 value={selectedTerm}
                 onChange={(e) => setSelectedTerm(e.target.value)}
-                className="px-3 py-1.5 rounded-xl bg-surface-darker border border-white/10 text-xs font-bold text-white focus:ring-2 focus:ring-emerald-500"
+                className="px-3 py-1.5 rounded-xl bg-[var(--input-background)] border border-[var(--border-color)] text-xs font-bold text-[var(--text-primary)] focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="Term 1">Term 1</option>
                 <option value="Term 2">Term 2</option>
@@ -672,7 +694,7 @@ export const ReportCardStudio: React.FC = () => {
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               placeholder="Search candidate by name or number..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-surface-darker border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-[var(--input-background)] border border-[var(--border-color)] text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
         </div>
@@ -682,7 +704,7 @@ export const ReportCardStudio: React.FC = () => {
       {loading ? (
         <LoadingSpinner text="Computing assessment holdings & populating Grade template..." />
       ) : filteredLearners.length === 0 ? (
-        <div className="p-12 text-center rounded-3xl bg-surface-dark border border-white/10 space-y-3">
+        <div className="p-12 text-center rounded-3xl bg-[var(--card-background)] border border-[var(--border-color)] space-y-3">
           <BookOpen className="w-12 h-12 text-slate-600 mx-auto" />
           <p className="text-base font-bold text-white">No learners found in Grade {selectedGrade} {selectedStream}</p>
           <p className="text-xs text-slate-400 max-w-md mx-auto">
@@ -690,7 +712,7 @@ export const ReportCardStudio: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="p-5 rounded-3xl bg-surface-dark border border-white/10 space-y-3 shadow-xl">
+        <div className="p-5 rounded-3xl bg-[var(--card-background)] border border-[var(--border-color)] space-y-3 shadow-xl">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <div className="flex items-center gap-2">
@@ -710,7 +732,7 @@ export const ReportCardStudio: React.FC = () => {
 
           <div className="overflow-x-auto rounded-2xl border border-white/10 custom-scrollbar">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-surface-darker/95 text-slate-300 font-mono text-[10px] uppercase tracking-wider sticky top-0 z-20 border-b border-white/10">
+              <thead className="bg-[var(--input-background)] text-[var(--text-secondary)] font-mono text-[10px] uppercase tracking-wider sticky top-0 z-20 border-b border-[var(--border-color)]">
                 <tr>
                   <th className="py-3 px-3 min-w-[180px] bg-surface-darker">Learner Details</th>
                   <th className="py-3 px-2 min-w-[70px]">Class</th>
@@ -860,7 +882,7 @@ export const ReportCardStudio: React.FC = () => {
                       <td className="py-2.5 px-3">
                         <input
                           type="text"
-                          value={l.principal_comment || l.teacher_comment || (l.average_mark === null ? 'Awaiting teacher submission of official marks.' : 'Consistently maintains strong academic performance.')}
+                          value={l.principal_comment || l.teacher_comment || ''}
                           onChange={(e) => handleCommentChange(l.child_id, 'principal_comment', e.target.value)}
                           placeholder="Official comment..."
                           className="w-full px-2 py-1 text-[11px] rounded-lg bg-surface-darker border border-white/10 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-400"
@@ -1050,7 +1072,7 @@ export const ReportCardStudio: React.FC = () => {
                       { career: 'Construction Engineer', confidence: 18 },
                       { career: 'Banker', confidence: 10 }
                     ]).map((rec: any, idx: number) => (
-                      <div key={idx} className="p-2.5 rounded-xl bg-surface-dark border border-white/10 space-y-1">
+                      <div key={idx} className="p-2.5 rounded-xl bg-[var(--card-background)] border border-[var(--border-color)] space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="w-4 h-4 rounded-full bg-purple-500/30 text-purple-300 text-[10px] font-bold flex items-center justify-center">
                             {idx + 1}
@@ -1106,7 +1128,7 @@ export const ReportCardStudio: React.FC = () => {
 
               {/* BRANCH 3: GRADES 8, 10, 11 ACADEMIC TRAJECTORY & RISK INTERVENTIONS */}
               {Number(aiModalLearner.grade) !== 12 && Number(aiModalLearner.grade) !== 9 && (
-                <div className="p-3 rounded-xl bg-surface-dark border border-white/10 space-y-2">
+                <div className="p-3 rounded-xl bg-[var(--card-background)] border border-[var(--border-color)] space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-300">
                       Grade {aiModalLearner.grade} Academic Progress & Progression Forecast

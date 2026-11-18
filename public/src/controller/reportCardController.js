@@ -16,7 +16,14 @@ const reportCardPdfService = require('../services/reportCardPdfService');
  * Level 1: Not Achieved (0 - 29%)
  */
 const getCapsLevel = (percentage) => {
-  const p = Math.round(Number(percentage) || 0);
+  if (percentage === null || percentage === undefined || percentage === '') {
+    return { level: '-', rating: 'Pending', descriptor: 'Pending', badge: 'amber' };
+  }
+  const numeric = Number(percentage);
+  if (!Number.isFinite(numeric)) {
+    return { level: '-', rating: 'Pending', descriptor: 'Pending', badge: 'amber' };
+  }
+  const p = Math.round(numeric);
   if (p >= 80) return { level: 7, rating: 'Outstanding Achievement', descriptor: '7: Outstanding (80 - 100%)', badge: 'gold' };
   if (p >= 70) return { level: 6, rating: 'Meritorious Achievement', descriptor: '6: Meritorious (70 - 79%)', badge: 'cyan' };
   if (p >= 60) return { level: 5, rating: 'Substantial Achievement', descriptor: '5: Substantial (60 - 69%)', badge: 'blue' };
@@ -40,8 +47,10 @@ const calculateSouthAfricanPromotion = (subjects, overallAverage) => {
   let passedAbove50Count = 0;
 
   for (const s of subjects) {
-    const mark = Number(s.mark) || 0;
-    const name = (s.subject || '').toLowerCase();
+    if (s.mark === null || s.mark === undefined || s.mark === '') continue;
+    const mark = Number(s.mark);
+    if (!Number.isFinite(mark)) continue;
+    const name = (s.subject || s.name || '').toLowerCase();
 
     if (name.includes('home language') || name.includes('english hl') || name.includes('sepedi') || name.includes('isizulu')) {
       if (mark >= 40) hasHomeLanguagePass = true;
@@ -69,6 +78,36 @@ const calculateSouthAfricanPromotion = (subjects, overallAverage) => {
 
 exports.calculateSouthAfricanPromotion = calculateSouthAfricanPromotion;
 exports.getCapsLevel = getCapsLevel;
+
+let learnerIdentityColumns = null;
+
+/**
+ * Admission number is the learner number unless this database already has a
+ * separate children.admission_number column. Identity and date of birth come
+ * from the learner's user account when children does not store them.
+ */
+async function learnerIdentitySelect() {
+  if (!learnerIdentityColumns) {
+    const found = await db.query(
+      `SELECT column_name
+       FROM information_schema.columns
+       WHERE table_schema = 'public'
+         AND table_name = 'children'
+         AND column_name IN ('admission_number', 'id_number', 'dob')`
+    );
+    const names = new Set(found.rows.map((row) => row.column_name));
+    learnerIdentityColumns = {
+      admission: names.has('admission_number')
+        ? "COALESCE(NULLIF(c.admission_number, ''), c.learner_number) AS admission_number"
+        : 'c.learner_number AS admission_number',
+      idNumber: names.has('id_number')
+        ? 'COALESCE(NULLIF(c.id_number, \'\'), u.id_number) AS id_number'
+        : 'u.id_number',
+      dob: names.has('dob') ? 'COALESCE(c.dob, u.dob) AS dob' : 'u.dob'
+    };
+  }
+  return learnerIdentityColumns;
+}
 
 /**
  * Compiles and fetches the Report Card Template Data for a specific Grade, Class, and Stream.
@@ -122,41 +161,15 @@ exports.getGradeTemplateMarks = async (req, res) => {
       }
     } catch (_) {}
 
-    // 2. Query all distinct curriculum subjects for this grade and stream directly from the database
-    let subQuery = `
-      SELECT DISTINCT name, code 
-      FROM subjects
-      WHERE grade = $1
-    `;
-    const subParams = [grade];
-    if (grade >= 10 && stream && stream !== 'All') {
-      subParams.push(stream);
-      subQuery += ` AND (stream = $${subParams.length} OR stream = 'General' OR stream IS NULL)`;
-    }
-    subQuery += ` ORDER BY name ASC;`;
-
-    const subRes = await db.query(subQuery, subParams);
-    let schoolSubjects = subRes.rows.map(s => s.name);
-
-    if (schoolSubjects.length === 0) {
-      const fallbackSub = await db.query(
-        `SELECT DISTINCT name FROM subjects WHERE grade = $1 ORDER BY name ASC;`,
-        [grade]
-      );
-      schoolSubjects = fallbackSub.rows.map(s => s.name);
-    }
-
-    if (schoolSubjects.length === 0) {
-      if (stream === 'Science') {
-        schoolSubjects = ['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation', 'Geography'];
-      } else if (stream === 'Commerce') {
-        schoolSubjects = ['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Life Orientation', 'Home Language'];
-      } else if (stream === 'Tourism') {
-        schoolSubjects = ['Tourism', 'History', 'Geography', 'Mathematical Literacy', 'English FAL', 'Life Orientation', 'Home Language']; 
-      } else {
-        schoolSubjects = ['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Life Orientation'];
-      }
-    }
+    // Subjects come from this school's saved offerings, not the national subject catalogue.
+    const offered = await db.query(
+      `SELECT DISTINCT subject_name AS name
+       FROM school_subject_offerings
+       WHERE school_id = $1 AND grade = $2 AND is_active = TRUE
+       ORDER BY subject_name ASC`,
+      [schoolId, grade]
+    ).catch(() => ({ rows: [] }));
+    let schoolSubjects = offered.rows.map((row) => row.name);
 
     // 3. Fetch all enrolled learners strictly for this School, Grade, Class, and Stream
     const params = [schoolId, grade];
@@ -169,16 +182,18 @@ exports.getGradeTemplateMarks = async (req, res) => {
     let streamClause = '';
     if (stream && stream !== 'All') {
       params.push(stream);
-      streamClause = `AND (c.stream = $${params.length} OR c.stream IS NULL)`;
+      streamClause = `AND c.stream = $${params.length}`;
     }
 
+    const identity = await learnerIdentitySelect();
     const learnersQuery = `
       SELECT c.id, c.learner_user_id, c.full_name, c.surname, c.learner_number, c.grade, c.stream, c.subjects,
-             c.admission_number, c.id_number, c.dob,
+             ${identity.admission}, ${identity.idNumber}, ${identity.dob},
              COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name,
              p.email as parent_email, CONCAT(p.full_name, ' ', p.surname) as parent_name, p.phone as parent_phone
       FROM children c
       LEFT JOIN classes cl ON c.class_id = cl.id
+      LEFT JOIN users u ON c.learner_user_id = u.id
       LEFT JOIN parent_children pc ON c.id = pc.child_id
       LEFT JOIN users p ON pc.parent_id = p.id OR c.parent_id = p.id
       WHERE c.school_id = $1 AND c.grade = $2
@@ -188,6 +203,17 @@ exports.getGradeTemplateMarks = async (req, res) => {
     `;
 
     let { rows: learners } = await db.query(learnersQuery, params);
+    if (schoolSubjects.length === 0) {
+      const enrolledNames = new Set();
+      learners.forEach((learner) => {
+        if (Array.isArray(learner.subjects)) {
+          learner.subjects.forEach((name) => {
+            if (name) enrolledNames.add(String(name));
+          });
+        }
+      });
+      schoolSubjects = Array.from(enrolledNames).sort((a, b) => a.localeCompare(b));
+    }
 
     // 4. Fetch already saved report_cards records strictly for this school
     let existingCardsMap = new Map();
@@ -213,13 +239,6 @@ exports.getGradeTemplateMarks = async (req, res) => {
         ? [...l.subjects]
         : [...schoolSubjects];
 
-      // Guarantee Geography is always included for Science stream FET learners
-      if (grade >= 10 && (l.stream === 'Science' || stream === 'Science')) {
-        if (!studentSubjects.some(s => s.toLowerCase() === 'geography')) {
-          studentSubjects.push('Geography');
-        }
-      }
-
       // Fetch attendance register records for this student
       const attRes = await db.query(
         `SELECT
@@ -242,7 +261,7 @@ exports.getGradeTemplateMarks = async (req, res) => {
           `SELECT subject, assessment_name, score, max_score, percentage, weight, is_formal, assessment_type, recorded_at
            FROM marks
            WHERE (child_id = $1 OR learner_id = $1)
-             AND (term = $2 OR term IS NULL)
+             AND (term::text = $2::text OR term::text LIKE ($2::text || '20%'))
              AND (is_formal = TRUE OR is_formal IS NULL)
            ORDER BY recorded_at ASC`,
           [l.id, termNum]
@@ -252,7 +271,7 @@ exports.getGradeTemplateMarks = async (req, res) => {
           `SELECT subject, assessment_name, score, max_score, percentage, weight, recorded_at
            FROM marks
            WHERE (child_id = $1 OR learner_id = $1)
-             AND (term = $2 OR term IS NULL)
+             AND (term::text = $2::text OR term::text LIKE ($2::text || '20%'))
            ORDER BY recorded_at ASC`,
           [l.id, termNum]
         ).catch(() => ({ rows: [] }));
@@ -404,18 +423,6 @@ exports.getGradeTemplateMarks = async (req, res) => {
       const overallCaps = hasMarks ? getCapsLevel(overallAvg) : { level: '-', rating: 'Pending', descriptor: 'Pending Teacher Upload', badge: 'amber' };
       const promotionDecision = hasMarks ? calculateSouthAfricanPromotion(gradedSubjects, overallAvg) : 'PENDING TEACHER MARKS';
 
-      const defaultTeacherComment = hasMarks
-        ? (overallAvg >= 75
-          ? 'Exemplary academic focus, diligent task completion, and analytical thinking shown throughout the term.'
-          : (overallAvg >= 50 ? 'Consistent effort and positive progress demonstrated. Dedicated revision in complex topics recommended.' : 'Requires structured academic intervention and daily revision of foundational principles.'))
-        : 'Awaiting teacher submission of official term marks.';
-
-      const defaultPrincipalComment = hasMarks
-        ? (overallAvg >= 60
-          ? 'Promoted with congratulations. Commendable discipline and dedication to academic excellence.'
-          : (overallAvg >= 50 ? 'Satisfactory achievement. Encouraged to aim for distinction in the upcoming term.' : 'Parent consultation recommended to coordinate targeted academic remediation.'))
-        : 'Official term marks pending educator submission.';
-
       const rawFirst = (l.full_name || '').trim();
       const rawSur = (l.surname || '').trim();
       const cleanLearnerName = rawFirst.toLowerCase().endsWith(rawSur.toLowerCase())
@@ -427,7 +434,8 @@ exports.getGradeTemplateMarks = async (req, res) => {
         learner_name: rawFirst,
         learner_surname: rawSur,
         full_name: cleanLearnerName,
-        learner_number: l.learner_number || `2026-FHS-${String(l.id).padStart(3, '0')}`,
+        learner_number: l.learner_number || '',
+        admission_number: l.admission_number || l.learner_number || '',
         grade: l.grade,
         class_name: l.class_name,
         stream: l.stream || stream,
@@ -448,9 +456,9 @@ exports.getGradeTemplateMarks = async (req, res) => {
         overall_level: existingCard ? existingCard.overall_level : overallCaps.level,
         overall_rating: existingCard ? getCapsLevel(existingCard.overall_average).rating : overallCaps.rating,
         promotion_status: existingCard?.promotion_status || promotionDecision,
-        teacher_comment: existingCard?.teacher_comment || defaultTeacherComment,
-        principal_comment: existingCard?.principal_comment || defaultPrincipalComment,
-        principal_signature: existingCard?.principal_signature || (schoolInfo?.principal_name ? `${schoolInfo.principal_name} (Signed)` : 'Principal (Signed)'),
+        teacher_comment: existingCard?.teacher_comment || '',
+        principal_comment: existingCard?.principal_comment || '',
+        principal_signature: existingCard?.principal_signature || '',
         ai_advisory: existingCard?.ai_advisory || null,
         is_published: existingCard ? !!existingCard.is_published : false,
         status: existingCard?.status || (existingCard?.is_published ? 'published' : (existingCard ? 'generated' : 'draft')),
@@ -718,8 +726,12 @@ exports.publishGradeReportCards = async (req, res) => {
       if (l.parent_email) {
         try {
           const directLoginUrl = `${appUrl}/login?redirect=${encodeURIComponent(`/dashboard/parent.html?tab=reports&child_id=${l.child_id}`)}`;
-          const overallAvg = Number(l.overall_average) || 0;
-          const caps = getCapsLevel(overallAvg);
+          const overallAvg = l.overall_average === null || l.overall_average === undefined || l.overall_average === ''
+            ? null
+            : Number(l.overall_average);
+          const caps = overallAvg === null || !Number.isFinite(overallAvg)
+            ? { descriptor: 'Pending' }
+            : getCapsLevel(overallAvg);
 
           const emailSubject = `Official DBE CAPS Term ${tNum} Academic Report Card — ${l.child_name} ${l.child_surname} (Grade ${l.grade})`;
 
@@ -738,11 +750,11 @@ exports.publishGradeReportCards = async (req, res) => {
               </tr>
               <tr>
                 <td style="padding:8px 0; border-bottom:1px solid #334155; font-size:14px; color:#94a3b8;">Overall Term Average:</td>
-                <td style="padding:8px 0; border-bottom:1px solid #334155; font-size:18px; font-weight:800; color:#34d399; text-align:right;">${overallAvg}% (${caps.descriptor})</td>
+                <td style="padding:8px 0; border-bottom:1px solid #334155; font-size:18px; font-weight:800; color:#34d399; text-align:right;">${overallAvg === null ? 'Pending' : `${overallAvg}% (${caps.descriptor})`}</td>
               </tr>
               <tr>
                 <td style="padding:8px 0; font-size:14px; color:#94a3b8;">Promotion Decision:</td>
-                <td style="padding:8px 0; font-size:13px; font-weight:bold; color:#a5b4fc; text-align:right;">${l.promotion_status || 'PROMOTED TO NEXT GRADE'}</td>
+                <td style="padding:8px 0; font-size:13px; font-weight:bold; color:#a5b4fc; text-align:right;">${l.promotion_status || 'Pending'}</td>
               </tr>
             </table>
 
@@ -797,7 +809,9 @@ exports.publishGradeReportCards = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Grade ${grade} Term ${tNum} Report Cards published successfully! Notifications sent and ${emailSentCount} emails delivered to parents with direct login access.`,
+      message: emailSentCount > 0
+        ? `Grade ${grade} Term ${tNum} report cards were published for ${updateRes.rows.length} learners. ${emailSentCount} parent emails were sent.`
+        : `Grade ${grade} Term ${tNum} report cards were published for ${updateRes.rows.length} learners. No parent emails were sent.`,
       published_count: updateRes.rows.length,
       emails_sent: emailSentCount
     });
@@ -821,9 +835,11 @@ async function buildFullReportCardData(schoolId, childId, academicYear = 2026, t
   if (!targetChildId) return null;
 
   // 1. Fetch Child and School Details
+  const identity = await learnerIdentitySelect();
   const childRes = await db.query(
     `SELECT c.id, c.learner_user_id, c.full_name, c.surname, c.learner_number,
-            c.admission_number, c.id_number, c.dob, c.grade, c.stream, c.subjects,
+            ${identity.admission}, ${identity.idNumber}, ${identity.dob},
+            c.grade, c.stream, c.subjects,
             c.home_language, c.school_id,
             COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name,
             u.id_number as user_id_number, u.dob as user_dob,
@@ -878,22 +894,15 @@ async function buildFullReportCardData(schoolId, childId, academicYear = 2026, t
     ? [...child.subjects]
     : [];
 
-  if (studentSubjects.length === 0) {
-    const subRes = await db.query(
-      `SELECT DISTINCT name FROM subjects WHERE grade = $1 ORDER BY name ASC`,
-      [child.grade]
-    );
-    studentSubjects = subRes.rows.map(s => s.name);
-  }
-
-  if (studentSubjects.length === 0) {
-    if (child.grade <= 6) {
-      studentSubjects = ['English First Additional Language', 'Life Skills', 'Mathematics', 'Natural Sciences and Technology', 'Sepedi Home Language', 'Social Sciences'];
-    } else if (child.stream === 'Commerce') {
-      studentSubjects = ['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Home Language', 'Life Orientation'];
-    } else {
-      studentSubjects = ['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation'];
-    }
+  if (studentSubjects.length === 0 && child.school_id) {
+    const offered = await db.query(
+      `SELECT DISTINCT subject_name AS name
+       FROM school_subject_offerings
+       WHERE school_id = $1 AND grade = $2 AND is_active = TRUE
+       ORDER BY subject_name ASC`,
+      [child.school_id, child.grade]
+    ).catch(() => ({ rows: [] }));
+    studentSubjects = offered.rows.map((row) => row.name);
   }
 
   // 4. Fetch grade-wide averages for each subject and term across this school
@@ -1489,26 +1498,42 @@ exports.getTeacherSubmissionsOverview = async (req, res) => {
     }
 
     // 1. Fetch total enrolled learners for this grade and class
-    let learnersQ = `SELECT id, subjects FROM children WHERE grade = $1 AND (school_id = $2 OR $2 IS NULL)`;
+    let learnersQ = `
+      SELECT c.id, c.subjects
+      FROM children c
+      LEFT JOIN classes cl ON c.class_id = cl.id
+      WHERE c.grade = $1 AND c.school_id = $2
+    `;
     const params = [grade, schoolId];
     if (className && className !== 'All') {
       params.push(className);
-      learnersQ += ` AND (class_name = $${params.length} OR class_id::text = $${params.length})`;
+      learnersQ += ` AND (cl.name = $${params.length} OR c.class_id::text = $${params.length})`;
+    }
+    if (stream && stream !== 'All') {
+      params.push(stream);
+      learnersQ += ` AND c.stream = $${params.length}`;
     }
     const { rows: learners } = await db.query(learnersQ, params);
     const totalLearners = learners.length;
 
-    // 2. Fetch distinct subjects for this grade
-    let subQuery = `SELECT DISTINCT name FROM subjects WHERE grade = $1 ORDER BY name ASC;`;
-    let { rows: subRows } = await db.query(subQuery, [grade]);
-    let subjects = subRows.map(s => s.name);
-    if (subjects.length === 0) {
-      if (stream.toLowerCase().includes('commerce')) {
-        subjects = ['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Life Orientation', 'Home Language'];
-      } else {
-        subjects = ['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation', 'Geography'];
+    const subjectNames = new Set();
+    learners.forEach((learner) => {
+      if (Array.isArray(learner.subjects)) {
+        learner.subjects.forEach((name) => {
+          if (name) subjectNames.add(String(name));
+        });
       }
-    }
+    });
+    const offered = await db.query(
+      `SELECT DISTINCT subject_name
+       FROM school_subject_offerings
+       WHERE school_id = $1 AND grade = $2 AND is_active = TRUE`,
+      [schoolId, grade]
+    ).catch(() => ({ rows: [] }));
+    offered.rows.forEach((row) => {
+      if (row.subject_name) subjectNames.add(row.subject_name);
+    });
+    const subjects = Array.from(subjectNames).sort((a, b) => a.localeCompare(b));
 
     // 3. For each subject, query marks table for submissions
     const learnerIds = learners.map(l => l.id);
@@ -1517,15 +1542,18 @@ exports.getTeacherSubmissionsOverview = async (req, res) => {
     for (const sub of subjects) {
       let markCount = 0;
       let lastUploadedAt = null;
-      let teacherInfo = 'Assigned Subject Teacher';
+      let teacherInfo = '';
       if (learnerIds.length > 0) {
         const mRes = await db.query(
           `SELECT m.recorded_at, u.full_name, u.surname
            FROM marks m
            LEFT JOIN users u ON m.recorded_by = u.id
            WHERE (m.child_id = ANY($1) OR m.learner_id = ANY($1))
-             AND (m.term = $2 OR m.term IS NULL)
-             AND LOWER(m.subject) = LOWER($3)
+             AND (
+               m.term::text = $2::text
+               OR m.term::text LIKE ($2::text || '20%')
+             )
+             AND LOWER(COALESCE(m.subject, m.subject_name, '')) = LOWER($3)
            ORDER BY m.recorded_at DESC`,
           [learnerIds, termNum, sub]
         );
@@ -1551,7 +1579,7 @@ exports.getTeacherSubmissionsOverview = async (req, res) => {
         status: status,
         marks_recorded: markCount,
         total_learners: totalLearners,
-        teacher: teacherInfo,
+        teacher: teacherInfo ? { name: teacherInfo } : null,
         last_uploaded_at: lastUploadedAt
       });
     }
@@ -1629,7 +1657,7 @@ exports.transferTeacherMarksToTemplate = async (req, res) => {
           `SELECT subject, assessment_name, score, max_score, percentage, weight, is_formal, assessment_type
            FROM marks 
            WHERE (child_id = $1 OR learner_id = $1)
-             AND (term = $2 OR term IS NULL)
+             AND (term::text = $2::text OR term::text LIKE ($2::text || '20%'))
              AND (is_formal = TRUE OR is_formal IS NULL)
            ORDER BY recorded_at ASC`,
           [l.id, termNum]
@@ -1639,7 +1667,7 @@ exports.transferTeacherMarksToTemplate = async (req, res) => {
           `SELECT subject, assessment_name, score, max_score, percentage, weight
            FROM marks 
            WHERE (child_id = $1 OR learner_id = $1)
-             AND (term = $2 OR term IS NULL)
+             AND (term::text = $2::text OR term::text LIKE ($2::text || '20%'))
            ORDER BY recorded_at ASC`,
           [l.id, termNum]
         ).catch(() => ({ rows: [] }));
@@ -1670,13 +1698,7 @@ exports.transferTeacherMarksToTemplate = async (req, res) => {
       // Student subject list — guarantee Geography is included for Science stream FET
       let subList = Array.isArray(l.subjects) && l.subjects.length > 0
         ? [...l.subjects]
-        : ['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation'];
-
-      if (grade >= 10 && (l.stream === 'Science' || stream === 'Science')) {
-        if (!subList.some(s => s.toLowerCase() === 'geography')) {
-          subList.push('Geography');
-        }
-      }
+        : Object.keys(subjectMarksMap);
 
       const subjectBreakdown = [];
       const scoresForAi = {};

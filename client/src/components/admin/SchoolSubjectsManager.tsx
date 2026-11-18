@@ -82,6 +82,8 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
   const [learnersList, setLearnersList] = useState<SubjectLearner[]>([]);
   const [learnerSearch, setLearnerSearch] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [learnersError, setLearnersError] = useState<string | null>(null);
 
   const fetchSubjects = async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -94,9 +96,11 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
         term: selectedTerm
       });
       setSubjects(res.subjects || []);
+      setLoadError(null);
     } catch (err: any) {
       console.error('Failed to load school subjects summary:', err);
-      setSubjects([]);
+      setLoadError(err.response?.data?.error || 'The curriculum could not be loaded.');
+      if (showLoading) setSubjects([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -121,9 +125,11 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
         term: selectedTerm
       });
       setLearnersList(res.learners || []);
+      setLearnersError(null);
     } catch (err: any) {
       console.error('Failed to fetch subject learners:', err);
       setLearnersList([]);
+      setLearnersError(err.response?.data?.error || 'Learners for this subject could not be loaded.');
     } finally {
       setLoadingLearners(false);
     }
@@ -178,9 +184,10 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
 
   // Calculate High-level KPIs
   const totalEnrolled = subjects.reduce((sum, s) => sum + (s.learner_count || s.enrolled_count || 0), 0);
-  const avgSchoolScore = subjects.length > 0 
-    ? Math.round(subjects.reduce((sum, s) => sum + (s.average_mark || 0), 0) / subjects.length)
-    : 0;
+  const scoredSubjects = subjects.filter((s) => s.average_mark !== null && s.average_mark !== undefined);
+  const avgSchoolScore = scoredSubjects.length > 0
+    ? Math.round(scoredSubjects.reduce((sum, s) => sum + Number(s.average_mark), 0) / scoredSubjects.length)
+    : null;
   const publishedSubjectsCount = subjects.filter(s => s.status?.includes('Published') || (s.marks_count || 0) > 0).length;
 
   return (
@@ -194,7 +201,7 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
       )}
 
       {/* Top Banner Header */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-950/70 via-surface-dark to-surface-dark border border-blue-500/20 p-6 shadow-xl">
+      <div className="relative overflow-hidden rounded-3xl bg-[var(--card-background)] border border-blue-500/20 p-6 shadow-xl">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-glow-blue shrink-0">
@@ -202,7 +209,7 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl md:text-2xl font-black font-display text-white tracking-tight">
+                <h2 className="text-xl md:text-2xl font-black font-display text-[var(--text-primary)] tracking-tight">
                   School Curriculum & Subjects Directory
                 </h2>
                 <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-mono text-[10px] font-bold border border-blue-500/30">
@@ -234,9 +241,16 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
         </div>
       </div>
 
+      {loadError && (
+        <div className="p-4 rounded-2xl border border-rose-500 bg-rose-50 text-rose-950 dark:bg-rose-950/40 dark:text-rose-50 flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold">{loadError}</p>
+          <button type="button" onClick={() => fetchSubjects(true)} className="px-3 py-1.5 rounded-lg bg-rose-700 text-white text-xs font-bold">Try again</button>
+        </div>
+      )}
+
       {/* Quick Summary Metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
-        <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 space-y-1">
+        <div className="p-4 rounded-2xl bg-[var(--card-background)] border border-[var(--border-color)] space-y-1">
           <p className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1.5">
             <BookOpen className="w-3.5 h-3.5 text-blue-400" />
             <span>Active Subjects</span>
@@ -246,7 +260,7 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
           </p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 space-y-1">
+        <div className="p-4 rounded-2xl bg-[var(--card-background)] border border-[var(--border-color)] space-y-1">
           <p className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1.5">
             <Users className="w-3.5 h-3.5 text-cyan-400" />
             <span>Total Enrolled Learners</span>
@@ -256,17 +270,17 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
           </p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 space-y-1">
+        <div className="p-4 rounded-2xl bg-[var(--card-background)] border border-[var(--border-color)] space-y-1">
           <p className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1.5">
             <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
             <span>Overall Subject Average</span>
           </p>
           <p className="text-2xl font-black font-mono text-emerald-400">
-            {avgSchoolScore}%
+            {avgSchoolScore === null ? '—' : `${avgSchoolScore}%`}
           </p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 space-y-1">
+        <div className="p-4 rounded-2xl bg-[var(--card-background)] border border-[var(--border-color)] space-y-1">
           <p className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             <span>Marks Published to Admin</span>
@@ -278,7 +292,7 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
       </div>
 
       {/* Filter and Grade Selector Bar */}
-      <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 space-y-4">
+      <div className="p-4 rounded-2xl bg-[var(--card-background)] border border-[var(--border-color)] space-y-4">
         {/* Grade Quick Filter Pills */}
         <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-white/5">
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -317,7 +331,7 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
               <select
                 value={selectedStream}
                 onChange={(e) => setSelectedStream(e.target.value)}
-                className="px-3 py-1.5 rounded-xl bg-surface-darker border border-white/10 text-xs font-bold text-white focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-1.5 rounded-xl bg-[var(--input-background)] border border-[var(--border-color)] text-xs font-bold text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500"
               >
                 <option value="All">All Streams</option>
                 <option value="General">General (GET & Core)</option>
@@ -333,7 +347,7 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
               <select
                 value={selectedTerm}
                 onChange={(e) => setSelectedTerm(e.target.value)}
-                className="px-3 py-1.5 rounded-xl bg-surface-darker border border-white/10 text-xs font-bold text-white focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-1.5 rounded-xl bg-[var(--input-background)] border border-[var(--border-color)] text-xs font-bold text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500"
               >
                 <option value="Term 1">Term 1</option>
                 <option value="Term 2">Term 2</option>
@@ -351,7 +365,7 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search subject, code, teacher..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-surface-darker border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-[var(--input-background)] border border-[var(--border-color)] text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
@@ -361,7 +375,7 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
       {loading ? (
         <LoadingSpinner text="Retrieving verified school subjects and educator allocations..." />
       ) : filteredSubjects.length === 0 ? (
-        <div className="p-12 text-center rounded-3xl bg-surface-dark border border-white/10 space-y-3">
+        <div className="p-12 text-center rounded-3xl bg-[var(--card-background)] border border-[var(--border-color)] space-y-3">
           <BookOpen className="w-12 h-12 text-slate-600 mx-auto" />
           <p className="text-base font-bold text-white">No subjects found for this selection</p>
           <p className="text-xs text-slate-400 max-w-md mx-auto">
@@ -377,7 +391,7 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
             return (
               <div
                 key={`${sub.id}-${sub.grade}-${sub.name}`}
-                className="p-5 rounded-2xl bg-surface-dark border border-white/10 hover:border-blue-500/40 hover:shadow-glow-blue transition-all flex flex-col justify-between space-y-4 group"
+                className="p-5 rounded-2xl bg-[var(--card-background)] border border-[var(--border-color)] hover:border-blue-500/40 hover:shadow-glow-blue transition-all flex flex-col justify-between space-y-4 group"
               >
                 <div className="space-y-3">
                   {/* Top Badges */}
@@ -406,7 +420,7 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
 
                   {/* Title & Stream */}
                   <div>
-                    <h3 className="text-base font-extrabold text-white group-hover:text-blue-300 transition-colors">
+                    <h3 className="text-base font-extrabold text-[var(--text-primary)] group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
                       {sub.name}
                     </h3>
                     <p className="text-[11px] text-slate-400 font-medium">
@@ -421,7 +435,7 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
                       <span>Subject Educator</span>
                     </p>
                     <p className="text-xs font-bold text-slate-200 truncate">
-                      {sub.teacher_name || 'Department Educator'}
+                      {sub.teacher_name || 'Not assigned'}
                     </p>
                   </div>
 
@@ -537,7 +551,7 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
                 value={learnerSearch}
                 onChange={(e) => setLearnerSearch(e.target.value)}
                 placeholder="Filter by learner name, student number or class..."
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-surface-darker border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-[var(--input-background)] border border-[var(--border-color)] text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
@@ -546,14 +560,19 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
               <div className="py-12 text-center">
                 <LoadingSpinner text="Retrieving verified learner register & attendance records..." />
               </div>
+            ) : learnersError ? (
+              <div className="py-8 text-center text-rose-700 dark:text-rose-200 text-xs space-y-2">
+                <p>{learnersError}</p>
+                <button type="button" onClick={() => selectedSubject && handleOpenLearnersModal(selectedSubject)} className="px-3 py-1.5 rounded-lg bg-rose-700 text-white text-xs font-bold">Try again</button>
+              </div>
             ) : filteredLearners.length === 0 ? (
-              <div className="py-8 text-center text-slate-400 text-xs">
-                No learners found matching your search.
+              <div className="py-8 text-center text-[var(--text-secondary)] text-xs">
+                {learnerSearch.trim() ? 'No learners match this search.' : 'No learners are enrolled in this subject for the selected school.'}
               </div>
             ) : (
               <div className="overflow-x-auto rounded-xl border border-white/10">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-surface-darker/90 text-slate-400 font-mono text-[10px] uppercase border-b border-white/10">
+                  <thead className="bg-[var(--input-background)] text-[var(--text-secondary)] font-mono text-[10px] uppercase border-b border-[var(--border-color)]">
                     <tr>
                       <th className="py-3 px-3">Learner</th>
                       <th className="py-3 px-3">Class</th>
