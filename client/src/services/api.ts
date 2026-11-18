@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { clearAuthSession, readAuthValue } from '../utils/authStorage';
 import { acceptAuthResponse, InvalidAuthResponseError } from './authResponse';
 
 const PRODUCTION_API_URL = 'https://fusion-high-backend.onrender.com';
@@ -36,11 +37,11 @@ const api = axios.create({
 
 // Attach JWT token and Active School Tenant ID automatically
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  const token = readAuthValue('token', [localStorage, sessionStorage]);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  const activeSchoolId = localStorage.getItem('active_school_id') || sessionStorage.getItem('active_school_id');
+  const activeSchoolId = readAuthValue('active_school_id', [localStorage, sessionStorage]);
   if (activeSchoolId) {
     config.headers['x-school-id'] = activeSchoolId;
   }
@@ -90,10 +91,9 @@ api.interceptors.response.use(
       if (!window.location.pathname.startsWith('/login') && 
           !window.location.pathname.startsWith('/register') &&
           !window.location.pathname.startsWith('/forgot-password')) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('user');
+        clearAuthSession([localStorage, sessionStorage]);
         localStorage.removeItem('geleza_active_tab');
+        sessionStorage.removeItem('geleza_active_tab');
         window.location.href = '/login';
       }
     }

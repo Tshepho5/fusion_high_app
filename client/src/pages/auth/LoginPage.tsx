@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { startAuthentication, browserSupportsWebAuthn, platformAuthenticatorIsAvailable } from '@simplewebauthn/browser';
 import { authService } from '../../services/api';
+import { describeLoginFailure } from '../../utils/loginFeedback';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -212,20 +213,21 @@ export const LoginPage: React.FC = () => {
       };
 
       const session = await login(credentials);
-      if (!session?.data?.token || typeof session.data.token !== 'string') {
-        setError('The authentication service returned an invalid response.');
+      if (!session?.data?.token || typeof session.data.token !== 'string' || !session.role) {
+        setError('This account has no portal role assigned. Ask the school office to finish setup.');
         return;
       }
-      navigate(`/dashboard/${session.role || 'learner'}`);
+      navigate(`/dashboard/${session.role}`);
     } catch (err: any) {
       console.error('Login error:', err);
       const code = err.response?.data?.code;
-      const msg =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        'Sign-in could not be completed. Please verify your credentials and network connection.';
+      const failure = describeLoginFailure(err);
+      const msg = failure.message;
 
-      if (code === 'account_not_found') {
+      if (!failure.blameFields) {
+        setFieldErrors({});
+        setError(msg);
+      } else if (code === 'account_not_found') {
         setFieldErrors({ identifier: msg });
         setError(msg);
       } else if (code === 'password_incorrect') {
@@ -233,6 +235,10 @@ export const LoginPage: React.FC = () => {
         setError('The email or learner ID is recognized, but the password is incorrect.');
       } else {
         setError(msg);
+        setFieldErrors({
+          identifier: 'Please verify your registered email or learner ID.',
+          password: 'Password may be incorrect or account is unauthorized.',
+        });
       }
     } finally {
       setLoading(false);
@@ -251,11 +257,11 @@ export const LoginPage: React.FC = () => {
         response: assertion,
       });
       const session = await establishSession(data, rememberMe);
-      if (!session?.data?.token || typeof session.data.token !== 'string') {
-        setError('The authentication service returned an invalid response.');
+      if (!session?.data?.token || typeof session.data.token !== 'string' || !session.role) {
+        setError('This account has no portal role assigned. Ask the school office to finish setup.');
         return;
       }
-      navigate(`/dashboard/${session.role || 'learner'}`);
+      navigate(`/dashboard/${session.role}`);
     } catch (err: any) {
       const cancelled = err?.name === 'NotAllowedError' || err?.code === 'ERROR_CEREMONY_ABORTED';
       const message = cancelled
@@ -318,7 +324,8 @@ export const LoginPage: React.FC = () => {
               ? 'bg-white/80 hover:bg-white text-slate-900 border-white/70 shadow-black/10'
               : 'bg-black/40 hover:bg-black/60 text-white border-white/25 shadow-black/30'
           }`}
-          title="Toggle Theme"
+          title={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
+          aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
         >
           {isLight ? (
             <>
@@ -413,7 +420,10 @@ export const LoginPage: React.FC = () => {
 
             {/* Error Message */}
             {error && (
-              <div className="mt-4 p-3 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-700 dark:text-rose-200 text-xs flex items-center gap-2.5 backdrop-blur-md shadow-sm animate-fade-in">
+              <div
+                role="alert"
+                className="mt-4 p-3 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-700 dark:text-rose-200 text-xs flex items-center gap-2.5 backdrop-blur-md shadow-sm animate-fade-in"
+              >
                 <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" />
                 <span className="font-bold leading-snug">
                   {typeof error === 'string' ? error : (error as any)?.message || String(error)}
@@ -422,10 +432,11 @@ export const LoginPage: React.FC = () => {
             )}
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <form noValidate onSubmit={handleSubmit} className="mt-6 space-y-4">
               {/* Email / Learner ID Input */}
               <div className="space-y-1.5">
                 <label
+                  htmlFor="login-identifier"
                   className={`text-xs font-bold flex items-center gap-1.5 ${
                     isLight ? 'text-[#0F172A]' : 'text-slate-100 drop-shadow-sm'
                   }`}
@@ -438,8 +449,12 @@ export const LoginPage: React.FC = () => {
                     <Mail className="w-4 h-4" />
                   </div>
                   <input
+                    id="login-identifier"
+                    name="username"
                     type="text"
                     value={identifier}
+                    aria-invalid={fieldErrors.identifier ? true : undefined}
+                    aria-describedby={fieldErrors.identifier ? 'login-identifier-error' : undefined}
                     onChange={(e) => {
                       setIdentifier(e.target.value);
                       setAccountReady(false);
@@ -467,7 +482,7 @@ export const LoginPage: React.FC = () => {
                   />
                 </div>
                 {fieldErrors.identifier && (
-                  <p className="text-[11px] text-rose-500 dark:text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                  <p id="login-identifier-error" className="text-[11px] text-rose-500 dark:text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     <span>{fieldErrors.identifier}</span>
                   </p>
@@ -477,6 +492,7 @@ export const LoginPage: React.FC = () => {
               {/* Password Input */}
               <div className="space-y-1.5">
                 <label
+                  htmlFor="login-password"
                   className={`text-xs font-bold flex items-center gap-1.5 ${
                     isLight ? 'text-[#0F172A]' : 'text-slate-100 drop-shadow-sm'
                   }`}
@@ -489,8 +505,12 @@ export const LoginPage: React.FC = () => {
                     <Lock className="w-4 h-4" />
                   </div>
                   <input
+                    id="login-password"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
+                    aria-invalid={fieldErrors.password ? true : undefined}
+                    aria-describedby={fieldErrors.password ? 'login-password-error' : undefined}
                     disabled={loading}
                     onChange={(e) => {
                       setPassword(e.target.value);
@@ -530,7 +550,7 @@ export const LoginPage: React.FC = () => {
                   </button>
                 </div>
                 {fieldErrors.password && (
-                  <p className="text-[11px] text-rose-500 dark:text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
+                  <p id="login-password-error" className="text-[11px] text-rose-500 dark:text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     <span>{fieldErrors.password}</span>
                   </p>
@@ -539,10 +559,17 @@ export const LoginPage: React.FC = () => {
 
               {/* Remember Me & Forgot Password Row */}
               <div className="flex items-center justify-between pt-1 px-1 text-xs">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <button
-                    type="button"
-                    onClick={() => setRememberMe(!rememberMe)}
+                <label htmlFor="remember-me" className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    id="remember-me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    aria-describedby="remember-me-hint"
+                    className="sr-only"
+                  />
+                  <span
+                    aria-hidden="true"
                     className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${
                       rememberMe
                         ? isLight
@@ -554,13 +581,13 @@ export const LoginPage: React.FC = () => {
                     }`}
                   >
                     {rememberMe && <Check className="w-3 h-3 stroke-[3]" />}
-                  </button>
+                  </span>
                   <span
                     className={`font-bold text-[11px] ${
                       isLight ? 'text-[#0F172A]' : 'text-white drop-shadow-sm'
                     }`}
                   >
-                    Remember Me
+                    Remember me
                   </span>
                 </label>
 
@@ -575,11 +602,20 @@ export const LoginPage: React.FC = () => {
                   Forgot Password?
                 </Link>
               </div>
+              <p
+                id="remember-me-hint"
+                className={`px-1 text-[11px] font-semibold ${isLight ? 'text-slate-700' : 'text-slate-200'}`}
+              >
+                {rememberMe
+                  ? 'Stay signed in on this device.'
+                  : 'Sign out when you close this browser.'}
+              </p>
 
               {/* Submit Button: Always present, active, and prominent */}
               <button
                 type="submit"
                 disabled={loading}
+                aria-busy={loading}
                 className={`w-full py-3.5 px-6 rounded-full font-black text-sm transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 mt-2 border shadow-lg ${
                   accountReady && !fieldErrors.identifier ? 'login-sign-in-pulse' : ''
                 } ${

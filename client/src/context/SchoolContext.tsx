@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import api from '../services/api';
+import { readAuthValue, storeHoldingToken } from '../utils/authStorage';
 
 export interface SchoolProfile {
   id: number;
@@ -99,6 +100,23 @@ interface SchoolContextType {
 
 const SchoolContext = createContext<SchoolContextType | undefined>(undefined);
 
+function rememberSchool(profile: SchoolProfile | null) {
+  if (!profile) {
+    try {
+      localStorage.removeItem('active_school_profile');
+      localStorage.removeItem('active_school_id');
+      sessionStorage.removeItem('active_school_profile');
+      sessionStorage.removeItem('active_school_id');
+    } catch (_) {}
+    return;
+  }
+  try {
+    const holder = storeHoldingToken(localStorage, sessionStorage);
+    holder.setItem('active_school_profile', JSON.stringify(profile));
+    holder.setItem('active_school_id', String(profile.id));
+  } catch (_) {}
+}
+
 export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [schoolsList, setSchoolsList] = useState<SchoolProfile[]>(() => {
     try {
@@ -143,14 +161,13 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         });
         setSchoolsList(merged);
         localStorage.setItem('cached_schools_list', JSON.stringify(merged));
-        const savedId = localStorage.getItem('active_school_id');
+        const savedId = readAuthValue('active_school_id', [localStorage, sessionStorage]);
         const matched = merged.find((s: SchoolProfile) => String(s.id) === savedId || s.slug === savedId) || merged[0];
         setCurrentSchoolState(matched);
-        localStorage.setItem('active_school_profile', JSON.stringify(matched));
-        localStorage.setItem('active_school_id', String(matched.id));
+        rememberSchool(matched);
       } else {
         setSchoolsList(DEFAULT_SCHOOLS);
-        const savedId = localStorage.getItem('active_school_id');
+        const savedId = readAuthValue('active_school_id', [localStorage, sessionStorage]);
         const matched = DEFAULT_SCHOOLS.find((s: SchoolProfile) => String(s.id) === savedId || s.slug === savedId) || DEFAULT_SCHOOLS[0];
         setCurrentSchoolState(matched);
       }
@@ -183,8 +200,7 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const found = schoolsList.find(s => s.id === id);
     if (found) {
       setCurrentSchoolState(found);
-      localStorage.setItem('active_school_profile', JSON.stringify(found));
-      localStorage.setItem('active_school_id', String(found.id));
+      rememberSchool(found);
       api.defaults.headers.common['x-school-id'] = String(found.id);
     }
   };
@@ -193,8 +209,7 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const found = schoolsList.find(s => s.slug === slug);
     if (found) {
       setCurrentSchoolState(found);
-      localStorage.setItem('active_school_profile', JSON.stringify(found));
-      localStorage.setItem('active_school_id', String(found.id));
+      rememberSchool(found);
       api.defaults.headers.common['x-school-id'] = String(found.id);
     }
   };

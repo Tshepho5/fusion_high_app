@@ -24,6 +24,7 @@ import {
   Zap
 } from 'lucide-react';
 import api from '../../services/api';
+import { readAuthValue } from '../../utils/authStorage';
 
 interface LearnerRadarItem {
   child_id: number;
@@ -112,7 +113,7 @@ export const GelezaEarlyWarningRadar: React.FC<GelezaEarlyWarningRadarProps> = (
   const fetchRadarData = async () => {
     try {
       setLoading(true);
-      const schoolId = localStorage.getItem('active_school_id') || 'current';
+      const schoolId = readAuthValue('active_school_id', [localStorage, sessionStorage]) || 'current';
       const gradeQuery = selectedGrade !== 'all' ? `?grade=${selectedGrade}` : '';
       const res = await api.get(`/api/ai-advisor/geleza/school/${schoolId}/early-warning${gradeQuery}`);
 
@@ -156,7 +157,7 @@ export const GelezaEarlyWarningRadar: React.FC<GelezaEarlyWarningRadarProps> = (
   const handleEvaluateCohort = async () => {
     try {
       setEvaluating(true);
-      const schoolId = localStorage.getItem('active_school_id');
+      const schoolId = readAuthValue('active_school_id', [localStorage, sessionStorage]);
       const payload: any = {
         academic_year: 2026,
         term: 1
