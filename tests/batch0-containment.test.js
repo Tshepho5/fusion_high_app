@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { maintenanceAuthorized } = require('../public/src/services/maintenanceGate');

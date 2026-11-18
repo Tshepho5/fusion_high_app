@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const pdf = require('pdf-parse');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { refuseExternalService } = require('../../../lib/testSafety');
 const { validateSAID } = require('../controller/saIDvalidations');
 
 const SCHOOL_MAX_CAPACITY = 500;
@@ -391,6 +392,7 @@ Return strictly JSON with format:
   "extractedSummary": "Short explanation of document contents and Home Affairs compliance"
 }
 `;
+        refuseExternalService('ai');
         const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
         const aiResult = await model.generateContent(prompt);
         const textResp = (await aiResult.response).text().replace(/```json/g, '').replace(/```/g, '').trim();

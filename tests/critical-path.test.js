@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 /**
  * Critical-path unit tests (no DB required).
  * Run: npm test

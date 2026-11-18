@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const db = require('../db/db');
 const adminController = require('../public/src/controller/adminController');
 

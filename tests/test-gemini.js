@@ -1,3 +1,9 @@
+require('./safety/blockLiveEffects');
+if (process.env.GELEZA_ALLOW_LIVE_GEMINI !== '1') {
+  console.error('Refusing to call Gemini. Live model calls are not part of the Geleza SA test suite.');
+  process.exit(1);
+}
+
 // Import and configure dotenv to load environment variables
 require('dotenv').config();
 

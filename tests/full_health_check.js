@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const db = require('../db/db');
 const emailService = require('../public/src/services/emailService');
 

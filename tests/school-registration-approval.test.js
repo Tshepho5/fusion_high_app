@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 /**
  * Verifies approval, rollback, isolation, and cleanup for isolated registration probes.
  * Probe rows are removed afterward. Existing schools are not deleted.

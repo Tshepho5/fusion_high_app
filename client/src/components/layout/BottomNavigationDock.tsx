@@ -21,11 +21,18 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
 }) => {
   const size = useMenuSize();
   const onModulesPage = activeTab === 'more';
+  const controlSize = onModulesPage ? 76 : size;
 
   return (
     <>
-      <div className="fixed bottom-4 left-1/2 z-[60] -translate-x-1/2 pointer-events-none">
-        <div className="relative pointer-events-auto" style={{ width: size, height: size }}>
+      <div
+        className={`fixed z-[60] pointer-events-none ${
+          onModulesPage
+            ? 'bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))]'
+            : 'bottom-4 left-1/2 -translate-x-1/2'
+        }`}
+      >
+        <div className="relative pointer-events-auto" style={{ width: controlSize, height: controlSize }}>
           <button
             type="button"
             onClick={() => onSelectTab(onModulesPage ? 'overview' : 'more')}

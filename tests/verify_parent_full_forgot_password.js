@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const axios = require('axios');
 const db = require('../db/db');
 const jwt = require('jsonwebtoken');

@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const { validateSAID } = require('../public/src/controller/saIDvalidations');
 const applicationService = require('../public/src/services/applicationService');
 const db = require('../db/db');

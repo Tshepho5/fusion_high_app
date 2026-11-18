@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const { pool } = require('../db/db');
 const adminController = require('../public/src/controller/adminController');
 const teacherLearnersController = require('../public/src/controller/teacher/teacherLearnersController');

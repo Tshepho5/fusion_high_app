@@ -37,6 +37,7 @@ import { SchoolPerformanceMetricsView } from '../../components/admin/SchoolPerfo
 import { TeacherLessonPlanning } from '../teacher/lessonPlanning/TeacherLessonPlanning';
 import { useAuth } from '../../context/AuthContext';
 import { ShieldAlert } from 'lucide-react';
+import { rememberAdminDirectoryVisit } from './adminDirectoryModel';
 
 export const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -53,6 +54,7 @@ export const AdminDashboard: React.FC = () => {
   }, [searchParams]);
 
   const handleSelectTab = (tabId: string, params?: any) => {
+    rememberAdminDirectoryVisit(tabId);
     setActiveTab(tabId);
     const newParams: Record<string, string> = { tab: tabId };
     if (params) {
@@ -94,7 +96,7 @@ export const AdminDashboard: React.FC = () => {
       case 'consultations':
         return 'Parent-Educator Academic Consultation Schedule';
       case 'more':
-        return 'Administrative Operations & Module Directory';
+        return isSuperAdmin ? 'Superadmin Command Centre' : 'Administrative Operations & Module Directory';
       case 'users':
         return 'User Directory & Role Permissions';
       case 'import-learners':

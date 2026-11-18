@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { refuseExternalService } = require('../../../lib/testSafety');
 
 const BUSINESS_DISPLAY = '076 606 4212';
 const BUSINESS_E164 = '27766064212';
@@ -82,6 +83,7 @@ async function logMessage(phone, direction, body, status) {
 }
 
 async function postMessage(payload) {
+  refuseExternalService('whatsapp');
   const response = await fetch(
     `https://graph.facebook.com/${GRAPH_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
     {
@@ -102,6 +104,7 @@ async function postMessage(payload) {
 }
 
 async function deliver(phone, builder) {
+  refuseExternalService('whatsapp');
   const to = normalise(phone);
   if (!to) return { sent: false, reason: 'That is not a South African mobile number.' };
   if (!configured()) {

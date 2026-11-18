@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 /**
  * Geleza SA AI - Phase 7 Automation & Workflows Test Suite
  * 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Users,
   Briefcase,
@@ -17,512 +17,423 @@ import {
   Settings,
   Search,
   ArrowRight,
-  LayoutGrid,
-  Grid3X3,
-  List,
-  ChevronRight,
+  ChevronDown,
   GraduationCap,
   Star,
   Swords,
   Megaphone,
   ShieldCheck,
   LifeBuoy,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-
-type MoreViewMode = 'grid' | 'compact' | 'list';
+import {
+  ADMIN_DIRECTORY_CATEGORIES,
+  ADMIN_FAVORITES_EVENT,
+  ADMIN_FAVORITES_STORAGE_KEY,
+  ADMIN_RECENT_EVENT,
+  ADMIN_RECENT_STORAGE_KEY,
+  type DirectoryCategory,
+  type DirectoryModule,
+  filterDirectory,
+  modulesInCategory,
+  readIdList,
+  rememberAdminDirectoryVisit,
+  resolveListedModules,
+  toggleStoredId,
+  visibleDirectoryModules,
+} from './adminDirectoryModel';
 
 interface AdminMoreHubProps {
   onNavigateTab: (tabId: string, params?: any) => void;
 }
 
-interface ModuleItem {
-  id: string;
-  title: string;
-  category: 'governance' | 'academics' | 'operations' | 'finance';
-  icon: React.ElementType;
-  badge?: string;
+const MODULE_ICONS: Record<DirectoryModule['icon'], React.ElementType> = {
+  building: Building2,
+  shield: ShieldCheck,
+  users: Users,
+  'life-buoy': LifeBuoy,
+  book: BookOpen,
+  briefcase: Briefcase,
+  trophy: Trophy,
+  spreadsheet: FileSpreadsheet,
+  file: FileText,
+  trending: TrendingUp,
+  award: Award,
+  clock: Clock,
+  calendar: Calendar,
+  drive: HardDrive,
+  card: CreditCard,
+  messages: MessageSquare,
+  megaphone: Megaphone,
+  swords: Swords,
+  graduation: GraduationCap,
+  settings: Settings,
+};
+
+const CATEGORY_ICONS: Record<DirectoryCategory['icon'], React.ElementType> = {
+  shield: ShieldCheck,
+  book: BookOpen,
+  trending: TrendingUp,
+  briefcase: Briefcase,
+  messages: MessageSquare,
+  trophy: Trophy,
+  settings: Settings,
+};
+
+function readStoredIds(key: string): string[] {
+  try {
+    return readIdList(localStorage.getItem(key));
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredIds(key: string, ids: string[], eventName: string) {
+  try {
+    localStorage.setItem(key, JSON.stringify(ids));
+    window.dispatchEvent(new Event(eventName));
+  } catch {
+    /* Preference storage can be unavailable in private browsing. */
+  }
 }
 
 export const AdminMoreHub: React.FC<AdminMoreHubProps> = ({ onNavigateTab }) => {
   const { user } = useAuth();
   const isSuperAdmin = !!user?.is_superadmin;
+  const [searchQuery, setSearchQuery] = useState('');
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => readStoredIds(ADMIN_FAVORITES_STORAGE_KEY));
+  const [recentIds, setRecentIds] = useState<string[]>(() => readStoredIds(ADMIN_RECENT_STORAGE_KEY));
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(ADMIN_DIRECTORY_CATEGORIES.map((category) => [category.id, true]))
+  );
 
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<MoreViewMode>(() => {
-    return (localStorage.getItem('admin_more_view_mode') as MoreViewMode) || 'grid';
-  });
+  useEffect(() => {
+    const syncFavorites = () => setFavoriteIds(readStoredIds(ADMIN_FAVORITES_STORAGE_KEY));
+    const syncRecent = () => setRecentIds(readStoredIds(ADMIN_RECENT_STORAGE_KEY));
+    window.addEventListener(ADMIN_FAVORITES_EVENT, syncFavorites);
+    window.addEventListener('storage', syncFavorites);
+    window.addEventListener(ADMIN_RECENT_EVENT, syncRecent);
+    window.addEventListener('storage', syncRecent);
+    return () => {
+      window.removeEventListener(ADMIN_FAVORITES_EVENT, syncFavorites);
+      window.removeEventListener('storage', syncFavorites);
+      window.removeEventListener(ADMIN_RECENT_EVENT, syncRecent);
+      window.removeEventListener('storage', syncRecent);
+    };
+  }, []);
 
-  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('geleza_favorites_admin');
-      return saved ? JSON.parse(saved) : ['messages', 'users', 'marks', 'timetable'];
-    } catch (_) {
-      return ['messages', 'users', 'marks', 'timetable'];
-    }
-  });
+  const availableModules = useMemo(() => visibleDirectoryModules(isSuperAdmin), [isSuperAdmin]);
+  const filteredModules = useMemo(
+    () => filterDirectory(availableModules, searchQuery),
+    [availableModules, searchQuery]
+  );
+  const searching = searchQuery.trim().length > 0;
+  const favoriteModules = useMemo(
+    () => filterDirectory(resolveListedModules(favoriteIds, availableModules), searchQuery),
+    [favoriteIds, availableModules, searchQuery]
+  );
+  const recentModules = useMemo(
+    () => filterDirectory(resolveListedModules(recentIds, availableModules), searchQuery),
+    [recentIds, availableModules, searchQuery]
+  );
 
-  const toggleFavorite = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    const updated = favoriteIds.includes(id)
-      ? favoriteIds.filter(f => f !== id)
-      : [...favoriteIds, id];
+  const openModule = (id: string) => {
+    const next = rememberAdminDirectoryVisit(id);
+    if (next.length > 0) setRecentIds(next);
+    onNavigateTab(id);
+  };
+
+  const toggleFavorite = (event: React.MouseEvent, id: string) => {
+    event.stopPropagation();
+    const updated = toggleStoredId(favoriteIds, id);
     setFavoriteIds(updated);
-    try {
-      localStorage.setItem('geleza_favorites_admin', JSON.stringify(updated));
-      window.dispatchEvent(new Event('geleza_favorites_updated'));
-    } catch (_) {}
+    writeStoredIds(ADMIN_FAVORITES_STORAGE_KEY, updated, ADMIN_FAVORITES_EVENT);
   };
 
-  const handleSetViewMode = (mode: MoreViewMode) => {
-    setViewMode(mode);
-    localStorage.setItem('admin_more_view_mode', mode);
-  };
-
-  const categories = [
-    { id: 'all', label: 'All Modules' },
-    { id: 'governance', label: 'Governance & Staff' },
-    { id: 'academics', label: 'Curriculum & Marks' },
-    { id: 'operations', label: 'Operations & Assets' },
-    { id: 'finance', label: 'Finance & Systems' },
-  ];
-
-  // Pure Icon + Title ONLY
-  const allModules: ModuleItem[] = [
-    // 1. Governance & Staff
-    {
-      id: 'school-admissions',
-      title: 'School Admissions & Registrations',
-      category: 'governance' as const,
-      icon: Building2,
-      badge: 'Admissions',
-    },
-    {
-      id: 'testers',
-      title: 'Master Controls & Testers',
-      category: 'governance' as const,
-      icon: ShieldCheck,
-      badge: 'Access Gates',
-    },
-    {
-      id: 'metrics',
-      title: 'School Performance Metrics',
-      category: 'governance' as const,
-      icon: Trophy,
-      badge: 'Official KPIs',
-    },
-    {
-      id: 'command-center',
-      title: 'Multi-School Command',
-      category: 'governance',
-      icon: Building2,
-      badge: 'Multi-Campus',
-    },
-    {
-      id: 'users',
-      title: 'User Directory & Roles',
-      category: 'governance',
-      icon: Users,
-      badge: 'Staff & Learners',
-    },
-    {
-      id: 'import-learners',
-      title: 'Import Learners (SA-SAMS CSV)',
-      category: 'governance',
-      icon: FileSpreadsheet,
-      badge: 'New · CSV',
-    },
-    {
-      id: 'support-desk',
-      title: 'User Support Desk',
-      category: 'governance',
-      icon: LifeBuoy,
-      badge: 'Corrections',
-    },
-    {
-      id: 'leave-relief',
-      title: 'Staff Leave & Relief Duty',
-      category: 'governance',
-      icon: Briefcase,
-      badge: 'Staff Leave',
-    },
-    {
-      id: 'consultations',
-      title: 'Parent-Educator Consultations',
-      category: 'governance',
-      icon: Users,
-      badge: 'Meetings',
-    },
-    {
-      id: 'messages',
-      title: 'Communication Hub',
-      category: 'governance',
-      icon: MessageSquare,
-      badge: 'Direct Chat',
-    },
-    {
-      id: 'announcements',
-      title: 'Official Broadcasts',
-      category: 'governance',
-      icon: Megaphone,
-      badge: 'Broadcasts',
-    },
-    {
-      id: 'classes-streams',
-      title: 'Dynamic Classes & Homerooms',
-      category: 'governance',
-      icon: Users,
-      badge: 'Class Teachers',
-    },
-    {
-      id: 'staff-invites',
-      title: 'Faculty & Coach Invites',
-      category: 'governance',
-      icon: Briefcase,
-      badge: 'Email Dispatch',
-    },
-
-    // 2. Curriculum & Academics
-    {
-      id: 'academic-streams',
-      title: 'Subject Streams',
-      category: 'academics',
-      icon: BookOpen,
-      badge: 'Grades 10-12',
-    },
-    {
-      id: 'subjects',
-      title: 'School Curriculum & Subjects',
-      category: 'academics',
-      icon: BookOpen,
-      badge: 'Grades 8-12',
-    },
-    {
-      id: 'marks',
-      title: 'CAPS Mark Audits & Report Cards',
-      category: 'academics',
-      icon: FileSpreadsheet,
-      badge: 'Mark Audits',
-    },
-    {
-      id: 'lesson-planning',
-      title: 'Lesson Planning Oversight',
-      category: 'academics',
-      icon: BookOpen,
-      badge: 'Teachers',
-    },
-    {
-      id: 'reports',
-      title: 'CAPS Report Card Studio',
-      category: 'academics',
-      icon: FileText,
-      badge: 'Term Reports',
-    },
-    {
-      id: 'matric-projector',
-      title: 'Matric Pass Rate Projector',
-      category: 'academics',
-      icon: TrendingUp,
-      badge: 'Grade 12 NSC',
-    },
-    {
-      id: 'timetable',
-      title: 'Timetable Allocations',
-      category: 'academics',
-      icon: Clock,
-      badge: 'Schedule',
-    },
-    {
-      id: 'inter-school',
-      title: 'Inter-School Derbies & League',
-      category: 'academics',
-      icon: Swords,
-      badge: 'Competitions',
-    },
-
-    // 3. Operations & Logistics
-    {
-      id: 'exam-seating',
-      title: 'Exam Seating Master',
-      category: 'operations',
-      icon: Award,
-      badge: 'Seating Plan',
-    },
-    {
-      id: 'textbooks',
-      title: 'Textbook Inventory',
-      category: 'operations',
-      icon: HardDrive,
-      badge: 'Assets',
-    },
-    {
-      id: 'sports',
-      title: 'Sports & Extracurriculars',
-      category: 'operations',
-      icon: Trophy,
-      badge: 'Athletics & Teams',
-    },
-    {
-      id: 'calendar',
-      title: 'School Calendar',
-      category: 'operations',
-      icon: Calendar,
-      badge: 'DBE Schedule',
-    },
-
-    // 4. Finance & Systems
-    {
-      id: 'finance',
-      title: 'School Fees & Invoicing',
-      category: 'finance',
-      icon: CreditCard,
-      badge: 'Finances',
-    },
-    {
-      id: 'bursaries',
-      title: 'Tertiary Bursary Engine',
-      category: 'finance',
-      icon: GraduationCap,
-      badge: 'Bursaries',
-    },
-    {
-      id: 'settings',
-      title: 'Technical Settings',
-      category: 'finance',
-      icon: Settings,
-      badge: 'System',
-    },
-  ];
-
-  const filteredModules = useMemo(() => {
-    return allModules.filter((m) => {
-      // Platform-wide tools reserved exclusively for Geleza SA Platform Admin
-      if (!isSuperAdmin && (m.id === 'school-admissions' || m.id === 'testers' || m.id === 'command-center')) {
-        return false;
-      }
-      const matchesCategory = selectedCategory === 'all' || m.category === selectedCategory;
-      const matchesSearch =
-        m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (m.badge && m.badge.toLowerCase().includes(searchQuery.toLowerCase()));
-      return matchesCategory && matchesSearch;
+  useEffect(() => {
+    if (!searching) return;
+    setExpanded((current) => {
+      const next = { ...current };
+      ADMIN_DIRECTORY_CATEGORIES.forEach((category) => {
+        if (modulesInCategory(filteredModules, category.id).length > 0) next[category.id] = true;
+      });
+      return next;
     });
-  }, [allModules, selectedCategory, searchQuery, isSuperAdmin]);
+  }, [searching, filteredModules]);
+
+  const jumpToCategory = (categoryId: string) => {
+    setExpanded((current) => ({ ...current, [categoryId]: true }));
+    window.requestAnimationFrame(() => {
+      document.getElementById(`directory-category-${categoryId}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
+  };
 
   return (
-    <div className="space-y-6 animate-fade-in text-slate-900 dark:text-slate-100 pb-20">
-      {/* Control Header Strip */}
-      <div className="p-5 sm:p-6 xl:px-1 xl:bg-transparent xl:dark:bg-transparent xl:border-transparent xl:shadow-none rounded-3xl bg-[#E5EBF1] dark:bg-[#080B10] border border-[#C7D1DC] dark:border-[#2C3948] shadow-sm relative overflow-hidden transition-colors">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl xl:text-4xl font-black font-display text-[#101820] dark:text-[#F5F7FA] tracking-tight">
-                Main Navigation Menu
-              </h1>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#168BFF]/10 text-[#168BFF] border border-[#168BFF]/30 uppercase tracking-wider">
-                Executive Portal
-              </span>
-            </div>
-          </div>
-
-          {/* Search & View Mode Switcher */}
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 md:w-64">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#697586] dark:text-[#8794A5] pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search administrative tools..."
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-[#171F29] border border-[#C7D1DC] dark:border-[#2C3948] text-xs text-[#101820] dark:text-[#F5F7FA] placeholder-[#697586] dark:placeholder-[#8794A5] focus:outline-none focus:border-[#168BFF] focus:ring-1 focus:ring-[#168BFF] transition-all"
-              />
-            </div>
-
-            <div className="flex items-center gap-1 p-1 bg-white dark:bg-[#111821] rounded-xl border border-[#C7D1DC] dark:border-[#2C3948] shrink-0">
-              <button
-                type="button"
-                onClick={() => handleSetViewMode('grid')}
-                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                  viewMode === 'grid'
-                    ? 'bg-[#168BFF] text-white shadow-xs font-bold'
-                    : 'text-[#526071] hover:text-[#101820] dark:text-[#AAB5C2] dark:hover:text-white'
-                }`}
-                title="Detailed Cards"
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSetViewMode('compact')}
-                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                  viewMode === 'compact'
-                    ? 'bg-[#168BFF] text-white shadow-xs font-bold'
-                    : 'text-[#526071] hover:text-[#101820] dark:text-[#AAB5C2] dark:hover:text-white'
-                }`}
-                title="Compact App Tiles"
-              >
-                <Grid3X3 className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSetViewMode('list')}
-                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                  viewMode === 'list'
-                    ? 'bg-[#168BFF] text-white shadow-xs font-bold'
-                    : 'text-[#526071] hover:text-[#101820] dark:text-[#AAB5C2] dark:hover:text-white'
-                }`}
-                title="List View"
-              >
-                <List className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+    <div className="space-y-6 text-slate-900 dark:text-slate-100">
+      <div className="p-5 sm:p-6 rounded-3xl bg-[#E5EBF1] dark:bg-[#080B10] border border-[#C7D1DC] dark:border-[#2C3948] shadow-sm">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl xl:text-4xl font-black font-display text-[#101820] dark:text-[#F5F7FA] tracking-tight">
+            {isSuperAdmin ? 'Superadmin Command Centre' : 'Main Navigation Menu'}
+          </h1>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#168BFF]/10 text-[#168BFF] border border-[#168BFF]/30 uppercase tracking-wider">
+            Executive Portal
+          </span>
         </div>
+        <p className="mt-2 max-w-3xl text-sm text-[#526071] dark:text-[#AAB5C2]">
+          {isSuperAdmin
+            ? 'Manage schools, academic operations, users and platform services from one central workspace.'
+            : 'Open the administrative tools assigned to this school.'}
+        </p>
 
-        {/* Category Selector Tabs */}
-        <div className="flex items-center gap-1.5 pt-4 overflow-x-auto custom-scrollbar">
-          {categories.map((cat) => (
+        <div className="relative mt-4">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#697586] dark:text-[#8794A5] pointer-events-none" />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search modules or categories"
+            aria-label="Search modules or categories"
+            className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-white dark:bg-[#171F29] border border-[#C7D1DC] dark:border-[#2C3948] text-sm text-[#101820] dark:text-[#F5F7FA] placeholder-[#697586] dark:placeholder-[#8794A5] focus:outline-none focus:border-[#168BFF] focus:ring-2 focus:ring-[#168BFF]"
+          />
+          {searchQuery && (
             <button
               type="button"
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                selectedCategory === cat.id
-                  ? 'bg-[#168BFF] text-white shadow-xs'
-                  : 'bg-white dark:bg-[#111821] text-[#526071] dark:text-[#AAB5C2] hover:text-[#101820] dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5 border border-[#C7D1DC] dark:border-[#2C3948]'
-              }`}
+              onClick={() => setSearchQuery('')}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-[#526071] dark:text-[#AAB5C2] hover:text-[#101820] dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#168BFF]"
             >
-              {cat.label}
+              <X className="w-4 h-4" />
             </button>
-          ))}
-        </div>
-
-        {/* Electric Blue Underline Bar */}
-        <div className="w-full h-1 bg-[#C7D1DC]/60 dark:bg-white/10 rounded-full mt-3 overflow-hidden">
-          <div className="h-full w-28 bg-[#168BFF] rounded-full transition-all duration-300" />
+          )}
         </div>
       </div>
 
-      {/* Modules Rendering Container based on viewMode */}
-      {filteredModules.length === 0 ? (
-        <div className="p-12 text-center rounded-3xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] text-[#526071] dark:text-[#AAB5C2] text-xs">
-          No modules found matching "{searchQuery}"
-        </div>
-      ) : viewMode === 'grid' ? (
-        /* Large Cards Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
-          {filteredModules.map((m) => {
-            const IconComp = m.icon;
-            const isFav = favoriteIds.includes(m.id);
+      <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)] lg:gap-6 lg:items-start">
+        <nav aria-label="Module categories" className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-1 lg:sticky lg:top-0 lg:self-start">
+          {ADMIN_DIRECTORY_CATEGORIES.map((category) => {
+            const count = modulesInCategory(availableModules, category.id).length;
+            const Icon = CATEGORY_ICONS[category.icon];
             return (
-              <div
-                key={m.id}
-                onClick={() => onNavigateTab(m.id)}
-                className="p-4 rounded-2xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] hover:border-[#168BFF]/60 dark:hover:border-[#168BFF]/60 hover:bg-white dark:hover:bg-[#171F29] transition-all flex items-center justify-between text-left group cursor-pointer card-interactive shadow-sm relative"
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => jumpToCategory(category.id)}
+                className="shrink-0 lg:w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] text-left hover:border-[#168BFF]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#168BFF]"
               >
-                <div className="flex items-center gap-3.5 min-w-0 pr-8">
-                  <div className="w-12 h-12 rounded-2xl bg-white dark:bg-[#171F29] border border-[#C7D1DC] dark:border-[#2C3948] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-xs">
-                    <IconComp className="w-6 h-6 text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] transition-colors" />
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-xs sm:text-sm font-bold text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] dark:group-hover:text-[#168BFF] transition-colors leading-snug line-clamp-2">
-                      {m.title}
-                    </h3>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                  <button
-                    type="button"
-                    onClick={(e) => toggleFavorite(e, m.id)}
-                    title={isFav ? 'Remove from Home Favorites' : 'Add to Home Favorites'}
-                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                      isFav
-                        ? 'text-amber-400 hover:text-amber-500'
-                        : 'text-slate-300 dark:text-slate-600 hover:text-amber-400 dark:hover:text-amber-400'
-                    }`}
-                  >
-                    <Star className={`w-4 h-4 ${isFav ? 'fill-amber-400' : ''}`} />
-                  </button>
-                  <ArrowRight className="w-4 h-4 text-[#697586] dark:text-[#8794A5] group-hover:text-[#168BFF] dark:group-hover:text-[#168BFF] group-hover:translate-x-0.5 transition-all" />
-                </div>
-              </div>
+                <Icon className="w-4 h-4 shrink-0 text-[#101820] dark:text-[#F5F7FA]" />
+                <span className="min-w-0 text-xs font-bold leading-snug text-[#101820] dark:text-[#F5F7FA]">{category.label}</span>
+                <span className="ml-auto text-[10px] font-bold text-[#526071] dark:text-[#AAB5C2]">{count}</span>
+              </button>
             );
           })}
-        </div>
-      ) : viewMode === 'compact' ? (
-        /* Compact Grid */
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 2xl:grid-cols-8 gap-2.5">
-          {filteredModules.map((m) => {
-            const IconComp = m.icon;
-            const isFav = favoriteIds.includes(m.id);
-            return (
-              <div
-                key={m.id}
-                onClick={() => onNavigateTab(m.id)}
-                className="p-3.5 rounded-2xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] hover:border-[#168BFF]/60 dark:hover:border-[#168BFF]/60 hover:bg-white dark:hover:bg-[#171F29] transition-all flex flex-col items-center text-center gap-2 group cursor-pointer card-interactive relative shadow-sm"
-                title={m.title}
+        </nav>
+
+        <div className="min-w-0 space-y-6">
+          <PreferenceRow
+            title="My Favourites"
+            icon={Star}
+            iconClassName="fill-amber-400 text-amber-400"
+            emptyTitle="No favourites yet"
+            emptyDetail="Star a module to keep it here. Starred modules also stay in their categories."
+            modules={favoriteModules}
+            hiddenBySearch={searching && favoriteIds.length > 0 && favoriteModules.length === 0}
+            favoriteIds={favoriteIds}
+            onOpen={openModule}
+            onToggleFavorite={toggleFavorite}
+          />
+
+          <PreferenceRow
+            title="Recently Used"
+            icon={Clock}
+            iconClassName="text-[#168BFF]"
+            emptyTitle="No recent modules"
+            emptyDetail="Modules you open will appear here."
+            modules={recentModules}
+            hiddenBySearch={searching && recentIds.length > 0 && recentModules.length === 0}
+            favoriteIds={favoriteIds}
+            onOpen={openModule}
+            onToggleFavorite={toggleFavorite}
+            compact
+          />
+
+          {filteredModules.length === 0 ? (
+            <div className="p-8 text-center rounded-3xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948]">
+              <p className="text-sm font-bold text-[#101820] dark:text-[#F5F7FA]">No modules match “{searchQuery.trim()}”</p>
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="mt-3 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#168BFF] text-white hover:bg-[#0878E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#168BFF]"
               >
-                <button
-                  type="button"
-                  onClick={(e) => toggleFavorite(e, m.id)}
-                  title={isFav ? 'Remove from Home Favorites' : 'Add to Home Favorites'}
-                  className={`absolute top-1.5 right-1.5 p-1 rounded-lg transition-colors cursor-pointer ${
-                    isFav ? 'text-amber-400' : 'text-slate-300 dark:text-slate-600 hover:text-amber-400'
-                  }`}
+                Clear search
+              </button>
+            </div>
+          ) : (
+            ADMIN_DIRECTORY_CATEGORIES.map((category) => {
+              const modules = modulesInCategory(filteredModules, category.id);
+              if (modules.length === 0) return null;
+              const open = expanded[category.id] !== false;
+              const Icon = CATEGORY_ICONS[category.icon];
+              const availableCount = modulesInCategory(availableModules, category.id).length;
+              return (
+                <section
+                  key={category.id}
+                  id={`directory-category-${category.id}`}
+                  aria-labelledby={`directory-category-label-${category.id}`}
+                  className="scroll-mt-4 rounded-3xl border border-[#C7D1DC] dark:border-[#2C3948] bg-[#E5EBF1]/70 dark:bg-[#080B10]/80"
                 >
-                  <Star className={`w-3 h-3 ${isFav ? 'fill-amber-400' : ''}`} />
-                </button>
-                <div className="w-12 h-12 rounded-2xl bg-white dark:bg-[#171F29] border border-[#C7D1DC] dark:border-[#2C3948] flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
-                  <IconComp className="w-6 h-6 text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] transition-colors" />
-                </div>
-                <h3 className="text-[11px] font-bold text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] dark:group-hover:text-[#168BFF] transition-colors line-clamp-2 leading-tight">
-                  {m.title}
-                </h3>
-                <ChevronRight className="w-3 h-3 text-[#697586] dark:text-[#8794A5] absolute right-1.5 top-1/2 -translate-y-1/2 hidden dark:block pointer-events-none opacity-60 group-hover:opacity-100 group-hover:text-[#168BFF]" />
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        /* List View */
-        <div className="space-y-2">
-          {filteredModules.map((m) => {
-            const IconComp = m.icon;
-            const isFav = favoriteIds.includes(m.id);
-            return (
-              <div
-                key={m.id}
-                onClick={() => onNavigateTab(m.id)}
-                className="w-full p-3.5 rounded-2xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] hover:border-[#168BFF]/60 dark:hover:border-[#168BFF]/60 hover:bg-white dark:hover:bg-[#171F29] transition-all flex items-center justify-between text-left group cursor-pointer shadow-sm"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#171F29] border border-[#C7D1DC] dark:border-[#2C3948] flex items-center justify-center shrink-0 shadow-xs">
-                    <IconComp className="w-5 h-5 text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] transition-colors" />
-                  </div>
-                  <span className="text-xs font-bold text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] dark:group-hover:text-[#168BFF] transition-colors truncate">
-                    {m.title}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
-                    onClick={(e) => toggleFavorite(e, m.id)}
-                    title={isFav ? 'Remove from Home Favorites' : 'Add to Home Favorites'}
-                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                      isFav
-                        ? 'text-amber-400 hover:text-amber-500'
-                        : 'text-slate-300 dark:text-slate-600 hover:text-amber-400 dark:hover:text-amber-400'
-                    }`}
+                    id={`directory-category-label-${category.id}`}
+                    aria-expanded={open}
+                    aria-controls={`directory-category-panel-${category.id}`}
+                    onClick={() => setExpanded((current) => ({ ...current, [category.id]: !open }))}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#168BFF]"
                   >
-                    <Star className={`w-4 h-4 ${isFav ? 'fill-amber-400' : ''}`} />
+                    <span className="w-9 h-9 rounded-xl bg-white dark:bg-[#171F29] border border-[#C7D1DC] dark:border-[#2C3948] flex items-center justify-center shrink-0">
+                      <Icon className="w-4 h-4 text-[#101820] dark:text-[#F5F7FA]" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-black font-display text-[#101820] dark:text-[#F5F7FA]">{category.label}</span>
+                      <span className="block text-[11px] font-bold text-[#526071] dark:text-[#AAB5C2]">
+                        {availableCount} {availableCount === 1 ? 'module' : 'modules'}
+                      </span>
+                    </span>
+                    <ChevronDown className={`ml-auto w-4 h-4 text-[#697586] dark:text-[#8794A5] transition-transform ${open ? 'rotate-180' : ''}`} />
                   </button>
-                  <ArrowRight className="w-4 h-4 text-[#697586] dark:text-[#8794A5] group-hover:text-[#168BFF] dark:group-hover:text-[#168BFF] group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-            );
-          })}
+                  {open && (
+                    <div id={`directory-category-panel-${category.id}`} className="px-3 pb-3 sm:px-4 sm:pb-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                        {modules.map((module) => (
+                          <ModuleCard
+                            key={module.id}
+                            module={module}
+                            isFavourite={favoriteIds.includes(module.id)}
+                            onOpen={openModule}
+                            onToggleFavorite={toggleFavorite}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </section>
+              );
+            })
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };
+
+function PreferenceRow({
+  title,
+  icon: Icon,
+  iconClassName,
+  emptyTitle,
+  emptyDetail,
+  modules,
+  hiddenBySearch,
+  favoriteIds,
+  onOpen,
+  onToggleFavorite,
+  compact = false,
+}: {
+  title: string;
+  icon: React.ElementType;
+  iconClassName: string;
+  emptyTitle: string;
+  emptyDetail: string;
+  modules: DirectoryModule[];
+  hiddenBySearch: boolean;
+  favoriteIds: string[];
+  onOpen: (id: string) => void;
+  onToggleFavorite: (event: React.MouseEvent, id: string) => void;
+  compact?: boolean;
+}) {
+  return (
+    <section aria-label={title} className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Icon className={`w-4 h-4 ${iconClassName}`} />
+        <h2 className="text-sm font-black font-display text-[#101820] dark:text-[#F5F7FA]">{title}</h2>
+      </div>
+      {modules.length === 0 ? (
+        <div className="px-4 py-3 rounded-2xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948]">
+          <p className="text-xs font-bold text-[#101820] dark:text-[#F5F7FA]">{hiddenBySearch ? 'Nothing in this list matches the search' : emptyTitle}</p>
+          {!hiddenBySearch && <p className="mt-1 text-xs text-[#526071] dark:text-[#AAB5C2]">{emptyDetail}</p>}
+        </div>
+      ) : (
+        <div className={`grid gap-3 ${compact ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3'}`}>
+          {modules.map((module) => (
+            <ModuleCard
+              key={`${title}-${module.id}`}
+              module={module}
+              isFavourite={favoriteIds.includes(module.id)}
+              onOpen={onOpen}
+              onToggleFavorite={onToggleFavorite}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ModuleCard({
+  module,
+  isFavourite,
+  onOpen,
+  onToggleFavorite,
+}: {
+  module: DirectoryModule;
+  isFavourite: boolean;
+  onOpen: (id: string) => void;
+  onToggleFavorite: (event: React.MouseEvent, id: string) => void;
+}) {
+  const Icon = MODULE_ICONS[module.icon];
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(module.id)}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen(module.id);
+        }
+      }}
+      title={module.title}
+      className="h-full min-h-[92px] p-4 rounded-2xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] hover:border-[#168BFF]/60 dark:hover:border-[#168BFF]/60 hover:bg-white dark:hover:bg-[#171F29] transition-all flex items-center justify-between text-left group cursor-pointer card-interactive shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#168BFF]"
+    >
+      <div className="flex items-center gap-3.5 min-w-0 pr-2">
+        <div className="w-12 h-12 rounded-2xl bg-white dark:bg-[#171F29] border border-[#C7D1DC] dark:border-[#2C3948] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-xs">
+          <Icon className="w-6 h-6 text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] transition-colors" />
+        </div>
+        <h3 className="text-xs sm:text-sm font-bold text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] transition-colors leading-snug line-clamp-2">
+          {module.title}
+        </h3>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+        <button
+          type="button"
+          onClick={(event) => onToggleFavorite(event, module.id)}
+          aria-label={isFavourite ? `Remove ${module.title} from favourites` : `Add ${module.title} to favourites`}
+          aria-pressed={isFavourite}
+          title={isFavourite ? 'Remove from Home Favorites' : 'Add to Home Favorites'}
+          className={`p-1.5 rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#168BFF] ${
+            isFavourite
+              ? 'text-amber-400 hover:text-amber-500'
+              : 'text-slate-300 dark:text-slate-600 hover:text-amber-400 dark:hover:text-amber-400'
+          }`}
+        >
+          <Star className={`w-4 h-4 ${isFavourite ? 'fill-amber-400' : ''}`} />
+        </button>
+        <ArrowRight className="w-4 h-4 text-[#697586] dark:text-[#8794A5] group-hover:text-[#168BFF] group-hover:translate-x-0.5 transition-all" />
+      </div>
+    </div>
+  );
+}

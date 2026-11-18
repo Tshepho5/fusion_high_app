@@ -1,5 +1,11 @@
 const jwt = require('jsonwebtoken');
 const db = require('./db/db');
+const {
+    accountUnavailable,
+    applyAccount,
+    hasDatabaseSuperadmin,
+    loadAuthoritativeAccount
+} = require('./lib/authoritativeAccess');
 
 const SESSION_COOKIE = 'geleza_session';
 
@@ -73,11 +79,15 @@ const auth = (req, res, next) => {
         }
         try {
             await ensureActiveSessionColumn();
-            const sessionRes = await db.query(
-                'SELECT active_session_id FROM users WHERE id::text = $1::text',
-                [String(user.id)]
-            );
-            const activeSessionId = sessionRes.rows[0]?.active_session_id;
+            const loaded = await loadAuthoritativeAccount(db.query, user.id);
+            if (loaded.state !== 'active') {
+                clearSessionCookie(res);
+                return res.status(401).json({
+                    error: accountUnavailable(loaded.state),
+                    code: loaded.state === 'missing' ? 'account_missing' : loaded.state
+                });
+            }
+            const activeSessionId = loaded.account.active_session_id;
             if (!user.sid || !activeSessionId || activeSessionId !== user.sid) {
                 clearSessionCookie(res);
                 return res.status(401).json({
@@ -89,7 +99,16 @@ const auth = (req, res, next) => {
                 'UPDATE users SET session_seen_at = NOW(), last_seen_at = NOW(), is_online = TRUE WHERE id::text = $1::text',
                 [String(user.id)]
             ).catch(() => {});
-            req.user = user;
+            req.user = {
+                id: loaded.account.id,
+                role: loaded.account.role,
+                email: loaded.account.email,
+                full_name: user.full_name,
+                school_id: loaded.account.school_id,
+                is_superadmin: hasDatabaseSuperadmin(loaded.account),
+                sid: user.sid,
+                authoritative: true
+            };
             attachSessionCookie(res, token);
             next();
         } catch (sessionErr) {
@@ -112,57 +131,34 @@ const requireRole = (roles) => async (req, res, next) => {
     }
 
     try {
-        // Query PostgreSQL database live as sole source of truth for RBAC and Multi-Tenant Isolation
-        const roleRes = await db.query(
-            `SELECT u.id, u.email, u.school_id, u.is_superadmin, u.role_id,
-                    COALESCE(
-                        r.name, 
-                        CASE 
-                            WHEN u.role_id::text IN ('1', 'admin') THEN 'admin'
-                            WHEN u.role_id::text IN ('2', 'parent') THEN 'parent'
-                            WHEN u.role_id::text IN ('3', 'learner') THEN 'learner'
-                            WHEN u.role_id::text IN ('4', 'teacher') THEN 'teacher'
-                            ELSE NULL
-                        END,
-                        (SELECT 'learner' FROM children c WHERE c.learner_user_id::text = u.id::text OR c.id::text = u.id::text LIMIT 1)
-                    ) as role_name 
-             FROM users u 
-             LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
-             WHERE u.id::text = $1::text`,
-            [String(req.user.id)]
-        );
+        const loaded = await loadAuthoritativeAccount(db.query, req.user.id);
+        if (loaded.state === 'deleted' || loaded.state === 'deactivated') {
+            return res.status(401).json({ error: accountUnavailable(loaded.state), code: loaded.state });
+        }
 
-        let row = roleRes.rows[0];
-        let roleName = row ? (row.role_name || '').toLowerCase() : null;
-
-        // If user wasn't found in users by id, check if req.user.id is in children table
-        if (!row) {
+        let roleName = null;
+        if (loaded.state === 'active') {
+            applyAccount(req, loaded.account);
+            roleName = loaded.account.role;
+        } else {
             const childRes = await db.query(
                 `SELECT c.id, c.learner_user_id, c.school_id FROM children c WHERE c.id::text = $1::text OR c.learner_user_id::text = $1::text LIMIT 1`,
                 [String(req.user.id)]
             );
-            if (childRes.rows.length > 0) {
+            if (childRes.rows.length > 0 && String(req.user.role || '').toLowerCase() === 'learner') {
                 roleName = 'learner';
+                req.user.role = 'learner';
+                req.user.is_superadmin = false;
+                req.user.authoritative = true;
                 req.user.school_id = childRes.rows[0].school_id || null;
             }
         }
 
-        // Final fallback to verified token role if present
-        if (!roleName && req.user.role) {
-            roleName = String(req.user.role).toLowerCase();
-        }
-
         if (!roleName) {
-            return res.status(403).json({ error: 'This account has no role on Geleza SA.' });
+            return res.status(401).json({ error: accountUnavailable(loaded.state), code: loaded.state || 'missing' });
         }
 
-        req.user.role = roleName;
-        if (row) {
-            req.user.school_id = row.school_id || req.user.school_id || null;
-            req.user.is_superadmin = Boolean(row.is_superadmin);
-        }
-
-        if (req.user.is_superadmin || roleName === 'superadmin') {
+        if (hasDatabaseSuperadmin(loaded.account)) {
             return next();
         }
 

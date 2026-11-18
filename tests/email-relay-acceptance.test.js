@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { googleRelayAccepted } = require('../public/src/services/emailService');

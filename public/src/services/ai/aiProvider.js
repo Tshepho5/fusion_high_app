@@ -1,4 +1,5 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { refuseExternalService } = require('../../../../lib/testSafety');
 require('dotenv').config();
 
 class AIProvider {
@@ -18,6 +19,7 @@ class AIProvider {
     }
 
     getClient() {
+        refuseExternalService('ai');
         const key = this._getKey();
         if (!key) {
             return null;

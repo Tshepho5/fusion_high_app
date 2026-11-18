@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 /**
  * Confirms the registration column and unique indexes can be applied,
  * then rolls back a pending application so no school is kept.

@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 /**
  * Automated Verification Script: Cross-Provincial Gauteng & Limpopo Admissions & Registration
  */

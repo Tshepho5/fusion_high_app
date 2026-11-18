@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const academicMlService = require('../public/src/services/academicMlService');
 
 console.log('Testing Academic ML Service in Node.js...');
