@@ -1,25 +1,35 @@
 import axios from 'axios';
 import { clearAuthSession, readAuthValue } from '../utils/authStorage';
+import { acceptAuthResponse, InvalidAuthResponseError } from './authResponse';
 
-const getApiBaseUrl = (): string => {
-  if (typeof window !== 'undefined') {
-    // If running in local browser on localhost or 127.0.0.1, always use relative path so local Express backend on port 4000 (or Vite proxy) is called directly
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return '';
-    }
-    // If running on Vercel, use relative path
-    if (window.location.hostname.includes('vercel.app')) {
-      return '';
-    }
+const PRODUCTION_API_URL = 'https://fusion-high-backend.onrender.com';
+
+const isHostedApiUrl = (value: string) => (
+  value.startsWith('https://') && !/localhost|127\.0\.0\.1/i.test(value)
+);
+
+export const getApiBaseUrl = (): string => {
+  const env = import.meta.env;
+  const configured = String(env.VITE_API_URL || '').trim();
+  if (env.PROD) {
+    return isHostedApiUrl(configured) ? configured : PRODUCTION_API_URL;
   }
-  return (import.meta as any).env?.VITE_API_URL || 'https://fusion-high-backend.onrender.com';
+  const onLocalHost = typeof window !== 'undefined'
+    && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const localBackendFlag = env.VITE_USE_LOCAL_BACKEND;
+  if (localBackendFlag === 'true' || (onLocalHost && localBackendFlag !== 'false')) {
+    return '';
+  }
+  if (isHostedApiUrl(configured)) return configured;
+  if (onLocalHost) return '';
+  return PRODUCTION_API_URL;
 };
 
-const API_URL = getApiBaseUrl();
+export const API_URL = getApiBaseUrl();
 
 const api = axios.create({
   baseURL: API_URL, // Handled by dynamic base URL, Vite proxy in dev, or Express in production
-  timeout: 15000, // 15-second timeout to prevent indefinite hangs
+  timeout: 45000, // 45-second timeout to accommodate cloud serverless/Render spin-up
   headers: {
     'Content-Type': 'application/json',
   },
@@ -35,6 +45,13 @@ api.interceptors.request.use((config) => {
   if (activeSchoolId) {
     config.headers['x-school-id'] = activeSchoolId;
   }
+  // When sending FormData, delete Content-Type so Axios/browser sets multipart boundary correctly
+  if (config.data instanceof FormData) {
+    if (config.headers) {
+      delete (config.headers as any)['Content-Type'];
+      delete (config.headers as any)['content-type'];
+    }
+  }
   return config;
 }, (error) => {
   return Promise.reject(error);
@@ -42,7 +59,14 @@ api.interceptors.request.use((config) => {
 
 // Handle response normalization and unauthorized responses
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    try {
+      response.data = acceptAuthResponse(response.config?.url, response.data);
+      return response;
+    } catch (err) {
+      return Promise.reject(err instanceof InvalidAuthResponseError ? err : new InvalidAuthResponseError());
+    }
+  },
   (error) => {
     // Sanitize any nested error objects (e.g. { error: { code, message } } from Vercel edge/serverless)
     if (error?.response?.data) {
@@ -59,11 +83,17 @@ api.interceptors.response.use(
       }
     }
 
-    if (error.response && error.response.status === 401) {
+    if (error.response && (error.response.status === 401 || error.response.data?.code === 'session_replaced')) {
+      const replaced = error.response.data?.code === 'session_replaced' || error.response.status === 401;
+      if (replaced && error.response.data?.code === 'session_replaced') {
+        try { sessionStorage.setItem('logout_reason', 'session'); } catch (_) {}
+      }
       if (!window.location.pathname.startsWith('/login') && 
           !window.location.pathname.startsWith('/register') &&
           !window.location.pathname.startsWith('/forgot-password')) {
         clearAuthSession([localStorage, sessionStorage]);
+        localStorage.removeItem('geleza_active_tab');
+        sessionStorage.removeItem('geleza_active_tab');
         window.location.href = '/login';
       }
     }
@@ -102,14 +132,25 @@ export const authService = {
     api.post('/api/register', userData).then(res => res.data),
   checkEmail: (email: string) => 
     api.post('/api/check-email', { email }).then(res => res.data),
+  checkLoginAccount: (identifier: string) =>
+    api.post('/api/check-login-account', { email: identifier, identifier }).then(res => res.data),
   verifyLearner: (data: { learner_number?: string; first_name?: string; surname?: string; id_number?: string; grade?: number | string; stream?: string }) => 
     api.post('/api/verify-learner', data).then(res => res.data),
-  forgotPassword: (data: { email?: string; identifier?: string }) => 
-    api.post('/api/forgot-password', { email: data.email || data.identifier, identifier: data.identifier || data.email }).then(res => res.data),
+  forgotPassword: (data: { email?: string; identifier?: string; channel?: 'email' }) => 
+    api.post('/api/forgot-password', { email: data.email || data.identifier, identifier: data.identifier || data.email, channel: 'email' }, { timeout: 60000 }).then(res => res.data),
   verifyOtp: (data: { email?: string; identifier?: string; otp?: string; code?: string }) => 
-    api.post('/api/verify-otp', { email: data.email || data.identifier, identifier: data.identifier || data.email, code: data.code || data.otp, otp: data.otp || data.code }).then(res => res.data),
+    api.post('/api/verify-otp', { email: data.email || data.identifier, identifier: data.identifier || data.email, code: data.code || data.otp, otp: data.otp || data.code }, { timeout: 45000 }).then(res => res.data),
   resetPassword: (data: { email?: string; identifier?: string; otp?: string; code?: string; newPassword?: string; new_password?: string }) => 
-    api.post('/api/reset-password', { email: data.email || data.identifier, identifier: data.identifier || data.email, code: data.code || data.otp, otp: data.otp || data.code, new_password: data.newPassword || data.new_password, newPassword: data.newPassword || data.new_password }).then(res => res.data),
+    api.post('/api/reset-password', { email: data.email || data.identifier, identifier: data.identifier || data.email, code: data.code || data.otp, otp: data.otp || data.code, new_password: data.newPassword || data.new_password, newPassword: data.newPassword || data.new_password }, { timeout: 45000 }).then(res => res.data),
+  fingerprintStatus: () => api.get('/api/webauthn/status').then(res => res.data),
+  fingerprintRegisterOptions: () => api.post('/api/webauthn/register/options').then(res => res.data),
+  fingerprintRegisterVerify: (payload: { challengeId: string; response: unknown }) =>
+    api.post('/api/webauthn/register/verify', payload).then(res => res.data),
+  fingerprintDisable: (credentialId?: string) =>
+    api.post('/api/webauthn/disable', credentialId ? { credentialId } : {}).then(res => res.data),
+  fingerprintLoginOptions: () => api.post('/api/webauthn/login/options').then(res => res.data),
+  fingerprintLoginVerify: (payload: { challengeId: string; response: unknown }) =>
+    api.post('/api/webauthn/login/verify', payload).then(res => res.data),
 };
 
 // User Profile & Messages APIs (users, messages tables)
@@ -158,7 +199,7 @@ export const userService = {
   markMessagesAsRead: (payload: { sender_id: string | number }) => 
     api.post('/api/messages/read', payload).then(res => res.data),
   heartbeat: () => api.post('/api/user/heartbeat').then(res => res.data),
-  updateLogoutStatus: () => api.post('/api/user/logout-status').then(res => res.data),
+  updateLogoutStatus: (endSession = false) => api.post('/api/user/logout-status', endSession ? { endSession: true } : {}).then(res => res.data),
 };
 
 // Learner Portal APIs (children, subjects, attendance, progress, announcements, textbooks)
@@ -195,7 +236,10 @@ export const learnerService = {
     conversationHistory?: any[];
     previous_questions?: string[];
   }) => 
-    api.post('/api/learner/ai-tutor/chat', { ...payload, message: payload.message || payload.prompt || payload.question }).then(res => res.data),
+    api.post('/api/ai/chat', { 
+      ...payload, 
+      message: payload.message || payload.prompt || payload.question 
+    }).then(res => res.data),
   getEnrolledSubjectsWithSyllabus: () => api.get('/api/learner/ai-tutor/subjects').then(res => res.data),
   getAIConversations: (subject?: string) => api.get('/api/learner/ai-tutor/conversations', { params: { subject } }).then(res => res.data),
   getAIConversationDetails: (id: number | string) => api.get(`/api/learner/ai-tutor/conversations/${id}`).then(res => res.data),
@@ -215,6 +259,38 @@ export const learnerService = {
   simulateAps: (payload: { subject_marks: Array<{ subject: string; mark: number }> }) => api.post('/api/learner/simulate-aps', payload).then(res => res.data),
 };
 
+// Universal Geleza AI Subsystem Client APIs
+export const gelezaAiService = {
+  chat: (payload: {
+    message: string;
+    conversationId?: number | null;
+    role?: string;
+    contextData?: any;
+  }) => api.post('/api/ai/chat', payload).then(res => res.data),
+  getConversations: () =>
+    api.get('/api/ai/conversations').then(res => res.data),
+  getConversationDetails: (id: number | string) =>
+    api.get(`/api/ai/conversations/${id}`).then(res => res.data),
+  deleteConversation: (id: number | string) =>
+    api.delete(`/api/ai/conversations/${id}`).then(res => res.data),
+  submitFeedback: (payload: { messageId: string | number; rating: 'up' | 'down'; feedbackText?: string }) =>
+    api.post('/api/ai/feedback', payload).then(res => res.data),
+  generateQuiz: (payload: { subject: string; grade?: number; topic: string; questionCount?: number; difficulty?: string }) =>
+    api.post('/api/ai/tutor/quiz', payload).then(res => res.data),
+  explainMistake: (payload: { subject: string; grade?: number; question: string; studentAnswer: string; correctAnswer?: string }) =>
+    api.post('/api/ai/tutor/explain-mistake', payload).then(res => res.data),
+  generateLessonPlan: (payload: { subject: string; grade?: number; topic: string; term?: number; durationMinutes?: number }) =>
+    api.post('/api/ai/teacher/lesson-plan', payload).then(res => res.data),
+  generateAssessment: (payload: { subject: string; grade?: number; topic: string; totalMarks?: number }) =>
+    api.post('/api/ai/teacher/assessment', payload).then(res => res.data),
+  draftParentMessage: (payload: { childName?: string; teacherName?: string; topic?: string; messageObjective?: string }) =>
+    api.post('/api/ai/parent/draft-message', payload).then(res => res.data),
+  getClassRiskBriefing: (classId: number | string) =>
+    api.get(`/api/ai/automation/briefing/class/${classId}`).then(res => res.data),
+  getClassAnalytics: (classId: number | string) =>
+    api.get(`/api/ai/insight/class/${classId}`).then(res => res.data),
+};
+
 // Interactive CAPS Subject AI Tutor APIs
 export const aiTutorService = {
   getSubjectsWithSyllabus: () =>
@@ -229,6 +305,16 @@ export const aiTutorService = {
     api.post('/api/learner/ai-tutor/chat', payload).then(res => res.data),
   deleteSession: (id: number | string) =>
     api.delete(`/api/learner/ai-tutor/conversations/${id}`).then(res => res.data),
+  getPhysicsTopics: (grade?: number) =>
+    api.get('/api/ai/physics/topics', { params: grade ? { grade } : undefined }).then(res => res.data),
+  getPhysicsGrade10Topics: () =>
+    api.get('/api/ai/physics-grade10/topics').then(res => res.data),
+  evaluatePhysicsAnswer: (payload: { itemId: string; studentAnswer: string }) =>
+    api.post('/api/ai/physics/evaluate', payload).then(res => res.data),
+  getMathTopics: () =>
+    api.get('/api/ai/math/topics').then(res => res.data),
+  evaluateMathAnswer: (payload: { itemId: string; studentAnswer: string }) =>
+    api.post('/api/ai/math/evaluate', payload).then(res => res.data),
   getLifeSciencesTopics: () =>
     api.get('/api/ai/life-sciences/topics').then(res => res.data),
   evaluateLifeSciencesAnswer: (payload: { itemId: string; studentAnswer: string }) =>
@@ -255,7 +341,8 @@ export const teacherService = {
   getClassList: () => api.get('/api/teacher/classlist').then(res => res.data),
   getClassRoster: (params?: { grade?: number; class?: string; subject?: string; term?: string }) => 
     api.get(`/api/teacher/class-roster?grade=${params?.grade || ''}&class=${params?.class || ''}&subject=${encodeURIComponent(params?.subject || '')}&term=${encodeURIComponent(params?.term || '')}`).then(res => res.data),
-  getMyLearners: () => api.get('/api/teacher/my-learners').then(res => res.data),
+  getMyLearners: (params?: { subject?: string; grade?: number; class?: string }) => 
+    api.get('/api/teacher/my-learners', { params }).then(res => res.data),
   getAttendanceRoster: (params?: { grade?: number; class?: string; date?: string; subject?: string }) => 
     api.get(`/api/teacher/attendance-roster?grade=${params?.grade || ''}&class=${params?.class || ''}&date=${params?.date || ''}&subject=${params?.subject || ''}`).then(res => res.data),
   getAttendanceHistory: (params?: { class?: string; class_id?: string; date?: string; startDate?: string; endDate?: string; status?: string }) =>
@@ -277,10 +364,62 @@ export const teacherService = {
     api.post('/api/teacher/ai/generate-assignment-questions', payload).then(res => res.data),
   generateQuiz: (payload: any) =>
     api.post('/api/teacher/ai/generate-assignment-questions', payload).then(res => res.data),
-  getMyResources: () => api.get('/api/teacher/my-resources').then(res => res.data),
+  getMyResources: (params?: { subject?: string; grade?: number | string; class_id?: number | string; resource_type?: string; search?: string }) => 
+    api.get('/api/teacher/my-resources', { params }).then(res => res.data),
   uploadResource: (formData: FormData) => 
-    api.post('/api/teacher/upload-resource', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(res => res.data),
+    api.post('/api/teacher/upload-resource', formData, {
+      timeout: 120000,
+    }).then(res => res.data),
+  togglePublishResource: (id: number | string, isPublished?: boolean) => 
+    api.patch(`/api/teacher/resources/${id}/publish`, { is_published: isPublished }).then(res => res.data),
   deleteResource: (id: number | string) => api.delete(`/api/teacher/resources/${id}`).then(res => res.data),
+
+  // CAPS Past Paper Question Bank
+  getQuestionBankStats: () => api.get('/api/teacher/question-bank/stats').then(res => res.data),
+  getQuestionBankQuestions: (params?: { grade?: number | string; subject?: string; topic?: string; qtype?: string; limit?: number }) =>
+    api.get('/api/teacher/question-bank/questions', { params }).then(res => res.data),
+  generateQuestionBankTest: (payload: { marks: number; grade?: number | string; subject?: string; topic?: string; title?: string; qtype?: string }) =>
+    api.post('/api/teacher/question-bank/generate', payload).then(res => res.data),
+};
+
+export const lessonPlanningService = {
+  getContext: () => api.get('/api/teacher/lesson-plans/context').then(res => res.data),
+  getDashboard: (params?: Record<string, string | number | undefined>) =>
+    api.get('/api/teacher/lesson-plans/dashboard', { params }).then(res => res.data),
+  listPlans: (params?: Record<string, string | number | undefined>) =>
+    api.get('/api/teacher/lesson-plans', { params }).then(res => res.data),
+  getPlan: (id: number | string) => api.get(`/api/teacher/lesson-plans/${id}`).then(res => res.data),
+  createPlan: (payload: unknown) => api.post('/api/teacher/lesson-plans', payload).then(res => res.data),
+  updatePlan: (id: number | string, payload: unknown) => api.put(`/api/teacher/lesson-plans/${id}`, payload).then(res => res.data),
+  deletePlan: (id: number | string) => api.delete(`/api/teacher/lesson-plans/${id}`).then(res => res.data),
+  duplicatePlan: (id: number | string) => api.post(`/api/teacher/lesson-plans/${id}/duplicate`).then(res => res.data),
+  downloadPlanPdf: (id: number | string) =>
+    api.get(`/api/teacher/lesson-plans/${id}/pdf`, { responseType: 'blob' }),
+  saveAsTemplate: (id: number | string, payload: { template_name: string; visibility?: string }) =>
+    api.post(`/api/teacher/lesson-plans/${id}/template`, payload).then(res => res.data),
+  uploadMaterial: (id: number | string, formData: FormData) =>
+    api.post(`/api/teacher/lesson-plans/${id}/materials`, formData).then(res => res.data),
+  assist: (payload: unknown) => api.post('/api/teacher/lesson-plans/ai-assist', payload).then(res => res.data),
+  getCalendar: (params?: Record<string, string | undefined>) =>
+    api.get('/api/teacher/lesson-plans/calendar', { params }).then(res => res.data),
+  getProgress: (params?: Record<string, string | number | undefined>) =>
+    api.get('/api/teacher/lesson-plans/progress', { params }).then(res => res.data),
+  getHomeworkOptions: (params?: { subject?: string; grade?: number | string }) =>
+    api.get('/api/teacher/lesson-plans/homework-options', { params }).then(res => res.data),
+  listNotes: (params?: Record<string, string | number | undefined>) =>
+    api.get('/api/teacher/lesson-notes', { params }).then(res => res.data),
+  getNote: (id: number | string) => api.get(`/api/teacher/lesson-notes/${id}`).then(res => res.data),
+  createNote: (payload: unknown) => api.post('/api/teacher/lesson-notes', payload).then(res => res.data),
+  updateNote: (id: number | string, payload: unknown) => api.put(`/api/teacher/lesson-notes/${id}`, payload).then(res => res.data),
+  deleteNote: (id: number | string) => api.delete(`/api/teacher/lesson-notes/${id}`).then(res => res.data),
+  uploadNoteFile: (id: number | string, formData: FormData) =>
+    api.post(`/api/teacher/lesson-notes/${id}/attachments`, formData).then(res => res.data),
+  listTemplates: () => api.get('/api/teacher/lesson-templates').then(res => res.data),
+  createTemplate: (payload: unknown) => api.post('/api/teacher/lesson-templates', payload).then(res => res.data),
+  updateTemplate: (id: number | string, payload: unknown) => api.put(`/api/teacher/lesson-templates/${id}`, payload).then(res => res.data),
+  deleteTemplate: (id: number | string) => api.delete(`/api/teacher/lesson-templates/${id}`).then(res => res.data),
+  applyTemplate: (id: number | string, payload: unknown) =>
+    api.post(`/api/teacher/lesson-templates/${id}/apply`, payload).then(res => res.data),
 };
 
 // Notification APIs
@@ -289,6 +428,11 @@ export const notificationService = {
   getUnreadCount: () => api.get('/api/notifications/unread-count').then(res => res.data),
   markAsRead: (id: string | number) => api.put(`/api/notifications/${id}/read`).then(res => res.data),
   markAllAsRead: () => api.put('/api/notifications/read-all').then(res => res.data),
+  getPushPublicKey: () => api.get('/api/notifications/push/public-key').then(res => res.data),
+  subscribePush: (subscription: PushSubscriptionJSON) =>
+    api.post('/api/notifications/push/subscribe', { subscription }).then(res => res.data),
+  unsubscribePush: (endpoint?: string) =>
+    api.delete('/api/notifications/push/subscribe', { data: { endpoint } }).then(res => res.data),
 };
 
 // Admin Management APIs
@@ -306,6 +450,18 @@ export const adminService = {
   createParent: (payload: any) => api.post('/api/admin/parents', payload).then(res => res.data),
   getLearners: () => api.get('/api/admin/learners').then(res => res.data),
   createLearner: (payload: any) => api.post('/api/admin/learners', payload).then(res => res.data),
+  deleteLearner: (id: number | string) => api.delete(`/api/admin/learners/${id}`).then(res => res.data),
+  getRecycleBin: () => api.get('/api/admin/recycle-bin').then(res => res.data),
+  restoreFromRecycleBin: (id: number | string) => api.post(`/api/admin/recycle-bin/${id}/restore`).then(res => res.data),
+  permanentDeleteFromRecycleBin: (id: number | string) => api.delete(`/api/admin/recycle-bin/${id}`).then(res => res.data),
+  emptyRecycleBin: () => api.post('/api/admin/recycle-bin/empty').then(res => res.data),
+  previewLearnerImport: (payload: { csv_text: string; mapping?: Record<string, string> }) =>
+    api.post('/api/admin/learners/import/preview', payload).then(res => res.data),
+  commitLearnerImport: (payload: {
+    learners: Array<Record<string, unknown>>;
+    default_password?: string;
+    skip_duplicates?: boolean;
+  }) => api.post('/api/admin/learners/import', payload).then(res => res.data),
   getSchoolMetadata: () => api.get('/api/admin/metadata').then(res => res.data),
   getTimetables: () => api.get('/api/admin/timetables').then(res => res.data),
   generateTimetable: (payload: any) => api.post('/api/admin/generate-timetable', payload).then(res => res.data),
@@ -327,6 +483,10 @@ export const adminService = {
   getAdmissionById: (id: string | number) => api.get(`/api/admin/admissions/${id}`).then(res => res.data),
   inspectAdmissionOCR: (id: string | number, documentId?: number) => api.post(`/api/admin/admissions/${id}/ocr-inspect`, { documentId }).then(res => res.data),
   updateAdmissionStatus: (id: string | number, payload: any) => api.patch(`/api/admin/admissions/${id}`, payload).then(res => res.data),
+  getSupportTickets: (params?: { status?: string; school_id?: string | number }) =>
+    api.get('/api/admin/support-tickets', { params }).then(res => res.data),
+  updateSupportTicket: (id: string | number, payload: { status?: string; admin_notes?: string; resolution_notes?: string; priority?: string }) =>
+    api.patch(`/api/admin/support-tickets/${id}`, payload).then(res => res.data),
   reviewApplicationDecision: (id: string | number, payload: { status: string; admin_notes?: string; assigned_class_id?: number }) =>
     api.post(`/api/applications/${id}/decision`, payload).then(res => res.data),
   getAcademicOverview: (params?: any) => api.get('/api/admin/academics/overview', { params }).then(res => res.data),
@@ -347,6 +507,12 @@ export const adminService = {
     api.post('/api/report-cards/publish-grade-reports', payload).then(res => res.data),
   getOfficialReportCardView: (params: { childId: number | string; term?: string; academicYear?: string | number }) => 
     api.get('/api/report-cards/view-card', { params }).then(res => res.data),
+  approveGradeReports: (payload: { grade: string | number; class_name?: string; term?: string | number; academic_year?: string | number }) =>
+    api.post('/api/report-cards/approve', payload).then(res => res.data),
+  downloadLearnerReportPdf: (childId: number | string, params?: { term?: string | number; academic_year?: string | number; academicYear?: string | number }) =>
+    api.get(`/api/report-cards/download-pdf/${childId}`, { params, responseType: 'blob' }),
+  downloadBatchReportCardsZip: (params: { grade: string | number; class_name?: string; term?: string | number; academic_year?: string | number; academicYear?: string | number }) =>
+    api.get('/api/report-cards/batch-pdf', { params, responseType: 'blob' }),
 };
 
 // Parent Portal APIs (children, progress, attendance, messages)
@@ -356,7 +522,8 @@ export const parentService = {
   getChildrenDetailed: () => api.get('/api/parent/children-detailed').then(res => res.data),
   getChildOverview: (childId: string | number) => api.get(`/api/parent/child-overview/${childId}`).then(res => res.data),
   getChildPerformance: (childId: string | number) => api.get(`/api/parent/child-performance?childId=${childId}`).then(res => res.data),
-  getChildAttendance: (childId: string | number) => api.get(`/api/parent/child-attendance?childId=${childId}`).then(res => res.data),
+  getChildAttendance: (childId: string | number, term?: string) =>
+    api.get('/api/parent/child-attendance', { params: { childId, term } }).then(res => res.data),
   getChildTimetable: (childId?: string | number) => api.get(`/api/parent/child-timetable${childId ? `?child_id=${childId}` : ''}`).then(res => res.data),
   getChildHomework: (childId: string | number) => api.get('/api/parent/child-assignments', { params: { childId } }).then(res => res.data),
   getChildProgress: (childId: string | number) => api.get(`/api/progress/${childId}`).then(res => res.data),
@@ -432,6 +599,13 @@ export const conductService = {
   getChildConductForParent: (childId: number | string) => api.get(`/api/conduct/child/${childId}`).then(res => res.data),
   getTeacherConductLogs: () => api.get('/api/conduct/teacher-logs').then(res => res.data),
   updateDetentionStatus: (id: number | string, detention_status: string) => api.patch(`/api/conduct/detention/${id}`, { detention_status }).then(res => res.data),
+};
+
+// School Direct Messaging APIs
+export const messageService = {
+  sendMessage: (payload: { recipientId?: number | string; recipient_id?: number | string; subject?: string; content?: string; body?: string }) =>
+    api.post('/api/messages', payload).then(res => res.data),
+  getMessages: () => api.get('/api/messages').then(res => res.data),
 };
 
 // Examination Seating & Candidate Allocation APIs
@@ -520,6 +694,8 @@ export const assignmentService = {
     api.post(`/api/assignments/submissions/${submissionId}/grade`, payload).then(res => res.data),
   batchAIGrade: (assignmentId: number | string) =>
     api.post(`/api/assignments/${assignmentId}/batch-ai-grade`).then(res => res.data),
+  updateAssignmentStatus: (assignmentId: number | string, status: string) =>
+    api.patch(`/api/assignments/${assignmentId}/status`, { status }).then(res => res.data),
 };
 
 // Digital School Fees & Online Payments APIs
@@ -621,15 +797,38 @@ export const commandCenterService = {
 // Parent Portal Applications & Child Linkage API
 export const parentApplicationService = {
   submit: (data: any) => api.post('/api/parent-applications', data).then(res => res.data),
-  getAll: () => api.get('/api/parent-applications').then(res => res.data),
+  getAll: () => api.get('/api/admin/parent-applications').then(res => res.data),
+  correct: (id: number | string, payload: Record<string, any>) =>
+    api.patch(`/api/admin/parent-applications/${id}`, payload).then(res => res.data),
   decide: (id: number | string, decision: 'approve' | 'reject', admin_notes?: string) =>
-    api.post(`/api/parent-applications/${id}/decide`, { decision, admin_notes }).then(res => res.data),
+    api.post(`/api/admin/parent-applications/${id}/decide`, { decision, admin_notes }).then(res => res.data),
   linkEnrolledChild: (data: { targetID?: string; targetFirstName?: string; targetSurname?: string; id_number?: string; first_name?: string; surname?: string; learner_number?: string }) =>
     api.post('/api/parent/activate-child', {
       targetID: data.targetID || data.id_number || data.learner_number,
       targetFirstName: data.targetFirstName || data.first_name,
       targetSurname: data.targetSurname || data.surname
     }).then(res => res.data),
+};
+
+/** User / guest support requests for application & account corrections */
+export const supportService = {
+  submit: (payload: {
+    requester_name: string;
+    requester_email: string;
+    requester_phone?: string;
+    category: string;
+    subject: string;
+    description: string;
+    school_id?: number | string;
+    related_application_number?: string;
+    related_application_type?: string;
+    requester_role?: string;
+  }) => api.post('/api/support/tickets', payload).then(res => res.data),
+  getMine: () => api.get('/api/support/tickets/mine').then(res => res.data),
+  getAdminTickets: (params?: { status?: string }) =>
+    api.get('/api/admin/support-tickets', { params }).then(res => res.data),
+  updateTicket: (id: number | string, payload: { status?: string; admin_notes?: string; resolution_notes?: string; priority?: string }) =>
+    api.patch(`/api/admin/support-tickets/${id}`, payload).then(res => res.data),
 };
 
 // Behavioral & Environmental Hybrid Machine Learning API
@@ -648,10 +847,32 @@ export const schoolRegistrationService = {
   apply: (data: any) => api.post('/api/schools/apply', data).then(res => res.data),
   getAllApplications: (status?: string) => 
     api.get(`/api/schools/applications/all${status ? `?status=${status}` : ''}`).then(res => res.data),
-  reviewApplication: (id: number | string, decision: 'approve' | 'decline', reason?: string, executive_notes?: string) =>
-    api.post(`/api/schools/applications/${id}/decision`, { decision, reason, executive_notes }).then(res => res.data),
+  reviewApplication: (id: number | string, decision: 'approve' | 'decline', reason?: string, executive_notes?: string, authority_review?: Record<string, unknown>) =>
+    api.post(`/api/schools/applications/${id}/decision`, { decision, reason, executive_notes, authority_review }).then(res => res.data),
+  getAuthorisedPaymentAccount: (schoolId: number | string) =>
+    api.get(`/api/schools/${schoolId}/payment-account`).then(res => res.data),
   updateModules: (schoolId: number, teacher_modules: string[], learner_modules: string[]) =>
     api.put(`/api/schools/${schoolId}/modules`, { teacher_modules, learner_modules }).then(res => res.data),
+  updateCurriculum: (schoolId: number, data: { offered_subjects?: string[]; offered_streams?: string[]; offered_languages?: string[] }) =>
+    api.put(`/api/schools/${schoolId}/curriculum`, data).then(res => res.data),
+  getBank: (schoolId: number) => api.get(`/api/schools/${schoolId}/banking`).then(res => res.data),
+  updateBank: (schoolId: number, data: { bank_name: string; account_holder: string; account_number: string; branch_code: string; account_type?: string }) =>
+    api.put(`/api/schools/${schoolId}/banking`, data).then(res => res.data),
+};
+
+export const academicStreamService = {
+  configuration: (schoolId: number, year: number, grade: number) =>
+    api.get(`/api/schools/${schoolId}/academic-configuration`, { params: { year, grade } }).then(res => res.data),
+  saveOfferings: (schoolId: number, data: unknown) =>
+    api.put(`/api/schools/${schoolId}/academic-offerings`, data).then(res => res.data),
+  saveStream: (schoolId: number, data: unknown, streamId?: number | null) =>
+    streamId
+      ? api.put(`/api/schools/${schoolId}/academic-streams/${streamId}`, data).then(res => res.data)
+      : api.post(`/api/schools/${schoolId}/academic-streams`, data).then(res => res.data),
+  publish: (schoolId: number, streamId: number) =>
+    api.post(`/api/schools/${schoolId}/academic-streams/${streamId}/publish`).then(res => res.data),
+  archive: (schoolId: number, streamId: number) =>
+    api.post(`/api/schools/${schoolId}/academic-streams/${streamId}/archive`).then(res => res.data),
 };
 
 // Dynamic Class & Staff Invitation API
@@ -683,6 +904,7 @@ export const classStaffService = {
   verifyToken: (token: string) => api.get(`/api/staff-invites/verify?token=${encodeURIComponent(token)}`).then(res => res.data),
   applyTeacher: (data: any) => api.post('/api/staff-invites/apply', data).then(res => res.data),
   registerTeacher: (data: any) => api.post('/api/staff-invites/register', data).then(res => res.data),
+  confirmTeacherInvite: (data: any) => api.post('/api/staff-invites/confirm', data).then(res => res.data),
 };
 
 // Geleza SA Executive & Admin Portal Access / Gatekeeper Controls & Tester QA Management

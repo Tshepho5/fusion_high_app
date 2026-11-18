@@ -216,9 +216,12 @@ export const LearnerAssignments: React.FC<{ filterSubject?: string }> = ({ filte
     return <LoadingSpinner size="lg" text="Loading homework & digital assignments..." />;
   }
 
+  const embedded = Boolean(filterSubject);
+
   return (
-    <div className="space-y-6 animate-fade-in pb-16">
+    <div className={embedded ? 'space-y-4' : 'space-y-6 animate-fade-in pb-16'}>
       {/* Header */}
+      {!embedded && (
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl md:text-2xl font-extrabold font-display text-white tracking-tight flex items-center gap-2">
@@ -246,6 +249,7 @@ export const LearnerAssignments: React.FC<{ filterSubject?: string }> = ({ filte
           </div>
         </div>
       </div>
+      )}
 
       {/* Alerts */}
       {successMessage && (
@@ -273,7 +277,8 @@ export const LearnerAssignments: React.FC<{ filterSubject?: string }> = ({ filte
       )}
 
       {/* Filter Tabs */}
-      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-surface-dark border border-white/10">
+      <div className={`flex flex-wrap items-center gap-2 ${embedded ? '' : 'p-1.5 rounded-2xl bg-surface-dark border border-white/10'}`}>
+        {!embedded && (
         <button
           onClick={() => setSelectedSubject('all')}
           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
@@ -284,7 +289,8 @@ export const LearnerAssignments: React.FC<{ filterSubject?: string }> = ({ filte
         >
           All Subjects
         </button>
-        {uniqueSubjects.map(subj => (
+        )}
+        {!embedded && uniqueSubjects.map(subj => (
           <button
             key={subj}
             onClick={() => setSelectedSubject(subj)}
@@ -298,7 +304,7 @@ export const LearnerAssignments: React.FC<{ filterSubject?: string }> = ({ filte
           </button>
         ))}
 
-        <div className="ml-auto flex items-center gap-1 pl-2 border-l border-white/10">
+        <div className={`flex items-center gap-1 ${embedded ? '' : 'ml-auto pl-2 border-l border-white/10'}`}>
           <button
             onClick={() => setFilterStatus('all')}
             className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${

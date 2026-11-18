@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { userService } from '../../services/api';
+import api, { userService, getApiBaseUrl } from '../../services/api';
 import { Badge } from '../../components/common/Badge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
@@ -120,6 +120,43 @@ const CHAT_THEMES: ChatColorTheme[] = [
   }
 ];
 
+const voiceMimeForExtension = (path: string) => {
+  const ext = path.split('?')[0].split('.').pop()?.toLowerCase();
+  if (ext === 'mp3') return 'audio/mpeg';
+  if (ext === 'mp4' || ext === 'm4a') return 'audio/mp4';
+  if (ext === 'ogg') return 'audio/ogg';
+  if (ext === 'wav') return 'audio/wav';
+  return 'audio/webm';
+};
+
+const voicePathCandidates = (audioUrl: string) => {
+  if (!audioUrl) return [];
+  if (audioUrl.startsWith('blob:') || audioUrl.startsWith('data:')) return [audioUrl];
+  const baseUrl = getApiBaseUrl();
+  const path = audioUrl.startsWith('http://') || audioUrl.startsWith('https://')
+    ? audioUrl
+    : (audioUrl.startsWith('/') ? audioUrl : `/${audioUrl}`);
+  
+  const candidates: string[] = [];
+  if (path.startsWith('http')) {
+    candidates.push(path);
+  } else {
+    if (baseUrl) {
+      candidates.push(`${baseUrl}${path}`);
+    }
+    candidates.push(path);
+  }
+
+  // Also check nested /voice/ subfolder if omitted in database URL
+  const extra: string[] = [];
+  for (const c of candidates) {
+    if (c.includes('/uploads/messages/') && !c.includes('/voice/')) {
+      extra.push(c.replace('/uploads/messages/', '/uploads/messages/voice/'));
+    }
+  }
+  return [...candidates, ...extra];
+};
+
 // Audio Voice Note Player Component
 const VoiceNotePlayer: React.FC<{
   audioUrl: string;
@@ -129,15 +166,90 @@ const VoiceNotePlayer: React.FC<{
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(duration || 0);
+  const [playableSrc, setPlayableSrc] = useState('');
+  const [loadError, setLoadError] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const togglePlay = () => {
-    if (!audioRef.current) return;
+  useEffect(() => {
+    let objectUrl = '';
+    let cancelled = false;
+    setPlayableSrc('');
+    setLoadError(false);
+    setIsPlaying(false);
+    setCurrentTime(0);
+
+    const load = async () => {
+      const candidates = voicePathCandidates(audioUrl);
+      if (candidates.length === 0) {
+        setLoadError(true);
+        return;
+      }
+      if (candidates[0].startsWith('blob:') || candidates[0].startsWith('data:')) {
+        if (!cancelled) setPlayableSrc(candidates[0]);
+        return;
+      }
+
+      // Try blob load first (with session token & CORS)
+      for (const path of candidates) {
+        try {
+          const res = await api.get(path, { responseType: 'blob' });
+          const raw = res.data as Blob;
+          if (!raw || raw.size < 32 || (raw.type && raw.type.includes('text/html'))) continue;
+          const type = raw.type && raw.type !== 'application/octet-stream' && !raw.type.includes('json')
+            ? raw.type
+            : voiceMimeForExtension(path);
+          const playable = raw.type === type ? raw : new Blob([await raw.arrayBuffer()], { type });
+          objectUrl = URL.createObjectURL(playable);
+          if (cancelled) {
+            URL.revokeObjectURL(objectUrl);
+            return;
+          }
+          setPlayableSrc(objectUrl);
+          setLoadError(false);
+          return;
+        } catch (_) {}
+      }
+
+      // Fallback: use direct stream URL for HTML5 media pipeline
+      const fallbackUrl = candidates[0].startsWith('http')
+        ? candidates[0]
+        : `${getApiBaseUrl()}${candidates[0].startsWith('/') ? candidates[0] : '/' + candidates[0]}`;
+
+      if (!cancelled) {
+        setPlayableSrc(fallbackUrl);
+        setLoadError(false);
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [audioUrl]);
+
+  const togglePlay = async () => {
+    const audio = audioRef.current;
+    if (!audio || !playableSrc) return;
     if (isPlaying) {
-      audioRef.current.pause();
+      audio.pause();
       setIsPlaying(false);
-    } else {
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+      return;
+    }
+    try {
+      setLoadError(false);
+      await audio.play();
+      setIsPlaying(true);
+    } catch (err) {
+      console.warn('Direct play failed, attempting audio.load():', err);
+      try {
+        audio.load();
+        await audio.play();
+        setIsPlaying(true);
+      } catch (_) {
+        setIsPlaying(false);
+        setLoadError(true);
+      }
     }
   };
 
@@ -170,28 +282,29 @@ const VoiceNotePlayer: React.FC<{
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  const progress = audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
-
-  const resolvedAudioSrc = audioUrl
-    ? (audioUrl.startsWith('http://') || audioUrl.startsWith('https://') || audioUrl.startsWith('blob:')
-        ? audioUrl
-        : (audioUrl.startsWith('/') ? audioUrl : `/${audioUrl}`))
-    : '';
+  const handleRetry = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLoadError(false);
+    if (audioRef.current) {
+      audioRef.current.load();
+      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setLoadError(true));
+    }
+  };
 
   return (
     <div className="flex items-center gap-2.5 py-1.5 px-1 min-w-[200px] sm:min-w-[240px]">
       <audio
         ref={audioRef}
-        src={resolvedAudioSrc}
+        src={playableSrc || undefined}
+        crossOrigin="anonymous"
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleEnded}
         onError={() => {
-          if (audioRef.current && resolvedAudioSrc.includes('/uploads/messages/') && !resolvedAudioSrc.includes('/voice/')) {
-            audioRef.current.src = resolvedAudioSrc.replace('/uploads/messages/', '/uploads/messages/voice/');
-          }
+          // If already playing or load error
+          if (!playableSrc) setLoadError(true);
         }}
         onLoadedMetadata={() => {
-          if (audioRef.current?.duration && !isNaN(audioRef.current.duration)) {
+          if (audioRef.current?.duration && !isNaN(audioRef.current.duration) && isFinite(audioRef.current.duration)) {
             setAudioDuration(audioRef.current.duration);
           }
         }}
@@ -203,7 +316,8 @@ const VoiceNotePlayer: React.FC<{
         className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-95 shadow-md ${
           isMe ? 'bg-white text-emerald-800' : 'bg-brand-500 text-white'
         }`}
-        title={isPlaying ? 'Pause' : 'Play voice note'}
+        title={loadError ? 'Tap to retry voice note playback' : isPlaying ? 'Pause' : 'Play voice note'}
+        disabled={!playableSrc}
       >
         {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
       </button>
@@ -228,6 +342,18 @@ const VoiceNotePlayer: React.FC<{
             {formatTime(audioDuration || duration || 0)}
           </span>
         </div>
+        {loadError && (
+          <div className="flex items-center gap-1.5 text-[10px] text-rose-300">
+            <span>This voice note could not be played.</span>
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="underline font-bold text-cyan-300 hover:text-white"
+            >
+              Retry
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -291,8 +417,6 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const prevMessageCountRef = useRef<number>(0);
-  const initialLoadDoneRef = useRef<boolean>(false);
 
   // Play outgoing message sent chime (soft modern "pop" chime)
   const playSendChime = () => {
@@ -319,39 +443,6 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
     } catch (_) {}
   };
 
-  // Play incoming message received chime (melodic double-bell chime)
-  const playReceiveChime = () => {
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = audioCtxRef.current || new AudioCtx();
-      audioCtxRef.current = ctx;
-      if (ctx.state === 'suspended') ctx.resume();
-
-      const now = ctx.currentTime;
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(659.25, now);
-      gain1.gain.setValueAtTime(0.07, now);
-      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-      osc1.connect(gain1);
-      gain1.connect(ctx.destination);
-      osc1.start(now);
-      osc1.stop(now + 0.12);
-
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(987.77, now + 0.09);
-      gain2.gain.setValueAtTime(0.09, now + 0.09);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.start(now + 0.09);
-      osc2.stop(now + 0.25);
-    } catch (_) {}
-  };
-
   const selectedContactRef = useRef<any | null>(null);
   useEffect(() => {
     selectedContactRef.current = selectedContact;
@@ -366,7 +457,9 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
     }
   };
 
-  const fetchContacts = () => {
+  const retryTimeoutRef = useRef<any>(null);
+
+  const fetchContacts = (retryCount = 0) => {
     userService.getContacts()
       .then((res) => {
         const raw = Array.isArray(res) ? res : res.contacts || [];
@@ -393,7 +486,14 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
         console.error('Failed to load communication contacts:', err);
         setContacts((prev) => {
           if (prev.length === 0) {
-            setError(err?.response?.data?.error || 'Could not connect to messaging service.');
+            if (retryCount < 3) {
+              if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+              retryTimeoutRef.current = setTimeout(() => {
+                fetchContacts(retryCount + 1);
+              }, 2500);
+            } else {
+              setError(err?.response?.data?.error || 'Could not connect to messaging service.');
+            }
           }
           return prev;
         });
@@ -404,7 +504,12 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
   useEffect(() => {
     fetchContacts();
     const interval = setInterval(fetchContacts, 12000);
-    return () => clearInterval(interval);
+    const refreshOnline = () => fetchContacts();
+    window.addEventListener('online', refreshOnline);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', refreshOnline);
+    };
   }, []);
 
   const fetchConversation = (contactId: number) => {
@@ -414,15 +519,6 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
         const uniqueMsgs = msgs.filter(
           (m: any, index: number, self: any[]) => index === self.findIndex((o: any) => o.id === m.id)
         );
-
-        if (initialLoadDoneRef.current && uniqueMsgs.length > prevMessageCountRef.current) {
-          const lastMsg = uniqueMsgs[uniqueMsgs.length - 1];
-          if (lastMsg && lastMsg.sender_id !== user?.id) {
-            playReceiveChime();
-          }
-        }
-        initialLoadDoneRef.current = true;
-        prevMessageCountRef.current = uniqueMsgs.length;
 
         setConversation(uniqueMsgs);
         setTimeout(() => scrollToBottom(false), 50);
@@ -434,8 +530,6 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
 
   useEffect(() => {
     if (selectedContact?.id) {
-      initialLoadDoneRef.current = false;
-      prevMessageCountRef.current = 0;
       fetchConversation(selectedContact.id);
       const interval = setInterval(() => {
         const currentTargetId = selectedContactRef.current?.id || selectedContact?.id;
@@ -453,7 +547,9 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
       setError(null);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
-      const mediaRecorder = new MediaRecorder(stream);
+      const preferredTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+      const mimeType = preferredTypes.find((type) => MediaRecorder.isTypeSupported(type)) || '';
+      const mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
@@ -496,11 +592,23 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
     if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
     const finalDuration = recordingDuration;
     setIsRecording(false);
+    const recorder = mediaRecorderRef.current;
+    const recordedType = recorder.mimeType || 'audio/webm';
+    try { recorder.requestData(); } catch (_) {}
 
-    mediaRecorderRef.current.onstop = async () => {
-      mediaRecorderRef.current?.stream.getTracks().forEach(t => t.stop());
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-      const audioFile = new File([audioBlob], `voice_note_${Date.now()}.webm`, { type: 'audio/webm' });
+    recorder.onstop = async () => {
+      recorder.stream.getTracks().forEach(t => t.stop());
+      const baseType = recordedType.split(';')[0] || 'audio/webm';
+      const extension = baseType.includes('mp4') ? 'm4a' : baseType.includes('ogg') ? 'ogg' : 'webm';
+      const audioBlob = new Blob(audioChunksRef.current, { type: baseType });
+      if (audioBlob.size < 32) {
+        setError('The voice note was empty. Hold the microphone a little longer and try again.');
+        setSending(false);
+        setRecordingDuration(0);
+        audioChunksRef.current = [];
+        return;
+      }
+      const audioFile = new File([audioBlob], `voice_note_${Date.now()}.${extension}`, { type: baseType });
 
       setSending(true);
       playSendChime();
@@ -534,7 +642,7 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
       }
     };
 
-    mediaRecorderRef.current.stop();
+    recorder.stop();
   };
 
   // Handle File Selection
@@ -734,63 +842,26 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
         onChange={(e) => handleFileSelect(e, 'document')}
       />
 
-      {/* Top Banner */}
-      <div className={`p-4 rounded-2xl ${cardBg} border flex items-center justify-between gap-4 shadow-sm`}>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              if (onBack) {
-                onBack();
-              } else if (window.history.length > 1) {
-                window.history.back();
-              }
-            }}
-            className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 hover:border-emerald-500/50 text-slate-700 dark:text-slate-200 hover:text-emerald-500 dark:hover:text-white transition-all flex items-center gap-1.5 text-xs font-bold shadow-xs cursor-pointer group active:scale-95 shrink-0"
-            title="Back to previous page"
-            aria-label="Back to previous page"
-          >
-            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5 text-emerald-500" />
-            <span className="hidden sm:inline">Back</span>
-          </button>
-
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-cyan-600 flex items-center justify-center text-white shadow-sm shrink-0">
-            <MessageSquare className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className={`text-base font-extrabold font-display ${isLight ? 'text-slate-900' : 'text-white'} flex items-center gap-2 flex-wrap`}>
-              Communication & Messaging Hub
-              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                isLight ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-              }`}>
-                Theme: {activeThemeObj.name}
-              </span>
-            </h2>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Badge variant="emerald" size="sm">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1" />
-            Active Channel
-          </Badge>
-        </div>
-      </div>
-
       {error && (
         <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{typeof error === 'string' ? error : (error as any)?.message || String(error)}</span>
+            <button
+              onClick={() => { setError(null); fetchContacts(); }}
+              className="px-2.5 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 font-bold text-[11px] border border-rose-500/30 transition-all flex items-center gap-1 cursor-pointer"
+            >
+              <span>Reconnect</span>
+            </button>
           </div>
-          <button onClick={() => setError(null)} className="text-rose-400 hover:text-white">
+          <button onClick={() => setError(null)} className="text-rose-400 hover:text-white shrink-0">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {/* Main Messaging Container */}
-      <div className={`grid grid-cols-1 md:grid-cols-12 rounded-3xl ${cardBg} border overflow-hidden shadow-2xl h-[calc(100vh-250px)] min-h-[550px]`}>
+      <div className={`grid grid-cols-1 md:grid-cols-12 rounded-3xl ${cardBg} border overflow-hidden shadow-2xl h-[calc(100vh-8rem)] min-h-[550px]`}>
         
         {/* Left Directory & Contact List */}
         <div className={`md:col-span-5 lg:col-span-4 ${sidebarBg} border-r flex flex-col h-full overflow-hidden ${
@@ -800,6 +871,21 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
           <div className={`p-4 ${headerBg} border-b space-y-3 shrink-0`}>
             <div className="flex items-center justify-between">
               <h3 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'} flex items-center gap-2`}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onBack) {
+                      onBack();
+                    } else if (window.history.length > 1) {
+                      window.history.back();
+                    }
+                  }}
+                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-cyan-500/15 dark:bg-white/5 dark:hover:bg-cyan-500/15 border border-slate-200 dark:border-white/10 text-cyan-600 dark:text-[#18E2EC] transition-colors cursor-pointer"
+                  title="Back"
+                  aria-label="Back"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
                 <span>Conversations</span>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${isLight ? 'bg-slate-200 text-slate-800' : 'bg-white/10 text-white'}`}>
                   {contacts.length}
@@ -945,6 +1031,11 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
                         <h4 className={`text-xs font-bold truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>
                           {contact.full_name} {contact.surname}
                         </h4>
+                        <span className={`ml-2 shrink-0 text-[10px] font-semibold ${contact.is_online ? (isLight ? 'text-emerald-700' : 'text-emerald-400') : 'text-slate-400'}`}>
+                          {contact.is_online
+                            ? (contact.presence_device === 'phone' ? 'Online · phone' : contact.presence_device === 'laptop' ? 'Online · laptop' : 'Online')
+                            : 'Offline'}
+                        </span>
                         {contact.last_activity && (
                           <span className="text-[10px] text-slate-400 font-mono">
                             {new Date(contact.last_activity).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -970,9 +1061,16 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
                 );
               })
             ) : (
-              <div className="p-8 text-center text-slate-500 text-xs">
+              <div className="p-8 text-center text-slate-500 text-xs flex flex-col items-center">
                 <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-40" />
                 <p>No contacts found</p>
+                <button
+                  type="button"
+                  onClick={() => fetchContacts()}
+                  className="mt-3 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Refresh Contacts
+                </button>
               </div>
             )}
           </div>
@@ -1017,9 +1115,9 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
                       <span>{selectedContact.tag_name || selectedContact.email}</span>
                       <span>•</span>
                       {selectedContact.is_online ? (
-                        <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                        <span className={`font-semibold flex items-center gap-1 ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                          Online
+                          {selectedContact.presence_device === 'phone' ? 'Online · phone' : selectedContact.presence_device === 'laptop' ? 'Online · laptop' : 'Online'}
                         </span>
                       ) : (
                         <span className="text-slate-400 font-medium flex items-center gap-1">

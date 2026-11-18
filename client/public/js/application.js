@@ -109,8 +109,8 @@ async function guardAdmissionWindow() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  await guardAdmissionWindow();
   initSchoolSelector();
+  guardAdmissionWindow();
   initEnrolledLearnerLookup();
   initPaymentChoices();
   initRealtimeInputEnforcement();
@@ -139,15 +139,22 @@ function initSchoolSelector() {
 
   function updateSchoolDisplay() {
     const selectedOpt = schoolSelect.options[schoolSelect.selectedIndex];
-    if (!selectedOpt || !selectedOpt.value) return;
+    if (!selectedOpt || !selectedOpt.value) {
+      if (emisTag) emisTag.textContent = 'Awaiting school';
+      if (circuitText) circuitText.textContent = '📍 Geleza SA Approved Schools Network';
+      if (mottoText) mottoText.textContent = '';
+      if (brandBadge) brandBadge.textContent = '⚡ Geleza SA Admissions';
+      if (portalTitle) portalTitle.textContent = 'Learner Admission Application';
+      return;
+    }
     const schoolName = selectedOpt.textContent.split('(')[0].trim();
-    const emis = selectedOpt.getAttribute('data-emis') || '911220001';
-    const circuit = selectedOpt.getAttribute('data-circuit') || 'Polokwane Central Circuit';
-    const motto = selectedOpt.getAttribute('data-motto') || 'Innovate, Lead, Transform';
+    const emis = selectedOpt.getAttribute('data-emis') || '';
+    const circuit = selectedOpt.getAttribute('data-circuit') || '';
+    const motto = selectedOpt.getAttribute('data-motto') || '';
 
-    if (emisTag) emisTag.textContent = `EMIS ${emis}`;
-    if (circuitText) circuitText.textContent = `📍 Circuit: ${circuit} • Limpopo DBE`;
-    if (mottoText) mottoText.textContent = `"${motto}"`;
+    if (emisTag) emisTag.textContent = emis ? `EMIS ${emis}` : 'Registered School';
+    if (circuitText) circuitText.textContent = circuit ? `📍 Circuit: ${circuit}` : '📍 Geleza SA Approved School';
+    if (mottoText) mottoText.textContent = motto ? `"${motto}"` : '';
     if (brandBadge) brandBadge.textContent = `⚡ ${schoolName} Admissions`;
     if (portalTitle) portalTitle.textContent = `${schoolName} Learner Admissions`;
   }
@@ -168,58 +175,108 @@ function initSchoolSelector() {
   }
   updateSchoolDisplay();
 
+  function showLoadingSchools() {
+    schoolSelect.innerHTML = '';
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.disabled = true;
+    opt.selected = true;
+    opt.textContent = '⏳ Loading registered partner schools...';
+    schoolSelect.appendChild(opt);
+    if (emisTag) emisTag.textContent = 'Connecting...';
+    if (circuitText) circuitText.textContent = '📍 Loading registered schools...';
+    if (brandBadge) brandBadge.textContent = '⚡ Geleza SA Admissions';
+  }
+
   function showNoSchools() {
     schoolSelect.innerHTML = '';
     const opt = document.createElement('option');
     opt.value = '';
     opt.disabled = true;
     opt.selected = true;
-    opt.textContent = 'No school is registered yet';
+    opt.textContent = 'No approved school registered yet';
     schoolSelect.appendChild(opt);
-    if (emisTag) emisTag.textContent = 'Awaiting a principal';
-    if (circuitText) circuitText.textContent = 'A principal registers the school from the Geleza SA home page. It appears here after Geleza SA approves it.';
+    if (emisTag) emisTag.textContent = 'Awaiting registration';
+    if (circuitText) circuitText.textContent = 'Registered schools will automatically appear here once onboarded.';
     if (mottoText) mottoText.textContent = '';
-    if (brandBadge) brandBadge.textContent = 'Geleza SA Admissions';
-    if (portalTitle) portalTitle.textContent = 'Learner Admissions';
+    if (brandBadge) brandBadge.textContent = '⚡ Geleza SA Admissions';
+    if (portalTitle) portalTitle.textContent = 'Learner Admission Application';
   }
 
-  showNoSchools();
+  showLoadingSchools();
 
-  fetch(`${API_BASE}/api/schools`)
-    .then(res => res.json())
-    .then(schools => {
-      if (!Array.isArray(schools) || schools.length === 0) {
-        showNoSchools();
-        return;
-      }
-      const currentVal = schoolSelect.value;
-      schoolSelect.innerHTML = '';
-      schools.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.id;
-        opt.setAttribute('data-slug', s.slug);
-        opt.setAttribute('data-emis', s.emis_number || '');
-        opt.setAttribute('data-circuit', s.circuit || '');
-        opt.setAttribute('data-motto', s.motto || '');
-        opt.textContent = s.name;
-        if (String(s.id) === String(currentVal) || (targetSchool && (s.slug === targetSchool || String(s.id) === targetSchool))) {
-          opt.selected = true;
+  const loadSchoolsData = async () => {
+    let schools = null;
+    const endpoints = [
+      `${API_BASE}/api/schools`,
+      '/api/schools',
+      'https://fusion-high-backend.onrender.com/api/schools'
+    ];
+
+    for (const ep of endpoints) {
+      try {
+        const res = await fetch(ep, { cache: 'no-cache' });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            schools = data;
+            break;
+          }
         }
-        schoolSelect.appendChild(opt);
-      });
-      updateSchoolDisplay();
-    })
-    .catch(err => console.warn('School list could not be loaded:', err));
+      } catch (_) {}
+    }
+
+    if (!schools || schools.length === 0) {
+      showNoSchools();
+      return;
+    }
+
+    const currentVal = schoolSelect.value;
+    schoolSelect.innerHTML = '';
+    schools.forEach((s, idx) => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.setAttribute('data-slug', s.slug || '');
+      opt.setAttribute('data-emis', s.emis_number || '');
+      opt.setAttribute('data-circuit', s.circuit || '');
+      opt.setAttribute('data-motto', s.motto || '');
+      opt.textContent = s.name;
+      if (
+        String(s.id) === String(currentVal) ||
+        (targetSchool && (s.slug === targetSchool || String(s.id) === targetSchool)) ||
+        (!currentVal && idx === 0)
+      ) {
+        opt.selected = true;
+      }
+      schoolSelect.appendChild(opt);
+    });
+    updateSchoolDisplay();
+  };
+
+  loadSchoolsData().catch(err => {
+    console.warn('School list fetch error:', err);
+    showNoSchools();
+  });
 }
 
 function initPaymentChoices() {
   const hidden = document.getElementById('payment_method_input');
   const payNow = document.getElementById('pay_now_input');
+  if (hidden) hidden.value = 'fee_waived';
   if (payNow) payNow.value = 'false';
+
+  const cardNow = document.getElementById('payment-choice-card-now');
+  const cardLater = document.getElementById('payment-choice-card-later');
+  const paintChoice = (value) => {
+    if (cardNow) cardNow.classList.toggle('payment-choice-card--active', value === 'pay_now');
+    if (cardLater) cardLater.classList.toggle('payment-choice-card--active', value === 'eft_later');
+  };
   document.querySelectorAll('input[name="payment_choice_radio"]').forEach((radio) => {
     radio.addEventListener('change', () => {
       if (hidden && radio.checked) hidden.value = radio.value;
+      if (radio.checked) paintChoice(radio.value);
     });
+    if (radio.checked) paintChoice(radio.value);
   });
 }
 
@@ -584,6 +641,72 @@ function goToStep(step) {
 }
 
 /**
+ * Helper to get clean human labels for form fields
+ */
+function getFieldLabel(field) {
+  const labels = {
+    school_id: 'Target High School',
+    first_name: 'Learner First Name',
+    surname: 'Learner Surname',
+    id_number: 'Learner ID / Passport',
+    dob: 'Date of Birth',
+    gender: 'Gender',
+    citizenship: 'Citizenship',
+    grade_applied: 'Grade Applied For',
+    home_language: 'Official Home Language',
+    physical_address: 'Learner Physical Address',
+    learner_phone: 'Learner Phone',
+    learner_email: 'Learner Email',
+    primary_parent_name: 'Primary Parent Name',
+    primary_parent_surname: 'Primary Parent Surname',
+    primary_parent_relationship: 'Parent Relationship',
+    primary_parent_id_number: 'Parent ID / Passport',
+    primary_parent_phone: 'Parent Mobile Phone',
+    primary_parent_email: 'Parent Email Address',
+    primary_parent_address: 'Parent Physical Address',
+    secondary_parent_name: 'Secondary Parent Name',
+    secondary_parent_surname: 'Secondary Parent Surname',
+    secondary_parent_phone: 'Secondary Parent Phone',
+    secondary_parent_email: 'Secondary Parent Email',
+    previous_school: 'Previous School Name',
+    learner_id_doc: 'Learner ID Copy / Smart Card',
+    birth_certificate: 'Birth Certificate Document',
+    parent_id_doc: 'Parent Certified ID Copy',
+    proof_of_residence: 'Proof of Residence'
+  };
+  return labels[field] || (field ? field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Form Field');
+}
+
+/**
+ * Global Modal Dialog Trigger
+ */
+function showModal(type, title, message) {
+  const modal = document.getElementById('resultModal');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalIcon = document.getElementById('modalIcon');
+  const modalBody = document.getElementById('modalBody');
+  const modalRef = document.getElementById('modalRef');
+  const modalCta = document.getElementById('modalCta');
+
+  if (!modal) return;
+
+  if (type === 'error') {
+    modalIcon.innerHTML = `<svg style="width:48px;height:48px;color:#ef4444;margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`;
+  } else if (type === 'success') {
+    modalIcon.innerHTML = `<svg style="width:52px;height:52px;color:#10b981;margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+  } else {
+    modalIcon.innerHTML = 'ℹ️';
+  }
+
+  modalTitle.textContent = title || 'Notice';
+  modalBody.innerHTML = `<div style="color: #fca5a5; font-size: 0.92rem; line-height: 1.6;">${message || ''}</div>`;
+  if (modalRef) modalRef.style.display = 'none';
+  if (modalCta) modalCta.style.display = 'none';
+
+  modal.classList.add('active');
+}
+
+/**
  * Step Validation
  */
 function validateStep(step) {
@@ -591,6 +714,13 @@ function validateStep(step) {
   let firstInvalidElement = null;
 
   if (step === 1) {
+    const schoolSelect = document.getElementById('school_id');
+    if (schoolSelect && (!schoolSelect.value || schoolSelect.value === '')) {
+      showError('school_id', 'Please choose the target secondary school.');
+      if (!firstInvalidElement) firstInvalidElement = schoolSelect;
+      isValid = false;
+    }
+
     const isExistingRadio = document.getElementById('enrollment_status_existing');
     if (isExistingRadio && isExistingRadio.checked) {
       if (!isEnrolledLearnerVerified) {
@@ -653,13 +783,13 @@ function validateStep(step) {
       isValid = false;
     }
 
-    if (!address.value.trim() || address.value.trim().length < 6) {
+    if (!address.value.trim() || address.value.trim().length < 4) {
       showError('physical_address', 'Please provide a complete physical residential address.');
       if (!firstInvalidElement) firstInvalidElement = address;
       isValid = false;
     }
 
-    if (phone.value.trim() && !PHONE_PATTERN.test(phone.value.trim().replace(/[\s-]/g, ''))) {
+    if (phone.value.trim() && !PHONE_PATTERN.test(phone.value.trim().replace(/[\s\-\(\)\.]/g, ''))) {
       showError('learner_phone', 'Invalid phone number. Must start with +27 or 0, followed by 9 digits.');
       if (!firstInvalidElement) firstInvalidElement = phone;
       isValid = false;
@@ -691,12 +821,13 @@ function validateStep(step) {
       if (!firstInvalidElement) firstInvalidElement = pRel;
       isValid = false;
     }
-    if (!pId.value.trim() || pId.value.trim().length < 6) {
-      showError('primary_parent_id_number', 'Please enter a valid parent ID number (numbers only).');
+    const cleanPId = (pId.value || '').replace(/\D/g, '');
+    if (!cleanPId || cleanPId.length < 6) {
+      showError('primary_parent_id_number', 'Please enter a valid parent ID number (at least 6 digits).');
       if (!firstInvalidElement) firstInvalidElement = pId;
       isValid = false;
     }
-    const cleanPhone = (pPhone.value || '').replace(/[\s-]/g, '');
+    const cleanPhone = (pPhone.value || '').replace(/[\s\-\(\)\.]/g, '');
     if (!cleanPhone || !PHONE_PATTERN.test(cleanPhone)) {
       showError('primary_parent_phone', 'Phone must start with +27 or 0 followed by 9 digits.');
       if (!firstInvalidElement) firstInvalidElement = pPhone;
@@ -707,10 +838,36 @@ function validateStep(step) {
       if (!firstInvalidElement) firstInvalidElement = pEmail;
       isValid = false;
     }
-    if (!pAddress.value.trim() || pAddress.value.trim().length < 6) {
+    if (!pAddress.value.trim() || pAddress.value.trim().length < 4) {
       showError('primary_parent_address', 'Primary parent physical address is required.');
       if (!firstInvalidElement) firstInvalidElement = pAddress;
       isValid = false;
+    }
+
+    // Secondary parent check
+    const hasSecParent = document.getElementById('has_secondary_parent');
+    if (hasSecParent && hasSecParent.checked) {
+      const sName = document.getElementById('secondary_parent_name');
+      const sPhone = document.getElementById('secondary_parent_phone');
+      const sEmail = document.getElementById('secondary_parent_email');
+      if (sName && sName.value.trim() && !NAME_PATTERN.test(sName.value.trim())) {
+        showError('secondary_parent_name', 'Secondary parent name must only contain letters.');
+        if (!firstInvalidElement) firstInvalidElement = sName;
+        isValid = false;
+      }
+      if (sPhone && sPhone.value.trim()) {
+        const cleanSPhone = sPhone.value.trim().replace(/[\s\-\(\)\.]/g, '');
+        if (!PHONE_PATTERN.test(cleanSPhone)) {
+          showError('secondary_parent_phone', 'Secondary parent phone must start with +27 or 0 followed by 9 digits.');
+          if (!firstInvalidElement) firstInvalidElement = sPhone;
+          isValid = false;
+        }
+      }
+      if (sEmail && sEmail.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sEmail.value.trim())) {
+        showError('secondary_parent_email', 'Please enter a valid secondary parent email.');
+        if (!firstInvalidElement) firstInvalidElement = sEmail;
+        isValid = false;
+      }
     }
   }
 
@@ -732,41 +889,41 @@ function validateStep(step) {
     const birthCertDoc = document.getElementById('birth_certificate');
     const parentIdDoc = document.getElementById('parent_id_doc');
     const proofResDoc = document.getElementById('proof_of_residence');
-    const reportCardDoc = document.getElementById('report_card');
-    const gradeVal = parseInt(document.getElementById('grade_applied').value, 10);
 
-    // 16+ Strict SA ID requirement vs Under 16 Birth Certificate
-    if (age !== null && age >= 16) {
-      if (!learnerIdDoc.files || learnerIdDoc.files.length === 0) {
-        showModal('error', 'Document Required', `Learner is ${age} years old (16+). South African law requires an official ID Document (Smart ID Card or Green Book), not a Birth Certificate.`);
-        const cardLearnerId = document.getElementById('card-learner-id');
-        cardLearnerId.scrollIntoView({ behavior: 'smooth' });
-        shakeElement(cardLearnerId);
-        return false;
-      }
-    } else {
-      if ((!birthCertDoc.files || birthCertDoc.files.length === 0) && (!learnerIdDoc.files || learnerIdDoc.files.length === 0)) {
-        showModal('error', 'Document Required', `Learner is under 16 years old. An official Birth Certificate is required.`);
-        const cardBirthCert = document.getElementById('card-birth-cert');
-        cardBirthCert.scrollIntoView({ behavior: 'smooth' });
-        shakeElement(cardBirthCert);
-        return false;
-      }
-    }
+    // Either Learner Smart Card / Green Book ID OR Birth Certificate is accepted
+    const hasLearnerDoc = (learnerIdDoc && learnerIdDoc.files && learnerIdDoc.files.length > 0) ||
+                          (birthCertDoc && birthCertDoc.files && birthCertDoc.files.length > 0);
 
-    if (!parentIdDoc.files || parentIdDoc.files.length === 0) {
-      showModal('error', 'Document Required', 'Parent / Legal Guardian certified ID document is required.');
-      const cardParentId = document.getElementById('card-parent-id');
-      cardParentId.scrollIntoView({ behavior: 'smooth' });
-      shakeElement(cardParentId);
+    if (!hasLearnerDoc) {
+      const msg = (age !== null && age >= 16)
+        ? `Official ID Document (Smart ID Card / Green Book) or certified Birth Certificate is required for the learner.`
+        : `Official Birth Certificate or ID Document is required for the learner.`;
+      showModal('error', 'Document Required', msg);
+      const card = (age !== null && age >= 16) ? document.getElementById('card-learner-id') : document.getElementById('card-birth-cert');
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth' });
+        shakeElement(card);
+      }
       return false;
     }
 
-    if (!proofResDoc.files || proofResDoc.files.length === 0) {
+    if (!parentIdDoc || !parentIdDoc.files || parentIdDoc.files.length === 0) {
+      showModal('error', 'Document Required', 'Parent / Legal Guardian certified ID copy is required.');
+      const cardParentId = document.getElementById('card-parent-id');
+      if (cardParentId) {
+        cardParentId.scrollIntoView({ behavior: 'smooth' });
+        shakeElement(cardParentId);
+      }
+      return false;
+    }
+
+    if (!proofResDoc || !proofResDoc.files || proofResDoc.files.length === 0) {
       showModal('error', 'Document Required', 'Proof of Residential Address (< 3 months old) is required.');
       const cardProofRes = document.getElementById('card-proof-residence');
-      cardProofRes.scrollIntoView({ behavior: 'smooth' });
-      shakeElement(cardProofRes);
+      if (cardProofRes) {
+        cardProofRes.scrollIntoView({ behavior: 'smooth' });
+        shakeElement(cardProofRes);
+      }
       return false;
     }
   }
@@ -953,30 +1110,112 @@ function updateAgeRequirementUI(dobString) {
  */
 function initGradeAndStream() {
   const gradeSelect = document.getElementById('grade_applied');
+  const yearSelect = document.getElementById('academic_year');
+  const schoolSelect = document.getElementById('school_id');
   const streamGroup = document.getElementById('stream-selection-group');
+  const additionalGroup = document.getElementById('additional-language-group');
   const streamSelect = document.getElementById('stream');
+  const streamIdInput = document.getElementById('academic_stream_id');
   const homeLangSelect = document.getElementById('home_language');
+  const additionalSelect = document.getElementById('first_additional_language');
   const gradeCapacityNotice = document.getElementById('grade-capacity-indicator');
-  const streamHint = document.getElementById('stream-compulsory-hint');
+  const emptyState = document.getElementById('streams-empty-state');
+  const packageReview = document.getElementById('subject-package-review');
+  const policyHint = document.getElementById('language-policy-hint');
+  let publishedStreams = [];
 
-  function updateStreamHint() {
-    const lang = (homeLangSelect && homeLangSelect.value) ? homeLangSelect.value : 'Selected Home Language';
-    const stream = streamSelect ? streamSelect.value : 'Science';
-    if (streamHint) {
-      streamHint.innerHTML = `Compulsory Core: English FAL, <strong>${lang} (Home Language)</strong>, Life Orientation + ${stream} Electives.`;
+  if (yearSelect && !yearSelect.options.length) {
+    const now = new Date();
+    const start = now.getMonth() >= 9 ? now.getFullYear() + 1 : now.getFullYear();
+    for (let year = start; year <= start + 1; year += 1) {
+      const option = document.createElement('option');
+      option.value = String(year);
+      option.textContent = String(year);
+      yearSelect.appendChild(option);
     }
   }
 
+  function fillSelect(select, rows, placeholder) {
+    if (!select) return;
+    const current = select.value;
+    select.innerHTML = '';
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = placeholder;
+    select.appendChild(blank);
+    rows.forEach((row) => {
+      const option = document.createElement('option');
+      option.value = row.value;
+      option.textContent = row.label;
+      select.appendChild(option);
+    });
+    if ([...select.options].some((option) => option.value === current)) select.value = current;
+  }
+
+  function renderPackage() {
+    const stream = publishedStreams.find((item) => String(item.id) === String(streamSelect && streamSelect.value));
+    if (streamIdInput) streamIdInput.value = stream ? String(stream.id) : '';
+    if (!packageReview) return;
+    if (!stream || !homeLangSelect.value || !additionalSelect.value) {
+      packageReview.textContent = 'Select both languages and a stream to see the seven-subject package.';
+      return;
+    }
+    const subjects = [
+      `${homeLangSelect.value} Home Language`,
+      `${additionalSelect.value} First Additional Language`,
+      stream.mathematics,
+      'Life Orientation',
+      ...stream.electives
+    ];
+    packageReview.innerHTML = `<strong>${subjects.length} subjects:</strong> ${subjects.join(' · ')}`;
+  }
+
+  async function loadPublishedStreams() {
+    const grade = parseInt(gradeSelect && gradeSelect.value, 10);
+    const fet = grade >= 10;
+    if (streamGroup) streamGroup.style.display = fet ? 'block' : 'none';
+    if (additionalGroup) additionalGroup.style.display = fet ? 'block' : 'none';
+    if (!fet) return;
+    const schoolId = schoolSelect && schoolSelect.value;
+    const year = yearSelect && yearSelect.value;
+    publishedStreams = [];
+    fillSelect(streamSelect, [], 'Select a published stream');
+    if (!schoolId || !year) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/schools/${encodeURIComponent(schoolId)}/published-streams?year=${encodeURIComponent(year)}&grade=${grade}`);
+      const data = await response.json();
+      const homes = (data.languages || []).filter((row) => row.level === 'Home Language');
+      const additionals = (data.languages || []).filter((row) => row.level === 'First Additional Language');
+      fillSelect(homeLangSelect, homes.map((row) => ({ value: row.language, label: row.language })), 'Select Official Home Language');
+      fillSelect(additionalSelect, additionals.map((row) => ({ value: row.language, label: row.language })), 'Select a First Additional Language');
+      const required = additionals.find((row) => row.required);
+      if (policyHint) {
+        policyHint.textContent = required ? `This school requires ${required.language} First Additional Language.` : '';
+      }
+      publishedStreams = data.streams || [];
+      fillSelect(streamSelect, publishedStreams.map((stream) => ({
+        value: String(stream.id),
+        label: `${stream.name}: ${stream.mathematics}; ${stream.electives.join(', ')}`
+      })), 'Select a published stream');
+      if (emptyState) emptyState.style.display = data.empty ? 'block' : 'none';
+    } catch (_) {
+      if (emptyState) {
+        emptyState.style.display = 'block';
+        emptyState.textContent = 'Subject streams have not yet been made available by this school. Please contact the school for assistance.';
+      }
+    }
+    renderPackage();
+  }
+
+  [gradeSelect, yearSelect, schoolSelect].forEach((element) => {
+    if (element) element.addEventListener('change', loadPublishedStreams);
+  });
+  [homeLangSelect, additionalSelect, streamSelect].forEach((element) => {
+    if (element) element.addEventListener('change', renderPackage);
+  });
   if (gradeSelect) {
     gradeSelect.addEventListener('change', () => {
       const grade = parseInt(gradeSelect.value, 10);
-      if (grade >= 10) {
-        if (streamGroup) streamGroup.style.display = 'block';
-        updateStreamHint();
-      } else {
-        if (streamGroup) streamGroup.style.display = 'none';
-      }
-
       if (gradeCapacityNotice && gradeCapacities[grade]) {
         const gInfo = gradeCapacities[grade];
         gradeCapacityNotice.innerHTML = `Grade ${grade} capacity: <strong>${gInfo.availableSpace} spots remaining</strong> (< 30 learners per class limit)`;
@@ -984,19 +1223,6 @@ function initGradeAndStream() {
       } else if (gradeCapacityNotice) {
         gradeCapacityNotice.style.display = 'none';
       }
-    });
-  }
-
-  if (homeLangSelect) {
-    homeLangSelect.addEventListener('change', () => {
-      clearFieldError('home_language');
-      updateStreamHint();
-    });
-  }
-
-  if (streamSelect) {
-    streamSelect.addEventListener('change', () => {
-      updateStreamHint();
     });
   }
 }
@@ -1153,7 +1379,20 @@ function initFormSubmission() {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      if (!validateStep(1) || !validateStep(2) || !validateStep(3) || !validateStep(4)) {
+      if (!validateStep(1)) {
+        goToStep(1);
+        return;
+      }
+      if (!validateStep(2)) {
+        goToStep(2);
+        return;
+      }
+      if (!validateStep(3)) {
+        goToStep(3);
+        return;
+      }
+      if (!validateStep(4)) {
+        goToStep(4);
         return;
       }
 
@@ -1207,7 +1446,23 @@ function handleSubmissionResult(result) {
 
   if (!modal) return;
 
-  if (result.status === 'approved') {
+  if (result.status === 'submitted' || result.status === 'pending' || (result.success && result.status !== 'approved' && result.status !== 'waitlisted' && result.status !== 'action_required')) {
+    modalIcon.innerHTML = `<svg style="width:52px;height:52px;color:#10b981;margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+    modalTitle.textContent = 'Application Submitted Successfully!';
+    modalBody.innerHTML = `
+      ${result.message || 'Your admission application and supporting documents have been received and accepted.'}
+      <br><br>
+      Your application is now <strong>awaiting review and approval</strong> by the school administration. You will receive an official notification via email once your application has been reviewed.
+    `;
+    modalRef.innerHTML = `
+      <div>Application Ref: <strong>${result.applicationNumber || ''}</strong></div>
+      <div style="margin-top: 6px; color: #38bdf8; font-weight: 700;">Status: Awaiting School Approval</div>
+    `;
+    modalRef.style.display = 'block';
+    modalCta.style.display = 'inline-block';
+    modalCta.textContent = 'Return to Home';
+    modalCta.href = '/';
+  } else if (result.status === 'approved') {
     modalIcon.innerHTML = '🎉';
     modalTitle.textContent = 'Application Approved!';
     modalBody.innerHTML = `
@@ -1249,9 +1504,64 @@ function handleSubmissionResult(result) {
     modalRef.style.display = 'block';
     modalCta.style.display = 'none';
   } else {
+    // Validation or Submission Failure Handler
     modalIcon.innerHTML = `<svg style="width:48px;height:48px;color:#ef4444;margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`;
     modalTitle.textContent = 'Validation Notice';
-    modalBody.innerHTML = result.error || 'Please correct errors on the form.';
+
+    const fieldErrors = Array.isArray(result.errors) ? result.errors : (Array.isArray(result.issues) ? result.issues : []);
+
+    if (fieldErrors.length > 0) {
+      let firstErrorField = null;
+      fieldErrors.forEach(err => {
+        if (err.field) {
+          showError(err.field, err.message);
+          if (!firstErrorField) firstErrorField = err.field;
+        }
+      });
+
+      const errItemsHtml = fieldErrors.map(err => {
+        const label = getFieldLabel(err.field);
+        return `<li style="margin-bottom: 6px;"><strong>${label}:</strong> ${err.message}</li>`;
+      }).join('');
+
+      modalBody.innerHTML = `
+        <div style="text-align: left; margin-bottom: 10px; color: #f87171; font-weight: 700;">
+          Please correct the highlighted ${fieldErrors.length} item${fieldErrors.length > 1 ? 's' : ''} on the form:
+        </div>
+        <ul style="text-align: left; margin: 8px 0 14px; padding-left: 20px; color: #fca5a5; font-size: 0.88rem; line-height: 1.5;">
+          ${errItemsHtml}
+        </ul>
+        <div style="font-size: 0.82rem; color: #94a3b8; margin-top: 10px;">
+          Click "Close" to jump directly to the field needing attention.
+        </div>
+      `;
+
+      // Navigate to the step containing the first invalid field
+      if (firstErrorField) {
+        const el = document.getElementById(firstErrorField);
+        if (el) {
+          const stepCard = el.closest('.form-step-card');
+          if (stepCard && stepCard.id) {
+            const stepNum = parseInt(stepCard.id.replace('step-', ''), 10);
+            if (!isNaN(stepNum)) {
+              goToStep(stepNum);
+              setTimeout(() => {
+                el.focus();
+                shakeElement(el);
+              }, 400);
+            }
+          }
+        }
+      }
+    } else {
+      const errorMsg = result.error || result.message || 'Please verify that all required information across Steps 1 to 4 is complete and correct.';
+      modalBody.innerHTML = `
+        <div style="color: #fca5a5; font-size: 0.92rem; line-height: 1.6; padding: 4px 0;">
+          ${errorMsg}
+        </div>
+      `;
+    }
+
     modalRef.style.display = 'none';
     modalCta.style.display = 'none';
   }

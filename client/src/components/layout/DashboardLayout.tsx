@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { Navbar } from './Navbar';
 import { CommandPalette } from '../common/CommandPalette';
 import { BottomNavigationDock } from './BottomNavigationDock';
-import { FloatingAIChatModule } from '../common/FloatingAIChatModule';
-import { LoadingSpinner } from '../common/LoadingSpinner';
+import { TabPreviewSkeleton } from '../common/TabPreviewSkeleton';
 import { ErrorBoundary } from '../common/ErrorBoundary';
 
 interface DashboardLayoutProps {
@@ -23,56 +23,71 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   customBottomDock,
   hideBottomDock = false,
 }) => {
+  const { isAuthenticated, user } = useAuth();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   // Tab transition state to display the shimmer skeleton whenever user switches tabs
   const [isTabTransitioning, setIsTabTransitioning] = useState(false);
   const prevTabRef = useRef(activeTab);
 
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Menu dock only on Home / Modules list — module pages use the back button instead
+  const isHomeOrMenu =
+    activeTab === 'overview' || activeTab === 'home' || activeTab === 'more';
+  const showBottomDock = !hideBottomDock && isHomeOrMenu;
+
   useEffect(() => {
     if (prevTabRef.current !== activeTab) {
       prevTabRef.current = activeTab;
       setIsTabTransitioning(true);
+      mainRef.current?.scrollTo({ top: 0 });
       const timer = setTimeout(() => {
         setIsTabTransitioning(false);
-      }, 240);
+      }, 720);
       return () => clearTimeout(timer);
     }
   }, [activeTab]);
 
-  // Global key listener for Ctrl+K or Cmd+K or Ctrl+M for Main Menu
+  // Command palette shortcut only (Ctrl+K), avoiding navigation control keys
   useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      // Ignore if user is inside an input or textarea
+      const target = e.target as HTMLElement | null;
+      const isTyping =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && !isTyping) {
         e.preventDefault();
         setCommandPaletteOpen((prev) => !prev);
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
-        e.preventDefault();
-        onSelectTab(activeTab === 'more' ? 'overview' : 'more');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTab, onSelectTab]);
+  }, [isAuthenticated, user]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-[#CBDDE3] via-[#DBE7EC] to-[#EBF2F5] dark:from-[#060D14] dark:via-[#09131F] dark:to-[#0B1520] text-slate-900 dark:text-slate-100 selection:bg-cyan-500 selection:text-white relative transition-colors duration-300">
+    <div className="flex h-screen overflow-hidden bg-[#E5EBF1] dark:bg-[#080B10] text-[#101820] dark:text-[#F5F7FA] selection:bg-[#168BFF] selection:text-white relative transition-colors duration-300">
       {/* SVG Fluid Waves Backdrop Layer */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-90 dark:opacity-80" aria-hidden="true">
-        <svg className="w-full h-full object-cover min-w-[1440px] min-h-[900px]" viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <svg className="w-full h-full" viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="reactWaveGradTop" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#13C8D9" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="#0891B2" stopOpacity="0.08" />
+              <stop offset="0%" stopColor="#168BFF" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="#0878E8" stopOpacity="0.06" />
             </linearGradient>
             <linearGradient id="reactWaveGradMid" x1="100%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.15" />
-              <stop offset="100%" stopColor="#0E7490" stopOpacity="0.06" />
+              <stop offset="0%" stopColor="#168BFF" stopOpacity="0.12" />
+              <stop offset="100%" stopColor="#0878E8" stopOpacity="0.04" />
             </linearGradient>
             <linearGradient id="reactWaveGradBottom" x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#13C8D9" stopOpacity="0.16" />
+              <stop offset="0%" stopColor="#168BFF" stopOpacity="0.14" />
               <stop offset="100%" stopColor="transparent" />
             </linearGradient>
           </defs>
@@ -83,8 +98,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </div>
 
       {/* Background Ambient Neon Glow Orbs */}
-      <div className="fixed top-[-10%] left-[20%] w-[500px] h-[500px] rounded-full bg-cyan-500/10 blur-[130px] pointer-events-none animate-orb-float" />
-      <div className="fixed bottom-[-10%] right-[10%] w-[450px] h-[450px] rounded-full bg-teal-500/10 blur-[120px] pointer-events-none animate-orb-float" style={{ animationDelay: '-5s' }} />
+      <div className="fixed top-[-10%] left-[20%] w-[500px] h-[500px] rounded-full bg-[#168BFF]/10 blur-[130px] pointer-events-none animate-orb-float" />
+      <div className="fixed bottom-[-10%] right-[10%] w-[450px] h-[450px] rounded-full bg-[#0878E8]/10 blur-[120px] pointer-events-none animate-orb-float" style={{ animationDelay: '-5s' }} />
 
       {/* Global Command Palette / Quick Search Modal */}
       <CommandPalette
@@ -97,7 +112,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       <div className="flex flex-1 flex-col h-screen overflow-hidden min-w-0 z-10 relative">
         {/* Laser Shimmer Top Progress Bar when switching tabs */}
         {isTabTransitioning && (
-          <div className="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r from-transparent via-cyan-400 to-indigo-500 z-50 animate-pulse pointer-events-none" />
+          <div className="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r from-transparent via-[#168BFF] to-[#0878E8] z-50 animate-pulse pointer-events-none" />
         )}
 
         <Navbar
@@ -108,21 +123,27 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         />
 
         <main
+          ref={mainRef}
           key={activeTab}
-          className={`flex-1 overflow-y-auto min-h-0 custom-scrollbar ${activeTab === 'messages' ? 'p-2 md:p-4 pb-24 md:pb-28' : 'p-4 md:p-8 py-6 pb-28 md:pb-32'
-            } max-w-7xl 2xl:max-w-[1600px] min-[1800px]:max-w-[1760px] w-full mx-auto animate-fade-in flex flex-col`}
+          className={`flex-1 overflow-y-auto min-h-0 custom-scrollbar ${
+            activeTab === 'messages'
+              ? `p-2 md:p-4 ${showBottomDock ? 'pb-32 xl:pb-36' : 'pb-8'}`
+              : `p-4 md:p-8 py-6 ${activeTab === 'more' ? 'pb-40' : showBottomDock ? 'pb-32 xl:pb-36' : 'pb-8'}`
+          } max-w-7xl 2xl:max-w-[1600px] min-[1800px]:max-w-[1760px] w-full mx-auto flex flex-col`}
         >
           {isTabTransitioning ? (
-            <LoadingSpinner text={`Loading ${title || 'Workspace'}...`} />
+            <TabPreviewSkeleton tab={activeTab} title={title} />
           ) : (
-            <ErrorBoundary fallbackTitle={`Error Loading ${title || 'Module'}`}>
-              {children}
-            </ErrorBoundary>
+            <div className="animate-tab-enter">
+              <ErrorBoundary fallbackTitle={`Error Loading ${title || 'Module'}`}>
+                {children}
+              </ErrorBoundary>
+            </div>
           )}
         </main>
 
-        {/* 🌟 Centered Floating Bottom Navigation Dock */}
-        {!hideBottomDock && (
+        {/* Menu dock only on Home / Modules — hidden inside modules (back button is enough) */}
+        {showBottomDock && (
           customBottomDock !== undefined ? (
             customBottomDock
           ) : (
@@ -132,9 +153,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             />
           )
         )}
-
-        {/* 🤖 Movable Circular 24/7 AI Chat Module on all Dashboards */}
-        <FloatingAIChatModule onSelectTab={onSelectTab} />
       </div>
     </div>
   );

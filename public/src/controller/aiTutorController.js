@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { resolveSchoolId } = require('../services/schoolScope');
 const aiTutorService = require('../services/aiTutorService');
 const curriculumService = require('../services/curriculumService');
 
@@ -20,16 +21,15 @@ exports.getEnrolledSubjectsWithSyllabus = async (req, res) => {
         let grade = 10;
         let stream = 'Science';
         let customSubjects = null;
-        let schoolId = 1;
+        let schoolId = null;
 
         if (childRes.rows.length > 0) {
             const child = childRes.rows[0];
             grade = child.grade || 10;
             stream = child.stream || 'Science';
             customSubjects = child.subjects;
-            schoolId = child.school_id || 1;
+            schoolId = child.school_id || null;
         } else {
-            // Fallback: check users table
             const userRes = await db.query('SELECT school_id FROM users WHERE id = $1', [learnerUserId]);
             if (userRes.rows.length > 0 && userRes.rows[0].school_id) {
                 schoolId = userRes.rows[0].school_id;
@@ -56,11 +56,13 @@ exports.getEnrolledSubjectsWithSyllabus = async (req, res) => {
         });
 
         // Fetch school name
-        let schoolName = 'Fusion High School';
-        try {
-            const sRes = await db.query('SELECT name FROM schools WHERE id = $1', [schoolId]);
-            if (sRes.rows.length > 0) schoolName = sRes.rows[0].name;
-        } catch (_) {}
+        let schoolName = 'Geleza SA';
+        if (schoolId) {
+            try {
+                const sRes = await db.query('SELECT name FROM schools WHERE id = $1', [schoolId]);
+                if (sRes.rows.length > 0) schoolName = sRes.rows[0].name;
+            } catch (_) {}
+        }
 
         res.json({
             grade,
@@ -155,8 +157,7 @@ exports.startNewConversation = async (req, res) => {
  */
 exports.sendChatMessage = async (req, res) => {
     try {
-        const userId = req.user.id;
-        const userRole = req.user.role || 'learner';
+        const userId = req.user ? req.user.id : null;
         const {
             subject,
             grade,
@@ -165,36 +166,43 @@ exports.sendChatMessage = async (req, res) => {
             message,
             conversationId,
             language,
-            role,
+            role: reqRole,
             fullName,
             conversationHistory,
             previous_questions
         } = req.body;
+        const userRole = (req.user && req.user.role) || reqRole || 'learner';
 
         if (!message || !message.trim()) {
             return res.status(400).json({ error: 'Please provide a message or question.' });
         }
 
         // Fetch user & school name
-        let schoolName = 'Fusion High School';
-        let userDisplayName = fullName || req.user.full_name || req.user.name || '';
-        try {
-            const userRes = await db.query(
-                `SELECT u.full_name, s.name as school_name 
-                 FROM users u 
-                 LEFT JOIN schools s ON u.school_id = s.id 
-                 WHERE u.id = $1`,
-                [userId]
-            );
-            if (userRes.rows.length > 0) {
-                if (userRes.rows[0].school_name) schoolName = userRes.rows[0].school_name;
-                if (!userDisplayName && userRes.rows[0].full_name) userDisplayName = userRes.rows[0].full_name;
-            }
-        } catch (_) {}
+        let schoolName = 'Geleza SA';
+        let userDisplayName = fullName || (req.user && (req.user.full_name || req.user.name)) || '';
+        if (userId) {
+            try {
+                const userRes = await db.query(
+                    `SELECT u.full_name, s.name as school_name 
+                     FROM users u 
+                     LEFT JOIN schools s ON u.school_id = s.id 
+                     WHERE u.id = $1`,
+                    [userId]
+                );
+                if (userRes.rows.length > 0) {
+                    if (userRes.rows[0].school_name) schoolName = userRes.rows[0].school_name;
+                    if (!userDisplayName && userRes.rows[0].full_name) userDisplayName = userRes.rows[0].full_name;
+                }
+            } catch (_) {}
+        }
+
+        const reqId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        const startTime = Date.now();
+        console.info(`[AI REQUEST RECV] id=${reqId} role=${userRole} subject=${subject || 'General'} grade=${grade || 10} msgLen=${message.length}`);
 
         const tutorResponse = await aiTutorService.chatWithSubjectTutor({
             learnerUserId: userId,
-            role: role || userRole,
+            role: userRole,
             fullName: userDisplayName,
             subject: subject || 'General School & Academics',
             grade: grade || 10,
@@ -208,10 +216,26 @@ exports.sendChatMessage = async (req, res) => {
             schoolName
         });
 
-        res.json(tutorResponse);
+        const durationMs = Date.now() - startTime;
+        console.info(`[AI RESPONSE DELIVERED] id=${reqId} duration=${durationMs}ms replyLen=${tutorResponse?.reply ? tutorResponse.reply.length : 0} suggestions=${tutorResponse?.suggestions ? tutorResponse.suggestions.length : 0}`);
+
+        res.json({
+            ...tutorResponse,
+            requestId: reqId,
+            durationMs
+        });
     } catch (err) {
-        console.error('[AI TUTOR CONTROLLER ERROR] sendChatMessage:', err);
-        res.status(500).json({ error: err.message || 'Failed to generate tutor response.' });
+        console.error(`[AI REQUEST FAILED] error=${err.message} code=${err.code || 'UNKNOWN'}`);
+        res.status(500).json({
+            error: err.message || 'Failed to generate tutor response.',
+            providerError: Boolean(err.isProviderFailure || err.code === 'CONFIG_MISSING' || (err.message && (err.message.includes('429') || err.message.includes('Quota')))),
+            reply: `### 🧬 Geleza AI Study Assistant\n\nI am currently operating in **DBE CAPS Curriculum Mode**. Choose one of the practice topics below or ask a specific syllabus question!`,
+            suggestions: [
+                'Give me a Grade 10 Life Sciences practice question',
+                'Explain cell structure and organelles',
+                'Show me exam study tips for Life Sciences'
+            ]
+        });
     }
 };
 
@@ -275,4 +299,109 @@ exports.evaluateLifeSciencesAnswer = async (req, res) => {
         res.status(500).json({ error: 'Failed to evaluate Life Sciences answer.' });
     }
 };
+
+/**
+ * Retrieves the dedicated Physical Sciences CAPS topic database (Supports Grade 10 and Grade 12).
+ */
+exports.getPhysicalSciencesTopics = async (req, res) => {
+    try {
+        const grade = parseInt(req.query.grade || '12', 10);
+        if (grade === 10) {
+            const kb = aiTutorService.getPhysicalSciencesGrade10KnowledgeBase();
+            return res.json({
+                subject: 'Physical Sciences',
+                grade: 10,
+                curriculum: 'DBE CAPS Grade 10',
+                totalTopics: kb.length,
+                topics: kb
+            });
+        }
+        const kb = aiTutorService.getPhysicalSciencesKnowledgeBase();
+        res.json({
+            subject: 'Physical Sciences',
+            grade: 12,
+            curriculum: 'DBE CAPS (National Senior Certificate)',
+            totalTopics: kb.length,
+            topics: kb
+        });
+    } catch (err) {
+        console.error('[AI TUTOR CONTROLLER ERROR] getPhysicalSciencesTopics:', err);
+        res.status(500).json({ error: 'Failed to load Physical Sciences knowledge base.' });
+    }
+};
+
+/**
+ * Explicitly retrieves the dedicated Grade 10 Physical Sciences CAPS topic database.
+ */
+exports.getPhysicalSciencesGrade10Topics = async (req, res) => {
+    try {
+        const kb = aiTutorService.getPhysicalSciencesGrade10KnowledgeBase();
+        res.json({
+            subject: 'Physical Sciences',
+            grade: 10,
+            curriculum: 'DBE CAPS Grade 10',
+            totalTopics: kb.length,
+            topics: kb
+        });
+    } catch (err) {
+        console.error('[AI TUTOR CONTROLLER ERROR] getPhysicalSciencesGrade10Topics:', err);
+        res.status(500).json({ error: 'Failed to load Grade 10 Physical Sciences knowledge base.' });
+    }
+};
+
+/**
+ * Evaluates a learner's physics exam question response against the official DBE marking rubric.
+ */
+exports.evaluatePhysicalSciencesAnswer = async (req, res) => {
+    try {
+        const { itemId, studentAnswer } = req.body;
+        if (!itemId || !studentAnswer) {
+            return res.status(400).json({ error: 'Both itemId and studentAnswer are required.' });
+        }
+
+        const evaluation = aiTutorService.evaluatePhysicalSciencesAnswer(itemId, studentAnswer);
+        res.json(evaluation);
+    } catch (err) {
+        console.error('[AI TUTOR CONTROLLER ERROR] evaluatePhysicalSciencesAnswer:', err);
+        res.status(500).json({ error: 'Failed to evaluate Physical Sciences answer.' });
+    }
+};
+
+/**
+ * Retrieves the dedicated Grade 12 Mathematics CAPS topic database.
+ */
+exports.getMathematicsTopics = async (req, res) => {
+    try {
+        const kb = aiTutorService.getMathematicsKnowledgeBase();
+        res.json({
+            subject: 'Mathematics',
+            grade: 12,
+            curriculum: 'DBE CAPS (National Senior Certificate)',
+            totalTopics: kb.length,
+            topics: kb
+        });
+    } catch (err) {
+        console.error('[AI TUTOR CONTROLLER ERROR] getMathematicsTopics:', err);
+        res.status(500).json({ error: 'Failed to load Mathematics knowledge base.' });
+    }
+};
+
+/**
+ * Evaluates a learner's mathematics exam question response against the official DBE marking rubric.
+ */
+exports.evaluateMathematicsAnswer = async (req, res) => {
+    try {
+        const { itemId, studentAnswer } = req.body;
+        if (!itemId || !studentAnswer) {
+            return res.status(400).json({ error: 'Both itemId and studentAnswer are required.' });
+        }
+
+        const evaluation = aiTutorService.evaluateMathematicsAnswer(itemId, studentAnswer);
+        res.json(evaluation);
+    } catch (err) {
+        console.error('[AI TUTOR CONTROLLER ERROR] evaluateMathematicsAnswer:', err);
+        res.status(500).json({ error: 'Failed to evaluate Mathematics answer.' });
+    }
+};
+
 

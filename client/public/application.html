@@ -1,20 +1,32 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Online Learner Admissions | Geleza SA</title>
-  <link rel="stylesheet" href="/css/application.css">
+  <title>Online Learner Admissions | Fusion High School</title>
+  <script>
+    (function () {
+      var saved = localStorage.getItem('app_theme');
+      var theme = saved === 'light' || saved === 'dark'
+        ? saved
+        : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.classList.remove('light', 'dark');
+      document.documentElement.classList.add(theme);
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="/css/application.css?v=4">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎓</text></svg>">
 </head>
 <body>
+  <button type="button" class="theme-toggle" id="theme-toggle">Light Mode</button>
 
   <div class="portal-container">
     <!-- Header -->
     <header class="portal-header">
-      <div class="brand-badge" id="app-brand-badge">⚡ Limpopo DBE High School Admissions</div>
+      <div class="brand-badge" id="app-brand-badge">⚡ Geleza SA Admissions</div>
       <h1 id="app-portal-title">Learner Admission Application</h1>
-      <p id="app-portal-desc">Choose a high school that a principal has registered and Geleza SA has approved.</p>
+      <p id="app-portal-desc">Official admissions application portal for approved partner high schools across South Africa. Featuring real-time capacity monitoring and automated AI document verification.</p>
     </header>
 
     <!-- School Capacity Banner -->
@@ -72,74 +84,87 @@
         </div>
 
         <!-- Target High School Selection Card -->
-        <div class="form-group full-width school-select-card" style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 14px; padding: 18px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+        <div class="form-group full-width school-select-card panel-tint panel-tint-accent">
           <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
             <label for="school_id" style="font-weight: 800; color: #38bdf8; font-size: 14px; margin-bottom: 0;">
-              Select the registered high school <span class="required">*</span>
+              🏛️ Select Target High School <span class="required">*</span>
             </label>
             <span id="school-emis-tag" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; font-family: monospace; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; border: 1px solid rgba(56, 189, 248, 0.4);">
-              Awaiting a principal
+              Awaiting school selection
             </span>
           </div>
 
           <select id="school_id" name="school_id" required style="width: 100%; margin-top: 10px; padding: 11px 14px; background: #070b14; border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; color: #ffffff; font-size: 13px; font-weight: 600; cursor: pointer;">
-            <option value="" disabled selected>No school is registered yet</option>
+            <option value="" disabled selected>Loading registered schools...</option>
           </select>
 
-          <div id="school-motto-hint" style="margin-top: 8px; font-size: 11px; color: #94a3b8; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-            <span id="school-circuit-text">A principal registers the school from the Geleza SA home page. It appears here after Geleza SA approves it.</span>
+          <div id="school-motto-hint" style="margin-top: 8px; font-size: 11px; color: #94a3b8; display: flex; align-items: center; justify-content: space-between;">
+            <span id="school-circuit-text">📍 Geleza SA Approved Schools Network</span>
             <span id="school-motto-text" style="color: #fbbf24; font-style: italic;"></span>
           </div>
         </div>
 
+        <!-- Hidden scenario and existing learner state -->
         <input type="hidden" id="application_scenario" name="scenario" value="new">
         <input type="hidden" id="existing_learner_id" name="existing_learner_id" value="">
 
-        <div class="form-group full-width" style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+        <!-- Enrolled Learner Status Toggle (Scenario 3: Parent not in system, Learner is in system) -->
+        <div class="form-group full-width panel-tint panel-tint-indigo">
           <label style="font-weight: 700; color: #cbd5e1; font-size: 14px; margin-bottom: 8px; display: block;">
-            Is this learner already enrolled at the school?
+            👨‍👧 Learner Enrollment Status at this School
           </label>
           <div style="display: flex; gap: 24px; flex-wrap: wrap;">
             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #fff; font-size: 13px;">
               <input type="radio" name="enrollment_status_radio" id="enrollment_status_new" value="new" checked style="accent-color: #6366f1;">
-              <span><strong>No</strong> — new learner admission</span>
+              <span><strong>No</strong> - New learner admission application (First-time applicant)</span>
             </label>
             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #fff; font-size: 13px;">
               <input type="radio" name="enrollment_status_radio" id="enrollment_status_existing" value="existing" style="accent-color: #6366f1;">
-              <span><strong>Yes</strong> — the learner is already enrolled</span>
+              <span><strong>Yes</strong> - Child is already enrolled in this school (Link Parent Account)</span>
             </label>
           </div>
+
+          <!-- Lookup Card for Already Enrolled Learner -->
           <div id="enrolled-learner-lookup-box" style="display: none; margin-top: 14px; padding: 14px; background: rgba(15, 23, 42, 0.9); border: 1px dashed #6366f1; border-radius: 10px;">
-            <strong style="color: #818cf8; font-size: 13px;">Match the enrolled learner</strong>
-            <p style="color: #94a3b8; font-size: 12px; margin: 8px 0 12px; line-height: 1.5;">
-              The 13-digit ID, the first name, and the surname must match the learner the school has already entered.
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <span style="font-size: 1.1rem;">🔍</span>
+              <strong style="color: #818cf8; font-size: 13px;">Verify Currently Enrolled Child Details</strong>
+            </div>
+            <p style="color: #94a3b8; font-size: 12px; margin-bottom: 12px; line-height: 1.5;">
+              Enter your child's Learner Number or South African ID Number and names as registered at the selected school. The system will verify and link your parent profile.
             </p>
             <div class="grid-2">
-              <div class="form-group full-width">
+              <div class="form-group">
+                <label for="lookup_learner_number">Official Learner Number</label>
+                <input type="text" id="lookup_learner_number" placeholder="e.g. 20260012 (numbers only)" data-type="numeric-only">
+                <div class="field-error"></div>
+              </div>
+              <div class="form-group">
                 <label for="lookup_id_number">Child South African ID Number</label>
-                <input type="text" id="lookup_id_number" maxlength="13" placeholder="13 digits" data-type="numeric-only">
+                <input type="text" id="lookup_id_number" maxlength="13" placeholder="13 digits (numbers only)" data-type="numeric-only">
                 <div class="field-error"></div>
               </div>
               <div class="form-group">
                 <label for="lookup_first_name">Child First Name</label>
-                <input type="text" id="lookup_first_name" placeholder="Letters only" data-type="text-only">
+                <input type="text" id="lookup_first_name" placeholder="e.g. Thabo (letters only)" data-type="text-only">
                 <div class="field-error"></div>
               </div>
               <div class="form-group">
                 <label for="lookup_surname">Child Surname</label>
-                <input type="text" id="lookup_surname" placeholder="Letters only" data-type="text-only">
+                <input type="text" id="lookup_surname" placeholder="e.g. Molefe (letters only)" data-type="text-only">
                 <div class="field-error"></div>
               </div>
             </div>
-            <div style="margin-top: 10px; display: flex; align-items: center; gap: 8px;">
-              <button type="button" id="btn-verify-enrolled-child" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;">Verify enrolled learner</button>
-              <div id="lookup-verify-spinner" style="display: none; font-size: 12px; color: #38bdf8;">Checking the school record...</div>
+            <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <button type="button" id="btn-verify-enrolled-child" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;">
+                🔍 Verify Enrolled Learner
+              </button>
+              <div id="lookup-verify-spinner" style="display: none; font-size: 12px; color: #38bdf8;">Checking school database...</div>
             </div>
             <div id="enrolled-child-status-banner" style="margin-top: 12px; display: none;"></div>
           </div>
         </div>
 
-        <div id="new-learner-details">
         <div class="grid-2">
           <!-- First Names -->
           <div class="form-group">
@@ -236,19 +261,32 @@
               <option value="English">English (Home Language)</option>
               <option value="Afrikaans">Afrikaans (Huistaal)</option>
             </select>
-            <div class="hint">Official South African Home Language for CAPS subjects & curriculum allocation.</div>
+            <div class="hint">Choose a Home Language offered by the selected school.</div>
             <div class="field-error"></div>
+            <!-- School Language Compatibility & Referrals Banner -->
+            <div id="language-referral-banner" style="margin-top: 10px; display: none;"></div>
           </div>
 
-          <!-- Stream Selection (Grades 10-12 only) -->
-          <div class="form-group full-width" id="stream-selection-group" style="display: none;">
-            <label for="stream">Curriculum Academic Stream <span class="required">*</span></label>
-            <select id="stream" name="stream">
-              <option value="Science">Science Stream (Mathematics, Physical Sciences, Life Sciences)</option>
-              <option value="Commerce">Commerce Stream (Accounting, Business Studies, Economics)</option>
-              <option value="Tourism">Tourism & Services Stream (Tourism, Mathematical Literacy, Business Studies)</option>
+          <div class="form-group" id="academic-year-group">
+            <label for="academic_year">Academic year <span class="required">*</span></label>
+            <select id="academic_year" name="academic_year" required></select>
+          </div>
+          <div class="form-group" id="additional-language-group" style="display: none;">
+            <label for="first_additional_language">First Additional Language <span class="required">*</span></label>
+            <select id="first_additional_language" name="first_additional_language">
+              <option value="">Select a First Additional Language</option>
             </select>
-            <div class="hint" id="stream-compulsory-hint">Compulsory Core: English First Additional Language, Selected Home Language, Life Orientation.</div>
+            <div class="hint" id="language-policy-hint"></div>
+            <div class="field-error"></div>
+          </div>
+          <div class="form-group full-width" id="stream-selection-group" style="display: none;">
+            <label for="stream">Academic stream <span class="required">*</span></label>
+            <select id="stream" name="stream">
+              <option value="">Select a published stream</option>
+            </select>
+            <input type="hidden" id="academic_stream_id" name="academic_stream_id">
+            <div class="hint" id="streams-empty-state" style="display: none;">Subject streams have not yet been made available by this school. Please contact the school for assistance.</div>
+            <div id="subject-package-review" class="hint"></div>
           </div>
 
           <!-- Learner Contact Number (Optional) -->
@@ -276,7 +314,6 @@
             <div class="hint">Include House/Stand number, Street Name, Suburb, City, and Postal Code.</div>
             <div class="field-error"></div>
           </div>
-        </div>
         </div>
       </div>
 
@@ -555,24 +592,28 @@
           <div class="upload-preview"></div>
         </div>
 
-        <div class="form-group full-width" style="background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 14px; padding: 18px; margin-top: 20px;">
-          <h3 style="color: #fbbf24; font-size: 15px; font-weight: 800; margin: 0 0 8px;">Application fee (R250)</h3>
-          <p style="color: #cbd5e1; font-size: 12.5px; line-height: 1.5; margin: 0 0 12px;">Choose how the family will pay. No money is taken on this form. Card, instant EFT, bank EFT, and cash all wait until the school connects its own bank account.</p>
-          <input type="hidden" id="payment_method_input" name="payment_method" value="eft">
-          <input type="hidden" id="pay_now_input" name="pay_now" value="false">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <label style="border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px; color: #e2e8f0; font-size: 13px;"><input type="radio" name="payment_choice_radio" value="card"> Card (PayFast)</label>
-            <label style="border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px; color: #e2e8f0; font-size: 13px;"><input type="radio" name="payment_choice_radio" value="instant_eft"> Instant EFT (Ozow)</label>
-            <label style="border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px; color: #e2e8f0; font-size: 13px;"><input type="radio" name="payment_choice_radio" value="eft" checked> Bank EFT</label>
-            <label style="border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px; color: #e2e8f0; font-size: 13px;"><input type="radio" name="payment_choice_radio" value="cash"> Cash at the school office</label>
+        <!-- ================= APPLICATION FEES CURRENTLY PAUSED ================= -->
+        <div class="form-group full-width panel-tint panel-tint-success" style="border: 1px solid rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.08); border-radius: 12px; padding: 18px 20px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+            <h3 style="color: #34d399; font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; margin: 0;">
+              ✨ Admissions Application Fee Paused (100% Free Application)
+            </h3>
+            <span style="background: rgba(16, 185, 129, 0.2); color: #34d399; font-size: 12px; font-weight: 700; padding: 4px 14px; border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.4);">
+              Fee: R0.00 (Waived)
+            </span>
           </div>
+          <p style="color: #cbd5e1; font-size: 13px; line-height: 1.6; margin: 0;">
+            Application fees are currently paused across all partner high schools. You do not need to make any payment or enter banking details. Your application will be processed immediately upon submission at zero cost.
+          </p>
+          <input type="hidden" id="payment_method_input" name="payment_method" value="fee_waived">
+          <input type="hidden" id="pay_now_input" name="pay_now" value="false">
         </div>
 
         <!-- AI Verification Guarantee Notice -->
         <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 10px; padding: 14px 18px; margin-top: 18px; display: flex; gap: 12px; align-items: center;">
           <div style="font-size: 1.5rem;">🤖</div>
           <div style="font-size: 0.85rem; color: #cbd5e1;">
-            <strong>Automated AI Verification Engine:</strong> Upon submission, our AI model instantly validates document clarity, checksum matches, and verifies that class capacity is within the strict &lt; 30 learners/class limit.
+            <strong>What happens next:</strong> The school checks this application. The fee stays unpaid until the school connects its own bank account and records that the money arrived.
           </div>
         </div>
       </div>
@@ -604,5 +645,24 @@
 
   <script src="/src/controller/saIDvalidations.js"></script>
   <script src="/js/application.js"></script>
+  <script>
+    (function () {
+      var button = document.getElementById('theme-toggle');
+      function paint() {
+        var light = document.documentElement.classList.contains('light');
+        if (button) button.textContent = light ? 'Dark Mode' : 'Light Mode';
+      }
+      paint();
+      if (!button) return;
+      button.addEventListener('click', function () {
+        var next = document.documentElement.classList.contains('light') ? 'dark' : 'light';
+        document.documentElement.classList.remove('light', 'dark');
+        document.documentElement.classList.add(next);
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('app_theme', next);
+        paint();
+      });
+    })();
+  </script>
 </body>
 </html>

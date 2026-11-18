@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { financeService, adminService } from '../../services/api';
+import { SchoolBankAccount } from '../admin/SchoolBankAccount';
 import { Badge } from '../common/Badge';
 import { Modal } from '../common/Modal';
 import { LoadingSpinner } from '../common/LoadingSpinner';
@@ -156,6 +157,7 @@ export const SchoolFeesManager: React.FC<SchoolFeesManagerProps> = ({
 
   return (
     <div className="space-y-6">
+      {userRole === 'admin' && <SchoolBankAccount />}
       {/* Header Banner */}
       <div className="p-6 rounded-3xl bg-surface-dark border border-white/10 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">

@@ -5,6 +5,7 @@ import { TeacherOverviewSkeleton } from '../../components/teacher/TeacherOvervie
 import { Modal } from '../../components/common/Modal';
 import { Badge } from '../../components/common/Badge';
 import { TeacherQRScannerModal } from '../../components/teacher/TeacherQRScannerModal';
+import { TeacherAICopilotModal } from '../../components/teacher/TeacherAICopilotModal';
 import { FavoriteModulesSection } from '../../components/common/FavoriteModulesSection';
 import {
   Briefcase,
@@ -125,6 +126,24 @@ const classAverageLabel = (value: unknown): string | null => {
   return `${n % 1 === 0 ? n.toFixed(0) : n.toFixed(1)}%`;
 };
 
+export const formatCleanClass = (cls: any, grade: any = 10): string => {
+  const s = String(cls || '').trim();
+  if (/^(10|11|12)(13|\d{2})$/.test(s)) {
+    return s.replace(/^(10|11|12)(13|\d{2})$/, '$1A');
+  }
+  return s || `${grade}A`;
+};
+
+export const getPeriodRoomDisplay = (card: any): string => {
+  if (card?.period_room && !/room\s*(null|undefined|\d{3,4})/i.test(card.period_room) && !card.period_room.toLowerCase().includes('room null')) {
+    return card.period_room;
+  }
+  if (card?.room) {
+    return card.period ? `Period ${card.period} • Room ${card.room}` : `Room ${card.room} • Scheduled`;
+  }
+  return 'Scheduled • Room Unassigned';
+};
+
 interface TeacherOverviewProps {
   onNavigateTab: (tabId: string, params?: any) => void;
 }
@@ -156,6 +175,10 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
 
   // Subject Command Center ("View All" Modal) State
   const [viewAllSubject, setViewAllSubject] = useState<any | null>(null);
+
+  // Geleza AI Copilot Modal State
+  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [copilotTab, setCopilotTab] = useState<'lesson' | 'test' | 'risk'>('lesson');
 
   // Subject View Mode State (Persisted in localStorage)
   const [subjectsViewMode, setSubjectsViewMode] = useState<SubjectViewMode>(() => {
@@ -347,11 +370,12 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
               id: `${c.subject_name || c.name}-${c.grade || 10}-${c.name || '10A'}`,
               subject_name: c.subject_name || 'Physical Sciences',
               grade: c.grade || 10,
-              class_name: c.name || c.class_name || `${c.grade || 10}A`,
+              class_name: formatCleanClass(c.name || c.class_name, c.grade || 10),
               code: c.subject_code || `${(c.subject_name || 'SUBJ').substring(0, 4).toUpperCase()}${c.grade || 10}`,
               stream: c.stream || 'Science',
               learner_count: 0,
-              period_room: `Room ${c.name || '10A'} • Scheduled`
+              room: c.room || null,
+              period_room: c.room ? `Room ${c.room} • Scheduled` : 'Scheduled • Room Unassigned'
             }));
             setSubjectsOverview(mapped);
           }
@@ -378,7 +402,11 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
       const fallbackList: any[] = [];
       wSubs.forEach((subName: string) => {
         wGrades.forEach((g: number) => {
-          const matchedClass = wClasses.find((c: string) => c.includes(String(g))) || `${g}A`;
+          const rawClass = wClasses.find((c: string) => {
+            const digits = (c || '').replace(/•\s*school\s*\d+/i, '').replace(/school\s*\d+/i, '');
+            return digits.includes(String(g)) || c.toLowerCase().includes(`grade ${g}`);
+          }) || `${g}A`;
+          const matchedClass = formatCleanClass(rawClass.replace(/\s*•\s*School\s*\d+/i, '').trim(), g);
           fallbackList.push({
             id: `${subName}-${g}-${matchedClass}`,
             subject_name: subName,
@@ -387,14 +415,45 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
             code: `${subName.substring(0, 4).toUpperCase()}${g}`,
             stream: subName.toLowerCase().includes('scien') || subName.toLowerCase().includes('physic') ? 'Science' : 'General',
             learner_count: 0,
-            period_room: `Room ${matchedClass} • Scheduled`
+            room: null,
+            period_room: 'Scheduled • Room Unassigned'
           });
         });
       });
       return fallbackList;
     }
+
+    // Secondary fallback from user profile context if available
+    const userSubs = (user as any)?.academic?.subjects || (user as any)?.preferences?.assigned_subjects || [];
+    const userGrades = (user as any)?.academic?.grades_taught || (user as any)?.preferences?.assigned_grades || [10];
+    const userClasses = (user as any)?.academic?.classes_taught || (user as any)?.preferences?.assigned_classes || [];
+    if (Array.isArray(userSubs) && userSubs.length > 0) {
+      const fallbackList: any[] = [];
+      userSubs.forEach((subName: string) => {
+        userGrades.forEach((g: number) => {
+          const rawClass = userClasses.find((c: string) => {
+            const digits = (c || '').replace(/•\s*school\s*\d+/i, '').replace(/school\s*\d+/i, '');
+            return digits.includes(String(g)) || c.toLowerCase().includes(`grade ${g}`);
+          }) || `${g}A`;
+          const matchedClass = formatCleanClass(rawClass.replace(/\s*•\s*School\s*\d+/i, '').trim(), g);
+          fallbackList.push({
+            id: `${subName}-${g}-${matchedClass}`,
+            subject_name: subName,
+            grade: g,
+            class_name: matchedClass,
+            code: `${subName.substring(0, 4).toUpperCase()}${g}`,
+            stream: subName.toLowerCase().includes('scien') || subName.toLowerCase().includes('physic') ? 'Science' : 'General',
+            learner_count: 0,
+            room: null,
+            period_room: 'Scheduled • Room Unassigned'
+          });
+        });
+      });
+      return fallbackList;
+    }
+
     return [];
-  }, [subjectsOverview, workload]);
+  }, [subjectsOverview, workload, user]);
 
   if (loading) return <TeacherOverviewSkeleton />;
 
@@ -403,11 +462,58 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
     <div className="space-y-6 animate-fade-in text-slate-100 pb-12">
       <HomeGreeting />
 
+      {/* GELEZA AI EDUCATOR COPILOT QUICK LAUNCHER */}
+      <section className="p-4 md:p-5 rounded-2xl bg-[#111821] border border-[#2C3948] shadow-lg relative overflow-hidden backdrop-blur-sm">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center space-x-3.5">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-white tracking-tight">Geleza AI Teacher Copilot</h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#168BFF]/15 text-[#168BFF] border border-[#168BFF]/30">
+                  CAPS & Bloom's
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+            <button
+              onClick={() => { setCopilotTab('lesson'); setIsCopilotOpen(true); }}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#168BFF] hover:bg-[#0878E8] text-white shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-white" />
+              <span>Lesson Planner</span>
+            </button>
+            <button
+              onClick={() => { setCopilotTab('test'); setIsCopilotOpen(true); }}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#168BFF] hover:bg-[#0878E8] text-white shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-white" />
+              <span>Test & Memo</span>
+            </button>
+            <button
+              onClick={() => { setCopilotTab('risk'); setIsCopilotOpen(true); }}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#168BFF] hover:bg-[#0878E8] text-white shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+            >
+              <AlertCircle className="w-3.5 h-3.5 text-white" />
+              <span>Class Risk Briefing</span>
+            </button>
+            <button
+              onClick={() => onNavigateTab('parent')}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              title="Parent Portal: View your own children's performance and records"
+            >
+              <Users className="w-3.5 h-3.5 text-slate-950" />
+              <span>Parent View: My Children</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* 1. ASSIGNED CLASSES & SUBJECTS WITH MULTI-VIEW SWITCHER */}
       <section className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-[#168BFF]/15 text-[#168BFF] flex items-center justify-center">
               <BookOpen className="w-4 h-4" />
             </div>
             <div>
@@ -425,8 +531,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                 onClick={() => handleSetSubjectsViewMode('carousel')}
                 className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
                   subjectsViewMode === 'carousel'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    ? 'bg-[#168BFF] text-white shadow-sm'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Carousel View"
               >
@@ -439,8 +545,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                 onClick={() => handleSetSubjectsViewMode('grid')}
                 className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
                   subjectsViewMode === 'grid'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    ? 'bg-[#168BFF] text-white shadow-sm'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Grid View"
               >
@@ -453,8 +559,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                 onClick={() => handleSetSubjectsViewMode('compact')}
                 className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
                   subjectsViewMode === 'compact'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    ? 'bg-[#168BFF] text-white shadow-sm'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Compact Tiles"
               >
@@ -467,8 +573,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                 onClick={() => handleSetSubjectsViewMode('list')}
                 className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
                   subjectsViewMode === 'list'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    ? 'bg-[#168BFF] text-white shadow-sm'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="List View"
               >
@@ -483,7 +589,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                 <button
                   type="button"
                   onClick={() => scrollCarousel(-1)}
-                  className="p-2 rounded-xl bg-surface-dark border border-white/10 text-slate-300 hover:text-white hover:border-indigo-500/50 hover:bg-white/5 transition-all shadow-sm active:scale-95"
+                  className="p-2 rounded-xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-white/10 text-slate-600 hover:text-[#168BFF] hover:border-[#168BFF]/60 hover:bg-[#168BFF]/10 dark:text-slate-300 dark:hover:text-[#168BFF] transition-all shadow-sm active:scale-95"
                   title="Scroll Left"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -491,7 +597,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                 <button
                   type="button"
                   onClick={() => scrollCarousel(1)}
-                  className="p-2 rounded-xl bg-surface-dark border border-white/10 text-slate-300 hover:text-white hover:border-indigo-500/50 hover:bg-white/5 transition-all shadow-sm active:scale-95"
+                  className="p-2 rounded-xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-white/10 text-slate-600 hover:text-[#168BFF] hover:border-[#168BFF]/60 hover:bg-[#168BFF]/10 dark:text-slate-300 dark:hover:text-[#168BFF] transition-all shadow-sm active:scale-95"
                   title="Scroll Right"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -507,9 +613,6 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
               <BookOpen className="w-6 h-6" />
             </div>
             <h3 className="text-sm font-bold text-white">No Subjects or Classes Assigned</h3>
-            <p className="text-xs text-slate-400 max-w-md">
-              You do not have any active subject or class teaching assignments registered to your educator account. Please contact your school administrator or Head of Department to allocate your curriculum subjects.
-            </p>
           </div>
         ) : (
           <>
@@ -521,13 +624,14 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
               >
             {displayCards.map((card: any, idx: number) => {
               const enrolledCount = card.learner_count ?? card.enrolled_count ?? 0;
-              const periodRoomText = card.period_room || (card.period ? `Period ${card.period} • ${card.room || 'Room ' + card.class_name}` : `Room ${card.room || card.class_name} • Scheduled`);
+              const periodRoomText = getPeriodRoomDisplay(card);
+              const cleanClass = formatCleanClass(card.class_name, card.grade);
               const coverImage = getSubjectCoverImage(card.subject_name);
 
               return (
                 <div
                   key={card.id || idx}
-                  className="min-w-[310px] max-w-[340px] shrink-0 snap-start xl:max-w-[420px] xl:min-w-[320px] xl:flex-1 xl:basis-[340px] rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden animated-border-card"
+                  className="min-w-[310px] max-w-[340px] shrink-0 snap-start xl:max-w-[420px] xl:min-w-[320px] xl:flex-1 xl:basis-[340px] rounded-2xl bg-surface-dark border border-white/10 hover:border-[#168BFF]/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden animated-border-card"
                 >
                   {/* Subject Picture Banner with Profile Overlay */}
                   <div data-theme-preserve="true" className="relative h-28 w-full overflow-hidden bg-slate-900">
@@ -543,7 +647,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-600 text-white shadow-sm">
-                          Grade {card.grade} • Class {card.class_name}
+                          Grade {card.grade} • Class {cleanClass}
                         </span>
                         {card.stream && (
                           <span className="px-1.5 py-0.5 rounded-md text-[9.5px] font-bold bg-amber-500/80 text-white uppercase tracking-wider">
@@ -560,7 +664,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     {/* Bottom Banner Title: Subject Name */}
                     <div className="absolute bottom-2 inset-x-3">
                       <h3
-                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
                         className="text-base font-extrabold text-white text-always-white group-hover:text-indigo-200 transition-colors cursor-pointer truncate drop-shadow-md"
                         title={`Open ${card.subject_name} Marksheet`}
                       >
@@ -589,16 +693,16 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     {/* Primary Action Buttons (Register & Marks) */}
                     <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => handleOpenSubjectAttendance(card)}
-                        className="px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 hover:text-white text-xs font-semibold border border-white/10 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                        onClick={() => handleOpenSubjectAttendance({ ...card, class_name: cleanClass })}
+                        className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-[#168BFF]/10 text-slate-800 hover:text-[#168BFF] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-slate-100 dark:hover:text-[#168BFF] text-xs font-semibold border border-[#C7D1DC] hover:border-[#168BFF]/50 dark:border-white/10 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
                         title={`Class Attendance Register & QR Roll-Call for ${card.subject_name}`}
                       >
                         <CalendarCheck className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                         <span>Register</span>
                       </button>
                       <button
-                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                        className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
+                        className="px-2.5 py-1.5 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
                         title={`Enter SBA Marks for ${card.subject_name}`}
                       >
                         <FileSpreadsheet className="w-3.5 h-3.5 text-white shrink-0" />
@@ -610,8 +714,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     <div className="flex items-center justify-between gap-1.5 pt-2 border-t border-white/5">
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                          className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-all flex items-center gap-1 text-[11px] font-medium shadow-sm cursor-pointer"
+                          onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
+                          className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-[#168BFF]/15 hover:border-[#168BFF]/50 text-slate-700 hover:text-[#168BFF] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-slate-200 dark:hover:text-[#168BFF] border border-[#C7D1DC] dark:border-white/10 transition-all flex items-center gap-1 text-[11px] font-medium shadow-sm cursor-pointer"
                           title={`Homework for ${card.subject_name}`}
                         >
                           <FileText className="w-3.5 h-3.5 text-slate-400" />
@@ -619,14 +723,14 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                         </button>
                         <button
                           onClick={() => onNavigateTab('ai-tools', { subject: card.subject_name, grade: card.grade, tool: 'lesson-plan' })}
-                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-all cursor-pointer"
-                          title="AI Lesson & Test Builder for this Subject"
+                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-[#168BFF]/15 hover:border-[#168BFF]/50 text-slate-700 hover:text-[#168BFF] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-slate-200 dark:hover:text-[#168BFF] border border-[#C7D1DC] dark:border-white/10 transition-all cursor-pointer"
+                          title="Lesson & Test Builder for this Subject"
                         >
-                          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                          <FileSpreadsheet className="w-3.5 h-3.5 text-teal-600 dark:text-[#18E2EC]" />
                         </button>
                         <button
                           onClick={() => onNavigateTab('resources', { subject: card.subject_name, grade: card.grade })}
-                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-all cursor-pointer"
+                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-[#168BFF]/15 hover:border-[#168BFF]/50 text-slate-700 hover:text-[#168BFF] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-slate-200 dark:hover:text-[#168BFF] border border-[#C7D1DC] dark:border-white/10 transition-all cursor-pointer"
                           title="Past Papers & Learning Resources for this Subject"
                         >
                           <Layers className="w-3.5 h-3.5 text-slate-400" />
@@ -634,7 +738,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       </div>
 
                       <button
-                        onClick={() => setViewAllSubject(card)}
+                        onClick={() => setViewAllSubject({ ...card, class_name: cleanClass })}
                         className="text-[11px] font-semibold text-slate-400 hover:text-white flex items-center gap-1 hover:underline pl-1 shrink-0 transition-colors cursor-pointer"
                         title="View all modules & tools for this subject"
                       >
@@ -655,13 +759,14 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
             {displayCards.map((card: any, idx: number) => {
               const enrolledCount = card.learner_count ?? card.enrolled_count ?? 0;
-              const periodRoomText = card.period_room || (card.period ? `Period ${card.period} • ${card.room || 'Room ' + card.class_name}` : `Room ${card.room || card.class_name} • Scheduled`);
+              const periodRoomText = getPeriodRoomDisplay(card);
+              const cleanClass = formatCleanClass(card.class_name, card.grade);
               const coverImage = getSubjectCoverImage(card.subject_name);
 
               return (
                 <div
                   key={card.id || idx}
-                  className="rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden w-full animated-border-card"
+                  className="rounded-2xl bg-surface-dark border border-white/10 hover:border-[#168BFF]/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden w-full animated-border-card"
                 >
                   {/* Subject Picture Banner with Profile Overlay */}
                   <div data-theme-preserve="true" className="relative h-28 w-full overflow-hidden bg-slate-900">
@@ -677,7 +782,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-600 text-white shadow-sm">
-                          Grade {card.grade} • Class {card.class_name}
+                          Grade {card.grade} • Class {cleanClass}
                         </span>
                         {card.stream && (
                           <span className="px-1.5 py-0.5 rounded-md text-[9.5px] font-bold bg-amber-500/80 text-white uppercase tracking-wider">
@@ -694,7 +799,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     {/* Bottom Banner Title */}
                     <div className="absolute bottom-2 inset-x-3">
                       <h3
-                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
                         className="text-base font-extrabold text-white text-always-white group-hover:text-indigo-200 transition-colors cursor-pointer truncate drop-shadow-md"
                         title={`Open ${card.subject_name} Marksheet`}
                       >
@@ -721,16 +826,16 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
 
                     <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => handleOpenSubjectAttendance(card)}
-                        className="px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 hover:text-white text-xs font-semibold border border-white/10 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                        onClick={() => handleOpenSubjectAttendance({ ...card, class_name: cleanClass })}
+                        className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-[#168BFF]/10 text-slate-800 hover:text-[#168BFF] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-slate-100 dark:hover:text-[#168BFF] text-xs font-semibold border border-[#C7D1DC] hover:border-[#168BFF]/50 dark:border-white/10 transition-all text-center flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
                         title={`Register & QR Roll-Call for ${card.subject_name}`}
                       >
                         <CalendarCheck className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                         <span>Register</span>
                       </button>
                       <button
-                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                        className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
+                        className="px-2.5 py-1.5 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
                         title={`Enter SBA Marks for ${card.subject_name}`}
                       >
                         <FileSpreadsheet className="w-3.5 h-3.5 text-white shrink-0" />
@@ -741,8 +846,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     <div className="flex items-center justify-between gap-1.5 pt-2 border-t border-white/5">
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                          className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-all flex items-center gap-1 text-[11px] font-medium shadow-sm cursor-pointer"
+                          onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
+                          className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-[#168BFF]/15 hover:border-[#168BFF]/50 text-slate-700 hover:text-[#168BFF] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-slate-200 dark:hover:text-[#168BFF] border border-[#C7D1DC] dark:border-white/10 transition-all flex items-center gap-1 text-[11px] font-medium shadow-sm cursor-pointer"
                           title={`Homework for ${card.subject_name}`}
                         >
                           <FileText className="w-3.5 h-3.5 text-slate-400" />
@@ -750,14 +855,14 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                         </button>
                         <button
                           onClick={() => onNavigateTab('ai-tools', { subject: card.subject_name, grade: card.grade, tool: 'lesson-plan' })}
-                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-all cursor-pointer"
-                          title="AI Lesson & Test Builder for this Subject"
+                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-[#168BFF]/15 hover:border-[#168BFF]/50 text-slate-700 hover:text-[#168BFF] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-slate-200 dark:hover:text-[#168BFF] border border-[#C7D1DC] dark:border-white/10 transition-all cursor-pointer"
+                          title="Lesson & Test Builder for this Subject"
                         >
-                          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                          <FileSpreadsheet className="w-3.5 h-3.5 text-teal-600 dark:text-[#18E2EC]" />
                         </button>
                         <button
                           onClick={() => onNavigateTab('resources', { subject: card.subject_name, grade: card.grade })}
-                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-all cursor-pointer"
+                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-[#168BFF]/15 hover:border-[#168BFF]/50 text-slate-700 hover:text-[#168BFF] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-slate-200 dark:hover:text-[#168BFF] border border-[#C7D1DC] dark:border-white/10 transition-all cursor-pointer"
                           title="Past Papers for this Subject"
                         >
                           <Layers className="w-3.5 h-3.5 text-slate-400" />
@@ -765,7 +870,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       </div>
 
                       <button
-                        onClick={() => setViewAllSubject(card)}
+                        onClick={() => setViewAllSubject({ ...card, class_name: cleanClass })}
                         className="text-[11px] font-semibold text-slate-400 hover:text-white flex items-center gap-1 hover:underline pl-1 shrink-0 transition-colors cursor-pointer"
                         title="View all modules & tools for this subject"
                       >
@@ -786,13 +891,14 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
             {displayCards.map((card: any, idx: number) => {
               const enrolledCount = card.learner_count ?? card.enrolled_count ?? 0;
-              const periodRoomText = card.period_room || (card.period ? `Period ${card.period} • ${card.room || 'Room ' + card.class_name}` : `Room ${card.room || card.class_name} • Scheduled`);
+              const periodRoomText = getPeriodRoomDisplay(card);
+              const cleanClass = formatCleanClass(card.class_name, card.grade);
               const coverImage = getSubjectCoverImage(card.subject_name);
 
               return (
                 <div
                   key={card.id || idx}
-                  className="rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden animated-border-card"
+                  className="rounded-2xl bg-surface-dark border border-white/10 hover:border-[#168BFF]/50 transition-all shadow-md flex flex-col justify-between group overflow-hidden animated-border-card"
                 >
                   <div data-theme-preserve="true" className="relative h-20 w-full overflow-hidden bg-slate-900">
                     <img
@@ -804,7 +910,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     <div data-theme-preserve="true" className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/20" />
                     <div className="absolute top-2 left-2">
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-600 text-white">
-                        Grade {card.grade} • {card.class_name}
+                        Grade {card.grade} • {cleanClass}
                       </span>
                     </div>
                     <div className="absolute bottom-1.5 inset-x-2.5">
@@ -825,7 +931,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
 
                     <div className="pt-1.5 border-t border-white/5 flex items-center justify-between">
                       <button
-                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
                         className="text-[10.5px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
                         title="Enter Marks"
                       >
@@ -833,7 +939,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                         <span>Marks</span>
                       </button>
                       <button
-                        onClick={() => setViewAllSubject(card)}
+                        onClick={() => setViewAllSubject({ ...card, class_name: cleanClass })}
                         className="text-[10.5px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-0.5 cursor-pointer"
                         title="View All Tools"
                       >
@@ -853,13 +959,14 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
           <div className="space-y-2.5">
             {displayCards.map((card: any, idx: number) => {
               const enrolledCount = card.learner_count ?? card.enrolled_count ?? 0;
-              const periodRoomText = card.period_room || (card.period ? `Period ${card.period} • ${card.room || 'Room ' + card.class_name}` : `Room ${card.room || card.class_name}`);
+              const periodRoomText = getPeriodRoomDisplay(card);
+              const cleanClass = formatCleanClass(card.class_name, card.grade);
               const coverImage = getSubjectCoverImage(card.subject_name);
 
               return (
                 <div
                   key={card.id || idx}
-                  className="p-3 rounded-2xl bg-surface-dark border border-white/10 hover:border-indigo-500/50 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group shadow-sm animated-border-card"
+                  className="p-3 rounded-2xl bg-surface-dark border border-white/10 hover:border-[#168BFF]/50 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group shadow-sm animated-border-card"
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 bg-slate-900 border border-white/10">
@@ -871,7 +978,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                       <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-600 text-white">
-                        {card.class_name}
+                        {cleanClass}
                       </span>
                     </div>
 
@@ -881,7 +988,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                           Grade {card.grade}
                         </span>
                         <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                          Class {card.class_name}
+                          Class {cleanClass}
                         </span>
                         {card.stream && (
                           <span className="px-1.5 py-0.5 rounded-md text-[9.5px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">
@@ -895,8 +1002,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       </div>
 
                       <h3
-                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                        className="text-base font-extrabold text-white group-hover:text-indigo-300 transition-colors cursor-pointer"
+                        onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
+                        className="text-base font-extrabold text-white group-hover:text-[#168BFF] dark:group-hover:text-[#18E2EC] transition-colors cursor-pointer"
                       >
                         {card.subject_name}
                       </h3>
@@ -910,32 +1017,32 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                   {/* Direct Module Action Buttons & View All */}
                   <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
                     <button
-                      onClick={() => handleOpenSubjectAttendance(card)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                      onClick={() => handleOpenSubjectAttendance({ ...card, class_name: cleanClass })}
+                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#168BFF]/10 text-slate-800 hover:text-[#168BFF] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-slate-100 dark:hover:text-[#168BFF] border border-[#C7D1DC] hover:border-[#168BFF]/50 dark:border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                       title="Register"
                     >
                       <CalendarCheck className="w-3.5 h-3.5 text-indigo-400" />
                       <span>Register</span>
                     </button>
                     <button
-                      onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                      onClick={() => onNavigateTab('assessments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
+                      className="px-3 py-1.5 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                       title="Marks"
                     >
                       <FileSpreadsheet className="w-3.5 h-3.5" />
                       <span>Marks</span>
                     </button>
                     <button
-                      onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: card.class_name })}
-                      className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                      onClick={() => onNavigateTab('assignments', { subject: card.subject_name, grade: card.grade, class: cleanClass })}
+                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#168BFF]/10 text-slate-800 hover:text-[#168BFF] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-slate-100 dark:hover:text-[#168BFF] border border-[#C7D1DC] hover:border-[#168BFF]/50 dark:border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                       title="Homework"
                     >
                       <FileText className="w-3.5 h-3.5 text-slate-400" />
                       <span>Homework</span>
                     </button>
                     <button
-                      onClick={() => setViewAllSubject(card)}
-                      className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                      onClick={() => setViewAllSubject({ ...card, class_name: cleanClass })}
+                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#168BFF]/10 text-slate-800 hover:text-[#168BFF] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-slate-100 dark:hover:text-[#168BFF] border border-[#C7D1DC] hover:border-[#168BFF]/50 dark:border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                       title="View All Functions"
                     >
                       <Eye className="w-3.5 h-3.5 text-slate-400" />
@@ -988,7 +1095,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>{attendanceModal.period_room || `Period ${attendanceModal.period || 1} • ${attendanceModal.room || 'Classroom'}`}</span>
+                  <span>{getPeriodRoomDisplay(attendanceModal)}</span>
                 </p>
               </div>
 
@@ -1256,7 +1363,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                       Grade {viewAllSubject.grade}
                     </span>
                     <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-cyan-600 text-white shadow-sm">
-                      Class {viewAllSubject.class_name || `${viewAllSubject.grade}A`}
+                      Class {formatCleanClass(viewAllSubject.class_name, viewAllSubject.grade)}
                     </span>
                     {viewAllSubject.stream && (
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/80 text-white uppercase tracking-wider">
@@ -1269,7 +1376,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                   </h3>
                   <div className="text-xs text-slate-300 mt-1 flex items-center gap-2">
                     <Clock className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>{viewAllSubject.period_room || `Period ${viewAllSubject.period || 1} • ${viewAllSubject.room || 'Room ' + viewAllSubject.class_name}`}</span>
+                    <span>{getPeriodRoomDisplay(viewAllSubject)}</span>
                   </div>
                 </div>
 
@@ -1302,12 +1409,12 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     setViewAllSubject(null);
                     handleOpenSubjectAttendance(target);
                   }}
-                  className="p-3 sm:p-3.5 rounded-2xl bg-surface-darker/90 border border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
+                  className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-white/10 hover:border-[#168BFF]/60 hover:bg-[#168BFF]/10 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-[#18E2EC] border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <CalendarCheck className="w-5 h-5" />
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-white group-hover:text-emerald-300 transition-colors line-clamp-2">
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#168BFF] dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2">
                     Register
                   </span>
                 </button>
@@ -1320,12 +1427,12 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     setViewAllSubject(null);
                     onNavigateTab('assessments', { subject: target.subject_name, grade: target.grade, class: target.class_name });
                   }}
-                  className="p-3 sm:p-3.5 rounded-2xl bg-surface-darker/90 border border-white/10 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
+                  className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-white/10 hover:border-[#168BFF]/60 hover:bg-[#168BFF]/10 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-[#18E2EC] border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <FileSpreadsheet className="w-5 h-5" />
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-white group-hover:text-indigo-300 transition-colors line-clamp-2">
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#168BFF] dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2">
                     Marks & Assessments
                   </span>
                 </button>
@@ -1338,12 +1445,12 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     setViewAllSubject(null);
                     onNavigateTab('assignments', { subject: target.subject_name, grade: target.grade, class: target.class_name });
                   }}
-                  className="p-3 sm:p-3.5 rounded-2xl bg-surface-darker/90 border border-white/10 hover:border-pink-500/50 hover:bg-pink-500/5 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
+                  className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-white/10 hover:border-[#168BFF]/60 hover:bg-[#168BFF]/10 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-pink-500/15 text-pink-400 border border-pink-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-[#18E2EC] border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <FileText className="w-5 h-5" />
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-white group-hover:text-pink-300 transition-colors line-clamp-2">
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#168BFF] dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2">
                     Homework & Submissions
                   </span>
                 </button>
@@ -1356,17 +1463,17 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     setViewAllSubject(null);
                     onNavigateTab('ai-tools', { subject: target.subject_name, grade: target.grade, tool: 'lesson-plan' });
                   }}
-                  className="p-3 sm:p-3.5 rounded-2xl bg-surface-darker/90 border border-white/10 hover:border-amber-500/50 hover:bg-amber-500/5 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
+                  className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-white/10 hover:border-[#168BFF]/60 hover:bg-[#168BFF]/10 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Sparkles className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-[#18E2EC] border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <BookOpen className="w-5 h-5" />
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors line-clamp-2">
-                    AI Lesson Planner
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#168BFF] dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2">
+                    Lesson Planner
                   </span>
                 </button>
 
-                {/* 5. AI Test Paper Studio */}
+                {/* 5. Test Paper Studio */}
                 <button
                   type="button"
                   onClick={() => {
@@ -1374,13 +1481,13 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     setViewAllSubject(null);
                     onNavigateTab('ai-tools', { subject: target.subject_name, grade: target.grade, tool: 'test-paper' });
                   }}
-                  className="p-3 sm:p-3.5 rounded-2xl bg-surface-darker/90 border border-white/10 hover:border-cyan-500/50 hover:bg-cyan-500/5 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
+                  className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-white/10 hover:border-[#168BFF]/50 hover:bg-[#168BFF]/5 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
                 >
                   <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Bot className="w-5 h-5" />
+                    <FileSpreadsheet className="w-5 h-5" />
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-white group-hover:text-cyan-300 transition-colors line-clamp-2">
-                    AI Test Paper Studio
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#168BFF] dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2">
+                    Test Paper Studio
                   </span>
                 </button>
 
@@ -1392,12 +1499,12 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     setViewAllSubject(null);
                     onNavigateTab('resources', { subject: target.subject_name, grade: target.grade });
                   }}
-                  className="p-3 sm:p-3.5 rounded-2xl bg-surface-darker/90 border border-white/10 hover:border-purple-500/50 hover:bg-purple-500/5 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
+                  className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-white/10 hover:border-[#168BFF]/60 hover:bg-[#168BFF]/10 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-[#18E2EC] border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Layers className="w-5 h-5" />
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-white group-hover:text-purple-300 transition-colors line-clamp-2">
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#168BFF] dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2">
                     Past Exam Papers
                   </span>
                 </button>
@@ -1410,12 +1517,12 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     setViewAllSubject(null);
                     onNavigateTab('textbooks', { subject: target.subject_name, grade: target.grade });
                   }}
-                  className="p-3 sm:p-3.5 rounded-2xl bg-surface-darker/90 border border-white/10 hover:border-teal-500/50 hover:bg-teal-500/5 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
+                  className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-white/10 hover:border-[#168BFF]/60 hover:bg-[#168BFF]/10 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-teal-500/15 text-teal-400 border border-teal-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-[#18E2EC] border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <HardDrive className="w-5 h-5" />
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-white group-hover:text-teal-300 transition-colors line-clamp-2">
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#168BFF] dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2">
                     Textbook Inventory
                   </span>
                 </button>
@@ -1428,12 +1535,12 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     setViewAllSubject(null);
                     onNavigateTab('timetable', { subject: target.subject_name, grade: target.grade });
                   }}
-                  className="p-3 sm:p-3.5 rounded-2xl bg-surface-darker/90 border border-white/10 hover:border-sky-500/50 hover:bg-sky-500/5 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
+                  className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-white/10 hover:border-[#168BFF]/60 hover:bg-[#168BFF]/10 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-sky-500/15 text-sky-400 border border-sky-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-[#18E2EC] border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Clock className="w-5 h-5" />
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-white group-hover:text-sky-300 transition-colors line-clamp-2">
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#168BFF] dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2">
                     Timetable & Periods
                   </span>
                 </button>
@@ -1446,12 +1553,12 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     setViewAllSubject(null);
                     onNavigateTab('conduct', { grade: target.grade, class: target.class_name });
                   }}
-                  className="p-3 sm:p-3.5 rounded-2xl bg-surface-darker/90 border border-white/10 hover:border-rose-500/50 hover:bg-rose-500/5 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
+                  className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-white/10 hover:border-[#168BFF]/60 hover:bg-[#168BFF]/10 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-rose-500/15 text-rose-400 border border-rose-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-[#18E2EC] border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <ClipboardList className="w-5 h-5" />
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-white group-hover:text-rose-300 transition-colors line-clamp-2">
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#168BFF] dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2">
                     Merit & Conduct Log
                   </span>
                 </button>
@@ -1464,12 +1571,12 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     setViewAllSubject(null);
                     onNavigateTab('announcements', { subject: target.subject_name, grade: target.grade });
                   }}
-                  className="p-3 sm:p-3.5 rounded-2xl bg-surface-darker/90 border border-white/10 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
+                  className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-white/10 hover:border-[#168BFF]/60 hover:bg-[#168BFF]/10 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-[#18E2EC] border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Megaphone className="w-5 h-5" />
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-white group-hover:text-blue-300 transition-colors line-clamp-2">
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#168BFF] dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2">
                     Subject Notices
                   </span>
                 </button>
@@ -1482,12 +1589,12 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     setViewAllSubject(null);
                     onNavigateTab('ptc', { subject: target.subject_name, grade: target.grade });
                   }}
-                  className="p-3 sm:p-3.5 rounded-2xl bg-surface-darker/90 border border-white/10 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
+                  className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-white/10 hover:border-[#168BFF]/60 hover:bg-[#168BFF]/10 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-violet-500/15 text-violet-400 border border-violet-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-[#18E2EC] border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Users className="w-5 h-5" />
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-white group-hover:text-violet-300 transition-colors line-clamp-2">
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#168BFF] dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2">
                     Parent Consultations
                   </span>
                 </button>
@@ -1500,12 +1607,12 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                     setViewAllSubject(null);
                     onNavigateTab('inter-school', { subject: target.subject_name });
                   }}
-                  className="p-3 sm:p-3.5 rounded-2xl bg-surface-darker/90 border border-white/10 hover:border-amber-500/50 hover:bg-amber-500/5 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
+                  className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-white/10 hover:border-[#168BFF]/60 hover:bg-[#168BFF]/10 transition-all duration-200 cursor-pointer group shadow-sm flex items-center gap-3 text-left active:scale-[0.98]"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-[#18E2EC] border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Trophy className="w-5 h-5" />
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors line-clamp-2">
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#168BFF] dark:group-hover:text-[#18E2EC] transition-colors line-clamp-2">
                     Academic Olympiads
                   </span>
                 </button>
@@ -1534,6 +1641,13 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
         selectedClass={activeQRSubject?.class_name || `${activeQRSubject?.grade || 10}A`}
         subjectName={activeQRSubject?.subject_name || 'Subject'}
         onApplyAttendance={handleApplyQRAttendance}
+      />
+
+      {/* Geleza AI Copilot Modal */}
+      <TeacherAICopilotModal
+        isOpen={isCopilotOpen}
+        onClose={() => setIsCopilotOpen(false)}
+        initialTab={copilotTab}
       />
 
     </div>

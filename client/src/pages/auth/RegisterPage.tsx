@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { authService, parentApplicationService, systemControlService, classStaffService } from '../../services/api';
 import { useSchool } from '../../context/SchoolContext';
 import { intakeClosed, intakeReason } from '../../utils/admissionGate';
-import { FusionAIIcon } from '../../components/common/FusionAIIcon';
 import { SchoolRegistrationModal } from '../../components/landing/SchoolRegistrationModal';
 import {
   User,
@@ -30,7 +29,8 @@ import {
   Building2,
   Clock,
   Eye,
-  EyeOff
+  EyeOff,
+  BookOpen
 } from 'lucide-react';
 
 interface ChildLinkItem {
@@ -206,6 +206,9 @@ export const RegisterPage: React.FC = () => {
   });
   const [showTeacherPassword, setShowTeacherPassword] = useState(false);
   const [showTeacherConfirmPassword, setShowTeacherConfirmPassword] = useState(false);
+  const [confirmedSubjects, setConfirmedSubjects] = useState<string[]>([]);
+  const [confirmedGrades, setConfirmedGrades] = useState<number[]>([]);
+  const [confirmedClasses, setConfirmedClasses] = useState<string[]>([]);
 
   // Verify Teacher Invite Token
   useEffect(() => {
@@ -213,7 +216,7 @@ export const RegisterPage: React.FC = () => {
 
     if (!inviteToken) {
       setTeacherLoading(false);
-      setTeacherError('Official Teacher Invitation Required: Educators can only apply or register via an official invitation email dispatched by their School Administration.');
+      setTeacherError('Official Teacher Invitation Required: Educators can only register via an official invitation link sent by their School Principal.');
       return;
     }
 
@@ -235,6 +238,13 @@ export const RegisterPage: React.FC = () => {
             subjects_offered: Array.isArray(res.invite.subjects_offered) ? res.invite.subjects_offered.join(', ') : '',
             sports_coached: Array.isArray(res.invite.sports_coached) ? res.invite.sports_coached.join(', ') : ''
           }));
+          const subs = Array.isArray(res.invite.subjects_offered) ? res.invite.subjects_offered : [];
+          const grds = Array.isArray(res.invite.assigned_grades) ? res.invite.assigned_grades : [10];
+          const clss = Array.isArray(res.invite.assigned_classes) ? res.invite.assigned_classes : [];
+          setConfirmedSubjects(subs);
+          setConfirmedGrades(grds);
+          setConfirmedClasses(clss);
+
           if (res.invite.isAppLocked || res.invite.isRegLocked) {
             setTeacherError(res.invite.appLockReason || res.invite.regLockReason || 'Teacher registration is closed.');
           }
@@ -249,6 +259,62 @@ export const RegisterPage: React.FC = () => {
         setTeacherLoading(false);
       });
   }, [isTeacherFlow, inviteToken]);
+
+  const handleTeacherConfirmSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTeacherError(null);
+
+    if (!teacherAppForm.full_name.trim() || !teacherAppForm.surname.trim()) {
+      setTeacherError('First Name and Surname are required.');
+      return;
+    }
+    if (!teacherRegForm.password || teacherRegForm.password.length < 6) {
+      setTeacherError('Password must be at least 6 characters long.');
+      return;
+    }
+    if (teacherRegForm.password !== teacherRegForm.confirmPassword) {
+      setTeacherError('Passwords do not match.');
+      return;
+    }
+
+    setTeacherSubmitting(true);
+    try {
+      const res = await classStaffService.confirmTeacherInvite({
+        token: inviteToken,
+        password: teacherRegForm.password,
+        confirmPassword: teacherRegForm.confirmPassword,
+        full_name: teacherAppForm.full_name.trim(),
+        surname: teacherAppForm.surname.trim(),
+        phone: teacherAppForm.phone.trim(),
+        id_number: teacherAppForm.id_number.trim(),
+        sace_number: teacherAppForm.sace_number.trim(),
+        qualifications: teacherAppForm.qualifications.trim(),
+        confirmed_subjects: confirmedSubjects.length > 0 ? confirmedSubjects : (teacherInvite?.subjects_offered || []),
+        confirmed_grades: confirmedGrades.length > 0 ? confirmedGrades : (teacherInvite?.assigned_grades || [10]),
+        confirmed_classes: confirmedClasses.length > 0 ? confirmedClasses : (teacherInvite?.assigned_classes || [])
+      });
+
+      if (res.token && res.user) {
+        localStorage.setItem('token', res.token);
+        localStorage.setItem('user', JSON.stringify(res.user));
+        localStorage.setItem('userRole', 'teacher');
+        if (res.user.school_id) {
+          localStorage.setItem('active_school_id', String(res.user.school_id));
+        }
+        setTeacherRegistered(true);
+        setTimeout(() => {
+          navigate('/dashboard/teacher?tab=overview');
+        }, 1200);
+      } else {
+        setTeacherAppSubmitted(true);
+        setTeacherInvite((prev: any) => ({ ...prev, status: 'applied' }));
+      }
+    } catch (err: any) {
+      setTeacherError(err.response?.data?.error || err.message || 'Failed to confirm subjects and submit registration.');
+    } finally {
+      setTeacherSubmitting(false);
+    }
+  };
 
   const handleTeacherApplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -778,7 +844,7 @@ export const RegisterPage: React.FC = () => {
   if (isTeacherFlow) {
     if (teacherLoading) {
       return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+        <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
           <div className="text-center space-y-4 animate-fade-in">
             <div className="w-12 h-12 border-3 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto" />
             <h3 className="text-base font-bold text-white">Verifying Educator Invitation</h3>
@@ -790,8 +856,8 @@ export const RegisterPage: React.FC = () => {
 
     if (teacherError && !teacherInvite) {
       return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-          <div className="max-w-md w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 text-center space-y-6 shadow-2xl">
+        <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+          <div className="max-w-md w-full portal-glass rounded-3xl border border-slate-800 p-8 text-center space-y-6 shadow-2xl">
             <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center mx-auto text-rose-400">
               <AlertCircle className="w-7 h-7" />
             </div>
@@ -823,56 +889,77 @@ export const RegisterPage: React.FC = () => {
       );
     }
 
-    // Phase: Application submitted / under review
-    if (teacherAppSubmitted || teacherInvite?.status === 'applied') {
+    // Phase: Registered / Active
+    if (teacherRegistered || teacherInvite?.status === 'registered' || teacherInvite?.status === 'accepted') {
       return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-          <div className="max-w-lg w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 text-center space-y-6 shadow-2xl animate-fade-in relative">
-            <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 flex items-center justify-center mx-auto shadow-glow-cyan">
-              <GraduationCap className="w-9 h-9" />
+        <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+          <div className="max-w-md w-full portal-glass rounded-3xl border border-slate-800 p-8 text-center space-y-6 shadow-2xl animate-fade-in">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto shadow-glow-emerald">
+              <CheckCircle2 className="w-9 h-9" />
             </div>
 
             <div className="space-y-2">
-              <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-bold">
-                Application Received
+              <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-bold">
+                Account Active & Verified
               </span>
-              <h2 className="text-2xl font-black text-white">Application Under Review</h2>
+              <h2 className="text-2xl font-black text-white">Educator Account Activated</h2>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Your educator application for <strong className="text-white">{teacherInvite?.school_name || 'your institution'}</strong> has been submitted.
+                Your subjects, grades, and classes have been assigned by your Principal and are ready in your dashboard.
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 text-left space-y-2.5 text-xs">
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400">Applicant:</span>
-                <span className="font-bold text-white">{teacherInvite?.full_name} {teacherInvite?.surname}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400">Email:</span>
-                <span className="font-medium text-slate-300">{teacherInvite?.email}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400">Review Status:</span>
-                <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-bold text-[11px]">
-                  Pending Principal Approval
-                </span>
-              </div>
+            <button
+              onClick={() => navigate('/dashboard/teacher?tab=overview')}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-black shadow-lg cursor-pointer flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
+            >
+              <span>Go to Teacher Dashboard</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // Phase: Submitted & Awaiting Principal Approval
+    if (teacherAppSubmitted || teacherInvite?.status === 'applied') {
+      return (
+        <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+          <div className="max-w-lg w-full portal-glass rounded-3xl border border-slate-800 p-8 text-center space-y-6 shadow-2xl animate-fade-in">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto shadow-glow-amber">
+              <Clock className="w-9 h-9" />
             </div>
 
-            <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-800/40 text-left text-xs text-cyan-200 leading-relaxed">
-              Once approved by the School Principal, you will receive an official approval email with your direct activation link to set your password and access the app.
+            <div className="space-y-2">
+              <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-bold">
+                Workload Confirmed • Awaiting Principal Approval
+              </span>
+              <h2 className="text-2xl font-black text-white">Registration Submitted for Approval</h2>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Thank you, <strong className="text-white">{teacherAppForm.full_name || teacherInvite?.full_name} {teacherAppForm.surname || teacherInvite?.surname}</strong>. Your confirmed teaching allocations and registration details have been submitted to your School Principal for official approval.
+              </p>
             </div>
 
-            <div className="pt-2 flex gap-3 justify-center">
+            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 text-left text-xs space-y-2">
+              <p className="text-slate-400"><strong>School:</strong> <span className="text-white">{teacherInvite?.school_name}</span></p>
+              <p className="text-slate-400"><strong>Assigned Subjects:</strong> <span className="text-cyan-300 font-bold">{(confirmedSubjects.length > 0 ? confirmedSubjects : (teacherInvite?.subjects_offered || [])).join(', ') || 'Curriculum Subjects'}</span></p>
+              <p className="text-slate-400"><strong>Assigned Classes:</strong> <span className="text-white">{(confirmedClasses.length > 0 ? confirmedClasses : (teacherInvite?.assigned_classes || [])).join(', ') || 'Allocated Groups'}</span></p>
+              <p className="text-slate-400"><strong>Account Status:</strong> <span className="text-amber-400 font-bold">Pending Principal Approval</span></p>
+            </div>
+
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Once your School Principal approves your profile in the Admin Command Center, your account will be activated and you will receive an official activation email with direct login access.
+            </p>
+
+            <div className="pt-2 flex gap-3">
               <button
                 onClick={() => navigate('/login')}
-                className="px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-black transition-all cursor-pointer"
+                className="flex-1 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs transition-all cursor-pointer"
               >
-                Go to Login
+                Sign In
               </button>
               <Link
                 to="/"
-                className="px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-all border border-white/10"
+                className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-all border border-white/10 flex items-center justify-center"
               >
                 Back to Home
               </Link>
@@ -882,80 +969,151 @@ export const RegisterPage: React.FC = () => {
       );
     }
 
-    // Phase: Registered / Active
-    if (teacherRegistered || teacherInvite?.status === 'registered' || teacherInvite?.status === 'accepted') {
-      return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-          <div className="max-w-md w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 text-center space-y-6 shadow-2xl animate-fade-in">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-9 h-9" />
+    // Phase: Confirm Invitation, Review Assigned Subjects & Set Password
+    return (
+      <div className="relative z-10 min-h-screen flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-2xl w-full mx-auto portal-glass rounded-3xl border border-slate-800 p-6 sm:p-8 space-y-6 shadow-2xl">
+          {/* Header Banner */}
+          <div className="flex items-center gap-3.5 border-b border-slate-800 pb-4">
+            <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-glow-cyan shrink-0">
+              <GraduationCap className="w-6 h-6" />
             </div>
-
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-bold">
-                Account Active
+            <div>
+              <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-400 font-bold">
+                {teacherInvite?.school_name || 'Geleza SA Faculty Onboarding'}
               </span>
-              <h2 className="text-2xl font-black text-white">Educator Account Activated</h2>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Your educator account is active. You can now log into the web portal or mobile app directly.
-              </p>
-            </div>
-
-            <button
-              onClick={() => navigate(`/login?email=${encodeURIComponent(teacherInvite?.email || '')}`)}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-black shadow-lg cursor-pointer"
-            >
-              Sign In Now
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    // Phase: Registration / Set Password (When approved or step === 'register')
-    if (teacherInvite?.status === 'approved' || stepParam === 'register') {
-      if (teacherInvite?.isRegLocked) {
-        return (
-          <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-            <div className="max-w-md w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 text-center space-y-5">
-              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
-                <Lock className="w-7 h-7" />
-              </div>
-              <h2 className="text-xl font-black text-white">Registration Portal Locked</h2>
-              <p className="text-xs text-slate-300">
-                {teacherInvite?.regLockReason || 'User account registrations are currently paused by Geleza SA Executives.'}
-              </p>
-              <Link to="/login" className="inline-block px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold">
-                Sign In to Existing Account
-              </Link>
-            </div>
-          </div>
-        );
-      }
-
-      return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-          <div className="max-w-md w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 space-y-6 shadow-2xl">
-            <div className="text-center space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mx-auto text-cyan-400">
-                <Lock className="w-6 h-6" />
-              </div>
-              <h2 className="text-xl font-black text-white">Complete Educator Registration</h2>
+              <h2 className="text-lg sm:text-xl font-black text-white">Teacher Invitation & Subject Allocation</h2>
               <p className="text-xs text-slate-400">
-                Set your secure password to complete activation for <strong className="text-slate-200">{teacherInvite?.email}</strong>.
+                Confirm the subjects and classes assigned to you by your School Principal to activate your educator dashboard.
               </p>
             </div>
+          </div>
 
-            {teacherError && (
-              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{teacherError}</span>
+          {teacherError && (
+            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2 animate-fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{teacherError}</span>
+            </div>
+          )}
+
+          {/* SECTION 1: Subjects Assigned by Principal */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/70 border border-cyan-500/30 space-y-3.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-cyan-400" />
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                  Subjects & Classes Assigned by Principal
+                </h3>
               </div>
-            )}
+              <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                Ready to Confirm
+              </span>
+            </div>
 
-            <form onSubmit={handleTeacherRegisterSubmit} className="space-y-4 text-xs">
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Your School Principal has designated the following subjects and grades to your teaching profile. Upon confirmation, these subjects will immediately be available in your Teacher Dashboard.
+            </p>
+
+            {/* Subjects Pill Badges */}
+            <div className="space-y-1.5 pt-1">
+              <span className="text-[11px] font-semibold text-slate-400">Assigned Subjects:</span>
+              <div className="flex flex-wrap gap-2">
+                {(confirmedSubjects.length > 0 ? confirmedSubjects : (teacherInvite?.subjects_offered || ['Mathematics', 'Physical Sciences'])).map((subj: string) => (
+                  <span
+                    key={subj}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-cyan-200 border border-cyan-500/30 font-bold text-xs shadow-xs"
+                  >
+                    <Check className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>{subj}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Grades & Classes Badges */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800/80">
+              <div>
+                <span className="text-[11px] font-semibold text-slate-400 block mb-1">Assigned Grades:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {(confirmedGrades.length > 0 ? confirmedGrades : (teacherInvite?.assigned_grades || [10, 11])).map((gr: any) => (
+                    <span key={gr} className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono text-xs font-bold">
+                      Grade {gr}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <span className="text-[11px] font-semibold text-slate-400 block mb-1">Designated Classes:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {(confirmedClasses.length > 0 ? confirmedClasses : (teacherInvite?.assigned_classes || ['10A'])).map((cls: string) => (
+                    <span key={cls} className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono text-xs font-bold">
+                      Class {cls}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 2: Teacher Account Activation Form */}
+          <form onSubmit={handleTeacherConfirmSubmit} className="space-y-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="font-bold text-slate-300">New Password *</label>
+                <label className="font-bold text-slate-300">First Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Sipho"
+                  value={teacherAppForm.full_name}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\d/g, '');
+                    setTeacherAppForm({ ...teacherAppForm, full_name: val });
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300">Surname *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Khumalo"
+                  value={teacherAppForm.surname}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\d/g, '');
+                    setTeacherAppForm({ ...teacherAppForm, surname: val });
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300">Account Email (Invitation Target)</label>
+                <input
+                  type="email"
+                  value={teacherInvite?.email || ''}
+                  disabled
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-400 cursor-not-allowed font-mono"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300">Contact Phone Number</label>
+                <input
+                  type="tel"
+                  placeholder="e.g. 0821234567"
+                  value={teacherAppForm.phone}
+                  onChange={(e) => setTeacherAppForm({ ...teacherAppForm, phone: e.target.value.replace(/[^\d+]/g, '') })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
+                />
+              </div>
+            </div>
+
+            {/* Password Fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300">Create Password *</label>
                 <div className="relative">
                   <input
                     type={showTeacherPassword ? 'text' : 'password'}
@@ -995,286 +1153,28 @@ export const RegisterPage: React.FC = () => {
                   </button>
                 </div>
               </div>
-
-              <button
-                type="submit"
-                disabled={teacherSubmitting}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-black text-xs shadow-lg cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {teacherSubmitting ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Activating Account...</span>
-                  </>
-                ) : (
-                  <span>Activate Account & Sign In</span>
-                )}
-              </button>
-            </form>
-          </div>
-        </div>
-      );
-    }
-
-    // Phase: Application (Status is 'pending')
-    if (teacherInvite?.isAppLocked) {
-      return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-          <div className="max-w-md w-full rounded-3xl bg-slate-900 border border-slate-800 p-8 text-center space-y-5">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
-              <Lock className="w-7 h-7" />
-            </div>
-            <h2 className="text-xl font-black text-white">Application Period Closed</h2>
-            <p className="text-xs text-slate-300">
-              {teacherInvite?.appLockReason || 'Teacher applications are currently closed by Geleza SA administration.'}
-            </p>
-            <Link to="/login" className="inline-block px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold">
-              Sign In to Existing Account
-            </Link>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl w-full mx-auto rounded-3xl bg-slate-900 border border-slate-800 p-6 sm:p-8 space-y-6 shadow-2xl">
-          <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
-            <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-              <GraduationCap className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-400 font-bold">
-                {teacherInvite?.school_name || 'Geleza SA Faculty Onboarding'}
-              </span>
-              <h2 className="text-lg sm:text-xl font-black text-white">Educator Onboarding Application</h2>
-            </div>
-          </div>
-
-          {teacherError && (
-            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{teacherError}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleTeacherApplySubmit} className="space-y-4 text-xs">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300">First Name *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Sipho (letters only)"
-                  value={teacherAppForm.full_name}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (/\d/.test(val)) {
-                      setFieldErrors(prev => ({ ...prev, teacher_full_name: 'Numbers are not allowed in this field. Please use letters only.' }));
-                      setTeacherAppForm({ ...teacherAppForm, full_name: val.replace(/\d/g, '') });
-                    } else {
-                      clearFieldError('teacher_full_name');
-                      setTeacherAppForm({ ...teacherAppForm, full_name: val });
-                    }
-                  }}
-                  className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border text-white outline-hidden focus:border-cyan-500 ${
-                    fieldErrors.teacher_full_name ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-slate-700'
-                  }`}
-                  required
-                />
-                {fieldErrors.teacher_full_name && (
-                  <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>{fieldErrors.teacher_full_name}</span>
-                  </p>
-                )}
-              </div>
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300">Surname *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Khumalo (letters only)"
-                  value={teacherAppForm.surname}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (/\d/.test(val)) {
-                      setFieldErrors(prev => ({ ...prev, teacher_surname: 'Numbers are not allowed in this field. Please use letters only.' }));
-                      setTeacherAppForm({ ...teacherAppForm, surname: val.replace(/\d/g, '') });
-                    } else {
-                      clearFieldError('teacher_surname');
-                      setTeacherAppForm({ ...teacherAppForm, surname: val });
-                    }
-                  }}
-                  className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border text-white outline-hidden focus:border-cyan-500 ${
-                    fieldErrors.teacher_surname ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-slate-700'
-                  }`}
-                  required
-                />
-                {fieldErrors.teacher_surname && (
-                  <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>{fieldErrors.teacher_surname}</span>
-                  </p>
-                )}
-              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300">Colleague Email</label>
-                <input
-                  type="email"
-                  value={teacherInvite?.email || ''}
-                  disabled
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 cursor-not-allowed"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300">Contact Phone Number *</label>
-                <input
-                  type="tel"
-                  placeholder="e.g. 0821234567 (numbers only)"
-                  value={teacherAppForm.phone}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (/[a-zA-Z]/.test(val)) {
-                      setFieldErrors(prev => ({ ...prev, teacher_phone: 'Letters and words are not allowed in this field. Numbers only.' }));
-                      setTeacherAppForm({ ...teacherAppForm, phone: val.replace(/[a-zA-Z]/g, '') });
-                    } else {
-                      clearFieldError('teacher_phone');
-                      setTeacherAppForm({ ...teacherAppForm, phone: val.replace(/[^\d+]/g, '') });
-                    }
-                  }}
-                  className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border text-white outline-hidden focus:border-cyan-500 ${
-                    fieldErrors.teacher_phone ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-slate-700'
-                  }`}
-                  required
-                />
-                {fieldErrors.teacher_phone && (
-                  <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>{fieldErrors.teacher_phone}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300">SA ID Number (13 Digits) *</label>
-                <input
-                  type="text"
-                  maxLength={13}
-                  placeholder="13-digit national ID (numbers only)"
-                  value={teacherAppForm.id_number}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (/[a-zA-Z]/.test(val)) {
-                      setFieldErrors(prev => ({ ...prev, teacher_id_number: 'Letters and words are not allowed in this field. Numbers only.' }));
-                      setTeacherAppForm({ ...teacherAppForm, id_number: val.replace(/[a-zA-Z]/g, '').slice(0, 13) });
-                    } else {
-                      clearFieldError('teacher_id_number');
-                      setTeacherAppForm({ ...teacherAppForm, id_number: val.replace(/\D/g, '').slice(0, 13) });
-                    }
-                  }}
-                  className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border text-white outline-hidden focus:border-cyan-500 ${
-                    fieldErrors.teacher_id_number ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-slate-700'
-                  }`}
-                  required
-                />
-                {fieldErrors.teacher_id_number && (
-                  <p className="text-[11px] text-rose-400 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>{fieldErrors.teacher_id_number}</span>
-                  </p>
-                )}
-              </div>
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300">SACE Number *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. SACE-849201"
-                  value={teacherAppForm.sace_number}
-                  onChange={(e) => setTeacherAppForm({ ...teacherAppForm, sace_number: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300">Highest Qualification *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. B.Ed, PGCE, BSc Mathematics"
-                  value={teacherAppForm.qualifications}
-                  onChange={(e) => setTeacherAppForm({ ...teacherAppForm, qualifications: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300">Teaching Experience (Years)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="50"
-                  value={teacherAppForm.experience_years}
-                  onChange={(e) => setTeacherAppForm({ ...teacherAppForm, experience_years: parseInt(e.target.value, 10) || 0 })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-bold text-slate-300">Teaching Subjects (comma-separated)</label>
-              <input
-                type="text"
-                placeholder="e.g. Mathematics, Physical Sciences"
-                value={teacherAppForm.subjects_offered}
-                onChange={(e) => setTeacherAppForm({ ...teacherAppForm, subjects_offered: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-bold text-slate-300">Sports / Extracurriculars Coached (Optional)</label>
-              <input
-                type="text"
-                placeholder="e.g. Soccer, Chess, Athletics"
-                value={teacherAppForm.sports_coached}
-                onChange={(e) => setTeacherAppForm({ ...teacherAppForm, sports_coached: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-bold text-slate-300">Application Notes / Bio (Optional)</label>
-              <textarea
-                rows={2}
-                placeholder="Brief professional note for the Principal..."
-                value={teacherAppForm.application_notes}
-                onChange={(e) => setTeacherAppForm({ ...teacherAppForm, application_notes: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-hidden focus:border-cyan-500"
-              />
-            </div>
-
-            <div className="pt-2 flex items-center justify-between gap-3">
+            {/* Action Buttons */}
+            <div className="pt-3 flex items-center justify-between gap-3 border-t border-slate-800">
               <Link to="/login" className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white font-bold transition-all">
-                Cancel
+                Sign In Instead
               </Link>
               <button
                 type="submit"
                 disabled={teacherSubmitting}
-                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-black text-xs shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-500 to-teal-400 hover:from-blue-500 hover:to-cyan-400 text-slate-950 font-black text-xs shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {teacherSubmitting ? (
                   <>
-                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Submitting Application...</span>
+                    <div className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                    <span>Submitting Registration for Approval...</span>
                   </>
                 ) : (
-                  <span>Submit Application for Principal Review</span>
+                  <>
+                    <Check className="w-4 h-4 text-slate-950 stroke-[3]" />
+                    <span>Confirm Workload & Submit Registration for Approval</span>
+                  </>
                 )}
               </button>
             </div>
@@ -1286,8 +1186,8 @@ export const RegisterPage: React.FC = () => {
 
   if (success && submittedApp) {
     return (
-      <div className="min-h-screen bg-surface-darker flex items-center justify-center p-4">
-        <div className="max-w-lg w-full rounded-3xl bg-surface-dark border border-white/10 p-8 text-center space-y-6 shadow-2xl animate-fade-in relative overflow-hidden">
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-lg w-full portal-glass rounded-3xl border border-white/10 p-8 text-center space-y-6 shadow-2xl animate-fade-in relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
           
           <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto shadow-glow-amber">
@@ -1356,12 +1256,12 @@ export const RegisterPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-surface-darker flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="relative z-10 min-h-screen flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 overflow-hidden">
       {/* Background Glows */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-xl text-center space-y-3 relative z-10">
+      <div className="portal-hero sm:mx-auto sm:w-full sm:max-w-xl text-center space-y-3 relative z-10" data-theme-preserve="true">
         <Link to="/" className="inline-flex items-center gap-3 group">
           <div
             className="w-14 h-14 rounded-2xl p-1 border shadow-glow-indigo group-hover:scale-105 transition-transform backdrop-blur-md flex items-center justify-center"
@@ -1421,7 +1321,7 @@ export const RegisterPage: React.FC = () => {
       <SchoolRegistrationModal isOpen={isSchoolModalOpen} onClose={() => setIsSchoolModalOpen(false)} />
 
       <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-xl relative z-10">
-        <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 sm:p-8 shadow-2xl space-y-6">
+        <div className="portal-glass rounded-3xl border border-white/10 p-6 sm:p-8 shadow-2xl space-y-6">
           
           {/* Multi-Step Indicator */}
           <div className="flex items-center justify-between border-b border-white/10 pb-4">
@@ -1563,7 +1463,7 @@ export const RegisterPage: React.FC = () => {
                   {idExtracted && (
                     <div className="mt-2 p-2.5 rounded-xl bg-brand-500/10 border border-brand-500/20 text-xs text-brand-300 flex items-center justify-between animate-fade-in">
                       <div className="flex items-center gap-2">
-                        <FusionAIIcon className="w-3.5 h-3.5 text-cyan-300" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-cyan-300" />
                         <span>Autofilled from ID: <strong>DOB {idExtracted.displayDob}</strong> &bull; <strong>{idExtracted.gender}</strong></span>
                       </div>
                       <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
@@ -1818,7 +1718,7 @@ export const RegisterPage: React.FC = () => {
                   <div>
                     <p className="font-bold">Link an enrolled learner</p>
                     <p className="text-[11px] text-slate-300 mt-0.5">
-                      The official learner number, 13-digit ID, first name, and surname must all match a learner who is already enrolled.
+                      Enter the application reference from the acceptance letter, or the learner number, with the same 13-digit ID, first name, and surname.
                     </p>
                   </div>
                 </div>

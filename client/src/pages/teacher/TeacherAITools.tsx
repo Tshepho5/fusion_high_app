@@ -383,42 +383,13 @@ export const TeacherAITools: React.FC = () => {
       formData.append('description', `AI Generated ${quizQuestions.length}-question interactive practice quiz on ${topic}.`);
       formData.append('questions', JSON.stringify(quizQuestions));
 
-      try {
-        await assignmentService.createAssignment(formData);
-      } catch (err: any) {
-        console.warn('[ASSIGNMENT API WARN]:', err?.message);
-      }
-
-      // 2. Also cache in local storage for teacher assessment dashboard
-      const newAssessmentItem = {
-        id: `ai-${Date.now()}`,
-        title: `${subject}: ${topic} Interactive Quiz`,
-        subject,
-        grade,
-        due_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-        total_marks: calculatedTotal,
-        description: `AI Generated ${quizQuestions.length}-question practice module on ${topic}.`,
-        item_type: 'ai_assessment',
-        assignment_type: 'quiz',
-        total_submissions: 0,
-        pending_marking: 0,
-        signed_submissions: 0,
-        status: 'ungraded',
-        questions: quizQuestions
-      };
-
-      try {
-        let existingList = [];
-        const stored = localStorage.getItem('fusion_teacher_ai_assessments');
-        if (stored) existingList = JSON.parse(stored);
-        existingList.unshift(newAssessmentItem);
-        localStorage.setItem('fusion_teacher_ai_assessments', JSON.stringify(existingList));
-      } catch (_) {}
+      await assignmentService.createAssignment(formData);
 
       setPublishSuccess(`Published ${subject} quiz (${quizQuestions.length} questions, ${calculatedTotal} Total Marks) to Grade ${grade} learners!`);
       setTimeout(() => setPublishSuccess(null), 6000);
-    } catch (_) {
-      setPublishSuccess(`Published ${subject} quiz to Grade ${grade} learners!`);
+    } catch (err: any) {
+      console.error('[ASSIGNMENT API ERROR]:', err);
+      setPublishSuccess(`Failed to publish quiz: ${err.response?.data?.error || err.message}`);
     } finally {
       setPublishing(false);
     }
@@ -443,9 +414,9 @@ export const TeacherAITools: React.FC = () => {
         <div>
           <h2 className="text-xl md:text-2xl font-extrabold font-display text-white tracking-tight flex items-center gap-2">
             <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-500 text-white shadow-glow-indigo">
-              <FusionAIIcon className="w-5 h-5 text-white" variant="pulse" />
+              <BookOpen className="w-5 h-5 text-white" />
             </div>
-            <span>AI Lesson & Quiz Builder</span>
+            <span>Lesson & Quiz Builder</span>
           </h2>
         </div>
       </div>
@@ -700,7 +671,7 @@ export const TeacherAITools: React.FC = () => {
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <FusionAIIcon className="w-4 h-4 text-cyan-200" />
+                  <BookOpen className="w-4 h-4 text-cyan-200" />
                   <span>
                     {activeTool === 'quiz' ? `Generate Fresh ${subject} Quiz` : `Generate ${subject} Content`}
                   </span>
@@ -714,11 +685,10 @@ export const TeacherAITools: React.FC = () => {
         <div className="lg:col-span-7 rounded-3xl bg-surface-dark border border-white/10 p-6 shadow-xl flex flex-col min-h-[580px] max-h-[750px]">
           <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4 shrink-0">
             <div className="flex items-center gap-2">
-              <Badge variant="cyan" size="sm">AI Generated</Badge>
+              <Badge variant="cyan" size="sm">Generated</Badge>
               <Badge variant="indigo" size="sm">Grade {grade} {subject}</Badge>
               {activeTool === 'quiz' && (
                 <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[10px] font-bold">
-                  <Sparkles className="w-2.5 h-2.5 text-emerald-400" />
                   Anti-Repetition Active
                 </span>
               )}

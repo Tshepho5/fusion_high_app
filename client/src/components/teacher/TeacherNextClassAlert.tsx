@@ -387,10 +387,10 @@ export const TeacherNextClassAlert: React.FC<TeacherNextClassAlertProps> = ({ on
           <button
             onClick={() => onNavigateTab('ai-tools', { subject: slot.subject, grade: slot.grade, class: slot.className })}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-darker hover:bg-white/10 border border-white/15 text-cyan-300 font-bold text-xs transition-all active:scale-[0.98]"
-            title="Generate AI lesson plan or test quiz for this class"
+            title="Lesson plan or test quiz for this class"
           >
-            <FusionAIIcon className="w-4 h-4 text-cyan-400" />
-            <span>AI Lesson & Test</span>
+            <BookOpen className="w-4 h-4 text-cyan-400" />
+            <span>Lesson & Test</span>
           </button>
 
           <button

@@ -111,19 +111,26 @@ export const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ initialCla
 
   // Load teacher assigned classes (strictly deduplicated and matching assigned subjects/grades)
   useEffect(() => {
+    const normalizeCls = (cls: any) => {
+      if (!cls) return '';
+      const s = String(cls).trim();
+      const m = s.match(/(?:grade|class)?\s*(\d{1,2})/i);
+      return m ? m[1] : s.replace(/[^0-9]/g, '');
+    };
+
     teacherService.getMySubjectsOverview()
       .then((res) => {
         const list = Array.isArray(res) ? res : [];
         if (list.length > 0) {
           const names = Array.from(
-            new Set(list.map((c: any) => c.class_name || `${c.grade}A`).filter(Boolean))
-          ) as string[];
+            new Set(list.map((c: any) => normalizeCls(c.class_name || c.grade)).filter(c => c && /^\d+$/.test(c)))
+          ).sort((a: any, b: any) => parseInt(a, 10) - parseInt(b, 10)) as string[];
           if (names.length > 0) {
             setClasses(names);
-            if (!initialClass || !names.includes(initialClass)) {
+            if (!initialClass || !names.includes(normalizeCls(initialClass))) {
               setSelectedClass(names[0]);
             } else {
-              setSelectedClass(initialClass);
+              setSelectedClass(normalizeCls(initialClass));
             }
             return;
           }
@@ -135,8 +142,8 @@ export const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ initialCla
         const list = Array.isArray(res) ? res : [];
         if (list.length > 0) {
           const names = Array.from(
-            new Set(list.map((c: any) => c.name || c.class_name).filter(Boolean))
-          ) as string[];
+            new Set(list.map((c: any) => normalizeCls(c.name || c.class_name || c.grade)).filter(c => c && /^\d+$/.test(c)))
+          ).sort((a: any, b: any) => parseInt(a, 10) - parseInt(b, 10)) as string[];
           if (names.length > 0) {
             setClasses(names);
             if (!selectedClass) setSelectedClass(names[0]);
@@ -293,19 +300,16 @@ export const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ initialCla
             <CalendarCheck className="w-6 h-6 text-brand-400" />
             Class Attendance Register & Logs
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Capture live roll-call with holographic QR scanning, send automatic parent confirmations, and track daily records.
-          </p>
         </div>
 
         {/* SubTab Toggle Switch */}
         <div className="flex items-center p-1 rounded-2xl bg-surface-dark border border-white/10 shrink-0">
           <button
             onClick={() => setActiveSubTab('register')}
-            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer ${
               activeSubTab === 'register'
-                ? 'bg-gradient-to-r from-brand-600 to-cyan-600 text-white shadow-glow-cyan'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#168BFF] text-white shadow-sm'
+                : 'text-slate-600 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
             }`}
           >
             <CalendarCheck className="w-4 h-4" />
@@ -314,10 +318,10 @@ export const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ initialCla
 
           <button
             onClick={() => setActiveSubTab('history')}
-            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer ${
               activeSubTab === 'history'
-                ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-glow-indigo'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#168BFF] text-white shadow-sm'
+                : 'text-slate-600 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
             }`}
           >
             <History className="w-4 h-4" />
@@ -433,7 +437,7 @@ export const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ initialCla
           {/* Quick Status Modifiers */}
           <div className="flex items-center justify-between bg-surface-darker p-3.5 rounded-2xl border border-white/5">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-brand-400" />
+              <CheckCircle2 className="w-4 h-4 text-brand-400" />
               <span className="text-xs text-slate-300 font-bold">Quick Batch Mark:</span>
             </div>
             <div className="flex items-center gap-2">

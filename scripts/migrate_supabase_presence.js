@@ -1,7 +1,10 @@
 const { Pool } = require('pg');
 
-const supabaseConnectionString = process.env.SUPABASE_DATABASE_URL || 
-  'postgresql://postgres:%23Butcher%23%245%24@db.kmcipnycnqndcajwxpmj.supabase.co:5432/postgres';
+const supabaseConnectionString = process.env.SUPABASE_DATABASE_URL;
+if (!supabaseConnectionString) {
+  console.error('Set SUPABASE_DATABASE_URL before running this script.');
+  process.exit(1);
+}
 
 async function migrateSupabase() {
   console.log('Connecting to remote Supabase database...');
@@ -27,10 +30,10 @@ async function migrateSupabase() {
     await pool.query(`
       ALTER TABLE schools ADD COLUMN IF NOT EXISTS offered_languages TEXT[] DEFAULT ARRAY['English', 'Sepedi', 'isiZulu'];
       ALTER TABLE schools ADD COLUMN IF NOT EXISTS offered_subjects TEXT[];
-      ALTER TABLE schools ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100) DEFAULT 'First National Bank (FNB)';
-      ALTER TABLE schools ADD COLUMN IF NOT EXISTS account_holder VARCHAR(255) DEFAULT 'School Admissions';
-      ALTER TABLE schools ADD COLUMN IF NOT EXISTS account_number VARCHAR(50) DEFAULT '62849102841';
-      ALTER TABLE schools ADD COLUMN IF NOT EXISTS branch_code VARCHAR(20) DEFAULT '250655';
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100);
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS account_holder VARCHAR(255);
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS account_number VARCHAR(50);
+      ALTER TABLE schools ADD COLUMN IF NOT EXISTS branch_code VARCHAR(20);
       ALTER TABLE schools ADD COLUMN IF NOT EXISTS account_type VARCHAR(50) DEFAULT 'Cheque / Current';
       ALTER TABLE schools ADD COLUMN IF NOT EXISTS application_fee NUMERIC(10,2) DEFAULT 250.00;
       ALTER TABLE schools ADD COLUMN IF NOT EXISTS registration_fee NUMERIC(10,2) DEFAULT 1500.00;

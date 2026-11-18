@@ -187,22 +187,89 @@ async function initializeAllDatabaseTables(customClient) {
         homeroom_teacher_id INTEGER
       );
 
-      INSERT INTO classes (name, grade, stream)
-      VALUES 
-        ('8A', 8, 'General'),
-        ('8B', 8, 'General'),
-        ('9A', 9, 'General'),
-        ('9B', 9, 'General'),
-        ('10A', 10, 'Science'),
-        ('10B', 10, 'Commerce'),
-        ('10C', 10, 'Tourism'),
-        ('11A', 11, 'Science'),
-        ('11B', 11, 'Tourism'),
-        ('11C', 11, 'Commerce'),
-        ('12A', 12, 'Science'),
-        ('12B', 12, 'Commerce'),
-        ('12C', 12, 'Tourism')
-      ON CONFLICT (name) DO NOTHING;
+      DO $$
+      BEGIN
+        PERFORM pg_advisory_xact_lock(hashtext('fusion-seed-default-classes')::bigint);
+        IF EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conrelid = 'classes'::regclass
+            AND contype = 'u'
+            AND pg_get_constraintdef(oid) = 'UNIQUE (name)'
+        ) THEN
+          INSERT INTO classes (name, grade, stream)
+          VALUES
+            ('8A', 8, 'General'),
+            ('8B', 8, 'General'),
+            ('9A', 9, 'General'),
+            ('9B', 9, 'General'),
+            ('10A', 10, 'Science'),
+            ('10B', 10, 'Commerce'),
+            ('10C', 10, 'Tourism'),
+            ('11A', 11, 'Science'),
+            ('11B', 11, 'Tourism'),
+            ('11C', 11, 'Commerce'),
+            ('12A', 12, 'Science'),
+            ('12B', 12, 'Commerce'),
+            ('12C', 12, 'Tourism')
+          ON CONFLICT (name) DO NOTHING;
+        ELSE
+          INSERT INTO classes (name, grade, stream)
+          SELECT v.name, v.grade, v.stream
+          FROM (VALUES
+            ('8A', 8, 'General'),
+            ('8B', 8, 'General'),
+            ('9A', 9, 'General'),
+            ('9B', 9, 'General'),
+            ('10A', 10, 'Science'),
+            ('10B', 10, 'Commerce'),
+            ('10C', 10, 'Tourism'),
+            ('11A', 11, 'Science'),
+            ('11B', 11, 'Tourism'),
+            ('11C', 11, 'Commerce'),
+            ('12A', 12, 'Science'),
+            ('12B', 12, 'Commerce'),
+            ('12C', 12, 'Tourism')
+          ) AS v(name, grade, stream)
+          WHERE NOT EXISTS (
+            SELECT 1 FROM classes c WHERE c.name = v.name
+          );
+        END IF;
+      END $$;
+
+      ALTER TABLE classes ADD COLUMN IF NOT EXISTS homeroom_teacher_id INTEGER;
+      ALTER TABLE classes ADD COLUMN IF NOT EXISTS assigned_teacher_id INTEGER;
+      ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+
+      CREATE TABLE IF NOT EXISTS teacher_assignments (
+        id SERIAL PRIMARY KEY,
+        teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        subject_name VARCHAR(100) NOT NULL,
+        subject_code VARCHAR(50),
+        grade_level INTEGER NOT NULL,
+        class_name VARCHAR(50),
+        class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_teacher_assignments_unique 
+        ON teacher_assignments(teacher_id, subject_name, grade_level, class_name);
+      CREATE INDEX IF NOT EXISTS idx_teacher_assignments_filter 
+        ON teacher_assignments(teacher_id, subject_name, grade_level);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_user_id_unique 
+        ON employees(user_id);
+
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'unique_teacher_assignment'
+        ) THEN
+          ALTER TABLE teacher_assignments 
+          ADD CONSTRAINT unique_teacher_assignment UNIQUE (teacher_id, subject_name, grade_level, class_name);
+        END IF;
+      EXCEPTION
+        WHEN OTHERS THEN NULL;
+      END $$;
 
       CREATE TABLE IF NOT EXISTS subjects (
         id SERIAL PRIMARY KEY,
@@ -579,29 +646,56 @@ async function initializeAllDatabaseTables(customClient) {
       CREATE TABLE IF NOT EXISTS textbook_inventory (
         id SERIAL PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
-        isbn VARCHAR(50),
+        subject VARCHAR(150) NOT NULL,
         grade INTEGER NOT NULL,
-        subject VARCHAR(100) NOT NULL,
+        publisher VARCHAR(150) DEFAULT 'CAPS Approved Publisher',
+        isbn VARCHAR(50),
+        barcode VARCHAR(50),
+        total_copies INTEGER DEFAULT 50,
+        available_copies INTEGER DEFAULT 50,
+        unit_cost_zar NUMERIC(10, 2) DEFAULT 250.00,
+        school_id INTEGER DEFAULT 1,
         stream VARCHAR(50) DEFAULT 'General',
-        total_copies INTEGER NOT NULL DEFAULT 0,
-        available_copies INTEGER NOT NULL DEFAULT 0,
-        barcode_prefix VARCHAR(50),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS publisher VARCHAR(150) DEFAULT 'CAPS Approved Publisher';
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS barcode VARCHAR(50);
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS unit_cost_zar NUMERIC(10, 2) DEFAULT 250.00;
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS total_copies INTEGER DEFAULT 50;
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS available_copies INTEGER DEFAULT 50;
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS stream VARCHAR(50) DEFAULT 'General';
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS isbn VARCHAR(50);
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS barcode_prefix VARCHAR(50);
 
       CREATE TABLE IF NOT EXISTS textbook_allocations (
         id SERIAL PRIMARY KEY,
         inventory_id INTEGER NOT NULL REFERENCES textbook_inventory(id) ON DELETE CASCADE,
         child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
-        copy_barcode VARCHAR(100) NOT NULL,
-        status VARCHAR(30) DEFAULT 'issued',
-        issue_date DATE DEFAULT CURRENT_DATE,
-        return_due_date DATE,
+        issued_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        copy_barcode VARCHAR(100),
+        issued_date DATE DEFAULT CURRENT_DATE,
+        expected_return_date DATE DEFAULT (CURRENT_DATE + INTERVAL '120 days'),
         returned_date DATE,
         condition_on_issue VARCHAR(50) DEFAULT 'Good',
         condition_on_return VARCHAR(50),
-        notes TEXT
+        replacement_fee NUMERIC(10, 2) DEFAULT 0.00,
+        status VARCHAR(30) DEFAULT 'issued',
+        school_id INTEGER DEFAULT 1,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS issued_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS issued_date DATE DEFAULT CURRENT_DATE;
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS expected_return_date DATE DEFAULT (CURRENT_DATE + INTERVAL '120 days');
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS returned_date DATE;
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS condition_on_issue VARCHAR(50) DEFAULT 'Good';
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS condition_on_return VARCHAR(50);
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS replacement_fee NUMERIC(10, 2) DEFAULT 0.00;
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS status VARCHAR(30) DEFAULT 'issued';
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS copy_barcode VARCHAR(100);
 
       -- 7. Exam Sessions & Seating Allocations
       CREATE TABLE IF NOT EXISTS exam_sessions (
@@ -647,6 +741,8 @@ async function initializeAllDatabaseTables(customClient) {
         activity_id INTEGER NOT NULL REFERENCES extracurricular_activities(id) ON DELETE CASCADE,
         child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
         role VARCHAR(50) DEFAULT 'Member',
+        jersey_number VARCHAR(10),
+        joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         joined_date DATE DEFAULT CURRENT_DATE,
         UNIQUE(activity_id, child_id)
       );
@@ -654,12 +750,28 @@ async function initializeAllDatabaseTables(customClient) {
       CREATE TABLE IF NOT EXISTS extracurricular_events (
         id SERIAL PRIMARY KEY,
         activity_id INTEGER NOT NULL REFERENCES extracurricular_activities(id) ON DELETE CASCADE,
-        event_name VARCHAR(255) NOT NULL,
+        title VARCHAR(255),
+        event_name VARCHAR(255),
+        event_type VARCHAR(50) DEFAULT 'Match',
+        opponent_school VARCHAR(150),
         opponent VARCHAR(150),
+        venue VARCHAR(150) DEFAULT 'Home Ground',
         event_date DATE NOT NULL,
         event_time TIME,
+        start_time VARCHAR(20),
         location VARCHAR(200),
+        result_score VARCHAR(100),
         result_summary VARCHAR(100),
+        notes TEXT,
+        status VARCHAR(30) DEFAULT 'Draft',
+        is_confirmed BOOLEAN DEFAULT FALSE,
+        is_published BOOLEAN DEFAULT FALSE,
+        published_at TIMESTAMP WITH TIME ZONE,
+        added_to_calendar BOOLEAN DEFAULT FALSE,
+        calendar_event_id INTEGER REFERENCES events(id) ON DELETE SET NULL,
+        created_by_coach_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        bus_transport_info VARCHAR(255),
+        required_kit VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -761,10 +873,24 @@ async function initializeAllDatabaseTables(customClient) {
         subject_name VARCHAR(100),
         period VARCHAR(50),
         relief_date DATE NOT NULL,
-        notes TEXT,
-        status VARCHAR(30) DEFAULT 'assigned',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        notes TEXT
       );
+
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS total_days NUMERIC(4,1) DEFAULT 1.0;
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS document_url VARCHAR(255);
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS reviewed_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS admin_notes TEXT;
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS school_id INTEGER;
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS absent_teacher_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS relief_teacher_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS period_number INTEGER;
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS grade INTEGER;
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS classroom VARCHAR(50) DEFAULT 'Classroom';
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS subject VARCHAR(100);
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS lesson_instructions TEXT;
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS school_id INTEGER;
 
       -- 11. Parent-Teacher Conferences & Conduct Logs
       CREATE TABLE IF NOT EXISTS ptc_slots (
@@ -949,20 +1075,29 @@ async function initializeAllDatabaseTables(customClient) {
         recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
-      ALTER TABLE marks ADD COLUMN IF NOT EXISTS child_id INTEGER REFERENCES children(id);
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS child_id INTEGER;
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS learner_id INTEGER;
       ALTER TABLE marks ADD COLUMN IF NOT EXISTS subject VARCHAR(100);
       ALTER TABLE marks ADD COLUMN IF NOT EXISTS subject_name VARCHAR(100);
       ALTER TABLE marks ADD COLUMN IF NOT EXISTS grade INTEGER;
       ALTER TABLE marks ADD COLUMN IF NOT EXISTS percentage NUMERIC;
       ALTER TABLE marks ADD COLUMN IF NOT EXISTS assessment_name VARCHAR(255);
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS assessment_type VARCHAR(100) DEFAULT 'formal_test';
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS is_formal BOOLEAN DEFAULT TRUE;
       ALTER TABLE marks ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE;
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS published_to_admin BOOLEAN DEFAULT TRUE;
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'published';
+      ALTER TABLE marks ADD COLUMN IF NOT EXISTS weight NUMERIC DEFAULT 100;
       ALTER TABLE marks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
+      ALTER TABLE progress ADD COLUMN IF NOT EXISTS is_formal BOOLEAN DEFAULT TRUE;
+      ALTER TABLE progress ADD COLUMN IF NOT EXISTS assessment_type VARCHAR(100) DEFAULT 'formal_test';
       ALTER TABLE progress ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE;
       ALTER TABLE progress ADD COLUMN IF NOT EXISTS assessment_name VARCHAR(255);
       ALTER TABLE progress ADD COLUMN IF NOT EXISTS score NUMERIC;
       ALTER TABLE progress ADD COLUMN IF NOT EXISTS total_marks NUMERIC;
       ALTER TABLE progress ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
 
       -- 16. Parent-Educator Consultations (PTC 20-min slots)
       CREATE TABLE IF NOT EXISTS teacher_consultations (
@@ -1256,34 +1391,11 @@ async function initializeAllDatabaseTables(customClient) {
           END IF;
         END $$;
 
-        -- Ensure initial records have school_id = 1
-        DO $$
-        BEGIN
-          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'departments') THEN
-            UPDATE departments SET school_id = 1 WHERE school_id IS NULL;
-          END IF;
-          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'classes') THEN
-            UPDATE classes SET school_id = 1 WHERE school_id IS NULL;
-          END IF;
-          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'subjects') THEN
-            UPDATE subjects SET school_id = 1 WHERE school_id IS NULL;
-          END IF;
-          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
-            UPDATE users SET school_id = 1 WHERE school_id IS NULL;
-          END IF;
-          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'children') THEN
-            UPDATE children SET school_id = 1 WHERE school_id IS NULL;
-          END IF;
-          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'employees') THEN
-            UPDATE employees SET school_id = 1 WHERE school_id IS NULL;
-          END IF;
-        END $$;
-
         -- Ensure parent_portal_applications table and all columns exist
         CREATE TABLE IF NOT EXISTS parent_portal_applications (
           id SERIAL PRIMARY KEY,
           application_number VARCHAR(50) UNIQUE NOT NULL,
-          school_id VARCHAR(100) DEFAULT '1',
+          school_id VARCHAR(100),
           parent_name VARCHAR(255) NOT NULL,
           parent_surname VARCHAR(255) NOT NULL,
           parent_id_number VARCHAR(20) NOT NULL,

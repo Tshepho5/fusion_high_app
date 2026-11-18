@@ -8,6 +8,7 @@ const router = express.Router();
 const aiAdvisorService = require('../services/aiAdvisorService');
 const gelezaEarlyWarningJob = require('../services/gelezaEarlyWarningJob');
 const { auth: authenticateToken } = require('../../../authMiddleware');
+const { resolveSchoolId } = require('../services/schoolScope');
 const db = require('../../../db/db');
 
 router.use(authenticateToken);
@@ -384,7 +385,10 @@ router.get('/geleza/learner/:childId/history', async (req, res) => {
  */
 router.get('/geleza/school/:schoolId/early-warning', async (req, res) => {
   try {
-    const { schoolId } = req.params;
+    const schoolId = resolveSchoolId(req);
+    if (!schoolId) {
+      return res.status(403).json({ success: false, error: 'This account is not attached to a school.' });
+    }
     const grade = req.query.grade ? parseInt(req.query.grade, 10) : null;
 
     let query = `
@@ -572,7 +576,11 @@ router.put('/geleza/profile/:childId', async (req, res) => {
  */
 router.post('/geleza/evaluate-cohort', async (req, res) => {
   try {
-    const { school_id = 1, grade, class_id, term = 1, academic_year = 2026, user_id } = req.body;
+    const school_id = resolveSchoolId(req);
+    const { grade, class_id, term = 1, academic_year = 2026, user_id } = req.body;
+    if (!school_id) {
+      return res.status(403).json({ success: false, error: 'This account is not attached to a school.' });
+    }
 
     let query = `
       SELECT c.id, c.school_id, c.full_name, c.surname, c.grade, c.class_id,
@@ -705,9 +713,13 @@ router.post('/geleza/evaluate-cohort', async (req, res) => {
  */
 router.post('/geleza/job/run-audit', async (req, res) => {
   try {
-    const { school_id, grade, term, academic_year, force_alert, dry_run } = req.body;
+    const schoolId = resolveSchoolId(req);
+    const { grade, term, academic_year, force_alert, dry_run } = req.body;
+    if (!req.user?.is_superadmin && !schoolId) {
+      return res.status(403).json({ success: false, error: 'This account is not attached to a school.' });
+    }
     const result = await gelezaEarlyWarningJob.runRiskAudit({
-      schoolId: school_id ? parseInt(school_id, 10) : null,
+      schoolId: schoolId,
       grade: grade && grade !== 'all' ? parseInt(grade, 10) : null,
       term: term ? parseInt(term, 10) : 1,
       academicYear: academic_year ? parseInt(academic_year, 10) : 2026,
@@ -739,7 +751,11 @@ router.get('/geleza/job/status', (req, res) => {
  */
 router.get('/geleza/job/alerts', async (req, res) => {
   try {
-    const { school_id, limit = 50 } = req.query;
+    const schoolId = resolveSchoolId(req);
+    const limit = parseInt(req.query.limit, 10) || 50;
+    if (!req.user?.is_superadmin && !schoolId) {
+      return res.status(403).json({ success: false, error: 'This account is not attached to a school.' });
+    }
     let q = `
       SELECT p.id, p.child_id, p.school_id, p.predicted_score, p.risk_tier_id,
              p.risk_tier_label, p.actionable_nudges, p.alert_dispatched_at, p.alert_severity,
@@ -749,12 +765,12 @@ router.get('/geleza/job/alerts', async (req, res) => {
       WHERE p.alert_dispatched_at IS NOT NULL
     `;
     const params = [];
-    if (school_id) {
-      params.push(parseInt(school_id, 10));
+    if (schoolId) {
+      params.push(schoolId);
       q += ` AND p.school_id = $${params.length}`;
     }
     q += ` ORDER BY p.alert_dispatched_at DESC LIMIT $${params.length + 1}`;
-    params.push(parseInt(limit, 10) || 50);
+    params.push(limit);
 
     const alertsRes = await db.query(q, params);
     res.json({

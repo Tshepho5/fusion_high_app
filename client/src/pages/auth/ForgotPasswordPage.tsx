@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { authService } from '../../services/api';
-import { FusionAIIcon } from '../../components/common/FusionAIIcon';
 import {
   Mail,
-  KeyRound,
   ArrowRight,
   CheckCircle,
   Lock,
@@ -25,6 +23,7 @@ export const ForgotPasswordPage: React.FC = () => {
   const [step, setStep] = useState<'request' | 'verify' | 'reset'>('request');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
+  const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [verifiedOtp, setVerifiedOtp] = useState('');
 
   // Password fields and visibility toggles
@@ -33,8 +32,9 @@ export const ForgotPasswordPage: React.FC = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Timer state: 300 seconds (5 minutes) countdown
-  const [timeLeft, setTimeLeft] = useState<number>(300);
+  const [sentTo, setSentTo] = useState('');
+  // Timer state: 900 seconds (15 minutes) countdown
+  const [timeLeft, setTimeLeft] = useState<number>(900);
   const [timerActive, setTimerActive] = useState<boolean>(false);
 
   const [loading, setLoading] = useState(false);
@@ -51,10 +51,10 @@ export const ForgotPasswordPage: React.FC = () => {
       setEmail(urlEmail);
       if (urlStep === 'verify') {
         setStep('verify');
-        setOtp(''); // Strict zero-trust: User must manually enter the 4 digits from their email
-        setTimeLeft(300);
+        setOtp('');
+        setTimeLeft(900);
         setTimerActive(true);
-        setMessage('Opened from your recovery email. Please enter the 10-digit code sent to your inbox:');
+        setMessage(null);
       }
     }
   }, [searchParams]);
@@ -82,16 +82,15 @@ export const ForgotPasswordPage: React.FC = () => {
   // Step 1: Request OTP (Dispatches email, NEVER auto-fills in the form, user must type it from email)
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+    setLoading(true);
     try {
-      const res = await authService.forgotPassword({ email: email.trim() });
-      if (res.email) setEmail(res.email);
-      // Keep OTP input empty so user enters it manually from their email
+      const res = await authService.forgotPassword({ email: email.trim(), channel: 'email' });
+      setSentTo(res.delivery_email || '');
       setOtp('');
-      setMessage(res.message || 'A 10-digit security code has been sent to your email. Please check your inbox or spam folder (valid for 5 minutes).');
+      setMessage(res.message || null);
       setStep('verify');
-      setTimeLeft(300);
+      setTimeLeft(900);
       setTimerActive(true);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to send recovery code. Please check your email or learner details.');
@@ -102,18 +101,18 @@ export const ForgotPasswordPage: React.FC = () => {
 
   // Resend OTP Code (Restarts 5-minute countdown, leaves input for manual entry)
   const handleResendOtp = async () => {
-    if (!email) {
+    if (!email.trim()) {
       setError('Please enter your email, learner number, or ID number.');
       return;
     }
     setResending(true);
     setError(null);
     try {
-      const res = await authService.forgotPassword({ email: email.trim() });
-      if (res.email) setEmail(res.email);
-      setOtp(''); // User must enter the fresh code manually
-      setMessage(res.message || 'A fresh 10-digit code has been dispatched to your email (valid for 5 minutes).');
-      setTimeLeft(300);
+      const res = await authService.forgotPassword({ email: email.trim(), channel: 'email' });
+      setSentTo(res.delivery_email || sentTo);
+      setOtp('');
+      setMessage(res.message || null);
+      setTimeLeft(900);
       setTimerActive(true);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to resend code.');
@@ -183,12 +182,22 @@ export const ForgotPasswordPage: React.FC = () => {
     }
   };
 
-  return (
-    <div className="flex min-h-screen bg-slate-100 dark:bg-[#070B14] text-slate-900 dark:text-slate-100 selection:bg-blue-600 selection:text-white justify-center items-center p-4 sm:p-6 relative overflow-hidden transition-colors duration-300">
-      {/* Ambient Radial Glow */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+  const focusOtp = (index: number) => {
+    const box = otpRefs.current[Math.max(0, Math.min(index, 9))];
+    box?.focus();
+    box?.select();
+  };
 
-      <div className="w-full max-w-md rounded-3xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xl animate-fade-in relative z-10 transition-colors duration-300">
+  const writeOtp = (value: string, focusIndex?: number) => {
+    const clean = value.replace(/\D/g, '').slice(0, 10);
+    setOtp(clean);
+    if (error) setError(null);
+    window.setTimeout(() => focusOtp(focusIndex ?? Math.min(clean.length, 9)), 0);
+  };
+
+  return (
+    <div className="flex min-h-screen justify-center items-center p-4 sm:p-6 relative">
+      <div className="portal-glass w-full max-w-md rounded-[32px] border p-6 sm:p-8 animate-fade-in relative z-10">
         
         {/* Brand Header */}
         <div className="text-center mb-6">
@@ -199,8 +208,8 @@ export const ForgotPasswordPage: React.FC = () => {
             {step === 'reset' ? 'Create New Password' : 'Account Recovery'}
           </h2>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-            {step === 'request' && 'Enter your registered email to receive a 5-minute recovery code'}
-            {step === 'verify' && 'Enter the 10-digit code sent to your email (5-minute limit)'}
+            {step === 'request' && 'Enter the email, learner number, or ID number on the account'}
+            {step === 'verify' && (sentTo ? `Enter the 10-digit code sent to ${sentTo}` : 'Enter the 10-digit code from your email')}
             {step === 'reset' && 'Create your new password. Take your time to set a secure password.'}
           </p>
         </div>
@@ -212,7 +221,7 @@ export const ForgotPasswordPage: React.FC = () => {
               ? 'bg-blue-600 text-white shadow-sm'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
           }`}>
-            <span>1. Email</span>
+            <span>1. Choose</span>
           </div>
 
           <div className="w-4 h-[1px] bg-slate-300 dark:bg-slate-700" />
@@ -289,12 +298,6 @@ export const ForgotPasswordPage: React.FC = () => {
                   }`}
                 />
               </div>
-              {error && step === 'request' && (
-                <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>{typeof error === 'string' ? error : (error as any)?.message || String(error)}</span>
-                </p>
-              )}
             </div>
 
             <button
@@ -306,7 +309,7 @@ export const ForgotPasswordPage: React.FC = () => {
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>Send 5-Minute Recovery Code</span>
+                  <span>Send Recovery Code</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -319,36 +322,8 @@ export const ForgotPasswordPage: React.FC = () => {
         {/* ========================================================================= */}
         {step === 'verify' && (
           <form onSubmit={handleVerifyOtp} className="space-y-4 animate-fade-in">
-            {/* Target Account Email */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
-                Account Email
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Mail className="w-4 h-4" />
-                </div>
-                <input
-                  type="email"
-                  value={email}
-                  disabled
-                  className="w-full rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 pl-10 pr-4 py-2.5 text-xs text-slate-700 dark:text-slate-300 font-mono"
-                />
-              </div>
-            </div>
-
-            {/* Spam Folder Guidance Tip */}
-            <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-blue-800 dark:text-blue-300 text-[11px] flex items-center gap-2">
-              <span>💡 <strong>Tip:</strong> If you don't see the email immediately, please check your <strong>Spam / Junk</strong> folder.</span>
-            </div>
-
-            {/* OTP Code with 5-Minute Countdown Timer */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  4-Digit OTP Code
-                </label>
-                
+              <div className="flex items-center justify-end mb-2">
                 <div className={`inline-flex items-center gap-1.5 text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${
                   timeLeft > 60
                     ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/30'
@@ -357,29 +332,62 @@ export const ForgotPasswordPage: React.FC = () => {
                     : 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/30'
                 }`}>
                   <Clock className="w-3 h-3" />
-                  <span>{timeLeft > 0 ? `Expires: ${formatTime(timeLeft)}` : 'Expired'}</span>
+                  <span>{timeLeft > 0 ? formatTime(timeLeft) : 'Expired'}</span>
                 </div>
               </div>
 
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <KeyRound className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  value={otp}
-                  onChange={(e) => {
-                    setOtp(e.target.value.replace(/\D/g, '').slice(0, 10));
-                    if (error) setError(null);
-                  }}
-                  placeholder="Enter 10-digit code"
-                  maxLength={10}
-                  required
-                  autoFocus
-                  className={`w-full rounded-xl bg-slate-50 dark:bg-slate-900 border pl-10 pr-4 py-2.5 text-lg font-mono tracking-widest text-center text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold ${
-                    error && step === 'verify' ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-slate-300 dark:border-slate-700'
-                  }`}
-                />
+              <div className="flex justify-between gap-1" role="group" aria-label="10-digit code">
+                {Array.from({ length: 10 }, (_, index) => (
+                  <input
+                    key={index}
+                    ref={(el) => { otpRefs.current[index] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete={index === 0 ? 'one-time-code' : 'off'}
+                    aria-label={`Digit ${index + 1}`}
+                    value={otp[index] || ''}
+                    autoFocus={index === 0}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, '');
+                      if (!raw) return;
+                      const boxes = Array.from({ length: 10 }, (_, i) => otp[i] || '');
+                      raw.split('').forEach((digit, offset) => {
+                        if (index + offset < 10) boxes[index + offset] = digit;
+                      });
+                      setOtp(boxes.join('').replace(/\D/g, '').slice(0, 10));
+                      if (error) setError(null);
+                      window.setTimeout(() => focusOtp(Math.min(index + raw.length, 9)), 0);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Backspace') {
+                        e.preventDefault();
+                        const boxes = Array.from({ length: 10 }, (_, i) => otp[i] || '');
+                        if (boxes[index]) {
+                          boxes[index] = '';
+                          setOtp(boxes.join(''));
+                        } else if (index > 0) {
+                          boxes[index - 1] = '';
+                          setOtp(boxes.join(''));
+                          focusOtp(index - 1);
+                        }
+                        if (error) setError(null);
+                      } else if (e.key === 'ArrowLeft' && index > 0) {
+                        e.preventDefault();
+                        focusOtp(index - 1);
+                      } else if (e.key === 'ArrowRight' && index < 9) {
+                        e.preventDefault();
+                        focusOtp(index + 1);
+                      }
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      writeOtp(e.clipboardData.getData('text'));
+                    }}
+                    className={`w-0 flex-1 min-w-0 h-11 rounded-lg border bg-slate-50 dark:bg-slate-900 text-center text-base font-bold font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      error && step === 'verify' ? 'border-rose-500' : 'border-slate-300 dark:border-slate-700'
+                    }`}
+                  />
+                ))}
               </div>
               {error && step === 'verify' && (
                 <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1 animate-fade-in">
@@ -394,7 +402,7 @@ export const ForgotPasswordPage: React.FC = () => {
                   className={`h-full transition-all duration-1000 ${
                     timeLeft > 60 ? 'bg-blue-600' : 'bg-rose-500'
                   }`}
-                  style={{ width: `${(timeLeft / 300) * 100}%` }}
+                  style={{ width: `${(timeLeft / 900) * 100}%` }}
                 />
               </div>
             </div>
@@ -421,17 +429,17 @@ export const ForgotPasswordPage: React.FC = () => {
                 onClick={() => setStep('request')}
                 className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
               >
-                ← Change Email
+                ← Change email
               </button>
 
               <button
                 type="button"
                 onClick={handleResendOtp}
-                disabled={resending || (timeLeft > 0 && timeLeft > 270)}
+                disabled={resending || (timeLeft > 870)}
                 className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-bold transition-colors disabled:opacity-40"
               >
                 <RefreshCw className={`w-3 h-3 ${resending ? 'animate-spin' : ''}`} />
-                <span>{resending ? 'Sending...' : 'Resend Code (5 mins)'}</span>
+                <span>{resending ? 'Sending...' : 'Resend Code'}</span>
               </button>
             </div>
           </form>

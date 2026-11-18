@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { AdminOverview } from './AdminOverview';
 import { AdminUsers } from './AdminUsers';
+import { AdminSupportDesk } from './AdminSupportDesk';
+import { AdminLearnerImport } from './AdminLearnerImport';
 import { AdminTimetable } from './AdminTimetable';
 import { AnnouncementsFeed } from '../../components/common/AnnouncementsFeed';
 import { SchoolCalendar } from '../../components/common/SchoolCalendar';
@@ -16,10 +18,12 @@ import { MatricPassRateProjector } from '../../components/admin/MatricPassRatePr
 import { EducatorLeaveReliefManager } from '../../components/admin/EducatorLeaveReliefManager';
 import { AcademicAssessmentAudits } from '../../components/admin/AcademicAssessmentAudits';
 import { SchoolSubjectsManager } from '../../components/admin/SchoolSubjectsManager';
+import { AcademicStreamsManager } from '../../components/admin/AcademicStreamsManager';
 import { ReportCardStudio } from '../../components/admin/ReportCardStudio';
 import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
 import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
 import { MultiSchoolCommandCenter } from '../../components/admin/MultiSchoolCommandCenter';
+import { SchoolAdmissionsManager } from '../../components/admin/SchoolAdmissionsManager';
 import { InterSchoolCompetitions } from '../../components/common/InterSchoolCompetitions';
 import { ParentTeacherConsultations } from '../../components/parent/ParentTeacherConsultations';
 import { DynamicClassesManager } from '../../components/admin/DynamicClassesManager';
@@ -27,12 +31,17 @@ import { AdminMoreHub } from './AdminMoreHub';
 import { AdminDiscoverHub } from './AdminDiscoverHub';
 import { AdminCalendarHub } from './AdminCalendarHub';
 import { AdminMessagesHub } from './AdminMessagesHub';
-import { AdminNavigationBar } from '../../components/admin/AdminNavigationBar';
 import { ModulePageHeader } from '../../components/layout/WorkspaceChrome';
 import { MasterAdminExecutiveHub } from '../../components/admin/MasterAdminExecutiveHub';
 import { SchoolPerformanceMetricsView } from '../../components/admin/SchoolPerformanceMetricsView';
+import { TeacherLessonPlanning } from '../teacher/lessonPlanning/TeacherLessonPlanning';
+import { useAuth } from '../../context/AuthContext';
+import { ShieldAlert } from 'lucide-react';
+import { rememberAdminDirectoryVisit } from './adminDirectoryModel';
 
 export const AdminDashboard: React.FC = () => {
+  const { user } = useAuth();
+  const isSuperAdmin = Boolean(user?.is_superadmin);
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'overview';
   const [activeTab, setActiveTab] = useState<string>(initialTab);
@@ -45,6 +54,7 @@ export const AdminDashboard: React.FC = () => {
   }, [searchParams]);
 
   const handleSelectTab = (tabId: string, params?: any) => {
+    rememberAdminDirectoryVisit(tabId);
     setActiveTab(tabId);
     const newParams: Record<string, string> = { tab: tabId };
     if (params) {
@@ -76,6 +86,9 @@ export const AdminDashboard: React.FC = () => {
         return 'Inter-School Derbies, Sports & Academic Olympiads';
       case 'bursaries':
         return 'National Tertiary Bursaries Catalog';
+      case 'school-admissions':
+      case 'school-applications':
+        return 'School Admissions & Campus Registrations';
       case 'messages':
         return 'Institutional Messaging Center';
       case 'announcements':
@@ -83,9 +96,13 @@ export const AdminDashboard: React.FC = () => {
       case 'consultations':
         return 'Parent-Educator Academic Consultation Schedule';
       case 'more':
-        return 'Administrative Operations & Module Directory';
+        return isSuperAdmin ? 'Superadmin Command Centre' : 'Administrative Operations & Module Directory';
       case 'users':
         return 'User Directory & Role Permissions';
+      case 'import-learners':
+        return 'Import Learners from SA-SAMS CSV';
+      case 'support-desk':
+        return 'User Support Desk & Application Corrections';
       case 'subjects':
         return 'School Curriculum & Subject Registers';
       case 'reports':
@@ -113,6 +130,8 @@ export const AdminDashboard: React.FC = () => {
         return 'Executive Master Controls & Beta Testers Hub';
       case 'metrics':
         return 'School Performance Metrics & Indicators';
+      case 'lesson-planning':
+        return 'Lesson Planning Oversight';
       case 'settings':
         return 'App & Technical Settings';
       default:
@@ -120,25 +139,25 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const isSubModule =
-    activeTab !== 'overview' &&
-    activeTab !== 'home' &&
-    activeTab !== 'calendar' &&
-    activeTab !== 'profile' &&
-    activeTab !== 'discover' &&
-    activeTab !== 'messages' &&
-    activeTab !== 'more';
+  // Back button on every module; Home has no back
+  const showBack = activeTab !== 'overview' && activeTab !== 'home';
 
   // Determine intelligent backtrack target
   const getBacktrackConfig = () => {
+    if (activeTab === 'more') {
+      return { target: 'overview', label: 'Back to Home', parentLabel: 'Home' };
+    }
     if (activeTab === 'command-center' || activeTab === 'inter-school' || activeTab === 'bursaries') {
-      return { target: 'discover', label: 'Back to Discover', parentLabel: 'Discover' };
+      return { target: 'more', label: 'Back to Menu', parentLabel: 'Menu' };
     }
     if (activeTab === 'announcements' || activeTab === 'consultations') {
       return { target: 'messages', label: 'Back to Messages', parentLabel: 'Messages' };
     }
     if (activeTab === 'timetable') {
       return { target: 'calendar', label: 'Back to Calendar', parentLabel: 'Calendar' };
+    }
+    if (activeTab === 'calendar' || activeTab === 'profile' || activeTab === 'discover' || activeTab === 'messages') {
+      return { target: 'overview', label: 'Back to Home', parentLabel: 'Home' };
     }
     return { target: 'more', label: 'Back to Menu', parentLabel: 'Menu' };
   };
@@ -150,17 +169,8 @@ export const AdminDashboard: React.FC = () => {
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
-      customBottomDock={
-        <div className="fixed bottom-4 inset-x-0 z-[60] flex justify-center px-2 sm:px-4 pointer-events-none">
-          <AdminNavigationBar
-            activeTab={activeTab}
-            onSelectTab={handleSelectTab}
-            className="pointer-events-auto w-full max-w-xl xl:max-w-4xl 2xl:max-w-5xl"
-          />
-        </div>
-      }
     >
-      {isSubModule && (
+      {showBack && (
         <ModulePageHeader
           title={getTabTitle()}
           parentLabel={backtrack.parentLabel}
@@ -199,13 +209,57 @@ export const AdminDashboard: React.FC = () => {
       {/* ========================================================================= */}
       {/* 2. SUB-MODULE VIEWS (Direct URL / More Hub Access with Full Persistence)   */}
       {/* ========================================================================= */}
-      {activeTab === 'command-center' && <MultiSchoolCommandCenter />}
+      {(activeTab === 'school-admissions' || activeTab === 'school-applications') && (
+        isSuperAdmin ? (
+          <SchoolAdmissionsManager onNavigateTab={handleSelectTab} />
+        ) : (
+          <div className="p-8 text-center bg-white dark:bg-surface-dark rounded-3xl border border-slate-200 dark:border-white/10 space-y-4">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+              <ShieldAlert className="w-7 h-7" />
+            </div>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white">Geleza SA Platform Administrator Access Only</h2>
+            <p className="text-sm text-slate-500 max-w-md mx-auto">
+              School registration review and campus accreditation is managed exclusively by Geleza SA platform executives. School administrators focus on managing their registered institution.
+            </p>
+            <button
+              onClick={() => handleSelectTab('overview')}
+              className="px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-xs shadow-md"
+            >
+              Return to School Dashboard
+            </button>
+          </div>
+        )
+      )}
+      {activeTab === 'command-center' && (
+        isSuperAdmin ? (
+          <MultiSchoolCommandCenter onNavigateTab={handleSelectTab} />
+        ) : (
+          <div className="p-8 text-center bg-white dark:bg-surface-dark rounded-3xl border border-slate-200 dark:border-white/10 space-y-4">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+              <ShieldAlert className="w-7 h-7" />
+            </div>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white">Geleza SA Platform Command Access Only</h2>
+            <p className="text-sm text-slate-500 max-w-md mx-auto">
+              Multi-school provincial cross-monitoring is reserved for Geleza SA platform leadership.
+            </p>
+            <button
+              onClick={() => handleSelectTab('overview')}
+              className="px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-xs shadow-md"
+            >
+              Return to School Dashboard
+            </button>
+          </div>
+        )
+      )}
       {activeTab === 'inter-school' && <InterSchoolCompetitions />}
       {activeTab === 'consultations' && <ParentTeacherConsultations />}
       {activeTab === 'users' && <AdminUsers />}
+      {activeTab === 'import-learners' && <AdminLearnerImport />}
+      {activeTab === 'support-desk' && <AdminSupportDesk />}
       {activeTab === 'subjects' && (
         <SchoolSubjectsManager onOpenReportCardStudio={(g, s) => handleSelectTab('reports')} />
       )}
+      {activeTab === 'academic-streams' && <AcademicStreamsManager />}
       {activeTab === 'reports' && <ReportCardStudio />}
       {activeTab === 'marks' && <AcademicAssessmentAudits />}
       {activeTab === 'finance' && <SchoolFeesManager userRole="admin" />}
@@ -220,11 +274,30 @@ export const AdminDashboard: React.FC = () => {
       {activeTab === 'staff-invites' && <DynamicClassesManager initialTab="invites" />}
       {activeTab === 'announcements' && <AnnouncementsFeed />}
       {(activeTab === 'testers' || activeTab === 'portal-controls') && (
-        <MasterAdminExecutiveHub onNavigateTab={handleSelectTab} />
+        isSuperAdmin ? (
+          <MasterAdminExecutiveHub onNavigateTab={handleSelectTab} />
+        ) : (
+          <div className="p-8 text-center bg-white dark:bg-surface-dark rounded-3xl border border-slate-200 dark:border-white/10 space-y-4">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+              <ShieldAlert className="w-7 h-7" />
+            </div>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white">Platform Controls Restricted</h2>
+            <p className="text-sm text-slate-500 max-w-md mx-auto">
+              System access gates and platform controls are managed exclusively by Geleza SA platform administrators.
+            </p>
+            <button
+              onClick={() => handleSelectTab('overview')}
+              className="px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-xs shadow-md"
+            >
+              Return to School Dashboard
+            </button>
+          </div>
+        )
       )}
       {activeTab === 'metrics' && (
         <SchoolPerformanceMetricsView onNavigateTab={handleSelectTab} />
       )}
+      {activeTab === 'lesson-planning' && <TeacherLessonPlanning mode="oversight" />}
       {activeTab === 'settings' && <LearnerSettings />}
     </DashboardLayout>
   );

@@ -7,6 +7,13 @@
       "**/.*",
       "**/node_modules/**"
     ],
+    "redirects": [
+      {
+        "source": "/api/:path*",
+        "destination": "https://fusion-high-backend.onrender.com/api/:path",
+        "type": 307
+      }
+    ],
     "rewrites": [
       {
         "source": "/application",

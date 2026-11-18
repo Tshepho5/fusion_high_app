@@ -14,7 +14,8 @@ import {
   CheckCircle2,
   Calendar,
   Building,
-  Maximize2
+  Maximize2,
+  Database
 } from 'lucide-react';
 
 interface DigitalStudentIDCardProps {
@@ -89,47 +90,63 @@ export const DigitalStudentIDCard: React.FC<DigitalStudentIDCardProps> = ({ lear
   };
 
   return (
-    <div className="flex flex-col items-center space-y-4">
+    <div className="flex flex-col items-center space-y-4" data-theme-preserve="true">
       {/* 3D Smart Card Container */}
       <div
         className="w-full max-w-md perspective-1000 cursor-pointer"
+        data-theme-preserve="true"
         onClick={() => setIsFlipped(!isFlipped)}
       >
         <div
-          className={`relative w-full aspect-[1.586/1] rounded-3xl p-6 transition-transform duration-700 transform-style-3d shadow-2xl border border-white/20 select-none ${
+          data-theme-preserve="true"
+          className={`smart-id-card relative w-full aspect-[1.586/1] rounded-3xl p-6 transition-transform duration-700 transform-style-3d shadow-2xl border-2 border-cyan-500/40 select-none ${
             isFlipped ? 'rotate-y-180' : ''
-          } bg-gradient-to-br from-slate-900 via-indigo-950 to-brand-950 text-white overflow-hidden`}
+          } bg-gradient-to-br from-[#07131F] via-[#0B2135] to-[#040C14] text-white overflow-hidden`}
         >
           {/* Holographic Watermark Glows */}
-          <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-cyan-500/20 blur-3xl pointer-events-none" />
+          <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-cyan-500/25 blur-3xl pointer-events-none" />
           <div className="absolute -left-16 -bottom-16 w-56 h-56 rounded-full bg-brand-500/20 blur-3xl pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none" />
 
           {/* FRONT OF CARD */}
           {!isFlipped ? (
-            <div className="h-full flex flex-col justify-between relative z-10">
+            <div className="h-full flex flex-col justify-between relative z-10" data-theme-preserve="true">
               {/* Header with FH Crest and School Title */}
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center justify-between border-b border-cyan-500/25 pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-white/10 p-1 border border-white/20 shadow-glow-indigo flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-950/60 p-1 border border-cyan-400/40 shadow-glow-cyan flex items-center justify-center">
                     <img src="/assets/FH.png" alt="FH Crest" className="w-full h-full object-contain" />
                   </div>
                   <div>
-                    <h3 className="font-display text-sm font-black tracking-tight text-white leading-tight">
+                    <h3
+                      style={{ color: '#FFFFFF' }}
+                      className="font-display text-sm font-black tracking-tight leading-tight text-white !text-white text-always-white"
+                    >
                       FUSION HIGH SCHOOL
                     </h3>
-                    <p className="text-[8px] font-mono text-cyan-300 font-bold uppercase tracking-wider">
+                    <p
+                      style={{ color: '#67E8F9' }}
+                      className="text-[9px] font-mono font-bold uppercase tracking-wider text-cyan-300 !text-cyan-300"
+                    >
                       STUDENT IDENTIFICATION CARD
                     </p>
                   </div>
                 </div>
 
                 <div className="flex flex-col items-end">
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px] font-mono font-bold border border-emerald-500/40 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span
+                    style={{ color: '#020617', backgroundColor: '#34D399' }}
+                    className="px-2.5 py-0.5 rounded-full bg-emerald-400 text-slate-950 text-[10px] font-mono font-black shadow-xs flex items-center gap-1"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-pulse" />
                     2026 ACTIVE
                   </span>
-                  <span className="text-[8px] text-slate-400 font-mono mt-0.5">CAPS Verified</span>
+                  <span
+                    style={{ color: '#A5F3FC' }}
+                    className="text-[9px] font-mono font-semibold mt-0.5 text-cyan-200 !text-cyan-200"
+                  >
+                    CAPS Verified
+                  </span>
                 </div>
               </div>
 
@@ -137,7 +154,7 @@ export const DigitalStudentIDCard: React.FC<DigitalStudentIDCardProps> = ({ lear
               <div className="flex items-center gap-4 my-auto">
                 {/* Photo with Smart Microchip Graphic */}
                 <div className="relative shrink-0">
-                  <div className="w-20 h-24 rounded-2xl border-2 border-cyan-400/40 bg-gradient-to-tr from-brand-700 to-indigo-700 overflow-hidden flex items-center justify-center text-white font-black text-2xl shadow-lg ring-2 ring-white/10">
+                  <div className="w-20 h-24 rounded-2xl border-2 border-cyan-300 bg-gradient-to-tr from-brand-600 to-cyan-500 overflow-hidden flex items-center justify-center text-white font-black text-2xl shadow-lg ring-2 ring-cyan-400/30">
                     {profilePic ? (
                       <img
                         src={getProfilePictureUrl(profilePic)}
@@ -145,40 +162,76 @@ export const DigitalStudentIDCard: React.FC<DigitalStudentIDCardProps> = ({ lear
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span>{fullName.charAt(0)}</span>
+                      <span style={{ color: '#FFFFFF' }}>{fullName.charAt(0)}</span>
                     )}
                   </div>
 
                   {/* Microchip Graphic */}
-                  <div className="absolute -bottom-2 -right-2 w-7 h-6 rounded-lg bg-amber-400/80 border border-amber-300 p-0.5 shadow-md flex items-center justify-center">
-                    <div className="w-full h-full border border-amber-600/50 rounded flex flex-col justify-between p-0.5">
-                      <div className="w-full h-0.5 bg-amber-600" />
-                      <div className="w-full h-0.5 bg-amber-600" />
+                  <div className="absolute -bottom-2 -right-2 w-7 h-6 rounded-lg bg-gradient-to-br from-amber-200 via-amber-400 to-amber-500 border border-amber-100 p-0.5 shadow-md flex items-center justify-center">
+                    <div className="w-full h-full border border-amber-700/60 rounded flex flex-col justify-between p-0.5">
+                      <div className="w-full h-0.5 bg-amber-800" />
+                      <div className="w-full h-0.5 bg-amber-800" />
                     </div>
                   </div>
                 </div>
 
                 {/* Details */}
                 <div className="min-w-0 flex-1 space-y-1">
-                  <p className="text-[10px] uppercase font-bold text-slate-400">Learner Name</p>
-                  <h4 className="text-base font-extrabold font-display text-white truncate leading-tight">
+                  <p
+                    style={{ color: '#A5F3FC' }}
+                    className="text-[10px] uppercase font-bold tracking-wider text-cyan-200 !text-cyan-200"
+                  >
+                    Learner Name
+                  </p>
+                  <h4
+                    style={{ color: '#FFFFFF' }}
+                    className="text-base sm:text-lg font-black font-display truncate leading-tight text-white !text-white text-always-white"
+                  >
                     {fullName}
                   </h4>
 
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <div>
-                      <p className="text-[9px] uppercase text-slate-400 font-semibold">Learner ID</p>
-                      <p className="text-xs font-mono font-bold text-cyan-300">{learnerNumber}</p>
+                      <p
+                        style={{ color: '#A5F3FC' }}
+                        className="text-[9px] uppercase font-bold tracking-wider text-cyan-200 !text-cyan-200"
+                      >
+                        Learner ID
+                      </p>
+                      <p
+                        style={{ color: '#67E8F9', backgroundColor: 'rgba(8, 47, 73, 0.85)' }}
+                        className="text-xs font-mono font-black px-2 py-0.5 rounded-md border border-cyan-400/40 inline-block text-cyan-300 !text-cyan-300"
+                      >
+                        {learnerNumber}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-[9px] uppercase text-slate-400 font-semibold">Grade & Class</p>
-                      <p className="text-xs font-mono font-bold text-white">Grade {grade}</p>
+                      <p
+                        style={{ color: '#A5F3FC' }}
+                        className="text-[9px] uppercase font-bold tracking-wider text-cyan-200 !text-cyan-200"
+                      >
+                        Grade & Class
+                      </p>
+                      <p
+                        style={{ color: '#FFFFFF' }}
+                        className="text-xs font-mono font-black text-white !text-white text-always-white"
+                      >
+                        Grade {grade}
+                      </p>
                     </div>
                   </div>
 
                   <div>
-                    <p className="text-[9px] uppercase text-slate-400 font-semibold">National SA ID</p>
-                    <p className="text-[10px] font-mono text-slate-300 tracking-wider">
+                    <p
+                      style={{ color: '#A5F3FC' }}
+                      className="text-[9px] uppercase font-bold tracking-wider text-cyan-200 !text-cyan-200"
+                    >
+                      National SA ID
+                    </p>
+                    <p
+                      style={{ color: '#F1F5F9' }}
+                      className="text-[11px] font-mono font-bold tracking-wider text-slate-100 !text-slate-100"
+                    >
                       {idNumber.slice(0, 6)}••••••{idNumber.slice(-1)}
                     </p>
                   </div>
@@ -186,22 +239,38 @@ export const DigitalStudentIDCard: React.FC<DigitalStudentIDCardProps> = ({ lear
               </div>
 
               {/* Bottom Footer with Barcode & Slogan */}
-              <div className="flex items-center justify-between border-t border-white/10 pt-2 text-[8.5px] font-mono text-slate-400">
-                <span className="text-cyan-400 font-bold">ONE SCHOOL • ONE CONNECTION</span>
-                <span className="text-slate-400 flex items-center gap-1">
-                  <RotateCw className="w-2.5 h-2.5" /> Tap to view QR & Back
+              <div className="flex items-center justify-between border-t border-cyan-500/25 pt-2 text-[9px] font-mono">
+                <span
+                  style={{ color: '#22D3EE' }}
+                  className="font-bold text-cyan-400 !text-cyan-400"
+                >
+                  ONE SCHOOL • ONE CONNECTION
+                </span>
+                <span
+                  style={{ color: '#67E8F9' }}
+                  className="flex items-center gap-1 font-semibold text-cyan-300 !text-cyan-300"
+                >
+                  <RotateCw className="w-2.5 h-2.5 text-cyan-400" /> Tap to view QR & Back
                 </span>
               </div>
             </div>
           ) : (
             /* BACK OF CARD: QR Code for Scanner & Emergency Info */
-            <div className="h-full flex flex-col justify-between relative z-10">
-              <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+            <div className="h-full flex flex-col justify-between relative z-10" data-theme-preserve="true">
+              <div className="flex items-center justify-between border-b border-cyan-500/25 pb-2">
+                <div
+                  style={{ color: '#FFFFFF' }}
+                  className="flex items-center gap-1.5 text-xs font-bold text-white !text-white text-always-white"
+                >
                   <QrCode className="w-4 h-4 text-cyan-400" />
                   <span>Teacher & Gate QR Pass</span>
                 </div>
-                <span className="text-[9px] font-mono text-slate-400">Scan for Instant Roll Call</span>
+                <span
+                  style={{ color: '#67E8F9' }}
+                  className="text-[10px] font-mono font-bold text-cyan-300 !text-cyan-300"
+                >
+                  Scan for Instant Roll Call
+                </span>
               </div>
 
               {/* Centered Large QR Code */}
@@ -225,28 +294,56 @@ export const DigitalStudentIDCard: React.FC<DigitalStudentIDCardProps> = ({ lear
 
                 <div className="space-y-1.5 text-left text-xs">
                   <div>
-                    <p className="text-[9px] uppercase font-bold text-slate-400">Stream / Track</p>
-                    <p className="text-[11px] font-bold text-white">{stream}</p>
+                    <p
+                      style={{ color: '#A5F3FC' }}
+                      className="text-[9px] uppercase font-bold tracking-wider text-cyan-200 !text-cyan-200"
+                    >
+                      Stream / Track
+                    </p>
+                    <p
+                      style={{ color: '#FFFFFF' }}
+                      className="text-[11px] font-black text-white !text-white text-always-white"
+                    >
+                      {stream}
+                    </p>
                   </div>
 
                   <div>
-                    <p className="text-[9px] uppercase font-bold text-slate-400">Emergency Contact</p>
-                    <p className="text-[11px] font-mono text-emerald-400 font-bold flex items-center gap-1">
-                      <Phone className="w-3 h-3" />
+                    <p
+                      style={{ color: '#A5F3FC' }}
+                      className="text-[9px] uppercase font-bold tracking-wider text-cyan-200 !text-cyan-200"
+                    >
+                      Emergency Contact
+                    </p>
+                    <p
+                      style={{ color: '#6EE7B7' }}
+                      className="text-[11px] font-mono font-black flex items-center gap-1 text-emerald-300 !text-emerald-300"
+                    >
+                      <Phone className="w-3 h-3 text-emerald-400" />
                       {emergencyPhone}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-[9px] uppercase font-bold text-slate-400">Expiry Date</p>
-                    <p className="text-[10px] font-mono text-slate-300">31 December 2026</p>
+                    <p
+                      style={{ color: '#A5F3FC' }}
+                      className="text-[9px] uppercase font-bold tracking-wider text-cyan-200 !text-cyan-200"
+                    >
+                      Expiry Date
+                    </p>
+                    <p
+                      style={{ color: '#F1F5F9' }}
+                      className="text-[10px] font-mono font-bold text-slate-100 !text-slate-100"
+                    >
+                      31 December 2026
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between border-t border-white/10 pt-2 text-[8px] text-slate-400">
-                <span>Property of Fusion High School. If found, return to school admin.</span>
-                <span className="text-cyan-400">Tap to flip</span>
+              <div className="flex items-center justify-between border-t border-cyan-500/25 pt-2 text-[8.5px]">
+                <span style={{ color: '#94A3B8' }}>Property of Fusion High School. If found, return to school admin.</span>
+                <span style={{ color: '#67E8F9' }} className="font-bold text-cyan-300 !text-cyan-300">Tap to flip</span>
               </div>
             </div>
           )}
@@ -254,22 +351,28 @@ export const DigitalStudentIDCard: React.FC<DigitalStudentIDCardProps> = ({ lear
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-center gap-3">
         <button
           onClick={() => setIsFlipped(!isFlipped)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-dark hover:bg-white/10 text-slate-300 hover:text-white font-bold text-xs border border-white/10 transition-all shadow-md"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-surface-dark hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-slate-100 font-bold text-xs border border-slate-300 dark:border-white/10 transition-all shadow-sm cursor-pointer"
         >
-          <RotateCw className="w-3.5 h-3.5 text-cyan-400" />
+          <RotateCw className="w-3.5 h-3.5 text-cyan-500" />
           <span>{isFlipped ? 'Show Front of Card' : 'Show QR Code Pass'}</span>
         </button>
 
         <button
           onClick={handleDownloadCard}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-extrabold text-xs shadow-md shadow-cyan-500/20 transition-all cursor-pointer"
         >
           <Download className="w-3.5 h-3.5" />
           <span>Save Digital ID Card</span>
         </button>
+      </div>
+
+      {/* Data Source Provenance Indicator */}
+      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 dark:bg-cyan-950/40 border border-cyan-500/30 text-cyan-800 dark:text-cyan-200 text-[11px] font-semibold">
+        <ShieldCheck className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+        <span>Official Student Credential • Fusion High School</span>
       </div>
 
       {/* Enlarged QR Code Modal */}

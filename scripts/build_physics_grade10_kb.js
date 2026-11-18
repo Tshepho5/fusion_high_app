@@ -1,0 +1,575 @@
+/**
+ * Builder script: Generates data/physical_sciences_grade10_kb.json
+ * Grounded in the DBE CAPS Grade 10 Physical Sciences Textbooks, Nov 2015-2018 Past Papers & Marking Guidelines.
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+const kbData = [
+  // ==========================================
+  // PAPER 1: WAVES, SOUND & LIGHT
+  // ==========================================
+  {
+    id: "PS10_P1_001",
+    paper: "Paper 1 (Physics)",
+    topic: "Transverse Pulses & Waves",
+    subtopic: "Superposition & Pulse Interference",
+    question: "Define the principle of superposition. Two pulses, Pulse A with an amplitude of +6 cm and Pulse B with an amplitude of -4 cm, travel towards each other along the same rope. Determine the resulting amplitude when they cross paths and identify the type of interference.",
+    keywords: [
+      "superposition", "pulse", "amplitude", "interference", "constructive", "destructive", 
+      "transverse pulse", "crest", "trough", "algebraic sum"
+    ],
+    prescribed_definition: "The principle of superposition is the algebraic sum of the amplitudes of two pulses that occupy the same space at the same time.",
+    formula: "Resulting Amplitude = A1 + A2",
+    constants: "None (Geometric pulse analysis)",
+    model_answer: "1. Define Principle of Superposition: The algebraic sum of the amplitudes of two pulses that occupy the same space at the same time.\n" +
+      "2. Calculate Resulting Amplitude:\n" +
+      "   • Amplitude of Pulse A = +6 cm (crest)\n" +
+      "   • Amplitude of Pulse B = -4 cm (trough)\n" +
+      "   • Resulting Amplitude = (+6 cm) + (-4 cm) = +2 cm\n" +
+      "3. Identify Interference Type:\n" +
+      "   • Since the pulses have opposite signs and partially cancel each other out, this is DESTRUCTIVE INTERFERENCE.",
+    rubric_points: [
+      "Principle of superposition definition stating algebraic sum of amplitudes occupying same space at same time (2 marks)",
+      "Correct addition showing sign: (+6) + (-4) = +2 cm (1 mark)",
+      "Correct unit (cm or m) (1 mark)",
+      "Correct classification as destructive interference (1 mark)"
+    ],
+    common_misconceptions: "Learners often add magnitudes without signs (+6 + 4 = 10 cm), forgetting that troughs have negative displacement relative to rest position and cause cancellation (destructive interference).",
+    human_guidance: "Remember, think of superposition like adding bank balances: a crest is a deposit (+), and a trough is a withdrawal (-). Add them up algebraically and you'll never lose marks!"
+  },
+  {
+    id: "PS10_P1_002",
+    paper: "Paper 1 (Physics)",
+    topic: "Transverse Waves",
+    subtopic: "Wave Equation (Speed, Frequency & Wavelength)",
+    question: "Define frequency and period in terms of waves. A water wave has a wavelength of 0.4 m and travels a distance of 12 m in 3 seconds. Calculate the speed of the wave and its frequency.",
+    keywords: [
+      "frequency", "period", "wavelength", "wave speed", "wave equation", "hertz", 
+      "lambda", "v = f lambda", "crest to crest"
+    ],
+    prescribed_definition: "Frequency (f) is the number of complete wave cycles passing a point per second. Period (T) is the time taken for one complete wave cycle to pass a point (T = 1/f).",
+    formula: "v = d / Δt | v = fλ | T = 1 / f",
+    constants: "SI units: v (m·s⁻¹), f (Hz), λ (m), T (s)",
+    model_answer: "Step 1: Define Frequency & Period:\n" +
+      "• Frequency (f): Number of wave cycles passing a fixed point per second.\n" +
+      "• Period (T): Time taken for one complete wave pulse/cycle to pass.\n\n" +
+      "Step 2: Calculate Wave Speed (v):\n" +
+      "v = d / Δt\n" +
+      "v = 12 m / 3 s = 4 m·s⁻¹\n\n" +
+      "Step 3: Calculate Frequency (f) using the Wave Equation:\n" +
+      "v = fλ\n" +
+      "4 = f × (0.4)\n" +
+      "f = 4 / 0.4 = 10 Hz\n\n" +
+      "Final Answer: Wave speed is 4 m·s⁻¹ and frequency is 10 Hz.",
+    rubric_points: [
+      "Definition of frequency and period with correct units (2 marks)",
+      "Speed calculation formula: v = d/t (1 mark)",
+      "Speed substitution & value: 4 m·s⁻¹ (1 mark)",
+      "Wave equation formula: v = fλ (1 mark)",
+      "Frequency substitution & answer: 10 Hz (1 mark)"
+    ],
+    common_misconceptions: "Confusing frequency (Hz, cycles per second) with period (seconds per cycle). Also, forgetting to convert wavelengths given in centimetres (cm) into standard metres (m) before calculating speed.",
+    human_guidance: "Always check your units! If a test paper gives wavelength in cm or mm, immediately convert to metres (÷ 100 or ÷ 1000) so your speed comes out cleanly in m·s⁻¹."
+  },
+  {
+    id: "PS10_P1_003",
+    paper: "Paper 1 (Physics)",
+    topic: "Longitudinal Waves & Sound",
+    subtopic: "Compressions, Rarefactions & Echo Distance",
+    question: "Explain the difference between a transverse wave and a longitudinal wave. A ship uses a sonar sound wave (speed in seawater = 1500 m·s⁻¹) to detect the seabed. The echo returns to the ship 1.6 seconds after transmission. Calculate the depth of the ocean below the ship.",
+    keywords: [
+      "longitudinal wave", "transverse wave", "compressions", "rarefactions", "sound wave", 
+      "sonar", "echo", "depth", "speed of sound"
+    ],
+    prescribed_definition: "A longitudinal wave is a wave where the particles of the medium vibrate parallel to the direction of propagation of the wave.",
+    formula: "v = 2d / Δt  OR  d = v × (Δt / 2)",
+    constants: "Speed of sound in seawater = 1500 m·s⁻¹",
+    model_answer: "Step 1: Difference Between Wave Types:\n" +
+      "• Longitudinal Wave: Particles of the medium vibrate PARALLEL to the direction of wave motion (e.g., sound waves, compressions and rarefactions).\n" +
+      "• Transverse Wave: Particles of the medium vibrate PERPENDICULAR to the direction of wave motion (e.g., light, water waves, crests and troughs).\n\n" +
+      "Step 2: Calculate Ocean Depth (Echo / Two-Way Travel):\n" +
+      "Notice that the total time of 1.6 s includes traveling down to the seabed AND reflecting back up to the ship.\n" +
+      "One-way time to seabed (t) = 1.6 s / 2 = 0.8 s\n\n" +
+      "Step 3: Calculate Depth (d):\n" +
+      "v = d / t\n" +
+      "1500 = d / 0.8\n" +
+      "d = 1500 × 0.8 = 1200 m\n\n" +
+      "Final Answer: The ocean depth is 1200 m (or 1.2 km).",
+    rubric_points: [
+      "Correct parallel vs perpendicular vibration distinction (2 marks)",
+      "Dividing echo time by 2 (1.6 / 2 = 0.8 s) OR using 2d = vΔt (1 mark)",
+      "Formula v = d/t (1 mark)",
+      "Correct substitution: 1500 = d / 0.8 (1 mark)",
+      "Final answer 1200 m with correct SI unit (1 mark)"
+    ],
+    common_misconceptions: "Forgetting to halve the echo time! 1.6 s is the round-trip time. Multiplying 1500 by 1.6 gives double the actual ocean depth (2400 m), which loses marks.",
+    human_guidance: "Whenever you see the word 'ECHO' or 'SONAR' or 'RADAR', highlight it in your paper! Sound has to go there AND back, so always halve the time before calculating distance."
+  },
+  {
+    id: "PS10_P1_004",
+    paper: "Paper 1 (Physics)",
+    topic: "Electromagnetic Radiation",
+    subtopic: "Photon Energy & The EM Spectrum",
+    question: "State the speed of all electromagnetic radiation in a vacuum. A blue light photon has a wavelength of 4.5 × 10⁻⁷ m. Calculate the frequency of this photon and its energy in Joules.",
+    keywords: [
+      "electromagnetic radiation", "photon", "planck's constant", "speed of light", 
+      "energy of photon", "E = hf", "c = f lambda", "joules", "hertz"
+    ],
+    prescribed_definition: "A photon is a quantum (packet) of electromagnetic energy. All EM waves travel at the speed of light (c = 3 × 10⁸ m·s⁻¹) in a vacuum.",
+    formula: "c = fλ | E = hf  OR  E = hc / λ",
+    constants: "c = 3.0 × 10⁸ m·s⁻¹, h = 6.63 × 10⁻³⁴ J·s",
+    model_answer: "Step 1: State Speed of EM Waves in Vacuum:\n" +
+      "c = 3.0 × 10⁸ m·s⁻¹\n\n" +
+      "Step 2: Calculate Frequency (f):\n" +
+      "c = fλ\n" +
+      "3.0 × 10⁸ = f × (4.5 × 10⁻⁷)\n" +
+      "f = (3.0 × 10⁸) / (4.5 × 10⁻⁷) = 6.67 × 10¹⁴ Hz\n\n" +
+      "Step 3: Calculate Photon Energy (E):\n" +
+      "E = hf\n" +
+      "E = (6.63 × 10⁻³⁴) × (6.67 × 10¹⁴)\n" +
+      "E = 4.42 × 10⁻¹⁹ J\n\n" +
+      "(Alternatively: E = hc / λ = (6.63 × 10⁻³⁴ × 3 × 10⁸) / (4.5 × 10⁻⁷) = 4.42 × 10⁻¹⁹ J)\n\n" +
+      "Final Answer: Frequency is 6.67 × 10¹⁴ Hz, and energy is 4.42 × 10⁻¹⁹ J.",
+    rubric_points: [
+      "State speed of light: 3 × 10⁸ m·s⁻¹ (1 mark)",
+      "Formula: c = fλ (1 mark)",
+      "Substitution & frequency: 6.67 × 10¹⁴ Hz (1 mark)",
+      "Energy formula: E = hf or E = hc/λ (1 mark)",
+      "Correct substitution with Planck's constant (1 mark)",
+      "Final energy answer 4.42 × 10⁻¹⁹ J (1 mark)"
+    ],
+    common_misconceptions: "Exponent entry errors on scientific calculators (typing '×10^' instead of the 'EXP' or 'EE' or '×10ˣ' key), resulting in incorrect orders of magnitude.",
+    human_guidance: "Photon energies are tiny—always expect a negative exponent like 10⁻¹⁹ J. If your calculator shows 10¹⁵ J for a single photon, you know an exponent button was pressed twice!"
+  },
+
+  // ==========================================
+  // PAPER 1: ELECTRICITY & MAGNETISM
+  // ==========================================
+  {
+    id: "PS10_P1_005",
+    paper: "Paper 1 (Physics)",
+    topic: "Electrostatics",
+    subtopic: "Conservation of Charge & Charge Quantization",
+    question: "State the principle of conservation of charge. Two identical metal spheres on insulated stands have charges of +8 nC and -2 nC respectively. They are brought into contact and then separated. Calculate the new charge on each sphere and determine the number of electrons transferred during contact.",
+    keywords: [
+      "electrostatics", "conservation of charge", "quantization of charge", "nanocoulomb", 
+      "electrons transferred", "q = ne", "elementary charge", "insulated stands"
+    ],
+    prescribed_definition: "The principle of conservation of charge states that the net charge of an isolated system remains constant during any physical process.",
+    formula: "Q_new = (Q1 + Q2) / 2 | Q = n × e (or ΔQ = n × e)",
+    constants: "e = 1.6 × 10⁻¹⁹ C, 1 nC = 1 × 10⁻⁹ C",
+    model_answer: "Step 1: State Principle of Conservation of Charge:\n" +
+      "The net charge of an isolated system remains constant during any physical process.\n\n" +
+      "Step 2: Calculate New Charge After Separation:\n" +
+      "Since the spheres are identical, charge is shared equally upon contact:\n" +
+      "Q_new = (Q1 + Q2) / 2\n" +
+      "Q_new = (+8 + (-2)) / 2 = +6 / 2 = +3 nC  (= +3 × 10⁻⁹ C on each sphere)\n\n" +
+      "Step 3: Calculate Change in Charge (ΔQ) on One Sphere:\n" +
+      "Taking the second sphere (initially -2 nC, now +3 nC):\n" +
+      "ΔQ = Q_final - Q_initial = (+3) - (-2) = +5 nC = +5 × 10⁻⁹ C\n" +
+      "(Or from sphere 1: +8 - (+3) = +5 nC lost)\n\n" +
+      "Step 4: Calculate Number of Electrons Transferred (n):\n" +
+      "ΔQ = n × e\n" +
+      "5 × 10⁻⁹ = n × (1.6 × 10⁻¹⁹)\n" +
+      "n = (5 × 10⁻⁹) / (1.6 × 10⁻¹⁹) = 3.125 × 10¹⁰ electrons\n\n" +
+      "Final Answer: Each sphere has a charge of +3 nC (+3 × 10⁻⁹ C), and 3.13 × 10¹⁰ electrons were transferred (from the negatively charged sphere to the positively charged sphere).",
+    rubric_points: [
+      "Definition of conservation of charge (2 marks)",
+      "Formula: Q_new = (Q1 + Q2)/2 (1 mark)",
+      "Correct substitution: (+8 + (-2))/2 = +3 nC (1 mark)",
+      "Formula: Q = ne or n = ΔQ/e (1 mark)",
+      "Conversion from nC to C (×10⁻⁹) (1 mark)",
+      "Final count: 3.13 × 10¹⁰ electrons (1 mark)"
+    ],
+    common_misconceptions: "Forgetting to convert nano-coulombs (nC) to coulombs (C) before dividing by 1.6 × 10⁻¹⁹ C, or subtracting instead of adding when finding the average charge.",
+    human_guidance: "Protons NEVER move during electrostatic contact—only mobile electrons move! A sphere becomes more positive by losing electrons, and more negative by gaining them."
+  },
+  {
+    id: "PS10_P1_006",
+    paper: "Paper 1 (Physics)",
+    topic: "Electric Circuits",
+    subtopic: "Ohm's Law, Series & Parallel Resistors",
+    question: "Define electric current and potential difference. A battery of emf 12 V is connected to two resistors in parallel (6 Ω and 3 Ω) in series with a 2 Ω resistor. Calculate: (a) the equivalent parallel resistance, (b) the total resistance of the circuit, and (c) the total current flowing from the battery.",
+    keywords: [
+      "electric circuits", "electric current", "potential difference", "resistors in parallel", 
+      "resistors in series", "equivalent resistance", "ohm's law", "amperes", "volts", "V = IR"
+    ],
+    prescribed_definition: "Electric current (I) is the rate of flow of charge (I = Q/Δt). Potential difference (V) is the work done per unit positive charge (V = W/Q).",
+    formula: "1/Rp = 1/R1 + 1/R2  OR  Rp = (R1 × R2)/(R1 + R2) | Rtotal = Rs + Rp | I = V / R",
+    constants: "V in volts (V), I in amperes (A), R in ohms (Ω)",
+    model_answer: "Step 1: Definitions:\n" +
+      "• Electric current: The rate of flow of electric charge (I = Q/Δt).\n" +
+      "• Potential difference: The work done per unit positive charge to move charge between two points (V = W/Q).\n\n" +
+      "Step 2: (a) Equivalent Parallel Resistance (Rp):\n" +
+      "1/Rp = 1/R1 + 1/R2 = 1/6 + 1/3 = 1/6 + 2/6 = 3/6\n" +
+      "Rp = 6 / 3 = 2 Ω\n" +
+      "(Or: Rp = (6 × 3) / (6 + 3) = 18 / 9 = 2 Ω)\n\n" +
+      "Step 3: (b) Total Circuit Resistance (Rtotal):\n" +
+      "Rtotal = Rseries + Rp = 2 Ω + 2 Ω = 4 Ω\n\n" +
+      "Step 4: (c) Total Current (Itotal):\n" +
+      "I = V / Rtotal\n" +
+      "I = 12 V / 4 Ω = 3 A\n\n" +
+      "Final Answer: Rp = 2 Ω, Rtotal = 4 Ω, and Itotal = 3 A.",
+    rubric_points: [
+      "Current & Potential difference definitions (2 marks)",
+      "Parallel formula 1/Rp = 1/R1 + 1/R2 (1 mark)",
+      "Parallel answer: 2 Ω (1 mark)",
+      "Total resistance addition: 2 + 2 = 4 Ω (1 mark)",
+      "Ohm's law formula: I = V/R (1 mark)",
+      "Current substitution and answer: 3 A (1 mark)"
+    ],
+    common_misconceptions: "Finding 1/Rp = 3/6 and forgetting to invert the fraction at the end, mistakenly writing Rp = 0.5 Ω instead of 2 Ω. Remember: equivalent parallel resistance must always be smaller than the smallest parallel resistor!",
+    human_guidance: "Always do a reality check: in parallel, adding more pathways reduces total resistance. Rp must be smaller than both 6 Ω and 3 Ω—2 Ω makes complete sense!"
+  },
+
+  // ==========================================
+  // PAPER 1: MECHANICS (MOTION & ENERGY)
+  // ==========================================
+  {
+    id: "PS10_P1_007",
+    paper: "Paper 1 (Physics)",
+    topic: "Motion in One Dimension",
+    subtopic: "Position, Displacement, Velocity vs Speed",
+    question: "Differentiate between a vector quantity and a scalar quantity. An athlete runs 80 m East along a straight track in 10 seconds, then turns around and runs 30 m West in 5 seconds. Calculate: (a) total distance travelled, (b) net displacement, (c) average speed, and (d) average velocity.",
+    keywords: [
+      "vector", "scalar", "distance", "displacement", "speed", "velocity", 
+      "magnitude", "direction", "average velocity", "motion in 1D"
+    ],
+    prescribed_definition: "A scalar is a physical quantity having magnitude only. A vector is a physical quantity having both magnitude and direction.",
+    formula: "Distance = sum of lengths | Displacement Δx = x_final - x_initial | Average Speed = total distance / total time | Average Velocity = Δx / Δt",
+    constants: "Take East as Positive (+)",
+    model_answer: "Step 1: Scalar vs Vector:\n" +
+      "• Scalar: A physical quantity with magnitude (size) only (e.g., distance, speed, time, mass).\n" +
+      "• Vector: A physical quantity with both magnitude AND direction (e.g., displacement, velocity, acceleration, force).\n\n" +
+      "Step 2: (a) Total Distance:\n" +
+      "Distance is the total path length travelled:\n" +
+      "Distance = 80 m + 30 m = 110 m\n\n" +
+      "Step 3: (b) Net Displacement (Δx):\n" +
+      "Let East be Positive (+):\n" +
+      "Δx = (+80 m) + (-30 m) = +50 m (or 50 m East)\n\n" +
+      "Step 4: (c) Average Speed:\n" +
+      "Total Time = 10 s + 5 s = 15 s\n" +
+      "Average Speed = Total Distance / Total Time = 110 m / 15 s ≈ 7.33 m·s⁻¹\n\n" +
+      "Step 5: (d) Average Velocity (v_avg):\n" +
+      "Average Velocity = Net Displacement / Total Time\n" +
+      "v_avg = +50 m / 15 s = +3.33 m·s⁻¹ = 3.33 m·s⁻¹ East\n\n" +
+      "Final Answer: Distance = 110 m, Displacement = 50 m East, Speed = 7.33 m·s⁻¹, Velocity = 3.33 m·s⁻¹ East.",
+    rubric_points: [
+      "Vector & scalar definitions stating magnitude vs magnitude and direction (2 marks)",
+      "Distance sum: 110 m (1 mark)",
+      "Displacement value with direction: 50 m East (1 mark)",
+      "Average speed calculation: 7.33 m·s⁻¹ (1 mark)",
+      "Average velocity formula & substitution: 50/15 (1 mark)",
+      "Average velocity value with direction: 3.33 m·s⁻¹ East (1 mark)"
+    ],
+    common_misconceptions: "Leaving out the directional label for vectors! Writing '50 m' for displacement or '3.33 m·s⁻¹' for velocity without 'East' loses the mark because vectors must have direction.",
+    human_guidance: "Rule of thumb for Grade 10: If the question asks for a vector (displacement, velocity, acceleration), your final answer MUST have both a number with units AND a word like 'East', 'North', or 'Forward'!"
+  },
+  {
+    id: "PS10_P1_008",
+    paper: "Paper 1 (Physics)",
+    topic: "Motion in One Dimension",
+    subtopic: "Equations of Motion (Constant Acceleration)",
+    question: "Define acceleration. A car travelling along a straight horizontal road at 25 m·s⁻¹ brakes uniformly and comes to a complete standstill over a distance of 50 m. Calculate the acceleration of the car and the time taken to come to a stop.",
+    keywords: [
+      "acceleration", "equations of motion", "deceleration", "braking", "initial velocity", 
+      "final velocity", "displacement", "vf = vi + at", "vf^2 = vi^2 + 2ax"
+    ],
+    prescribed_definition: "Acceleration is the rate of change of velocity (a = Δv / Δt).",
+    formula: "vf² = vi² + 2aΔx | vf = vi + aΔt | Δx = ((vi + vf) / 2)Δt",
+    constants: "vi = 25 m·s⁻¹, vf = 0 m·s⁻¹, Δx = 50 m",
+    model_answer: "Step 1: Define Acceleration:\n" +
+      "Acceleration is the rate of change of velocity.\n\n" +
+      "Step 2: Identify Known Variables (Take forward motion as positive):\n" +
+      "• vi = +25 m·s⁻¹\n" +
+      "• vf = 0 m·s⁻¹ (comes to a standstill)\n" +
+      "• Δx = +50 m\n\n" +
+      "Step 3: Select Equation of Motion for Acceleration (a):\n" +
+      "vf² = vi² + 2aΔx\n" +
+      "(0)² = (25)² + 2(a)(50)\n" +
+      "0 = 625 + 100a\n" +
+      "-100a = 625\n" +
+      "a = -6.25 m·s⁻²  (or 6.25 m·s⁻² in the opposite direction / backwards)\n\n" +
+      "Step 4: Calculate Time Taken (Δt):\n" +
+      "vf = vi + aΔt\n" +
+      "0 = 25 + (-6.25)Δt\n" +
+      "6.25Δt = 25\n" +
+      "Δt = 25 / 6.25 = 4 s\n\n" +
+      "Final Answer: Acceleration is -6.25 m·s⁻² (6.25 m·s⁻² backwards), and the time taken is 4 seconds.",
+    rubric_points: [
+      "Definition of acceleration stating rate of change of velocity (2 marks)",
+      "Formula vf² = vi² + 2aΔx (1 mark)",
+      "Correct substitution: 0 = (25)² + 2(a)(50) (1 mark)",
+      "Acceleration answer with unit: -6.25 m·s⁻² (1 mark)",
+      "Time formula and substitution: 0 = 25 + (-6.25)t (1 mark)",
+      "Final time: 4 s with unit (1 mark)"
+    ],
+    common_misconceptions: "Forgetting that 'standstill' or 'stops' means vf = 0 m·s⁻¹, or writing acceleration as positive when the car is clearly braking (slowing down).",
+    human_guidance: "A negative acceleration in 1D simply means the acceleration opposes your forward velocity—it slows you down. That's why your car comes safely to a halt!"
+  },
+  {
+    id: "PS10_P1_009",
+    paper: "Paper 1 (Physics)",
+    topic: "Energy",
+    subtopic: "Conservation of Mechanical Energy",
+    question: "State the principle of conservation of mechanical energy. A 2 kg ball is dropped from rest from a height of 5 m above the ground. Ignore the effects of air resistance. Calculate: (a) the gravitational potential energy of the ball at the release point, and (b) the speed of the ball just before it hits the ground using energy principles.",
+    keywords: [
+      "gravitational potential energy", "kinetic energy", "mechanical energy", "conservation of energy", 
+      "isolated system", "free fall", "mgh", "1/2 mv^2", "joules"
+    ],
+    prescribed_definition: "The principle of conservation of mechanical energy states that the total mechanical energy in an isolated system remains constant (Em = Ep + Ek = constant).",
+    formula: "Ep = mgh | Ek = ½mv² | Em(initial) = Em(final)",
+    constants: "g = 9.8 m·s⁻², m = 2 kg, h = 5 m",
+    model_answer: "Step 1: State Principle of Conservation of Mechanical Energy:\n" +
+      "The total mechanical energy in an isolated system remains constant.\n\n" +
+      "Step 2: (a) Gravitational Potential Energy at Top (Ep_top):\n" +
+      "Ep = mgh\n" +
+      "Ep = (2 kg) × (9.8 m·s⁻²) × (5 m)\n" +
+      "Ep = 98 J\n\n" +
+      "Step 3: (b) Speed Just Before Hitting Ground (Using Mechanical Energy Conservation):\n" +
+      "Since the system is isolated (no air friction):\n" +
+      "(Ep + Ek)_top = (Ep + Ek)_bottom\n" +
+      "At the top: ball is at rest, so Ek_top = ½m(0)² = 0 J. Total Em_top = 98 J + 0 J = 98 J.\n" +
+      "At the bottom: height h = 0 m, so Ep_bottom = 0 J. All potential energy converted to kinetic energy.\n\n" +
+      "98 = 0 + ½mv²\n" +
+      "98 = ½(2)(v²)\n" +
+      "98 = 1(v²)\n" +
+      "v² = 98\n" +
+      "v = √98 ≈ 9.90 m·s⁻¹\n\n" +
+      "Final Answer: Ep at top = 98 J, and speed just before ground contact = 9.90 m·s⁻¹.",
+    rubric_points: [
+      "Principle of conservation of mechanical energy definition (2 marks)",
+      "Formula: Ep = mgh (1 mark)",
+      "Substitution & potential energy: 98 J (1 mark)",
+      "Conservation equation: Em(top) = Em(bottom) (1 mark)",
+      "Substitution: 98 = ½(2)v² (1 mark)",
+      "Final speed with unit: 9.90 m·s⁻¹ (1 mark)"
+    ],
+    common_misconceptions: "Using kinematics (equations of motion) when the examination explicitly specifies 'using energy principles'. DBE guidelines award zero marks for kinematics if energy conservation was requested.",
+    human_guidance: "Whenever a question says 'using energy principles', write down (Ep + Ek)initial = (Ep + Ek)final first! It immediately secures your formula mark."
+  },
+
+  // ==========================================
+  // PAPER 2: MATTER & MATERIALS (CHEMISTRY)
+  // ==========================================
+  {
+    id: "PS10_P2_010",
+    paper: "Paper 2 (Chemistry)",
+    topic: "Matter & Classification",
+    subtopic: "Pure Substances, Elements, Compounds & Mixtures",
+    question: "Define an element and a compound. Classify each of the following as an element, compound, homogeneous mixture, or heterogeneous mixture: (a) distilled water, (b) oxygen gas, (c) salt solution, and (d) muddy river water.",
+    keywords: [
+      "element", "compound", "homogeneous mixture", "heterogeneous mixture", "pure substance", 
+      "matter", "atoms", "chemical bonds", "solution"
+    ],
+    prescribed_definition: "An element is a pure substance consisting of only one type of atom. A compound is a pure substance consisting of two or more different elements chemically bonded together in a fixed ratio.",
+    formula: "Pure substances (Elements, Compounds) vs Mixtures (Homogeneous, Heterogeneous)",
+    constants: "None",
+    model_answer: "Step 1: Definitions:\n" +
+      "• Element: A pure substance that cannot be broken down into simpler substances by chemical means, consisting of only one type of atom.\n" +
+      "• Compound: A pure substance formed when two or more different elements are chemically bonded together in a fixed ratio.\n\n" +
+      "Step 2: Classifications:\n" +
+      "(a) Distilled water (H2O): COMPOUND (pure substance of hydrogen and oxygen chemically combined in fixed 2:1 ratio).\n" +
+      "(b) Oxygen gas (O2): ELEMENT (consists of only oxygen atoms).\n" +
+      "(c) Salt solution (NaCl in water): HOMOGENEOUS MIXTURE (uniform composition throughout, physically combined).\n" +
+      "(d) Muddy river water: HETEROGENEOUS MIXTURE (non-uniform composition with visible suspended sand/soil particles).",
+    rubric_points: [
+      "Element definition stating pure substance of one type of atom (1 mark)",
+      "Compound definition stating two or more different elements chemically bonded in fixed ratio (1 mark)",
+      "Distilled water = Compound (1 mark)",
+      "Oxygen gas = Element (1 mark)",
+      "Salt solution = Homogeneous mixture (1 mark)",
+      "Muddy river water = Heterogeneous mixture (1 mark)"
+    ],
+    common_misconceptions: "Confusing homogeneous mixtures (like salt water or clean air) with pure compounds. Remember: mixtures can be separated by physical methods (e.g. evaporation), while compounds require chemical reactions.",
+    human_guidance: "If you can separate it by boiling off water or filtering, it's a mixture! If you need a chemical reaction to split it apart, it's a compound."
+  },
+  {
+    id: "PS10_P2_011",
+    paper: "Paper 2 (Chemistry)",
+    topic: "States of Matter & Phase Changes",
+    subtopic: "Heating Curves & Boiling Point Definition",
+    question: "Define boiling point according to the CAPS DBE standard. Explain why the temperature remains constant during a phase change (such as during boiling of water at 100 °C) even though heat energy continues to be added.",
+    keywords: [
+      "boiling point", "temperature", "vapour pressure", "atmospheric pressure", "phase change", 
+      "heating curve", "kinetic energy", "intermolecular forces", "latent heat"
+    ],
+    prescribed_definition: "Boiling point is the temperature of a liquid at which its vapour pressure equals the external (atmospheric) pressure.",
+    formula: "Phase changes: Solid ⇌ Liquid (Melting/Freezing) | Liquid ⇌ Gas (Boiling/Condensation)",
+    constants: "Water normal boiling point = 100 °C at 1 atm (101.3 kPa)",
+    model_answer: "Step 1: Official DBE CAPS Definition of Boiling Point:\n" +
+      "The boiling point is the temperature of a liquid at which its vapour pressure equals the external (atmospheric) pressure.\n\n" +
+      "Step 2: Why Temperature Remains Constant During Phase Change:\n" +
+      "1. Temperature is a measure of the average kinetic energy of the particles.\n" +
+      "2. During a phase change (like boiling), the thermal energy supplied does NOT increase the kinetic energy of the particles.\n" +
+      "3. Instead, the absorbed heat energy is used to overcome and break the intermolecular forces holding the liquid particles together (latent heat of vaporisation).\n" +
+      "4. Because average kinetic energy does not change, the temperature remains strictly constant on the heating curve plateaus.",
+    rubric_points: [
+      "Boiling point definition stating vapour pressure equals external atmospheric pressure (2 marks)",
+      "Temperature is proportional to average kinetic energy (1 mark)",
+      "Added thermal energy is used to overcome/break intermolecular forces (1 mark)",
+      "Kinetic energy remains constant, hence temperature plateaus (1 mark)"
+    ],
+    common_misconceptions: "Defining boiling point simply as 'the temperature where liquid turns to gas'. In Grade 10 CAPS, you MUST mention vapour pressure equaling external/atmospheric pressure to get the full 2 marks.",
+    human_guidance: "Memorize the phrase: 'temperature where vapour pressure equals external pressure'. Examiners look for those exact scientific words every November!"
+  },
+  {
+    id: "PS10_P2_012",
+    paper: "Paper 2 (Chemistry)",
+    topic: "Atomic Structure & Periodic Table",
+    subtopic: "Isotopes, Aufbau Principle & Electron Configuration",
+    question: "Define isotopes. Write down the sp-electron configuration for a neutral magnesium atom (Atomic Number Z = 12) and draw its orbital diagram (Aufbau diagram) showing Hund's rule and the Pauli exclusion principle.",
+    keywords: [
+      "isotopes", "atomic number", "mass number", "electron configuration", "aufbau principle", 
+      "hund's rule", "pauli exclusion principle", "orbitals", "sp notation", "magnesium"
+    ],
+    prescribed_definition: "Isotopes are atoms of the same element having the same number of protons (same atomic number) but different numbers of neutrons (different mass numbers).",
+    formula: "Aufbau order: 1s → 2s → 2p → 3s → 3p | Notation: 1s² 2s² 2p⁶ 3s²",
+    constants: "Magnesium: Z = 12, A ≈ 24.3",
+    model_answer: "Step 1: Define Isotopes:\n" +
+      "Isotopes are atoms of the same element with the same number of protons (same atomic number) but different numbers of neutrons (different mass numbers).\n\n" +
+      "Step 2: Magnesium (Z = 12) Electron Configuration (sp notation):\n" +
+      "Magnesium has 12 electrons in its neutral state:\n" +
+      "1s² 2s² 2p⁶ 3s²\n\n" +
+      "Step 3: Orbital Principles & Diagram:\n" +
+      "• Aufbau Principle: Electrons occupy lowest energy orbitals first (1s, then 2s, 2p, 3s).\n" +
+      "• Pauli Exclusion Principle: An orbital can hold a maximum of 2 electrons with opposite spins (represented as ↿⇂).\n" +
+      "• Hund's Rule: Electrons occupy degenerate orbitals singly with parallel spins before pairing up (relevant in the 2px, 2py, 2pz sublevel).\n\n" +
+      "Orbital Box Structure:\n" +
+      "[3s: ↿⇂]\n" +
+      "[2px: ↿⇂] [2py: ↿⇂] [2pz: ↿⇂]\n" +
+      "[2s: ↿⇂]\n" +
+      "[1s: ↿⇂]",
+    rubric_points: [
+      "Isotopes definition mentioning same protons and different neutrons (2 marks)",
+      "Correct sp notation: 1s² 2s² 2p⁶ 3s² (2 marks)",
+      "Statement of Aufbau or Hund's rule (1 mark)",
+      "Correct paired opposite spins in 3s (1 mark)"
+    ],
+    common_misconceptions: "Writing [Ne] 3s² when the exam specifically asks for full sp-notation, or forgetting that the 2p sublevel has three orbitals (px, py, pz) that each take 2 electrons.",
+    human_guidance: "Remember the bus seat rule for Hund's rule: passengers take single empty seats first before sitting next to a stranger! In p-orbitals, fill 1 electron in each box before pairing up."
+  },
+  {
+    id: "PS10_P2_013",
+    paper: "Paper 2 (Chemistry)",
+    topic: "Chemical Bonding",
+    subtopic: "Covalent, Ionic & Lewis Dot Structures",
+    question: "Differentiate between covalent bonding and ionic bonding. Draw the Lewis dot diagram for: (a) a water molecule (H2O), and (b) sodium chloride (NaCl) showing the transfer of electrons and resulting ions.",
+    keywords: [
+      "covalent bonding", "ionic bonding", "metallic bonding", "lewis dot diagram", 
+      "valence electrons", "sharing electrons", "transfer of electrons", "lone pairs", "octet rule"
+    ],
+    prescribed_definition: "Covalent bonding is the sharing of at least one pair of electrons between two non-metal atoms. Ionic bonding is the transfer of electrons between a metal and a non-metal to form ions.",
+    formula: "Electronegativity difference: ΔEN > 2.0 (Ionic) | ΔEN < 2.0 (Covalent)",
+    constants: "Valence electrons: H = 1, O = 6, Na = 1, Cl = 7",
+    model_answer: "Step 1: Differences Between Bond Types:\n" +
+      "• Covalent Bond: Sharing of electrons between two non-metal atoms (e.g., H and O) to achieve stable noble gas octets.\n" +
+      "• Ionic Bond: Transfer of valence electrons from a metal atom to a non-metal atom, forming positive cations and negative anions held by electrostatic attraction.\n\n" +
+      "Step 2: (a) Lewis Diagram for H2O (Covalent Sharing):\n" +
+      "Oxygen has 6 valence electrons (needs 2). Each Hydrogen has 1 electron (needs 1).\n" +
+      "     ••\n" +
+      " H : O : H\n" +
+      "     ••\n" +
+      "• Oxygen has 2 bonding pairs (shared with H) and 2 lone pairs.\n" +
+      "• Hydrogen shares 1 pair to form a stable duet.\n\n" +
+      "Step 3: (b) Lewis Diagram for NaCl (Ionic Transfer):\n" +
+      "Sodium transfers its 1 valence electron to Chlorine:\n" +
+      "Na• + ••Cl••••  →  [Na]⁺ + [ :Cl:•••• ]⁻\n" +
+      "• Na⁺ cation has an empty valence shell (charge +1).\n" +
+      "• Cl⁻ chloride anion has a complete octet of 8 electrons with square brackets and charge -1.",
+    rubric_points: [
+      "Covalent bond definition (sharing electrons) (1 mark)",
+      "Ionic bond definition (transfer of electrons) (1 mark)",
+      "Correct H2O Lewis diagram showing 2 single shared pairs (1 mark)",
+      "Correct 2 lone pairs shown on oxygen (1 mark)",
+      "Sodium cation [Na]⁺ shown without valence dots and +1 charge (1 mark)",
+      "Chloride anion [Cl]⁻ shown with 8 dots in brackets and -1 charge (1 mark)"
+    ],
+    common_misconceptions: "Drawing covalent sharing lines for ionic compounds like NaCl, or forgetting to include the square brackets and charges on ionic Lewis structures.",
+    human_guidance: "Metals give away electrons gladly to become positive cations [+], while non-metals eagerly snatch electrons to become negative anions [-]. Always put ionic products in brackets with their charges!"
+  },
+  {
+    id: "PS10_P2_014",
+    paper: "Paper 2 (Chemistry)",
+    topic: "Quantitative Chemistry (The Mole Concept)",
+    subtopic: "Molar Mass, Moles & Molar Volume at STP",
+    question: "Define the mole and molar mass. A sample contains 11 g of carbon dioxide gas (CO2). Calculate: (a) the molar mass of CO2, (b) the number of moles of CO2 in the sample, and (c) the volume occupied by this gas at STP.",
+    keywords: [
+      "mole", "molar mass", "avogadro's constant", "carbon dioxide", "n = m/M", 
+      "molar volume", "STP", "22.4 dm3", "quantitative chemistry", "stoichiometry"
+    ],
+    prescribed_definition: "A mole is the amount of substance having the same number of elementary particles as there are atoms in 12 g of carbon-12. Molar mass (M) is the mass in grams of one mole of that substance (g·mol⁻¹).",
+    formula: "n = m / M | V = n × Vm (at STP) | c = n / V",
+    constants: "Vm = 22.4 dm³·mol⁻¹ at STP, C = 12 g·mol⁻¹, O = 16 g·mol⁻¹",
+    model_answer: "Step 1: Definitions:\n" +
+      "• Mole: The amount of substance that contains the same number of particles as there are atoms in 12 grams of carbon-12.\n" +
+      "• Molar Mass (M): The mass in grams of one mole of a substance (unit: g·mol⁻¹).\n\n" +
+      "Step 2: (a) Calculate Molar Mass of CO2:\n" +
+      "M(CO2) = M(C) + 2 × M(O)\n" +
+      "M(CO2) = 12 + 2(16) = 12 + 32 = 44 g·mol⁻¹\n\n" +
+      "Step 3: (b) Calculate Number of Moles (n):\n" +
+      "n = m / M\n" +
+      "n = 11 g / 44 g·mol⁻¹ = 0.25 mol\n\n" +
+      "Step 4: (c) Calculate Volume at STP (V):\n" +
+      "At STP, 1 mole of any gas occupies 22.4 dm³.\n" +
+      "V = n × Vm\n" +
+      "V = 0.25 mol × 22.4 dm³·mol⁻¹\n" +
+      "V = 5.6 dm³ (or 5.6 litres)\n\n" +
+      "Final Answer: Molar mass = 44 g·mol⁻¹, Moles = 0.25 mol, and Volume at STP = 5.6 dm³.",
+    rubric_points: [
+      "Mole & molar mass definitions (2 marks)",
+      "Correct molar mass calculation: 44 g·mol⁻¹ (1 mark)",
+      "Formula: n = m/M (1 mark)",
+      "Substitution & moles: 0.25 mol (1 mark)",
+      "Volume formula: V = n × Vm (1 mark)",
+      "Final volume with unit: 5.6 dm³ (1 mark)"
+    ],
+    common_misconceptions: "Forgetting to multiply oxygen by 2 when computing molar mass, or writing volume in cm³ instead of dm³ without applying the 1000 conversion factor.",
+    human_guidance: "Think of the mole as the chemist's 'dozen'. Just like a dozen always means 12, a mole always means 6.02 × 10²³ particles, and 1 mole of any gas at STP always fills 22.4 dm³!"
+  },
+  {
+    id: "PS10_P2_015",
+    paper: "Paper 2 (Chemistry)",
+    topic: "Chemical Change & Stoichiometry",
+    subtopic: "Conservation of Atoms & Balancing Chemical Equations",
+    question: "State the law of conservation of mass. Write a balanced chemical equation for the reaction between magnesium metal and hydrochloric acid (producing magnesium chloride solution and hydrogen gas). State symbols must be included.",
+    keywords: [
+      "conservation of mass", "chemical change", "balancing equations", "magnesium", 
+      "hydrochloric acid", "state symbols", "reactants", "products", "stoichiometry"
+    ],
+    prescribed_definition: "The law of conservation of mass states that the total mass of reactants in a chemical reaction is equal to the total mass of products (mass cannot be created or destroyed).",
+    formula: "Mg(s) + 2HCl(aq) → MgCl2(aq) + H2(g)",
+    constants: "State symbols: (s) = solid, (l) = liquid, (g) = gas, (aq) = aqueous solution",
+    model_answer: "Step 1: State Law of Conservation of Mass:\n" +
+      "The total mass of the reactants before a chemical reaction equals the total mass of the products formed (matter is conserved).\n\n" +
+      "Step 2: Identify Word Equation & Formulas:\n" +
+      "Magnesium + Hydrochloric acid → Magnesium chloride + Hydrogen gas\n" +
+      "• Magnesium = Mg\n" +
+      "• Hydrochloric acid = HCl\n" +
+      "• Magnesium chloride = MgCl2 (Mg²⁺ and Cl⁻ combine in 1:2 ratio)\n" +
+      "• Hydrogen gas = H2 (diatomic element)\n\n" +
+      "Step 3: Balance the Equation & Add State Symbols:\n" +
+      "Mg(s) + 2HCl(aq) → MgCl2(aq) + H2(g)\n\n" +
+      "Checking Atoms on Both Sides:\n" +
+      "• Mg: 1 on left, 1 on right (balanced)\n" +
+      "• H: 2 on left, 2 on right (balanced)\n" +
+      "• Cl: 2 on left, 2 on right (balanced)",
+    rubric_points: [
+      "Law of conservation of mass definition (2 marks)",
+      "Correct chemical formulas for reactants and products (1 mark)",
+      "Balancing coefficient '2' on HCl (1 mark)",
+      "Correct state symbols: (s), (aq), (aq), (g) (1 mark)"
+    ],
+    common_misconceptions: "Writing hydrogen gas as 'H' instead of the diatomic molecule 'H2', or writing magnesium chloride as 'MgCl' instead of 'MgCl2' due to neglecting ionic valency.",
+    human_guidance: "Remember the diatomic 7: Hydrogen, Nitrogen, Oxygen, Fluorine, Chlorine, Bromine, Iodine are NEVER alone in nature—they always travel as pairs like H2, O2, Cl2!"
+  }
+];
+
+const outputPath = path.join(__dirname, '../data/physical_sciences_grade10_kb.json');
+fs.writeFileSync(outputPath, JSON.stringify(kbData, null, 2), 'utf8');
+
+console.log(`[BUILD] Successfully built Grade 10 Physical Sciences Knowledge Base!`);
+console.log(`[BUILD] Saved to: ${outputPath}`);
+console.log(`[BUILD] Total core CAPS topics: ${kbData.length}`);

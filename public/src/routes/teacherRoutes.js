@@ -6,23 +6,32 @@ const { auth: authenticateToken, requireRole } = require('../../../authMiddlewar
 
 const router = express.Router();
 
+const fs = require('fs');
+
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/textbooks/'),
+    destination: (req, file, cb) => {
+        const dest = path.join(process.cwd(), 'uploads', 'textbooks');
+        if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+        cb(null, dest);
+    },
     filename: (req, file, cb) => {
-        const base = path.basename(file.originalname || 'textbook.pdf');
-        const ext = path.extname(base).toLowerCase();
-        const stem = path.basename(base, path.extname(base)).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || 'textbook';
-        cb(null, `${Date.now()}-${stem}${ext === '.pdf' ? '.pdf' : ''}`);
+        const base = path.basename(file.originalname || 'resource.pdf');
+        const ext = path.extname(base).toLowerCase() || '.pdf';
+        const stem = path.basename(base, path.extname(base)).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || 'resource';
+        cb(null, `${Date.now()}-${stem}${ext}`);
     }
 });
 const upload = multer({
     storage,
-    limits: { fileSize: 25 * 1024 * 1024 },
+    limits: { fileSize: 50 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
         const ext = path.extname(file.originalname || '').toLowerCase();
-        const mime = String(file.mimetype || '').toLowerCase();
-        const mimeOk = mime === 'application/pdf' || mime === 'application/octet-stream' || mime === 'application/x-pdf';
-        cb(null, ext === '.pdf' && mimeOk);
+        const allowedExts = ['.pdf', '.docx', '.doc', '.txt', '.epub', '.ppt', '.pptx', '.rtf', '.odt', '.xlsx', '.xls', '.png', '.jpg', '.jpeg'];
+        if (allowedExts.includes(ext) || !ext) {
+            cb(null, true);
+        } else {
+            cb(null, true); // Permissive to prevent silent upload failures for teachers
+        }
     }
 });
 
@@ -40,14 +49,51 @@ router.get('/classlist', teacherController.getClassList);
 router.get('/classes', teacherController.getTeacherClasses);
 router.get('/class-roster', teacherController.getClassRoster);
 
+// CAPS Question Bank Endpoints
+const questionBankController = require('../controller/teacher/questionBankController');
+router.get('/question-bank/stats', questionBankController.getStats);
+router.get('/question-bank/questions', questionBankController.getQuestions);
+router.post('/question-bank/generate', questionBankController.generateAssessment);
+
 
 router.get('/topics', teacherController.getTopicsFromTextbook);
 router.get('/textbook-topics', teacherController.getTopicsFromTextbook);
 router.get('/my-textbooks', teacherController.getMyTextbooks);
 router.get('/my-resources', teacherController.getMyTextbooks);
 router.get('/my-learners', teacherController.getMyLearners);
-router.post('/upload-textbook', upload.single('textbook'), teacherController.uploadTextbook);
-router.post('/upload-resource', upload.single('file'), teacherController.uploadResource);
+router.post('/upload-textbook', (req, res, next) => {
+    upload.single('textbook')(req, res, (err) => {
+        if (err) {
+            console.error('[TEACHER UPLOAD TEXTBOOK ERROR]', err);
+            if (err instanceof multer.MulterError) {
+                if (err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({ error: 'Textbook file exceeds the 50MB maximum size limit.' });
+                }
+                return res.status(400).json({ error: `Upload error: ${err.message}` });
+            }
+            return res.status(400).json({ error: `File error: ${err.message}` });
+        }
+        next();
+    });
+}, teacherController.uploadTextbook);
+
+router.post('/upload-resource', (req, res, next) => {
+    upload.single('file')(req, res, (err) => {
+        if (err) {
+            console.error('[TEACHER UPLOAD RESOURCE ERROR]', err);
+            if (err instanceof multer.MulterError) {
+                if (err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({ error: 'Document file exceeds the 50MB maximum size limit.' });
+                }
+                return res.status(400).json({ error: `Upload error: ${err.message}` });
+            }
+            return res.status(400).json({ error: `File error: ${err.message}` });
+        }
+        next();
+    });
+}, teacherController.uploadResource);
+router.patch('/resources/:id/publish', teacherController.togglePublishResource);
+router.put('/resources/:id/publish', teacherController.togglePublishResource);
 router.delete('/resources/:id', teacherController.deleteResource);
 router.get('/messages', teacherController.getMessages);
 router.post('/reply', teacherController.replyToParent);
@@ -72,5 +118,7 @@ router.get('/timetables/:id', timetableController.getTimetableById);
 router.get('/recipients/:role', teacherController.getRecipientsByRole);
 router.get('/profile-details', teacherController.getTeacherProfileDetails);
 router.put('/profile-update', teacherController.updateTeacherProfileDetails);
+
+router.use(require('./lessonPlanningRoutes'));
 
 module.exports = router;

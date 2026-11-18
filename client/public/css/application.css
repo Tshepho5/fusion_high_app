@@ -6,14 +6,16 @@
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
-  --bg-dark: #0f172a;
-  --card-bg: #1e293b;
-  --card-border: #334155;
+  --bg-dark: #07080d;
+  --card-bg: rgba(2, 6, 23, 0.86);
+  --card-border: rgba(255, 255, 255, 0.24);
   --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --input-bg: #0f172a;
-  --input-border: #334155;
+  --text-muted: #e2e8f0;
+  --input-bg: rgba(0, 0, 0, 0.82);
+  --input-border: rgba(255, 255, 255, 0.4);
+  --heading: #ffffff;
   --input-focus: #6366f1;
+  --panel-tint: rgba(0, 0, 0, 0.7);
 }
 
 * {
@@ -66,9 +68,11 @@ body {
   font-weight: 800;
   letter-spacing: -0.5px;
   margin-bottom: 8px;
-  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--heading);
+  background: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  -webkit-text-fill-color: unset;
 }
 
 .portal-header p {
@@ -191,7 +195,7 @@ body {
 }
 
 .step-item.active .step-label {
-  color: #ffffff;
+  color: var(--heading);
 }
 
 /* Card Step Container */
@@ -223,7 +227,7 @@ body {
 .step-header h2 {
   font-size: 1.4rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--heading);
   margin-bottom: 4px;
 }
 
@@ -259,7 +263,7 @@ body {
   display: block;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #e2e8f0;
+  color: var(--heading);
   margin-bottom: 6px;
 }
 
@@ -588,4 +592,209 @@ body {
   .portal-header h1 {
     font-size: 1.8rem;
   }
+}
+
+/* Same campus scene as the sign-in page, with fields that stay readable. */
+html.light {
+  --bg-dark: #f6f1e6;
+  --card-bg: rgba(255, 255, 255, 0.88);
+  --card-border: rgba(15, 23, 42, 0.16);
+  --text-main: #0f172a;
+  --text-muted: #334155;
+  --input-bg: rgba(255, 255, 255, 0.95);
+  --input-border: rgba(15, 23, 42, 0.24);
+  --heading: #0f172a;
+  --panel-tint: rgba(255, 255, 255, 0.86);
+}
+
+html.dark {
+  --bg-dark: #07080d;
+  --card-bg: rgba(2, 6, 23, 0.86);
+  --card-border: rgba(255, 255, 255, 0.24);
+  --text-main: #f8fafc;
+  --text-muted: #e2e8f0;
+  --input-bg: rgba(0, 0, 0, 0.82);
+  --input-border: rgba(255, 255, 255, 0.4);
+  --heading: #ffffff;
+  --panel-tint: rgba(0, 0, 0, 0.7);
+}
+
+body {
+  background-color: var(--bg-dark);
+  background-image: url('/assets/campus-night.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  color: var(--text-main);
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    linear-gradient(to bottom, rgba(246, 241, 230, 0.2), rgba(246, 241, 230, 0.45)),
+    radial-gradient(1200px 280px at 50% 78%, rgba(138, 100, 36, 0.35), transparent 70%);
+}
+
+html.dark body::before {
+  background:
+    linear-gradient(to bottom, rgba(7, 8, 13, 0.2), rgba(7, 8, 13, 0.55)),
+    radial-gradient(1200px 280px at 50% 78%, rgba(246, 230, 180, 0.28), transparent 70%);
+}
+
+.portal-container {
+  position: relative;
+  z-index: 1;
+}
+
+.theme-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 20;
+  border-radius: 999px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text-main);
+  font-weight: 700;
+  font-size: 12px;
+  padding: 8px 14px;
+  cursor: pointer;
+  backdrop-filter: blur(16px);
+}
+
+.portal-header h1,
+.step-header h2,
+.form-group label,
+.step-item.active .step-label,
+.checkbox-container span,
+.upload-title,
+.modal-title {
+  color: var(--heading);
+  background: none;
+  -webkit-text-fill-color: unset;
+}
+
+.form-step-card,
+.capacity-banner,
+.school-select-card,
+.checkbox-container,
+.upload-card,
+.modal-content {
+  background: var(--card-bg) !important;
+  border-color: var(--card-border) !important;
+  backdrop-filter: blur(18px);
+  color: var(--text-main);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea,
+#school_id {
+  background: var(--input-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--input-border) !important;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus,
+#school_id:focus {
+  background: var(--card-bg) !important;
+  outline: none;
+}
+
+html.light .form-group input:focus,
+html.light .form-group select:focus,
+html.light .form-group textarea:focus,
+html.light #school_id:focus {
+  background: rgba(255, 255, 255, 0.92) !important;
+}
+
+html.dark .form-group input:focus,
+html.dark .form-group select:focus,
+html.dark .form-group textarea:focus,
+html.dark #school_id:focus {
+  background: rgba(0, 0, 0, 0.68) !important;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: var(--text-muted);
+}
+
+html.light label,
+html.light p,
+html.light h1,
+html.light h2,
+html.light h3,
+html.light .hint,
+html.light #school-motto-hint {
+  color: #0f172a !important;
+}
+
+html.light .btn,
+html.light .step-item.active .step-circle,
+html.light .step-item.completed .step-circle,
+html.light .badge-pill {
+  color: #ffffff;
+}
+
+html.light option,
+html.dark option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+html.dark option {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.panel-tint {
+  background: var(--panel-tint) !important;
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 20px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: var(--text-main);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.panel-tint-accent {
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+.panel-tint-indigo {
+  border-color: rgba(99, 102, 241, 0.4);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.panel-tint-success {
+  border-color: rgba(16, 185, 129, 0.4);
+  padding: 22px;
+  margin-top: 24px;
+}
+
+.payment-choice-card {
+  background: var(--panel-tint) !important;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.2s ease;
+  color: var(--text-main);
+}
+
+.payment-choice-card--active {
+  border: 2px solid #6366f1;
 }

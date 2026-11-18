@@ -129,7 +129,7 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
   const [loadingRoster, setLoadingRoster] = useState<{ [key: string]: boolean }>({});
   const [selectedLearner, setSelectedLearner] = useState<any>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [pastPapersModal, setPastPapersModal] = useState<{ open: boolean; subject: string; grade: number; activeTab?: 'papers' | 'upload' } | null>(null);
+  const [pastPapersModal, setPastPapersModal] = useState<{ open: boolean; subject: string; grade: number; className?: string; classId?: number; activeTab?: 'papers' | 'upload' } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // ML Risk Diagnostic Modal State
@@ -168,6 +168,8 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
     description: '',
     term: 'Term 3',
     year: '2026',
+    target_class: 'This Class',
+    is_published: true,
     file: null as File | null,
   });
   const [uploading, setUploading] = useState(false);
@@ -445,15 +447,28 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
     data.append('term', uploadFormData.term);
     data.append('year', uploadFormData.year);
 
+    const isClassSpecific = uploadFormData.target_class !== 'All';
+    if (isClassSpecific && pastPapersModal.className) {
+      data.append('class_name', pastPapersModal.className);
+      if (pastPapersModal.classId) {
+        data.append('class_id', String(pastPapersModal.classId));
+      }
+    } else {
+      data.append('class_name', 'All');
+    }
+    data.append('is_published', String(uploadFormData.is_published));
+
     try {
-      await teacherService.uploadResource(data);
-      setUploadSuccessMsg('Resource uploaded and published to students successfully.');
+      const res = await teacherService.uploadResource(data);
+      setUploadSuccessMsg(res?.message || 'Resource uploaded and published to students successfully.');
       setUploadFormData({
         resource_type: 'past_paper',
         title: '',
         description: '',
         term: 'Term 3',
         year: '2026',
+        target_class: 'This Class',
+        is_published: true,
         file: null
       });
       setTimeout(() => setUploadSuccessMsg(null), 4000);
@@ -598,9 +613,6 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
             <h2 className="text-xl md:text-3xl font-extrabold font-display text-white tracking-tight">
               My Subjects & CAPS Workload
             </h2>
-            <p className="text-xs md:text-sm text-slate-400 max-w-2xl mt-1.5 leading-relaxed">
-              Assigned CAPS learning areas, class registers, past question papers, mark recording, and syllabus pacing.
-            </p>
           </div>
 
           <div className="flex items-center gap-2 self-start md:self-auto">
@@ -608,8 +620,8 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
               onClick={() => onNavigateTab('ai-tools', { tool: 'quiz' })}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all"
             >
-              <FusionAIIcon className="w-4 h-4 text-cyan-200" variant="pulse" />
-              <span>AI Lesson & Quiz Builder</span>
+              <BookOpen className="w-4 h-4 text-cyan-200" />
+              <span>Lesson & Quiz Builder</span>
             </button>
           </div>
         </div>
@@ -714,7 +726,7 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                   </button>
 
                   <button
-                    onClick={() => setPastPapersModal({ open: true, subject: card.subject_name, grade: card.grade, activeTab: 'papers' })}
+                    onClick={() => setPastPapersModal({ open: true, subject: card.subject_name, grade: card.grade, className: card.class_name, classId: card.class_id, activeTab: 'papers' })}
                     className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-purple-600/20 hover:bg-purple-600/35 text-purple-300 hover:text-white border border-purple-500/30 font-bold text-xs transition-all shadow-sm"
                     title="Past Papers, Textbooks & Learning Resources"
                   >
@@ -734,10 +746,10 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                   <button
                     onClick={() => handleOpenAIWorkspace(card.subject_name, card.grade, card.class_name, 'quiz')}
                     className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-cyan-600/20 hover:bg-cyan-600 text-cyan-300 hover:text-white border border-cyan-500/40 font-bold text-xs transition-all shadow-glow-cyan"
-                    title="Generate AI Quizzes & Lessons for this Subject"
+                    title="Quizzes & Lessons for this Subject"
                   >
-                    <FusionAIIcon className="w-3.5 h-3.5 text-cyan-200" />
-                    <span>AI Quiz</span>
+                    <BookOpen className="w-3.5 h-3.5 text-cyan-200" />
+                    <span>Quiz</span>
                   </button>
 
                   <button
@@ -801,9 +813,8 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                                       ? 'bg-amber-500/15 text-amber-400 border-amber-500/30 hover:bg-amber-500/25'
                                       : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
                                   }`}
-                                  title="Click to view AI ML Risk Diagnostic & Remedial Action Plan"
+                                  title="Click to view Risk Diagnostic & Remedial Action Plan"
                                 >
-                                  <Sparkles className="w-2.5 h-2.5" />
                                   <span>{mlRisk.riskLabel}</span>
                                 </button>
 
@@ -1247,7 +1258,7 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Resource Category</label>
                     <select
@@ -1255,11 +1266,25 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                       onChange={(e) => setUploadFormData({ ...uploadFormData, resource_type: e.target.value })}
                       className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
                     >
-                      <option value="past_paper">Past Examination Paper (PDF)</option>
+                      <option value="past_paper">Past Examination Paper</option>
                       <option value="textbook">Digital Textbook / Study Guide</option>
                       <option value="notes">Class Lesson Notes / Summaries</option>
                       <option value="worksheet">Revision Worksheet</option>
                       <option value="exam_memo">Exam Marking Memorandum</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Target Class Allocation</label>
+                    <select
+                      value={uploadFormData.target_class}
+                      onChange={(e) => setUploadFormData({ ...uploadFormData, target_class: e.target.value })}
+                      className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                    >
+                      {pastPapersModal.className && (
+                        <option value="This Class">This Class Only (Class {pastPapersModal.className})</option>
+                      )}
+                      <option value="All">All Grade {pastPapersModal.grade} Classes</option>
                     </select>
                   </div>
 
@@ -1294,7 +1319,7 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Description & Teacher Instructions (Optional)</label>
                   <textarea
-                    rows={3}
+                    rows={2}
                     value={uploadFormData.description}
                     onChange={(e) => setUploadFormData({ ...uploadFormData, description: e.target.value })}
                     placeholder="Provide guidelines, chapter references, or instructions for learners..."
@@ -1303,14 +1328,32 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Attach Resource File (PDF, DOCX, EPUB, TXT)</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Attach Resource File (PDF, DOCX, PPTX, EPUB, TXT)</label>
                   <input
                     type="file"
                     onChange={(e) => setUploadFormData({ ...uploadFormData, file: e.target.files ? e.target.files[0] : null })}
-                    accept=".pdf,.docx,.doc,.txt,.epub"
+                    accept=".pdf,.docx,.doc,.txt,.epub,.ppt,.pptx"
                     required
                     className="w-full rounded-xl bg-surface-dark border border-white/10 px-3 py-2 text-xs text-slate-300 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-500"
                   />
+                </div>
+
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-surface-dark border border-purple-500/20">
+                  <input
+                    type="checkbox"
+                    id="publishImmediateCheckbox"
+                    checked={uploadFormData.is_published}
+                    onChange={(e) => setUploadFormData({ ...uploadFormData, is_published: e.target.checked })}
+                    className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 bg-surface-darker border-white/20"
+                  />
+                  <label htmlFor="publishImmediateCheckbox" className="text-xs text-slate-200 cursor-pointer select-none">
+                    <strong>Publish immediately to learners & guardians</strong>
+                    <span className="text-slate-400 block text-[11px]">
+                      {uploadFormData.target_class !== 'All' && pastPapersModal.className
+                        ? `Targeted to Class ${pastPapersModal.className} learners taking ${pastPapersModal.subject}`
+                        : `Targeted to all Grade ${pastPapersModal.grade} learners taking ${pastPapersModal.subject}`}
+                    </span>
+                  </label>
                 </div>
 
                 <div className="flex gap-2 pt-2">

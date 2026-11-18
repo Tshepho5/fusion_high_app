@@ -1,6 +1,11 @@
 const jwt = require('jsonwebtoken');
 const db = require('./db/db');
-const { resolveVerifiedRole } = require('./utils/resolveVerifiedRole');
+const {
+    accountUnavailable,
+    applyAccount,
+    hasDatabaseSuperadmin,
+    loadAuthoritativeAccount
+} = require('./lib/authoritativeAccess');
 
 const SESSION_COOKIE = 'geleza_session';
 
@@ -33,6 +38,15 @@ function attachSessionCookie(res, token) {
     if (token) res.cookie(SESSION_COOKIE, token, sessionCookieOptions());
 }
 
+let sessionColumnReady = false;
+
+async function ensureActiveSessionColumn() {
+    if (sessionColumnReady) return;
+    await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS active_session_id TEXT');
+    await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS session_seen_at TIMESTAMP');
+    sessionColumnReady = true;
+}
+
 function clearSessionCookie(res) {
     res.clearCookie(SESSION_COOKIE, {
         path: '/',
@@ -59,13 +73,48 @@ const auth = (req, res, next) => {
         return res.status(500).json({ error: 'Server signing secret is not configured.' });
     }
 
-    jwt.verify(token, secret, (err, user) => {
+    jwt.verify(token, secret, async (err, user) => {
         if (err) {
             return res.status(403).json({ error: 'Invalid or expired token' });
         }
-        req.user = user;
-        attachSessionCookie(res, token);
-        next();
+        try {
+            await ensureActiveSessionColumn();
+            const loaded = await loadAuthoritativeAccount(db.query, user.id);
+            if (loaded.state !== 'active') {
+                clearSessionCookie(res);
+                return res.status(401).json({
+                    error: accountUnavailable(loaded.state),
+                    code: loaded.state === 'missing' ? 'account_missing' : loaded.state
+                });
+            }
+            const activeSessionId = loaded.account.active_session_id;
+            if (!user.sid || !activeSessionId || activeSessionId !== user.sid) {
+                clearSessionCookie(res);
+                return res.status(401).json({
+                    error: 'You were signed out because this account signed in on another device or tab.',
+                    code: 'session_replaced'
+                });
+            }
+            db.query(
+                'UPDATE users SET session_seen_at = NOW(), last_seen_at = NOW(), is_online = TRUE WHERE id::text = $1::text',
+                [String(user.id)]
+            ).catch(() => {});
+            req.user = {
+                id: loaded.account.id,
+                role: loaded.account.role,
+                email: loaded.account.email,
+                full_name: user.full_name,
+                school_id: loaded.account.school_id,
+                is_superadmin: hasDatabaseSuperadmin(loaded.account),
+                sid: user.sid,
+                authoritative: true
+            };
+            attachSessionCookie(res, token);
+            next();
+        } catch (sessionErr) {
+            console.error('[AUTH SESSION]', sessionErr.message);
+            return res.status(500).json({ error: 'Could not confirm this sign-in.' });
+        }
     });
 };
 
@@ -82,55 +131,35 @@ const requireRole = (roles) => async (req, res, next) => {
     }
 
     try {
-        // Query PostgreSQL database live as sole source of truth for RBAC and Multi-Tenant Isolation
-        const roleRes = await db.query(
-            `SELECT u.id, u.email, u.school_id, u.is_superadmin, u.role_id,
-                    COALESCE(
-                        r.name, 
-                        CASE 
-                            WHEN u.role_id::text IN ('1', 'admin') THEN 'admin'
-                            WHEN u.role_id::text IN ('2', 'parent') THEN 'parent'
-                            WHEN u.role_id::text IN ('3', 'learner') THEN 'learner'
-                            WHEN u.role_id::text IN ('4', 'teacher') THEN 'teacher'
-                            ELSE NULL
-                        END,
-                        (SELECT 'learner' FROM children c WHERE c.learner_user_id::text = u.id::text OR c.id::text = u.id::text LIMIT 1)
-                    ) as role_name 
-             FROM users u 
-             LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
-             WHERE u.id::text = $1::text`,
-            [String(req.user.id)]
-        );
+        const loaded = await loadAuthoritativeAccount(db.query, req.user.id);
+        if (loaded.state === 'deleted' || loaded.state === 'deactivated') {
+            return res.status(401).json({ error: accountUnavailable(loaded.state), code: loaded.state });
+        }
 
-        let row = roleRes.rows[0];
-        let matchedChild = false;
-
-        // If user wasn't found in users by id, check if req.user.id is in children table
-        if (!row) {
+        let roleName = null;
+        if (loaded.state === 'active') {
+            applyAccount(req, loaded.account);
+            roleName = loaded.account.role;
+        } else {
             const childRes = await db.query(
                 `SELECT c.id, c.learner_user_id, c.school_id FROM children c WHERE c.id::text = $1::text OR c.learner_user_id::text = $1::text LIMIT 1`,
                 [String(req.user.id)]
             );
-            if (childRes.rows.length > 0) {
-                matchedChild = true;
-                req.user.school_id = childRes.rows[0].school_id || 1;
+            if (childRes.rows.length > 0 && String(req.user.role || '').toLowerCase() === 'learner') {
+                roleName = 'learner';
+                req.user.role = 'learner';
+                req.user.is_superadmin = false;
+                req.user.authoritative = true;
+                req.user.school_id = childRes.rows[0].school_id || null;
             }
         }
 
-        const roleName = resolveVerifiedRole({
-            dbRole: row ? row.role_name : null,
-            tokenRole: req.user.role,
-            matchedChild,
-        });
-
         if (!roleName) {
-            return res.status(403).json({ error: 'Forbidden: Account role could not be verified.' });
+            return res.status(401).json({ error: accountUnavailable(loaded.state), code: loaded.state || 'missing' });
         }
 
-        req.user.role = roleName;
-        if (row) {
-            req.user.school_id = row.school_id || req.user.school_id || 1;
-            req.user.is_superadmin = Boolean(row.is_superadmin);
+        if (hasDatabaseSuperadmin(loaded.account)) {
+            return next();
         }
 
         if (!allowedRoles.includes(roleName)) {
@@ -149,4 +178,4 @@ const requireRole = (roles) => async (req, res, next) => {
  */
 const isAdmin = requireRole('admin');
 
-module.exports = { auth, authenticateToken: auth, isAdmin, requireRole, attachSessionCookie, clearSessionCookie, resolveVerifiedRole };
+module.exports = { auth, authenticateToken: auth, isAdmin, requireRole, attachSessionCookie, clearSessionCookie, ensureActiveSessionColumn };

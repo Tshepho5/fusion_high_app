@@ -20,6 +20,7 @@ yarn-error.log*
 # Uploads & Media Files
 uploads/
 public/uploads/
+storage/
 
 # Build Artifacts
 dist/
@@ -35,4 +36,9 @@ Thumbs.db
 serviceAccountKey*.json
 .firebase/
 scratch/
+
+# Python Cache & Temp Output
+__pycache__/
+*.pyc
+QuestionBank/output/
 

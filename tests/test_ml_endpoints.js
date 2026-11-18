@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const academicMlService = require('../public/src/services/academicMlService');
 
 async function testMlEngine() {

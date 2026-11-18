@@ -22,11 +22,11 @@ import { TextbookAssetTracker } from '../../components/common/TextbookAssetTrack
 import { EducatorLeaveReliefManager } from '../../components/admin/EducatorLeaveReliefManager';
 import { TeacherAssignments } from '../../components/teacher/TeacherAssignments';
 import { GelezaEarlyWarningRadar } from '../../components/teacher/GelezaEarlyWarningRadar';
-import { TeacherNavigationBar } from '../../components/teacher/TeacherNavigationBar';
 import { ModulePageHeader } from '../../components/layout/WorkspaceChrome';
 import { TeacherMoreHub } from './TeacherMoreHub';
+import { TeacherLessonPlanning } from './lessonPlanning/TeacherLessonPlanning';
 import { TeacherDiscoverHub } from './TeacherDiscoverHub';
-import { TeacherCalendarHub } from './TeacherCalendarHub';
+import { ParentChildren } from '../parent/ParentChildren';
 import { useSchool } from '../../context/SchoolContext';
 import { moduleAllowed } from '../../utils/schoolModules';
 
@@ -37,6 +37,7 @@ export const TeacherDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>(() =>
     moduleAllowed('teacher', initialTab, currentSchool.teacher_modules) ? initialTab : 'overview'
   );
+  const [tabHistory, setTabHistory] = useState<string[]>([]);
 
   useEffect(() => {
     refreshSchools();
@@ -59,6 +60,9 @@ export const TeacherDashboard: React.FC = () => {
       setActiveTab('overview');
       setSearchParams({ tab: 'overview' });
       return;
+    }
+    if (tabId !== activeTab) {
+      setTabHistory((prev) => [...prev, activeTab].slice(-24));
     }
     setActiveTab(tabId);
     const newParams: any = { tab: tabId };
@@ -87,8 +91,9 @@ export const TeacherDashboard: React.FC = () => {
       case 'ai-tools':
         return 'AI Lesson & Test Builder';
       case 'calendar':
+        return 'Academic Calendar';
       case 'timetable':
-        return 'Educator Timetable & Academic Calendar';
+        return 'Educator Timetable';
       case 'more':
         return 'More Modules & Educator Functions';
       case 'ptc':
@@ -114,6 +119,8 @@ export const TeacherDashboard: React.FC = () => {
         return 'Geleza AI Early-Warning Academic Radar';
       case 'assignments':
         return 'Homework & Digital Assignment Submission Hub';
+      case 'lesson-planning':
+        return 'Lesson Planning & Lesson Notes';
       case 'announcements':
         return 'School Notices & Broadcasts';
       case 'messages':
@@ -122,51 +129,98 @@ export const TeacherDashboard: React.FC = () => {
         return 'App & Technical Settings';
       case 'profile':
         return 'Educator Profile';
+      case 'parent':
+      case 'my-children':
+        return 'My Children & Academic Performance';
       default:
         return 'Educator Workspace';
     }
   };
 
-  const isSubModule = activeTab !== 'overview' && activeTab !== 'home' && activeTab !== 'calendar' && activeTab !== 'profile' && activeTab !== 'discover' && activeTab !== 'messages' && activeTab !== 'more';
-
-  // Determine intelligent backtrack target
-  const getBacktrackConfig = () => {
-    if (activeTab === 'subjects' || activeTab === 'classes' || activeTab === 'workload') {
-      return { target: 'overview', label: 'Back to Subjects', parentLabel: 'Home' };
-    }
-    if (activeTab === 'resources' || activeTab === 'ai-tools' || activeTab === 'inter-school') {
-      return { target: 'discover', label: 'Back to Discover', parentLabel: 'Discover' };
-    }
-    if (activeTab === 'announcements' || activeTab === 'ptc') {
-      return { target: 'messages', label: 'Back to Messages', parentLabel: 'Messages' };
-    }
-    return { target: 'more', label: 'Back to More Modules', parentLabel: 'More Modules' };
+  const placeName = (tabId: string) => {
+    const names: Record<string, string> = {
+      overview: 'Home',
+      home: 'Home',
+      more: 'Menu',
+      parent: 'My Children',
+      'my-children': 'My Children',
+      discover: 'Discover',
+      subjects: 'Subjects',
+      classes: 'Subjects',
+      workload: 'Subjects',
+      resources: 'Past Papers',
+      'ai-tools': 'AI Studio',
+      calendar: 'Calendar',
+      timetable: 'Timetable',
+      messages: 'Messages',
+      announcements: 'Notices',
+      ptc: 'Consultations',
+      consultations: 'Consultations',
+      'inter-school': 'Olympiads',
+      conduct: 'Conduct',
+      'my-leave': 'Leave',
+      'exam-seating': 'Exam Seating',
+      sports: 'Sports',
+      textbooks: 'Textbooks',
+      attendance: 'Attendance',
+      assessments: 'Marksheets',
+      'early-warning': 'Early Warning',
+      assignments: 'Homework',
+      'lesson-planning': 'Lesson planning',
+      settings: 'Settings',
+      profile: 'Profile',
+    };
+    return names[tabId] || 'Menu';
   };
 
-  const backtrack = getBacktrackConfig();
+  const fallbackTarget = () => {
+    if (
+      activeTab === 'subjects' ||
+      activeTab === 'classes' ||
+      activeTab === 'workload' ||
+      activeTab === 'more' ||
+      activeTab === 'discover'
+    ) {
+      return 'overview';
+    }
+    return 'more';
+  };
+
+  const previousTab = tabHistory[tabHistory.length - 1];
+  const resolvedBack = previousTab && previousTab !== activeTab ? previousTab : fallbackTarget();
+  const backTarget = resolvedBack === activeTab ? 'overview' : resolvedBack;
+
+  const openTab = (tabId: string) => {
+    if (!moduleAllowed('teacher', tabId, currentSchool.teacher_modules)) {
+      setActiveTab('overview');
+      setSearchParams({ tab: 'overview' });
+      return;
+    }
+    setActiveTab(tabId);
+    setSearchParams({ tab: tabId });
+  };
+
+  const handleBack = () => {
+    setTabHistory((prev) => (prev.length ? prev.slice(0, -1) : prev));
+    openTab(backTarget);
+  };
+
+  // Back button on every module (including Messages / Menu); Home has no back
+  const showBack = activeTab !== 'overview' && activeTab !== 'home';
 
   return (
     <DashboardLayout
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
-      customBottomDock={
-        <div className="fixed bottom-4 inset-x-0 z-[60] flex justify-center px-2 sm:px-4 pointer-events-none">
-          <TeacherNavigationBar
-            activeTab={activeTab}
-            onSelectTab={handleSelectTab}
-            className="pointer-events-auto w-full max-w-xl xl:max-w-4xl 2xl:max-w-5xl"
-          />
-        </div>
-      }
     >
 
-      {isSubModule && (
+      {showBack && (
         <ModulePageHeader
           title={getTabTitle()}
-          parentLabel={backtrack.parentLabel}
-          backLabel={backtrack.label}
-          onBack={() => handleSelectTab(backtrack.target)}
+          parentLabel={placeName(backTarget)}
+          backLabel={`Back to ${placeName(backTarget)}`}
+          onBack={handleBack}
         />
       )}
 
@@ -177,9 +231,7 @@ export const TeacherDashboard: React.FC = () => {
         <TeacherOverview onNavigateTab={handleSelectTab} />
       )}
 
-      {activeTab === 'calendar' && (
-        <TeacherCalendarHub initialSubTab="timetable" />
-      )}
+      {activeTab === 'calendar' && <SchoolCalendar />}
 
       {activeTab === 'profile' && (
         <LearnerProfile />
@@ -190,7 +242,7 @@ export const TeacherDashboard: React.FC = () => {
       )}
 
       {activeTab === 'messages' && (
-        <LearnerMessages onBack={() => handleSelectTab('overview')} />
+        <LearnerMessages onBack={handleBack} />
       )}
 
       {activeTab === 'more' && (
@@ -210,6 +262,7 @@ export const TeacherDashboard: React.FC = () => {
           autoOpenCreate={searchParams.get('create') === 'true'}
         />
       )}
+      {activeTab === 'lesson-planning' && <TeacherLessonPlanning />}
       {activeTab === 'resources' && (
         <TeacherResources onNavigateTab={handleSelectTab} />
       )}
@@ -235,6 +288,9 @@ export const TeacherDashboard: React.FC = () => {
       {activeTab === 'early-warning' && <GelezaEarlyWarningRadar onNavigateTab={handleSelectTab} />}
       {activeTab === 'announcements' && <AnnouncementsFeed />}
       {activeTab === 'settings' && <LearnerSettings />}
+      {(activeTab === 'parent' || activeTab === 'my-children') && (
+        <ParentChildren onNavigateTab={handleSelectTab} />
+      )}
     </DashboardLayout>
   );
 };

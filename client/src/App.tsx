@@ -6,6 +6,7 @@ import { SchoolProvider } from './context/SchoolContext';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { PwaInstallPrompt } from './components/common/PwaInstallPrompt';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { PortalFormScene } from './components/auth/PortalFormScene';
 
 // Robust dynamic import wrapper with automatic cache-purge & page reload on chunk load failure.
 function lazyWithRetry<T extends React.ComponentType<any>>(
@@ -44,6 +45,7 @@ const TermsPage = lazyWithRetry(() => import('./pages/landing/TermsPage'), 'Term
 const LoginPage = lazyWithRetry(() => import('./pages/auth/LoginPage'), 'LoginPage');
 const RegisterPage = lazyWithRetry(() => import('./pages/auth/RegisterPage'), 'RegisterPage');
 const ForgotPasswordPage = lazyWithRetry(() => import('./pages/auth/ForgotPasswordPage'), 'ForgotPasswordPage');
+const ActivateAccountPage = lazyWithRetry(() => import('./pages/auth/ActivateAccountPage'), 'ActivateAccountPage');
 const LearnerDashboard = lazyWithRetry(() => import('./pages/learner/LearnerDashboard'), 'LearnerDashboard');
 const TeacherDashboard = lazyWithRetry(() => import('./pages/teacher/TeacherDashboard'), 'TeacherDashboard');
 const AdminDashboard = lazyWithRetry(() => import('./pages/admin/AdminDashboard'), 'AdminDashboard');
@@ -123,8 +125,9 @@ export const App: React.FC = () => {
 
                 {/* Auth Routes */}
                 <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/register" element={<PortalFormScene><RegisterPage /></PortalFormScene>} />
+                <Route path="/forgot-password" element={<PortalFormScene><ForgotPasswordPage /></PortalFormScene>} />
+                <Route path="/activate" element={<ActivateAccountPage />} />
 
                 {/* Dashboard Routes */}
                 <Route

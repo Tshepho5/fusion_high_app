@@ -12,6 +12,16 @@ router.get('/learner', reportCardController.getLearnerReportCards);
 router.get('/view-card', reportCardController.getOfficialReportCardView);
 router.get('/view/:childId', reportCardController.getOfficialReportCardView);
 
+// Download genuine printable A4 PDF for a single learner
+router.get('/download-pdf', reportCardController.downloadLearnerReportPdf);
+router.get('/download-pdf/:childId', reportCardController.downloadLearnerReportPdf);
+
+// Download batch ZIP archive of all report cards in a grade/class (Admin only)
+router.get('/batch-pdf', requireRole(['admin']), reportCardController.downloadBatchReportCardsZip);
+
+// Approve Grade Report Cards (Admin only)
+router.post('/approve', requireRole(['admin']), reportCardController.approveGradeReportCards);
+
 // Fetch Report Card Template Data populated with calculated teacher marks and assessment percentages (Admin)
 router.get('/grade-template', requireRole(['admin']), reportCardController.getGradeTemplateMarks);
 

@@ -132,57 +132,8 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
         }
       });
 
-      // Fetch any locally published AI assessments or defaults
-      let localAiList: any[] = [];
-      try {
-        const stored = localStorage.getItem('fusion_teacher_ai_assessments');
-        if (stored) localAiList = JSON.parse(stored);
-      } catch (_) {}
-
-      if (dbAiList.length === 0 && localAiList.length === 0) {
-        localAiList = [
-          {
-            id: 'ai-1',
-            title: 'Algebraic Expressions & Factorization Diagnostic Quiz',
-            subject: 'Mathematics',
-            grade: 10,
-            due_date: new Date().toISOString(),
-            total_marks: 20,
-            description: 'AI Generated non-repeating practice quiz on trinomial factorization and quadratic roots.',
-            item_type: 'ai_assessment',
-            assignment_type: 'quiz',
-            total_submissions: 28,
-            pending_marking: 0,
-            signed_submissions: 28,
-            status: 'graded'
-          },
-          {
-            id: 'ai-2',
-            title: 'Electric Circuits & Ohm\'s Law Interactive Evaluation',
-            subject: 'Physical Sciences',
-            grade: 10,
-            due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-            total_marks: 30,
-            description: 'AI Lesson Builder practice paper testing current, potential difference, and internal resistance.',
-            item_type: 'ai_assessment',
-            assignment_type: 'test',
-            total_submissions: 19,
-            pending_marking: 5,
-            signed_submissions: 14,
-            status: 'ungraded'
-          }
-        ];
-      }
-
-      // Combine dbAiList and localAiList without duplicate IDs
-      const seenIds = new Set(dbAiList.map((x: any) => String(x.id)));
-      const combinedAi = [
-        ...dbAiList,
-        ...localAiList.filter((x: any) => !seenIds.has(String(x.id)))
-      ];
-
       setAssignments(hwList);
-      setAiAssessments(combinedAi);
+      setAiAssessments(dbAiList);
     } catch (err: any) {
       console.error('Error loading teacher assignments:', err);
       setError(err.response?.data?.error || 'Failed to load homework assignments.');
@@ -195,26 +146,26 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
     fetchAssignments();
   }, []);
 
-  // Manual Status Change Handler (Graded vs Ungraded)
-  const handleToggleStatus = (itemId: string | number, itemType: string, currentStatus: string) => {
+  // Manual Status Change Handler (Graded vs Ungraded) - Persisted to PostgreSQL
+  const handleToggleStatus = async (itemId: string | number, itemType: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'graded' ? 'ungraded' : 'graded';
 
-    if (itemType === 'ai_assessment') {
-      const updated = aiAssessments.map(a => a.id === itemId ? { ...a, status: nextStatus } : a);
-      setAiAssessments(updated);
-      try {
-        localStorage.setItem('fusion_teacher_ai_assessments', JSON.stringify(updated));
-      } catch (_) {}
-      setSuccessMessage(`Assessment status updated to "${nextStatus.toUpperCase()}".`);
-      setTimeout(() => setSuccessMessage(null), 3000);
-      return;
-    }
+    try {
+      await assignmentService.updateAssignmentStatus(itemId, nextStatus);
 
-    // Homework item
-    const updated = assignments.map(a => a.id === itemId ? { ...a, status: nextStatus } : a);
-    setAssignments(updated);
-    setSuccessMessage(`Homework status updated to "${nextStatus.toUpperCase()}".`);
-    setTimeout(() => setSuccessMessage(null), 3000);
+      if (itemType === 'ai_assessment') {
+        setAiAssessments(prev => prev.map(a => a.id === itemId ? { ...a, status: nextStatus } : a));
+        setSuccessMessage(`Assessment status updated to "${nextStatus.toUpperCase()}".`);
+      } else {
+        setAssignments(prev => prev.map(a => a.id === itemId ? { ...a, status: nextStatus } : a));
+        setSuccessMessage(`Homework status updated to "${nextStatus.toUpperCase()}".`);
+      }
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to update status:', err);
+      setError(err.response?.data?.error || 'Failed to update assignment status in database.');
+      setTimeout(() => setError(null), 4000);
+    }
   };
 
   const handleOpenSubmissions = async (assignment: any) => {
@@ -315,42 +266,18 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
       body.append('questions', JSON.stringify(generatedQuestions));
 
       await assignmentService.createAssignment(body);
+      setSuccessMessage(`Published "${quizTitle}" (${generatedQuestions.length} Questions, ${calculatedTotal} Marks) to learner AI assessments!`);
+      setIsAiQuizModalOpen(false);
+      setGeneratedQuestions([]);
+      setQuizTopic('');
+      setActiveFilter('ai');
+      await fetchAssignments();
     } catch (e: any) {
-      console.warn('Backend assignment creation fallback to localStorage:', e);
+      console.error('Backend assignment creation error:', e);
+      setError(e.response?.data?.error || 'Failed to publish AI assessment.');
+    } finally {
+      setPublishingQuiz(false);
     }
-
-    const newAiItem = {
-      id: `ai-${Date.now()}`,
-      title: quizTitle,
-      subject: quizSubject,
-      grade: parseInt(quizGrade, 10),
-      due_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-      total_marks: calculatedTotal,
-      description: `AI Generated ${generatedQuestions.length}-question interactive practice quiz on ${quizTopic || quizSubject}.`,
-      item_type: 'ai_assessment',
-      assignment_type: 'quiz',
-      total_submissions: 0,
-      pending_marking: 0,
-      signed_submissions: 0,
-      status: 'ungraded',
-      questions: generatedQuestions
-    };
-
-    try {
-      let storedList = [];
-      const stored = localStorage.getItem('fusion_teacher_ai_assessments');
-      if (stored) storedList = JSON.parse(stored);
-      storedList.unshift(newAiItem);
-      localStorage.setItem('fusion_teacher_ai_assessments', JSON.stringify(storedList));
-    } catch (_) {}
-
-    setSuccessMessage(`Published "${quizTitle}" (${generatedQuestions.length} Questions, ${calculatedTotal} Marks) to learner AI assessments!`);
-    setIsAiQuizModalOpen(false);
-    setGeneratedQuestions([]);
-    setQuizTopic('');
-    setActiveFilter('ai');
-    fetchAssignments();
-    setPublishingQuiz(false);
   };
 
   const handleCreateAssignment = async (e: React.FormEvent) => {
@@ -381,32 +308,6 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
     try {
       await assignmentService.createAssignment(body);
 
-      // If published as a quiz or test, also store in local AI assessments cache
-      if (formData.assignment_type !== 'homework') {
-        const localItem = {
-          id: `ai-${Date.now()}`,
-          title: formData.title,
-          subject: formData.subject,
-          grade: parseInt(formData.grade, 10),
-          due_date: new Date(`${formData.due_date}T${formData.due_time || '23:59'}`).toISOString(),
-          total_marks: parseFloat(formData.total_marks) || 50,
-          description: formData.description || `${formData.subject} assessment task.`,
-          item_type: 'ai_assessment',
-          assignment_type: formData.assignment_type,
-          total_submissions: 0,
-          pending_marking: 0,
-          signed_submissions: 0,
-          status: 'ungraded'
-        };
-        try {
-          let storedList = [];
-          const stored = localStorage.getItem('fusion_teacher_ai_assessments');
-          if (stored) storedList = JSON.parse(stored);
-          storedList.unshift(localItem);
-          localStorage.setItem('fusion_teacher_ai_assessments', JSON.stringify(storedList));
-        } catch (_) {}
-      }
-
       const typeLabel = formData.assignment_type === 'quiz' ? 'Quiz' : (formData.assignment_type === 'test' ? 'Test' : (formData.assignment_type === 'ai_assessment' ? 'AI Assessment' : 'Homework'));
       setSuccessMessage(`${typeLabel} published successfully! Enrolled learners and parents notified.`);
       setIsCreateModalOpen(false);
@@ -414,6 +315,7 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
       if (formData.assignment_type !== 'homework') {
         setActiveFilter('ai');
       }
+      await fetchAssignments();
       setFormData({
         title: '',
         subject: 'Mathematics',
@@ -495,9 +397,6 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
             <BookOpen className="w-6 h-6 text-brand-400" />
             <span>Assignments & AI Assessments Portal</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Track published homework tasks, inspect AI assessments sent to learners, review grading status, and adjust marks.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
@@ -509,8 +408,8 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
             }}
             className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
-            <FusionAIIcon className="w-4 h-4 text-cyan-200" />
-            <span>Generate Quiz / Publish AI Assignment</span>
+            <BookOpen className="w-4 h-4 text-cyan-200" />
+            <span>Generate Quiz / Publish Assignment</span>
           </button>
 
           <button
@@ -624,11 +523,10 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-3xl bg-gradient-to-r from-purple-950/40 via-surface-dark to-cyan-950/30 border border-purple-500/30 shadow-lg animate-fade-in">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300 shrink-0">
-              <FusionAIIcon className="w-6 h-6 text-cyan-300" />
+              <BookOpen className="w-5 h-5 text-cyan-300" />
             </div>
             <div>
-              <h4 className="text-sm font-extrabold text-white">AI Assessments & Quizzes Given to Learners</h4>
-              <p className="text-xs text-slate-400">All tests, practice quizzes, and AI syllabus assessments distributed to learners.</p>
+              <h4 className="text-sm font-extrabold text-white">Assessments & Quizzes Given to Learners</h4>
             </div>
           </div>
           <button
@@ -638,38 +536,31 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
             }}
             className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
           >
-            <FusionAIIcon className="w-4 h-4 text-cyan-200" />
+            <BookOpen className="w-4 h-4 text-cyan-200" />
             <span>Generate Quiz</span>
           </button>
         </div>
       )}
 
-      {/* Assignments & AI Assessments Grid */}
+      {/* Assignments & Assessments Grid */}
       {filteredItems.length === 0 ? (
         <div className="p-12 text-center rounded-3xl bg-surface-dark border border-white/10 space-y-4">
           <div className="w-16 h-16 rounded-2xl bg-brand-500/10 text-brand-400 flex items-center justify-center mx-auto">
-            {activeFilter === 'ai' ? <FusionAIIcon className="w-8 h-8 text-cyan-300" /> : <FileText className="w-8 h-8" />}
+            <FileText className="w-8 h-8" />
           </div>
           <div className="space-y-1">
             <h3 className="text-base font-bold text-white">
               {activeFilter === 'ai'
-                ? 'No AI Assessments Published Yet'
+                ? 'No Assessments Published Yet'
                 : (subjectFilter !== 'all' ? `No Assignments Found for ${subjectFilter}` : 'No Matching Assignments')}
             </h3>
-            <p className="text-xs text-slate-400 max-w-md mx-auto">
-              {activeFilter === 'ai'
-                ? 'Generate a syllabus-tailored diagnostic practice quiz or publish a test directly to your learners.'
-                : (subjectFilter !== 'all'
-                  ? `Publish homework for ${subjectFilter} to start collecting learner submissions and continuous assessment marks.`
-                  : 'Create homework or generate content using the AI Lesson & Builder to publish interactive assessments.')}
-            </p>
           </div>
           {activeFilter === 'ai' ? (
             <button
               onClick={() => setIsAiQuizModalOpen(true)}
               className="py-3 px-5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 text-white font-bold text-xs shadow-glow-indigo transition-all inline-flex items-center gap-2 cursor-pointer"
             >
-              <FusionAIIcon className="w-4 h-4 text-cyan-200" />
+              <BookOpen className="w-4 h-4 text-cyan-200" />
               <span>Generate Quiz</span>
             </button>
           ) : (
@@ -1126,12 +1017,11 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-500 p-0.5 shadow-glow-indigo flex items-center justify-center">
                   <div className="w-full h-full bg-[#080D1A] rounded-[14px] flex items-center justify-center">
-                    <FusionAIIcon className="w-6 h-6 text-cyan-300" />
+                    <BookOpen className="w-5 h-5 text-cyan-300" />
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-white">AI Practice Quiz & Assessment Generator</h3>
-                  <p className="text-[11px] text-slate-400">Generate syllabus-pure diagnostic quizzes and publish directly to learners.</p>
+                  <h3 className="text-base font-extrabold text-white">Practice Quiz & Assessment Generator</h3>
                 </div>
               </div>
               <button
@@ -1231,7 +1121,7 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <FusionAIIcon className="w-4 h-4 text-cyan-200" />
+                    <BookOpen className="w-4 h-4 text-cyan-200" />
                     <span>Generate Quiz</span>
                   </>
                 )}
@@ -1308,7 +1198,7 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
                     ) : (
                       <>
                         <Send className="w-4 h-4" />
-                        <span>Publish AI Assignment to Learners</span>
+                        <span>Publish Assignment to Learners</span>
                       </>
                     )}
                   </button>
@@ -1326,7 +1216,7 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300">
-                  <FusionAIIcon className="w-6 h-6 text-cyan-300" />
+                  <BookOpen className="w-5 h-5 text-cyan-300" />
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-white">{inspectingQuizQuestions.title}</h3>

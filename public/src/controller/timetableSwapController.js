@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const NotificationService = require('../services/notificationService');
 
 /**
  * Creates a timetable slot swap request between two teachers.
@@ -64,21 +65,18 @@ exports.createSwapRequest = async (req, res) => {
             ]
         );
 
-        // Notify target teacher in messages if resolved
+        // Notify target teacher via Notification Icon
         if (finalTargetTeacherId) {
             const notifySubject = `Timetable Slot Swap Request for ${class_name}`;
-            const notifyBody = `${requesterName} has requested to exchange periods with you for ${class_name}.\n\n` +
-                               `Proposed Swap:\n` +
-                               `• Their Slot: ${requester_day} (${requester_period}) - ${requester_subject || 'Period'}\n` +
-                               `• Your Slot: ${target_day} (${target_period}) - ${target_subject || 'Period'}\n` +
-                               (reason ? `• Reason: ${reason}\n\n` : '\n') +
-                               `Please visit your Class Timetable workspace to Accept or Decline this request.`;
+            const notifyBody = `${requesterName} requested to swap: ${requester_day} (${requester_period}) for ${target_day} (${target_period}).`;
 
-            await db.query(
-                `INSERT INTO messages (sender_id, recipient_id, subject, body, created_at)
-                 VALUES ($1, $2, $3, $4, NOW())`,
-                [requesterId, finalTargetTeacherId, notifySubject, notifyBody]
-            );
+            await NotificationService.sendToUsers([finalTargetTeacherId], {
+                title: notifySubject,
+                message: notifyBody,
+                type: 'timetable',
+                category: 'timetable',
+                actionUrl: '/dashboard/teacher?tab=timetable'
+            }).catch(e => console.warn('Swap request notification error:', e.message));
         }
 
         res.json({
@@ -148,14 +146,16 @@ exports.respondToSwapRequest = async (req, res) => {
         if (action === 'declined') {
             await db.query('UPDATE timetable_swap_requests SET status = $1, updated_at = NOW() WHERE id = $2', ['declined', id]);
 
-            // Notify requester of decline
+            // Notify requester of decline via Notification Icon
             const notifySubject = `Slot Swap Request Declined (${swap.class_name})`;
             const notifyBody = `Your timetable slot swap request for ${swap.class_name} (${swap.requester_day} ${swap.requester_period}) was declined by your colleague.`;
-            await db.query(
-                `INSERT INTO messages (sender_id, recipient_id, subject, body, created_at)
-                 VALUES ($1, $2, $3, $4, NOW())`,
-                [teacherId, swap.requester_teacher_id, notifySubject, notifyBody]
-            );
+            await NotificationService.sendToUsers([swap.requester_teacher_id], {
+                title: notifySubject,
+                message: notifyBody,
+                type: 'timetable',
+                category: 'timetable',
+                actionUrl: '/dashboard/teacher?tab=timetable'
+            }).catch(e => console.warn('Swap decline notification error:', e.message));
 
             return res.json({ message: 'Swap request declined.' });
         }
@@ -195,18 +195,17 @@ exports.respondToSwapRequest = async (req, res) => {
 
         await db.query('UPDATE timetable_swap_requests SET status = $1, updated_at = NOW() WHERE id = $2', ['accepted', id]);
 
-        // Notify requester of acceptance
+        // Notify requester of acceptance via Notification Icon
         const notifySubject = `Slot Swap Accepted & Applied (${swap.class_name})`;
-        const notifyBody = `Great news! Your timetable slot swap request for ${swap.class_name} has been accepted.\n\n` +
-                           `Your schedule has been updated:\n` +
-                           `• You are now teaching on ${tDay} (${tPeriod}) - ${swap.requester_subject}.\n` +
-                           `The active timetable data has been automatically updated in the database.`;
+        const notifyBody = `Your timetable slot swap request for ${swap.class_name} has been accepted and updated in the active schedule.`;
 
-        await db.query(
-            `INSERT INTO messages (sender_id, recipient_id, subject, body, created_at)
-             VALUES ($1, $2, $3, $4, NOW())`,
-            [teacherId, swap.requester_teacher_id, notifySubject, notifyBody]
-        );
+        await NotificationService.sendToUsers([swap.requester_teacher_id], {
+            title: notifySubject,
+            message: notifyBody,
+            type: 'timetable',
+            category: 'timetable',
+            actionUrl: '/dashboard/teacher?tab=timetable'
+        }).catch(e => console.warn('Swap accept notification error:', e.message));
 
         res.json({
             message: 'Swap request accepted! Timetable slots have been successfully exchanged and saved.',

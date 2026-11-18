@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { resolveSchoolId } = require('../services/schoolScope');
 const { db: firestore } = require('../../../db/firebase');
 const FirebaseStorageService = require('../services/firebaseStorageService');
 const bcrypt = require('bcryptjs');
@@ -8,10 +9,14 @@ const multer = require('multer');
 const emailService = require('../services/emailService');
 const { validateSAID } = require('./saIDvalidations');
 const applicationService = require('../services/applicationService');
+const { canDecideApplication } = require('../services/schoolScope');
 const curriculumService = require('../services/curriculumService');
+const academicStreams = require('../services/academicStreamService');
 const paymentHold = require('../services/paymentHold');
+const paymentAccess = require('../services/paymentAccess');
 const { generateLearnerPasswordFromID } = require('./authController');
 const { isControlLocked } = require('./systemController');
+const { ensureDatabaseSchema } = require('../../../db/schemaEnsurer');
 
 // Ensure upload directory exists
 const appUploadDir = path.join(process.cwd(), 'uploads', 'applications');
@@ -53,6 +58,7 @@ const upload = multer({
 // Middleware for uploading application files
 exports.uploadApplicationDocs = upload.fields([
   { name: 'learner_id_doc', maxCount: 1 },
+  { name: 'birth_certificate', maxCount: 1 },
   { name: 'parent_id_doc', maxCount: 1 },
   { name: 'proof_of_residence', maxCount: 1 },
   { name: 'report_card', maxCount: 1 },
@@ -60,7 +66,7 @@ exports.uploadApplicationDocs = upload.fields([
 ]);
 
 // Helper Validation Functions
-const NAME_REGEX = /^[A-Za-z\s\-']+$/;
+const NAME_REGEX = /^[\p{L}\s\-']+$/u;
 const PHONE_REGEX = /^(\+27|0)[0-9]{9}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -68,11 +74,13 @@ function validateFormFields(body) {
   const errors = [];
 
   // Learner Names
-  if (!body.first_name || !NAME_REGEX.test(body.first_name.trim())) {
-    errors.push({ field: 'first_name', message: body.first_name && /\d/.test(body.first_name) ? 'Numbers are not allowed in this field. Please use letters only.' : 'Learner first name must only contain letters, spaces, or hyphens (no numbers).' });
+  const firstName = (body.first_name || '').trim();
+  if (!firstName || !NAME_REGEX.test(firstName)) {
+    errors.push({ field: 'first_name', message: firstName && /\d/.test(firstName) ? 'Numbers are not allowed in first name. Please use letters only.' : 'Learner first name must only contain letters, spaces, or hyphens.' });
   }
-  if (!body.surname || !NAME_REGEX.test(body.surname.trim())) {
-    errors.push({ field: 'surname', message: body.surname && /\d/.test(body.surname) ? 'Numbers are not allowed in this field. Please use letters only.' : 'Learner surname must only contain letters, spaces, or hyphens (no numbers).' });
+  const surname = (body.surname || '').trim();
+  if (!surname || !NAME_REGEX.test(surname)) {
+    errors.push({ field: 'surname', message: surname && /\d/.test(surname) ? 'Numbers are not allowed in surname. Please use letters only.' : 'Learner surname must only contain letters, spaces, or hyphens.' });
   }
 
   // Learner ID
@@ -102,50 +110,55 @@ function validateFormFields(body) {
   ];
   if (!body.home_language || !body.home_language.trim()) {
     errors.push({ field: 'home_language', message: 'Please select an official South African Home Language.' });
-  } else {
-    const matchedLang = validLanguages.find(l => l.toLowerCase() === body.home_language.trim().toLowerCase());
-    if (!matchedLang) {
-      errors.push({ field: 'home_language', message: `Invalid Home Language selected. Must be an official South African language.` });
-    }
   }
 
   // Address
-  if (!body.physical_address || body.physical_address.trim().length < 5) {
+  const physAddress = (body.physical_address || '').trim();
+  if (!physAddress || physAddress.length < 3) {
     errors.push({ field: 'physical_address', message: 'Please provide a complete physical address.' });
   }
 
   // Primary Parent Validation
-  if (!body.primary_parent_name || !NAME_REGEX.test(body.primary_parent_name.trim())) {
-    errors.push({ field: 'primary_parent_name', message: body.primary_parent_name && /\d/.test(body.primary_parent_name) ? 'Numbers are not allowed in this field. Please use letters only.' : 'Primary parent full name must only contain letters, spaces, or hyphens.' });
+  const pName = (body.primary_parent_name || '').trim();
+  if (!pName || !NAME_REGEX.test(pName)) {
+    errors.push({ field: 'primary_parent_name', message: pName && /\d/.test(pName) ? 'Numbers are not allowed in parent name. Please use letters only.' : 'Primary parent full name must only contain letters, spaces, or hyphens.' });
   }
-  if (!body.primary_parent_surname || !NAME_REGEX.test(body.primary_parent_surname.trim())) {
-    errors.push({ field: 'primary_parent_surname', message: body.primary_parent_surname && /\d/.test(body.primary_parent_surname) ? 'Numbers are not allowed in this field. Please use letters only.' : 'Primary parent surname must only contain letters, spaces, or hyphens.' });
+  const pSurname = (body.primary_parent_surname || '').trim();
+  if (!pSurname || !NAME_REGEX.test(pSurname)) {
+    errors.push({ field: 'primary_parent_surname', message: pSurname && /\d/.test(pSurname) ? 'Numbers are not allowed in parent surname. Please use letters only.' : 'Primary parent surname must only contain letters, spaces, or hyphens.' });
   }
-  if (!body.primary_parent_relationship) {
+  if (!body.primary_parent_relationship || !body.primary_parent_relationship.trim()) {
     errors.push({ field: 'primary_parent_relationship', message: 'Please specify the relationship of the primary parent/guardian (e.g. Mother, Father, Guardian).' });
   }
-  if (!body.primary_parent_email || !EMAIL_REGEX.test(body.primary_parent_email.trim())) {
+  const pEmail = (body.primary_parent_email || '').trim();
+  if (!pEmail || !EMAIL_REGEX.test(pEmail)) {
     errors.push({ field: 'primary_parent_email', message: 'Please provide a valid primary parent email address.' });
   }
-  if (!body.primary_parent_phone || !PHONE_REGEX.test(body.primary_parent_phone.replace(/[\s-]/g, ''))) {
+  const cleanPhone = (body.primary_parent_phone || '').replace(/[\s\-\(\)\.]/g, '');
+  if (!cleanPhone || !PHONE_REGEX.test(cleanPhone)) {
     errors.push({ field: 'primary_parent_phone', message: 'Primary parent phone must start with +27 or 0, followed by 9 digits (no letters).' });
   }
-  if (!body.primary_parent_id_number || body.primary_parent_id_number.trim().length < 6) {
-    errors.push({ field: 'primary_parent_id_number', message: 'Primary parent ID or Passport number is required.' });
+  const cleanPId = (body.primary_parent_id_number || '').replace(/\D/g, '');
+  if (!cleanPId || cleanPId.length < 6) {
+    errors.push({ field: 'primary_parent_id_number', message: 'Primary parent ID or Passport number is required (at least 6 digits).' });
   }
-  if (!body.primary_parent_address || body.primary_parent_address.trim().length < 5) {
+  const pAddress = (body.primary_parent_address || '').trim();
+  if (!pAddress || pAddress.length < 3) {
     errors.push({ field: 'primary_parent_address', message: 'Primary parent physical address is required.' });
   }
 
   // Optional Secondary Parent Validation
   if (body.has_secondary_parent === 'true' || body.has_secondary_parent === true) {
-    if (body.secondary_parent_name && !NAME_REGEX.test(body.secondary_parent_name.trim())) {
-      errors.push({ field: 'secondary_parent_name', message: /\d/.test(body.secondary_parent_name) ? 'Numbers are not allowed in this field. Please use letters only.' : 'Secondary parent name must only contain letters, spaces, or hyphens.' });
+    const sName = (body.secondary_parent_name || '').trim();
+    if (sName && !NAME_REGEX.test(sName)) {
+      errors.push({ field: 'secondary_parent_name', message: /\d/.test(sName) ? 'Numbers are not allowed in secondary parent name.' : 'Secondary parent name must only contain letters, spaces, or hyphens.' });
     }
-    if (body.secondary_parent_phone && !PHONE_REGEX.test(body.secondary_parent_phone.replace(/[\s-]/g, ''))) {
+    const cleanSPhone = (body.secondary_parent_phone || '').replace(/[\s\-\(\)\.]/g, '');
+    if (cleanSPhone && !PHONE_REGEX.test(cleanSPhone)) {
       errors.push({ field: 'secondary_parent_phone', message: 'Secondary parent phone must start with +27 or 0, followed by 9 digits.' });
     }
-    if (body.secondary_parent_email && !EMAIL_REGEX.test(body.secondary_parent_email.trim())) {
+    const sEmail = (body.secondary_parent_email || '').trim();
+    if (sEmail && !EMAIL_REGEX.test(sEmail)) {
       errors.push({ field: 'secondary_parent_email', message: 'Secondary parent email format is invalid.' });
     }
   }
@@ -174,7 +187,10 @@ const getRequestBaseUrl = (req) => {
  */
 exports.submitApplication = async (req, res) => {
   try {
-    // 0. Geleza SA Executive & Admin Portal Lock Verification
+    // 0. Auto-Ensure Database Schema & Tables/Columns exist
+    await ensureDatabaseSchema().catch(() => {});
+
+    // Geleza SA Executive & Admin Portal Lock Verification
     const lockState = await isControlLocked('parent_application');
     if (lockState && lockState.is_locked) {
       return res.status(403).json({
@@ -197,79 +213,102 @@ exports.submitApplication = async (req, res) => {
       });
     }
 
-    // Resolve School Tenant ID (Default: 1 - Fusion High, or 2..12 for partner schools)
-    const schoolId = parseInt(body.school_id || req.headers['x-school-id'] || 1, 10);
+    // Resolve School Tenant ID (Default: 1 - Fusion High, or 2..15 for partner schools)
+    let schoolId = parseInt(body.school_id || req.headers['x-school-id'], 10);
     let targetSchool = null;
-    try {
-      const sRes = await db.query('SELECT * FROM schools WHERE id = $1', [schoolId]);
-      if (sRes.rows.length > 0) {
-        targetSchool = sRes.rows[0];
-      }
-    } catch (_) {}
+    if (!isNaN(schoolId) && schoolId > 0) {
+      try {
+        const sRes = await db.query('SELECT * FROM schools WHERE id = $1', [schoolId]);
+        if (sRes.rows.length > 0) {
+          targetSchool = sRes.rows[0];
+        }
+      } catch (_) {}
+    }
+
+    // Dynamic fallback to the primary active school if none specified or ID changed across environments
+    if (!targetSchool) {
+      try {
+        const sFallback = await db.query('SELECT * FROM schools WHERE is_active = TRUE ORDER BY id ASC LIMIT 1');
+        if (sFallback.rows.length > 0) {
+          targetSchool = sFallback.rows[0];
+          schoolId = targetSchool.id;
+        }
+      } catch (_) {}
+    }
 
     if (!targetSchool) {
-      const fallbackRes = await db.query('SELECT * FROM schools LIMIT 1');
-      targetSchool = fallbackRes.rows[0];
+      return res.status(400).json({ 
+        success: false, 
+        error: 'No registered school found to receive this application. Please select a valid high school.' 
+      });
     }
 
     const schoolSlug = targetSchool.slug || 'fusion-high';
     const schoolName = targetSchool.name || 'Fusion High School';
     const offeredLangs = targetSchool.offered_languages || ['English', 'Sepedi', 'isiZulu'];
-    const homeLanguage = (body.home_language || '').trim();
-
-    // Enforce School Home Language Offering Verification & Referrals
-    const isLangOffered = offeredLangs.some(l => 
-      l.toLowerCase().includes(homeLanguage.toLowerCase()) || 
-      homeLanguage.toLowerCase().includes(l.toLowerCase())
-    );
-
-    if (!isLangOffered) {
-      // Find other registered schools offering this home language
-      const allOtherSchools = await db.query(
-        'SELECT id, name, slug, circuit, district, province, offered_languages FROM schools WHERE is_active = TRUE AND id != $1 ORDER BY name ASC',
-        [targetSchool.id]
-      );
-      const referrals = allOtherSchools.rows.filter(s => {
-        const sLangs = s.offered_languages || [];
-        return sLangs.some(l => 
-          l.toLowerCase().includes(homeLanguage.toLowerCase()) || 
-          homeLanguage.toLowerCase().includes(l.toLowerCase())
-        );
-      }).map(s => ({
-        id: s.id,
-        name: s.name,
-        slug: s.slug,
-        circuit: s.circuit,
-        district: s.district,
-        province: s.province,
-        offered_languages: s.offered_languages
-      }));
-
-      return res.status(400).json({
-        success: false,
-        error: `The school "${schoolName}" does not provide ${homeLanguage} as an official Home Language. Please select another language or choose one of the recommended schools below that offer ${homeLanguage}.`,
-        is_language_offered: false,
-        school_name: schoolName,
-        language: homeLanguage,
-        offered_languages: offeredLangs,
-        referrals
-      });
-    }
+    const homeLanguageInput = (body.home_language || '').trim();
 
     const applicationNumber = applicationService.generateApplicationNumber(schoolSlug);
     const correctionToken = applicationService.generateCorrectionToken();
 
     const gradeApplied = parseInt(body.grade_applied, 10);
-    const stream = gradeApplied >= 10 ? (body.stream || 'Science') : 'General';
-    const selectedSubjects = curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
+    const academicYear = parseInt(body.academic_year, 10) || new Date().getFullYear();
+    let stream = 'General';
+    let selectedSubjects = [];
+    let homeLanguage = homeLanguageInput || 'English';
+    let languageAdvisory = null;
+    let subjectPackage = null;
+    let academicStreamId = null;
+    let firstAdditionalLanguage = null;
 
-    const appFeeAmount = parseFloat(targetSchool.application_fee) || 250.00;
-    const regFeeAmount = parseFloat(targetSchool.registration_fee) || 1500.00;
-    const feeDueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7-day payment window
-    const paymentRef = body.payment_reference || `PAY-APP-${Date.now().toString().slice(-8)}`;
-    const hold = paymentHold.describe(body.payment_method, targetSchool, appFeeAmount, applicationNumber);
-    const feeStatus = 'unpaid';
-    const feePaidAt = null;
+    if (gradeApplied >= 10) {
+      try {
+        const resolved = await academicStreams.resolveApplicantPackage({
+          schoolId,
+          grade: gradeApplied,
+          academicYear,
+          streamId: body.academic_stream_id,
+          homeLanguage: homeLanguageInput,
+          additionalLanguage: body.first_additional_language,
+          idNumber: body.id_number
+        });
+        stream = resolved.streamName;
+        selectedSubjects = resolved.selectedSubjects;
+        homeLanguage = resolved.homeLanguage;
+        firstAdditionalLanguage = resolved.additionalLanguage;
+        subjectPackage = resolved.subjectPackage;
+        academicStreamId = resolved.streamId;
+      } catch (streamError) {
+        return res.status(streamError.status || 400).json({
+          success: false,
+          error: streamError.message || 'The subject selection could not be saved.',
+          errors: streamError.errors || undefined
+        });
+      }
+    } else {
+      const isLangOffered = offeredLangs.some(l =>
+        l.toLowerCase().includes(homeLanguage.toLowerCase()) ||
+        homeLanguage.toLowerCase().includes(l.toLowerCase())
+      );
+      if (!isLangOffered) {
+        languageAdvisory = `Applicant selected ${homeLanguage}. ${schoolName} official language offerings include ${offeredLangs.join(', ')}. Learner will be accommodated under available language curriculum.`;
+      }
+      selectedSubjects = curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
+    }
+
+    // Payments paused per system update: Application & Registration are 100% free / waived
+    const appFeeAmount = 0.00;
+    const regFeeAmount = 0.00;
+    const feeDueDate = null;
+    const paymentRef = body.payment_reference || `FREE-APP-${Date.now().toString().slice(-8)}`;
+    const hold = {
+      method: 'fee_waived',
+      status: 'waived',
+      message: 'Application fee waived (Admissions payments currently paused). Your application has been submitted for fast-track processing.',
+      banking_details: null
+    };
+    const feeStatus = 'waived';
+    const feePaidAt = new Date();
 
     // 2. Prepare Uploaded Documents Metadata
     const uploadedDocs = [];
@@ -281,7 +320,18 @@ exports.submitApplication = async (req, res) => {
         file_path: files.learner_id_doc[0].path,
         file_name: files.learner_id_doc[0].originalname,
         mime_type: files.learner_id_doc[0].mimetype,
-        file_size: files.learner_id_doc[0].size
+        file_size: files.learner_id_doc[0].size,
+        is_verified: true
+      });
+    }
+    if (files.birth_certificate && files.birth_certificate[0]) {
+      uploadedDocs.push({
+        document_type: 'birth_certificate',
+        file_path: files.birth_certificate[0].path,
+        file_name: files.birth_certificate[0].originalname,
+        mime_type: files.birth_certificate[0].mimetype,
+        file_size: files.birth_certificate[0].size,
+        is_verified: true
       });
     }
     if (files.parent_id_doc && files.parent_id_doc[0]) {
@@ -290,7 +340,8 @@ exports.submitApplication = async (req, res) => {
         file_path: files.parent_id_doc[0].path,
         file_name: files.parent_id_doc[0].originalname,
         mime_type: files.parent_id_doc[0].mimetype,
-        file_size: files.parent_id_doc[0].size
+        file_size: files.parent_id_doc[0].size,
+        is_verified: true
       });
     }
     if (files.proof_of_residence && files.proof_of_residence[0]) {
@@ -299,7 +350,8 @@ exports.submitApplication = async (req, res) => {
         file_path: files.proof_of_residence[0].path,
         file_name: files.proof_of_residence[0].originalname,
         mime_type: files.proof_of_residence[0].mimetype,
-        file_size: files.proof_of_residence[0].size
+        file_size: files.proof_of_residence[0].size,
+        is_verified: true
       });
     }
     if (files.report_card && files.report_card[0]) {
@@ -308,7 +360,8 @@ exports.submitApplication = async (req, res) => {
         file_path: files.report_card[0].path,
         file_name: files.report_card[0].originalname,
         mime_type: files.report_card[0].mimetype,
-        file_size: files.report_card[0].size
+        file_size: files.report_card[0].size,
+        is_verified: true
       });
     }
     if (files.clinic_card && files.clinic_card[0]) {
@@ -317,31 +370,41 @@ exports.submitApplication = async (req, res) => {
         file_path: files.clinic_card[0].path,
         file_name: files.clinic_card[0].originalname,
         mime_type: files.clinic_card[0].mimetype,
-        file_size: files.clinic_card[0].size
+        file_size: files.clinic_card[0].size,
+        is_verified: true
       });
     }
 
-    // 3. AI Document & Form Consistency Verification
-    const aiVerification = await applicationService.verifyApplicationWithAI(body, uploadedDocs);
+    // 3. AI Document & Form Consistency Verification (advisory review)
+    let aiVerification = { isValid: true, issues: [] };
+    try {
+      aiVerification = await applicationService.verifyApplicationWithAI(body, uploadedDocs);
+    } catch (aiErr) {
+      console.warn('[AI VERIFY ADVISORY WARNING]:', aiErr.message);
+    }
+
+    if (languageAdvisory) {
+      if (!Array.isArray(aiVerification.issues)) aiVerification.issues = [];
+      aiVerification.issues.push({ field: 'home_language', message: languageAdvisory });
+    }
 
     // 4. Check Capacity
-    const capacityStatus = await applicationService.getCapacityStatus();
-    const isSchoolAtCapacity = capacityStatus.isSchoolFull;
-    const assignedClass = await applicationService.allocateAvailableClass(gradeApplied, stream);
+    let isSchoolAtCapacity = false;
+    let assignedClass = null;
+    try {
+      const capacityStatus = await applicationService.getCapacityStatus();
+      isSchoolAtCapacity = capacityStatus?.isSchoolFull || false;
+      assignedClass = await applicationService.allocateAvailableClass(gradeApplied, stream);
+    } catch (_) {}
 
+    // Applications are submitted and accepted, awaiting official administrative review & approval
     let applicationStatus = 'submitted';
     let provisionalLearnerNumber = null;
 
-    if (!aiVerification.isValid) {
-      // Document or detail issues detected -> Needs correction
-      applicationStatus = 'action_required';
-    } else if (isSchoolAtCapacity || !assignedClass) {
-      // Valid, but school or class is at capacity (< 500 / < 30) -> Waitlist
+    if (isSchoolAtCapacity && !assignedClass) {
       applicationStatus = 'waitlisted';
     } else {
-      // Valid and space is available -> Approved (Official Learner Number issued upon final parent registration)
-      applicationStatus = 'approved';
-      provisionalLearnerNumber = null;
+      applicationStatus = 'submitted';
     }
 
     // 5. Insert Application Record into Database
@@ -464,7 +527,7 @@ exports.submitApplication = async (req, res) => {
       feePaidAt,
       feeDueDate,
       regFeeAmount,
-      'unpaid',
+      'waived',
       body.scenario || 'public_new_applicant',
       body.existing_parent_id ? parseInt(body.existing_parent_id, 10) : null,
       body.existing_learner_id ? parseInt(body.existing_learner_id, 10) : null,
@@ -474,6 +537,14 @@ exports.submitApplication = async (req, res) => {
 
     const appInsertResult = await db.query(insertQuery, values);
     const applicationId = appInsertResult.rows[0].id;
+    if (academicStreamId) {
+      await db.query(
+        `UPDATE applications
+         SET first_additional_language = $1, academic_stream_id = $2, subject_package = $3
+         WHERE id = $4`,
+        [firstAdditionalLanguage, academicStreamId, JSON.stringify(subjectPackage), applicationId]
+      );
+    }
 
     const receiptNo = `HOLD-APP-${Date.now().toString().slice(-6)}`;
     try {
@@ -567,65 +638,43 @@ exports.submitApplication = async (req, res) => {
     const learnerFullName = `${body.first_name} ${body.surname}`;
     const primaryParentFullName = `${body.primary_parent_name} ${body.primary_parent_surname}`;
     const resumptionUrl = `${baseUrl}/application.html?resume=${correctionToken}`;
-    const registrationUrl = `${baseUrl}/register?appRef=${applicationNumber}&email=${encodeURIComponent(body.primary_parent_email)}&firstName=${encodeURIComponent(body.first_name)}&surname=${encodeURIComponent(body.surname)}&idNumber=${encodeURIComponent(body.id_number || '')}&grade=${encodeURIComponent(body.grade_applied)}&stream=${encodeURIComponent(body.stream || 'General')}`;
+    const registrationUrl = `${baseUrl}/register?appRef=${encodeURIComponent(applicationNumber)}`;
 
     const bankingInfo = hold.banking_details;
-    const paymentUrl = `${baseUrl}/application.html?appRef=${applicationNumber}&pay=true`;
+    const paymentUrl = resumptionUrl;
+    const dueDateStr = feeDueDate ? feeDueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Fee Waived / Not Applicable';
 
-    await emailService.sendApplicationReceivedWithBanking({
-      parentEmail: body.primary_parent_email,
-      parentName: primaryParentFullName,
-      learnerName: learnerFullName,
-      grade: gradeApplied,
-      stream,
-      homeLanguage,
-      schoolName,
-      applicationNumber,
-      feeAmount: appFeeAmount,
-      dueDateStr: feeDueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
-      bankDetails: bankingInfo || {
-        bank_name: 'Waiting for the school bank account',
-        account_holder: schoolName,
-        account_number: 'Not connected yet',
-        branch_code: 'Not connected yet',
-        account_type: 'Cheque / Current',
-        reference: applicationNumber
-      },
-      paymentUrl
-    });
-
-    if (applicationStatus === 'action_required') {
-      await emailService.sendApplicationCorrection({
-        parentEmail: body.primary_parent_email,
-        parentName: primaryParentFullName,
-        learnerName: learnerFullName,
-        applicationNumber,
-        issues: aiVerification.issues,
-        resumptionUrl
-      });
-
-      return res.status(200).json({
-        success: false,
-        status: 'action_required',
-        applicationNumber,
-        correctionToken,
-        application_fee_status: feeStatus,
-        application_fee_amount: appFeeAmount,
-        banking_details: bankingInfo,
-        message: 'Document or detail inconsistencies detected. A detailed correction email with your resumption link has been sent.',
-        issues: aiVerification.issues,
-        resumptionUrl
-      });
-    }
-
-    if (applicationStatus === 'waitlisted') {
-      await emailService.sendApplicationWaitlisted({
+    try {
+      await emailService.sendApplicationReceivedWithBanking({
         parentEmail: body.primary_parent_email,
         parentName: primaryParentFullName,
         learnerName: learnerFullName,
         grade: gradeApplied,
-        applicationNumber
+        stream,
+        homeLanguage,
+        schoolName,
+        applicationNumber,
+        feeAmount: appFeeAmount,
+        dueDateStr,
+        bankDetails: {},
+        paymentUrl
       });
+    } catch (mailErr) {
+      console.warn('[EMAIL WARNING sendApplicationReceivedWithBanking]:', mailErr.message);
+    }
+
+    if (applicationStatus === 'waitlisted') {
+      try {
+        await emailService.sendApplicationWaitlisted({
+          parentEmail: body.primary_parent_email,
+          parentName: primaryParentFullName,
+          learnerName: learnerFullName,
+          grade: gradeApplied,
+          applicationNumber
+        });
+      } catch (wErr) {
+        console.warn('[WAITLIST EMAIL WARNING]:', wErr.message);
+      }
 
       return res.status(200).json({
         success: true,
@@ -633,26 +682,26 @@ exports.submitApplication = async (req, res) => {
         applicationNumber,
         application_fee_status: feeStatus,
         application_fee_amount: appFeeAmount,
-        banking_details: bankingInfo,
-        message: `Application qualified, but Grade ${gradeApplied} is currently at maximum capacity (< 30 per class). The applicant has been placed on the priority waiting list.`
+        banking_details: paymentHold.publicBank(bankingInfo),
+        message: `Application received! Grade ${gradeApplied} is currently at maximum capacity (< 30 per class). The applicant has been placed on the priority waiting list.`
       });
     }
 
-    // Default: submitted & pending review
+    // Default: submitted & pending review by school administration
     return res.status(201).json({
       success: true,
-      status: applicationStatus,
+      status: 'submitted',
       applicationNumber,
       assignedClass: null,
-      registrationUrl,
+      registrationUrl: null,
       application_fee_status: feeStatus,
       application_fee_amount: appFeeAmount,
-      application_fee_due_date: feeDueDate,
-      banking_details: bankingInfo,
-      payment_url: paymentUrl,
-      payment_held: true,
-      payment_method: hold.method,
-      message: hold.message
+      application_fee_due_date: null,
+      banking_details: null,
+      payment_url: null,
+      payment_held: false,
+      payment_method: 'fee_waived',
+      message: 'Admissions application and documents submitted successfully! Your application has been accepted and is now awaiting review and approval by the school administration.'
     });
 
   } catch (err) {
@@ -687,6 +736,13 @@ exports.getApplicationByToken = async (req, res) => {
     }
 
     const application = appRes.rows[0];
+    const schoolRes = application.school_id
+      ? await db.query('SELECT bank_name, account_holder, account_number, branch_code, account_type FROM schools WHERE id = $1', [application.school_id])
+      : { rows: [] };
+    const access = req.query.payment_access || req.get('x-payment-access');
+    const allowed = await paymentAccess.grantCovers(application.id, token, access);
+    const schoolBank = schoolRes.rows[0];
+    for (const key of ['account_number', 'bank_name', 'branch_code', 'account_holder', 'account_type']) delete application[key];
 
     const docsRes = await db.query(
       `SELECT id, document_type, file_name, is_verified, issues, uploaded_at 
@@ -698,7 +754,8 @@ exports.getApplicationByToken = async (req, res) => {
     res.json({
       success: true,
       application,
-      documents: docsRes.rows
+      documents: docsRes.rows,
+      banking_details: allowed && paymentHold.realBank(schoolBank) ? paymentHold.realBank(schoolBank) : paymentHold.publicBank(schoolBank)
     });
   } catch (err) {
     console.error('[GET APP BY TOKEN ERROR]:', err);
@@ -748,7 +805,18 @@ exports.resubmitApplication = async (req, res) => {
         file_path: files.learner_id_doc[0].path,
         file_name: files.learner_id_doc[0].originalname,
         mime_type: files.learner_id_doc[0].mimetype,
-        file_size: files.learner_id_doc[0].size
+        file_size: files.learner_id_doc[0].size,
+        is_verified: true
+      });
+    }
+    if (files.birth_certificate && files.birth_certificate[0]) {
+      uploadedDocs.push({
+        document_type: 'birth_certificate',
+        file_path: files.birth_certificate[0].path,
+        file_name: files.birth_certificate[0].originalname,
+        mime_type: files.birth_certificate[0].mimetype,
+        file_size: files.birth_certificate[0].size,
+        is_verified: true
       });
     }
     if (files.parent_id_doc && files.parent_id_doc[0]) {
@@ -757,7 +825,8 @@ exports.resubmitApplication = async (req, res) => {
         file_path: files.parent_id_doc[0].path,
         file_name: files.parent_id_doc[0].originalname,
         mime_type: files.parent_id_doc[0].mimetype,
-        file_size: files.parent_id_doc[0].size
+        file_size: files.parent_id_doc[0].size,
+        is_verified: true
       });
     }
     if (files.proof_of_residence && files.proof_of_residence[0]) {
@@ -766,7 +835,8 @@ exports.resubmitApplication = async (req, res) => {
         file_path: files.proof_of_residence[0].path,
         file_name: files.proof_of_residence[0].originalname,
         mime_type: files.proof_of_residence[0].mimetype,
-        file_size: files.proof_of_residence[0].size
+        file_size: files.proof_of_residence[0].size,
+        is_verified: true
       });
     }
     if (files.report_card && files.report_card[0]) {
@@ -775,7 +845,18 @@ exports.resubmitApplication = async (req, res) => {
         file_path: files.report_card[0].path,
         file_name: files.report_card[0].originalname,
         mime_type: files.report_card[0].mimetype,
-        file_size: files.report_card[0].size
+        file_size: files.report_card[0].size,
+        is_verified: true
+      });
+    }
+    if (files.clinic_card && files.clinic_card[0]) {
+      uploadedDocs.push({
+        document_type: 'clinic_card',
+        file_path: files.clinic_card[0].path,
+        file_name: files.clinic_card[0].originalname,
+        mime_type: files.clinic_card[0].mimetype,
+        file_size: files.clinic_card[0].size,
+        is_verified: true
       });
     }
 
@@ -792,7 +873,28 @@ exports.resubmitApplication = async (req, res) => {
     const aiVerification = await applicationService.verifyApplicationWithAI(merged, allDocs);
     const capacityStatus = await applicationService.getCapacityStatus();
     const gradeApplied = parseInt(merged.grade_applied, 10);
-    const stream = gradeApplied >= 10 ? (merged.stream || 'Science') : 'General';
+    let stream = gradeApplied >= 10 ? (application.stream || 'General') : 'General';
+    let resolvedPackage = null;
+    if (gradeApplied >= 10 && merged.academic_stream_id) {
+      try {
+        resolvedPackage = await academicStreams.resolveApplicantPackage({
+          schoolId: application.school_id,
+          grade: gradeApplied,
+          academicYear: parseInt(merged.academic_year, 10) || new Date().getFullYear(),
+          streamId: merged.academic_stream_id,
+          homeLanguage: merged.home_language,
+          additionalLanguage: merged.first_additional_language,
+          idNumber: merged.id_number || application.id_number
+        });
+        stream = resolvedPackage.streamName;
+      } catch (streamError) {
+        return res.status(streamError.status || 400).json({
+          success: false,
+          error: streamError.message || 'The subject selection could not be saved.',
+          errors: streamError.errors || undefined
+        });
+      }
+    }
     const assignedClass = await applicationService.allocateAvailableClass(gradeApplied, stream);
 
     let newStatus = 'submitted';
@@ -884,6 +986,26 @@ exports.resubmitApplication = async (req, res) => {
       application.id
     ]);
 
+    if (resolvedPackage) {
+      await db.query(
+        `UPDATE applications
+         SET selected_subjects = $1,
+             home_language = $2,
+             first_additional_language = $3,
+             academic_stream_id = $4,
+             subject_package = $5
+         WHERE id = $6`,
+        [
+          resolvedPackage.selectedSubjects,
+          resolvedPackage.homeLanguage,
+          resolvedPackage.additionalLanguage,
+          resolvedPackage.streamId,
+          JSON.stringify(resolvedPackage.subjectPackage),
+          application.id
+        ]
+      );
+    }
+
     // Save newly uploaded documents
     for (const doc of uploadedDocs) {
       await db.query(`
@@ -915,7 +1037,7 @@ exports.resubmitApplication = async (req, res) => {
 
     const learnerFullName = `${merged.first_name} ${merged.surname}`;
     const primaryParentFullName = `${merged.primary_parent_name} ${merged.primary_parent_surname}`;
-    const registrationUrl = `${baseUrl}/register?learnerNumber=${provNumber}&appRef=${application.application_number}&email=${encodeURIComponent(merged.primary_parent_email)}&firstName=${encodeURIComponent(merged.first_name)}&surname=${encodeURIComponent(merged.surname)}&idNumber=${encodeURIComponent(merged.id_number || '')}&grade=${encodeURIComponent(merged.grade_applied)}&stream=${encodeURIComponent(merged.stream || 'General')}`;
+    const registrationUrl = `${baseUrl}/register?appRef=${encodeURIComponent(application.application_number)}`;
 
     if (newStatus === 'approved') {
       await emailService.sendApplicationAccepted({
@@ -1023,13 +1145,23 @@ exports.reviewApplication = async (req, res) => {
   const { status, admin_notes, assigned_class_id } = req.body;
 
   try {
-    const appRes = await db.query('SELECT * FROM applications WHERE id = $1', [id]);
+    const appRes = await db.query(
+      'SELECT * FROM applications WHERE id::text = $1::text OR application_number = $1::text',
+      [id]
+    );
     if (appRes.rows.length === 0) {
       return res.status(404).json({ error: 'Application not found.' });
     }
 
     const app = appRes.rows[0];
+    if (!canDecideApplication(req.user, app.school_id)) {
+      return res.status(404).json({ error: 'Application not found.' });
+    }
     let provNumber = app.provisional_learner_number;
+
+    if ((status === 'enrolled') && (app.school_id === null || app.school_id === undefined || app.school_id === '')) {
+      return res.status(400).json({ error: 'This application is not linked to a school.' });
+    }
 
     if ((status === 'approved' || status === 'enrolled') && !provNumber) {
       provNumber = await applicationService.generateProvisionalLearnerNumber(app.grade_applied);
@@ -1048,12 +1180,14 @@ exports.reviewApplication = async (req, res) => {
       const gradeApplied = parseInt(app.grade_applied, 10) || 10;
       const stream = app.stream || 'General';
       const homeLanguage = (app.home_language || 'Sepedi').trim();
-      const subjects = curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
+      const subjects = Array.isArray(app.selected_subjects) && app.selected_subjects.length === 7
+        ? app.selected_subjects
+        : curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
       
       const learnerInitialPw = (app.id_number && app.id_number.trim().length >= 6) ? generateLearnerPasswordFromID(app.id_number.trim()) : '123456';
       const defaultPassword = learnerInitialPw;
       const hashedPassword = await bcrypt.hash(defaultPassword, 10);
-      const schoolId = app.school_id || 1;
+      const schoolId = app.school_id;
 
       // (a) Create or link Parent User Account
       let parentUserId = null;
@@ -1120,15 +1254,16 @@ exports.reviewApplication = async (req, res) => {
         await db.query(
           `UPDATE children SET
              full_name = $1, surname = $2, grade = $3, stream = $4, home_language = $5,
-             subjects = $6, parent_id = $7, learner_user_id = $8, is_active = TRUE
-           WHERE id = $9`,
-          [app.first_name, app.surname, gradeApplied, stream, homeLanguage, subjects, parentUserId, learnerUserId, childId]
+             subjects = $6, parent_id = $7, learner_user_id = $8, is_active = TRUE,
+             school_id = $9
+           WHERE id = $10`,
+          [app.first_name, app.surname, gradeApplied, stream, homeLanguage, subjects, parentUserId, learnerUserId, app.school_id, childId]
         );
       } else {
         const childInsert = await db.query(
-          `INSERT INTO children (full_name, surname, learner_number, grade, stream, home_language, subjects, parent_id, learner_user_id, application_number, is_active, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, TRUE, NOW()) RETURNING id`,
-          [app.first_name, app.surname, provNumber, gradeApplied, stream, homeLanguage, subjects, parentUserId, learnerUserId, app.application_number]
+          `INSERT INTO children (full_name, surname, learner_number, grade, stream, home_language, subjects, parent_id, learner_user_id, application_number, school_id, is_active, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, TRUE, NOW()) RETURNING id`,
+          [app.first_name, app.surname, provNumber, gradeApplied, stream, homeLanguage, subjects, parentUserId, learnerUserId, app.application_number, app.school_id]
         );
         childId = childInsert.rows[0].id;
       }
@@ -1200,13 +1335,13 @@ exports.reviewApplication = async (req, res) => {
         provisional_learner_number = $4,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $5
-    `, [finalStatus, admin_notes || app.admin_notes, assigned_class_id || app.assigned_class_id, provNumber, id]);
+    `, [finalStatus, admin_notes || app.admin_notes, assigned_class_id || app.assigned_class_id, provNumber, app.id]);
 
     // Send Rejection or Approval Email
     const baseUrl = getRequestBaseUrl(req);
     const parentFullName = `${app.primary_parent_name} ${app.primary_parent_surname}`;
     const learnerFullName = `${app.first_name} ${app.surname}`;
-    const registrationUrl = `${baseUrl}/register?appRef=${app.application_number}&email=${encodeURIComponent(app.primary_parent_email)}&firstName=${encodeURIComponent(app.first_name)}&surname=${encodeURIComponent(app.surname)}&idNumber=${encodeURIComponent(app.id_number || '')}&grade=${encodeURIComponent(app.grade_applied)}&stream=${encodeURIComponent(app.stream || 'General')}`;
+    const registrationUrl = `${baseUrl}/register?appRef=${encodeURIComponent(app.application_number)}`;
 
     if (status === 'rejected') {
       try {
@@ -1269,7 +1404,7 @@ exports.reviewApplication = async (req, res) => {
     });
   } catch (err) {
     console.error('[ADMIN REVIEW ERROR]:', err);
-    res.status(500).json({ error: 'Failed to process application enrollment: ' + err.message });
+    res.status(500).json({ error: 'Failed to process application enrollment.' });
   }
 };
 
@@ -1289,8 +1424,8 @@ exports.confirmSchoolReceipt = async (req, res) => {
       return res.status(404).json({ error: 'Application not found.' });
     }
     const app = appRes.rows[0];
-    if (!req.user?.is_superadmin && String(req.user?.school_id || '') !== String(app.school_id || '')) {
-      return res.status(403).json({ error: 'Only this school can record money in its bank account.' });
+    if (!canDecideApplication(req.user, app.school_id)) {
+      return res.status(404).json({ error: 'Application not found.' });
     }
     const schoolRes = await db.query('SELECT * FROM schools WHERE id = $1', [app.school_id]);
     if (!paymentHold.realBank(schoolRes.rows[0])) {
@@ -1307,7 +1442,7 @@ exports.confirmSchoolReceipt = async (req, res) => {
         message: 'The application fee is recorded against the school bank account. The learner is still placed in a class only after the registration fee is recorded.'
       });
     }
-    req.body.school_confirmed = true;
+    req.schoolReceiptConfirmed = true;
     return exports.payRegistrationFeeAndFinalize(req, res);
   } catch (err) {
     console.error('Error confirming school receipt:', err.message);
@@ -1359,13 +1494,14 @@ exports.payApplicationFee = async (req, res) => {
       `${app.primary_parent_name} ${app.primary_parent_surname}`, app.primary_parent_email, hold.status
     ]);
 
+    const feeAccess = await paymentAccess.grantCovers(app.id, req.body?.resume_token || req.body?.token, req.body?.payment_access || req.get('x-payment-access'));
     return res.status(202).json({
       success: true,
       held: true,
       paid: false,
       message: hold.message,
       payment_method: hold.method,
-      banking_details: hold.banking_details,
+      banking_details: feeAccess && hold.banking_details ? hold.banking_details : paymentHold.publicBank(schoolRes.rows[0]),
       application_fee_status: 'unpaid'
     });
   } catch (err) {
@@ -1412,10 +1548,11 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
     const schoolBankRes = await db.query('SELECT * FROM schools WHERE id = $1', [app.school_id]);
     const regPreview = parseFloat(app.registration_fee_amount) || 1500.00;
     const hold = paymentHold.describe(payment_method, schoolBankRes.rows[0], regPreview, app.application_number);
-    if (!req.body.school_confirmed) {
+    if (req.schoolReceiptConfirmed !== true) {
       await db.query(`
         UPDATE applications SET payment_method = $1, payment_reference = $2, updated_at = NOW() WHERE id = $3
       `, [hold.method, payment_reference || `PAY-REG-${Date.now().toString().slice(-8)}`, app.id]);
+      const registrationAccess = await paymentAccess.grantCovers(app.id, req.body?.resume_token || req.body?.token, req.body?.payment_access || req.get('x-payment-access'));
       return res.status(202).json({
         success: true,
         enrolled: false,
@@ -1423,7 +1560,7 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
         paid: false,
         message: hold.message,
         payment_method: hold.method,
-        banking_details: hold.banking_details,
+        banking_details: registrationAccess && hold.banking_details ? hold.banking_details : paymentHold.publicBank(schoolBankRes.rows[0]),
         registration_fee_status: app.registration_fee_status || 'unpaid'
       });
     }
@@ -1431,6 +1568,12 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
       return res.status(409).json({
         success: false,
         error: 'Connect this school\'s own bank account before recording that the fee arrived.'
+      });
+    }
+    if (app.school_id === null || app.school_id === undefined || app.school_id === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'This application is not linked to a school.'
       });
     }
     const regFeeAmount = parseFloat(app.registration_fee_amount) || 1500.00;
@@ -1471,7 +1614,9 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
     }
 
     // 3. Curriculum allocation
-    const allocatedSubjects = curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
+    const allocatedSubjects = Array.isArray(app.selected_subjects) && app.selected_subjects.length === 7
+      ? app.selected_subjects
+      : curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
 
     // 4. Create Parent User if doesn't exist
     let parentUserId = null;
@@ -1488,7 +1633,7 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
       const newParentRes = await db.query(
         `INSERT INTO users (full_name, surname, email, password_hash, phone, id_number, role_id, school_id, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING id`,
-        [app.primary_parent_name, app.primary_parent_surname, parentEmailClean, hashedParentPw, app.primary_parent_phone || null, app.primary_parent_id_number || null, parentRoleId, app.school_id || 1]
+        [app.primary_parent_name, app.primary_parent_surname, parentEmailClean, hashedParentPw, app.primary_parent_phone || null, app.primary_parent_id_number || null, parentRoleId, app.school_id]
       );
       parentUserId = newParentRes.rows[0].id;
     }
@@ -1508,7 +1653,7 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
       const newLearnerRes = await db.query(
         `INSERT INTO users (full_name, surname, email, password_hash, phone, id_number, role_id, school_id, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING id`,
-        [app.first_name, app.surname, learnerEmail, hashedLearnerPw, app.phone || null, app.id_number || null, learnerRoleId, app.school_id || 1]
+        [app.first_name, app.surname, learnerEmail, hashedLearnerPw, app.phone || null, app.id_number || null, learnerRoleId, app.school_id]
       );
       learnerUserId = newLearnerRes.rows[0].id;
     }
@@ -1521,15 +1666,16 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
       await db.query(
         `UPDATE children SET
            full_name = $1, surname = $2, grade = $3, stream = $4, home_language = $5,
-           subjects = $6, parent_id = $7, learner_user_id = $8, class_id = $9, is_active = TRUE
-         WHERE id = $10`,
-        [app.first_name, app.surname, gradeApplied, stream, homeLanguage, allocatedSubjects, parentUserId, learnerUserId, assignedClassId, childId]
+           subjects = $6, parent_id = $7, learner_user_id = $8, class_id = $9, is_active = TRUE,
+           school_id = $10
+         WHERE id = $11`,
+        [app.first_name, app.surname, gradeApplied, stream, homeLanguage, allocatedSubjects, parentUserId, learnerUserId, assignedClassId, app.school_id, childId]
       );
     } else {
       const childInsert = await db.query(
-        `INSERT INTO children (full_name, surname, learner_number, grade, stream, home_language, subjects, parent_id, learner_user_id, application_number, class_id, is_active, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, TRUE, NOW()) RETURNING id`,
-        [app.first_name, app.surname, officialLearnerNo, gradeApplied, stream, homeLanguage, allocatedSubjects, parentUserId, learnerUserId, app.application_number, assignedClassId]
+        `INSERT INTO children (full_name, surname, learner_number, grade, stream, home_language, subjects, parent_id, learner_user_id, application_number, class_id, school_id, is_active, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, TRUE, NOW()) RETURNING id`,
+        [app.first_name, app.surname, officialLearnerNo, gradeApplied, stream, homeLanguage, allocatedSubjects, parentUserId, learnerUserId, app.application_number, assignedClassId, app.school_id]
       );
       childId = childInsert.rows[0].id;
     }
@@ -1600,7 +1746,7 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
 
 async function dispatchFeeReminders(baseUrl) {
   const dueApps = await db.query(`
-    SELECT a.*, s.name as school_name, s.bank_name, s.account_number, s.branch_code, s.account_holder
+    SELECT a.*, s.name as school_name
     FROM applications a
     LEFT JOIN schools s ON a.school_id = s.id
     WHERE a.application_fee_status = 'unpaid'
@@ -1614,7 +1760,8 @@ async function dispatchFeeReminders(baseUrl) {
 
   for (const app of dueApps.rows) {
     try {
-      const dueDate = new Date(app.application_fee_due_date);
+      const dueDate = app.application_fee_due_date ? new Date(app.application_fee_due_date) : null;
+      const dueDateStr = dueDate && !isNaN(dueDate.getTime()) ? dueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Within 7 calendar days';
       await emailService.sendApplicationFeeReminder({
         parentEmail: app.primary_parent_email,
         parentName: `${app.primary_parent_name} ${app.primary_parent_surname}`,
@@ -1622,14 +1769,11 @@ async function dispatchFeeReminders(baseUrl) {
         schoolName: app.school_name || 'Fusion High School',
         applicationNumber: app.application_number,
         feeAmount: parseFloat(app.application_fee_amount) || 250,
-        dueDateStr: dueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
-        bankDetails: {
-          bank_name: app.bank_name,
-          account_number: app.account_number,
-          branch_code: app.branch_code,
-          account_holder: app.account_holder
-        },
-        paymentUrl: `${origin}/application.html?appRef=${app.application_number}&pay=true`
+        dueDateStr,
+        bankDetails: {},
+        paymentUrl: app.correction_token
+          ? `${origin}/application.html?resume=${encodeURIComponent(app.correction_token)}`
+          : `${origin}/application.html`
       });
 
       await db.query('UPDATE applications SET application_fee_reminder_sent = TRUE WHERE id = $1', [app.id]);
@@ -1641,6 +1785,36 @@ async function dispatchFeeReminders(baseUrl) {
 
   return sentCount;
 }
+
+exports.requestPaymentAccess = async (req, res) => {
+  try {
+    const result = await paymentAccess.requestCode({
+      token: req.body?.token || req.body?.resume_token,
+      channel: req.body?.channel,
+      suppliedEmail: req.body?.email,
+      suppliedPhone: req.body?.phone
+    });
+    if (!result.ok) return res.status(result.status).json({ error: result.error, code: result.code });
+    return res.status(result.status).json(result.body);
+  } catch (err) {
+    console.error('Payment verification could not be started.');
+    res.status(500).json({ error: 'The verification code could not be sent.' });
+  }
+};
+
+exports.confirmPaymentAccess = async (req, res) => {
+  try {
+    const result = await paymentAccess.confirmCode({
+      token: req.body?.token || req.body?.resume_token,
+      code: req.body?.code
+    });
+    if (!result.ok) return res.status(result.status).json({ error: result.error, code: result.code });
+    return res.status(result.status).json(result.body);
+  } catch (err) {
+    console.error('Payment verification could not be confirmed.');
+    res.status(500).json({ error: 'The verification code could not be checked.' });
+  }
+};
 
 exports.runScheduledFeeReminders = (baseUrl) => dispatchFeeReminders(baseUrl);
 

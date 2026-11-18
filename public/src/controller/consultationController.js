@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { resolveSchoolId } = require('../services/schoolScope');
 const emailService = require('../services/emailService');
 
 /**
@@ -95,7 +96,7 @@ exports.bookConsultation = async (req, res) => {
       }
     }
 
-    const schoolId = teacher.school_id || req.user.school_id || 1;
+    const schoolId = teacher.school_id || resolveSchoolId(req);
 
     const insertQuery = `
       INSERT INTO teacher_consultations (
@@ -171,7 +172,7 @@ exports.getMyConsultations = async (req, res) => {
   try {
     const userId = req.user.id;
     const userRole = req.user.role;
-    const schoolId = req.user.school_id || 1;
+    const schoolId = resolveSchoolId(req);
 
     let query = `
       SELECT 

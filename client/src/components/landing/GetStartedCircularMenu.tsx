@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { LogIn, GraduationCap, UserPlus, X, ChevronUp, Lock, ShieldAlert } from 'lucide-react';
+import { LogIn, GraduationCap, UserPlus, Lock, ShieldAlert, Building2 } from 'lucide-react';
 import { systemControlService } from '../../services/api';
 import { intakeClosed, intakeReason } from '../../utils/admissionGate';
 
 interface GetStartedCircularMenuProps {
   className?: string;
+  onRegisterSchool?: () => void;
 }
 
 export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
-  className = ''
+  className = '',
+  onRegisterSchool
 }) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [portalControls, setPortalControls] = useState<Record<string, any>>({});
@@ -47,27 +49,14 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
     };
   }, [isOpen]);
 
+  const isSchoolLocked = intakeClosed(portalControls.school_registration);
+  const schoolReason = intakeReason(portalControls.school_registration, 'School registration is currently closed.');
   const isApplyLocked = intakeClosed(portalControls.parent_application);
   const isRegisterLocked = intakeClosed(portalControls.parent_registration) || intakeClosed(portalControls.user_registration);
   const applyReason = intakeReason(portalControls.parent_application, 'New family applications are closed.');
   const registerReason = intakeReason(portalControls.parent_registration, intakeReason(portalControls.user_registration, 'Parent registration is closed.'));
 
   const items = [
-    {
-      id: 'signin',
-      title: 'Sign In',
-      subtitle: 'Portal Login',
-      to: '/login',
-      isExternal: false,
-      closed: false,
-      closedMessage: '',
-      icon: LogIn,
-      gradient: 'from-indigo-600 to-blue-600',
-      border: 'border-indigo-400',
-      glow: 'shadow-[0_0_30px_rgba(99,102,241,0.7),0_10px_25px_rgba(0,0,0,0.6)]',
-      hoverGlow: 'hover:shadow-[0_0_55px_rgba(99,102,241,0.95),0_20px_35px_rgba(0,0,0,0.85)]',
-      pillBg: 'bg-indigo-950/80 border-indigo-500/40 text-indigo-200 group-hover:text-white group-hover:border-indigo-400',
-    },
     {
       id: 'apply',
       title: isApplyLocked ? 'Apply closed' : 'Apply',
@@ -82,6 +71,22 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
       glow: isApplyLocked ? 'shadow-[0_0_20px_rgba(15,23,42,0.45)]' : 'shadow-[0_0_30px_rgba(16,185,129,0.7),0_10px_25px_rgba(0,0,0,0.6)]',
       hoverGlow: 'hover:shadow-[0_0_55px_rgba(16,185,129,0.95),0_20px_35px_rgba(0,0,0,0.85)]',
       pillBg: isApplyLocked ? 'bg-slate-950/80 border-slate-500/40 text-slate-200' : 'bg-emerald-950/80 border-emerald-500/40 text-emerald-200 group-hover:text-white group-hover:border-emerald-400',
+    },
+    {
+      id: 'school',
+      title: isSchoolLocked ? 'School closed' : 'Register School',
+      subtitle: 'New campus',
+      to: '',
+      isExternal: false,
+      closed: isSchoolLocked,
+      closedMessage: schoolReason,
+      action: 'school' as const,
+      icon: isSchoolLocked ? Lock : Building2,
+      gradient: isSchoolLocked ? 'from-slate-600 to-slate-700' : 'from-[#8a6424] to-[#c6a15b]',
+      border: isSchoolLocked ? 'border-slate-400' : 'border-[#e7c56a]',
+      glow: isSchoolLocked ? 'shadow-[0_0_20px_rgba(15,23,42,0.45)]' : 'shadow-[0_0_30px_rgba(198,161,91,0.7),0_10px_25px_rgba(0,0,0,0.6)]',
+      hoverGlow: 'hover:shadow-[0_0_55px_rgba(231,197,106,0.95),0_20px_35px_rgba(0,0,0,0.85)]',
+      pillBg: isSchoolLocked ? 'bg-slate-950/80 border-slate-500/40 text-slate-200' : 'bg-[#2a2112]/80 border-[#c6a15b]/40 text-[#f6e6b4] group-hover:text-white group-hover:border-[#e7c56a]',
     },
     {
       id: 'register',
@@ -101,24 +106,29 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
   ];
 
   const getItemTransform = (index: number, total: number) => {
-    if (!isOpen) return 'translate(-50%, 24px) scale(0)';
+    if (!isOpen) return 'translate(-50%, 12px) scale(0)';
     if (total === 1) return 'translate(-50%, -108px) scale(1)';
     if (total === 2) {
       return index === 0
         ? 'translate(calc(-50% - 150px), -36px) scale(1)'
         : 'translate(calc(-50% + 150px), -36px) scale(1)';
     }
+    // Three items: Apply left, Register School top, Registration right
     if (index === 0) return 'translate(calc(-50% - 168px), -28px) scale(1)';
     if (index === 1) return 'translate(-50%, -118px) scale(1)';
     return 'translate(calc(-50% + 168px), -28px) scale(1)';
   };
 
-  const openItem = (item: { closed?: boolean; closedMessage?: string; to: string; isExternal: boolean }) => {
+  const openItem = (item: { closed?: boolean; closedMessage?: string; to: string; isExternal: boolean; action?: 'school' }) => {
     if (item.closed) {
       setLockedAlert(item.closedMessage || 'This intake is closed.');
       return;
     }
     setIsOpen(false);
+    if (item.action === 'school') {
+      onRegisterSchool?.();
+      return;
+    }
     window.location.assign(item.to);
   };
 
@@ -171,9 +181,9 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
       )}
 
       {/* Circular Orbit & Action Buttons Container */}
-      <div className="relative z-40 mx-auto h-[250px] w-[440px] max-w-[100vw]">
+      <div className="relative z-40 mx-auto h-[250px] w-full max-w-[440px]">
         {isOpen && (
-          <div className="pointer-events-none absolute bottom-5 left-1/2 h-[200px] w-[400px] max-w-[92vw] -translate-x-1/2 rounded-t-full border-2 border-b-0 border-dashed border-cyan-400/70" />
+          <div className="pointer-events-none absolute bottom-[52px] left-1/2 h-[168px] w-[min(300px,86%)] -translate-x-1/2 rounded-t-full border-2 border-b-0 border-dashed border-cyan-400/70" />
         )}
 
         {/* Circular Glowing Action Buttons */}
@@ -206,7 +216,7 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
             <div
               key={item.id}
               style={{ transform: transformStyle }}
-              className={`absolute left-1/2 bottom-16 transition-all duration-400 ease-out z-40 ${
+              className={`absolute left-1/2 bottom-[52px] transition-all duration-400 ease-out z-40 ${
                 isOpen
                   ? 'opacity-100 pointer-events-auto'
                   : 'opacity-0 pointer-events-none'
@@ -223,27 +233,24 @@ export const GetStartedCircularMenu: React.FC<GetStartedCircularMenuProps> = ({
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className={`absolute left-1/2 bottom-0 -translate-x-1/2 z-50 flex items-center gap-2.5 px-8 py-3.5 rounded-full font-display font-extrabold text-sm sm:text-base tracking-wide transition-all duration-300 active:scale-95 border-2 whitespace-nowrap ${
-            isOpen
-              ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-400 shadow-[0_0_35px_rgba(244,63,94,0.7)]'
-              : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white border-cyan-400/50 shadow-[0_0_30px_rgba(37,99,235,0.65),0_10px_25px_rgba(0,0,0,0.5)] hover:shadow-[0_0_45px_rgba(6,182,212,0.85)] hover:scale-105'
-          }`}
+          className="get-started-trigger absolute left-1/2 bottom-0 z-50 flex h-[52px] w-[210px] -translate-x-1/2 items-center justify-center rounded-full border-2 border-cyan-400/50 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 font-display text-sm font-extrabold tracking-wide text-white shadow-[0_0_30px_rgba(37,99,235,0.65),0_10px_25px_rgba(0,0,0,0.5)] sm:text-base"
           aria-expanded={isOpen}
           aria-label="Get Started"
         >
-          {isOpen && (
-            <div className="w-5 h-5 rounded-full flex items-center justify-center">
-              <X className="w-5 h-5 text-white" />
-            </div>
-          )}
-
-          <span>{isOpen ? 'Close Actions' : 'Get Started'}</span>
-
-          {!isOpen && (
-            <ChevronUp className="w-4 h-4 text-cyan-200/80 animate-bounce" />
-          )}
+          <span>Get Started</span>
         </button>
       </div>
+
+      <p className="relative z-40 mt-3 text-center text-xs sm:text-sm text-white/90 drop-shadow-[0_1px_8px_rgba(0,0,0,0.75)]">
+        Already have an account?{' '}
+        <Link
+          to="/login"
+          className="font-bold text-cyan-300 underline underline-offset-2 hover:text-cyan-200 transition-colors"
+          onClick={() => setIsOpen(false)}
+        >
+          Login
+        </Link>
+      </p>
     </div>
   );
 };

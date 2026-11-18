@@ -6,44 +6,44 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-    /* Pitch Black Canvas & Charcoal Cards (Dark Default matching right phone) */
-    --bg: #0A0A0C;
-    --bg-secondary: #16161A;
-    --card-bg: #16161A;
-    --card-bg-subtle: #1E1E24;
-    --card-border: #27272E;
-    --card-hover-border: #3F3F46;
-    --sidebar-bg: #16161A;
-    --top-nav-bg: rgba(22, 22, 26, 0.94);
-    --bottom-nav-bg: rgba(22, 22, 26, 0.96);
-    --text-primary: #FFFFFF;
-    --text-secondary: #A1A1AA;
-    --text-muted: #71717A;
+    /* Premium Black & Charcoal Theme (Dark Default) */
+    --bg: var(--app-background, #080B10);
+    --bg-secondary: var(--surface-background, #0D121A);
+    --card-bg: var(--card-background, #111821);
+    --card-bg-subtle: var(--surface-background, #0D121A);
+    --card-border: var(--border-color, #2C3948);
+    --card-hover-border: var(--accent-primary, #168BFF);
+    --sidebar-bg: var(--surface-background, #0D121A);
+    --top-nav-bg: rgba(13, 18, 26, 0.94);
+    --bottom-nav-bg: rgba(13, 18, 26, 0.96);
+    --text-primary: var(--text-primary, #F5F7FA);
+    --text-secondary: var(--text-secondary, #AAB5C2);
+    --text-muted: var(--icon-muted, #8794A5);
     
-    /* Lavender Accent */
-    --accent: #C084FC;
-    --accent-hover: #D8B4FE;
-    --accent-soft: #261B35;
-    --accent-text: #C084FC;
+    /* Electric Blue Accent */
+    --accent: var(--accent-primary, #168BFF);
+    --accent-hover: var(--accent-hover, #0878E8);
+    --accent-soft: var(--accent-soft, #102B45);
+    --accent-text: var(--accent-primary, #168BFF);
     
     /* Semantic Colors */
-    --success: #34D399;
+    --success: #10B981;
     --success-soft: rgba(16, 185, 129, 0.18);
-    --warning: #FBBF24;
+    --warning: #F59E0B;
     --warning-soft: rgba(245, 158, 11, 0.18);
-    --danger: #F87171;
+    --danger: #EF4444;
     --danger-soft: rgba(239, 68, 68, 0.18);
-    --info: #C084FC;
-    --info-soft: rgba(192, 132, 252, 0.18);
+    --info: var(--accent-primary, #168BFF);
+    --info-soft: var(--accent-soft, #102B45);
     
     /* Inputs & Controls */
-    --input-bg: #1E1E24;
-    --input-border: #27272E;
-    --input-focus-border: #C084FC;
+    --input-bg: var(--input-background, #171F29);
+    --input-border: var(--border-color, #2C3948);
+    --input-focus-border: var(--accent-primary, #168BFF);
     
     /* Buttons */
-    --btn-cta-bg: #FFFFFF;
-    --btn-cta-text: #000000;
+    --btn-cta-bg: var(--accent-primary, #168BFF);
+    --btn-cta-text: #FFFFFF;
     
     /* Shadows */
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
@@ -60,23 +60,23 @@
 
 /* Light Theme Variables */
 [data-theme="light"] {
-    --bg: #F5F5F7;
-    --bg-secondary: #F0F1F4;
-    --card-bg: #FFFFFF;
-    --card-bg-subtle: #F4F4F6;
-    --card-border: #E4E4E7;
-    --card-hover-border: #D4D4D8;
-    --sidebar-bg: #FFFFFF;
-    --top-nav-bg: rgba(255, 255, 255, 0.94);
-    --bottom-nav-bg: rgba(255, 255, 255, 0.96);
-    --text-primary: #111111;
-    --text-secondary: #52525B;
-    --text-muted: #71717A;
+    --bg: var(--app-background, #E5EBF1);
+    --bg-secondary: var(--surface-background, #DCE4EC);
+    --card-bg: var(--card-background, #F4F6F8);
+    --card-bg-subtle: var(--surface-background, #DCE4EC);
+    --card-border: var(--border-color, #C7D1DC);
+    --card-hover-border: var(--accent-primary, #168BFF);
+    --sidebar-bg: var(--surface-background, #DCE4EC);
+    --top-nav-bg: rgba(220, 228, 236, 0.94);
+    --bottom-nav-bg: rgba(220, 228, 236, 0.96);
+    --text-primary: var(--text-primary, #101820);
+    --text-secondary: var(--text-secondary, #526071);
+    --text-muted: var(--icon-muted, #697586);
     
-    --accent: #9333EA;
-    --accent-hover: #7E22CE;
-    --accent-soft: #F3E8FF;
-    --accent-text: #9333EA;
+    --accent: var(--accent-primary, #168BFF);
+    --accent-hover: var(--accent-hover, #0878E8);
+    --accent-soft: var(--accent-soft, #DCEEFF);
+    --accent-text: var(--accent-primary, #168BFF);
     
     --success: #10B981;
     --success-soft: #ECFDF5;
@@ -84,19 +84,19 @@
     --warning-soft: #FFFBEB;
     --danger: #EF4444;
     --danger-soft: #FEF2F2;
-    --info: #9333EA;
-    --info-soft: #F3E8FF;
+    --info: var(--accent-primary, #168BFF);
+    --info-soft: var(--accent-soft, #DCEEFF);
     
-    --input-bg: #FFFFFF;
-    --input-border: #E4E4E7;
-    --input-focus-border: #9333EA;
+    --input-bg: var(--input-background, #FFFFFF);
+    --input-border: var(--border-color, #C7D1DC);
+    --input-focus-border: var(--accent-primary, #168BFF);
     
-    --btn-cta-bg: #111111;
+    --btn-cta-bg: var(--accent-primary, #168BFF);
     --btn-cta-text: #FFFFFF;
     
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
-    --shadow-md: 0 4px 14px rgba(0,0,0,0.06);
-    --shadow-lg: 0 10px 28px rgba(0,0,0,0.08);
+    --shadow-sm: 0 1px 3px rgba(16, 24, 32, 0.04);
+    --shadow-md: 0 4px 14px rgba(16, 24, 32, 0.06);
+    --shadow-lg: 0 10px 28px rgba(16, 24, 32, 0.08);
     
     --primary: var(--text-primary);
     --secondary: var(--accent);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { adminService, parentApplicationService } from '../../services/api';
+import { useSearchParams } from 'react-router-dom';
+import { adminService, parentApplicationService, classStaffService } from '../../services/api';
 import { useSchool } from '../../context/SchoolContext';
 import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/common/Badge';
@@ -34,7 +35,10 @@ import {
   Unlock,
   UserCheck2,
   XCircle,
-  Clock
+  Clock,
+  Pencil,
+  FileSpreadsheet,
+  Copy
 } from 'lucide-react';
 
 const SA_OFFICIAL_LANGUAGES = [
@@ -81,6 +85,7 @@ interface EmployeeRecord {
 }
 
 interface LearnerRecord {
+  id?: number;
   child_id?: number;
   learner_id?: number;
   user_id: number;
@@ -125,19 +130,55 @@ interface SchoolMetadata {
   subjects: { id: number; name: string; code: string; grade: number; stream: string }[];
 }
 
+interface RecycleBinItem {
+  id: number;
+  record_type: string;
+  original_id: number;
+  school_id?: number;
+  name: string;
+  identifier?: string;
+  role_name?: string;
+  deleted_by?: number;
+  deleted_by_name?: string;
+  deleted_at: string;
+  learner_grade?: string;
+  learner_stream?: string;
+  user_email?: string;
+  user_phone?: string;
+}
+
 export const AdminUsers: React.FC = () => {
+  const [, setSearchParams] = useSearchParams();
   const { currentSchool, schoolsList } = useSchool();
   const { user: currentUser } = useAuth();
   const isSuperAdmin = Boolean(currentUser?.is_superadmin);
 
-  const [activeTab, setActiveTab] = useState<'employees' | 'learners' | 'parents' | 'parent-applications' | 'admissions' | 'admins' | 'all'>('employees');
+  const [activeTab, setActiveTab] = useState<'employees' | 'learners' | 'parents' | 'parent-applications' | 'admissions' | 'admins' | 'all' | 'recycle-bin'>('employees');
   
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [learners, setLearners] = useState<LearnerRecord[]>([]);
   const [parents, setParents] = useState<ParentRecord[]>([]);
+  const [recycleBinItems, setRecycleBinItems] = useState<RecycleBinItem[]>([]);
+  const [recycleBinRoleFilter, setRecycleBinRoleFilter] = useState<'all' | 'learner' | 'teacher' | 'parent' | 'staff' | 'admin'>('all');
+  const [restoringItemId, setRestoringItemId] = useState<number | null>(null);
+  const [emptyingBin, setEmptyingBin] = useState(false);
   const [parentApplications, setParentApplications] = useState<any[]>([]);
   const [decidingAppId, setDecidingAppId] = useState<number | null>(null);
+  const [editingParentApp, setEditingParentApp] = useState<any | null>(null);
+  const [parentAppCorrection, setParentAppCorrection] = useState({
+    parent_email: '',
+    parent_phone: '',
+    parent_name: '',
+    parent_surname: '',
+    parent_id_number: '',
+    physical_address: '',
+    child_first_name: '',
+    child_surname: '',
+    child_id_number: '',
+    child_grade: ''
+  });
+  const [savingParentCorrection, setSavingParentCorrection] = useState(false);
   const [admissions, setAdmissions] = useState<any[]>([]);
   const [schoolAdmins, setSchoolAdmins] = useState<any[]>([]);
   
@@ -165,6 +206,22 @@ export const AdminUsers: React.FC = () => {
 
   // Modals
   const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false);
+  const [isInviteTeacherModalOpen, setIsInviteTeacherModalOpen] = useState(false);
+  const [staffInvites, setStaffInvites] = useState<any[]>([]);
+  const [approvingInviteId, setApprovingInviteId] = useState<number | null>(null);
+  const [teacherInviteForm, setTeacherInviteForm] = useState({
+    email: '',
+    full_name: '',
+    surname: '',
+    subjects: ['Mathematics'] as string[],
+    grades: [10, 11] as number[],
+    classes: ['10A'] as string[]
+  });
+  const [generatedInviteUrl, setGeneratedInviteUrl] = useState<string | null>(null);
+  const [sendingTeacherInvite, setSendingTeacherInvite] = useState(false);
+  const [inviteModalError, setInviteModalError] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+
   const [isAddLearnerModalOpen, setIsAddLearnerModalOpen] = useState(false);
   const [isAddParentModalOpen, setIsAddParentModalOpen] = useState(false);
   const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
@@ -279,7 +336,7 @@ export const AdminUsers: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [usersData, empData, lrnData, metaData, admData, parentsData, adminsData, parentAppsData] = await Promise.allSettled([
+      const [usersData, empData, lrnData, metaData, admData, parentsData, adminsData, parentAppsData, staffInvitesData, recycleBinData] = await Promise.allSettled([
         adminService.getUsers(),
         adminService.getEmployees(),
         adminService.getLearners(),
@@ -287,7 +344,9 @@ export const AdminUsers: React.FC = () => {
         adminService.getAdmissions(),
         adminService.getParents(),
         isSuperAdmin ? adminService.getSchoolAdmins() : Promise.resolve({ admins: [] }),
-        parentApplicationService.getAll()
+        parentApplicationService.getAll(),
+        classStaffService.getStaffInvites(),
+        adminService.getRecycleBin()
       ]);
 
       if (usersData.status === 'fulfilled') setUsers(Array.isArray(usersData.value) ? usersData.value : []);
@@ -306,6 +365,13 @@ export const AdminUsers: React.FC = () => {
       if (parentAppsData.status === 'fulfilled') {
         const paList = parentAppsData.value?.applications || (Array.isArray(parentAppsData.value) ? parentAppsData.value : []);
         setParentApplications(paList);
+      }
+      if (staffInvitesData.status === 'fulfilled') {
+        setStaffInvites(Array.isArray(staffInvitesData.value) ? staffInvitesData.value : []);
+      }
+      if (recycleBinData.status === 'fulfilled') {
+        const rbList = recycleBinData.value?.items || (Array.isArray(recycleBinData.value) ? recycleBinData.value : []);
+        setRecycleBinItems(rbList);
       }
 
     } catch (err: any) {
@@ -403,14 +469,17 @@ export const AdminUsers: React.FC = () => {
     setSubmitting(true);
 
     try {
-      await adminService.createEmployee({
+      const res = await adminService.createEmployee({
         ...employeeForm,
         department_id: parseInt(employeeForm.department_id, 10),
         employee_role_id: parseInt(employeeForm.employee_role_id, 10),
         password: employeeForm.password || 'Teacher@2026'
       });
 
-      setActionSuccess(`Employee ${employeeForm.full_name} ${employeeForm.surname} registered successfully. Onboarding email sent.`);
+      if (res.inviteUrl) {
+        setGeneratedInviteUrl(res.inviteUrl);
+      }
+      setActionSuccess(res.message || `Employee ${employeeForm.full_name} ${employeeForm.surname} saved. Invitation email dispatched.`);
       setIsAddEmployeeModalOpen(false);
       setEmployeeForm({
         full_name: '',
@@ -429,12 +498,110 @@ export const AdminUsers: React.FC = () => {
         password: '',
       });
       fetchData();
-      setTimeout(() => setActionSuccess(null), 4000);
+      setTimeout(() => setActionSuccess(null), 6000);
     } catch (err: any) {
       console.error('Create employee error:', err);
       setError(err.response?.data?.error || 'Failed to create employee in database.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Staff Invite Approval / Decline Handlers
+  const handleApproveStaffInvite = async (id: number, name: string) => {
+    setApprovingInviteId(id);
+    setError(null);
+    try {
+      const res = await classStaffService.approveStaffInvite(id);
+      setActionSuccess(res.message || `Educator application for ${name} approved and activated!`);
+      fetchData();
+      setTimeout(() => setActionSuccess(null), 6000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to approve educator application.');
+    } finally {
+      setApprovingInviteId(null);
+    }
+  };
+
+  const handleDeclineStaffInvite = async (id: number) => {
+    const reason = window.prompt('Please provide a reason for declining this application (optional):');
+    if (reason === null) return;
+    setApprovingInviteId(id);
+    try {
+      await classStaffService.declineStaffInvite(id, reason);
+      setActionSuccess('Staff application marked as declined.');
+      fetchData();
+      setTimeout(() => setActionSuccess(null), 4000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to decline application.');
+    } finally {
+      setApprovingInviteId(null);
+    }
+  };
+
+  // Toggle helpers for Teacher Invitation
+  const toggleInviteSubject = (subName: string) => {
+    setTeacherInviteForm(prev => {
+      const exists = prev.subjects.includes(subName);
+      return {
+        ...prev,
+        subjects: exists ? prev.subjects.filter(s => s !== subName) : [...prev.subjects, subName]
+      };
+    });
+  };
+
+  const toggleInviteGrade = (grade: number) => {
+    setTeacherInviteForm(prev => {
+      const exists = prev.grades.includes(grade);
+      return {
+        ...prev,
+        grades: exists ? prev.grades.filter(g => g !== grade) : [...prev.grades, grade]
+      };
+    });
+  };
+
+  const toggleInviteClass = (className: string) => {
+    setTeacherInviteForm(prev => {
+      const exists = prev.classes.includes(className);
+      return {
+        ...prev,
+        classes: exists ? prev.classes.filter(c => c !== className) : [...prev.classes, className]
+      };
+    });
+  };
+
+  // Handle Send Teacher Invite via Email
+  const handleSendTeacherInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!teacherInviteForm.email.trim() || !teacherInviteForm.email.includes('@')) {
+      setInviteModalError('A valid colleague email address is required.');
+      return;
+    }
+    if (teacherInviteForm.subjects.length === 0) {
+      setInviteModalError('Please assign at least one subject to this teacher.');
+      return;
+    }
+    setInviteModalError(null);
+    setSendingTeacherInvite(true);
+    try {
+      const res = await classStaffService.createStaffInvite({
+        email: teacherInviteForm.email.trim(),
+        full_name: teacherInviteForm.full_name.trim() || undefined,
+        surname: teacherInviteForm.surname.trim() || undefined,
+        role_type: 'teacher',
+        subjects_offered: teacherInviteForm.subjects,
+        assigned_grades: teacherInviteForm.grades,
+        assigned_classes: teacherInviteForm.classes
+      });
+
+      const inviteLink = res.inviteUrl || `${window.location.origin}/register?role=teacher&invite=${res.invite?.invite_token || ''}`;
+      setGeneratedInviteUrl(inviteLink);
+      setActionSuccess(`Official invitation link generated and dispatched to ${teacherInviteForm.email}!`);
+      fetchData();
+    } catch (err: any) {
+      setInviteModalError(err.response?.data?.error || err.message || 'Failed to dispatch teacher invitation.');
+    } finally {
+      setSendingTeacherInvite(false);
     }
   };
 
@@ -554,17 +721,91 @@ export const AdminUsers: React.FC = () => {
   };
 
   const handleDeleteUser = async (userId: number, email: string) => {
-    if (!window.confirm(`Are you sure you want to remove user "${email}" and all their associated records from the database?`)) {
+    if (!userId) {
+      setError(`Cannot delete user: user account does not have a valid numeric user ID.`);
+      return;
+    }
+    if (!window.confirm(`Move user "${email}" to Recycle Bin? You can restore and bring them back anytime from the Recycle Bin tab.`)) {
       return;
     }
     setError(null);
     try {
       await adminService.deleteUser(userId);
-      setActionSuccess(`User ${email} removed.`);
+      setActionSuccess(`User ${email} moved to Recycle Bin.`);
       fetchData();
-      setTimeout(() => setActionSuccess(null), 3000);
+      setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to delete user.');
+    }
+  };
+
+  const handleDeleteLearner = async (learnerId: number, name: string) => {
+    if (!learnerId) {
+      setError('Cannot delete learner: missing valid learner ID.');
+      return;
+    }
+    if (!window.confirm(`Move learner "${name}" to Recycle Bin? You can restore and bring them back anytime from the Recycle Bin tab.`)) {
+      return;
+    }
+    setError(null);
+    try {
+      await adminService.deleteLearner(learnerId);
+      setActionSuccess(`Learner ${name} moved to Recycle Bin.`);
+      fetchData();
+      setTimeout(() => setActionSuccess(null), 4000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to delete learner.');
+    }
+  };
+
+  const handleRestoreItem = async (binId: number, name: string) => {
+    setRestoringItemId(binId);
+    setError(null);
+    try {
+      const res = await adminService.restoreFromRecycleBin(binId);
+      setActionSuccess(res.message || `Successfully brought back and restored ${name}!`);
+      fetchData();
+      setTimeout(() => setActionSuccess(null), 5000);
+    } catch (err: any) {
+      console.error('Failed to restore item:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to restore person.');
+    } finally {
+      setRestoringItemId(null);
+    }
+  };
+
+  const handlePermanentDelete = async (binId: number, name: string) => {
+    if (!window.confirm(`Are you sure you want to PERMANENTLY delete "${name}"? This cannot be undone.`)) {
+      return;
+    }
+    setError(null);
+    try {
+      await adminService.permanentDeleteFromRecycleBin(binId);
+      setActionSuccess(`"${name}" permanently removed from Recycle Bin.`);
+      setRecycleBinItems(prev => prev.filter(item => item.id !== binId));
+      setTimeout(() => setActionSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to permanently delete item:', err);
+      setError(err.response?.data?.error || 'Failed to delete item.');
+    }
+  };
+
+  const handleEmptyRecycleBin = async () => {
+    if (!window.confirm('Are you sure you want to permanently delete ALL items currently in the Recycle Bin? This action cannot be undone.')) {
+      return;
+    }
+    setEmptyingBin(true);
+    setError(null);
+    try {
+      await adminService.emptyRecycleBin();
+      setActionSuccess('Recycle bin emptied successfully.');
+      setRecycleBinItems([]);
+      setTimeout(() => setActionSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to empty recycle bin:', err);
+      setError(err.response?.data?.error || 'Failed to empty recycle bin.');
+    } finally {
+      setEmptyingBin(false);
     }
   };
 
@@ -632,6 +873,20 @@ export const AdminUsers: React.FC = () => {
     (a.school_circuit || '').toLowerCase().includes(q)
   );
 
+  const filteredRecycleBinItems = recycleBinItems.filter(item => {
+    const matchesSearch =
+      (item.name || '').toLowerCase().includes(q) ||
+      (item.identifier || '').toLowerCase().includes(q) ||
+      (item.role_name || '').toLowerCase().includes(q) ||
+      (item.record_type || '').toLowerCase().includes(q) ||
+      (item.user_email || '').toLowerCase().includes(q);
+    const matchesRole =
+      recycleBinRoleFilter === 'all' ||
+      item.record_type.toLowerCase() === recycleBinRoleFilter.toLowerCase() ||
+      (item.role_name || '').toLowerCase() === recycleBinRoleFilter.toLowerCase();
+    return matchesSearch && matchesRole;
+  });
+
   const handleQuickApproveAndEnroll = async (admId: number, admName: string) => {
     setEnrollingAdmissionId(admId);
     setError(null);
@@ -664,6 +919,39 @@ export const AdminUsers: React.FC = () => {
     }
   };
 
+  const openParentAppCorrection = (pa: any) => {
+    setEditingParentApp(pa);
+    setParentAppCorrection({
+      parent_email: pa.parent_email || '',
+      parent_phone: pa.parent_phone || '',
+      parent_name: pa.parent_name || '',
+      parent_surname: pa.parent_surname || '',
+      parent_id_number: pa.parent_id_number || '',
+      physical_address: pa.physical_address || '',
+      child_first_name: pa.child_first_name || '',
+      child_surname: pa.child_surname || '',
+      child_id_number: pa.child_id_number || '',
+      child_grade: pa.child_grade != null ? String(pa.child_grade) : ''
+    });
+  };
+
+  const handleSaveParentAppCorrection = async () => {
+    if (!editingParentApp) return;
+    setSavingParentCorrection(true);
+    setError(null);
+    try {
+      const res = await parentApplicationService.correct(editingParentApp.id, parentAppCorrection);
+      setActionSuccess(res.message || 'Application details corrected.');
+      setEditingParentApp(null);
+      fetchData();
+      setTimeout(() => setActionSuccess(null), 5000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to correct application.');
+    } finally {
+      setSavingParentCorrection(false);
+    }
+  };
+
   const filteredParentApplications = parentApplications.filter(pa =>
     `${pa.parent_name} ${pa.parent_surname}`.toLowerCase().includes(q) ||
     (pa.parent_email || '').toLowerCase().includes(q) ||
@@ -680,6 +968,26 @@ export const AdminUsers: React.FC = () => {
       return {
         ...prev,
         subjects: exists ? prev.subjects.filter(s => s !== subName) : [...prev.subjects, subName]
+      };
+    });
+  };
+
+  const toggleGradeForEmployee = (g: number) => {
+    setEmployeeForm(prev => {
+      const exists = prev.grades_taught.includes(g);
+      return {
+        ...prev,
+        grades_taught: exists ? prev.grades_taught.filter(item => item !== g) : [...prev.grades_taught, g]
+      };
+    });
+  };
+
+  const toggleClassForEmployee = (cls: string) => {
+    setEmployeeForm(prev => {
+      const exists = prev.classes_taught.includes(cls);
+      return {
+        ...prev,
+        classes_taught: exists ? prev.classes_taught.filter(item => item !== cls) : [...prev.classes_taught, cls]
       };
     });
   };
@@ -721,10 +1029,11 @@ export const AdminUsers: React.FC = () => {
 
           <button
             onClick={() => setIsAddEmployeeModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-sm transition-all"
+            className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-300 font-bold text-xs border border-white/10 transition-colors"
+            title="Manual registration without email invite"
           >
-            <Briefcase className="w-4 h-4 text-white" />
-            <span>+ Add Employee / Teacher</span>
+            <Briefcase className="w-3.5 h-3.5" />
+            <span>Manual Register</span>
           </button>
 
           <button
@@ -737,10 +1046,19 @@ export const AdminUsers: React.FC = () => {
 
           <button
             onClick={() => setIsAddLearnerModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-sm transition-all"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all"
           >
             <GraduationCap className="w-4 h-4 text-white" />
             <span>+ Enroll Learner</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSearchParams({ tab: 'import-learners' })}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-200 font-bold text-xs border border-cyan-500/30 transition-colors"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Import SA-SAMS CSV</span>
           </button>
         </div>
       </div>
@@ -787,6 +1105,11 @@ export const AdminUsers: React.FC = () => {
           >
             <Briefcase className="w-3.5 h-3.5" />
             <span>Employees & Teachers ({employees.length})</span>
+            {staffInvites.filter(si => si.status === 'applied').length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[10px] animate-pulse">
+                {staffInvites.filter(si => si.status === 'applied').length} Pending
+              </span>
+            )}
           </button>
 
           <button
@@ -853,6 +1176,23 @@ export const AdminUsers: React.FC = () => {
             <Users className="w-3.5 h-3.5" />
             <span>All Users ({users.length})</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('recycle-bin')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'recycle-bin'
+                ? 'bg-rose-600 text-white shadow-sm shadow-rose-900/40'
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+            <span>Recycle Bin ({recycleBinItems.length})</span>
+            {recycleBinItems.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-extrabold text-[10px] border border-rose-500/30">
+                {recycleBinItems.length}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Search Field */}
@@ -863,23 +1203,259 @@ export const AdminUsers: React.FC = () => {
             placeholder="Search directory..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-surface-dark border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-surface-dark border border-slate-200 dark:border-white/10 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
         </div>
       </div>
 
       {/* Directory Content List */}
-      <div className="rounded-3xl bg-surface-dark border border-white/10 p-5 shadow-xl">
+      <div className="rounded-3xl bg-white dark:bg-surface-dark border border-slate-200/80 dark:border-white/10 p-5 shadow-sm dark:shadow-xl">
         {loading ? (
           <LoadingSpinner text="Retrieving records from PostgreSQL database..." />
         ) : activeTab === 'employees' ? (
-          /* Employees Table */
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
-                  <th className="pb-3 px-3">Educator / Staff</th>
-                  <th className="pb-3 px-3">Designation & Department</th>
+          <div className="space-y-6">
+            {/* PENDING EDUCATOR REGISTRATIONS & WORKLOAD ALLOCATIONS SECTION - strictly appears AFTER teacher has applied */}
+            {staffInvites.filter(si => si.status === 'applied').length > 0 && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/50 dark:bg-gradient-to-r dark:from-slate-900 dark:to-indigo-950/40 border border-amber-300/80 dark:border-amber-500/30 space-y-3.5 shadow-sm dark:shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/70 dark:border-white/10 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/15 dark:bg-amber-500/20 text-amber-600 dark:text-amber-300 flex items-center justify-center border border-amber-500/30">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                        <span>Pending Educator Registrations & Workload Allocations</span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500/15 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold text-[10px] border border-amber-500/30">
+                          {staffInvites.filter(si => si.status === 'applied').length} Actions
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                        Review confirmed workload assignments and approve newly registered educators to activate their portal access.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {staffInvites
+                    .filter(si => si.status === 'applied')
+                    .map((invite) => {
+                      const subs = invite.confirmed_subjects?.length > 0
+                        ? invite.confirmed_subjects
+                        : (invite.subjects_offered || []);
+                      const grds = invite.confirmed_grades?.length > 0
+                        ? invite.confirmed_grades
+                        : (invite.assigned_grades || []);
+                      const clss = invite.confirmed_classes?.length > 0
+                        ? invite.confirmed_classes
+                        : (invite.assigned_classes || []);
+
+                      return (
+                        <div
+                          key={invite.id}
+                          className="p-3.5 rounded-xl bg-white dark:bg-slate-950/70 border border-amber-200/80 dark:border-amber-500/30 flex flex-col justify-between gap-3 hover:border-brand-500/40 transition-all shadow-sm"
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <h4 className="font-bold text-slate-900 dark:text-white text-sm">
+                                  {invite.full_name || 'Educator'} {invite.surname || ''}
+                                </h4>
+                                <p className="text-[11px] text-slate-600 dark:text-slate-400 font-mono">{invite.email}</p>
+                                {invite.phone && <p className="text-[10px] text-slate-500">Phone: {invite.phone}</p>}
+                              </div>
+                              <span className="px-2 py-0.5 rounded-md font-bold text-[10px] shrink-0 border bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 animate-pulse">
+                                Workload Confirmed • Needs Approval
+                              </span>
+                            </div>
+
+                            {/* Workload preview */}
+                            <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200/70 dark:border-white/5 space-y-1 text-[11px]">
+                              <div className="flex flex-wrap items-center gap-1">
+                                <span className="text-slate-600 dark:text-slate-400 font-semibold">Subjects:</span>
+                                {subs.length > 0 ? (
+                                  subs.map((s: string) => (
+                                    <span key={s} className="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20 text-[10px] font-bold">
+                                      {s}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-slate-500">General</span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-600 dark:text-slate-400 pt-0.5">
+                                <span><strong>Grades:</strong> {grds.join(', ') || 'FET Phase'}</span>
+                                <span>&bull;</span>
+                                <span><strong>Classes:</strong> {clss.join(', ') || '10A'}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/70 dark:border-white/5">
+                            {invite.invite_token && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const url = `${window.location.origin}/register?role=teacher&invite=${invite.invite_token}&email=${encodeURIComponent(invite.email)}`;
+                                  navigator.clipboard.writeText(url);
+                                  setActionSuccess(`Direct registration link copied for ${invite.email}`);
+                                  setTimeout(() => setActionSuccess(null), 3000);
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-transparent font-bold text-[11px] cursor-pointer flex items-center gap-1 transition-colors"
+                                title="Copy confirmation link to share via WhatsApp or SMS"
+                              >
+                                <ExternalLink className="w-3 h-3 text-cyan-600 dark:text-cyan-300" />
+                                <span>Copy Link</span>
+                              </button>
+                            )}
+
+                            <div className="flex items-center gap-2 ml-auto">
+                              <button
+                                type="button"
+                                onClick={() => handleDeclineStaffInvite(invite.id)}
+                                className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-transparent font-bold text-[11px] cursor-pointer transition-colors"
+                              >
+                                Decline
+                              </button>
+                              <button
+                                type="button"
+                                disabled={approvingInviteId === invite.id}
+                                onClick={() => handleApproveStaffInvite(invite.id, `${invite.full_name || ''} ${invite.surname || ''}`.trim())}
+                                className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-[11px] shadow-sm cursor-pointer flex items-center gap-1 transition-all disabled:opacity-50"
+                              >
+                                {approvingInviteId === invite.id ? (
+                                  <span>Approving...</span>
+                                ) : (
+                                  <>
+                                    <Check className="w-3 h-3 text-white stroke-[3]" />
+                                    <span>Approve & Activate Teacher</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* OUTGOING TEACHER INVITATIONS SECTION - Awaiting Educator Registration / Acceptance */}
+            {staffInvites.filter(si => si.status === 'pending').length > 0 && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-cyan-50/50 dark:bg-slate-900/60 border border-cyan-200/70 dark:border-cyan-500/20 space-y-3.5 shadow-sm dark:shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-cyan-200/60 dark:border-white/10 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 flex items-center justify-center border border-cyan-500/30">
+                      <Mail className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                        <span>Outgoing Educator Invitations (Awaiting Acceptance)</span>
+                        <span className="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 font-bold text-[10px] border border-cyan-500/30">
+                          {staffInvites.filter(si => si.status === 'pending').length} Sent
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                        Invitations dispatched to teachers. Once the educator confirms their workload and sets their password, they will appear under Pending Approvals above.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {staffInvites
+                    .filter(si => si.status === 'pending')
+                    .map((invite) => {
+                      const subs = invite.subjects_offered || [];
+                      const grds = invite.assigned_grades || [];
+                      const clss = invite.assigned_classes || [];
+
+                      return (
+                        <div
+                          key={invite.id}
+                          className="p-3.5 rounded-xl bg-white dark:bg-slate-950/70 border border-slate-200 dark:border-white/10 flex flex-col justify-between gap-3 hover:border-cyan-500/40 transition-all shadow-sm"
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <h4 className="font-bold text-slate-900 dark:text-white text-sm">
+                                  {invite.full_name || 'Educator'} {invite.surname || ''}
+                                </h4>
+                                <p className="text-[11px] text-slate-600 dark:text-slate-400 font-mono">{invite.email}</p>
+                                {invite.phone && <p className="text-[10px] text-slate-500">Phone: {invite.phone}</p>}
+                              </div>
+                              <span className="px-2 py-0.5 rounded-md font-bold text-[10px] shrink-0 border bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/25">
+                                Invite Sent (Pending Confirmation)
+                              </span>
+                            </div>
+
+                            {/* Workload preview */}
+                            <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200/70 dark:border-white/5 space-y-1 text-[11px]">
+                              <div className="flex flex-wrap items-center gap-1">
+                                <span className="text-slate-600 dark:text-slate-400 font-semibold">Allocated Subjects:</span>
+                                {subs.length > 0 ? (
+                                  subs.map((s: string) => (
+                                    <span key={s} className="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20 text-[10px] font-bold">
+                                      {s}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-slate-500">General</span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-600 dark:text-slate-400 pt-0.5">
+                                <span><strong>Grades:</strong> {grds.join(', ') || 'FET Phase'}</span>
+                                <span>&bull;</span>
+                                <span><strong>Classes:</strong> {clss.join(', ') || '10A'}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/70 dark:border-white/5">
+                            {invite.invite_token && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const url = `${window.location.origin}/register?role=teacher&invite=${invite.invite_token}&email=${encodeURIComponent(invite.email)}`;
+                                  navigator.clipboard.writeText(url);
+                                  setActionSuccess(`Direct registration link copied for ${invite.email}`);
+                                  setTimeout(() => setActionSuccess(null), 3000);
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-transparent font-bold text-[11px] cursor-pointer flex items-center gap-1 transition-colors"
+                                title="Copy confirmation link to share via WhatsApp or SMS"
+                              >
+                                <ExternalLink className="w-3 h-3 text-cyan-600 dark:text-cyan-300" />
+                                <span>Copy Link</span>
+                              </button>
+                            )}
+
+                            <div className="flex items-center gap-2 ml-auto">
+                              <button
+                                type="button"
+                                onClick={() => handleDeclineStaffInvite(invite.id)}
+                                className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-transparent font-bold text-[11px] cursor-pointer transition-colors"
+                              >
+                                Cancel Invite
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* Active Employees Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono text-[10px]">
+                    <th className="pb-3 px-3">Educator / Staff</th>
+                    <th className="pb-3 px-3">Designation & Department</th>
                   <th className="pb-3 px-3">Assigned Subjects</th>
                   <th className="pb-3 px-3">Grades & Classes</th>
                   <th className="pb-3 px-3">Profile Edit</th>
@@ -887,21 +1463,21 @@ export const AdminUsers: React.FC = () => {
                   <th className="pb-3 px-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                 {filteredEmployees.map((e) => (
-                  <tr key={e.employee_id} className="hover:bg-white/5 transition-colors">
+                  <tr key={e.employee_id} className="hover:bg-slate-50/80 dark:hover:bg-white/5 transition-colors">
                     <td className="py-3.5 px-3">
-                      <p className="font-bold text-white text-sm">{e.full_name} {e.surname}</p>
-                      <p className="text-[11px] text-slate-400 font-mono">{e.email}</p>
+                      <p className="font-bold text-slate-900 dark:text-white text-sm">{e.full_name} {e.surname}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">{e.email}</p>
                     </td>
                     <td className="py-3.5 px-3">
-                      <p className="font-semibold text-cyan-400">{e.employee_role || 'Teacher'}</p>
-                      <p className="text-[11px] text-slate-400">{e.department_name || 'Academic'}</p>
+                      <p className="font-semibold text-cyan-600 dark:text-cyan-400">{e.employee_role || 'Teacher'}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">{e.department_name || 'Academic'}</p>
                     </td>
                     <td className="py-3.5 px-3">
                       <div className="flex flex-wrap gap-1 max-w-xs">
                         {(e.subjects || []).map(s => (
-                          <span key={s} className="px-2 py-0.5 rounded-md bg-brand-500/20 text-brand-300 text-[10px] font-bold border border-brand-500/30">
+                          <span key={s} className="px-2 py-0.5 rounded-md bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 text-[10px] font-bold border border-cyan-500/20">
                             {s}
                           </span>
                         ))}
@@ -909,8 +1485,8 @@ export const AdminUsers: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-3">
                       <div className="space-y-0.5">
-                        <p className="text-white font-mono text-[11px]">Grades: {(e.grades_taught || []).join(', ') || '10, 11'}</p>
-                        <p className="text-slate-400 text-[10px]">Classes: {(e.classes_taught || []).join(', ') || '10A'}</p>
+                        <p className="text-slate-800 dark:text-white font-mono text-[11px]">Grades: {(e.grades_taught || []).join(', ') || '10, 11'}</p>
+                        <p className="text-slate-500 dark:text-slate-400 text-[10px]">Classes: {(e.classes_taught || []).join(', ') || '10A'}</p>
                       </div>
                     </td>
                     <td className="py-3.5 px-3">
@@ -956,6 +1532,7 @@ export const AdminUsers: React.FC = () => {
               <div className="p-8 text-center text-slate-400 text-xs">No employees found.</div>
             )}
           </div>
+        </div>
         ) : activeTab === 'parents' ? (
           /* Parents Table */
           <div className="overflow-x-auto">
@@ -1096,7 +1673,7 @@ export const AdminUsers: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-3 text-right">
                       <button
-                        onClick={() => handleDeleteUser(l.user_id, l.email || l.learner_number || '')}
+                        onClick={() => handleDeleteLearner((l.learner_id || l.child_id || l.id || 0) as number, `${l.full_name} ${l.surname}`)}
                         className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
                         title="Remove Learner"
                       >
@@ -1300,36 +1877,46 @@ export const AdminUsers: React.FC = () => {
                       {pa.created_at ? new Date(pa.created_at).toLocaleDateString() : 'Recent'}
                     </td>
                     <td className="py-3.5 px-3 text-right">
-                      {pa.status === 'pending' ? (
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleDecideParentApplication(pa.id, 'approve')}
-                            disabled={decidingAppId === pa.id}
-                            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1.5 transition-all hover:scale-105 disabled:opacity-50"
-                            title="Accept application, create parent account, link child & dispatch welcome email"
-                          >
-                            <UserCheck2 className="w-3.5 h-3.5 text-emerald-200" />
-                            <span>{decidingAppId === pa.id ? 'Processing...' : 'Accept & Link'}</span>
-                          </button>
+                      <div className="flex items-center justify-end gap-2 flex-wrap">
+                        <button
+                          onClick={() => openParentAppCorrection(pa)}
+                          className="px-2.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/25 font-bold text-[11px] flex items-center gap-1"
+                          title="Correct mistaken email, phone, ID or learner details"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Correct</span>
+                        </button>
+                        {pa.status === 'pending' ? (
+                          <>
+                            <button
+                              onClick={() => handleDecideParentApplication(pa.id, 'approve')}
+                              disabled={decidingAppId === pa.id}
+                              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1.5 transition-all hover:scale-105 disabled:opacity-50"
+                              title="Accept application, create parent account, link child & dispatch welcome email"
+                            >
+                              <UserCheck2 className="w-3.5 h-3.5 text-emerald-200" />
+                              <span>{decidingAppId === pa.id ? 'Processing...' : 'Accept & Link'}</span>
+                            </button>
 
-                          <button
-                            onClick={() => {
-                              const reason = window.prompt('Enter reason for rejection (will be sent to parent email):', 'Could not verify student enrollment records.');
-                              if (reason) handleDecideParentApplication(pa.id, 'reject', reason);
-                            }}
-                            disabled={decidingAppId === pa.id}
-                            className="px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold text-[11px] flex items-center gap-1 transition-all"
-                            title="Reject application and send notice"
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                            <span>Reject</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-[11px] text-slate-500 font-mono italic">
-                          {pa.status === 'approved' ? 'Active Account' : 'Rejected'}
-                        </span>
-                      )}
+                            <button
+                              onClick={() => {
+                                const reason = window.prompt('Enter reason for rejection (will be sent to parent email):', 'Could not verify student enrollment records.');
+                                if (reason) handleDecideParentApplication(pa.id, 'reject', reason);
+                              }}
+                              disabled={decidingAppId === pa.id}
+                              className="px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold text-[11px] flex items-center gap-1 transition-all"
+                              title="Reject application and send notice"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              <span>Reject</span>
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-[11px] text-slate-500 font-mono italic">
+                            {pa.status === 'approved' ? 'Active Account' : 'Rejected'}
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1366,7 +1953,7 @@ export const AdminUsers: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-3">
                       <Badge variant={adm.is_superadmin ? 'rose' : 'indigo'} size="sm">
-                        {adm.is_superadmin ? 'Main Executive Admin' : 'School SubAdmin'}
+                        {adm.is_superadmin ? 'Geleza SA Platform Superadmin' : 'School Admin / Principal'}
                       </Badge>
                     </td>
                     <td className="py-3.5 px-3">
@@ -1400,7 +1987,7 @@ export const AdminUsers: React.FC = () => {
               <div className="p-8 text-center text-slate-400 text-xs">No School Administrators found matching your search query.</div>
             )}
           </div>
-        ) : (
+        ) : activeTab === 'all' ? (
           /* All Users Table */
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -1472,8 +2059,385 @@ export const AdminUsers: React.FC = () => {
               </tbody>
             </table>
           </div>
+        ) : (
+          /* Recycle Bin (Bring Back Deleted People) Table */
+          <div className="space-y-4">
+            {/* Bin Controls Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center border border-rose-500/20">
+                  <Trash2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                    <span>Recycle Bin (Data Recovery Center)</span>
+                    <span className="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 font-black text-[10px] border border-rose-500/20">
+                      {recycleBinItems.length} Deleted Records
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Deleted people (learners, teachers, parents, staff) can be restored and brought back here with 1 click.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Role Filters */}
+                <div className="flex items-center gap-1 bg-white dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-white/10 text-[11px]">
+                  {(['all', 'learner', 'teacher', 'parent', 'staff', 'admin'] as const).map(role => (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => setRecycleBinRoleFilter(role)}
+                      className={`px-2.5 py-1 rounded-lg font-bold capitalize transition-all ${
+                        recycleBinRoleFilter === role
+                          ? 'bg-rose-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {role === 'all' ? 'All Roles' : `${role}s`}
+                    </button>
+                  ))}
+                </div>
+
+                {recycleBinItems.length > 0 && (
+                  <button
+                    type="button"
+                    disabled={emptyingBin}
+                    onClick={handleEmptyRecycleBin}
+                    className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold text-xs flex items-center gap-1.5 transition-all disabled:opacity-50 cursor-pointer"
+                    title="Permanently empty all items in bin"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{emptyingBin ? 'Emptying...' : 'Empty Bin'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Recycle Bin Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono text-[10px]">
+                    <th className="pb-3 px-3">Name & Details</th>
+                    <th className="pb-3 px-3">Record Type</th>
+                    <th className="pb-3 px-3">Identifier / Email</th>
+                    <th className="pb-3 px-3">Deleted By</th>
+                    <th className="pb-3 px-3">Deleted Date</th>
+                    <th className="pb-3 px-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                  {filteredRecycleBinItems.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                      <td className="py-3.5 px-3">
+                        <p className="font-bold text-slate-900 dark:text-white text-sm">{item.name}</p>
+                        <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                          <span>Orig ID: #{item.original_id}</span>
+                          {item.learner_grade && <span>• Grade {item.learner_grade}</span>}
+                          {item.learner_stream && <span>• {item.learner_stream}</span>}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-3">
+                        <Badge
+                          variant={
+                            item.record_type === 'learner'
+                              ? 'indigo'
+                              : item.record_type === 'teacher'
+                              ? 'cyan'
+                              : item.record_type === 'parent'
+                              ? 'amber'
+                              : 'rose'
+                          }
+                          size="sm"
+                        >
+                          {item.record_type.toUpperCase()}
+                        </Badge>
+                      </td>
+                      <td className="py-3.5 px-3 font-mono text-slate-700 dark:text-slate-300">
+                        {item.identifier || item.user_email || '-'}
+                        {item.user_phone && <span className="block text-[10px] text-slate-500">{item.user_phone}</span>}
+                      </td>
+                      <td className="py-3.5 px-3 text-slate-600 dark:text-slate-400 text-[11px]">
+                        {item.deleted_by_name || 'Admin'}
+                      </td>
+                      <td className="py-3.5 px-3 font-mono text-slate-500 text-[11px]">
+                        {new Date(item.deleted_at).toLocaleString()}
+                      </td>
+                      <td className="py-3.5 px-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            disabled={restoringItemId === item.id}
+                            onClick={() => handleRestoreItem(item.id, item.name)}
+                            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs shadow-sm flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            title="Bring this person back into the active system"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-white" />
+                            <span>{restoringItemId === item.id ? 'Restoring...' : 'Bring Back'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handlePermanentDelete(item.id, item.name)}
+                            className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-colors cursor-pointer"
+                            title="Permanently remove from database"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filteredRecycleBinItems.length === 0 && (
+                <div className="p-12 text-center space-y-2">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/5 mx-auto flex items-center justify-center text-slate-400">
+                    <Trash2 className="w-6 h-6" />
+                  </div>
+                  <p className="text-slate-700 dark:text-slate-300 font-bold text-sm">Recycle Bin is Empty</p>
+                  <p className="text-slate-500 text-xs max-w-sm mx-auto">
+                    When any learner, educator, or parent account is deleted, they will be archived here and can be brought back anytime with 1-click.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
+
+      {/* ========================================================================= */}
+      {/* INVITE TEACHER BY EMAIL & ASSIGN SUBJECTS MODAL */}
+      {/* ========================================================================= */}
+      <Modal
+        isOpen={isInviteTeacherModalOpen}
+        onClose={() => {
+          setIsInviteTeacherModalOpen(false);
+          setGeneratedInviteUrl(null);
+        }}
+        title="Invite Teacher by Email & Assign Subjects"
+        maxWidth="2xl"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-200 text-xs flex items-center gap-2">
+            <Mail className="w-4 h-4 shrink-0 text-cyan-400" />
+            <span>
+              The teacher will receive an invitation link containing their assigned subjects, grades, and classes. They only need to confirm and set their password to see their assigned subjects in their dashboard.
+            </span>
+          </div>
+
+          {inviteModalError && (
+            <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2 animate-fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{inviteModalError}</span>
+            </div>
+          )}
+
+          {generatedInviteUrl ? (
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-left space-y-3 animate-fade-in">
+              <div className="flex items-center gap-2 text-emerald-300 font-bold">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>Invitation Dispatched & Ready to Share!</span>
+              </div>
+              <p className="text-[11px] text-slate-300">
+                An official invitation email has been sent to <strong className="text-white">{teacherInviteForm.email}</strong> with their assigned subjects and classes. You can also copy and send the direct link to the teacher via WhatsApp or SMS:
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={generatedInviteUrl}
+                  className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-[11px] outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(generatedInviteUrl);
+                    setCopiedLink(true);
+                    setTimeout(() => setCopiedLink(false), 3000);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs flex items-center gap-1.5 cursor-pointer transition-all"
+                >
+                  {copiedLink ? <Check className="w-3.5 h-3.5 text-slate-950" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
+                </button>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsInviteTeacherModalOpen(false);
+                    setGeneratedInviteUrl(null);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSendTeacherInvite} className="space-y-4">
+              {/* Teacher Email */}
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Teacher Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  value={teacherInviteForm.email}
+                  onChange={(e) => setTeacherInviteForm(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="e.g. s.ndlovu@school.co.za or personal@gmail.com"
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-brand-500 font-mono"
+                />
+              </div>
+
+              {/* Optional Name */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">Teacher First Name (Optional)</label>
+                  <input
+                    type="text"
+                    value={teacherInviteForm.full_name}
+                    onChange={(e) => setTeacherInviteForm(prev => ({ ...prev, full_name: lettersOnly(e.target.value) }))}
+                    placeholder="e.g. Sipho"
+                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">Teacher Surname (Optional)</label>
+                  <input
+                    type="text"
+                    value={teacherInviteForm.surname}
+                    onChange={(e) => setTeacherInviteForm(prev => ({ ...prev, surname: lettersOnly(e.target.value) }))}
+                    placeholder="e.g. Ndlovu"
+                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+              </div>
+
+              {/* Assign Subjects */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-slate-300 font-bold">Assign Subjects to Teacher * (Click to Toggle)</label>
+                  <span className="text-[10px] text-cyan-300 font-bold">{teacherInviteForm.subjects.length} Selected</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 p-3 rounded-2xl bg-surface-darker border border-white/10 max-h-36 overflow-y-auto">
+                  {[
+                    'Mathematics', 'Physical Sciences', 'Life Sciences', 'Accounting',
+                    'Business Studies', 'Economics', 'Tourism', 'Mathematical Literacy',
+                    'English FAL', 'Sepedi Home Language', 'isiZulu Home Language', 'isiXhosa Home Language',
+                    'Afrikaans Home Language', 'Life Orientation', 'Natural Sciences', 'Social Sciences',
+                    'History', 'Geography', 'Technology'
+                  ].map(sub => {
+                    const isSelected = teacherInviteForm.subjects.includes(sub);
+                    return (
+                      <button
+                        type="button"
+                        key={sub}
+                        onClick={() => toggleInviteSubject(sub)}
+                        className={`text-[11px] px-2.5 py-1 rounded-lg font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                          isSelected
+                            ? 'bg-cyan-500 text-slate-950 font-bold shadow-xs'
+                            : 'bg-white/5 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {isSelected ? (
+                          <>
+                            <Check className="w-3 h-3 text-slate-950" />
+                            <span>{sub}</span>
+                          </>
+                        ) : (
+                          <span>+ {sub}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Assign Grades */}
+              <div className="space-y-1.5">
+                <label className="block text-slate-300 font-bold">Assign Grades (Click to Toggle)</label>
+                <div className="flex flex-wrap gap-2">
+                  {[8, 9, 10, 11, 12].map(g => {
+                    const isSelected = teacherInviteForm.grades.includes(g);
+                    return (
+                      <button
+                        type="button"
+                        key={g}
+                        onClick={() => toggleInviteGrade(g)}
+                        className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'bg-white/5 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Grade {g}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Assign Classes */}
+              <div className="space-y-1.5">
+                <label className="block text-slate-300 font-bold">Assign Classes (Click to Toggle)</label>
+                <div className="flex flex-wrap gap-2">
+                  {(metadata.classes.length > 0
+                    ? metadata.classes.map(c => c.name)
+                    : ['8A', '8B', '9A', '9B', '10A', '10B', '11A', '11B', '12A', '12B']
+                  ).map(cls => {
+                    const isSelected = teacherInviteForm.classes.includes(cls);
+                    return (
+                      <button
+                        type="button"
+                        key={cls}
+                        onClick={() => toggleInviteClass(cls)}
+                        className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-white/5 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {cls}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsInviteTeacherModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={sendingTeacherInvite}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-500 to-teal-400 hover:from-blue-500 hover:to-cyan-400 text-slate-950 font-black shadow-md transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                >
+                  {sendingTeacherInvite ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      <span>Sending Invitation...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>Send Teacher Invitation</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </Modal>
 
       {/* ========================================================================= */}
       {/* ADD EMPLOYEE MODAL (matches employees table in schema.sql) */}
@@ -1616,6 +2580,65 @@ export const AdminUsers: React.FC = () => {
             </div>
           </div>
 
+          {/* Assigned Grades */}
+          <div className="space-y-1.5">
+            <label className="block text-slate-300 font-bold">Assigned Grades (Click to Toggle)</label>
+            <div className="flex flex-wrap gap-2">
+              {[8, 9, 10, 11, 12].map(g => {
+                const isSelected = employeeForm.grades_taught.includes(g);
+                return (
+                  <button
+                    type="button"
+                    key={g}
+                    onClick={() => toggleGradeForEmployee(g)}
+                    className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white/5 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Grade {g}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Assigned Classes */}
+          <div className="space-y-1.5">
+            <label className="block text-slate-300 font-bold">Assigned Classes (Click to Toggle)</label>
+            <div className="flex flex-wrap gap-2">
+              {(metadata.classes.length > 0
+                ? metadata.classes.map(c => c.name)
+                : ['8A', '8B', '9A', '9B', '10A', '10B', '11A', '11B', '12A', '12B']
+              ).map(cls => {
+                const isSelected = employeeForm.classes_taught.includes(cls);
+                return (
+                  <button
+                    type="button"
+                    key={cls}
+                    onClick={() => toggleClassForEmployee(cls)}
+                    className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-white/5 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {cls}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Informational Workload Invitation Banner */}
+          <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs flex items-center gap-2.5">
+            <Mail className="w-4 h-4 shrink-0 text-cyan-400" />
+            <span>
+              An official workload invitation email will be dispatched to this educator with their assigned subjects and classes. The educator will review and confirm their workload, set their password, and submit their registration for your final approval.
+            </span>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-slate-300 font-bold mb-1">Hire Date</label>
@@ -1627,12 +2650,12 @@ export const AdminUsers: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-slate-300 font-bold mb-1">Initial Password</label>
+              <label className="block text-slate-300 font-bold mb-1">Initial Password (Optional Fallback)</label>
               <input
                 type="text"
                 value={employeeForm.password}
                 onChange={(e) => setEmployeeForm(prev => ({ ...prev, password: e.target.value }))}
-                placeholder="Default: Teacher@2026"
+                placeholder="Teacher will set password upon registration"
                 className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-brand-500"
               />
             </div>
@@ -1642,16 +2665,26 @@ export const AdminUsers: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsAddEmployeeModalOpen(false)}
-              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold transition-colors"
+              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-extrabold shadow-glow-indigo transition-all disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-extrabold shadow-glow-indigo transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
             >
-              {submitting ? 'Saving to Database...' : 'Register Employee'}
+              {submitting ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Dispatching Invitation...</span>
+                </>
+              ) : (
+                <>
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Assign Workload & Send Invitation</span>
+                </>
+              )}
             </button>
           </div>
         </form>
@@ -1998,7 +3031,7 @@ export const AdminUsers: React.FC = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-extrabold shadow-sm transition-all disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold shadow-sm transition-all disabled:opacity-50"
             >
               {submitting ? 'Enrolling in Database...' : 'Enroll Learner'}
             </button>
@@ -2220,6 +3253,62 @@ export const AdminUsers: React.FC = () => {
           </form>
         </Modal>
       )}
+
+      <Modal
+        isOpen={!!editingParentApp}
+        onClose={() => setEditingParentApp(null)}
+        title={editingParentApp ? `Correct ${editingParentApp.application_number}` : 'Correct application'}
+      >
+        {editingParentApp && (
+          <div className="space-y-3 text-xs">
+            <p className="text-slate-400 leading-relaxed">
+              Fix mistakes the parent made on this application (email, phone, ID, names). If the application is already approved, the linked parent account contact details are updated too.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-2">
+              {(
+                [
+                  ['parent_email', 'Parent email'],
+                  ['parent_phone', 'Parent phone'],
+                  ['parent_name', 'Parent first name'],
+                  ['parent_surname', 'Parent surname'],
+                  ['parent_id_number', 'Parent ID number'],
+                  ['physical_address', 'Physical address'],
+                  ['child_first_name', 'Learner first name'],
+                  ['child_surname', 'Learner surname'],
+                  ['child_id_number', 'Learner ID'],
+                  ['child_grade', 'Grade']
+                ] as const
+              ).map(([key, label]) => (
+                <label key={key} className="block space-y-1">
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider">{label}</span>
+                  <input
+                    value={(parentAppCorrection as any)[key]}
+                    onChange={(e) => setParentAppCorrection((prev) => ({ ...prev, [key]: e.target.value }))}
+                    className="w-full px-2.5 py-2 rounded-lg bg-surface-darker border border-white/10 text-white focus:outline-none focus:border-cyan-500/40"
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setEditingParentApp(null)}
+                className="px-4 py-2 rounded-xl bg-white/5 text-slate-300 font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={savingParentCorrection}
+                onClick={handleSaveParentAppCorrection}
+                className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold disabled:opacity-50"
+              >
+                {savingParentCorrection ? 'Saving…' : 'Save corrections'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

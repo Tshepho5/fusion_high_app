@@ -9,8 +9,13 @@ const localPool = new Pool({
   database: process.env.DB_NAME || 'FUSION_DB'
 });
 
+if (!process.env.DATABASE_URL) {
+  console.error('Set DATABASE_URL before running this script.');
+  process.exit(1);
+}
+
 const cloudPool = new Pool({
-  connectionString: 'postgresql://fusion_high_db_user:hmYNReP72H9Nne5px8hbNbCWVts1xgpD@dpg-da3haqdg1s2s73dkactg-a.oregon-postgres.render.com/fusion_high_db',
+  connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 

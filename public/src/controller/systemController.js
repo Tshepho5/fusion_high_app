@@ -2,6 +2,8 @@ const db = require('../../../db/db');
 const bcrypt = require('bcryptjs');
 const emailService = require('../services/emailService');
 const { rejectNameDigits } = require('../services/lettersOnly');
+const { resolveSchoolId } = require('../services/schoolScope');
+const { testerRoleChangeAllowed } = require('../../../lib/authoritativeAccess');
 
 let portalSchemaReady = false;
 
@@ -208,7 +210,6 @@ exports.createTestingUser = async (req, res) => {
       full_name,
       surname,
       role = 'teacher',
-      school_id = 1,
       password,
       phone,
       send_email = true
@@ -221,6 +222,12 @@ exports.createTestingUser = async (req, res) => {
       return res.status(400).json({ error: 'Tester full name is required.' });
     }
     if (rejectNameDigits(res, full_name, surname)) return;
+    const school_id = resolveSchoolId(req);
+
+    const roleDecision = testerRoleChangeAllowed({ requestedRole: role, targetIsSuperadmin: false });
+    if (!roleDecision.ok) {
+      return res.status(roleDecision.status).json({ error: roleDecision.error });
+    }
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanFirstName = full_name.trim();
@@ -237,10 +244,20 @@ exports.createTestingUser = async (req, res) => {
     const resolvedRoleName = roleQuery.rows.length > 0 ? roleQuery.rows[0].name : role;
 
     // Check if user already exists
-    const existing = await db.query('SELECT id, email FROM users WHERE LOWER(email) = LOWER($1)', [cleanEmail]);
+    const existing = await db.query(
+      'SELECT id, email, COALESCE(is_superadmin, FALSE) AS is_superadmin FROM users WHERE LOWER(email) = LOWER($1)',
+      [cleanEmail]
+    );
     let testerId;
 
     if (existing.rows.length > 0) {
+      const preserved = testerRoleChangeAllowed({
+        requestedRole: role,
+        targetIsSuperadmin: existing.rows[0].is_superadmin === true
+      });
+      if (!preserved.ok) {
+        return res.status(preserved.status).json({ error: preserved.error });
+      }
       testerId = existing.rows[0].id;
       await db.query(`
         UPDATE users
@@ -334,6 +351,20 @@ exports.updateTesterRole = async (req, res) => {
     if (roleQuery.rows.length === 0) {
       return res.status(400).json({ error: `Invalid role "${role}".` });
     }
+    const current = await db.query(
+      'SELECT id, COALESCE(is_superadmin, FALSE) AS is_superadmin FROM users WHERE id = $1',
+      [id]
+    );
+    const roleDecision = testerRoleChangeAllowed({
+      requestedRole: role,
+      targetIsSuperadmin: current.rows[0] ? current.rows[0].is_superadmin === true : false
+    });
+    if (!roleDecision.ok) {
+      return res.status(roleDecision.status).json({ error: roleDecision.error });
+    }
+    if (current.rows.length === 0) {
+      return res.status(404).json({ error: 'Tester account not found.' });
+    }
 
     const roleId = roleQuery.rows[0].id;
     const roleName = roleQuery.rows[0].name;
@@ -341,7 +372,7 @@ exports.updateTesterRole = async (req, res) => {
     const updateRes = await db.query(`
       UPDATE users
       SET role_id = $1
-      WHERE id = $2 AND is_tester = TRUE
+      WHERE id = $2 AND is_tester = TRUE AND COALESCE(is_superadmin, FALSE) = FALSE
       RETURNING id, email, full_name, surname, role_id;
     `, [roleId, id]);
 

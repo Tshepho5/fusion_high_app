@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const db = require('../db/db');
 const { forgotPassword, verifyOTP } = require('../public/src/controller/authController');
 

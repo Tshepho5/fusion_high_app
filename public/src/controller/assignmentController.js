@@ -4,6 +4,7 @@ const multer = require('multer');
 const db = require('../../../db/db');
 const emailService = require('../services/emailService');
 const NotificationService = require('../services/notificationService');
+const { resolveSchoolId } = require('../services/schoolScope');
 
 // Ensure upload directories exist
 const assignmentUploadsDir = path.join(__dirname, '../../uploads/assignments');
@@ -222,11 +223,14 @@ exports.createAssignment = async (req, res) => {
   const fileName = req.file ? req.file.originalname : null;
 
   try {
+    await db.query(`ALTER TABLE homework_assignments ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'ungraded'`).catch(() => {});
+    await db.query(`ALTER TABLE homework_assignments ADD COLUMN IF NOT EXISTS school_id INTEGER`).catch(() => {});
+    const schoolId = resolveSchoolId(req);
     const rawQuestions = typeof questions === 'string' ? questions : (questions ? JSON.stringify(questions) : null);
     const insertRes = await db.query(
       `INSERT INTO homework_assignments 
-        (teacher_id, title, description, subject, grade, stream, due_date, due_time, total_marks, file_url, file_name, assignment_type, questions)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        (teacher_id, title, description, subject, grade, stream, due_date, due_time, total_marks, file_url, file_name, assignment_type, questions, school_id, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING *`,
       [
         teacherId,
@@ -241,7 +245,9 @@ exports.createAssignment = async (req, res) => {
         fileUrl,
         fileName,
         assignment_type || 'homework',
-        rawQuestions
+        rawQuestions,
+        schoolId ? Number(schoolId) : null,
+        'ungraded'
       ]
     );
 
@@ -358,10 +364,15 @@ exports.createAssignment = async (req, res) => {
 exports.getTeacherAssignments = async (req, res) => {
   const teacherId = req.user.id;
   const isAdmin = req.user.role === 'admin';
+  const schoolId = resolveSchoolId(req);
 
   try {
+    await db.query(`ALTER TABLE homework_assignments ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'ungraded'`).catch(() => {});
+    await db.query(`ALTER TABLE homework_assignments ADD COLUMN IF NOT EXISTS school_id INTEGER`).catch(() => {});
+
     let query = `
       SELECT a.*, 
+             COALESCE(a.status, CASE WHEN COUNT(s.id) > 0 AND COUNT(CASE WHEN s.status != 'teacher_signed' THEN 1 END) = 0 THEN 'graded' ELSE 'ungraded' END) as status,
              u.full_name as teacher_name, u.surname as teacher_surname,
              COUNT(s.id) as total_submissions,
              COUNT(CASE WHEN s.status = 'teacher_signed' THEN 1 END) as signed_submissions,
@@ -373,9 +384,20 @@ exports.getTeacherAssignments = async (req, res) => {
     `;
     
     const params = [];
+    const conditions = [];
+
     if (!isAdmin) {
-      query += ` WHERE a.teacher_id::text = $1::text`;
       params.push(String(teacherId));
+      conditions.push(`a.teacher_id::text = $${params.length}::text`);
+    }
+
+    if (schoolId) {
+      params.push(Number(schoolId));
+      conditions.push(`(a.school_id IS NULL OR a.school_id = $${params.length})`);
+    }
+
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(' AND ')}`;
     }
     
     query += ` GROUP BY a.id, u.full_name, u.surname ORDER BY a.due_date DESC, a.created_at DESC`;
@@ -385,6 +407,42 @@ exports.getTeacherAssignments = async (req, res) => {
   } catch (err) {
     console.error('Error fetching teacher assignments:', err);
     res.status(500).json({ error: 'Failed to load assignments: ' + err.message });
+  }
+};
+
+/**
+ * Teacher/Admin: Update Assignment Status (e.g. 'graded' vs 'ungraded')
+ */
+exports.updateAssignmentStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const teacherId = req.user.id;
+  const isAdmin = req.user.role === 'admin';
+
+  if (!status || !['graded', 'ungraded', 'published', 'draft'].includes(status.toLowerCase())) {
+    return res.status(400).json({ error: 'Valid status required (graded, ungraded).' });
+  }
+
+  try {
+    await db.query(`ALTER TABLE homework_assignments ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'ungraded'`).catch(() => {});
+    
+    let query = `UPDATE homework_assignments SET status = $1 WHERE id = $2`;
+    const params = [status.toLowerCase(), id];
+    if (!isAdmin) {
+      query += ` AND teacher_id::text = $3::text`;
+      params.push(String(teacherId));
+    }
+    query += ` RETURNING *`;
+
+    const result = await db.query(query, params);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Assignment not found or unauthorized.' });
+    }
+
+    res.json({ success: true, assignment: result.rows[0] });
+  } catch (err) {
+    console.error('Error updating assignment status:', err);
+    res.status(500).json({ error: 'Failed to update assignment status: ' + err.message });
   }
 };
 

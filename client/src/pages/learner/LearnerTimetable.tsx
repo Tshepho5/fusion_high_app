@@ -181,15 +181,15 @@ export const LearnerTimetable: React.FC = () => {
     window.print();
   };
 
-  if (loading) return <LoadingSpinner text="Fetching timetable from database..." />;
+  if (loading) return <LoadingSpinner text="Fetching timetable schedule..." />;
 
   return (
     <div className="space-y-6">
       {/* Header Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-white shadow-glow-indigo">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-white shadow-glow-cyan">
               <Clock className="w-4 h-4" />
             </div>
             <h2 className="text-xl md:text-2xl font-extrabold font-display text-white tracking-tight">
@@ -210,7 +210,7 @@ export const LearnerTimetable: React.FC = () => {
               onClick={() => setViewMode('matrix')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                 viewMode === 'matrix'
-                  ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-glow-indigo'
+                  ? 'bg-gradient-to-r from-brand-600 to-cyan-600 text-white shadow-glow-cyan'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
               title="Full Weekly Master Matrix (Monday to Friday table)"
@@ -223,7 +223,7 @@ export const LearnerTimetable: React.FC = () => {
               onClick={() => setViewMode('cards')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                 viewMode === 'cards'
-                  ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-glow-indigo'
+                  ? 'bg-gradient-to-r from-brand-600 to-cyan-600 text-white shadow-glow-cyan'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
               title="Day Cards Grid (Interactive Day tabs + period cards)"
@@ -236,7 +236,7 @@ export const LearnerTimetable: React.FC = () => {
               onClick={() => setViewMode('list')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                 viewMode === 'list'
-                  ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-glow-indigo'
+                  ? 'bg-gradient-to-r from-brand-600 to-cyan-600 text-white shadow-glow-cyan'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
               title="Compact Daily Agenda List"
@@ -414,7 +414,7 @@ export const LearnerTimetable: React.FC = () => {
                   onClick={() => setSelectedDay(day)}
                   className={`flex-1 min-w-[110px] py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-0.5 ${
                     isSelected
-                      ? 'bg-gradient-to-r from-brand-600 to-cyan-600 text-white shadow-glow-indigo'
+                      ? 'bg-gradient-to-r from-brand-600 to-cyan-600 text-white shadow-glow-cyan'
                       : 'text-slate-400 hover:text-white hover:bg-white/5'
                   }`}
                 >
@@ -433,7 +433,7 @@ export const LearnerTimetable: React.FC = () => {
               {daySlots.map((slot, idx) => (
                 <div
                   key={idx}
-                  className="rounded-3xl bg-surface-dark border border-white/10 p-5 shadow-xl hover:border-brand-500/40 hover:shadow-glow-indigo transition-all space-y-3 relative group"
+                  className="rounded-3xl bg-surface-dark border border-white/10 p-5 shadow-xl hover:border-brand-500/40 hover:shadow-glow-cyan transition-all space-y-3 relative group"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-brand-400">
@@ -465,7 +465,7 @@ export const LearnerTimetable: React.FC = () => {
             <div className="rounded-3xl bg-surface-dark border border-white/10 p-12 text-center text-slate-400 text-xs space-y-2">
               <Calendar className="w-8 h-8 text-slate-600 mx-auto mb-2" />
               <p className="font-bold text-slate-300">
-                {activeSchedule ? `No periods found for ${selectedDay}.` : 'No active timetable published in database.'}
+                {activeSchedule ? `No periods found for ${selectedDay}.` : 'No active timetable published.'}
               </p>
               <p className="text-[11px] text-slate-500 max-w-md mx-auto">
                 Try clearing your search filter or select another day of the week.

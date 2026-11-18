@@ -20,7 +20,7 @@ export const LearnerAttendance: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <LoadingSpinner text="Loading database attendance logs..." />;
+  if (loading) return <LoadingSpinner text="Loading attendance records..." />;
 
   const getStatusBadge = (status: string) => {
     switch ((status || '').toLowerCase()) {
@@ -48,7 +48,7 @@ export const LearnerAttendance: React.FC = () => {
           Attendance Records
         </h2>
         <p className="text-xs text-slate-400 mt-1">
-          Direct database logs from the PostgreSQL <span className="font-mono text-emerald-400">attendance</span> table.
+          Official attendance registers and automated period check-ins.
         </p>
       </div>
 
@@ -123,7 +123,7 @@ export const LearnerAttendance: React.FC = () => {
           </div>
         ) : (
           <div className="p-8 text-center text-slate-400 text-xs">
-            No attendance registers recorded yet in database.
+            No attendance registers recorded yet.
           </div>
         )}
       </div>

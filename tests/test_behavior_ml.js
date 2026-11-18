@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const behaviorMlService = require('../public/src/services/behaviorMlService');
 
 console.log('=' .repeat(70));

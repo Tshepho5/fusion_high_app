@@ -1,0 +1,132 @@
+[
+  {
+    "id": "LS10_CHEM_01",
+    "topic": "Chemistry of Life",
+    "subtopic": "Inorganic and Organic Molecules (Enzymes & Temperature)",
+    "paper": "Paper 1",
+    "grade": 10,
+    "keywords": ["enzyme", "active site", "denature", "optimum temperature", "substrate", "catalyst", "protein", "chemistry of life"],
+    "question": "Explain the effect of high temperature (above 45°C) on the functioning of enzymes in metabolic reactions. [5 Marks]",
+    "prescribed_definition": "Enzymes are biological catalysts composed of proteins that accelerate chemical reactions by lowering activation energy, without being chemically altered in the process.",
+    "formula": "Enzyme + Substrate ⇌ Enzyme-Substrate Complex ⇌ Enzyme + Product",
+    "constants": "Optimum human metabolic enzyme temperature: ~37°C. Denaturation occurs above 45°C.",
+    "rubric_points": [
+      "State that enzymes are proteins with a specific three-dimensional active site [1 Mark]",
+      "State that temperatures above 45°C cause excessive kinetic energy breaking hydrogen bonds [1 Mark]",
+      "Explain that the shape of the active site changes (denaturation) [1 Mark]",
+      "State that the substrate can no longer fit into the active site (loss of induced fit / lock-and-key) [1 Mark]",
+      "Conclude that metabolic chemical reactions slow down drastically or cease entirely [1 Mark]"
+    ],
+    "model_answer": "Enzymes are protein molecules with a specific three-dimensional shape and active site. When temperature rises above 45°C, high thermal energy breaks the weak hydrogen bonds maintaining the tertiary protein structure. This causes the enzyme to denature, permanently altering the shape of its active site. Consequently, the substrate molecule can no longer bind into the active site to form an enzyme-substrate complex, stopping the catalytic reaction.",
+    "common_misconceptions": "Learners often say 'the enzyme is killed'. Enzymes are non-living chemical molecules, so they cannot be killed; they are 'denatured'.",
+    "human_guidance": "Always explain the link between protein structure, active site shape, and substrate binding when discussing enzyme denaturation."
+  },
+  {
+    "id": "LS10_CELL_01",
+    "topic": "Cell Structure and Physiology",
+    "subtopic": "Osmosis and Water Potential in Plant Cells",
+    "paper": "Paper 1",
+    "grade": 10,
+    "keywords": ["osmosis", "water potential", "selectively permeable", "vacuole", "turgor", "turgid", "plasmolysis", "flaccid", "plant cell"],
+    "question": "Describe what occurs when a turgid plant cell is placed in a concentrated hypertonic salt solution. [5 Marks]",
+    "prescribed_definition": "Osmosis is the net movement of water molecules from a region of higher water potential to a region of lower water potential across a selectively permeable membrane.",
+    "formula": "Ψ (Water Potential) = Ψs (Solute Potential) + Ψp (Pressure Potential)",
+    "constants": "Distilled water has highest water potential: Ψ = 0 kPa. Hypertonic solutions have negative water potential.",
+    "rubric_points": [
+      "Identify that the concentrated salt solution has a lower water potential than the cell sap inside the vacuole [1 Mark]",
+      "State that water molecules move out of the cell by osmosis [1 Mark]",
+      "Specify that water exits across the selectively permeable cell membrane [1 Mark]",
+      "Explain that the vacuole shrinks and the cell membrane pulls away from the rigid cell wall [1 Mark]",
+      "Identify the resulting state as a plasmolysed / flaccid plant cell [1 Mark]"
+    ],
+    "model_answer": "The concentrated salt solution has a lower water potential (hypertonic) compared to the cell sap within the plant cell vacuole. Water molecules leave the cell by osmosis across the selectively permeable cell membrane down the water potential gradient. As water exits, the large central vacuole shrinks in volume, causing the cytoplasm and cell membrane to pull away from the cellulose cell wall. This physiological state is known as plasmolysis.",
+    "common_misconceptions": "Confusing cell wall with cell membrane. The cellulose cell wall is freely permeable, whereas the cell membrane is selectively permeable.",
+    "human_guidance": "In CAPS exams, always mention the direction of water potential gradient and the selectively permeable membrane to earn full marks."
+  },
+  {
+    "id": "LS10_CELL_02",
+    "topic": "Cell Division",
+    "subtopic": "Mitosis and Biological Importance",
+    "paper": "Paper 1",
+    "grade": 10,
+    "keywords": ["mitosis", "chromosomes", "chromatids", "prophase", "metaphase", "anaphase", "telophase", "spindle fibers", "daughter cells", "cell division"],
+    "question": "Differentiate between Metaphase and Anaphase during mitosis and state two biological reasons why mitosis is essential in living organisms. [5 Marks]",
+    "prescribed_definition": "Mitosis is a process of nuclear cell division by which a single somatic cell produces two genetically identical diploid daughter cells.",
+    "formula": "2n (diploid parent cell) → 2n + 2n (two genetically identical diploid daughter cells)",
+    "constants": "Human diploid chromosome number (2n) = 46 chromosomes.",
+    "rubric_points": [
+      "Metaphase: Chromosomes align individually along the equator of the cell attached to spindle fibers [1 Mark]",
+      "Anaphase: Centromeres split and sister chromatids are pulled to opposite poles of the cell [1 Mark]",
+      "Importance 1: Growth of the organism by producing new cells [1 Mark]",
+      "Importance 2: Repair of damaged tissues / replacement of worn-out cells [1 Mark]",
+      "Importance 3: Asexual reproduction in unicellular or vegetative organisms [1 Mark]"
+    ],
+    "model_answer": "In Metaphase, replicated chromosomes align along the equator of the cell, each attached at its centromere to spindle fibers. In Anaphase, centromeres split and sister chromatids (now daughter chromosomes) are pulled to opposite poles by contracting spindle fibers. Mitosis is biologically vital because: (1) It allows growth of multicellular organisms from a single zygote by increasing cell count, and (2) It facilitates tissue repair and regeneration by replacing dead or damaged somatic cells with genetically identical cells.",
+    "common_misconceptions": "Learners often state that homologous chromosome pairs separate in mitosis. Homologous chromosome separation happens ONLY in Meiosis I; in mitosis, sister chromatids separate.",
+    "human_guidance": "Emphasize that mitosis maintains the chromosome number (2n → 2n) and produces exact genetic clones."
+  },
+  {
+    "id": "LS10_TISS_01",
+    "topic": "Plant Tissues and Organs",
+    "subtopic": "Dicotyledonous Leaf Anatomy & Photosynthesis",
+    "paper": "Paper 1",
+    "grade": 10,
+    "keywords": ["leaf", "palisade mesophyll", "spongy mesophyll", "stomata", "guard cells", "cuticle", "chloroplast", "xylem", "phloem", "photosynthesis"],
+    "question": "Explain three structural adaptations of a dicotyledonous leaf for efficient photosynthesis. [5 Marks]",
+    "prescribed_definition": "A dicotyledonous leaf is a specialized plant organ adapted for absorbing sunlight and carbon dioxide to synthesize organic carbohydrates via photosynthesis.",
+    "formula": "6CO2 + 6H2O + Sunlight → C6H12O6 + 6O2",
+    "constants": "Visible spectrum absorption: Chlorophyll a and b absorb blue and red light, reflecting green.",
+    "rubric_points": [
+      "Broad, flat lamina provides large surface area for maximum sunlight absorption [1 Mark]",
+      "Transparent waxy cuticle on upper epidermis allows sunlight through while reducing water loss [1 Mark]",
+      "Palisade mesophyll cells are vertically packed with high density of chloroplasts directly beneath the upper epidermis [1 Mark]",
+      "Intercellular air spaces in spongy mesophyll allow rapid diffusion of CO2 and O2 gases [1 Mark]",
+      "Stomata controlled by guard cells in lower epidermis regulate gaseous exchange and transpiration [1 Mark]"
+    ],
+    "model_answer": "Three structural adaptations of a dicotyledonous leaf are: (1) Palisade mesophyll layer: Cells are tightly packed vertically near the upper surface and contain a dense concentration of chloroplasts to maximize sunlight absorption. (2) Intercellular air spaces in spongy mesophyll: Loosely arranged spongy cells provide large air cavities for rapid gas exchange of carbon dioxide and oxygen between cells and stomata. (3) Transparent waxy cuticle and stomatal distribution: A transparent cuticle permits sunlight penetration while preventing desiccation, while lower epidermal stomata with guard cells regulate gas intake and water loss.",
+    "common_misconceptions": "Thinking stomata are open 24 hours. Stomata usually open during the daytime when light triggers osmotic uptake of water into guard cells.",
+    "human_guidance": "Link structure directly to function: e.g. transparent cuticle → sunlight transmission, air spaces → gas diffusion."
+  },
+  {
+    "id": "LS10_PHOTO_01",
+    "topic": "Photosynthesis",
+    "subtopic": "Light and Dark Phase Processes and Factors",
+    "paper": "Paper 1",
+    "grade": 10,
+    "keywords": ["photosynthesis", "light phase", "dark phase", "calvin cycle", "grana", "stroma", "chloroplast", "atp", "carbon dioxide", "light intensity"],
+    "question": "Generate a Grade 10 Life Sciences practice question about photosynthesis worth 5 marks. [5 Marks]",
+    "prescribed_definition": "Photosynthesis is the metabolic process in green plants where radiant light energy is trapped by chlorophyll to convert carbon dioxide and water into glucose and oxygen.",
+    "formula": "Carbon Dioxide + Water —(Sunlight/Chlorophyll)→ Glucose + Oxygen",
+    "constants": "Light phase occurs in thylakoid/grana; Dark phase (Calvin cycle) occurs in the stroma of chloroplasts.",
+    "rubric_points": [
+      "State the site of the light phase (grana/thylakoids) and dark phase (stroma) [2 Marks]",
+      "Explain the photolysis of water into hydrogen and oxygen gas in the light phase [1 Mark]",
+      "Explain the reduction of carbon dioxide using ATP and hydrogen to produce glucose in the stroma [1 Mark]",
+      "Identify the gas released as a by-product into the atmosphere (oxygen) [1 Mark]"
+    ],
+    "model_answer": "Question: In an experiment on photosynthesis in a freshwater plant (Elodea), gas bubbles were released when exposed to light.\n1. Name the organelle where photosynthesis occurs. (1 Mark)\n2. Identify the gas released in the bubbles. (1 Mark)\n3. Differentiate between the exact sites of the light phase and dark phase inside this organelle. (2 Marks)\n4. State the organic product formed during the dark phase. (1 Mark)\n\nMemorandum:\n1. Chloroplast (1m)\n2. Oxygen gas (O2) (1m)\n3. Light phase: Grana / Thylakoids (1m); Dark phase: Stroma (1m)\n4. Glucose / Carbohydrates / Starch (1m)",
+    "common_misconceptions": "Thinking photosynthesis only requires water and sun, forgetting carbon dioxide as the primary carbon source for glucose synthesis.",
+    "human_guidance": "Always relate photosynthesis questions to experimental variables like light intensity, CO2 concentration, and temperature."
+  },
+  {
+    "id": "LS10_NUTR_01",
+    "topic": "Human Nutrition & Digestive System",
+    "subtopic": "Alimentary Canal, Enzymes & Absorption in the Small Intestine",
+    "paper": "Paper 1",
+    "grade": 10,
+    "keywords": ["human nutrition", "digestion", "alimentary canal", "villi", "microvilli", "absorption", "peristalsis", "lacteal", "duodenum", "ileum", "amylase", "protease", "lipase"],
+    "question": "Give me a difficult question about human nutrition worth 10 marks. [10 Marks]",
+    "prescribed_definition": "Human nutrition involves the holistic ingestion, mechanical and chemical digestion, absorption of nutrients across the intestinal wall, assimilation by body cells, and egestion of undigested waste.",
+    "formula": "Nutrient Breakdown: Carbohydrates → Monosaccharides (Glucose); Proteins → Amino Acids; Lipids → Fatty Acids + Glycerol.",
+    "constants": "Small intestine length: ~6 meters. Surface area multiplied by ~600-fold by plicae, villi, and microvilli.",
+    "rubric_points": [
+      "Question structure covers mechanical/chemical digestion, enzyme specificity, and structural adaptation [3 Marks]",
+      "Identification of three digestive enzymes (amylase, protease, lipase) and their substrates/products [3 Marks]",
+      "Structural adaptations of intestinal villi (single-layer epithelium, capillary network, central lacteal) [3 Marks]",
+      "Explanation of absorption mechanisms (active transport and diffusion) [1 Mark]"
+    ],
+    "model_answer": "Question: The diagram below represents a microscopic cross-section of a villus from the human small intestine (ileum).\n1. Name the main enzyme responsible for chemical digestion of lipids and state the organ that secretes it. (2 Marks)\n2. State the final absorption products of lipids and identify the specific vessel inside the villus into which they are absorbed. (2 Marks)\n3. Explain THREE structural adaptations of the villi that maximize the rate of nutrient absorption into the bloodstream. (6 Marks)\n\nMemorandum:\n1. Lipase (1m), secreted by the Pancreas (1m)\n2. Fatty acids and glycerol (1m), absorbed into the central lacteal / lymphatic vessel (1m)\n3. (a) Single-layer thin columnar epithelium: Reduces diffusion distance for rapid absorption into blood (2m).\n   (b) Dense network of blood capillaries: Maintains a steep concentration gradient for rapid transport of glucose and amino acids (2m).\n   (c) Microvilli brush border: Vastly increases microscopic surface area for absorption of nutrients (2m).",
+    "common_misconceptions": "Confusing where lipids are absorbed. Lipids enter the lacteal (lymphatic system), while glucose and amino acids enter the blood capillaries.",
+    "human_guidance": "For high-mark Grade 10 nutrition questions, always require both biochemical digestion (enzymes) and histology (villi adaptations)."
+  }
+]

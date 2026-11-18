@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { parentService, conductService, systemControlService } from '../../services/api';
+import { parentService, conductService, systemControlService, schoolRegistrationService } from '../../services/api';
 import { intakeClosed, intakeReason } from '../../utils/admissionGate';
 import { Badge } from '../../components/common/Badge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -42,9 +42,10 @@ const SA_OFFICIAL_LANGUAGES = [
 
 interface ParentChildrenProps {
   childId?: string | number | null;
+  onNavigateTab?: (tabId: string, params?: any) => void;
 }
 
-export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId }) => {
+export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId, onNavigateTab }) => {
   const { currentSchool, schoolsList } = useSchool();
   const [children, setChildren] = useState<any[]>([]);
   const [selectedChild, setSelectedChild] = useState<any>(null);
@@ -69,6 +70,7 @@ export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId }) => {
   // Sibling Form Data & School Verification (Scenario 2)
   const [selectedSchoolId, setSelectedSchoolId] = useState<number>(currentSchool?.id || 1);
   const [siblingPaymentChoice, setSiblingPaymentChoice] = useState<'card' | 'instant_eft' | 'eft' | 'cash'>('eft');
+  const [authorisedBank, setAuthorisedBank] = useState<any>(null);
   const [siblingLangCheck, setSiblingLangCheck] = useState<{
     is_offered?: boolean;
     language?: string;
@@ -178,6 +180,13 @@ export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId }) => {
       .then(data => setSiblingLangCheck(data))
       .catch(err => console.warn('Sibling language check error:', err));
   }, [selectedSchoolId, siblingForm.home_language]);
+
+  useEffect(() => {
+    if (!selectedSchoolId) return;
+    schoolRegistrationService.getAuthorisedPaymentAccount(selectedSchoolId)
+      .then((data: any) => setAuthorisedBank(data?.banking_details || null))
+      .catch(() => setAuthorisedBank(null));
+  }, [selectedSchoolId]);
 
   const handleEnrollSibling = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -447,9 +456,6 @@ export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId }) => {
             <GraduationCap className="w-6 h-6 text-amber-400" />
             Academic Performance & AI Predictor
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Real-time assessment scores, AI performance trajectory, and multi-subject mastery records.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5 self-start sm:self-auto">
@@ -598,7 +604,7 @@ export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId }) => {
                             ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
                             : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
                         }`}>
-                          <Sparkles className="w-3 h-3" />
+                          <ShieldCheck className="w-3 h-3" />
                           <span>{isHigh ? 'High Risk Candidate' : isMod ? 'Moderate Risk' : 'On Track (Low Risk)'}</span>
                         </span>
                       );
@@ -642,17 +648,14 @@ export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId }) => {
                 <span className="text-3xl font-extrabold text-white font-display">{overallAvg}%</span>
                 <span className="text-xs text-slate-400">across {subjectsList.length} subjects</span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Calculated from {progressRecords.length} teacher-recorded assessments.
-              </p>
             </div>
 
-            {/* Card 2: ML Predicted Final Examination Score */}
+            {/* Card 2: Projected Examination Score */}
             <div className="rounded-3xl bg-gradient-to-br from-indigo-950/60 via-surface-dark to-surface-dark border border-indigo-500/30 p-5 shadow-xl space-y-2 relative overflow-hidden">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
-                  <FusionAIIcon className="w-4 h-4 text-cyan-400" />
-                  ML Projected Score
+                  <TrendingUp className="w-4 h-4 text-cyan-400" />
+                  Projected Score
                 </span>
                 <Badge variant="indigo" size="sm">
                   {predictedFinal >= overallAvg ? '+ Growth Trajectory' : 'Steady'}
@@ -662,9 +665,6 @@ export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId }) => {
                 <span className="text-3xl font-extrabold text-cyan-300 font-display">{predictedFinal}%</span>
                 <span className="text-xs text-slate-300 font-semibold">{getCapsLevel(predictedFinal).level}</span>
               </div>
-              <p className="text-[11px] text-slate-300">
-                Trained supervised model projection based on term SBA trajectory.
-              </p>
             </div>
 
             {/* Card 3: ML Pass Risk & Probability */}
@@ -1565,10 +1565,16 @@ export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId }) => {
                         </label>
                       </div>
 
-                      {siblingLangCheck?.banking_details ? (
+                      {authorisedBank?.account_number ? (
                         <div className="p-3 rounded-xl bg-slate-950/70 border border-amber-500/30 text-[11px] text-slate-300 space-y-1">
                           <div className="font-bold text-amber-400">School bank account</div>
-                          <div>Bank: <strong>{siblingLangCheck.banking_details.bank_name}</strong> | Acc: <span className="font-mono text-cyan-300 font-bold">{siblingLangCheck.banking_details.account_number}</span> | Branch: <span className="font-mono">{siblingLangCheck.banking_details.branch_code}</span></div>
+                          <div>Bank: <strong>{authorisedBank.bank_name}</strong> | Acc: <span className="font-mono text-cyan-300 font-bold">{authorisedBank.account_number}</span> | Branch: <span className="font-mono">{authorisedBank.branch_code}</span></div>
+                        </div>
+                      ) : siblingLangCheck?.banking_details?.has_bank_account ? (
+                        <div className="p-3 rounded-xl bg-slate-950/70 border border-amber-500/30 text-[11px] text-slate-300 space-y-1">
+                          <div className="font-bold text-amber-400">School bank account</div>
+                          <div>Account ending <span className="font-mono text-cyan-300 font-bold">{siblingLangCheck.banking_details.account_hint}</span></div>
+                          <div>The full account is shown after you submit this application, or if you already have a child at this school.</div>
                         </div>
                       ) : (
                         <div className="p-3 rounded-xl bg-slate-950/70 border border-amber-500/30 text-[11px] text-amber-100">

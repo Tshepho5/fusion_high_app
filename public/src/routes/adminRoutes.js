@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controller/adminController');
+const learnerImportController = require('../controller/learnerImportController');
 const timetableController = require('../controller/timetableController');
 const { auth, isAdmin } = require('../../../authMiddleware.js');
 
@@ -15,7 +16,11 @@ router.put('/users/:id', auth, isAdmin, adminController.updateUserProfile);
 router.get('/users/:role', auth, isAdmin, adminController.getUsersByRole);
 router.put('/users/:userId/toggle-profile-lock', auth, isAdmin, adminController.toggleUserProfileLock);
 router.delete('/users/:id', auth, isAdmin, adminController.deleteUser);
-router.get('/teachers', auth, isAdmin, adminController.getAllTeachers);
+// Recycle Bin & Data Recovery (Bring Back Deleted Users, Learners, Staff)
+router.get('/recycle-bin', auth, isAdmin, adminController.getRecycleBin);
+router.post('/recycle-bin/:id/restore', auth, isAdmin, adminController.restoreFromRecycleBin);
+router.delete('/recycle-bin/:id', auth, isAdmin, adminController.permanentDeleteFromRecycleBin);
+router.post('/recycle-bin/empty', auth, isAdmin, adminController.emptyRecycleBin);
 
 // SubAdmin / School Administrator Management (Main Admin only)
 router.get('/school-admins', auth, isAdmin, adminController.getAllSchoolAdmins);
@@ -36,6 +41,10 @@ router.post('/register-parent', auth, isAdmin, adminController.createParent);
 // Learner Management (matching children table in schema.sql)
 router.get('/learners', auth, isAdmin, adminController.getAllLearners);
 router.post('/learners', auth, isAdmin, adminController.createLearner);
+router.delete('/learners/:id', auth, isAdmin, adminController.deleteLearner);
+// SA-SAMS / Excel CSV import (Menu 16.3 Learner Info → save as CSV)
+router.post('/learners/import/preview', auth, isAdmin, learnerImportController.previewLearnerImport);
+router.post('/learners/import', auth, isAdmin, learnerImportController.commitLearnerImport);
 
 // Dynamic Class & Stream Management (Add/Remove/Assign Class Teachers)
 router.get('/classes', auth, isAdmin, adminController.getClasses);
@@ -86,10 +95,17 @@ router.get('/admissions/:id', auth, isAdmin, adminController.getAdmissionById);
 router.post('/admissions/:id/ocr-inspect', auth, isAdmin, adminController.inspectAdmissionDocOCR);
 router.patch('/admissions/:id', auth, isAdmin, adminController.updateAdmissionStatus);
 
-// Parent Portal Applications (Admin Review & Decision)
+// Parent Portal Applications (Admin Review, Correction & Decision)
 const parentAppController = require('../controller/parentApplicationController');
 router.get('/parent-applications', auth, isAdmin, parentAppController.getSchoolParentApplications);
+router.patch('/parent-applications/:id', auth, isAdmin, parentAppController.correctParentApplication);
+router.put('/parent-applications/:id', auth, isAdmin, parentAppController.correctParentApplication);
 router.post('/parent-applications/:id/decide', auth, isAdmin, parentAppController.decideParentApplication);
+
+// User Support Desk (school admin + Geleza SA)
+const supportTicketController = require('../controller/supportTicketController');
+router.get('/support-tickets', auth, isAdmin, supportTicketController.getAdminSupportTickets);
+router.patch('/support-tickets/:id', auth, isAdmin, supportTicketController.updateSupportTicket);
 
 module.exports = router;
 

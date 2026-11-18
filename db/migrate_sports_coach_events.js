@@ -14,6 +14,13 @@ async function migrateSportsCoachEvents() {
 
     // 2. Extracurricular Events enhancements
     await db.query(`
+      ALTER TABLE extracurricular_events ADD COLUMN IF NOT EXISTS title VARCHAR(255);
+      ALTER TABLE extracurricular_events ADD COLUMN IF NOT EXISTS event_type VARCHAR(50) DEFAULT 'Match';
+      ALTER TABLE extracurricular_events ADD COLUMN IF NOT EXISTS opponent_school VARCHAR(150);
+      ALTER TABLE extracurricular_events ADD COLUMN IF NOT EXISTS venue VARCHAR(150) DEFAULT 'Home Ground';
+      ALTER TABLE extracurricular_events ADD COLUMN IF NOT EXISTS start_time VARCHAR(20);
+      ALTER TABLE extracurricular_events ADD COLUMN IF NOT EXISTS result_score VARCHAR(100);
+      ALTER TABLE extracurricular_events ADD COLUMN IF NOT EXISTS notes TEXT;
       ALTER TABLE extracurricular_events ADD COLUMN IF NOT EXISTS status VARCHAR(30) DEFAULT 'Draft';
       ALTER TABLE extracurricular_events ADD COLUMN IF NOT EXISTS is_confirmed BOOLEAN DEFAULT FALSE;
       ALTER TABLE extracurricular_events ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT FALSE;
@@ -25,6 +32,13 @@ async function migrateSportsCoachEvents() {
       ALTER TABLE extracurricular_events ADD COLUMN IF NOT EXISTS required_kit VARCHAR(255);
     `);
     console.log('[MIGRATION] ✓ Extracurricular events columns verified.');
+
+    // 3. Extracurricular Members enhancements
+    await db.query(`
+      ALTER TABLE extracurricular_members ADD COLUMN IF NOT EXISTS jersey_number VARCHAR(10);
+      ALTER TABLE extracurricular_members ADD COLUMN IF NOT EXISTS joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+    `);
+    console.log('[MIGRATION] ✓ Extracurricular members columns verified.');
 
     console.log('[MIGRATION SUCCESS] All sports coach and event features migrated safely with zero data loss and no dummy data.');
   } catch (err) {

@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const db = require('../db/db');
 const { generateOfficialLearnerNumber } = require('../public/src/controller/authController');
 const curriculumService = require('../public/src/services/curriculumService');

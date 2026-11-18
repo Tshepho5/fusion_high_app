@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { learnerService } from '../../services/api';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Badge } from '../common/Badge';
-import { FusionAIIcon } from '../common/FusionAIIcon';
 import {
   GraduationCap,
   Award,
@@ -495,11 +494,8 @@ export const LearnerCareerAdvisor: React.FC = () => {
             </div>
           ) : (
             <div className="p-8 rounded-3xl bg-surface-dark border border-white/10 text-center space-y-3">
-              <Sparkles className="w-8 h-8 text-purple-400 mx-auto" />
+              <Compass className="w-8 h-8 text-purple-400 mx-auto" />
               <h4 className="text-sm font-bold text-white">Project Your Matric University Admissions</h4>
-              <p className="text-xs text-slate-400 max-w-md mx-auto">
-                Adjust any of the subject sliders above and click <strong>"Simulate University Matches"</strong> to calculate real-time APS points and see which degree programmes you unlock.
-              </p>
             </div>
           )}
         </div>

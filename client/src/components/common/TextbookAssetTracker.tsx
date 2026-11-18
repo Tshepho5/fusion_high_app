@@ -70,6 +70,7 @@ export const TextbookAssetTracker: React.FC<TextbookAssetTrackerProps> = ({ forc
     condition_on_issue: 'Good'
   });
 
+  const [scanningOverdue, setScanningOverdue] = useState<boolean>(false);
   const [returnForm, setReturnForm] = useState({
     condition_on_return: 'Good',
     replacement_fee: 0
@@ -274,8 +275,6 @@ export const TextbookAssetTracker: React.FC<TextbookAssetTrackerProps> = ({ forc
     return title.includes(query) || subject.includes(query) || barcode.includes(query) || isbn.includes(query);
   });
 
-  const [scanningOverdue, setScanningOverdue] = useState<boolean>(false);
-
   const handleAutoBillOverdue = async () => {
     setScanningOverdue(true);
     setError(null);
@@ -300,9 +299,6 @@ export const TextbookAssetTracker: React.FC<TextbookAssetTrackerProps> = ({ forc
             <BookOpen className="w-6 h-6 text-brand-400" />
             <span>Textbook Inventory</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Monitor CAPS book stock, classroom distributions, and learner barcode tracking.
-          </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -529,6 +525,29 @@ export const TextbookAssetTracker: React.FC<TextbookAssetTrackerProps> = ({ forc
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
+                  <label className="block text-slate-300 font-bold mb-1">Publisher</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Oxford University Press"
+                    value={addForm.publisher}
+                    onChange={(e) => setAddForm(prev => ({ ...prev, publisher: e.target.value }))}
+                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">ISBN</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 978-0-19-904873-1"
+                    value={addForm.isbn}
+                    onChange={(e) => setAddForm(prev => ({ ...prev, isbn: e.target.value }))}
+                    className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="block text-slate-300 font-bold mb-1">Barcode / Code</label>
                   <input
                     type="text"
@@ -544,10 +563,23 @@ export const TextbookAssetTracker: React.FC<TextbookAssetTrackerProps> = ({ forc
                     type="number"
                     min={1}
                     value={addForm.total_copies}
-                    onChange={(e) => setAddForm(prev => ({ ...prev, total_copies: parseInt(e.target.value, 10) }))}
+                    onChange={(e) => setAddForm(prev => ({ ...prev, total_copies: parseInt(e.target.value, 10) || 1 }))}
                     className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Replacement Unit Cost (ZAR)</label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="250.00"
+                  value={addForm.unit_cost_zar}
+                  onChange={(e) => setAddForm(prev => ({ ...prev, unit_cost_zar: parseFloat(e.target.value) || 0 }))}
+                  className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-brand-500"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3">

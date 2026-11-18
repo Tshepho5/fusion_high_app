@@ -1,4 +1,5 @@
 const db = require('../../../../db/db');
+const { resolveSchoolId } = require('../../services/schoolScope');
 
 /**
  * Safely parse a timetable slot name / time range into a clean period number (1 to 12).
@@ -38,6 +39,65 @@ function parsePeriodFromSlot(slotKey, fallback = 1) {
         if (num >= 1 && num <= 12) return num;
     }
     return fallback;
+}
+
+/**
+ * Extracts numeric grade level (8-12) from class strings like "Grade 11 • School 13", "10A", "Grade 10".
+ */
+function extractGradeFromClass(clsStr) {
+    if (!clsStr) return null;
+    const str = String(clsStr).trim();
+    const gMatch = str.match(/\bgrade\s*(\d{1,2})\b/i);
+    if (gMatch) return parseInt(gMatch[1], 10);
+    const classDistorted = str.match(/\b(?:class\s*)?(10|11|12)(?:13|\d{2})\b/i);
+    if (classDistorted) return parseInt(classDistorted[1], 10);
+    const leadMatch = str.match(/^(\d{1,2})/);
+    if (leadMatch) return parseInt(leadMatch[1], 10);
+    const cleanStr = str.replace(/•\s*school\s*\d+/i, '').replace(/school\s*\d+/i, '');
+    const anyMatch = cleanStr.match(/(\d{1,2})/);
+    if (anyMatch) return parseInt(anyMatch[1], 10);
+    return null;
+}
+
+/**
+ * Normalizes class strings, stripping multi-tenant / metadata suffixes like "• School 13".
+ */
+function cleanClassName(clsStr, grade) {
+    if (!clsStr) return `${grade || 10}A`;
+    let s = String(clsStr).trim();
+    s = s.replace(/\s*•\s*School\s*\d+/i, '').replace(/\s*School\s*\d+/i, '').trim();
+
+    // Pattern: "Class 1013", "Class 1113", "Class 1213" or "1013"
+    const classDistortedMatch = s.match(/^(?:class\s*)?(10|11|12)(?:13|\d{2})$/i);
+    if (classDistortedMatch) {
+        return `${classDistortedMatch[1]}A`;
+    }
+
+    // Pattern: "Class 10A" or "Class 10"
+    const classMatch = s.match(/^class\s*(\d{1,2})\s*([a-z])?$/i);
+    if (classMatch) {
+        const g = classMatch[1];
+        const section = classMatch[2] ? classMatch[2].toUpperCase() : 'A';
+        return `${g}${section}`;
+    }
+
+    if (s === '13') return `${grade || 10}A`;
+
+    // Pattern: "Grade 10" or "Grade 10A"
+    if (s.toLowerCase().startsWith('grade ')) {
+        const after = s.replace(/grade\s*/i, '').trim();
+        if (/^\d{1,2}$/.test(after)) {
+            return `${after}A`;
+        }
+        return after.toUpperCase();
+    }
+
+    // Pure digits like "10" or "11" -> "10A", "11A"
+    if (/^\d{1,2}$/.test(s)) {
+        return `${s}A`;
+    }
+
+    return s.toUpperCase() || `${grade || 10}A`;
 }
 
 /**
@@ -99,7 +159,40 @@ exports.getWorkload = async (req, res) => {
             (emp.subjects || []).forEach(s => subjects.add(s));
             (emp.subject_codes || []).forEach(c => subject_codes.add(c));
             (emp.grades_taught || []).forEach(g => grades_taught.add(g));
-            (emp.classes_taught || []).forEach(c => classes_taught.add(c));
+            (emp.classes_taught || []).forEach(c => classes_taught.add(cleanClassName(c, 10)));
+        }
+
+        // Resilient auto-healing: if workload is empty, check confirmed/approved staff_invites
+        if (subjects.size === 0 && teacherEmail) {
+            try {
+                const inviteRes = await db.query(`
+                    SELECT * FROM staff_invites 
+                    WHERE TRIM(LOWER(email)) = TRIM(LOWER($1)) 
+                      AND (status IS NULL OR status NOT IN ('rejected', 'declined', 'cancelled'))
+                    ORDER BY (CASE WHEN status = 'approved' THEN 1 WHEN status = 'accepted' THEN 2 WHEN status = 'applied' THEN 3 ELSE 4 END), updated_at DESC LIMIT 1
+                `, [teacherEmail]);
+                if (inviteRes.rows.length > 0) {
+                    const inv = inviteRes.rows[0];
+                    const invSubs = (inv.confirmed_subjects && inv.confirmed_subjects.length > 0)
+                        ? inv.confirmed_subjects
+                        : (inv.subjects_offered || []);
+                    const invGrades = (inv.confirmed_grades && inv.confirmed_grades.length > 0)
+                        ? inv.confirmed_grades
+                        : (inv.assigned_grades || [10]);
+                    const invClasses = (inv.confirmed_classes && inv.confirmed_classes.length > 0)
+                        ? inv.confirmed_classes
+                        : (inv.assigned_classes || []);
+
+                    invSubs.forEach(s => {
+                        subjects.add(s);
+                        subject_codes.add(`${s.substring(0, 4).toUpperCase()}${invGrades[0] || 10}`);
+                    });
+                    invGrades.forEach(g => grades_taught.add(Number(g)));
+                    invClasses.forEach(c => classes_taught.add(cleanClassName(c, 10)));
+                }
+            } catch (e) {
+                console.warn('Auto-healing workload from staff_invites note:', e.message);
+            }
         }
 
         res.json({
@@ -121,37 +214,75 @@ exports.getOverviewStats = async (req, res) => {
     try {
         const teacherId = req.user.id;
 
-        const empRes = await db.query(
-            'SELECT full_name, surname, subjects, grades_taught, classes_taught FROM employees WHERE user_id = $1',
-            [teacherId]
-        );
+        const [empRes, taRes] = await Promise.all([
+            db.query(
+                'SELECT full_name, surname, subjects, grades_taught, classes_taught FROM employees WHERE user_id = $1',
+                [teacherId]
+            ).catch(() => ({ rows: [] })),
+            db.query(
+                'SELECT DISTINCT subject_name, class_name, grade_level FROM teacher_assignments WHERE teacher_id = $1',
+                [teacherId]
+            ).catch(() => ({ rows: [] }))
+        ]);
+
         const emp = empRes.rows[0] || {};
         const teacherName = `${emp.full_name || req.user.full_name || ''} ${emp.surname || req.user.surname || ''}`.trim();
-        const subjectsList = emp.subjects || [];
-        const gradesList = emp.grades_taught || [];
-        const schoolId = req.user?.school_id || 1;
+        
+        const assignedSubjects = new Set([
+            ...(emp.subjects || []),
+            ...taRes.rows.map(r => r.subject_name).filter(Boolean)
+        ]);
+        const assignedGrades = Array.from(new Set([
+            ...(emp.grades_taught || []),
+            ...taRes.rows.map(r => r.grade_level).filter(Boolean)
+        ]));
+        const assignedClasses = Array.from(new Set([
+            ...(emp.classes_taught || []),
+            ...taRes.rows.map(r => r.class_name).filter(Boolean)
+        ]));
 
-        const [learnersRes, announcementsRes, assignmentsRes] = await Promise.all([
+        const schoolId = resolveSchoolId(req);
+
+        const [learnersRes, announcementsRes, assignmentsRes, pendingMarkingRes, upcomingTestsRes] = await Promise.all([
             db.query(
-                `SELECT COUNT(DISTINCT id) FROM children WHERE school_id = $3 AND (($1::int[] IS NULL OR grade = ANY($1::int[])) OR ($2::text[] IS NULL OR subjects && $2::text[]))`,
-                [gradesList.length ? gradesList : null, subjectsList.length ? subjectsList : null, schoolId]
-            ),
-            db.query('SELECT COUNT(*) FROM announcements WHERE (school_id = $1 OR is_inter_school = TRUE) AND created_at >= NOW() - INTERVAL \'30 days\'', [schoolId]),
-            db.query('SELECT COUNT(*) FROM announcements WHERE school_id = $1 AND is_assignment = TRUE', [schoolId])
+                `SELECT COUNT(DISTINCT id) FROM children WHERE (school_id = $3 OR $3 IS NULL) AND (($1::int[] IS NULL OR grade = ANY($1::int[])) OR ($2::text[] IS NULL OR subjects && $2::text[]))`,
+                [assignedGrades.length ? assignedGrades : null, assignedSubjects.size ? Array.from(assignedSubjects) : null, schoolId]
+            ).catch(() => ({ rows: [{ count: 0 }] })),
+            db.query(
+                'SELECT COUNT(*) FROM announcements WHERE (school_id = $1 OR is_inter_school = TRUE) AND created_at >= NOW() - INTERVAL \'30 days\'',
+                [schoolId]
+            ).catch(() => ({ rows: [{ count: 0 }] })),
+            db.query(
+                'SELECT COUNT(*) FROM homework_assignments WHERE teacher_id = $1',
+                [teacherId]
+            ).catch(() => ({ rows: [{ count: 0 }] })),
+            db.query(
+                `SELECT COUNT(*) FROM homework_submissions s 
+                 JOIN homework_assignments a ON s.assignment_id::text = a.id::text 
+                 WHERE a.teacher_id = $1 AND (s.status IS NULL OR s.status != 'teacher_signed')`,
+                [teacherId]
+            ).catch(() => ({ rows: [{ count: 0 }] })),
+            db.query(
+                `SELECT COUNT(*) FROM homework_assignments 
+                 WHERE teacher_id = $1 AND (assignment_type IN ('quiz', 'test', 'ai_assessment')) AND (due_date >= CURRENT_DATE OR due_date IS NULL)`,
+                [teacherId]
+            ).catch(() => ({ rows: [{ count: 0 }] }))
         ]);
 
         const totalLearners = parseInt(learnersRes.rows[0]?.count, 10) || 0;
         const totalAnnouncements = parseInt(announcementsRes.rows[0]?.count, 10) || 0;
         const totalAssignments = parseInt(assignmentsRes.rows[0]?.count, 10) || 0;
+        const assessmentsAwaitingMarking = parseInt(pendingMarkingRes.rows[0]?.count, 10) || 0;
+        const upcomingTests = parseInt(upcomingTestsRes.rows[0]?.count, 10) || 0;
 
         const stats = {
             teacher_name: teacherName || 'Teacher',
-            subjects_assigned: subjectsList.length || 1,
+            subjects_assigned: assignedSubjects.size,
             total_learners: totalLearners,
-            classes_today: (emp.classes_taught && emp.classes_taught.length) ? emp.classes_taught.length : 2,
+            classes_today: assignedClasses.length,
             attendance_outstanding: 0,
-            assessments_awaiting_marking: totalAssignments,
-            upcoming_tests: Math.min(totalAssignments, 4),
+            assessments_awaiting_marking: assessmentsAwaitingMarking,
+            upcoming_tests: upcomingTests,
             recent_messages: 0,
             school_announcements: totalAnnouncements
         };
@@ -170,7 +301,7 @@ exports.getTeacherOverviewStats = exports.getOverviewStats;
 exports.getMySubjectsOverview = async (req, res) => {
     try {
         const teacherId = req.user.id;
-        const schoolId = req.user?.school_id || 1;
+        const schoolId = resolveSchoolId(req);
         const teacherEmail = (req.user?.email || '').toLowerCase().trim();
 
         const [taRes, empRes, userRes, ttTeacherRes, classTeacherRes] = await Promise.all([
@@ -216,8 +347,8 @@ exports.getMySubjectsOverview = async (req, res) => {
             }));
         }
 
-        // 2. Scheduled timetable subjects for this teacher
-        if (ttTeacherRes.rows.length > 0) {
+        // 2. Scheduled timetable subjects for this teacher (fallback if no teacher_assignments)
+        if (itemsToProcess.length === 0 && ttTeacherRes.rows.length > 0) {
             for (const r of ttTeacherRes.rows) {
                 const already = itemsToProcess.some(x => 
                     x.subjectName.toLowerCase() === r.subject_name.toLowerCase() && 
@@ -235,8 +366,8 @@ exports.getMySubjectsOverview = async (req, res) => {
             }
         }
 
-        // 3. Classes where teacher is assigned or homeroom teacher
-        if (classTeacherRes.rows.length > 0) {
+        // 3. Classes where teacher is assigned or homeroom teacher (fallback)
+        if (itemsToProcess.length === 0 && classTeacherRes.rows.length > 0) {
             for (const r of classTeacherRes.rows) {
                 if (r.subject_name) {
                     const already = itemsToProcess.some(x => 
@@ -256,8 +387,8 @@ exports.getMySubjectsOverview = async (req, res) => {
             }
         }
 
-        // 4. Employee record subjects & classes (matched by user_id or email)
-        if (emp.subjects && Array.isArray(emp.subjects) && emp.subjects.length > 0) {
+        // 4. Employee record subjects & classes (fallback if items still empty)
+        if (itemsToProcess.length === 0 && emp.subjects && Array.isArray(emp.subjects) && emp.subjects.length > 0) {
             const empSubs = emp.subjects;
             const empGrades = (emp.grades_taught && emp.grades_taught.length > 0) ? emp.grades_taught : [10, 11, 12];
             const empClasses = emp.classes_taught || [];
@@ -268,10 +399,10 @@ exports.getMySubjectsOverview = async (req, res) => {
                 const sCode = empCodes[i] || `${(sName || 'SUBJ').substring(0, 4).toUpperCase()}${empGrades[0] || 10}`;
                 for (const gNum of empGrades) {
                     const gradeClasses = empClasses.filter(c => {
-                        const d = (c || '').replace(/\D/g, '');
-                        return d ? parseInt(d, 10) === gNum : false;
-                    });
-                    const toAdd = gradeClasses.length > 0 ? gradeClasses : [`${gNum}A`];
+                        const g = extractGradeFromClass(c);
+                        return g !== null && !isNaN(g) ? g === gNum : false;
+                    }).map(c => cleanClassName(c, gNum));
+                    const toAdd = gradeClasses.length > 0 ? gradeClasses : (empClasses.length === 0 ? [`${gNum}A`] : []);
                     for (const cName of toAdd) {
                         const already = itemsToProcess.some(x => 
                             x.subjectName.toLowerCase() === sName.toLowerCase() && 
@@ -290,6 +421,103 @@ exports.getMySubjectsOverview = async (req, res) => {
                 }
             }
         }
+
+        // 5. Resilient Auto-Healing: If teacher has no items yet, check staff_invites by email for confirmed/approved record
+        if (itemsToProcess.length === 0 && teacherEmail) {
+            try {
+                const inviteRes = await db.query(`
+                    SELECT * FROM staff_invites 
+                    WHERE TRIM(LOWER(email)) = TRIM(LOWER($1)) 
+                      AND (status IS NULL OR status NOT IN ('rejected', 'declined', 'cancelled'))
+                    ORDER BY (CASE WHEN status = 'approved' THEN 1 WHEN status = 'accepted' THEN 2 WHEN status = 'applied' THEN 3 ELSE 4 END), updated_at DESC LIMIT 1
+                `, [teacherEmail]);
+
+                if (inviteRes.rows.length > 0) {
+                    const inv = inviteRes.rows[0];
+                    const invSubs = (inv.confirmed_subjects && inv.confirmed_subjects.length > 0)
+                        ? inv.confirmed_subjects
+                        : (inv.subjects_offered || []);
+                    const invGrades = (inv.confirmed_grades && inv.confirmed_grades.length > 0)
+                        ? inv.confirmed_grades.map(Number)
+                        : (inv.assigned_grades ? inv.assigned_grades.map(Number) : [10]);
+                    const rawClasses = (inv.confirmed_classes && inv.confirmed_classes.length > 0)
+                        ? inv.confirmed_classes
+                        : (inv.assigned_classes || []);
+
+                    if (invSubs.length > 0) {
+                        // Auto-sync into employees table
+                        await db.query(`
+                            INSERT INTO employees (
+                                user_id, full_name, surname, department_id, school_id, phone, email,
+                                subjects, grades_taught, classes_taught
+                            )
+                            VALUES ($1, $2, $3, 2, $4, $5, $6, $7, $8, $9)
+                            ON CONFLICT (user_id) DO UPDATE SET
+                                school_id = COALESCE(EXCLUDED.school_id, employees.school_id),
+                                subjects = EXCLUDED.subjects,
+                                grades_taught = EXCLUDED.grades_taught,
+                                classes_taught = EXCLUDED.classes_taught;
+                        `, [
+                            teacherId, inv.full_name || 'Teacher', inv.surname || '',
+                            inv.school_id || schoolId, inv.phone || null, teacherEmail,
+                            invSubs, invGrades, rawClasses.map(c => cleanClassName(c, 10))
+                        ]).catch(e => console.warn('Auto-healing employees error:', e.message));
+
+                        // Auto-sync into teacher_assignments table and populate itemsToProcess
+                        for (const sName of invSubs) {
+                            for (const gNum of invGrades) {
+                                const matchingClasses = rawClasses.filter(c => {
+                                    const g = extractGradeFromClass(c);
+                                    return g === null || isNaN(g) || g === gNum;
+                                }).map(c => cleanClassName(c, gNum));
+                                const classesToAssign = matchingClasses.length > 0 ? matchingClasses : [`${gNum}A`];
+
+                                for (const cName of classesToAssign) {
+                                    await db.query(`
+                                        INSERT INTO teacher_assignments (teacher_id, subject_name, grade_level, class_name)
+                                        VALUES ($1, $2, $3, $4)
+                                        ON CONFLICT (teacher_id, subject_name, grade_level, class_name) DO NOTHING;
+                                    `, [teacherId, sName, gNum, cName]).catch(() => {});
+
+                                    const already = itemsToProcess.some(x => 
+                                        x.subjectName.toLowerCase() === sName.toLowerCase() && 
+                                        x.gradeNum === gNum && 
+                                        x.className === cName
+                                    );
+                                    if (!already) {
+                                        itemsToProcess.push({
+                                            subjectName: sName,
+                                            code: `${sName.substring(0, 4).toUpperCase()}${gNum}`,
+                                            gradeNum: gNum,
+                                            className: cName
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Error auto-healing teacher assignments from staff_invites:', err);
+            }
+        }
+
+        // Deduplicate items strictly and clean class names
+        const deduplicatedItems = [];
+        const seenKeys = new Set();
+        for (const item of itemsToProcess) {
+            const cleanC = cleanClassName(item.className, item.gradeNum);
+            if (['1013', '1113', '1213', '13'].includes(cleanC)) continue;
+            const key = `${item.subjectName.toLowerCase()}_${item.gradeNum}_${cleanC.toLowerCase()}`;
+            if (!seenKeys.has(key)) {
+                seenKeys.add(key);
+                deduplicatedItems.push({
+                    ...item,
+                    className: cleanC
+                });
+            }
+        }
+        itemsToProcess = deduplicatedItems;
 
         // Strict isolation: if teacher has zero assigned subjects across all sources, return empty array
         if (itemsToProcess.length === 0) {
@@ -421,7 +649,9 @@ exports.getMySubjectsOverview = async (req, res) => {
             let ungradedSubmissions = 0;
             try {
                 const pendingRes = await db.query(
-                    `SELECT COUNT(*) FROM assignments WHERE LOWER(subject) = LOWER($1) AND grade = $2`,
+                    `SELECT COUNT(*) FROM homework_submissions s
+                     JOIN homework_assignments a ON s.assignment_id::text = a.id::text
+                     WHERE LOWER(a.subject) = LOWER($1) AND a.grade = $2 AND (s.status IS NULL OR s.status != 'teacher_signed')`,
                     [subjectName, gradeNum]
                 );
                 ungradedSubmissions = parseInt(pendingRes.rows[0]?.count, 10) || 0;
@@ -430,13 +660,16 @@ exports.getMySubjectsOverview = async (req, res) => {
             let upcomingTests = 0;
             try {
                 const testRes = await db.query(
-                    `SELECT COUNT(*) FROM announcements WHERE is_assignment = TRUE AND (LOWER(subject_target) = LOWER($1) OR subject_target IS NULL) AND (grade_target = $2 OR grade_target IS NULL)`,
+                    `SELECT COUNT(*) FROM homework_assignments
+                     WHERE LOWER(subject) = LOWER($1) AND grade = $2
+                       AND (assignment_type IN ('quiz', 'test', 'ai_assessment'))
+                       AND (due_date >= CURRENT_DATE OR due_date IS NULL)`,
                     [subjectName, gradeNum]
                 );
                 upcomingTests = parseInt(testRes.rows[0]?.count, 10) || 0;
             } catch (e) {}
 
-            let curriculumPace = 45;
+            let curriculumPace = 0;
             try {
                 const paceRes = await db.query(
                     `SELECT COUNT(DISTINCT p.notes) as task_count, COUNT(*) as total_marks 
@@ -450,12 +683,12 @@ exports.getMySubjectsOverview = async (req, res) => {
                 const totalMarks = parseInt(paceRes.rows[0]?.total_marks, 10) || 0;
 
                 if (totalMarks > 0) {
-                    curriculumPace = Math.min(100, Math.max(40, 30 + (taskCount * 20)));
+                    curriculumPace = Math.min(100, Math.max(10, Math.round((taskCount / Math.max(totalMarks, 1)) * 100)));
                 }
             } catch (e) {}
 
-            // Live Subject Attendance Rate calculated from real database records
-            let subjectAttendanceRate = 100;
+            // Live Subject Attendance Rate calculated from real database records (null if no records yet)
+            let subjectAttendanceRate = null;
             try {
                 const attRes = await db.query(
                     `SELECT 
@@ -473,26 +706,39 @@ exports.getMySubjectsOverview = async (req, res) => {
                 }
             } catch (e) {}
 
-            // Resolve Timetable slot / room / period dynamically
-            let assignedPeriod = ((idx * 2) % 7) + 1;
-            let assignedRoom = `Room ${className}`;
-            if (subLower.includes('physic') || subLower.includes('chemistry') || subLower.includes('science')) {
-                assignedRoom = gradeNum === 10 ? 'Science Lab 1' : (gradeNum === 11 ? 'Science Lab 2' : 'Science Lab 3');
-            } else if (subLower.includes('account') || subLower.includes('commerce') || subLower.includes('econom')) {
-                assignedRoom = `Commerce Wing C${className.replace(/[^0-9]/g, '') || '10'}`;
-            }
+            // Authentic Room Lookup from classes table: DO NOT hardcode or invent fake rooms!
+            let authenticRoom = null;
+            try {
+                const roomRes = await db.query(
+                    `SELECT room_number FROM classes 
+                     WHERE (school_id = $1 OR $1 IS NULL) 
+                       AND (name ILIKE $2 OR name ILIKE $3)
+                     LIMIT 1`,
+                    [schoolId, className, `${gradeNum}${className}`]
+                );
+                if (roomRes.rows[0]?.room_number && roomRes.rows[0].room_number.trim()) {
+                    authenticRoom = roomRes.rows[0].room_number.trim();
+                }
+            } catch (e) {}
 
-            // Check actual timetable slot match
+            // Check if actual timetable slot has an admin-assigned room
+            let assignedPeriod = null;
             const matchedSlot = timetableSlots.find(s =>
                 s.grade === gradeNum &&
                 s.class_name === className &&
                 (s.subject.toLowerCase() === subLower || (teacherFullName && s.teacher.includes(teacherFullName)))
             );
             if (matchedSlot) {
-                const parsed = parsePeriodFromSlot(matchedSlot.period, assignedPeriod);
-                assignedPeriod = (parsed >= 1 && parsed <= 12) ? parsed : assignedPeriod;
-                if (matchedSlot.room) assignedRoom = matchedSlot.room;
+                const parsed = parsePeriodFromSlot(matchedSlot.period, 0);
+                if (parsed >= 1 && parsed <= 12) assignedPeriod = parsed;
+                if (matchedSlot.room && matchedSlot.room.trim()) {
+                    authenticRoom = matchedSlot.room.trim();
+                }
             }
+
+            const periodRoomText = authenticRoom
+                ? (assignedPeriod ? `Period ${assignedPeriod} • Room ${authenticRoom}` : `Room ${authenticRoom} • Scheduled`)
+                : 'Scheduled • Room Unassigned';
 
             subjectCards.push({
                 subject_name: subjectName,
@@ -505,8 +751,8 @@ exports.getMySubjectsOverview = async (req, res) => {
                 learner_count: learnerCount,
                 enrolled_count: learnerCount,
                 period: assignedPeriod,
-                room: assignedRoom,
-                period_room: `Period ${assignedPeriod} • ${assignedRoom}`,
+                room: authenticRoom,
+                period_room: periodRoomText,
                 ungraded_submissions: ungradedSubmissions,
                 upcoming_tests: upcomingTests,
                 recent_class_avg: avgMark,

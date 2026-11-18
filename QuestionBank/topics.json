@@ -1,0 +1,696 @@
+{
+    "note": "Topic list for Physical Sciences. Topic names follow the CAPS titles as I know them: CHECK them against your own CAPS document. Edit freely: add keywords, rename topics, add topics. A question is labelled with the topic whose keywords appear most; if two topics tie, or nothing matches, it stays Unclassified.",
+    "topics": [
+        {
+            "topic": "Classification of matter",
+            "area": "Matter and materials",
+            "keywords": [
+                "pure substance",
+                "mixture",
+                "homogeneous",
+                "heterogeneous",
+                "compound",
+                "metalloid",
+                "semi-metal",
+                "non-metal",
+                "malleable",
+                "ductile",
+                "filtration",
+                "distillation",
+                "chromatography",
+                "alloy",
+                "physical method",
+                "separat",
+                "the term element"
+            ]
+        },
+        {
+            "topic": "States of matter and the kinetic molecular theory",
+            "area": "Matter and materials",
+            "keywords": [
+                "kinetic molecular theory",
+                "kinetic theory",
+                "states of matter",
+                "state of matter",
+                "phase change",
+                "phase transition",
+                "sublimation",
+                "particle model"
+            ]
+        },
+        {
+            "topic": "Atomic structure",
+            "area": "Matter and materials",
+            "keywords": [
+                "proton",
+                "neutron",
+                "electron configuration",
+                "atomic number",
+                "mass number",
+                "isotope",
+                "relative atomic mass",
+                "orbital",
+                "energy level",
+                "valence electron",
+                "bohr",
+                "rutherford",
+                "thomson",
+                "subatomic",
+                "nucleus",
+                "aufbau",
+                "pauli"
+            ]
+        },
+        {
+            "topic": "Periodic table and periodic trends",
+            "area": "Matter and materials",
+            "keywords": [
+                "periodic table",
+                "ionisation energy",
+                "ionisation",
+                "electronegativity",
+                "atomic radius",
+                "atomic size",
+                "electron affinity",
+                "alkali metal",
+                "alkaline earth",
+                "halogen",
+                "noble gas",
+                "transition metal",
+                "periodic trend",
+                "across a period",
+                "down a group",
+                "across the period",
+                "down the group",
+                "outer electron"
+            ]
+        },
+        {
+            "topic": "Chemical bonding and molecular structure",
+            "area": "Matter and materials",
+            "keywords": [
+                "chemical bond",
+                "ionic bond",
+                "covalent bond",
+                "metallic bond",
+                "lewis",
+                "bond energy",
+                "bond length",
+                "molecular shape",
+                "vsepr",
+                "polar bond",
+                "dative",
+                "coordinate covalent",
+                "lone pair",
+                "bonding pair",
+                "chemical formula",
+                "ionic compound",
+                "covalent compound",
+                "type of bond",
+                "covalent",
+                "metallic",
+                "valency"
+            ]
+        },
+        {
+            "topic": "Intermolecular forces",
+            "area": "Matter and materials",
+            "keywords": [
+                "intermolecular",
+                "london force",
+                "dipole-dipole",
+                "dipole-induced",
+                "hydrogen bond",
+                "van der waals",
+                "polar molecule",
+                "non-polar",
+                "boiling point",
+                "melting point",
+                "vapour pressure",
+                "viscosity",
+                "surface tension"
+            ]
+        },
+        {
+            "topic": "Organic molecules",
+            "area": "Matter and materials",
+            "keywords": [
+                "iupac",
+                "homologous series",
+                "functional group",
+                "alkane",
+                "alkene",
+                "alkyne",
+                "haloalkane",
+                "alcohol",
+                "aldehyde",
+                "ketone",
+                "carboxylic acid",
+                "ester",
+                "isomer",
+                "structural formula",
+                "hydrocarbon",
+                "saturated",
+                "unsaturated"
+            ]
+        },
+        {
+            "topic": "Organic reactions",
+            "area": "Chemical change",
+            "keywords": [
+                "addition reaction",
+                "elimination reaction",
+                "substitution reaction",
+                "esterification",
+                "cracking",
+                "halogenation",
+                "hydrohalogenation",
+                "dehydration",
+                "hydrogenation",
+                "polymerisation",
+                "dehydrohalogenation"
+            ]
+        },
+        {
+            "topic": "Physical and chemical change",
+            "area": "Chemical change",
+            "keywords": [
+                "physical change",
+                "chemical change",
+                "physical property",
+                "chemical property"
+            ]
+        },
+        {
+            "topic": "Representing chemical change",
+            "area": "Chemical change",
+            "keywords": [
+                "balanced equation",
+                "balance the equation",
+                "chemical equation",
+                "conservation of mass",
+                "conservation of atoms",
+                "law of constant composition",
+                "law of constant proportions",
+                "law of definite proportions",
+                "state symbols"
+            ]
+        },
+        {
+            "topic": "Quantitative aspects of chemical change",
+            "area": "Chemical change",
+            "keywords": [
+                "mole",
+                "molar mass",
+                "avogadro",
+                "molar volume",
+                "concentration",
+                "stoichiometr",
+                "empirical formula",
+                "molecular formula",
+                "percentage yield",
+                "percentage purity",
+                "percentage composition",
+                "limiting reagent",
+                "excess reagent",
+                "amount of substance",
+                "hydrated",
+                "water of crystallisation",
+                "water of crystallization",
+                "anhydrous"
+            ]
+        },
+        {
+            "topic": "Reactions in aqueous solution",
+            "area": "Chemical change",
+            "keywords": [
+                "aqueous solution",
+                "precipitation reaction",
+                "solubility",
+                "soluble",
+                "insoluble",
+                "electrolyte",
+                "dissociation",
+                "ionic equation",
+                "spectator ion",
+                "precipitate",
+                "precipitation",
+                "conductivity"
+            ]
+        },
+        {
+            "topic": "Acids and bases",
+            "area": "Chemical change",
+            "keywords": [
+                "acid",
+                "base",
+                "ph",
+                "titration",
+                "arrhenius",
+                "lowry",
+                "bronsted",
+                "brønsted",
+                "ampholyte",
+                "amphoteric",
+                "neutralisation",
+                "indicator",
+                "salt hydrolysis",
+                "kw",
+                "ka",
+                "kb",
+                "conjugate"
+            ]
+        },
+        {
+            "topic": "Energy and chemical change",
+            "area": "Chemical change",
+            "keywords": [
+                "enthalpy",
+                "exothermic",
+                "endothermic",
+                "activation energy",
+                "heat of reaction",
+                "energy profile",
+                "energy diagram",
+                "heat of formation"
+            ]
+        },
+        {
+            "topic": "Reaction rate",
+            "area": "Chemical change",
+            "keywords": [
+                "rate of reaction",
+                "reaction rate",
+                "collision theory",
+                "catalyst",
+                "maxwell-boltzmann",
+                "effective collision",
+                "rate of the reaction"
+            ]
+        },
+        {
+            "topic": "Chemical equilibrium",
+            "area": "Chemical change",
+            "keywords": [
+                "equilibrium",
+                "le chatelier",
+                "equilibrium constant",
+                "kc",
+                "dynamic equilibrium",
+                "closed system",
+                "reversible reaction"
+            ]
+        },
+        {
+            "topic": "Electrochemical reactions",
+            "area": "Chemical change",
+            "keywords": [
+                "galvanic",
+                "voltaic",
+                "electrolytic",
+                "electrolysis",
+                "electrode",
+                "anode",
+                "cathode",
+                "oxidation",
+                "reduction",
+                "redox",
+                "salt bridge",
+                "standard electrode potential",
+                "standard cell",
+                "cell potential",
+                "cell notation",
+                "electroplating",
+                "oxidising agent",
+                "reducing agent",
+                "half-reaction",
+                "half reaction",
+                "electrochemical"
+            ]
+        },
+        {
+            "topic": "Chemical industry",
+            "area": "Chemical systems",
+            "keywords": [
+                "fertiliser",
+                "fertilizer",
+                "haber",
+                "ostwald",
+                "contact process",
+                "npk",
+                "ammonia",
+                "nitric acid",
+                "sulphuric acid",
+                "chlor-alkali",
+                "industrial process"
+            ]
+        },
+        {
+            "topic": "The hydrosphere",
+            "area": "Chemical systems",
+            "keywords": [
+                "hydrosphere",
+                "water cycle",
+                "transpiration",
+                "groundwater",
+                "fresh water",
+                "freshwater",
+                "salt water",
+                "ocean",
+                "aquifer",
+                "evaporation",
+                "condensation",
+                "lithosphere",
+                "biosphere",
+                "atmosphere"
+            ]
+        },
+        {
+            "topic": "Vectors and scalars",
+            "area": "Mechanics",
+            "keywords": [
+                "vector",
+                "scalar",
+                "resultant vector",
+                "components of",
+                "resolve",
+                "magnitude and direction",
+                "vector addition",
+                "tail-to-head",
+                "head-to-tail"
+            ]
+        },
+        {
+            "topic": "Motion in one dimension",
+            "area": "Mechanics",
+            "keywords": [
+                "displacement",
+                "position-time graph",
+                "velocity-time graph",
+                "position vs time",
+                "velocity vs time",
+                "average velocity",
+                "average speed",
+                "uniform motion",
+                "instantaneous velocity",
+                "distance-time",
+                "motion in one dimension"
+            ]
+        },
+        {
+            "topic": "Newton's laws and forces",
+            "area": "Mechanics",
+            "keywords": [
+                "newton's first law",
+                "newton's second law",
+                "newton's third law",
+                "newton's laws",
+                "law of inertia",
+                "net force",
+                "free-body",
+                "free body",
+                "friction",
+                "frictional force",
+                "tension",
+                "normal force",
+                "incline",
+                "resultant force",
+                "apparent weight",
+                "force diagram",
+                "inertia",
+                "action-reaction",
+                "coefficient of friction"
+            ]
+        },
+        {
+            "topic": "Newton's law of universal gravitation",
+            "area": "Mechanics",
+            "keywords": [
+                "universal gravitation",
+                "gravitational force",
+                "gravitational field",
+                "mass of the earth",
+                "radius of the earth",
+                "satellite",
+                "orbit"
+            ]
+        },
+        {
+            "topic": "Vertical projectile motion",
+            "area": "Mechanics",
+            "keywords": [
+                "free fall",
+                "projectile",
+                "thrown vertically",
+                "thrown upwards",
+                "dropped from",
+                "vertically upwards",
+                "vertically downwards",
+                "maximum height",
+                "vertical projectile",
+                "rebound"
+            ]
+        },
+        {
+            "topic": "Momentum and impulse",
+            "area": "Mechanics",
+            "keywords": [
+                "momentum",
+                "impulse",
+                "collision",
+                "recoil",
+                "elastic collision",
+                "inelastic collision",
+                "explosion"
+            ]
+        },
+        {
+            "topic": "Work, energy and power",
+            "area": "Mechanics",
+            "keywords": [
+                "work done",
+                "work-energy",
+                "kinetic energy",
+                "potential energy",
+                "mechanical energy",
+                "conservation of energy",
+                "power",
+                "conservative force",
+                "non-conservative",
+                "work energy theorem"
+            ]
+        },
+        {
+            "topic": "Transverse and longitudinal waves",
+            "area": "Waves, sound and light",
+            "keywords": [
+                "transverse wave",
+                "longitudinal wave",
+                "pulse",
+                "wavelength",
+                "amplitude",
+                "crest",
+                "trough",
+                "wave speed",
+                "compression",
+                "rarefaction",
+                "superposition",
+                "constructive interference",
+                "destructive interference"
+            ]
+        },
+        {
+            "topic": "Sound",
+            "area": "Waves, sound and light",
+            "keywords": [
+                "sound",
+                "pitch",
+                "loudness",
+                "echo",
+                "ultrasound",
+                "infrasound",
+                "speed of sound",
+                "decibel",
+                "sonar",
+                "audible"
+            ]
+        },
+        {
+            "topic": "Electromagnetic radiation",
+            "area": "Waves, sound and light",
+            "keywords": [
+                "electromagnetic radiation",
+                "electromagnetic spectrum",
+                "electromagnetic wave",
+                "photon",
+                "gamma",
+                "x-ray",
+                "ultraviolet",
+                "infrared",
+                "microwave",
+                "radio wave",
+                "visible light",
+                "energy of a photon",
+                "planck",
+                "speed of light"
+            ]
+        },
+        {
+            "topic": "Geometrical optics",
+            "area": "Waves, sound and light",
+            "keywords": [
+                "refraction",
+                "reflection",
+                "refractive index",
+                "snell",
+                "critical angle",
+                "total internal reflection",
+                "lens",
+                "mirror",
+                "ray diagram",
+                "angle of incidence",
+                "angle of refraction",
+                "optical fibre",
+                "optical density"
+            ]
+        },
+        {
+            "topic": "Diffraction",
+            "area": "Waves, sound and light",
+            "keywords": [
+                "diffraction",
+                "wavefront",
+                "single slit",
+                "huygens",
+                "slit",
+                "interference pattern",
+                "central maximum",
+                "diffraction pattern"
+            ]
+        },
+        {
+            "topic": "Doppler effect",
+            "area": "Waves, sound and light",
+            "keywords": [
+                "doppler",
+                "siren",
+                "blue shift",
+                "red shift",
+                "ambulance",
+                "source moving towards",
+                "observer moving",
+                "stationary listener"
+            ]
+        },
+        {
+            "topic": "Magnetism",
+            "area": "Electricity and magnetism",
+            "keywords": [
+                "magnet",
+                "magnetic field",
+                "field lines",
+                "compass",
+                "magnetic pole",
+                "north pole",
+                "south pole",
+                "ferromagnetic",
+                "magnetic material",
+                "magnetic domain",
+                "magnetise",
+                "magnetisation"
+            ]
+        },
+        {
+            "topic": "Electrostatics",
+            "area": "Electricity and magnetism",
+            "keywords": [
+                "coulomb",
+                "electrostatic",
+                "electric field",
+                "point charge",
+                "charged",
+                "net charge",
+                "excess electrons",
+                "electric charge",
+                "conservation of charge",
+                "quantisation of charge",
+                "polarisation",
+                "earthing",
+                "electroscope",
+                "insulator"
+            ]
+        },
+        {
+            "topic": "Electric circuits",
+            "area": "Electricity and magnetism",
+            "keywords": [
+                "resistor",
+                "resistance",
+                "emf",
+                "internal resistance",
+                "voltmeter",
+                "ammeter",
+                "potential difference",
+                "circuit",
+                "ohm",
+                "in series",
+                "in parallel",
+                "electrical energy",
+                "kilowatt",
+                "bulb"
+            ]
+        },
+        {
+            "topic": "Electromagnetism",
+            "area": "Electricity and magnetism",
+            "keywords": [
+                "electromagnetism",
+                "electromagnetic induction",
+                "faraday",
+                "lenz",
+                "solenoid",
+                "magnetic flux",
+                "induced emf",
+                "induced current",
+                "right-hand rule",
+                "right hand rule",
+                "magnetic field around",
+                "current-carrying conductor",
+                "current carrying conductor"
+            ]
+        },
+        {
+            "topic": "Electrodynamics",
+            "area": "Electricity and magnetism",
+            "keywords": [
+                "generator",
+                "electric motor",
+                "alternating current",
+                "commutator",
+                "slip ring",
+                "split ring",
+                "rms",
+                "root mean square",
+                "dynamo",
+                "ac generator",
+                "dc generator"
+            ]
+        },
+        {
+            "topic": "Optical phenomena and properties of matter",
+            "area": "Matter and materials",
+            "keywords": [
+                "photoelectric",
+                "work function",
+                "threshold frequency",
+                "cut-off frequency",
+                "emission spectrum",
+                "absorption spectrum",
+                "photoelectron",
+                "spectral line",
+                "line spectrum",
+                "continuous spectrum"
+            ]
+        }
+    ]
+}

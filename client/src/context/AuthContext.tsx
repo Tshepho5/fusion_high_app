@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { authService, userService } from '../services/api';
 import { clearAuthSession, readAuthValue, storeHoldingToken, writeAuthSession } from '../utils/authStorage';
+import { canEnterDashboard, InvalidAuthResponseError, isSessionToken } from '../services/authResponse';
 
 export type UserRole = 'learner' | 'teacher' | 'admin' | 'parent' | null;
 
@@ -23,7 +24,8 @@ interface AuthContextType {
   role: UserRole;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: { email?: string; learnerNumber?: string; password: string }, options?: { remember?: boolean }) => Promise<any>;
+  login: (credentials: { email?: string; learnerNumber?: string; password: string; rememberMe?: boolean }) => Promise<any>;
+  establishSession: (data: any, rememberMe?: boolean) => Promise<any>;
   logout: () => void;
   updateUser: (updatedData: Partial<User>) => void;
   refreshUser: () => Promise<void>;
@@ -42,11 +44,24 @@ function readStoredUser(): User | null {
 }
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(() => readAuthValue('token', [localStorage, sessionStorage]));
-  const [role, setRole] = useState<UserRole>((readAuthValue('userRole', [localStorage, sessionStorage]) as UserRole) || null);
+  const [token, setToken] = useState<string | null>(() => {
+    const stored = readAuthValue('token', [localStorage, sessionStorage]);
+    if (isSessionToken(stored)) return stored;
+    if (stored) {
+      localStorage.removeItem('token');
+      sessionStorage.removeItem('token');
+    }
+    return null;
+  });
+
+  const [role, setRole] = useState<UserRole>(() => {
+    return (readAuthValue('userRole', [localStorage, sessionStorage]) as UserRole) || null;
+  });
+
   const [user, setUserState] = useState<User | null>(readStoredUser);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [sessionPrompt, setSessionPrompt] = useState<null | 'idle' | 'logout'>(null);
+  const [tabBlocked, setTabBlocked] = useState(false);
   const promptKind = useRef<null | 'idle' | 'logout'>(null);
   const resetIdleTimer = useRef<() => void>(() => {});
 
@@ -81,14 +96,62 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       refreshUser();
     } else {
       setIsLoading(false);
+      setTabBlocked(false);
     }
   }, [token]);
 
-  // After 3 minutes without interaction, ask whether to stay or sign in again.
+  useEffect(() => {
+    if (!token) return;
+    const tabId = sessionStorage.getItem('geleza_tab_id') || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
+    sessionStorage.setItem('geleza_tab_id', tabId);
+    const lockKey = 'geleza_active_tab';
+    const readLock = () => {
+      try {
+        return JSON.parse(localStorage.getItem(lockKey) || 'null');
+      } catch (_) {
+        return null;
+      }
+    };
+    // This tab claims the local lock; another tab with the same account is signed out
+    // when its token is replaced or when the server session id no longer matches.
+    const claimTab = () => {
+      localStorage.setItem(lockKey, JSON.stringify({ tabId, ts: Date.now() }));
+      setTabBlocked(false);
+    };
+    claimTab();
+    const timer = window.setInterval(claimTab, 3000);
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === 'token' && event.newValue && event.newValue !== token) {
+        try { sessionStorage.setItem('logout_reason', 'session'); } catch (_) {}
+        window.location.href = '/login';
+        return;
+      }
+      if (event.key === lockKey) {
+        const current = readLock();
+        if (current && current.tabId !== tabId) {
+          // Another tab took over — leave this one signed out locally.
+          try { sessionStorage.setItem('logout_reason', 'session'); } catch (_) {}
+          localStorage.removeItem('token');
+          localStorage.removeItem('userRole');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+        }
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('storage', onStorage);
+      const current = readLock();
+      if (current?.tabId === tabId) localStorage.removeItem(lockKey);
+    };
+  }, [token]);
+
+  // After 5 minutes without interaction, ask whether to stay or log out.
   useEffect(() => {
     if (!token) return;
 
-    const INACTIVITY_TIMEOUT_MS = 3 * 60 * 1000;
+    const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
     let timeoutId: ReturnType<typeof setTimeout>;
 
     const resetTimer = () => {
@@ -105,11 +168,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Initialize timer
     resetTimer();
 
-    // Send heartbeat periodically to maintain online status while user is active in the app
-    userService.heartbeat().catch(() => {});
-    const heartbeatInterval = setInterval(() => {
+    // Keep this phone or laptop showing as online, and catch up the moment it reconnects.
+    const markOnline = () => {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
       userService.heartbeat().catch(() => {});
-    }, 25000);
+      import('../services/soundNotificationService')
+        .then(({ soundNotificationService }) => soundNotificationService.checkNow())
+        .catch(() => {});
+    };
+    markOnline();
+    const heartbeatInterval = setInterval(markOnline, 15000);
+    window.addEventListener('online', markOnline);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') markOnline();
+    };
+    document.addEventListener('visibilitychange', onVisible);
 
     // Activity events to detect user interaction
     const activityEvents = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
@@ -127,6 +200,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => {
       clearTimeout(timeoutId);
       clearInterval(heartbeatInterval);
+      window.removeEventListener('online', markOnline);
+      document.removeEventListener('visibilitychange', onVisible);
       activityEvents.forEach((event) => {
         window.removeEventListener(event, resetTimer);
       });
@@ -134,72 +209,81 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [token]);
 
-  const login = async (
-    credentials: { email?: string; learnerNumber?: string; password: string },
-    options?: { remember?: boolean }
-  ) => {
+  const establishSession = async (data: any, rememberMe: boolean = true) => {
+    if (!canEnterDashboard(data)) {
+      throw new InvalidAuthResponseError();
+    }
+    const userToken = data.token;
+    const rawRole = data.role || data.user?.role;
+    if (!rawRole) {
+      const missing = new Error('This account has no portal role assigned. Ask the school office to finish setup.');
+      (missing as any).response = { status: 403, data: { error: missing.message } };
+      throw missing;
+    }
+    const userRole = String(rawRole).toLowerCase() as UserRole;
+    const userData = data.user || { id: data.id, role: userRole, email: data.email };
+    const schoolId = data.school?.id || data.school_id || userData.school_id;
+
+    setToken(userToken);
+    setRole(userRole);
+    setUserState(userData);
+
+    writeAuthSession({
+      remember: rememberMe,
+      persistent: localStorage,
+      session: sessionStorage,
+      entries: {
+        token: userToken,
+        userRole,
+        user: JSON.stringify(userData),
+        active_school_profile: data.school ? JSON.stringify(data.school) : '',
+        active_school_id: schoolId ? String(schoolId) : '',
+      },
+    });
+
+    userService.heartbeat().catch(() => {});
+
+    if (data.school) {
+      const root = document.documentElement;
+      root.style.setProperty('--school-primary', data.school.primary_color || '#4f46e5');
+      root.style.setProperty('--school-secondary', data.school.secondary_color || '#06b6d4');
+      root.style.setProperty('--school-accent', data.school.accent_color || '#f59e0b');
+      root.setAttribute('data-school-slug', data.school.slug || 'fusion-high');
+    }
+
+    return { data, role: userRole };
+  };
+
+  const login = async (credentials: { email?: string; learnerNumber?: string; password: string; rememberMe?: boolean }) => {
     setIsLoading(true);
     try {
       const data = await authService.login(credentials);
-      const userToken = data.token;
-      const rawRole = data.role || data.user?.role;
-      if (!rawRole || !userToken) {
-        const missing = new Error('This account has no portal role assigned. Ask the school office to finish setup.');
-        (missing as any).response = { status: 403, data: { error: missing.message } };
-        throw missing;
-      }
-      const userRole = String(rawRole).toLowerCase() as UserRole;
-      const userData = data.user || { id: data.id, role: userRole, email: credentials.email };
-      const remember = options?.remember !== false;
-      const schoolId = data.school?.id || data.school_id || userData.school_id;
-
-      setToken(userToken);
-      setRole(userRole);
-      setUserState(userData);
-
-      writeAuthSession({
-        remember,
-        persistent: localStorage,
-        session: sessionStorage,
-        entries: {
-          token: userToken,
-          userRole,
-          user: JSON.stringify(userData),
-          active_school_profile: data.school ? JSON.stringify(data.school) : '',
-          active_school_id: schoolId ? String(schoolId) : '',
-        },
-      });
-
-      // Trigger immediate presence heartbeat on login
-      userService.heartbeat().catch(() => {});
-
-      if (data.school) {
-        const root = document.documentElement;
-        root.style.setProperty('--school-primary', data.school.primary_color || '#4f46e5');
-        root.style.setProperty('--school-secondary', data.school.secondary_color || '#06b6d4');
-        root.style.setProperty('--school-accent', data.school.accent_color || '#f59e0b');
-        root.setAttribute('data-school-slug', data.school.slug || 'fusion-high');
-      }
-
-      return { data, role: userRole };
+      return await establishSession(data, credentials.rememberMe !== false);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const finishLogout = () => {
+  const finishLogout = async () => {
     promptKind.current = null;
     setSessionPrompt(null);
     try {
       sessionStorage.removeItem('logout_reason');
     } catch (_) {}
     try {
-      userService.updateLogoutStatus().catch(() => {});
+      userService.updateLogoutStatus(true).catch(() => {});
+    } catch (_) {}
+    try {
+      const { soundNotificationService } = await import('../services/soundNotificationService');
+      await soundNotificationService.release();
     } catch (_) {}
     setToken(null);
     setRole(null);
     setUserState(null);
     clearAuthSession([localStorage, sessionStorage]);
+    sessionStorage.clear();
+    localStorage.removeItem('remember_me');
+    localStorage.removeItem('geleza_active_tab');
     window.location.href = '/login';
   };
 
@@ -230,12 +314,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isAuthenticated: !!token,
         isLoading,
         login,
+        establishSession,
         logout,
         updateUser,
         refreshUser,
       }}
     >
       {children}
+      {tabBlocked && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+            <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">Already open</h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              This account is already signed in on another tab. Close that tab before using Geleza SA here.
+            </p>
+          </div>
+        </div>
+      )}
       {sessionPrompt && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
           <div
@@ -245,11 +340,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900"
           >
             <h2 id="session-choice-title" className="text-lg font-extrabold text-slate-900 dark:text-white">
-              {sessionPrompt === 'idle' ? 'Sign in again?' : 'Log out of Geleza SA?'}
+              {sessionPrompt === 'idle' ? 'Still there?' : 'Log out of Geleza SA?'}
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
               {sessionPrompt === 'idle'
-                ? 'You have not used Geleza SA for 3 minutes. Do you want to sign in again, or stay on this page?'
+                ? 'You have not used Geleza SA for 5 minutes. Do you want to stay signed in, or log out?'
                 : 'Do you want to log out, or stay signed in?'}
             </p>
             <div className="mt-5 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
@@ -263,11 +358,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               <button
                 type="button"
                 onClick={finishLogout}
-                className={`px-4 py-2.5 rounded-xl text-sm font-bold text-always-white cursor-pointer ${
-                  sessionPrompt === 'idle' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-rose-600 hover:bg-rose-500'
-                }`}
+                className="px-4 py-2.5 rounded-xl text-sm font-bold text-always-white cursor-pointer bg-rose-600 hover:bg-rose-500"
               >
-                {sessionPrompt === 'idle' ? 'Sign in' : 'Log out'}
+                Log out
               </button>
             </div>
           </div>

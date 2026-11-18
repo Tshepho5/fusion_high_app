@@ -30,16 +30,26 @@ exports.getProfile = async (req, res) => {
         if (user.role === 'learner') {
             const lrnNum = (user.email || '').split('@')[0];
             const childRes = await db.query(
-                `SELECT * FROM children 
-                 WHERE learner_user_id::text = $1::text OR learner_number::text = $2::text
+                `SELECT c.*, cl.name as class_name,
+                        COALESCE(u_ht.full_name || ' ' || u_ht.surname, u_at.full_name || ' ' || u_at.surname) as class_teacher_name,
+                        COALESCE(u_ht.email, u_at.email) as class_teacher_email
+                 FROM children c
+                 LEFT JOIN classes cl ON c.class_id = cl.id
+                 LEFT JOIN users u_ht ON cl.homeroom_teacher_id = u_ht.id
+                 LEFT JOIN users u_at ON cl.assigned_teacher_id = u_at.id
+                 WHERE c.learner_user_id::text = $1::text OR c.learner_number::text = $2::text
                  LIMIT 1`, 
                 [req.user.id, lrnNum]
-            );
+            ).catch(() => ({ rows: [] }));
             user.academic = childRes.rows[0] || null;
             if (user.academic) {
                 user.grade = user.academic.grade;
                 user.stream = user.academic.stream;
                 user.learner_number = user.academic.learner_number;
+                user.class_name = user.academic.class_name || `${user.academic.grade || 10}A`;
+                user.class_teacher = user.academic.class_teacher_name || null;
+                user.class_teacher_name = user.academic.class_teacher_name || null;
+                user.class_teacher_email = user.academic.class_teacher_email || null;
                 if (user.academic.school_id) {
                     user.school_id = user.academic.school_id;
                 }
@@ -368,7 +378,15 @@ exports.getMessages = async (req, res) => {
             LEFT JOIN users sender ON m.sender_id::text = sender.id::text
             LEFT JOIN users recipient ON m.recipient_id::text = recipient.id::text
             LEFT JOIN children c ON m.child_id::text = c.id::text
-            WHERE m.sender_id::text = $1::text OR m.recipient_id::text = $1::text
+            WHERE (m.sender_id::text = $1::text OR m.recipient_id::text = $1::text)
+              AND (m.subject IS NULL OR (
+                  m.subject NOT ILIKE 'Attendance Notice%'
+                  AND m.subject NOT ILIKE 'New Assessment Mark%'
+                  AND m.subject NOT ILIKE 'Assessment Marks Published%'
+                  AND m.subject NOT ILIKE 'Important Academic Notice%'
+                  AND m.subject NOT ILIKE 'Textbook Allocated%'
+                  AND m.subject NOT ILIKE 'New Task Assigned%'
+              ))
             ORDER BY m.created_at DESC;
         `;
         const { rows } = await db.query(query, [userId]);
@@ -422,13 +440,21 @@ exports.uploadMessageAttachment = async (req, res) => {
 exports.heartbeat = async (req, res) => {
     try {
         const userId = req.user.id;
+        const agent = String(req.headers['user-agent'] || '');
+        const device = /Mobile|Android|iPhone|iPad|iPod/i.test(agent) ? 'phone' : 'laptop';
+        await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS presence_device VARCHAR(20)`).catch(() => {});
         await db.query(
-            `UPDATE users SET last_seen_at = NOW(), is_online = TRUE WHERE id = $1`,
-            [userId]
-        ).catch(() => {});
-        res.json({ success: true, timestamp: new Date() });
+            `UPDATE users SET last_seen_at = NOW(), is_online = TRUE, presence_device = $2 WHERE id = $1`,
+            [userId, device]
+        ).catch(async () => {
+            await db.query(
+                `UPDATE users SET last_seen_at = NOW(), is_online = TRUE WHERE id = $1`,
+                [userId]
+            ).catch(() => {});
+        });
+        res.json({ success: true, is_online: true, device, timestamp: new Date() });
     } catch (err) {
-        res.json({ success: true, timestamp: new Date() });
+        res.json({ success: true, is_online: true, timestamp: new Date() });
     }
 };
 
@@ -440,8 +466,11 @@ exports.updateLogoutStatus = async (req, res) => {
         const { clearSessionCookie } = require('../../../authMiddleware');
         clearSessionCookie(res);
         const userId = req.user.id;
+        const endSession = req.body?.endSession === true;
         await db.query(
-            `UPDATE users SET is_online = FALSE, last_seen_at = (NOW() - INTERVAL '2 minutes') WHERE id = $1`,
+            endSession
+                ? `UPDATE users SET is_online = FALSE, last_seen_at = (NOW() - INTERVAL '2 minutes'), active_session_id = NULL, session_seen_at = NULL WHERE id = $1`
+                : `UPDATE users SET is_online = FALSE, last_seen_at = (NOW() - INTERVAL '2 minutes') WHERE id = $1`,
             [userId]
         ).catch(() => {});
         res.json({ success: true, is_online: false });
@@ -561,6 +590,20 @@ exports.sendMessage = async (req, res) => {
     }
 };
 
+let presenceColsVerified = false;
+async function checkPresenceColsOnce() {
+    if (presenceColsVerified) return true;
+    try {
+        await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
+        await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_online BOOLEAN DEFAULT FALSE`);
+        await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS presence_device VARCHAR(20)`);
+        presenceColsVerified = true;
+    } catch (_) {
+        presenceColsVerified = true;
+    }
+    return true;
+}
+
 /**
  * Returns allowed communication contacts with live unread counts and last message previews.
  */
@@ -572,41 +615,20 @@ exports.getCommunicationContacts = async (req, res) => {
         let query = '';
         let params = [userId];
 
-        // Dynamically detect presence tracking columns and safely fallback if not yet migrated
-        let hasPresenceCols = false;
-        try {
-            const colCheck = await db.query(`
-                SELECT column_name FROM information_schema.columns 
-                WHERE table_name = 'users' AND column_name IN ('last_seen_at', 'is_online')
-            `);
-            hasPresenceCols = (colCheck.rows.length >= 2);
-            if (!hasPresenceCols) {
-                try {
-                    await db.query(`
-                        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-                        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_online BOOLEAN DEFAULT FALSE;
-                    `);
-                    hasPresenceCols = true;
-                } catch (_) {
-                    hasPresenceCols = false;
-                }
-            }
-        } catch (_) {
-            hasPresenceCols = false;
-        }
+        // Dynamically detect presence tracking columns once and reuse across requests
+        await checkPresenceColsOnce();
+        const hasPresenceCols = true;
 
-        const onlineSelect = hasPresenceCols ? `
+        const onlineSelect = `
             CASE 
                 WHEN u.last_seen_at IS NOT NULL AND u.last_seen_at >= (NOW() - INTERVAL '90 seconds') AND COALESCE(u.is_online, TRUE) = TRUE THEN true 
                 ELSE false 
             END AS is_online,
             u.last_seen_at,
-        ` : `
-            false AS is_online,
-            NULL::timestamp AS last_seen_at,
+            COALESCE(u.presence_device, '') AS presence_device,
         `;
 
-        const groupByPresence = hasPresenceCols ? `, u.last_seen_at, u.is_online` : ``;
+        const groupByPresence = `, u.last_seen_at, u.is_online, u.presence_device`;
 
         if (role === 'teacher') {
             query = `
@@ -767,8 +789,16 @@ exports.getConversationHistory = async (req, res) => {
             FROM messages m
             JOIN users sender ON m.sender_id::text = sender.id::text
             JOIN users recipient ON m.recipient_id::text = recipient.id::text
-            WHERE (m.sender_id::text = $1::text AND m.recipient_id::text = $2::text)
-               OR (m.sender_id::text = $2::text AND m.recipient_id::text = $1::text)
+            WHERE ((m.sender_id::text = $1::text AND m.recipient_id::text = $2::text)
+               OR (m.sender_id::text = $2::text AND m.recipient_id::text = $1::text))
+              AND (m.subject IS NULL OR (
+                  m.subject NOT ILIKE 'Attendance Notice%'
+                  AND m.subject NOT ILIKE 'New Assessment Mark%'
+                  AND m.subject NOT ILIKE 'Assessment Marks Published%'
+                  AND m.subject NOT ILIKE 'Important Academic Notice%'
+                  AND m.subject NOT ILIKE 'Textbook Allocated%'
+                  AND m.subject NOT ILIKE 'New Task Assigned%'
+              ))
             ORDER BY m.id ASC, m.created_at ASC;
         `;
         const { rows } = await db.query(query, [userId, recipientId]);

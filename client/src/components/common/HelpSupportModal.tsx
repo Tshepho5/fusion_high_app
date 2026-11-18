@@ -1,12 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   HelpCircle,
   X,
   Search,
-  MessageSquare,
   Bot,
-  Send,
-  Sparkles,
   ChevronDown,
   ChevronUp,
   Headphones,
@@ -16,49 +13,44 @@ import {
   Users,
   CreditCard,
   LifeBuoy,
-  Phone,
-  Mail,
   Clock,
+  Sparkles,
+  Smile,
   ThumbsUp,
-  RotateCcw,
   Compass,
   CheckCircle2,
   Lightbulb,
-  Smile,
-  ExternalLink
+  Phone,
+  Mail,
+  Send,
+  AlertCircle
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { learnerService } from '../../services/api';
-import { FusionChatbotMascot } from './FusionChatbotMascot';
+import { GelezaAIChatPanel } from './GelezaAIChatPanel';
+import { GELEZA_AI } from './GelezaAIMascot';
+import { useAuth } from '../../context/AuthContext';
+import { supportService } from '../../services/api';
 
 interface HelpSupportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  defaultTab?: 'faq' | 'ai-support';
+  defaultTab?: 'faq' | 'ai-support' | 'contact';
   onSelectTab?: (tab: string) => void;
 }
 
-interface ChatMessage {
-  id: string;
-  sender: 'ai' | 'user';
-  text: string;
-  timestamp: string;
-  suggestions?: string[];
-  actionLinks?: Array<{ label: string; tab: string }>;
-}
-
-function parseActionLinks(text: string): { cleanedText: string; actionLinks: Array<{ label: string; tab: string }> } {
-  if (!text) return { cleanedText: '', actionLinks: [] };
-  const links: Array<{ label: string; tab: string }> = [];
-  const linkRegex = /\[([^\]]+)\]\(action:([a-zA-Z0-9_-]+)\)/g;
-  let match;
-  while ((match = linkRegex.exec(text)) !== null) {
-    links.push({ label: match[1].trim(), tab: match[2].trim() });
-  }
-  const cleanedText = text.replace(linkRegex, '').replace(/\n\s*\n\s*\n/g, '\n\n').trim();
-  return { cleanedText, actionLinks: links };
-}
+const SUPPORT_CATEGORIES = [
+  { value: 'wrong_email', label: 'Wrong email address on application / account' },
+  { value: 'wrong_phone', label: 'Wrong phone number' },
+  { value: 'wrong_id_number', label: 'Wrong ID number' },
+  { value: 'wrong_learner_details', label: 'Wrong learner / child details' },
+  { value: 'wrong_parent_details', label: 'Wrong parent / guardian details' },
+  { value: 'application_correction', label: 'Other application form correction' },
+  { value: 'login_access', label: 'Login or account access problem' },
+  { value: 'account_profile', label: 'Profile / personal details' },
+  { value: 'fees_payments', label: 'Fees or payments' },
+  { value: 'technical', label: 'Technical / app issue' },
+  { value: 'other', label: 'Other support request' }
+];
 
 /**
  * 🌟 Dynamic Theme-Adaptive Animated Mascot (Fusion High AI Assistant)
@@ -277,77 +269,104 @@ export const AnimatedSupportMascot: React.FC<{
   );
 };
 
-// Comprehensive School FAQs Data
+/** Official FAQ reference — Geleza SA Support Documentation (GSA-DOC-FAQ-001) */
 const FAQ_CATEGORIES = [
   {
     id: 'general',
-    name: 'General & Navigation',
+    name: 'Section A — Platform overview',
     icon: LifeBuoy,
     faqs: [
       {
-        q: 'What is Geleza SA Portal?',
-        a: 'Geleza SA (G~SA) Portal is the official digital school management platform. It manages South African CAPS curriculum delivery, SBA marksheet auditing, daily attendance roll-call, term report cards, digital assignments, and 24/7 AI tutoring tools.'
+        q: 'What is Geleza SA?',
+        a: 'Geleza SA (Geleza South Africa) is a digital school management and learning platform for South African secondary schools. It supports CAPS-aligned administration, including attendance, assessments, report cards, communications, fees (where enabled), and authorised study tools for Grades 8–12.'
       },
       {
-        q: 'How do I change between Dark and Light themes?',
-        a: 'Click your profile picture in the top-right corner to toggle between Dark Mode and Light Mode.'
+        q: 'Who may use Geleza SA?',
+        a: 'Access is limited to authorised users of a registered school: administrators, educators, enrolled learners, and parents or legal guardians linked to those learners. Unauthorised use is prohibited under the Geleza SA Terms and Conditions.'
       },
       {
-        q: 'How do I switch the module view (Standard Grid, Compact App Tiles, List View)?',
-        a: 'On your dashboard, locate the 3 view selector icons directly to the right of the "Functions & Quick Tools" title. Click any icon to instantly switch your layout.'
+        q: 'How do I change between dark and light appearance?',
+        a: 'Open Settings from your portal and use the Dark Mode control under App Settings. Your preference is saved for subsequent sessions on that device.'
+      },
+      {
+        q: 'Where can I read the official policies?',
+        a: 'The About Geleza SA document and the Terms and Conditions are available from the public website (About Us and Terms pages). Registered users may also open Help & Support for FAQs and the AI assistant.'
+      },
+      {
+        q: 'I entered the wrong email, phone, or details on my application. What should I do?',
+        a: 'Open Help & Support → Contact Admin and describe the mistake. Include your application reference (for example PAR-2026-XXXXX) and the correct details. Your school administrator or Geleza SA support can correct eligible application and account fields so you can continue without re-applying from scratch.'
       }
     ]
   },
   {
     id: 'learner',
-    name: 'Learner & Academics',
+    name: 'Section B — Learners',
     icon: GraduationCap,
     faqs: [
       {
-        q: 'How do I access single-subject curriculum workspaces?',
-        a: 'Click on any subject card in your horizontal subjects carousel at the top of the Learner Dashboard. The system will open that exact subject\'s chapter notes, past papers, and AI practice worksheets.'
+        q: 'How do I open a subject workspace?',
+        a: 'From the learner home or Subjects module, select the relevant subject. You will see subject resources, past papers, and related study tools that your school has made available.'
       },
       {
-        q: 'Where do I find my Term Average and Learner Number?',
-        a: 'Your academic metadata (Current Grade, Learner Number, Stream, Term Average, and Attendance Rate) is located inside the "My Profile" tab in your bottom navigation dock.'
+        q: 'Where do I find my learner number and profile details?',
+        a: 'Open My Profile. Your learner number, grade, and contact details appear there. Official marks appear only after your school uploads verified assessment data.'
       },
       {
-        q: 'How does the AI Tutor work?',
-        a: 'The AI Tutor is available 24/7 in your AI Tools and Study Studio. You can ask step-by-step math solutions, physics calculations, or essay drafting tips aligned with the South African CAPS curriculum.'
+        q: 'Why do my marks show as pending?',
+        a: 'Geleza SA does not invent placeholder marks. Term marks and averages are displayed only after educators or administrators upload verified SBA or term results for your school.'
+      },
+      {
+        q: 'How does the Geleza SA AI Assistant work?',
+        a: 'The Geleza SA AI Assistant provides CAPS-oriented study guidance when enabled for your account. It is a support tool for understanding and revision; formal assessments must still be completed according to your school’s academic integrity rules.'
       }
     ]
   },
   {
     id: 'parent',
-    name: 'Parent & Guardian Portal',
+    name: 'Section C — Parents and guardians',
     icon: Users,
     faqs: [
       {
-        q: 'How do I link my child to my parent account?',
-        a: 'Navigate to "My Account & Link Child" in your Parent Portal. Enter your child\'s official Learner Number (e.g. 2026-FHS-001) and their 13-digit South African National ID number.'
+        q: 'How do I link a learner to my parent account?',
+        a: 'In the Parent Portal, open the linked-learners or account-linking module. Enter the learner’s official learner number issued by the school and the learner’s 13-digit South African identity number. Linking is confirmed only when the details match school records.'
       },
       {
-        q: 'Where can I download my child\'s official CAPS Report Card?',
-        a: 'Open the "CAPS Report Cards" module in your Parent Portal to view term averages, subject level codes (1–7), teacher comments, and print/download the official transcript.'
+        q: 'Where can I view a CAPS report card?',
+        a: 'Open the CAPS Report Cards module (where enabled by the school). Report cards show subject results and CAPS achievement levels only when the school has published them for the relevant term.'
       },
       {
-        q: 'How do I book a Parent-Teacher Conference (PTC)?',
-        a: 'Click the "Parent-Teacher Conferences" module, select your child\'s subject educator, pick an available 15-minute slot, and confirm your appointment.'
+        q: 'How do I arrange a parent–teacher consultation?',
+        a: 'Open Parent–Teacher Consultations, select the educator and an available timeslot, and confirm the booking. Availability is controlled by the school’s published schedule.'
       }
     ]
   },
   {
     id: 'finance',
-    name: 'School Fees & Bursaries',
+    name: 'Section D — Fees and bursaries',
     icon: CreditCard,
     faqs: [
       {
-        q: 'How do I view and pay school fee invoices?',
-        a: 'Click the "School Fee Statements" module in your portal to view your statement balance, download tax invoices, and pay online.'
+        q: 'How do I view school fee statements?',
+        a: 'Open the School Fees module (where enabled). Statements, balances, and payment instructions are determined by your school. Geleza SA displays the records the school has authorised for your account.'
       },
       {
-        q: 'Where can Grade 12 learners find NSFAS and tertiary bursaries?',
-        a: 'Open the "Tertiary Bursaries Catalog" module on your dashboard to see active university funding, eligibility criteria, and direct application links.'
+        q: 'Where can Grade 12 learners find bursary information?',
+        a: 'Open the Bursaries or tertiary funding catalogue module on your dashboard (where enabled) to review funding opportunities, eligibility notes, and any application links published by Geleza SA or your school.'
+      }
+    ]
+  },
+  {
+    id: 'access',
+    name: 'Section E — Access and sessions',
+    icon: ShieldCheck,
+    faqs: [
+      {
+        q: 'Can I sign in on a new device if I am already signed in elsewhere?',
+        a: 'Yes. Signing in on a new device replaces the previous active session. The earlier device or tab is signed out automatically for account security.'
+      },
+      {
+        q: 'What should I do if I forget my password?',
+        a: 'Use Forgot Password on the sign-in page and follow the email recovery steps. For unknown learner numbers or enrolment issues, contact your school administration.'
       }
     ]
   }
@@ -359,222 +378,232 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
   defaultTab = 'faq',
   onSelectTab
 }) => {
-  const { user, role } = useAuth();
   const { theme } = useTheme();
   const isLight = theme === 'light';
+  const { user, role } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'faq' | 'ai-support'>(defaultTab);
+  const [activeTab, setActiveTab] = useState<'faq' | 'ai-support' | 'contact'>(defaultTab);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFaq, setExpandedFaq] = useState<string | null>('general-0');
-
-  // Multi-Turn Persistent AI Chat State across sessions
-  const storageKey = `fusion_ai_chat_history_${user?.id || 'guest'}_${role || 'user'}`;
-
-  const [inputMessage, setInputMessage] = useState('');
-  const [isAiThinking, setIsAiThinking] = useState(false);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch (_) {}
-    return [
-      {
-        id: 'welcome-1',
-        sender: 'ai',
-        text: `Hello ${user?.full_name || 'there'}! 👋 I am your 24/7 Geleza SA AI Assistant. I have calibrated my tools for your ${((user as any)?.role || role || 'user').toUpperCase()} profile. How can I assist you with your tasks or modules today?`,
-        timestamp: 'Just now',
-        suggestions: ((user as any)?.role === 'teacher' || role === 'teacher')
-          ? [
-              'How do I enter SBA marks?',
-              'Take class attendance register',
-              'Open AI Lesson Plan Studio',
-              'View timetable & room allocations'
-            ]
-          : ((user as any)?.role === 'admin' || role === 'admin')
-          ? [
-              'System-wide attendance overview',
-              'Learner enrollment and admissions',
-              'Publish official school announcements',
-              'Open security settings'
-            ]
-          : ((user as any)?.role === 'parent' || role === 'parent')
-          ? [
-              'How do I link a child?',
-              'View my child\'s CAPS report card',
-              'Check attendance alerts',
-              'School fees and payments'
-            ]
-          : [
-              'Where is my weekly timetable?',
-              'How do I view CAPS report cards?',
-              'Open past papers & resources',
-              'Check homework & assignments'
-            ],
-        actionLinks: ((user as any)?.role === 'teacher' || role === 'teacher')
-          ? [
-              { label: 'Marksheets', tab: 'assessments' },
-              { label: 'Timetable', tab: 'timetable' }
-            ]
-          : ((user as any)?.role === 'admin' || role === 'admin')
-          ? [
-              { label: 'Marks Audit', tab: 'marks' },
-              { label: 'Admissions', tab: 'admissions' }
-            ]
-          : [
-              { label: 'Timetable', tab: 'timetable' },
-              { label: 'Report Cards', tab: 'reports' }
-            ]
-      }
-    ];
+  const [ticketForm, setTicketForm] = useState({
+    requester_name: '',
+    requester_email: '',
+    requester_phone: '',
+    category: 'wrong_email',
+    subject: '',
+    description: '',
+    related_application_number: ''
   });
-  const chatBottomRef = useRef<HTMLDivElement>(null);
+  const [ticketSubmitting, setTicketSubmitting] = useState(false);
+  const [ticketError, setTicketError] = useState<string | null>(null);
+  const [ticketSuccess, setTicketSuccess] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [fieldHints, setFieldHints] = useState<Record<string, string>>({});
 
-  // Sync chat message records to localStorage
-  useEffect(() => {
-    try {
-      if (chatMessages && chatMessages.length > 0) {
-        localStorage.setItem(storageKey, JSON.stringify(chatMessages));
+  const setHint = (field: string, message?: string) => {
+    setFieldHints((h) => {
+      const next = { ...h };
+      if (message) next[field] = message;
+      else delete next[field];
+      return next;
+    });
+  };
+
+  /** Strip anything that is not a letter / space / apostrophe / hyphen */
+  const lettersOnlyName = (value: string) => {
+    const cleaned = value.replace(/[^a-zA-ZÀ-ÿ\s'-]/g, '');
+    if (/[0-9]/.test(value)) {
+      setHint('requester_name', 'Numbers are not allowed in your name. Use letters only.');
+    } else if (cleaned !== value) {
+      setHint('requester_name', 'Only letters, spaces, apostrophes and hyphens are allowed.');
+    } else {
+      setHint('requester_name');
+    }
+    return cleaned;
+  };
+
+  /** Strip anything that is not a digit; max 10 */
+  const digitsOnlyPhone = (value: string) => {
+    if (/[a-zA-Z]/.test(value)) {
+      setHint('requester_phone', 'Letters are not allowed in a phone number. Digits only.');
+    } else if (/[^\d]/.test(value) && value.length > 0) {
+      setHint('requester_phone', 'Phone accepts digits only (e.g. 0812345678).');
+    } else {
+      setHint('requester_phone');
+    }
+    return value.replace(/\D/g, '').slice(0, 10);
+  };
+
+  const normalizeAppRef = (value: string) =>
+    value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 20);
+
+  /** Block invalid keystrokes before they enter the field */
+  const blockNonLettersKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const nav = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+    if (nav.includes(e.key)) return;
+    if (e.key.length === 1 && !/^[a-zA-ZÀ-ÿ\s'-]$/.test(e.key)) {
+      e.preventDefault();
+      setHint('requester_name', 'Numbers and symbols are not allowed in your name.');
+    }
+  };
+
+  const blockNonDigitKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const nav = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+    if (nav.includes(e.key)) return;
+    if (e.key.length === 1 && !/^\d$/.test(e.key)) {
+      e.preventDefault();
+      setHint('requester_phone', 'Letters and symbols are not allowed. Digits only.');
+    }
+  };
+
+  const pasteLettersOnly = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const text = lettersOnlyName(e.clipboardData.getData('text') || '');
+    setTicketForm((p) => ({ ...p, requester_name: text }));
+  };
+
+  const pasteDigitsOnly = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const text = digitsOnlyPhone(e.clipboardData.getData('text') || '');
+    setTicketForm((p) => ({ ...p, requester_phone: text }));
+  };
+
+  const validateTicketForm = () => {
+    const errors: Record<string, string> = {};
+    const name = ticketForm.requester_name.trim();
+    const email = ticketForm.requester_email.trim().toLowerCase();
+    const phone = ticketForm.requester_phone.trim();
+    const subject = ticketForm.subject.trim();
+    const description = ticketForm.description.trim();
+    const appRef = ticketForm.related_application_number.trim();
+
+    if (!name || name.length < 2) {
+      errors.requester_name = 'Please enter your full name (letters only).';
+    } else if (!/^[a-zA-ZÀ-ÿ\s'-]+$/.test(name)) {
+      errors.requester_name = 'Name may only contain letters, spaces, apostrophes and hyphens.';
+    } else if (/\d/.test(name)) {
+      errors.requester_name = 'Numbers are not allowed in your name.';
+    }
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.requester_email = 'Enter a valid email address we can reply to.';
+    }
+
+    if (phone) {
+      if (!/^\d{10}$/.test(phone)) {
+        errors.requester_phone = 'Phone must be exactly 10 digits (e.g. 0812345678).';
       }
-    } catch (_) {}
-  }, [chatMessages, storageKey]);
+    }
+
+    if (appRef) {
+      if (!/^PAR-\d{4}-\d{5}$/i.test(appRef) && !/^[A-Z]{2,5}-\d{4}-\d{4,6}$/i.test(appRef)) {
+        errors.related_application_number = 'Use a valid reference format, e.g. PAR-2026-48192.';
+      }
+    }
+
+    if (!subject || subject.length < 4) {
+      errors.subject = 'Subject must be at least 4 characters.';
+    }
+
+    if (!description || description.length < 10) {
+      errors.description = 'Please describe the problem in at least 10 characters, including the correct details.';
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   useEffect(() => {
     if (defaultTab) setActiveTab(defaultTab);
   }, [defaultTab, isOpen]);
 
   useEffect(() => {
-    if (activeTab === 'ai-support') {
-      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [chatMessages, activeTab]);
+    if (!isOpen) return;
+    const name = [user?.full_name || user?.name, user?.surname].filter(Boolean).join(' ').trim();
+    const phoneRaw = String(user?.phone || '').replace(/\D/g, '').slice(0, 10);
+    setTicketForm((prev) => ({
+      ...prev,
+      requester_name: prev.requester_name || lettersOnlyName(name) || '',
+      requester_email: prev.requester_email || (user?.email || '').toLowerCase(),
+      requester_phone: prev.requester_phone || phoneRaw
+    }));
+    setTicketError(null);
+    setTicketSuccess(null);
+    setFieldErrors({});
+    setFieldHints({});
+  }, [isOpen, user]);
 
-  const handleClearChat = () => {
-    const freshWelcome: ChatMessage = {
-      id: `welcome-${Date.now()}`,
-      sender: 'ai',
-      text: `Chat session refreshed! How can I assist you right now, ${user?.full_name || 'there'}?`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      suggestions: [
-        'Where is my weekly timetable?',
-        'How do I view CAPS report cards?',
-        'Explain a difficult subject concept',
-        'Open technical settings'
-      ],
-      actionLinks: [
-        { label: 'Open Timetable', tab: 'timetable' },
-        { label: 'View Report Cards', tab: 'reports' }
-      ]
-    };
-    setChatMessages([freshWelcome]);
+  const submitSupportTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTicketError(null);
+    setTicketSuccess(null);
+    if (!validateTicketForm()) {
+      setTicketError('Please fix the highlighted fields before sending.');
+      return;
+    }
+    setTicketSubmitting(true);
     try {
-      localStorage.removeItem(storageKey);
-    } catch (_) {}
+      const res = await supportService.submit({
+        requester_name: ticketForm.requester_name.trim(),
+        requester_email: ticketForm.requester_email.trim().toLowerCase(),
+        requester_phone: ticketForm.requester_phone.trim() || undefined,
+        category: ticketForm.category,
+        subject: ticketForm.subject.trim(),
+        description: ticketForm.description.trim(),
+        related_application_number: ticketForm.related_application_number.trim() || undefined,
+        school_id: user?.school_id,
+        requester_role: role || undefined,
+        related_application_type: 'parent_portal'
+      });
+      setTicketSuccess(
+        `Request received. Ticket ${res.ticket?.ticket_number || ''} — school admin or Geleza SA will assist you.`
+      );
+      setTicketForm((prev) => ({
+        ...prev,
+        subject: '',
+        description: '',
+        related_application_number: ''
+      }));
+      setFieldErrors({});
+      setFieldHints({});
+    } catch (err: any) {
+      setTicketError(err.response?.data?.error || err.message || 'Could not submit your request.');
+    } finally {
+      setTicketSubmitting(false);
+    }
+  };
+
+  const inputClass = (field: string) => {
+    const hasErr = Boolean(fieldErrors[field]);
+    return `w-full px-3 py-2.5 rounded-xl border text-xs focus:outline-none ${
+      hasErr
+        ? 'border-rose-500 focus:border-rose-500'
+        : 'focus:border-cyan-500'
+    } ${
+      isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-surface-darker border-white/10 text-white'
+    } ${hasErr ? (isLight ? 'border-rose-500' : 'border-rose-500') : ''}`;
   };
 
   if (!isOpen) return null;
 
-  const handleSendAiMessage = async (overrideText?: string) => {
-    const textToSend = (overrideText || inputMessage).trim();
-    if (!textToSend || isAiThinking) return;
-
-    const userMsg: ChatMessage = {
-      id: `user-${Date.now()}`,
-      sender: 'user',
-      text: textToSend,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    setChatMessages((prev) => [...prev, userMsg]);
-    if (!overrideText) setInputMessage('');
-    setIsAiThinking(true);
-
-    try {
-      const res = await learnerService.askTutor({
-        question: textToSend,
-        subject: 'General School System & Academic Help',
-        grade: user?.grade || 10,
-        stream: (user as any)?.stream || 'General',
-        role: role || (user as any)?.role || 'learner',
-        fullName: user?.full_name || (user as any)?.name || '',
-        conversationHistory: chatMessages.slice(-8)
-      });
-
-      const rawReply = res?.reply || res?.answer || res?.response || res?.text || '';
-      const responseSuggestions = res?.suggestions || [];
-      const responseActionLinks = res?.actionLinks || [];
-
-      // Parse markdown action links from text
-      const parsed = parseActionLinks(rawReply);
-      const combinedActionLinks = [
-        ...(Array.isArray(responseActionLinks) ? responseActionLinks : []),
-        ...parsed.actionLinks
-      ];
-
-      // Remove duplicate tabs
-      const uniqueActionLinks = combinedActionLinks.filter(
-        (v, i, a) => a.findIndex(t => t.tab === v.tab) === i
-      );
-
-      const aiMsg: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        text: parsed.cleanedText || rawReply,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        suggestions: responseSuggestions.length > 0 ? responseSuggestions : undefined,
-        actionLinks: uniqueActionLinks.length > 0 ? uniqueActionLinks : undefined
-      };
-
-      setChatMessages((prev) => [...prev, aiMsg]);
-    } catch (err) {
-      console.warn('[AI ASSISTANT WARN]', err);
-      let fallbackText = `I'm right here with you! You can access all your academic marks, subjects, weekly timetables, assignments, and fee statements from the main dashboard.`;
-      let fallbackLinks: Array<{ label: string; tab: string }> = [];
-
-      const lower = textToSend.toLowerCase();
-      if (lower.includes('report') || lower.includes('mark') || lower.includes('grade')) {
-        fallbackText = `To view your CAPS report card, open the "CAPS Report Cards" module on your dashboard. It displays official DBE Levels 1–7 and term marks.`;
-        fallbackLinks = [{ label: 'View CAPS Report Cards', tab: 'reports' }];
-      } else if (lower.includes('timetable') || lower.includes('schedule') || lower.includes('period')) {
-        fallbackText = `You can check your full weekly period schedule, classroom allocations, and subject educator timetable right here:`;
-        fallbackLinks = [{ label: 'Open Timetable', tab: 'timetable' }];
-      } else if (lower.includes('password') || lower.includes('login') || lower.includes('setting') || lower.includes('theme')) {
-        fallbackText = `You can update your security credentials, password, notification preferences, and color themes in "Technical Settings".`;
-        fallbackLinks = [{ label: 'Open Technical Settings', tab: 'settings' }];
-      } else if (lower.includes('fee') || lower.includes('payment') || lower.includes('finance')) {
-        fallbackText = `School fee balances, statements, and online payment details are managed in the School Fees module.`;
-        fallbackLinks = [{ label: 'Open Fee Management', tab: 'finance' }];
-      } else if (lower.includes('assignment') || lower.includes('homework')) {
-        fallbackText = `You can view pending homework, download study guidelines, and submit completed tasks in Assignments.`;
-        fallbackLinks = [{ label: 'Go to Assignments', tab: 'assignments' }];
-      } else if (lower.includes('parent') || lower.includes('link')) {
-        fallbackText = `Parents can link learners in the Parent Portal using the learner's official number (e.g. 2026-FHS-001) and their 13-digit National ID number.`;
-      }
-
-      const aiMsg: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        text: fallbackText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        actionLinks: fallbackLinks.length > 0 ? fallbackLinks : undefined,
-        suggestions: ['Where is my weekly timetable?', 'How do I view CAPS report cards?', 'Open technical settings']
-      };
-      setChatMessages((prev) => [...prev, aiMsg]);
-    } finally {
-      setIsAiThinking(false);
-    }
-  };
-
-  const quickPrompts = [
-    'How do I view my CAPS report card?',
-    'How do parents link a child?',
-    'Where is my weekly timetable?',
-    'How do I contact my subject educator?'
-  ];
+  // Dedicated phone-style AI assistant shell (matches Geleza SA mockups)
+  if (activeTab === 'ai-support') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/75 backdrop-blur-md animate-fade-in overflow-hidden">
+        <div
+          className={`relative w-full max-w-[430px] h-[94vh] max-h-[860px] rounded-[2.5rem] border-2 shadow-2xl flex flex-col overflow-hidden transition-all ${
+            isLight
+              ? 'bg-[#F8FAFC] border-cyan-400/40 shadow-cyan-500/10'
+              : 'bg-[#050D17] border-cyan-500/40 shadow-[0_0_50px_rgba(6,182,212,0.2)]'
+          }`}
+        >
+          <GelezaAIChatPanel onSelectTab={onSelectTab} onClose={onClose} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-fade-in overflow-hidden">
@@ -598,14 +627,14 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-extrabold font-display tracking-wide">
-                  Geleza SA Support Hub & 24/7 AI Guide
+                  Geleza SA Support Documentation
                 </h2>
-                <span className="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-[10px] font-bold text-cyan-400">
-                  Geleza SA
+                <span className="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-[10px] font-bold text-cyan-400 font-mono">
+                  GSA-DOC-FAQ-001
                 </span>
               </div>
               <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                Instant assistance, frequently asked questions, and interactive 24/7 AI guide
+                Official FAQs and AI assistance for registered Geleza SA users
               </p>
             </div>
           </div>
@@ -644,8 +673,8 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
           <button
             onClick={() => setActiveTab('ai-support')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-              activeTab === 'ai-support'
-                ? 'bg-gradient-to-r from-brand-600 to-cyan-500 text-white shadow-glow-indigo'
+              (activeTab as string) === 'ai-support'
+                ? 'bg-gradient-to-r from-brand-600 to-cyan-500 text-white shadow-md'
                 : isLight
                 ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
@@ -654,6 +683,20 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
             <Bot className="w-4 h-4 text-cyan-300" />
             <span>24/7 AI Help & Support</span>
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          </button>
+
+          <button
+            onClick={() => setActiveTab('contact')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'contact'
+                ? 'bg-cyan-600 text-white shadow-md'
+                : isLight
+                ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <LifeBuoy className="w-4 h-4" />
+            <span>Contact Admin</span>
           </button>
         </div>
 
@@ -671,7 +714,7 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search frequently asked questions (e.g. report card, link child, timetable)..."
+                  placeholder="Search documentation (e.g. report card, link learner, session, fees)..."
                   className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs focus:outline-none focus:border-indigo-500 ${
                     isLight
                       ? 'bg-slate-100 border-slate-300 text-slate-900 placeholder-slate-400'
@@ -759,215 +802,251 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
                 <div>
                   <h4 className="text-xs font-bold">Couldn't find what you're looking for?</h4>
                   <p className={`text-[11px] mt-0.5 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                    Our 24/7 AI Support Bot is ready to answer questions and guide you in real-time.
+                    Contact school admin / Geleza SA for application mistakes, or chat with the AI assistant.
                   </p>
                 </div>
-                <button
-                  onClick={() => setActiveTab('ai-support')}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-500 text-white font-bold text-xs shadow-md shrink-0 hover:scale-105 transition-all flex items-center gap-1.5"
-                >
-                  <Bot className="w-4 h-4" />
-                  <span>Chat with AI Mascot</span>
-                </button>
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  <button
+                    onClick={() => setActiveTab('contact')}
+                    className="px-4 py-2 rounded-xl bg-cyan-600 text-white font-bold text-xs shadow-md hover:scale-105 transition-all flex items-center gap-1.5"
+                  >
+                    <LifeBuoy className="w-4 h-4" />
+                    <span>Contact Admin</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('ai-support')}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-500 text-white font-bold text-xs shadow-md hover:scale-105 transition-all flex items-center gap-1.5"
+                  >
+                    <Bot className="w-4 h-4" />
+                    <span>AI Help</span>
+                  </button>
+                </div>
               </div>
 
             </div>
           )}
 
-          {/* TAB 2: 24/7 AI HELP & SUPPORT CHAT TOOL */}
-          {activeTab === 'ai-support' && (
-            <div
-              className={`flex-1 flex flex-col min-h-0 ${
-                isLight ? 'bg-slate-50' : 'bg-surface-darker/60'
-              }`}
-            >
-              {/* Mascot Header Ribbon */}
+          {activeTab === 'contact' && (
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 custom-scrollbar">
               <div
-                className={`p-3 border-b flex items-center justify-between gap-4 shrink-0 px-5 ${
-                  isLight ? 'bg-white border-slate-200' : 'bg-surface-dark border-white/5'
+                className={`p-4 rounded-2xl border ${
+                  isLight ? 'bg-cyan-50 border-cyan-200' : 'bg-cyan-500/10 border-cyan-500/25'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <FusionChatbotMascot size={46} isHovered={true} />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-extrabold tracking-wide">Fusion AI Guide</span>
-                      <span className="flex h-2 w-2 relative">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                      </span>
-                    </div>
-                    <span className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      {isAiThinking ? 'Analyzing CAPS & Fusion School Data...' : 'Always online • Ready to assist'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleClearChat}
-                    title="Start a fresh conversation session"
-                    className={`px-3 py-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-xs ${
-                      isLight
-                        ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
-                        : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    <RotateCcw className="w-3 h-3 text-cyan-400" />
-                    <span>New Session</span>
-                  </button>
-
-                  <div className="hidden sm:flex flex-col text-right">
-                    <span className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      School Support Office
-                    </span>
-                    <span className="text-xs font-bold text-cyan-500">support@fusionhigh.co.za</span>
-                  </div>
-                </div>
+                <h3 className={`text-sm font-extrabold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                  Request help from school admin or Geleza SA
+                </h3>
+                <p className={`text-[11px] mt-1 leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                  Use this form if you entered the wrong email, phone, ID, or learner details on an application,
+                  or if you need help with login or your account. Your school principal / admin can correct
+                  eligible records; Geleza SA can also assist.
+                </p>
               </div>
 
-              {/* Chat Messages Feed */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 custom-scrollbar min-h-0">
-                {chatMessages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex items-start gap-2.5 max-w-[85%] ${
-                      msg.sender === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'
-                    }`}
-                  >
-                    {/* Avatar */}
-                    {msg.sender === 'ai' ? (
-                      <div className="shrink-0 drop-shadow-sm rounded-full overflow-hidden">
-                        <FusionChatbotMascot size={32} />
-                      </div>
-                    ) : (
-                      <div className="w-8 h-8 rounded-xl bg-indigo-600 border border-white/20 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
-                        {user?.full_name?.charAt(0) || 'U'}
-                      </div>
+              {ticketSuccess && (
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-300 text-xs flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{ticketSuccess}</span>
+                </div>
+              )}
+              {ticketError && (
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-300 text-xs flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{ticketError}</span>
+                </div>
+              )}
+
+              <form onSubmit={submitSupportTicket} className="space-y-3" noValidate>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <label className="block space-y-1">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Full name</span>
+                    <input
+                      required
+                      autoComplete="name"
+                      inputMode="text"
+                      pattern="[A-Za-zÀ-ÿ\s'-]+"
+                      title="Letters only — no numbers"
+                      value={ticketForm.requester_name}
+                      onKeyDown={blockNonLettersKey}
+                      onPaste={pasteLettersOnly}
+                      onBeforeInput={(e) => {
+                        const data = (e as unknown as InputEvent).data;
+                        if (data && /[0-9]/.test(data)) {
+                          e.preventDefault();
+                          setHint('requester_name', 'Numbers are not allowed in your name. Use letters only.');
+                        }
+                      }}
+                      onChange={(e) => {
+                        const requester_name = lettersOnlyName(e.target.value);
+                        setTicketForm((p) => ({ ...p, requester_name }));
+                        setFieldErrors((err) => {
+                          const next = { ...err };
+                          delete next.requester_name;
+                          return next;
+                        });
+                      }}
+                      className={inputClass('requester_name')}
+                    />
+                    {(fieldErrors.requester_name || fieldHints.requester_name) && (
+                      <p className="text-[11px] font-semibold text-rose-400">
+                        {fieldErrors.requester_name || fieldHints.requester_name}
+                      </p>
                     )}
+                  </label>
+                  <label className="block space-y-1">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Contact email (for reply)</span>
+                    <input
+                      required
+                      type="email"
+                      autoComplete="email"
+                      value={ticketForm.requester_email}
+                      onChange={(e) => {
+                        setTicketForm((p) => ({ ...p, requester_email: e.target.value.toLowerCase().trim() }));
+                        setFieldErrors((err) => {
+                          const next = { ...err };
+                          delete next.requester_email;
+                          return next;
+                        });
+                      }}
+                      className={`${inputClass('requester_email')} font-mono`}
+                    />
+                    {fieldErrors.requester_email && (
+                      <p className="text-[11px] font-semibold text-rose-400">{fieldErrors.requester_email}</p>
+                    )}
+                  </label>
+                  <label className="block space-y-1">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Phone</span>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel"
+                      placeholder="0812345678"
+                      maxLength={10}
+                      pattern="[0-9]{10}"
+                      title="10 digits only — no letters"
+                      value={ticketForm.requester_phone}
+                      onKeyDown={blockNonDigitKey}
+                      onPaste={pasteDigitsOnly}
+                      onBeforeInput={(e) => {
+                        const data = (e as unknown as InputEvent).data;
+                        if (data && /[^\d]/.test(data)) {
+                          e.preventDefault();
+                          setHint('requester_phone', 'Letters and symbols are not allowed. Digits only.');
+                        }
+                      }}
+                      onChange={(e) => {
+                        const requester_phone = digitsOnlyPhone(e.target.value);
+                        setTicketForm((p) => ({ ...p, requester_phone }));
+                        setFieldErrors((err) => {
+                          const next = { ...err };
+                          delete next.requester_phone;
+                          return next;
+                        });
+                      }}
+                      className={`${inputClass('requester_phone')} font-mono`}
+                    />
+                    {(fieldErrors.requester_phone || fieldHints.requester_phone) && (
+                      <p className="text-[11px] font-semibold text-rose-400">
+                        {fieldErrors.requester_phone || fieldHints.requester_phone}
+                      </p>
+                    )}
+                  </label>
+                  <label className="block space-y-1">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Application ref (optional)</span>
+                    <input
+                      placeholder="e.g. PAR-2026-48192"
+                      value={ticketForm.related_application_number}
+                      onChange={(e) => {
+                        setTicketForm((p) => ({
+                          ...p,
+                          related_application_number: normalizeAppRef(e.target.value)
+                        }));
+                        setFieldErrors((err) => {
+                          const next = { ...err };
+                          delete next.related_application_number;
+                          return next;
+                        });
+                      }}
+                      className={`${inputClass('related_application_number')} font-mono`}
+                    />
+                    {fieldErrors.related_application_number && (
+                      <p className="text-[11px] font-semibold text-rose-400">{fieldErrors.related_application_number}</p>
+                    )}
+                  </label>
+                </div>
 
-                    {/* Speech Bubble */}
-                    <div
-                      className={`p-3.5 rounded-2xl text-xs leading-relaxed ${
-                        msg.sender === 'user'
-                          ? 'bg-indigo-600 text-white rounded-tr-none shadow-md'
-                          : isLight
-                          ? 'bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm'
-                          : 'bg-surface-dark border border-white/10 text-slate-200 rounded-tl-none shadow-sm'
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap">{msg.text}</p>
-
-                      {/* Interactive Module Navigation Links */}
-                      {msg.actionLinks && msg.actionLinks.length > 0 && (
-                        <div className="mt-3 pt-2.5 border-t border-slate-200/50 dark:border-white/10 flex flex-wrap gap-2">
-                          {msg.actionLinks.map((action, aIdx) => (
-                            <button
-                              key={aIdx}
-                              onClick={() => {
-                                if (onSelectTab) {
-                                  onSelectTab(action.tab);
-                                  onClose();
-                                }
-                              }}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-500 hover:from-brand-500 hover:to-cyan-400 text-white font-bold text-[11px] shadow-sm hover:shadow-glow-cyan transition-all transform hover:-translate-y-0.5 cursor-pointer"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              <span>{action.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Interactive Suggestion Chips */}
-                      {msg.suggestions && msg.suggestions.length > 0 && (
-                        <div className="mt-3 pt-2 border-t border-dashed border-slate-200/40 dark:border-white/5 flex flex-wrap gap-1.5">
-                          {msg.suggestions.map((sugg, sIdx) => (
-                            <button
-                              key={sIdx}
-                              onClick={() => handleSendAiMessage(sugg)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-cyan-300 hover:text-white text-[10.5px] font-medium transition-colors cursor-pointer"
-                            >
-                              <Sparkles className="w-2.5 h-2.5 text-cyan-400" />
-                              <span>{sugg}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      <span className="block text-[9px] text-slate-400 mt-1.5 text-right font-mono">
-                        {msg.timestamp}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-
-                {isAiThinking && (
-                  <div className="flex items-center gap-2 text-xs text-cyan-500 animate-pulse p-2">
-                    <Bot className="w-4 h-4" />
-                    <span>Fusion AI is thinking and preparing your answer...</span>
-                  </div>
-                )}
-
-                <div ref={chatBottomRef} />
-              </div>
-
-              {/* Quick Prompt Chips */}
-              <div
-                className={`px-4 py-2 border-t flex items-center gap-1.5 overflow-x-auto shrink-0 scrollbar-none ${
-                  isLight ? 'bg-slate-100 border-slate-200' : 'bg-surface-dark border-white/5'
-                }`}
-              >
-                <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-cyan-500" />
-                  Suggestions:
-                </span>
-                {quickPrompts.map((prompt, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSendAiMessage(prompt)}
-                    className={`px-2.5 py-1 rounded-xl border text-[11px] font-medium shrink-0 transition-colors ${
-                      isLight
-                        ? 'bg-white hover:bg-slate-200 border-slate-300 text-slate-700'
-                        : 'bg-surface-darker hover:bg-white/10 border-white/10 text-slate-300 hover:text-white'
+                <label className="block space-y-1">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>What went wrong?</span>
+                  <select
+                    value={ticketForm.category}
+                    onChange={(e) => setTicketForm((p) => ({ ...p, category: e.target.value }))}
+                    className={`w-full px-3 py-2.5 rounded-xl border text-xs focus:outline-none focus:border-cyan-500 ${
+                      isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-surface-darker border-white/10 text-white'
                     }`}
                   >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
+                    {SUPPORT_CATEGORIES.map((c) => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </label>
 
-              {/* Input Area */}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSendAiMessage();
-                }}
-                className={`p-3 sm:p-4 border-t flex items-center gap-2 shrink-0 ${
-                  isLight ? 'bg-white border-slate-200' : 'bg-surface-darker border-white/10'
-                }`}
-              >
-                <input
-                  type="text"
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Ask any question about Fusion High School or the portal..."
-                  className={`flex-1 px-4 py-2.5 rounded-2xl border text-xs focus:outline-none focus:border-cyan-500 ${
-                    isLight
-                      ? 'bg-slate-100 border-slate-300 text-slate-900 placeholder-slate-400'
-                      : 'bg-surface-dark border border-white/10 text-white placeholder-slate-500'
-                  }`}
-                />
+                <label className="block space-y-1">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Subject</span>
+                  <input
+                    required
+                    placeholder="Short summary of the problem"
+                    value={ticketForm.subject}
+                    onChange={(e) => {
+                      setTicketForm((p) => ({ ...p, subject: e.target.value }));
+                      setFieldErrors((err) => {
+                        const next = { ...err };
+                        delete next.subject;
+                        return next;
+                      });
+                    }}
+                    className={inputClass('subject')}
+                  />
+                  {fieldErrors.subject && (
+                    <p className="text-[11px] font-semibold text-rose-400">{fieldErrors.subject}</p>
+                  )}
+                </label>
+
+                <label className="block space-y-1">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Details</span>
+                  <textarea
+                    required
+                    rows={4}
+                    placeholder="Explain the mistake (e.g. I typed the wrong email on my parent application). Include the correct details we should use."
+                    value={ticketForm.description}
+                    onChange={(e) => {
+                      setTicketForm((p) => ({ ...p, description: e.target.value }));
+                      setFieldErrors((err) => {
+                        const next = { ...err };
+                        delete next.description;
+                        return next;
+                      });
+                    }}
+                    className={`${inputClass('description')} resize-y min-h-[100px]`}
+                  />
+                  {fieldErrors.description && (
+                    <p className="text-[11px] font-semibold text-rose-400">{fieldErrors.description}</p>
+                  )}
+                </label>
+
                 <button
                   type="submit"
-                  disabled={!inputMessage.trim() || isAiThinking}
-                  className="p-2.5 sm:px-4 sm:py-2.5 rounded-2xl bg-gradient-to-r from-brand-600 to-cyan-500 hover:from-brand-500 hover:to-cyan-400 text-white font-bold text-xs shadow-glow-indigo transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                  disabled={ticketSubmitting}
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-brand-600 text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Send className="w-4 h-4" />
-                  <span className="hidden sm:inline">Send</span>
+                  {ticketSubmitting ? 'Sending…' : 'Send to school / Geleza SA admin'}
                 </button>
-              </form>
 
+                <p className={`text-[10px] flex items-center gap-1.5 ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>
+                  <Mail className="w-3 h-3" />
+                  You can also email support@gelezasa.co.za with your application reference.
+                </p>
+              </form>
             </div>
           )}
 

@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const { pool } = require('../db/db');
 const authController = require('../public/src/controller/authController');
 const parentController = require('../public/src/controller/parentController');

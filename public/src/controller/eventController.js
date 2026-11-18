@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { resolveSchoolId } = require('../services/schoolScope');
 
 /**
  * Calculates Easter Sunday for any given Gregorian year using the Meeus/Jones/Butcher algorithm.
@@ -218,7 +219,7 @@ exports.getEvents = async (req, res) => {
             const childRes = await db.query('SELECT grade, stream, school_id FROM children WHERE learner_user_id::text = $1::text', [userId]);
             const grade = childRes.rows[0]?.grade || 10;
             const stream = childRes.rows[0]?.stream || 'General';
-            const schoolId = childRes.rows[0]?.school_id || req.user.school_id || 1;
+            const schoolId = childRes.rows[0]?.school_id || resolveSchoolId(req);
 
             query = `
                 SELECT e.*, u.full_name as creator_name, u.surname as creator_surname, 
@@ -236,7 +237,7 @@ exports.getEvents = async (req, res) => {
         } else if (userRole === 'parent') {
             const childrenRes = await db.query('SELECT grade, stream, school_id FROM children WHERE parent_id::text = $1::text', [userId]);
             const grades = childrenRes.rows.map(c => c.grade);
-            const schoolId = childrenRes.rows[0]?.school_id || req.user.school_id || 1;
+            const schoolId = childrenRes.rows[0]?.school_id || resolveSchoolId(req);
 
             query = `
                 SELECT e.*, u.full_name as creator_name, u.surname as creator_surname, 
@@ -252,7 +253,7 @@ exports.getEvents = async (req, res) => {
             params = [grades.length > 0 ? grades.map(String) : ['8', '9', '10', '11', '12'], schoolId];
         } else {
             // Teacher / Admin: view general calendar + school-specific events
-            const schoolId = req.user.school_id || req.headers['x-school-id'] || req.query.school_id || 1;
+            const schoolId = resolveSchoolId(req);
             query = `
                 SELECT e.*, u.full_name as creator_name, u.surname as creator_surname, 
                        COALESCE(r.name, u.role_id::text, 'admin') as creator_role
@@ -278,7 +279,7 @@ exports.getEvents = async (req, res) => {
  */
 exports.createEvent = async (req, res) => {
     const creatorId = req.user.id;
-    const userSchoolId = req.user.school_id || req.headers['x-school-id'] || req.query.school_id || 1;
+    const userSchoolId = resolveSchoolId(req);
     const {
         title,
         description,
@@ -339,7 +340,7 @@ exports.updateEvent = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
     const userRole = (req.user.role || '').toLowerCase();
-    const userSchoolId = req.user.school_id || req.headers['x-school-id'] || 1;
+    const userSchoolId = resolveSchoolId(req);
     const {
         title,
         description,
@@ -481,7 +482,7 @@ exports.deleteEvent = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
     const userRole = (req.user.role || '').toLowerCase();
-    const userSchoolId = req.user.school_id || req.headers['x-school-id'] || 1;
+    const userSchoolId = resolveSchoolId(req);
 
     try {
         // 1. Fetch event

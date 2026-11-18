@@ -4,14 +4,95 @@ if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder('ipv4first');
 }
 const nodemailer = require('nodemailer');
+const { refuseExternalService } = require('../../../lib/testSafety');
 
 const tls = require('tls');
 const net = require('net');
 
-const getSmtpUser = () => (process.env.SMTP_USER || 'tshepomakola23@gmail.com').trim().replace(/^["']|["']$/g, '');
-const getSmtpPass = () => (process.env.SMTP_PASS || 'ayauhdlmlzouiguh').trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '');
+const getSmtpUser = () => String(process.env.SMTP_USER || '').trim().replace(/^["']|["']$/g, '');
+const getSmtpPass = () => String(process.env.SMTP_PASS || '').trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '');
+
+function paymentInstructions({ schoolName, applicationNumber }) {
+  return `
+    <p style="margin: 0 0 12px 0; color: #cbd5e1; font-size: 13px; line-height: 1.5;">
+      The school bank account number is not included in this email, its subject, or any attachment.
+      Open the application link and confirm the email address already stored on the application.
+      Geleza SA then sends a short verification code. The account number is shown only after that code matches.
+    </p>
+    <p style="margin: 0; color: #cbd5e1; font-size: 13px;">
+      School: <strong style="color: #ffffff;">${schoolName || 'Your school'}</strong><br>
+      Payment reference: <strong style="color: #fbbf24; font-family: monospace;">${applicationNumber || 'Your application reference'}</strong>
+    </p>
+  `;
+}
+
+function redactSensitiveMail(value) {
+  return String(value || '')
+    .replace(/https?:\/\/[^\s"'<>]*activate\?token=[^\s"'<>]*/gi, '[invitation removed]')
+    .replace(/([?&](?:resume|token|correction_token|idNumber|id_number)=)[^&\s"'<>]+/gi, '$1[removed]')
+    .replace(/\b\d{13}\b/g, '[id removed]')
+    .replace(/(verification code is\s*)\d{4,10}/gi, '$1[removed]')
+    .replace(/(password reset code(?: is|:)\s*)\d{4,10}/gi, '$1[removed]')
+    .replace(/(password(?:<\/strong>)?\s*:\s*)([^<\n]+)/gi, '$1[removed]');
+}
+
+function getFromAddress() {
+  const from = String(process.env.SMTP_FROM || '').trim().replace(/^["']|["']$/g, '');
+  const named = from.match(/<([^>]+)>/);
+  if (named && named[1].includes('@')) return named[1].trim();
+  if (from.includes('@')) return from;
+  return getSmtpUser();
+}
+
+function resendFromHeader(fromName = 'Geleza SA') {
+  const explicit = String(process.env.RESEND_FROM || '').trim().replace(/^["']|["']$/g, '');
+  const candidate = explicit || getFromAddress();
+  const email = (String(candidate).match(/<([^>]+)>/) || [])[1] || String(candidate).trim();
+  if (email.includes('@') && !/@resend\.dev$/i.test(email)) {
+    return `${fromName} <${email}>`;
+  }
+  return `${fromName} <onboarding@resend.dev>`;
+}
+
+const mailDns = new dns.promises.Resolver({ timeout: 2000, tries: 1 });
+mailDns.setServers(['1.1.1.1', '8.8.8.8']);
+
+function lookupWithin(work, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(Object.assign(new Error('DNS lookup timed out'), { code: 'ETIMEOUT' })), ms);
+    work.then((value) => {
+      clearTimeout(timer);
+      resolve(value);
+    }, (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+
+async function domainCanReceiveMail(email) {
+  const domain = String(email || '').split('@')[1]?.trim().toLowerCase().replace(/\.+$/, '');
+  if (!domain || !domain.includes('.')) return false;
+  try {
+    const mx = await lookupWithin(mailDns.resolveMx(domain), 4000);
+    if (Array.isArray(mx) && mx.some((row) => row && row.exchange)) return true;
+  } catch (_) {}
+  try {
+    const addresses = await lookupWithin(mailDns.resolve4(domain), 4000);
+    return Array.isArray(addresses) && addresses.length > 0;
+  } catch (_) {
+    return false;
+  }
+}
+
+function googleRelayAccepted(parsed) {
+  if (!parsed || typeof parsed !== 'object') return false;
+  if (parsed.success === false || parsed.sent === false || parsed.ok === false) return false;
+  return parsed.success === true || parsed.sent === true || parsed.ok === true || Boolean(parsed.id || parsed.messageId);
+}
 
 function sendViaDirectTls({ user, pass, to, subject, html, replyTo, fromName = 'Geleza SA' }) {
+  refuseExternalService('email');
   return new Promise((resolve, reject) => {
     const socket = tls.connect(465, 'smtp.gmail.com', { servername: 'smtp.gmail.com' });
     let step = 0;
@@ -78,8 +159,8 @@ function sendViaDirectTls({ user, pass, to, subject, html, replyTo, fromName = '
       finish(err, true);
     });
 
-    socket.setTimeout(8000, () => {
-      finish(new Error('SMTP Connection timeout after 8s'), true);
+    socket.setTimeout(20000, () => {
+      finish(new Error('SMTP Connection timeout after 20s'), true);
     });
   });
 }
@@ -209,6 +290,7 @@ function createBaseEmailTemplate({ preheader, title, subtitle, contentHtml, ctaT
 let pooledTransporter = null;
 
 function getTransporter() {
+  refuseExternalService('email');
   const user = getSmtpUser();
   const pass = getSmtpPass();
   return nodemailer.createTransport({
@@ -218,118 +300,208 @@ function getTransporter() {
     requireTLS: true,
     auth: { user, pass },
     tls: { rejectUnauthorized: false },
-    connectionTimeout: 3000,
-    greetingTimeout: 3000,
-    socketTimeout: 5000
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 10000
   });
 }
 
-function sendViaHttpsRest({ to, subject, html, replyTo, fromName = 'Geleza SA' }) {
+function httpsJson(url, { method = 'POST', headers = {}, body = '' } = {}) {
+  refuseExternalService('email');
+  const https = require('https');
   return new Promise((resolve, reject) => {
-    const resendKey = process.env.RESEND_API_KEY;
-    const brevoKey = process.env.BREVO_API_KEY;
-    const googleScriptUrl = process.env.GOOGLE_SCRIPT_EMAIL_URL;
+    const req = https.request(url, { method, headers }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => resolve({ status: res.statusCode || 0, body: data }));
+    });
+    req.on('error', reject);
+    req.setTimeout(15000, () => {
+      req.destroy(new Error('HTTPS email provider timed out'));
+    });
+    if (body) req.write(body);
+    req.end();
+  });
+}
 
-    // 1. Google Apps Script HTTPS Web App (Free personal Gmail relay, zero funding, zero domain required)
-    if (googleScriptUrl) {
-      const axios = require('axios');
-      const postPayload = JSON.stringify({
-        to,
+function relayConfirmed(status, data) {
+  if (status < 200 || status >= 300) return false;
+  const text = typeof data === 'string' ? data : JSON.stringify(data ?? '');
+  if (/<html|<!doctype/i.test(text)) return false;
+  if (/exception|unauthorized|not found/i.test(text) && !/"success"\s*:\s*true/i.test(text)) return false;
+  if (data && typeof data === 'object') {
+    if (data.success === false || data.ok === false || data.sent === false) return false;
+    if (data.success === true || data.ok === true || data.sent === true) return true;
+  }
+  return text.trim().length > 0 && text.length < 500;
+}
+
+let relayUrlCache = { value: '', at: 0 };
+
+async function resolveGoogleScriptUrl() {
+  const fromEnv = String(process.env.GOOGLE_SCRIPT_EMAIL_URL || '').trim();
+  if (fromEnv.startsWith('https://script.google.com/')) return fromEnv;
+  if (relayUrlCache.value && Date.now() - relayUrlCache.at < 10 * 60 * 1000) return relayUrlCache.value;
+  try {
+    const { db: firestore } = require('../../../db/firebase');
+    if (!firestore) return '';
+    const snap = await firestore.collection('config').doc('email').get();
+    const url = snap.exists ? String(snap.data().googleScriptUrl || '').trim() : '';
+    if (url.startsWith('https://script.google.com/')) {
+      relayUrlCache = { value: url, at: Date.now() };
+      return url;
+    }
+  } catch (err) {
+    console.warn('[EMAIL] Hosted relay settings could not be read.');
+  }
+  return '';
+}
+
+async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = 'Geleza SA', googleScriptUrl = '', skipGoogle = false, onlyGoogle = false }) {
+  const errors = [];
+  const resendKey = process.env.RESEND_API_KEY;
+  const brevoKey = process.env.BREVO_API_KEY;
+  if (!skipGoogle && !googleScriptUrl) googleScriptUrl = await resolveGoogleScriptUrl();
+
+  if (!onlyGoogle && resendKey) {
+    try {
+      const payload = JSON.stringify({
+        from: resendFromHeader(fromName),
+        to: [to],
         subject,
         html,
-        replyTo: replyTo || getSmtpUser(),
-        fromName
-      });
-      return axios.post(googleScriptUrl, postPayload, {
-        timeout: 10000,
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        maxRedirects: 5
-      }).then((resp) => {
-        resolve({ success: true, provider: 'google-apps-script', response: resp.data });
-      }).catch((err) => {
-        reject(new Error(`Google Apps Script Relay Error: ${err.message}`));
-      });
-    }
-
-    if (resendKey) {
-      const https = require('https');
-      const payload = JSON.stringify({
-        from: `${fromName} <onboarding@resend.dev>`,
-        to: [to],
-        subject: subject,
-        html: html,
+        text: text || undefined,
         reply_to: replyTo
       });
-      const req = https.request('https://api.resend.com/emails', {
-        method: 'POST',
+      const resp = await httpsJson('https://api.resend.com/emails', {
         headers: {
-          'Authorization': `Bearer ${resendKey}`,
+          Authorization: `Bearer ${resendKey}`,
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(payload)
-        }
-      }, (res) => {
-        let d = '';
-        res.on('data', c => d += c);
-        res.on('end', () => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve({ success: true, provider: 'resend', response: d });
-          } else {
-            reject(new Error(`Resend HTTP ${res.statusCode}: ${d}`));
-          }
+        },
+        body: payload
+      });
+      if (resp.status >= 200 && resp.status < 300) {
+        return { success: true, provider: 'resend' };
+      }
+      const configuredFrom = resendFromHeader(fromName);
+      if (resp.status === 403 && !/@resend\.dev>?$/i.test(configuredFrom)) {
+        const sandboxPayload = JSON.stringify({
+          from: `${fromName} <onboarding@resend.dev>`,
+          to: [to],
+          subject,
+          html,
+          text: text || undefined,
+          reply_to: replyTo
         });
-      });
-      req.on('error', reject);
-      req.write(payload);
-      req.end();
-      return;
+        const sandbox = await httpsJson('https://api.resend.com/emails', {
+          headers: {
+            Authorization: `Bearer ${resendKey}`,
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(sandboxPayload)
+          },
+          body: sandboxPayload
+        });
+        if (sandbox.status >= 200 && sandbox.status < 300) {
+          return { success: true, provider: 'resend' };
+        }
+      }
+      let detail = '';
+      try {
+        const parsed = JSON.parse(resp.body || '{}');
+        detail = parsed.message ? ` ${String(parsed.message).slice(0, 180)}` : '';
+      } catch (_) {}
+      errors.push(`Resend HTTP ${resp.status}${detail}`);
+    } catch (err) {
+      errors.push(`Resend: ${err.message}`);
     }
+  }
 
-    if (brevoKey) {
-      const https = require('https');
+  if (!onlyGoogle && brevoKey) {
+    try {
       const payload = JSON.stringify({
-        sender: { name: fromName, email: getSmtpUser() },
+        sender: { name: fromName, email: getFromAddress() },
         to: [{ email: to }],
-        subject: subject,
+        subject,
         htmlContent: html,
-        replyTo: { email: replyTo || getSmtpUser() }
+        textContent: text || undefined,
+        replyTo: { email: replyTo || getFromAddress() }
       });
-      const req = https.request('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
+      const resp = await httpsJson('https://api.brevo.com/v3/smtp/email', {
         headers: {
           'api-key': brevoKey,
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(payload)
-        }
-      }, (res) => {
-        let d = '';
-        res.on('data', c => d += c);
-        res.on('end', () => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve({ success: true, provider: 'brevo', response: d });
-          } else {
-            reject(new Error(`Brevo HTTP ${res.statusCode}: ${d}`));
-          }
-        });
+        },
+        body: payload
       });
-      req.on('error', reject);
-      req.write(payload);
-      req.end();
-      return;
+      if (resp.status >= 200 && resp.status < 300) {
+        return { success: true, provider: 'brevo' };
+      }
+      errors.push(`Brevo HTTP ${resp.status}`);
+    } catch (err) {
+      errors.push(`Brevo: ${err.message}`);
     }
+  }
 
-    reject(new Error('No HTTPS Email Provider Key configured (RESEND_API_KEY or BREVO_API_KEY)'));
-  });
+  if (!skipGoogle && googleScriptUrl) {
+    try {
+      const axios = require('axios');
+      const payload = JSON.stringify({
+        to,
+        subject,
+        html,
+        text,
+        replyTo: replyTo || getFromAddress() || undefined,
+        fromName
+      });
+      const first = await axios.post(googleScriptUrl, payload, {
+        timeout: 15000,
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        maxRedirects: 0,
+        validateStatus: () => true
+      });
+      let status = first.status;
+      let data = first.data;
+      if (status >= 300 && status < 400 && first.headers.location) {
+        const second = await axios.get(first.headers.location, {
+          timeout: 15000,
+          maxRedirects: 0,
+          validateStatus: () => true
+        });
+        status = second.status;
+        data = second.data;
+      }
+      const parsed = typeof data === 'string'
+        ? (() => { try { return JSON.parse(data); } catch { return data; } })()
+        : data;
+      if (googleRelayAccepted(parsed, to)) {
+        return { success: true, provider: 'google-apps-script' };
+      }
+      const reason = parsed && parsed.error ? String(parsed.error) : `HTTP ${status}`;
+      errors.push(`Google Apps Script: ${reason}`);
+    } catch (err) {
+      errors.push(`Google Apps Script: ${err.message}`);
+    }
+  }
+
+  throw new Error(errors.join(' ') || 'No HTTPS email provider confirmed delivery.');
 }
 
 const emailService = {
   /**
    * Pre-verifies and warms up the SMTP transporter on server startup.
    */
+  relayReady: async () => Boolean(await resolveGoogleScriptUrl()),
+
   verifyConnection: async () => {
+    if (!getSmtpUser() || !getSmtpPass()) {
+      return { ready: false, error: 'SMTP is not configured' };
+    }
     try {
       const transporter = getTransporter();
       await transporter.verify();
-      console.log(`[SMTP READY] High-speed email delivery transport verified (${getSmtpUser()}).`);
+      console.log('[SMTP READY] Email transport verified.');
       return { ready: true };
     } catch (err) {
       console.warn(`[SMTP NOTICE] Primary transport notice (${err.message}). Fallback transports active.`);
@@ -340,7 +512,7 @@ const emailService = {
   /**
    * High-speed email sender with automatic fast failover and HTTPS cloud bypass.
    */
-  send: async (to, subject, body, replyTo = null) => {
+  send: async (to, subject, body, replyTo = null, text = null) => {
     if (!to || typeof to !== 'string' || !to.includes('@')) {
       console.error('[EMAIL ERROR] Invalid recipient email address:', to);
       return { success: false, error: `Invalid recipient email address: '${to}'` };
@@ -348,8 +520,8 @@ const emailService = {
 
     let targetRecipient = to.trim().toLowerCase();
 
-    // If destination is an internal learner portal username (@fusion.high or @gelezasa.co.za), automatically resolve the linked Parent's personal email
-    if (targetRecipient.endsWith('@fusion.high') || targetRecipient.endsWith('@gelezasa.co.za')) {
+    // Portal-only learner logins have no mailbox. School addresses such as @gelezasa.co.za are real inboxes and must be delivered.
+    if (targetRecipient.endsWith('@fusion.high') || targetRecipient.endsWith('@fusionhigh.co.za')) {
       try {
         const db = require('../../../db/db');
         const parentRes = await db.query(`
@@ -357,57 +529,119 @@ const emailService = {
           FROM users u
           LEFT JOIN children c ON c.learner_user_id::text = u.id::text
           LEFT JOIN users pu ON c.parent_id::text = pu.id::text
-          WHERE LOWER(u.email::text) = $1 AND pu.email IS NOT NULL AND pu.email NOT LIKE '%@fusion.high%' AND pu.email NOT LIKE '%@gelezasa.co.za%'
+          WHERE LOWER(u.email::text) = $1 AND pu.email IS NOT NULL AND pu.email NOT LIKE '%@fusion.high%' AND pu.email NOT LIKE '%@fusionhigh.co.za%'
           LIMIT 1
         `, [targetRecipient]);
 
         if (parentRes.rows.length > 0 && parentRes.rows[0].parent_email) {
-          const parentPersonalEmail = parentRes.rows[0].parent_email.trim();
-          console.log(`[EMAIL ROUTING] Resolved learner portal account [${targetRecipient}] to Parent personal email [${parentPersonalEmail}]`);
+          const parentPersonalEmail = parentRes.rows[0].parent_email.trim().toLowerCase();
+          console.log(`[EMAIL ROUTING] Resolved learner portal account to the linked parent inbox.`);
           targetRecipient = parentPersonalEmail;
         } else {
-          console.log(`[EMAIL NOTICE] Learner identifier [${targetRecipient}] is for portal sign-in only. No linked parent email was found; skipping external email.`);
-          return { success: true, skipped: true, reason: 'Learner account is for portal login only.' };
+          console.log(`[EMAIL NOTICE] Portal login has no linked mailbox, so the message was not sent.`);
+          return { success: false, skipped: true, reason: 'This portal login has no email inbox. Add a real email address first.' };
         }
       } catch (lookupErr) {
         console.warn('[EMAIL ROUTING] Parent email lookup notice:', lookupErr.message);
-        return { success: true, skipped: true, reason: 'Learner login identifier only.' };
+        return { success: false, skipped: true, reason: 'This portal login has no email inbox.' };
       }
     }
 
-    // Mirror email into Firestore 'mail' collection for Firebase Trigger Email extension
-    try {
-      const { db: firestore } = require('../../../db/firebase');
-      if (firestore) {
-        await firestore.collection('mail').add({
-          to: [targetRecipient],
-          message: {
-            subject: subject,
-            html: body
-          },
-          created_at: new Date()
-        });
-      }
-    } catch (fbMailErr) {}
+    const rawMessage = `${subject || ''}\n${body || ''}\n${text || ''}`;
+    const keepOutOfQueue = /activate\?token=|verification code is|password reset code/i.test(rawMessage);
+    if (!keepOutOfQueue) {
+      setImmediate(() => {
+        try {
+          const { db: firestore } = require('../../../db/firebase');
+          if (!firestore) return;
+          firestore.collection('mail').add({
+            to: [targetRecipient],
+            message: {
+              subject: redactSensitiveMail(subject),
+              html: redactSensitiveMail(body),
+              text: text ? redactSensitiveMail(text) : undefined
+            },
+            created_at: new Date()
+          }).catch(() => {});
+        } catch (_) {}
+      });
+    }
 
     const senderUser = getSmtpUser();
     const senderPass = getSmtpPass();
+    const googleScriptUrl = await resolveGoogleScriptUrl();
 
-    // 1. High-Priority HTTPS REST API Delivery (Port 443, immune to cloud host SMTP port blocks)
-    if (process.env.GOOGLE_SCRIPT_EMAIL_URL || process.env.RESEND_API_KEY || process.env.BREVO_API_KEY) {
+    const deliverByConfirmedRelay = async () => {
+      if (!googleScriptUrl) return null;
+      try {
+        return await sendViaHttpsRest({
+          to: targetRecipient,
+          subject,
+          html: body,
+          text,
+          replyTo: replyTo || senderUser,
+          fromName: 'Geleza SA',
+          googleScriptUrl,
+          onlyGoogle: true
+        });
+      } catch (relayErr) {
+        const safeNotice = redactSensitiveMail(relayErr.message)
+          .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[redacted]')
+          .replace(/https?:\/\/\S+/gi, '[url]')
+          .slice(0, 300);
+        console.warn(`[EMAIL NOTICE] Relay did not confirm delivery (${safeNotice}).`);
+        return null;
+      }
+    };
+
+    const failedDelivery = async (error) => {
+      const relayResult = await deliverByConfirmedRelay();
+      if (relayResult && relayResult.success) {
+        console.log(`[EMAIL DISPATCH SUCCESS] Delivered via ${relayResult.provider} HTTPS API`);
+        if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.forgetDeliveredInvitation(targetRecipient);
+        return { success: true, provider: relayResult.provider, recipient: targetRecipient };
+      }
+      if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.retainFailedInvitation(targetRecipient, body).catch(() => {});
+      return { success: false, error, recipient: targetRecipient };
+    };
+
+    // Resend and Brevo go out over HTTPS. The Google relay is only used after they
+    // and the mailbox fail, and only when it confirms the recipient.
+    if (process.env.RESEND_API_KEY || process.env.BREVO_API_KEY) {
       try {
         const httpResult = await sendViaHttpsRest({
           to: targetRecipient,
           subject,
           html: body,
+          text,
           replyTo: replyTo || senderUser,
-          fromName: 'Geleza SA'
+          fromName: 'Geleza SA',
+          skipGoogle: true
         });
-        console.log(`[EMAIL DISPATCH SUCCESS] Delivered via ${httpResult.provider} HTTPS API to ${targetRecipient}`);
+        console.log(`[EMAIL DISPATCH SUCCESS] Delivered via ${httpResult.provider} HTTPS API`);
+        if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.forgetDeliveredInvitation(targetRecipient);
         return { success: true, provider: httpResult.provider, recipient: targetRecipient };
       } catch (httpErr) {
-        console.warn(`[EMAIL NOTICE] HTTPS API dispatch attempt notice (${httpErr.message}). Retrying via SMTP...`);
+        const safeNotice = redactSensitiveMail(httpErr.message)
+          .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[redacted]')
+          .replace(/https?:\/\/\S+/gi, '[url]')
+          .slice(0, 300);
+        console.warn(`[EMAIL NOTICE] HTTPS API dispatch attempt notice (${safeNotice}).`);
       }
+    }
+
+    // Render blocks Gmail's SMTP ports. The Apps Script mailbox is the path that can still send.
+    if (process.env.RENDER) {
+      const relayResult = await deliverByConfirmedRelay();
+      if (relayResult && relayResult.success) {
+        console.log(`[EMAIL DISPATCH SUCCESS] Delivered via ${relayResult.provider} HTTPS API`);
+        if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.forgetDeliveredInvitation(targetRecipient);
+        return { success: true, provider: relayResult.provider, recipient: targetRecipient };
+      }
+    }
+
+    if (!senderUser || !senderPass) {
+      return failedDelivery('The verification email could not be sent. Try again in a moment.');
     }
 
     // 2. Primary SMTP Transport (Port 587 STARTTLS)
@@ -417,14 +651,16 @@ const emailService = {
         from: `"Geleza SA" <${senderUser}>`,
         to: targetRecipient,
         subject: subject,
+        text: text || undefined,
         html: body,
         replyTo: replyTo || senderUser
       });
 
-      console.log(`[EMAIL DISPATCH SUCCESS] SMTP delivered to ${targetRecipient}: ${info.messageId}`);
+      console.log(`[EMAIL DISPATCH SUCCESS] SMTP delivered.`);
+      if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.forgetDeliveredInvitation(targetRecipient);
       return { success: true, messageId: info.messageId, recipient: targetRecipient };
     } catch (nodemailerErr) {
-      console.warn(`[EMAIL NOTICE] SMTP port 587 notice for ${targetRecipient} (${nodemailerErr.message}).`);
+      console.warn(`[EMAIL NOTICE] SMTP port 587 notice (${redactSensitiveMail(nodemailerErr.message).slice(0, 300)}).`);
 
       // 3. Fallback: Direct TLS Socket (Port 465)
       try {
@@ -437,17 +673,50 @@ const emailService = {
           replyTo: replyTo || senderUser,
           fromName: 'Geleza SA'
         });
-        console.log(`[EMAIL DISPATCH SUCCESS] Direct TLS 465 delivered to ${targetRecipient}: ${result.messageId}`);
+        console.log(`[EMAIL DISPATCH SUCCESS] Direct TLS 465 delivered.`);
+        if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.forgetDeliveredInvitation(targetRecipient);
         return { success: true, messageId: result.messageId, recipient: targetRecipient };
       } catch (tlsErr) {
-        console.warn(`[EMAIL NOTICE] All outbound SMTP ports (587, 465) blocked by hosting provider: ${tlsErr.message}`);
-        return { 
-          success: false, 
-          error: `SMTP ports blocked by host (${tlsErr.message}). Set RESEND_API_KEY or BREVO_API_KEY for instant HTTPS delivery.`,
-          recipient: targetRecipient 
-        };
+        console.warn(`[EMAIL NOTICE] All outbound SMTP ports (587, 465) blocked by hosting provider: ${redactSensitiveMail(tlsErr.message).slice(0, 300)}`);
+        return failedDelivery('The verification email could not be sent. Try again in a moment.');
       }
     }
+  },
+
+  redactInvitation(value) {
+    return redactSensitiveMail(value);
+  },
+
+  redactSensitiveMail,
+
+  async retainFailedInvitation(recipient, body) {
+    const crypto = require('crypto');
+    const db = require('../../../db/db');
+    const recipientHash = crypto.createHash('sha256').update(String(recipient).toLowerCase()).digest('hex');
+    await db.query(
+      `INSERT INTO sensitive_email_queue (kind, recipient_hash, body, expires_at)
+       VALUES ('principal_invitation', $1, $2, NOW() + INTERVAL '72 hours')`,
+      [recipientHash, body]
+    );
+    await emailService.purgeExpiredInvitationMail();
+  },
+
+  async forgetDeliveredInvitation(recipient) {
+    const crypto = require('crypto');
+    const db = require('../../../db/db');
+    const recipientHash = crypto.createHash('sha256').update(String(recipient).toLowerCase()).digest('hex');
+    await db.query(
+      `UPDATE sensitive_email_queue
+       SET body = NULL, delivered_at = NOW()
+       WHERE kind = 'principal_invitation' AND recipient_hash = $1 AND body IS NOT NULL`,
+      [recipientHash]
+    );
+    await emailService.purgeExpiredInvitationMail();
+  },
+
+  async purgeExpiredInvitationMail() {
+    const db = require('../../../db/db');
+    await db.query('DELETE FROM sensitive_email_queue WHERE expires_at <= NOW()');
   },
 
   /**
@@ -817,7 +1086,7 @@ const emailService = {
 
       const contentHtml = `
         <p style="font-size: 14px; color: #cbd5e1; margin-top: 0;">
-          We received a request to reset your password for your Geleza SA account. Please use the 10-digit verification code below:
+          We received a request to reset your Geleza SA password. Use this 10-digit verification code:
         </p>
 
         <div style="background: #0f172a; border: 1px dashed #6366f1; border-radius: 12px; padding: 22px; text-align: center; margin: 20px 0;">
@@ -829,7 +1098,7 @@ const emailService = {
           </span>
           <div style="margin-top: 10px; display: inline-block; padding: 4px 12px; border-radius: 20px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);">
             <span style="font-size: 11px; color: #f87171; font-weight: 700; letter-spacing: 0.2px;">
-              ⏱️ VALID FOR 2 MINUTES
+              VALID FOR 15 MINUTES
             </span>
           </div>
         </div>
@@ -840,11 +1109,12 @@ const emailService = {
       `;
 
       return {
-        subject: `Verification Code: ${otp} (Valid for 2 Minutes) - Password Reset`,
+        subject: 'Geleza SA password reset code',
+        text: `Your Geleza SA password reset code is ${otp}. It is valid for 15 minutes.\n\nEnter it here: ${resetLink}\n\nIf you did not ask to reset your password, you can ignore this email.`,
         body: createBaseEmailTemplate({
-          preheader: `Your verification code is ${otp}. Valid for 2 minutes. Click to enter your OTP code.`,
+          preheader: `Your verification code is ${otp}. It is valid for 15 minutes.`,
           title,
-          subtitle: 'One-time security recovery code (2-minute limit)',
+          subtitle: 'One-time security recovery code (15-minute limit)',
           contentHtml,
           ctaText: 'Verify OTP & Reset Password',
           ctaLink: resetLink
@@ -2090,20 +2360,13 @@ const emailService = {
           <p style="margin: 0 0 12px 0; color: #cbd5e1; font-size: 13px;">
             To ensure the fast processing and administrative verification of your application, please settle the non-refundable application fee of <strong style="color: #34d399; font-size: 15px;">R${Number(feeAmount).toFixed(2)}</strong> within <strong>7 days</strong> (Due date: <strong>${dueDateStr}</strong>).
           </p>
-          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
-            <tr><td style="padding: 5px 0; color: #94a3b8; width: 140px;">Bank Name:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'First National Bank (FNB)'}</td></tr>
-            <tr><td style="padding: 5px 0; color: #94a3b8;">Account Holder:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.account_holder || schoolName}</td></tr>
-            <tr><td style="padding: 5px 0; color: #94a3b8;">Account Number:</td><td style="color: #34d399; font-family: monospace; font-weight: 700;">${bankDetails.account_number || 'Not connected yet'}</td></tr>
-            <tr><td style="padding: 5px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-family: monospace;">${bankDetails.branch_code || 'Not connected yet'}</td></tr>
-            <tr><td style="padding: 5px 0; color: #94a3b8;">Account Type:</td><td style="color: #ffffff;">${bankDetails.account_type || 'Cheque / Current'}</td></tr>
-            <tr><td style="padding: 5px 0; color: #94a3b8;">Payment Reference:</td><td style="color: #fbbf24; font-family: monospace; font-weight: 800; font-size: 14px;">${applicationNumber}</td></tr>
-          </table>
+          ${paymentInstructions({ schoolName, applicationNumber })}
         </div>
 
         <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 14px 18px; margin: 18px 0;">
           <p style="margin: 0; font-size: 13px; color: #fbbf24; font-weight: 700;">Automated Reminder Notice</p>
           <p style="margin: 4px 0 0 0; font-size: 12px; color: #cbd5e1; line-height: 1.5;">
-            You can pay immediately online by clicking below or make an EFT transfer using the details above. If payment has not been received, our automated system will dispatch a reminder email 3 days before the deadline.
+            Use the button below. The account number stays behind the application link and email verification. If payment has not been received, a reminder is sent 3 days before the deadline.
           </p>
         </div>
       `;
@@ -2177,13 +2440,7 @@ const emailService = {
           <p style="margin: 0 0 12px 0; color: #cbd5e1; font-size: 13px;">
             The application fee payment of <strong style="color: #34d399; font-size: 15px;">R${Number(feeAmount).toFixed(2)}</strong> is due on <strong>${dueDateStr}</strong>. Please ensure payment is completed so the admissions committee can process and verify the application without cancellation.
           </p>
-          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
-            <tr><td style="padding: 4px 0; color: #94a3b8; width: 140px;">Bank:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'First National Bank'}</td></tr>
-            <tr><td style="padding: 4px 0; color: #94a3b8;">Account:</td><td style="color: #34d399; font-family: monospace; font-weight: 700;">${bankDetails.account_number || 'Not connected yet'}</td></tr>
-            <tr><td style="padding: 4px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-family: monospace;">${bankDetails.branch_code || 'Not connected yet'}</td></tr>
-            <tr><td style="padding: 4px 0; color: #94a3b8;">Account Holder:</td><td style="color: #ffffff;">${bankDetails.account_holder || schoolName}</td></tr>
-            <tr><td style="padding: 4px 0; color: #94a3b8;">Reference:</td><td style="color: #fbbf24; font-family: monospace; font-weight: 800;">${applicationNumber}</td></tr>
-          </table>
+          ${paymentInstructions({ schoolName, applicationNumber })}
         </div>
       `;
 
@@ -2650,6 +2907,195 @@ const emailService = {
     return await emailService.send(params.email, template.subject, template.body);
   },
 
+  sendStaffInvitationNotice: async ({ colleagueEmail, colleagueName, principalName, schoolName, roleType, subjects = [], grades = [], classes = [], inviteUrl }) => {
+    const subject = `[${schoolName}] Educator Invitation & Assigned Subjects: ${subjects.length > 0 ? subjects.join(', ') : 'Faculty Allocation'}`;
+    const subjectsList = Array.isArray(subjects) && subjects.length > 0
+      ? subjects.map(s => `<li style="padding: 4px 0;"><strong style="color: #38bdf8;">${s}</strong></li>`).join('')
+      : '<li style="padding: 4px 0; color: #94a3b8;">General Faculty Allocation</li>';
+    const gradesStr = Array.isArray(grades) && grades.length > 0 ? grades.map(g => `Grade ${g}`).join(', ') : 'FET Phase';
+    const classesStr = Array.isArray(classes) && classes.length > 0 ? classes.join(', ') : 'Assigned Class Groups';
+
+    const bodyHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; color: #f8fafc;">
+        <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); padding: 28px 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">${schoolName}</h1>
+          <p style="margin: 6px 0 0 0; font-size: 13px; color: #bae6fd; font-weight: 500;">Official Educator Appointment & Subject Allocation</p>
+        </div>
+
+        <div style="padding: 28px 24px;">
+          <p style="margin: 0 0 16px 0; font-size: 15px; color: #f8fafc;">Dear <strong>${colleagueName || 'Educator'}</strong>,</p>
+          <p style="margin: 0 0 20px 0; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+            Principal <strong>${principalName || 'The School Principal'}</strong> has officially invited you to join the faculty of <strong>${schoolName}</strong> on the Geleza SA Digital Campus.
+          </p>
+
+          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #334155; border-radius: 12px; padding: 18px; margin: 0 0 24px 0;">
+            <h3 style="margin: 0 0 12px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #38bdf8;">Assigned Subjects & Teaching Allocations</h3>
+            <ul style="margin: 0 0 14px 0; padding-left: 20px; font-size: 13px; line-height: 1.6;">
+              ${subjectsList}
+            </ul>
+            <div style="border-top: 1px solid #334155; padding-top: 10px; font-size: 12px; color: #94a3b8; display: flex; flex-direction: column; gap: 4px;">
+              <p style="margin: 2px 0;"><strong>Assigned Grades:</strong> <span style="color: #f1f5f9;">${gradesStr}</span></p>
+              <p style="margin: 2px 0;"><strong>Assigned Classes:</strong> <span style="color: #f1f5f9;">${classesStr}</span></p>
+            </div>
+          </div>
+
+          <p style="margin: 0 0 24px 0; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+            Please click the button below to confirm your assigned subjects, set your account password, and immediately access your Teacher Dashboard:
+          </p>
+
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${inviteUrl}" style="display: inline-block; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-size: 14px; font-weight: 700; letter-spacing: -0.2px; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);">
+              Confirm Subjects & Activate Account
+            </a>
+          </div>
+
+          <p style="margin: 24px 0 0 0; font-size: 11px; color: #64748b; line-height: 1.5; word-break: break-all;">
+            If the button doesn't work, copy and paste this link into your browser:<br/>
+            <a href="${inviteUrl}" style="color: #38bdf8; text-decoration: underline;">${inviteUrl}</a>
+          </p>
+        </div>
+
+        <div style="background: #090d16; padding: 16px 24px; text-align: center; border-top: 1px solid #1e293b; font-size: 11px; color: #64748b;">
+          ${schoolName} &bull; Geleza SA Digital Campus Management
+        </div>
+      </div>
+    `;
+
+    return await emailService.send(colleagueEmail, subject, bodyHtml);
+  },
+
+  sendTeacherApplicationReceivedNotice: async ({ colleagueEmail, colleagueName, schoolName, subjects = [], classes = [] }) => {
+    const subject = `[${schoolName}] Educator Registration Received — Pending Principal Approval`;
+    const subjectsStr = Array.isArray(subjects) && subjects.length > 0 ? subjects.join(', ') : 'Assigned Subjects';
+    const classesStr = Array.isArray(classes) && classes.length > 0 ? classes.join(', ') : 'Assigned Classes';
+
+    const bodyHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; color: #f8fafc;">
+        <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); padding: 28px 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff;">${schoolName}</h1>
+          <p style="margin: 6px 0 0 0; font-size: 13px; color: #bae6fd; font-weight: 500;">Educator Registration & Workload Submission</p>
+        </div>
+        <div style="padding: 28px 24px;">
+          <p style="margin: 0 0 16px 0; font-size: 15px;">Dear <strong>${colleagueName || 'Educator'}</strong>,</p>
+          <p style="margin: 0 0 16px 0; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+            Thank you for confirming your assigned workload and completing your registration for <strong>${schoolName}</strong> on Geleza SA.
+          </p>
+          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #334155; border-radius: 12px; padding: 18px; margin: 0 0 20px 0;">
+            <h3 style="margin: 0 0 10px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #38bdf8;">Confirmed Workload Allocation</h3>
+            <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Subjects:</strong> <span style="color: #f1f5f9;">${subjectsStr}</span></p>
+            <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Classes:</strong> <span style="color: #f1f5f9;">${classesStr}</span></p>
+            <p style="margin: 4px 0; font-size: 13px; color: #fbbf24;"><strong>Status:</strong> Pending Principal Approval</p>
+          </div>
+          <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;">
+            Your registration is currently under review by the School Principal. As soon as the Principal approves your application, your account will be activated and you will be able to log in.
+          </p>
+        </div>
+        <div style="background: #090d16; padding: 16px 24px; text-align: center; border-top: 1px solid #1e293b; font-size: 11px; color: #64748b;">
+          ${schoolName} &bull; Geleza SA Digital Campus
+        </div>
+      </div>
+    `;
+
+    return await emailService.send(colleagueEmail, subject, bodyHtml);
+  },
+
+  sendTeacherApplicationPrincipalNotice: async ({ principalEmail, principalName, colleagueName, schoolName, subjects = [], grades = [], classes = [], saceNumber, reviewUrl }) => {
+    const subject = `[Action Required] New Educator Registration Pending Approval — ${colleagueName}`;
+    const subjectsStr = Array.isArray(subjects) && subjects.length > 0 ? subjects.join(', ') : 'Curriculum Subjects';
+    const classesStr = Array.isArray(classes) && classes.length > 0 ? classes.join(', ') : 'Class Groups';
+    const gradesStr = Array.isArray(grades) && grades.length > 0 ? grades.map(g => `Grade ${g}`).join(', ') : 'FET Phase';
+
+    const bodyHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; color: #f8fafc;">
+        <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); padding: 28px 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff;">${schoolName}</h1>
+          <p style="margin: 6px 0 0 0; font-size: 13px; color: #bae6fd; font-weight: 500;">Educator Registration & Workload Approval Required</p>
+        </div>
+        <div style="padding: 28px 24px;">
+          <p style="margin: 0 0 16px 0; font-size: 15px;">Dear Principal <strong>${principalName || 'Principal'}</strong>,</p>
+          <p style="margin: 0 0 16px 0; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+            Educator <strong>${colleagueName}</strong> has confirmed their assigned workload and submitted their registration on Geleza SA. Your approval is required to activate their account.
+          </p>
+          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #334155; border-radius: 12px; padding: 18px; margin: 0 0 24px 0;">
+            <h3 style="margin: 0 0 10px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #38bdf8;">Submitted Workload Allocation</h3>
+            <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Assigned Subjects:</strong> <span style="color: #f1f5f9;">${subjectsStr}</span></p>
+            <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Assigned Grades:</strong> <span style="color: #f1f5f9;">${gradesStr}</span></p>
+            <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Assigned Classes:</strong> <span style="color: #f1f5f9;">${classesStr}</span></p>
+            ${saceNumber ? `<p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>SACE Number:</strong> <span style="color: #f1f5f9;">${saceNumber}</span></p>` : ''}
+          </div>
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${reviewUrl || 'https://gelezasa.co.za/dashboard/admin?tab=employees'}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-size: 14px; font-weight: 700; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);">
+              Review & Approve Educator
+            </a>
+          </div>
+        </div>
+        <div style="background: #090d16; padding: 16px 24px; text-align: center; border-top: 1px solid #1e293b; font-size: 11px; color: #64748b;">
+          ${schoolName} &bull; Geleza SA Digital Campus
+        </div>
+      </div>
+    `;
+
+    return await emailService.send(principalEmail, subject, bodyHtml);
+  },
+
+  sendTeacherApplicationApprovedNotice: async ({ colleagueEmail, colleagueName, principalName, schoolName, subjects = [], classes = [], loginUrl, registerUrl }) => {
+    const subject = `[${schoolName}] Educator Account Approved & Activated!`;
+    const subjectsStr = Array.isArray(subjects) && subjects.length > 0 ? subjects.join(', ') : '';
+    const classesStr = Array.isArray(classes) && classes.length > 0 ? classes.join(', ') : '';
+    const actionUrl = loginUrl || registerUrl || 'https://gelezasa.co.za/login';
+
+    const bodyHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; color: #f8fafc;">
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 28px 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff;">${schoolName}</h1>
+          <p style="margin: 6px 0 0 0; font-size: 13px; color: #d1fae5; font-weight: 500;">Educator Registration Approved & Activated</p>
+        </div>
+        <div style="padding: 28px 24px;">
+          <p style="margin: 0 0 16px 0; font-size: 15px;">Dear <strong>${colleagueName || 'Educator'}</strong>,</p>
+          <p style="margin: 0 0 16px 0; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+            Principal <strong>${principalName || 'The School Principal'}</strong> has officially approved your educator registration and workload assignment at <strong>${schoolName}</strong>!
+          </p>
+          ${subjectsStr ? `
+          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #334155; border-radius: 12px; padding: 18px; margin: 0 0 24px 0;">
+            <h3 style="margin: 0 0 10px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #34d399;">Active Curriculum Allocations</h3>
+            <p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Assigned Subjects:</strong> <span style="color: #f1f5f9;">${subjectsStr}</span></p>
+            ${classesStr ? `<p style="margin: 4px 0; font-size: 13px; color: #cbd5e1;"><strong>Assigned Classes:</strong> <span style="color: #f1f5f9;">${classesStr}</span></p>` : ''}
+          </div>` : ''}
+          <p style="margin: 0 0 24px 0; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+            Your account is now fully active. You can sign in using your registered email and password to access your Teacher Dashboard, class registers, and student marks:
+          </p>
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${actionUrl}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-size: 14px; font-weight: 700; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);">
+              Log In to Teacher Dashboard
+            </a>
+          </div>
+        </div>
+        <div style="background: #090d16; padding: 16px 24px; text-align: center; border-top: 1px solid #1e293b; font-size: 11px; color: #64748b;">
+          ${schoolName} &bull; Geleza SA Digital Campus
+        </div>
+      </div>
+    `;
+
+    return await emailService.send(colleagueEmail, subject, bodyHtml);
+  },
+
+  sendTeacherApplicationDeclinedNotice: async ({ colleagueEmail, colleagueName, schoolName, reason }) => {
+    const subject = `[${schoolName}] Educator Registration Update`;
+    const bodyHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; color: #f8fafc;">
+        <div style="padding: 28px 24px;">
+          <h2 style="margin: 0 0 16px 0; font-size: 18px; color: #ffffff;">${schoolName}</h2>
+          <p style="margin: 0 0 16px 0; font-size: 14px; color: #cbd5e1;">Dear <strong>${colleagueName || 'Educator'}</strong>,</p>
+          <p style="margin: 0 0 16px 0; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+            Thank you for your submission to join the faculty of ${schoolName}. The administration has indicated that your educator application cannot be approved at this time${reason ? `: ${reason}` : '.'}
+          </p>
+          <p style="margin: 0; font-size: 12px; color: #94a3b8;">If you believe this is an error, please contact your School Principal directly.</p>
+        </div>
+      </div>
+    `;
+    return await emailService.send(colleagueEmail, subject, bodyHtml);
+  },
+
   sendSchoolApplicationReceivedNotice: async ({ principalEmail, principalName, schoolName, emisNumber, applicationNumber }) => {
     const subject = `Official School Application Received [${applicationNumber}] - ${schoolName}`;
     const contentHtml = `
@@ -2668,7 +3114,7 @@ const emailService = {
         </ul>
       </div>
       <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;">
-        Our Executive Accreditation Team is verifying your EMIS credentials against provincial DBE registries. You will receive an immediate decision notification and temporary master access credentials once review is complete.
+        Geleza SA is reviewing the application. The school is not active yet. If it is approved, the principal receives a single-use email link to create a password.
       </p>
     `;
     const html = createBaseEmailTemplate({
@@ -2682,41 +3128,24 @@ const emailService = {
     return await emailService.send(principalEmail, subject, html);
   },
 
-  sendSchoolApplicationApprovedNotice: async ({ principalEmail, principalName, schoolName, emisNumber, temporaryPassword, loginUrl }) => {
-    const subject = `Accreditation Approved: Welcome to Geleza SA - ${schoolName}`;
+  sendSchoolApplicationApprovedNotice: async ({ principalEmail, principalName, schoolName, emisNumber, activationUrl }) => {
+    const subject = `Accreditation Approved: Create your Geleza SA password - ${schoolName}`;
     const contentHtml = `
       <p style="margin: 0 0 16px 0; font-size: 15px;">Dear Principal <strong>${principalName}</strong>,</p>
       <p style="margin: 0 0 16px 0; font-size: 14px; color: #cbd5e1; line-height: 1.6;">
-        We are thrilled to inform you that your school accreditation application for <strong>${schoolName}</strong> (EMIS: <code style="color: #38bdf8; background: rgba(56, 189, 248, 0.1); padding: 2px 6px; border-radius: 4px;">${emisNumber}</code>) has been <strong style="color: #10b981;">OFFICIALLY APPROVED</strong> by the Geleza SA Executive Board.
+        Geleza SA has approved <strong>${schoolName}</strong> (EMIS: <code style="color: #38bdf8; background: rgba(56, 189, 248, 0.1); padding: 2px 6px; border-radius: 4px;">${emisNumber}</code>).
       </p>
-      <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 20px; margin: 20px 0;">
-        <h4 style="margin: 0 0 12px 0; color: #34d399; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Master Principal Credentials</h4>
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="font-size: 13px; color: #cbd5e1; line-height: 1.8;">
-          <tr>
-            <td style="padding-right: 16px; color: #94a3b8; font-weight: 600;">School Portal:</td>
-            <td><strong style="color: #ffffff;">${schoolName}</strong></td>
-          </tr>
-          <tr>
-            <td style="padding-right: 16px; color: #94a3b8; font-weight: 600;">Login Email:</td>
-            <td><code style="color: #38bdf8; font-size: 13px;">${principalEmail}</code></td>
-          </tr>
-          <tr>
-            <td style="padding-right: 16px; color: #94a3b8; font-weight: 600;">Password:</td>
-            <td><span style="color: #fbbf24; font-size: 13px; font-weight: 700;">${temporaryPassword || 'The password you chose when you registered the school'}</span></td>
-          </tr>
-        </table>
-      </div>
       <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;">
-        <strong>Next Steps:</strong> Please sign in to activate your master school dashboard, configure your dynamic classes and streams, and invite your teachers and coaches via the staff invitation engine.
+        Use the button below to create your password. The link works once, expires after 72 hours, and is only for this principal account. It does not give platform administrator access.
       </p>
     `;
     const html = createBaseEmailTemplate({
-      preheader: `Welcome to Geleza SA! Master portal active for ${schoolName}`,
-      title: 'School Accreditation Approved',
-      subtitle: `Master School Admin portal is ready for ${schoolName}`,
+      preheader: `Create your password for ${schoolName}`,
+      title: 'Create your principal password',
+      subtitle: `${schoolName} has been approved`,
       contentHtml,
-      ctaText: 'Access School Portal',
-      ctaLink: loginUrl || 'https://gelezasa.co.za/login'
+      ctaText: 'Create password',
+      ctaLink: activationUrl || 'https://gelezasa.co.za/activate'
     });
     return await emailService.send(principalEmail, subject, html);
   },
@@ -3004,14 +3433,7 @@ Object.assign(emailService.templates, {
         <p style="color: #e2e8f0; font-size: 13px; margin: 0 0 14px 0; line-height: 1.5;">
           For fast processing, an application fee of <strong style="color: #10b981; font-size: 16px;">R${parseFloat(feeAmount).toFixed(2)}</strong> must be paid within <strong style="color: #f59e0b;">7 days</strong> (Deadline: <strong>${dueDateStr || 'Within 7 calendar days'}</strong>).
         </p>
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1; border-top: 1px dashed #334155; padding-top: 12px;">
-          <tr><td style="padding: 5px 0; color: #94a3b8; width: 140px;">Bank Name:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'First National Bank (FNB)'}</td></tr>
-          <tr><td style="padding: 5px 0; color: #94a3b8;">Account Name:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.account_holder || schoolName}</td></tr>
-          <tr><td style="padding: 5px 0; color: #94a3b8;">Account Number:</td><td style="color: #38bdf8; font-weight: 800; font-family: monospace;">${bankDetails.account_number || 'Not connected yet'}</td></tr>
-          <tr><td style="padding: 5px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff; font-weight: 600;">${bankDetails.branch_code || 'Not connected yet'}</td></tr>
-          <tr><td style="padding: 5px 0; color: #94a3b8;">Account Type:</td><td style="color: #cbd5e1;">${bankDetails.account_type || 'Cheque / Current'}</td></tr>
-          <tr><td style="padding: 5px 0; color: #f59e0b; font-weight: 700;">Payment Reference:</td><td style="color: #fbbf24; font-weight: 900; font-family: monospace; font-size: 14px;">${applicationNumber}</td></tr>
-        </table>
+        ${paymentInstructions({ schoolName, applicationNumber })}
       </div>
 
       <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 10px; padding: 14px 18px; margin: 18px 0;">
@@ -3047,12 +3469,7 @@ Object.assign(emailService.templates, {
         <p style="color: #cbd5e1; font-size: 13px; margin: 0 0 12px 0;">
           Due Date: <strong style="color: #ffffff;">${dueDateStr}</strong>. Please ensure the application fee is settled promptly to prevent automatic cancellation of your application place.
         </p>
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
-          <tr><td style="padding: 4px 0; color: #94a3b8; width: 140px;">Bank:</td><td style="color: #ffffff; font-weight: 700;">${bankDetails.bank_name || 'FNB'}</td></tr>
-          <tr><td style="padding: 4px 0; color: #94a3b8;">Account Number:</td><td style="color: #38bdf8; font-weight: 800; font-family: monospace;">${bankDetails.account_number || 'Not connected yet'}</td></tr>
-          <tr><td style="padding: 4px 0; color: #94a3b8;">Branch Code:</td><td style="color: #ffffff;">${bankDetails.branch_code || 'Not connected yet'}</td></tr>
-          <tr><td style="padding: 4px 0; color: #f87171; font-weight: 700;">Reference:</td><td style="color: #fbbf24; font-weight: 900; font-family: monospace;">${applicationNumber}</td></tr>
-        </table>
+        ${paymentInstructions({ schoolName, applicationNumber })}
       </div>
     `;
 
@@ -3233,3 +3650,5 @@ emailService.sendRegistrationSuccessWithAllocation = async (params) => {
 };
 
 module.exports = emailService;
+module.exports.googleRelayAccepted = googleRelayAccepted;
+module.exports.domainCanReceiveMail = domainCanReceiveMail;

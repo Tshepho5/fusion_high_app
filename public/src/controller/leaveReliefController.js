@@ -1,11 +1,67 @@
 const db = require('../../../db/db');
 const NotificationService = require('../services/notificationService');
 
+let schemaChecked = false;
+async function ensureLeaveReliefSchema() {
+  if (schemaChecked) return;
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS educator_leave_requests (
+        id SERIAL PRIMARY KEY,
+        teacher_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        leave_type VARCHAR(60) NOT NULL,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        reason TEXT,
+        status VARCHAR(30) DEFAULT 'pending',
+        relief_status VARCHAR(30) DEFAULT 'unassigned',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS total_days NUMERIC(4,1) DEFAULT 1.0;
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS document_url VARCHAR(255);
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS reviewed_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS admin_notes TEXT;
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS school_id INTEGER;
+      ALTER TABLE educator_leave_requests ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
+      CREATE TABLE IF NOT EXISTS educator_relief_allocations (
+        id SERIAL PRIMARY KEY,
+        leave_request_id INTEGER REFERENCES educator_leave_requests(id) ON DELETE CASCADE,
+        absent_teacher_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        relief_teacher_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        relief_date DATE,
+        period_number INTEGER,
+        grade INTEGER,
+        classroom VARCHAR(50) DEFAULT 'Classroom',
+        subject VARCHAR(100),
+        lesson_instructions TEXT,
+        status VARCHAR(30) DEFAULT 'assigned',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS absent_teacher_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS relief_teacher_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS relief_date DATE;
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS period_number INTEGER;
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS grade INTEGER;
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS classroom VARCHAR(50) DEFAULT 'Classroom';
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS subject VARCHAR(100);
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS lesson_instructions TEXT;
+      ALTER TABLE educator_relief_allocations ADD COLUMN IF NOT EXISTS school_id INTEGER;
+    `);
+    schemaChecked = true;
+  } catch (e) {
+    console.error('[LEAVE RELIEF] Schema check warning:', e.message);
+  }
+}
+
 /**
  * Teacher / Admin: Submit Leave Request
  */
 exports.submitLeaveRequest = async (req, res) => {
   try {
+    await ensureLeaveReliefSchema();
     const userId = req.user.id;
     const { teacher_user_id, leave_type, start_date, end_date, total_days = 1.0, reason, document_url } = req.body;
 

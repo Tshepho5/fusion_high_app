@@ -136,7 +136,7 @@ export const LearnerGamificationWidget: React.FC = () => {
               </>
             ) : (
               <>
-                <FusionAIIcon className="w-3.5 h-3.5 text-amber-200" />
+                <Award className="w-3.5 h-3.5 text-amber-200" />
                 <span>Claim +100 XP</span>
               </>
             )}

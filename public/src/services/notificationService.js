@@ -1,6 +1,7 @@
 const db = require('../../../db/db');
 const { db: firestore } = require('../../../db/firebase');
 const emailService = require('./emailService');
+const WebPushService = require('./webPushService');
 
 /**
  * Service for managing user notifications and dispatching targeted school alerts.
@@ -230,6 +231,20 @@ class NotificationService {
         });
       }
 
+
+      setImmediate(() => {
+        WebPushService.notifyUsers({
+          userIds: uniqueIds,
+          notificationIds: result.rows.map((row) => row.id),
+          title,
+          message,
+          type,
+          targetTab,
+        }).catch((pushErr) => {
+          console.warn('[WEB PUSH] Dispatch warning:', pushErr.message);
+        });
+      });
+
       return result.rowCount;
     } catch (err) {
       console.error('[NOTIFICATION SERVICE] Error dispatching to users:', err);
@@ -254,8 +269,8 @@ class NotificationService {
     type = 'announcement',
     targetTab = 'announcements',
     authorId = 1,
-    sendToMessages = true,
-    sendEmail = true,
+    sendToMessages = false,
+    sendEmail = false,
     metadata = {}
   }) {
     try {
@@ -284,6 +299,7 @@ class NotificationService {
               ${grade ? `AND c.grade = ${parseInt(grade, 10)}` : ''}
               ${stream && stream !== 'All' && stream !== 'General' ? `AND (c.stream = '${stream}' OR c.stream IS NULL OR c.stream = 'General')` : ''}
               ${classId ? `AND c.class_id = ${parseInt(classId, 10)}` : ''}
+              ${subject && subject !== 'All' ? `AND (c.subjects IS NULL OR array_length(c.subjects, 1) IS NULL OR array_to_string(c.subjects, ',') ILIKE '%${subject.replace(/'/g, "''")}%')` : ''}
           `;
           const parentRes = await db.query(parentQuery);
           parentRes.rows.forEach(r => {
@@ -322,6 +338,10 @@ class NotificationService {
         if (classId) {
           params.push(parseInt(classId, 10));
           learnerQuery += ` AND c.class_id = $${params.length}`;
+        }
+        if (subject && subject !== 'All') {
+          params.push(`%${subject.toLowerCase()}%`);
+          learnerQuery += ` AND (c.subjects IS NULL OR array_length(c.subjects, 1) IS NULL OR array_to_string(c.subjects, ',') ILIKE $${params.length})`;
         }
 
         const { rows: matchedLearners } = await db.query(learnerQuery, params);
@@ -375,7 +395,9 @@ class NotificationService {
     const result = await db.query(`
       SELECT id, title, message, type, target_tab, metadata, is_read, created_at
       FROM notifications
-      WHERE user_id = $1 AND (type IS NULL OR type NOT IN ('chat', 'message'))
+      WHERE user_id = $1
+        AND (type IS NULL OR LOWER(type) NOT IN ('chat', 'message', 'security'))
+        AND (title IS NULL OR title NOT ILIKE 'Password Reset%')
       ORDER BY created_at DESC
       LIMIT $2
     `, [userId, limit]);
@@ -389,7 +411,9 @@ class NotificationService {
     const result = await db.query(`
       SELECT COUNT(*)::int AS unread_count
       FROM notifications
-      WHERE user_id = $1 AND is_read = FALSE AND (type IS NULL OR type NOT IN ('chat', 'message'))
+      WHERE user_id = $1 AND is_read = FALSE
+        AND (type IS NULL OR LOWER(type) NOT IN ('chat', 'message', 'security'))
+        AND (title IS NULL OR title NOT ILIKE 'Password Reset%')
     `, [userId]);
     return result.rows[0]?.unread_count || 0;
   }

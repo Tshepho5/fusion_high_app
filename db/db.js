@@ -1,4 +1,5 @@
 const { Pool, types } = require('pg');
+const { assertTestDatabaseAllowed, isTestProcess } = require('../lib/testSafety');
 require('dotenv').config();
 
 // Ensure PostgreSQL DATE columns (OID 1082) return exact 'YYYY-MM-DD' strings to prevent timezone shifting
@@ -39,6 +40,10 @@ const poolConfig = connectionString
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
     };
+
+if (isTestProcess()) {
+  assertTestDatabaseAllowed(poolConfig);
+}
 
 const pool = new Pool(poolConfig);
 

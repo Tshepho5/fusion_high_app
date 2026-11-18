@@ -1,4 +1,5 @@
 const db = require('../../../db/db');
+const { resolveSchoolId } = require('../services/schoolScope');
 const bcrypt = require('bcryptjs');
 const emailService = require('../services/emailService');
 const NotificationService = require('../services/notificationService');
@@ -40,8 +41,21 @@ exports.getChildren = async (req, res) => {
         const result = await db.query(query, [req.user.id]);
         const rawChildren = result.rows || [];
 
+        // Deduplicate learners by unique learner tracking number (#GSA-MKG-001) or name + grade
+        const seenLearners = new Set();
+        const uniqueRawChildren = [];
+        for (const child of rawChildren) {
+            const ref = (child.learner_number && child.learner_number.trim() && !child.learner_number.startsWith('2026-FHS-'))
+                ? child.learner_number.trim().toUpperCase()
+                : `${(child.full_name || '').trim().toLowerCase()}_${(child.surname || '').trim().toLowerCase()}_${child.grade || ''}`;
+            if (!seenLearners.has(ref)) {
+                seenLearners.add(ref);
+                uniqueRawChildren.push(child);
+            }
+        }
+
         // Enrich strictly with real Machine Learning pass prediction and risk flags
-        const enrichedChildren = await Promise.all(rawChildren.map(async (child) => {
+        const enrichedChildren = await Promise.all(uniqueRawChildren.map(async (child) => {
             let attRate = 85;
             let avgScore = 55;
 
@@ -245,6 +259,15 @@ exports.linkChild = async (req, res) => {
     if (rejectNameDigits(res, targetFirstName, targetSurname)) return;
 
     try {
+        const parentAccount = await db.query(
+            'SELECT id, school_id, email, full_name, surname FROM users WHERE id = $1',
+            [parentId]
+        );
+        const parentSchoolId = parseInt(parentAccount.rows[0] && parentAccount.rows[0].school_id, 10);
+        if (!Number.isInteger(parentSchoolId) || parentSchoolId <= 0) {
+            return res.status(403).json({ error: 'Your account is not linked to a school.' });
+        }
+
         const query = `
             SELECT 
                 c.id as child_id, 
@@ -256,19 +279,19 @@ exports.linkChild = async (req, res) => {
                 c.stream,
                 c.subjects,
                 c.learner_number,
+                c.school_id,
                 u.id as user_id,
-                u.email as learner_email,
-                u.id_number as user_id_number,
-                TO_CHAR(u.dob, 'YYYY-MM-DD') as dob_string
+                u.email as learner_email
             FROM children c
             JOIN users u ON c.learner_user_id = u.id
             WHERE LOWER(TRIM(c.learner_number)) = LOWER(TRIM($1))
               AND regexp_replace(COALESCE(u.id_number, ''), '\\D', '', 'g') = $2
               AND LOWER(TRIM(c.full_name)) = LOWER(TRIM($3))
               AND LOWER(TRIM(c.surname)) = LOWER(TRIM($4))
+              AND c.school_id = $5
             LIMIT 1
         `;
-        const params = [targetLearnerNum, targetIdNumber, targetFirstName, targetSurname];
+        const params = [targetLearnerNum, targetIdNumber, targetFirstName, targetSurname, parentSchoolId];
 
         const { rows } = await db.query(query, params);
 
@@ -293,57 +316,35 @@ exports.linkChild = async (req, res) => {
             });
         }
 
-        // Link learner in parent_children table
-        await db.query(
-            `INSERT INTO parent_children (parent_id, child_id, relationship, is_primary, created_at)
-             VALUES ($1, $2, $3, true, NOW())
-             ON CONFLICT (parent_id, child_id) DO NOTHING`,
-            [parentId, child.child_id, relationship || 'Parent/Guardian']
-        );
+        const { withTransaction } = require('../../../db/transaction');
+        await withTransaction(async (client) => {
+            await client.query(
+                `INSERT INTO parent_children (parent_id, child_id, relationship, is_primary, created_at)
+                 VALUES ($1, $2, $3, true, NOW())
+                 ON CONFLICT (parent_id, child_id) DO NOTHING`,
+                [parentId, child.child_id, relationship || 'Parent/Guardian']
+            );
 
-        // Update parent_id on children records
-        if (!child.parent_id) {
-            await db.query('UPDATE children SET parent_id = $1 WHERE id = $2', [parentId, child.child_id]);
-        } else if (!child.secondary_parent_id && child.parent_id !== parentId) {
-            await db.query('UPDATE children SET secondary_parent_id = $1 WHERE id = $2', [parentId, child.child_id]);
-        }
-
-        // Retrieve parent info and dispatch credentials email
-        const parentUserRes = await db.query('SELECT email, full_name, surname FROM users WHERE id = $1', [parentId]);
-        const parentUser = parentUserRes.rows[0];
-
-        const learnerIdNum = child.user_id_number || targetIdNumber || '';
-        const generatedPassword = generateLearnerPasswordFromID(learnerIdNum);
-        const learnerEmail = child.learner_email || `${(child.learner_number || '').toLowerCase().replace(/[\s-]/g, '')}@fusion.high`;
-
-        // Update learner user password hash so generated password is valid for immediate login
-        if (child.user_id && generatedPassword) {
-            try {
-                const childPwHash = await bcrypt.hash(generatedPassword, 10);
-                await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [childPwHash, child.user_id]);
-            } catch (pwErr) {
-                console.warn('[LINK CHILD PW HASH]:', pwErr.message);
+            if (!child.parent_id) {
+                await client.query('UPDATE children SET parent_id = $1 WHERE id = $2 AND school_id = $3', [parentId, child.child_id, parentSchoolId]);
+            } else if (!child.secondary_parent_id && child.parent_id !== parentId) {
+                await client.query('UPDATE children SET secondary_parent_id = $1 WHERE id = $2 AND school_id = $3', [parentId, child.child_id, parentSchoolId]);
             }
-        }
+        });
 
-        // Send Linkage Confirmation & Credentials Email to Parent
+        const parentUser = parentAccount.rows[0];
         if (parentUser && parentUser.email) {
             try {
                 const parentFullName = `${parentUser.full_name || ''} ${parentUser.surname || ''}`.trim() || 'Parent / Guardian';
-                const tpl = emailService.templates.childLinkageWithCredentials({
-                    parentName: parentFullName,
-                    childName: child.full_name,
+                const tpl = emailService.templates.childLinkageSuccess(parentFullName, {
+                    full_name: child.full_name,
                     surname: child.surname,
-                    learnerNumber: child.learner_number || targetLearnerNum || `ID-${child.child_id}`,
-                    loginEmail: learnerEmail,
-                    password: generatedPassword,
+                    learner_number: child.learner_number || targetLearnerNum,
                     grade: child.grade,
                     stream: child.stream || 'General',
-                    subjects: child.subjects,
-                    baseUrl: req.protocol + '://' + req.get('host')
-                });
+                    id: child.child_id
+                }, req.protocol + '://' + req.get('host'));
                 await emailService.send(parentUser.email, tpl.subject, tpl.body);
-                console.log(`[LINK CHILD EMAIL] Sent confirmation & credentials to ${parentUser.email} for ${child.full_name}`);
             } catch (mailErr) {
                 console.warn('Linkage email notification error:', mailErr.message);
             }
@@ -354,7 +355,7 @@ exports.linkChild = async (req, res) => {
             await NotificationService.sendToUsers({
                 userIds: [parentId],
                 title: `Learner Linked: ${childFullName}`,
-                message: `Successfully linked ${childFullName} (Grade ${child.grade}) to your parent portal. Credentials have been dispatched to your email.`,
+                message: `Successfully linked ${childFullName} (Grade ${child.grade}) to your parent portal. Their existing sign-in was left unchanged.`,
                 type: 'system',
                 targetTab: 'children',
                 metadata: { child_id: child.child_id }
@@ -362,7 +363,7 @@ exports.linkChild = async (req, res) => {
         } catch (_) {}
 
         res.json({
-            message: `Successfully linked ${childFullName} to your parent portal! An email with their login credentials (Learner Number & password) has been dispatched.`,
+            message: `Successfully linked ${childFullName} to your parent portal. Their existing sign-in was left unchanged.`,
             child: {
                 id: child.child_id,
                 full_name: child.full_name,
@@ -370,17 +371,12 @@ exports.linkChild = async (req, res) => {
                 learner_number: child.learner_number,
                 grade: child.grade,
                 stream: child.stream
-            },
-            credentials: {
-                learner_name: `${child.full_name} ${child.surname}`,
-                learner_number: child.learner_number,
-                learner_email: learnerEmail,
-                generated_password: generatedPassword,
-                grade: child.grade,
-                stream: child.stream
             }
         });
     } catch (err) {
+        if (err && err.code === '23505') {
+            return res.status(400).json({ error: 'This learner is already linked to your parent portal account.' });
+        }
         console.error('Error linking child to parent:', err);
         res.status(500).json({ error: 'Failed to link learner to your account. Please try again.' });
     }
@@ -432,12 +428,18 @@ exports.linkSibling = async (req, res) => {
     const gradeInt = parseInt(grade, 10) || 8;
     const streamVal = gradeInt >= 10 ? (stream || 'Science') : 'General';
     const homeLangVal = home_language.trim();
-    const targetSchoolId = parseInt(school_id || req.user.school_id || 1, 10);
+    const targetSchoolId = resolveSchoolId(req);
+    if (!targetSchoolId) {
+        return res.status(400).json({ error: 'This account is not attached to a school, so a sibling cannot be added here.' });
+    }
 
     try {
         // 0. Language Compatibility Check for Target School
         const schoolRes = await db.query('SELECT * FROM schools WHERE id = $1', [targetSchoolId]);
-        const school = schoolRes.rows[0] || { name: 'Fusion High School' };
+        if (schoolRes.rows.length === 0) {
+            return res.status(404).json({ error: 'That school was not found.' });
+        }
+        const school = schoolRes.rows[0];
 
         let offeredLangs = [];
         if (Array.isArray(school.offered_languages)) {
@@ -466,7 +468,6 @@ exports.linkSibling = async (req, res) => {
 
         const method = paymentHold.normaliseMethod(payment_method);
         const siblingHold = paymentHold.describe(method, school, 1500, '');
-        if (true) {
             if (cleanIdNum.length !== 13) {
                 return res.status(400).json({ error: 'A 13-digit South African ID is required before an EFT sibling application can be held.' });
             }
@@ -479,10 +480,11 @@ exports.linkSibling = async (req, res) => {
             if (!parent.email || parentIdNumber.length !== 13) {
                 return res.status(400).json({ error: 'The parent profile needs an email address and a 13-digit ID before an EFT sibling application can be held.' });
             }
+            const { ensureDatabaseSchema } = require('../../../db/schemaEnsurer');
+            await ensureDatabaseSchema().catch(() => {});
             const applicationService = require('../services/applicationService');
             const applicationNumber = applicationService.generateApplicationNumber(school.name || 'fusion-high');
-            const dueDate = new Date();
-            dueDate.setDate(dueDate.getDate() + 7);
+            const correctionToken = applicationService.generateCorrectionToken();
             const address = (parent.physical_address || 'Address held on the parent account').trim();
             await db.query(
                 `INSERT INTO applications (
@@ -500,13 +502,13 @@ exports.linkSibling = async (req, res) => {
                     $9, $10, 'Parent',
                     $11, $12, $13, $14,
                     $15, $16,
-                    250, 'unpaid', $17,
-                    1500, 'unpaid',
-                    'sibling', $18, $19
+                    0.00, 'waived', NULL,
+                    0.00, 'waived',
+                    'sibling', $17, 'fee_waived'
                 )`,
                 [
                     applicationNumber,
-                    applicationService.generateCorrectionToken(),
+                    correctionToken,
                     cleanFirstName,
                     cleanSurname,
                     cleanIdNum,
@@ -521,19 +523,9 @@ exports.linkSibling = async (req, res) => {
                     address,
                     homeLangVal,
                     targetSchoolId,
-                    dueDate,
-                    parentId,
-                    method
+                    parentId
                 ]
             );
-            const bankingInfo = siblingHold.banking_details || {
-                bank_name: 'Waiting for the school bank account',
-                account_holder: school.name,
-                account_number: 'Not connected yet',
-                branch_code: 'Not connected yet',
-                account_type: 'Cheque / Current',
-                reference: applicationNumber
-            };
             try {
                 await emailService.sendApplicationReceivedWithBanking({
                     parentEmail: parent.email,
@@ -545,9 +537,9 @@ exports.linkSibling = async (req, res) => {
                     schoolName: school.name,
                     applicationNumber,
                     feeAmount: 1500,
-                    dueDateStr: dueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
-                    bankDetails: bankingInfo,
-                    paymentUrl: `${req.protocol}://${req.get('host')}/dashboard/parent`
+                    dueDateStr: 'Fee Waived / Sibling Fast-Track',
+                    bankDetails: {},
+                    paymentUrl: `${req.protocol}://${req.get('host')}/application.html?resume=${encodeURIComponent(correctionToken)}`
                 });
             } catch (mailErr) {
                 console.warn('[SIBLING EFT EMAIL]:', mailErr.message);
@@ -558,190 +550,6 @@ exports.linkSibling = async (req, res) => {
                 application_number: applicationNumber,
                 message: siblingHold.message
             });
-        }
-
-        // 1. Generate official sequential Learner Number
-        const lrnNumber = await generateOfficialLearnerNumber();
-
-        // 2. Generate password drawn from learner ID number (1st digit, skip 2, take next: indices 0,3,6,9,12)
-        const generatedPassword = generateLearnerPasswordFromID(cleanIdNum);
-        const learnerEmail = `${lrnNumber.toLowerCase().replace(/[\s-]/g, '')}@fusion.high`;
-        const childPwHash = await bcrypt.hash(generatedPassword, 10);
-
-        // 3. Allocate CAPS curriculum subjects
-        const officialSubjects = curriculumService.getSubjectsForGradeAndStream(gradeInt, streamVal, homeLangVal);
-
-        // 4. Class allocation — a class with space, not the first class in the grade
-        const applicationService = require('../services/applicationService');
-        const allocatedClass = await applicationService.allocateAvailableClass(gradeInt, streamVal);
-        if (!allocatedClass) {
-            return res.status(409).json({ error: `Grade ${gradeInt} has no class with space. The sibling was not enrolled.` });
-        }
-        const assignedClassId = allocatedClass.id;
-        const assignedClassName = allocatedClass.name;
-
-        // 5. Learner role ID
-        const roleRes = await db.query("SELECT id FROM roles WHERE LOWER(name) = 'learner'");
-        const learnerRoleId = roleRes.rows[0]?.id || 3;
-
-        // 6. Application fee and payment details
-        // Unpaid EFT already returned above. This path has received the fee.
-        const appFeeAmount = 250.00;
-        const regFeeAmount = 1500.00;
-        const receiptNo = `REC-SIB-${Date.now().toString().slice(-6)}`;
-        const payRef = req.body.payment_reference || `PAY-SIB-${Date.now().toString().slice(-8)}`;
-
-        const bankingInfo = {
-            bank_name: school.bank_name || 'First National Bank (FNB)',
-            account_holder: school.account_holder || school.name,
-            account_number: school.account_number || '62849102841',
-            branch_code: school.branch_code || '250655',
-            account_type: school.account_type || 'Cheque / Current',
-            reference: lrnNumber
-        };
-
-        // 7. Database transaction
-        const result = await withTransaction(async (client) => {
-            // Check if learner user account already exists with this email or ID
-            let learnerUserId;
-            const existingChildUser = await client.query(
-                'SELECT id FROM users WHERE LOWER(email) = LOWER($1) OR (id_number = $2 AND $2 != \'\')',
-                [learnerEmail, cleanIdNum]
-            );
-
-            if (existingChildUser.rows.length === 0) {
-                const newUserRes = await client.query(
-                    `INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, dob, gender, school_id)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-                    [learnerEmail, childPwHash, learnerRoleId, cleanFirstName, cleanSurname, cleanIdNum || null, dob || null, gender, targetSchoolId]
-                );
-                learnerUserId = newUserRes.rows[0].id;
-            } else {
-                learnerUserId = existingChildUser.rows[0].id;
-                await client.query('UPDATE users SET password_hash = $1 WHERE id = $2', [childPwHash, learnerUserId]);
-            }
-
-            // Check if child record already exists for this learner user
-            let newChild;
-            const existingChildRec = await client.query(
-                `SELECT * FROM children WHERE learner_user_id = $1 OR (learner_number = $2 AND $2 != '')`,
-                [learnerUserId, lrnNumber]
-            );
-
-            if (existingChildRec.rows.length > 0) {
-                newChild = existingChildRec.rows[0];
-                await client.query(
-                    `UPDATE children SET parent_id = COALESCE(parent_id, $1), grade = $2, stream = $3, subjects = $4, class_id = $5 WHERE id = $6`,
-                    [parentId, gradeInt, streamVal, officialSubjects, assignedClassId, newChild.id]
-                );
-            } else {
-                const childRes = await client.query(
-                    `INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, stream, subjects, class_id, home_language, school_id)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-                     RETURNING *`,
-                    [learnerUserId, cleanFirstName, cleanSurname, parentId, lrnNumber, gradeInt, streamVal, officialSubjects, assignedClassId, homeLangVal, targetSchoolId]
-                );
-                newChild = childRes.rows[0];
-            }
-
-            // Insert into parent_children junction table
-            await client.query(
-                `INSERT INTO parent_children (parent_id, child_id, relationship, is_primary)
-                 VALUES ($1, $2, 'Parent', true)
-                 ON CONFLICT (parent_id, child_id) DO NOTHING`,
-                [parentId, newChild.id]
-            );
-
-            // Fetch parent email & name
-            const parentRes = await client.query('SELECT email, full_name, surname FROM users WHERE id = $1', [parentId]);
-            const parent = parentRes.rows[0];
-
-            return {
-                child: newChild,
-                parent,
-                credentials: {
-                    learner_name: `${cleanFirstName} ${cleanSurname}`,
-                    learner_number: newChild.learner_number || lrnNumber,
-                    learner_email: `${(newChild.learner_number || lrnNumber).toLowerCase().replace(/[\s-]/g, '')}@fusion.high`,
-                    generated_password: generatedPassword,
-                    grade: gradeInt,
-                    stream: streamVal,
-                    subjects: officialSubjects,
-                    class_name: assignedClassName
-                }
-            };
-        });
-
-        const parentFullName = `${result.parent.full_name || ''} ${result.parent.surname || ''}`.trim() || 'Parent / Guardian';
-        const parentEmail = result.parent.email;
-
-        // 8. Record fee payment in application_payments if paid immediately
-        if (isPaidImmediately) {
-            try {
-                await db.query(`
-                    INSERT INTO application_payments (
-                        application_id, fee_type, amount, payment_method, payment_reference, receipt_number, payer_name, payer_email, status, created_at
-                    ) VALUES (NULL, 'application_fee', $1, $2, $3, $4, $5, $6, 'completed', NOW())
-                `, [appFeeAmount, payment_method, payRef, receiptNo, parentFullName, parentEmail]);
-            } catch (payErr) {
-                console.warn('Could not record sibling application fee payment:', payErr.message);
-            }
-        }
-
-        // 9. Dispatch Comprehensive Notification Emails to Parent
-        if (parentEmail) {
-            try {
-                // (a) Payment Receipt or EFT Banking Details Email
-                if (isPaidImmediately) {
-                    await emailService.sendApplicationFeePaymentReceived({
-                        parentEmail,
-                        parentName: parentFullName,
-                        learnerName: `${cleanFirstName} ${cleanSurname}`,
-                        schoolName: school.name,
-                        applicationNumber: lrnNumber,
-                        amountPaid: appFeeAmount,
-                        receiptNumber: receiptNo
-                    });
-                    await emailService.sendRegistrationSuccessWithAllocation({
-                        parentEmail,
-                        parentName: parentFullName,
-                        learnerName: `${cleanFirstName} ${cleanSurname}`,
-                        schoolName: school.name,
-                        learnerNumber: lrnNumber,
-                        grade: gradeInt,
-                        stream: streamVal,
-                        assignedClass: assignedClassName,
-                        subjects: officialSubjects,
-                        parentEmail,
-                        parentPassword: null,
-                        learnerEmail,
-                        learnerPassword: generatedPassword,
-                        portalUrl: `${req.protocol}://${req.get('host')}/login`
-                    });
-                }
-
-                console.log(`[LINK SIBLING EMAIL] Sent confirmation & credentials to ${parentEmail} for ${cleanFirstName}`);
-            } catch (e) {
-                console.warn('[SIBLING EMAIL ERROR]:', e.message);
-            }
-        }
-
-        // 10. In-app notification
-        NotificationService.sendToUsers({
-            userIds: [parentId],
-            title: `Sibling Enrolled: ${cleanFirstName} ${cleanSurname}`,
-            message: `${cleanFirstName} ${cleanSurname} has been enrolled into Grade ${gradeInt} (${assignedClassName}) with ${officialSubjects.length} CAPS subjects.`,
-            type: 'admission',
-            targetTab: 'children'
-        }).catch(e => console.warn('[SIBLING NOTIFY]:', e.message));
-
-        res.status(201).json({
-            success: true,
-            message: `Sibling ${cleanFirstName} ${cleanSurname} successfully enrolled in Grade ${gradeInt} and linked to your family profile!`,
-            child: result.child,
-            credentials: result.credentials
-        });
-
     } catch (err) {
         console.error('Error linking sibling:', err);
         res.status(500).json({ error: 'Failed to link sibling: ' + err.message });
@@ -953,9 +761,16 @@ exports.contactTeacher = async (req, res) => {
             [parentId, teacher_user_id, childId, subject, message]
         );
 
-        // Send email notification
-        const tpl = emailService.templates.parentToTeacher(parent, teacherEmail, subject, message, childFullName);
-        await emailService.send(tpl.to, tpl.subject, tpl.body, tpl.replyTo);
+        // Send in-app notification to teacher (in-app alert only, no email)
+        if (teacher_user_id) {
+            await NotificationService.sendToUsers([teacher_user_id], {
+                title: `New Message from ${parent_name} ${parent_surname}`,
+                message: subject ? `${subject}: ${message.substring(0, 100)}` : message.substring(0, 100),
+                type: 'message',
+                category: 'message',
+                actionUrl: '/messages'
+            }).catch(e => console.error('Error sending in-app message notification to teacher:', e));
+        }
 
         res.json({ message: 'Your message has been sent successfully.' });
     } catch (err) {
@@ -972,7 +787,15 @@ exports.getMessages = async (req, res) => {
             FROM messages m
             LEFT JOIN users sender ON m.sender_id = sender.id
             LEFT JOIN users recipient ON m.recipient_id = recipient.id
-            WHERE m.sender_id = $1 OR m.recipient_id = $1
+            WHERE (m.sender_id = $1 OR m.recipient_id = $1)
+              AND (m.subject IS NULL OR (
+                  m.subject NOT ILIKE 'Attendance Notice%'
+                  AND m.subject NOT ILIKE 'New Assessment Mark%'
+                  AND m.subject NOT ILIKE 'Assessment Marks Published%'
+                  AND m.subject NOT ILIKE 'Important Academic Notice%'
+                  AND m.subject NOT ILIKE 'Textbook Allocated%'
+                  AND m.subject NOT ILIKE 'New Task Assigned%'
+              ))
             ORDER BY m.created_at DESC;
         `;
         const { rows } = await db.query(query, [userId]);
@@ -1006,7 +829,20 @@ async function fetchParentChildren(parentId) {
         [parentId]
     );
 
-    return childrenRes.rows || [];
+    const raw = childrenRes.rows || [];
+    // Strict deduplication by unique learner tracking number (#GSA-MKG-001) or normalized name + grade
+    const seen = new Set();
+    const unique = [];
+    for (const child of raw) {
+        const ref = (child.learner_number && child.learner_number.trim() && !child.learner_number.startsWith('2026-FHS-'))
+            ? child.learner_number.trim().toUpperCase()
+            : `${(child.full_name || '').trim().toLowerCase()}_${(child.surname || '').trim().toLowerCase()}_${child.grade || ''}`;
+        if (!seen.has(ref)) {
+            seen.add(ref);
+            unique.push(child);
+        }
+    }
+    return unique;
 }
 
 /**
@@ -1542,6 +1378,7 @@ exports.getChildAttendanceOverview = async (req, res) => {
     try {
         const parentId = req.user.id;
         let childId = req.query.childId || req.query.child_id;
+        const requestedTerm = req.query.term ? String(req.query.term).trim() : null;
 
         const availableChildren = await fetchParentChildren(parentId);
         if (availableChildren.length === 0) {
@@ -1555,14 +1392,14 @@ exports.getChildAttendanceOverview = async (req, res) => {
                 days_present: 0,
                 days_absent: 0,
                 late_days: 0,
-                overall_attendance: 100,
-                attendance_rate: 100,
+                overall_attendance: 0,
+                attendance_rate: 0,
                 stats: {
                     present_days: 0,
                     absent_days: 0,
                     late_days: 0,
-                    attendance_rate: 100,
-                    punctuality_rate: 100
+                    attendance_rate: 0,
+                    punctuality_rate: 0
                 },
                 daily_records: [],
                 records: [],
@@ -1575,6 +1412,18 @@ exports.getChildAttendanceOverview = async (req, res) => {
             const found = availableChildren.find(c => c.id === parseInt(childId, 10));
             if (found) targetChild = found;
         }
+
+        // Helper to resolve DBE Term from record date
+        const getTermFromDate = (dateVal) => {
+            if (!dateVal) return 'Term 1';
+            const d = new Date(dateVal);
+            if (isNaN(d.getTime())) return 'Term 1';
+            const m = d.getMonth() + 1;
+            if (m <= 3) return 'Term 1';
+            if (m <= 6) return 'Term 2';
+            if (m <= 9) return 'Term 3';
+            return 'Term 4';
+        };
 
         // Query real database attendance records for this child
         const attRes = await db.query(
@@ -1597,7 +1446,7 @@ exports.getChildAttendanceOverview = async (req, res) => {
         let absentCount = 0;
         let lateCount = 0;
 
-        const dailyRecords = rows.map(r => {
+        const allDailyRecords = rows.map(r => {
             const statusLower = (r.status || 'present').toLowerCase();
             if (statusLower === 'present') presentCount++;
             else if (statusLower === 'absent') absentCount++;
@@ -1605,6 +1454,7 @@ exports.getChildAttendanceOverview = async (req, res) => {
 
             const dateObj = new Date(r.date);
             const isoDate = r.date instanceof Date ? r.date.toISOString().split('T')[0] : String(r.date).split('T')[0];
+            const term = getTermFromDate(r.date);
 
             return {
                 id: r.id,
@@ -1617,6 +1467,7 @@ exports.getChildAttendanceOverview = async (req, res) => {
                 subject: r.subject_name,
                 recorded_by: r.recorded_by_name,
                 teacher: r.recorded_by_name,
+                term: term,
                 time: r.created_at ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '08:00 AM',
                 time_in: statusLower === 'absent' ? '—' : (r.created_at ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '08:00 AM'),
                 time_out: statusLower === 'absent' ? '—' : '02:30 PM',
@@ -1625,24 +1476,55 @@ exports.getChildAttendanceOverview = async (req, res) => {
         });
 
         const totalRecorded = rows.length;
-        const attendanceRate = totalRecorded > 0 ? Math.round(((presentCount + lateCount) / totalRecorded) * 100) : 100;
-        const punctualityRate = (presentCount + lateCount) > 0 ? Math.round((presentCount / (presentCount + lateCount)) * 100) : 100;
+        const attendedTotal = presentCount + lateCount;
+        // Strict 0% attendance if no classes attended or no records exist
+        const overallAttendanceRate = totalRecorded > 0 && attendedTotal > 0
+            ? Math.round((attendedTotal / totalRecorded) * 100)
+            : 0;
+        const overallPunctualityRate = attendedTotal > 0
+            ? Math.round((presentCount / attendedTotal) * 100)
+            : 0;
+
+        // Apply Term Filtering if explicitly requested
+        let displayRecords = allDailyRecords;
+        let activePresent = presentCount;
+        let activeAbsent = absentCount;
+        let activeLate = lateCount;
+        let activeTotal = totalRecorded;
+        let activeAttendanceRate = overallAttendanceRate;
+        let activePunctualityRate = overallPunctualityRate;
+
+        if (requestedTerm && requestedTerm.toLowerCase() !== 'all' && requestedTerm.toLowerCase() !== 'all terms') {
+            displayRecords = allDailyRecords.filter(r => r.term.toLowerCase() === requestedTerm.toLowerCase());
+            activePresent = displayRecords.filter(r => r.status === 'present').length;
+            activeAbsent = displayRecords.filter(r => r.status === 'absent').length;
+            activeLate = displayRecords.filter(r => r.status === 'late').length;
+            activeTotal = displayRecords.length;
+            const activeAttended = activePresent + activeLate;
+            activeAttendanceRate = activeTotal > 0 && activeAttended > 0
+                ? Math.round((activeAttended / activeTotal) * 100)
+                : 0;
+            activePunctualityRate = activeAttended > 0
+                ? Math.round((activePresent / activeAttended) * 100)
+                : 0;
+        }
 
         const statsObj = {
-            present_days: presentCount,
-            absent_days: absentCount,
-            late_days: lateCount,
-            attendance_rate: attendanceRate,
-            punctuality_rate: punctualityRate
+            present_days: activePresent,
+            absent_days: activeAbsent,
+            late_days: activeLate,
+            attendance_rate: activeAttendanceRate,
+            punctuality_rate: activePunctualityRate
         };
 
-        const calendarEntries = dailyRecords.map(r => ({
+        const calendarEntries = displayRecords.map(r => ({
             id: `att-${r.id}`,
             date: r.date,
             title: `Attendance: ${r.status.toUpperCase()} (${r.subject})`,
             type: r.status === 'present' ? 'Sports' : (r.status === 'late' ? 'Holiday' : 'Exam'),
             status: r.status,
             subject: r.subject,
+            term: r.term,
             time: r.time,
             child_name: targetChild.full_name,
             is_attendance: true
@@ -1656,20 +1538,22 @@ exports.getChildAttendanceOverview = async (req, res) => {
             grade: targetChild.grade,
             profile_picture: targetChild.profile_picture_path,
             children: availableChildren.map(c => ({ id: c.id, full_name: c.full_name, surname: c.surname, grade: c.grade })),
-            total_recorded: totalRecorded,
-            present_count: presentCount,
-            absent_count: absentCount,
-            late_count: lateCount,
-            days_present: presentCount,
-            days_absent: absentCount,
-            late_days: lateCount,
-            overall_attendance: attendanceRate,
-            attendance_rate: attendanceRate,
-            punctuality_rate: punctualityRate,
+            selected_term: requestedTerm || 'All Terms',
+            total_recorded: activeTotal,
+            present_count: activePresent,
+            absent_count: activeAbsent,
+            late_count: activeLate,
+            days_present: activePresent,
+            days_absent: activeAbsent,
+            late_days: activeLate,
+            overall_attendance: activeAttendanceRate,
+            attendance_rate: activeAttendanceRate,
+            punctuality_rate: activePunctualityRate,
             stats: statsObj,
-            daily_records: dailyRecords,
-            records: dailyRecords,
-            recent_attendance_records: dailyRecords,
+            daily_records: displayRecords,
+            records: displayRecords,
+            all_records: allDailyRecords,
+            recent_attendance_records: displayRecords,
             calendar_entries: calendarEntries
         });
     } catch (err) {

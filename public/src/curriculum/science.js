@@ -32,10 +32,16 @@ module.exports = {
     // Grade 10
     { id: 'phys10_waves', grade: 10, stream: 'Science', topic: 'Transverse Pulses, Wave Speed & Frequency' },
     { id: 'phys10_sound', grade: 10, stream: 'Science', topic: 'Sound Waves, Pitch, Loudness & Ultrasound' },
+    { id: 'phys10_em', grade: 10, stream: 'Science', topic: 'Electromagnetic Radiation & Photon Energy (E = hf)' },
     { id: 'phys10_electrostatics', grade: 10, stream: 'Science', topic: 'Electrostatics & Conservation of Charge' },
     { id: 'phys10_circuits', grade: 10, stream: 'Science', topic: 'Electric Circuits: Current, Voltage & Resistance' },
-    { id: 'phys10_matter', grade: 10, stream: 'Science', topic: 'Classification of Matter & Periodic Table Trends' },
-    { id: 'phys10_stoich_intro', grade: 10, stream: 'Science', topic: 'Chemical Bonding & Molar Mass Calculations' },
+    { id: 'phys10_motion1d', grade: 10, stream: 'Science', topic: 'Vectors, Motion in 1D & Equations of Motion' },
+    { id: 'phys10_energy', grade: 10, stream: 'Science', topic: 'Gravitational Potential, Kinetic & Mechanical Energy' },
+    { id: 'phys10_matter', grade: 10, stream: 'Science', topic: 'Classification of Matter, States & Boiling Point' },
+    { id: 'phys10_atomic', grade: 10, stream: 'Science', topic: 'Atomic Structure, Isotopes & Electron Configuration' },
+    { id: 'phys10_bonding', grade: 10, stream: 'Science', topic: 'Chemical Bonding & Lewis Dot Diagrams' },
+    { id: 'phys10_stoich', grade: 10, stream: 'Science', topic: 'Quantitative Chemistry: The Mole & Stoichiometry' },
+    { id: 'phys10_reactions', grade: 10, stream: 'Science', topic: 'Reactions in Aqueous Solutions & Chemical Change' },
 
     // Grade 11
     { id: 'phys11_vectors', grade: 11, stream: 'Science', topic: 'Vectors in 2D & Resultant Force' },

@@ -29,6 +29,24 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error('[ErrorBoundary caught error]:', error, errorInfo);
     this.setState({ errorInfo });
 
+    // Optional client observability hook (no third-party SDK required).
+    try {
+      const payload = {
+        ts: new Date().toISOString(),
+        source: 'ErrorBoundary',
+        message: error?.message || 'Unknown render error',
+        stack: error?.stack?.slice(0, 2000),
+        componentStack: errorInfo?.componentStack?.slice(0, 2000),
+        path: typeof window !== 'undefined' ? window.location.pathname : undefined
+      };
+      const w = window as Window & { __GELEZA_ERROR_REPORTER__?: (p: unknown) => void };
+      if (typeof w.__GELEZA_ERROR_REPORTER__ === 'function') {
+        w.__GELEZA_ERROR_REPORTER__(payload);
+      } else if ((import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV) {
+        console.warn('[Geleza SA] client error report', payload);
+      }
+    } catch (_) {}
+
     const msg = error?.message || '';
     if (msg.includes('Failed to fetch dynamically imported module') || msg.includes('Loading chunk')) {
       const alreadyAutoRefreshed = sessionStorage.getItem('error_boundary_chunk_reload');

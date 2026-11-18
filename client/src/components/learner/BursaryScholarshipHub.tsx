@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { bursaryService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../common/Badge';
 import { Modal } from '../common/Modal';
 import { LoadingSpinner } from '../common/LoadingSpinner';
@@ -23,7 +24,8 @@ import {
   HelpCircle,
   TrendingUp,
   Clock,
-  ArrowUpRight
+  ArrowUpRight,
+  Database
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -36,6 +38,14 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
   childId,
   isParentView = false
 }) => {
+  const { user } = useAuth();
+  const userRole = ((user?.role as string) || '').toLowerCase();
+  const isPrincipalDashboard =
+    userRole === 'admin' ||
+    userRole === 'principal' ||
+    Boolean(user?.is_superadmin) ||
+    (!childId && userRole !== 'learner' && !isParentView);
+
   const [bursaries, setBursaries] = useState<any[]>([]);
   const [learnerData, setLearnerData] = useState<any | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -125,43 +135,43 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
   });
 
   if (loading) {
-    return <LoadingSpinner size="lg" text="Calculating AI & CAPS Bursary Matching Opportunities..." />;
+    return <LoadingSpinner size="lg" text="Loading bursary opportunities..." />;
   }
 
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="p-6 rounded-3xl bg-surface-dark border border-white/10 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="p-6 rounded-3xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="p-3.5 rounded-2xl bg-gradient-to-tr from-amber-500 to-indigo-600 text-white shadow-glow-indigo">
+          <div className="p-3.5 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-700 dark:text-[#168BFF] shadow-sm">
             <GraduationCap className="w-6 h-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-extrabold font-display text-white">
+              <h2 className="text-xl font-extrabold font-display text-slate-900 dark:text-white">
                 NSFAS & Tertiary Bursary Matching
               </h2>
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-[11px] font-mono text-amber-300 font-bold">
+              <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-[11px] font-mono text-cyan-700 dark:text-cyan-300 font-bold">
                 Higher Education
               </span>
             </div>
           </div>
         </div>
 
-        {/* Academic Profile Snippet */}
-        {learnerData && (
-          <div className="flex items-center gap-3 p-3 rounded-2xl bg-surface-darker border border-white/5">
-            <div className="text-center px-2 border-r border-white/10">
-              <p className="text-[10px] uppercase font-bold text-slate-400 font-mono">Calculated APS</p>
-              <p className="text-xl font-black text-cyan-400 font-mono">{learnerData.calculated_aps}</p>
+        {/* Academic Profile Snippet - Hidden in Principal Dashboard */}
+        {!isPrincipalDashboard && learnerData && (
+          <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-100 dark:bg-surface-darker border border-slate-200/80 dark:border-white/5">
+            <div className="text-center px-2 border-r border-slate-200 dark:border-white/10">
+              <p className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 font-mono">Calculated APS</p>
+              <p className="text-xl font-black text-cyan-600 dark:text-cyan-400 font-mono">{learnerData.calculated_aps}</p>
             </div>
-            <div className="text-center px-2 border-r border-white/10">
-              <p className="text-[10px] uppercase font-bold text-slate-400 font-mono">Academic Avg</p>
-              <p className="text-xl font-black text-emerald-400 font-mono">{learnerData.academic_average}%</p>
+            <div className="text-center px-2 border-r border-slate-200 dark:border-white/10">
+              <p className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 font-mono">Academic Avg</p>
+              <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">{learnerData.academic_average}%</p>
             </div>
             <div className="px-2">
-              <p className="text-[10px] uppercase font-bold text-slate-400 font-mono">Stream</p>
-              <p className="text-xs font-bold text-amber-300">{learnerData.stream || 'Science'} (Gr {learnerData.grade || 12})</p>
+              <p className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 font-mono">Stream</p>
+              <p className="text-xs font-bold text-cyan-700 dark:text-cyan-300">{learnerData.stream || 'Science'} (Gr {learnerData.grade || 12})</p>
             </div>
           </div>
         )}
@@ -183,8 +193,8 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
               onClick={() => setSelectedCategory(tab.id)}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                 selectedCategory === tab.id
-                  ? 'bg-brand-600 text-white shadow-sm'
-                  : 'bg-surface-dark text-slate-400 hover:text-white border border-white/5'
+                  ? 'bg-cyan-600 dark:bg-[#168BFF] text-white dark:text-[#0A121A] shadow-xs'
+                  : 'bg-white dark:bg-surface-dark text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200/80 dark:border-white/5'
               }`}
             >
               {tab.label}
@@ -199,7 +209,7 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
             placeholder="Search sponsor, degree, or field..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-2xl bg-surface-dark border border-white/10 pl-9 pr-4 py-2 text-xs text-white placeholder:text-slate-500 focus:ring-2 focus:ring-amber-500"
+            className="w-full rounded-2xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 pl-9 pr-4 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-cyan-500"
           />
         </div>
       </div>
@@ -237,41 +247,43 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
           return (
             <div
               key={bursary.id}
-              className="p-6 rounded-3xl bg-surface-dark border border-white/10 hover:border-amber-500/40 transition-all flex flex-col justify-between space-y-4 shadow-xl relative overflow-hidden group"
+              className="p-6 rounded-3xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 hover:border-cyan-500/40 dark:hover:border-cyan-500/40 transition-all flex flex-col justify-between space-y-4 shadow-sm hover:shadow-md relative overflow-hidden group"
             >
               {/* Top Bar: Sponsor & Match Badge */}
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-700 dark:text-cyan-300 bg-cyan-500/10 dark:bg-cyan-500/15 px-2.5 py-0.5 rounded-full border border-cyan-500/25">
                       {bursary.category}
                     </span>
                     {isTracked && (
-                      <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/25">
                         ✓ {bursary.tracking_data?.status?.toUpperCase()}
                       </span>
                     )}
                   </div>
-                  <h3 className="text-base font-extrabold text-white group-hover:text-amber-300 transition-colors">
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-[#168BFF] transition-colors">
                     {bursary.name}
                   </h3>
-                  <p className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-cyan-400" />
+                  <p className="text-xs text-slate-600 dark:text-slate-400 font-medium flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-cyan-500" />
                     <span>{bursary.sponsor}</span>
                   </p>
                 </div>
 
                 {/* Match Score Circular / Badge */}
                 <div className="text-right shrink-0">
-                  <div className={`px-2.5 py-1 rounded-2xl border font-mono font-extrabold text-xs flex items-center gap-1 ${
-                    isHighMatch
-                      ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                      : 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                  }`}>
-                    <Sparkles className="w-3 h-3" />
-                    <span>{matchScore}% Match</span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                  {!isPrincipalDashboard && (
+                    <div className={`px-2.5 py-1 rounded-2xl border font-mono font-extrabold text-xs flex items-center gap-1 ${
+                      isHighMatch
+                        ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                        : 'bg-cyan-500/15 border-cyan-500/30 text-cyan-700 dark:text-cyan-300'
+                    }`}>
+                      <Sparkles className="w-3 h-3 text-cyan-500" />
+                      <span>{matchScore}% Match</span>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
                     Min APS: <strong>{bursary.min_aps}</strong>
                   </p>
                 </div>
@@ -279,15 +291,15 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
 
               {/* Target Fields */}
               <div className="space-y-1.5">
-                <p className="text-[10px] font-mono font-bold uppercase text-slate-400">Target Study Fields:</p>
+                <p className="text-[10px] font-mono font-bold uppercase text-slate-500 dark:text-slate-400">Target Study Fields:</p>
                 <div className="flex flex-wrap gap-1.5">
                   {(bursary.target_fields || []).slice(0, 3).map((field: string, idx: number) => (
-                    <span key={idx} className="px-2 py-0.5 rounded-lg bg-surface-darker border border-white/5 text-[11px] text-slate-300">
+                    <span key={idx} className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-surface-darker border border-slate-200 dark:border-white/5 text-[11px] text-slate-700 dark:text-slate-300">
                       {field}
                     </span>
                   ))}
                   {(bursary.target_fields || []).length > 3 && (
-                    <span className="px-2 py-0.5 rounded-lg bg-surface-darker text-[10px] text-slate-500">
+                    <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-surface-darker text-[10px] text-slate-500">
                       +{(bursary.target_fields || []).length - 3} more
                     </span>
                   )}
@@ -296,10 +308,10 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
 
               {/* Coverage Pills */}
               <div className="space-y-1.5">
-                <p className="text-[10px] font-mono font-bold uppercase text-slate-400">Funding Coverage:</p>
+                <p className="text-[10px] font-mono font-bold uppercase text-slate-500 dark:text-slate-400">Funding Coverage:</p>
                 <div className="flex flex-wrap gap-1.5">
                   {(bursary.coverage_details || []).slice(0, 3).map((cov: string, idx: number) => (
-                    <span key={idx} className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-semibold text-emerald-300">
+                    <span key={idx} className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
                       ✓ {cov}
                     </span>
                   ))}
@@ -307,16 +319,16 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
               </div>
 
               {/* Official Application Portal Link Bar */}
-              <div className="p-3 rounded-2xl bg-surface-darker/90 border border-cyan-500/20 flex items-center justify-between gap-2">
+              <div className="p-3 rounded-2xl bg-cyan-50/80 dark:bg-surface-darker/90 border border-cyan-500/20 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <ExternalLink className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <ExternalLink className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-[10px] font-mono font-bold uppercase text-slate-400">Application Portal:</p>
+                    <p className="text-[10px] font-mono font-bold uppercase text-slate-500 dark:text-slate-400">Application Portal:</p>
                     <a
                       href={bursary.application_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs font-mono font-bold text-cyan-300 hover:text-cyan-200 hover:underline truncate block"
+                      className="text-xs font-mono font-bold text-cyan-700 dark:text-cyan-300 hover:text-cyan-800 dark:hover:text-cyan-200 hover:underline truncate block"
                     >
                       {bursary.application_url}
                     </a>
@@ -326,7 +338,7 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
                   href={bursary.application_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 font-bold text-xs shrink-0 border border-cyan-500/30 transition-all flex items-center gap-1"
+                  className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-700 dark:text-cyan-300 font-bold text-xs shrink-0 border border-cyan-500/30 transition-all flex items-center gap-1"
                 >
                   <span>Portal</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
@@ -334,10 +346,10 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
               </div>
 
               {/* Footer: Annual Value, Deadline & Action */}
-              <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-3 text-xs">
+              <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-between gap-3 text-xs">
                 <div>
-                  <p className="text-[10px] uppercase font-bold text-slate-400 font-mono">Estimated Value</p>
-                  <p className="font-extrabold text-white font-mono text-sm">
+                  <p className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 font-mono">Estimated Value</p>
+                  <p className="font-extrabold text-slate-900 dark:text-white font-mono text-sm">
                     ~ R {parseFloat(bursary.estimated_annual_value || 120000).toLocaleString('en-ZA')}/yr
                   </p>
                 </div>
@@ -345,9 +357,9 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleOpenDetail(bursary)}
-                    className="px-3.5 py-2 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-200 border border-white/10 font-bold text-xs transition-all flex items-center gap-1.5"
+                    className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-surface-darker hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
                   >
-                    <FileCheck className="w-3.5 h-3.5 text-cyan-400" />
+                    <FileCheck className="w-3.5 h-3.5 text-cyan-500" />
                     <span>Checklist</span>
                   </button>
 
@@ -355,7 +367,7 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
                     href={bursary.application_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-indigo-600 hover:from-amber-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-md transition-all flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-extrabold text-xs shadow-md shadow-cyan-500/20 transition-all flex items-center gap-1.5"
                   >
                     <span>Apply Online</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />
@@ -505,7 +517,7 @@ export const BursaryScholarshipHub: React.FC<BursaryScholarshipHubProps> = ({
                 type="button"
                 onClick={handleSaveTracking}
                 disabled={isSaving}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-indigo-600 hover:from-amber-500 hover:to-indigo-500 text-white font-extrabold shadow-md transition-all disabled:opacity-50"
+                className="px-6 py-2.5 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-extrabold shadow-md transition-all disabled:opacity-50 cursor-pointer"
               >
                 {isSaving ? 'Saving...' : 'Save Checklist & Status'}
               </button>

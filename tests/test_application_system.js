@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const { validateSAID } = require('../public/src/controller/saIDvalidations');
 const applicationService = require('../public/src/services/applicationService');
 const db = require('../db/db');
@@ -63,7 +64,7 @@ async function runTests() {
     console.log('\n[4/6] Testing Reference and Token Generators...');
     const appNum = applicationService.generateApplicationNumber();
     const token = applicationService.generateCorrectionToken();
-    const provLrn = applicationService.generateProvisionalLearnerNumber(8);
+    const provLrn = await applicationService.generateProvisionalLearnerNumber(8);
 
     assert(appNum.startsWith('FHS-'), `Application reference formatted properly: ${appNum}`);
     assert(token.length >= 32, `Correction token generated securely: ${token.substring(0, 10)}...`);

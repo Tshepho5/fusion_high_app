@@ -3,8 +3,8 @@ const router = express.Router();
 const parentController = require('../controller/parentController');
 const { auth, requireRole } = require('../../../authMiddleware');
 
-// All routes in this file are protected and require the 'parent' role.
-router.use(auth, requireRole(['parent', 'admin']));
+// All routes in this file are protected and require the 'parent', 'admin', or 'teacher' role.
+router.use(auth, requireRole(['parent', 'admin', 'teacher']));
 
 router.get('/children', parentController.getChildren);
 router.post('/link-child', parentController.linkChild);

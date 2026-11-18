@@ -4,6 +4,11 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body, #root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 .slogan-script-text {
   font-family: 'Caveat', 'Dancing Script', cursive;
 }
@@ -35,18 +40,38 @@
 .cta-humanities { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%) !important; color: #ffffff !important; }
 
 :root {
-  /* Midnight Navy-Black Canvas & Elevated Slate Surfaces */
-  --color-canvas: #060D14;
-  --color-surface: #0F1A24;
-  --color-surface-darker: #0A121A;
-  --color-surface-elevated: #13202E;
-  --color-primary: #FFFFFF;
-  --color-accent: #13C8D9;
-  --color-accent-neon: #18E2EC;
-  --color-chip-bg: #152535;
-  --color-chip-glyph: #18E2EC;
-  --color-action-circle: #1C252C;
-  --color-action-icon: #13C8D9;
+  /* Geleza SA Official Palette Tokens - Light / Default fallback */
+  --app-background: #E5EBF1;
+  --surface-background: #DCE4EC;
+  --card-background: #F4F6F8;
+  --input-background: #FFFFFF;
+  --text-primary: #101820;
+  --text-secondary: #526071;
+  --border-color: #C7D1DC;
+  --icon-muted: #697586;
+  --accent-primary: #168BFF;
+  --accent-hover: #0878E8;
+  --accent-soft: #DCEEFF;
+  --focus-ring: #168BFF;
+  --disabled-background: #D4DCE5;
+  --disabled-text: #9AA5B4;
+
+  /* Semantic color mappings */
+  --color-canvas: var(--app-background);
+  --color-surface: var(--card-background);
+  --color-surface-darker: var(--surface-background);
+  --color-surface-elevated: var(--input-background);
+  --color-primary: var(--text-primary);
+  --color-secondary: var(--text-secondary);
+  --color-border: var(--border-color);
+  --color-accent: var(--accent-primary);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-neon: var(--accent-primary);
+  --color-chip-bg: var(--surface-background);
+  --color-chip-glyph: var(--text-primary);
+  --color-action-circle: var(--accent-primary);
+  --color-action-icon: #FFFFFF;
 
   --app-font-body: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
   --app-font-heading: 'Outfit', 'Plus Jakarta Sans', sans-serif;
@@ -77,7 +102,7 @@ html[data-font="mono"], .font-tech-mono {
 body, html {
   font-family: var(--app-font-body);
   background-color: var(--color-canvas);
-  color: #F1F5F9;
+  color: var(--color-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -98,68 +123,97 @@ body, html {
   font-family: var(--app-font-body) !important;
 }
 
-/* Midnight Navy-Black Dark Theme (Reference Dark Screenshot) */
+/* =========================================================================
+   GELEZA SA DARK THEME — Premium Black & Charcoal
+   ========================================================================= */
 .theme-dark, html[data-theme="dark"], .dark {
-  --color-canvas: #060D14;
-  --color-surface: #0F1A24;
-  --color-surface-darker: #0A121A;
-  --color-surface-elevated: #13202E;
-  --color-primary: #FFFFFF;
-  --color-accent: #13C8D9;
-  --color-accent-neon: #18E2EC;
-  --color-chip-bg: #152535;
-  --color-chip-glyph: #18E2EC;
-  --color-action-circle: #1C252C;
-  --color-action-icon: #13C8D9;
+  --app-background: #080B10;
+  --surface-background: #0D121A;
+  --card-background: #111821;
+  --input-background: #171F29;
+  --text-primary: #F5F7FA;
+  --text-secondary: #AAB5C2;
+  --border-color: #2C3948;
+  --icon-muted: #8794A5;
+  --accent-primary: #168BFF;
+  --accent-hover: #0878E8;
+  --accent-soft: #102B45;
+  --focus-ring: #168BFF;
+  --disabled-background: #141C26;
+  --disabled-text: #5B6878;
+
+  --color-canvas: #080B10;
+  --color-surface: #111821;
+  --color-surface-darker: #0D121A;
+  --color-surface-elevated: #171F29;
+  --color-primary: #F5F7FA;
+  --color-secondary: #AAB5C2;
+  --color-border: #2C3948;
+  --color-accent: #168BFF;
+  --color-accent-hover: #0878E8;
+  --color-accent-soft: #102B45;
+  --color-accent-neon: #168BFF;
+  --color-chip-bg: #171F29;
+  --color-chip-glyph: #F5F7FA;
+  --color-action-circle: #168BFF;
+  --color-action-icon: #FFFFFF;
 }
 
 .theme-dark body, html[data-theme="dark"] body, .dark body {
-  background: linear-gradient(135deg, #060D14 0%, #09131F 50%, #0B1520 100%);
-  background-attachment: fixed;
-  color: #FFFFFF;
+  background: #080B10;
+  color: #F5F7FA;
 }
 
-/* Deep Restrained Navy Theme */
-.theme-navy, html[data-theme="navy"] {
-  --color-canvas: #060D14;
-  --color-surface: #0F1A24;
-  --color-surface-darker: #0A121A;
-  --color-surface-elevated: #13202E;
-  --color-accent: #13C8D9;
-  --color-chip-bg: #152535;
-  --color-chip-glyph: #18E2EC;
-}
-
-/* Crisp Ice Blue & Desaturated Cyan Light Theme (Reference Light Screenshot) */
+/* =========================================================================
+   GELEZA SA LIGHT THEME — Soft, Professional Light Mode
+   ========================================================================= */
 .theme-light, html[data-theme="light"], .light {
-  --color-canvas: #CBDDE3;
-  --color-surface: #FFFFFF;
-  --color-surface-darker: #EDF4F7;
+  --app-background: #E5EBF1;
+  --surface-background: #DCE4EC;
+  --card-background: #F4F6F8;
+  --input-background: #FFFFFF;
+  --text-primary: #101820;
+  --text-secondary: #526071;
+  --border-color: #C7D1DC;
+  --icon-muted: #697586;
+  --accent-primary: #168BFF;
+  --accent-hover: #0878E8;
+  --accent-soft: #DCEEFF;
+  --focus-ring: #168BFF;
+  --disabled-background: #D4DCE5;
+  --disabled-text: #9AA5B4;
+
+  --color-canvas: #E5EBF1;
+  --color-surface: #F4F6F8;
+  --color-surface-darker: #DCE4EC;
   --color-surface-elevated: #FFFFFF;
-  --color-primary: #1C252C;
-  --color-accent: #13C8D9;
-  --color-accent-neon: #18E2EC;
-  --color-chip-bg: #E1ECF0;
-  --color-chip-glyph: #232B32;
-  --color-action-circle: #1C252C;
-  --color-action-icon: #13C8D9;
+  --color-primary: #101820;
+  --color-secondary: #526071;
+  --color-border: #C7D1DC;
+  --color-accent: #168BFF;
+  --color-accent-hover: #0878E8;
+  --color-accent-soft: #DCEEFF;
+  --color-accent-neon: #168BFF;
+  --color-chip-bg: #DCE4EC;
+  --color-chip-glyph: #101820;
+  --color-action-circle: #168BFF;
+  --color-action-icon: #FFFFFF;
 }
 
 .theme-light body, html[data-theme="light"] body, .light body {
-  background: linear-gradient(135deg, #CBDDE3 0%, #DBE7EC 40%, #EBF2F5 100%);
-  background-attachment: fixed;
-  color: #1C252C;
+  background: #E5EBF1;
+  color: #101820;
 }
 
-/* Reference Action Circles & Icon Chips */
+/* Standard Geleza SA Action Circles & Icon Chips */
 .action-circle-btn {
-  background-color: #1C252C !important;
-  color: #13C8D9 !important;
+  background-color: #168BFF !important;
+  color: #FFFFFF !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .action-circle-btn:hover {
   transform: scale(1.05);
-  box-shadow: 0 0 14px rgba(19, 200, 217, 0.4);
+  box-shadow: 0 0 14px rgba(22, 139, 255, 0.45);
 }
 
 .module-chip-squircle {
@@ -169,22 +223,16 @@ body, html {
 }
 
 .split-gradient-ring {
-  background: linear-gradient(135deg, #EC4899 0%, #F43F5E 30%, #06B6D4 70%, #18E2EC 100%);
+  background: #168BFF;
 }
 
 .split-gradient-border {
-  border-image: linear-gradient(135deg, #EC4899 0%, #F43F5E 30%, #06B6D4 70%, #18E2EC 100%) 1;
+  border-color: #168BFF;
 }
 
-/* Explicit Glow Lighting Utilities */
-.shadow-glow-crimson {
-  box-shadow: 0 0 16px rgba(255, 56, 92, 0.55), 0 0 32px rgba(239, 68, 68, 0.25);
-}
-.shadow-glow-indigo, .shadow-glow-brand {
-  box-shadow: 0 0 16px rgba(255, 56, 92, 0.5), 0 0 28px rgba(239, 68, 68, 0.25);
-}
-.shadow-glow-cyan {
-  box-shadow: 0 0 16px rgba(255, 56, 92, 0.5), 0 0 28px rgba(239, 68, 68, 0.25);
+/* Explicit Glow Lighting Utilities — Restricted to Electric Blue */
+.shadow-glow-cyan, .shadow-glow-indigo, .shadow-glow-brand {
+  box-shadow: 0 0 16px rgba(22, 139, 255, 0.45), 0 0 28px rgba(22, 139, 255, 0.2);
 }
 .shadow-glow-rose {
   box-shadow: 0 0 16px rgba(244, 63, 94, 0.5), 0 0 28px rgba(239, 68, 68, 0.25);
@@ -194,21 +242,7 @@ body, html {
    LIGHT MODE CONTRAST & ACCESSIBILITY GUARANTEES
    ========================================================================= */
 
-/* 1. Prevent ANY color inversion inside preserved containers or dark sections */
-[data-theme-preserve="true"],
-[data-theme-preserve="true"] *,
-[class*="bg-[#070B14]"],
-[class*="bg-[#070B14]"] *,
-[class*="bg-[#090D18]"],
-[class*="bg-[#090D18]"] *,
-[class*="bg-[#0F172A]"],
-[class*="bg-[#0F172A]"] *,
-[class*="bg-[#111923]"],
-[class*="bg-[#111923]"] *,
-[class*="bg-[#060912]"],
-[class*="bg-[#060912]"] * {
-  /* Retain native explicit dark palette */
-}
+/* Preserved/dark sections keep their palette via :not([data-theme-preserve]) on the rules below. */
 
 /* 2. Form Inputs in Light Mode: Must have dark, sharp, readable text (never white-on-white) */
 .theme-light input:not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not([class*="bg-transparent"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]),
@@ -272,6 +306,16 @@ html[data-theme="navy"] input:not(.login-glowing-input)::placeholder,
 }
 
 /* 3. Solid Colored Buttons, Badges, & Gradients: MUST PRESERVE CRISP WHITE TEXT ON DEEP FILLS */
+.smart-id-card,
+.smart-id-card *,
+.theme-light .smart-id-card,
+.theme-light .smart-id-card *,
+html[data-theme="light"] .smart-id-card,
+html[data-theme="light"] .smart-id-card *,
+.light .smart-id-card,
+.light .smart-id-card * {
+  /* Guard against any light mode global text overrides */
+}
 .theme-light .text-always-white,
 html[data-theme="light"] .text-always-white,
 .light .text-always-white,
@@ -328,14 +372,26 @@ html[data-theme="light"] button[class*="bg-emerald-6"] *,
 .light button[class*="bg-emerald-6"] *,
 .theme-light button[class*="bg-cyan-6"] *,
 html[data-theme="light"] button[class*="bg-cyan-6"] *,
-.light button[class*="bg-cyan-6"] * {
+.light button[class*="bg-cyan-6"] *,
+.theme-light .report-card-btn,
+html[data-theme="light"] .report-card-btn,
+.light .report-card-btn,
+.theme-light .report-card-btn *,
+html[data-theme="light"] .report-card-btn *,
+.light .report-card-btn *,
+.theme-light button[class*="bg-[#1C252C]"],
+html[data-theme="light"] button[class*="bg-[#1C252C]"],
+.light button[class*="bg-[#1C252C]"],
+.theme-light button[class*="bg-[#1C252C]"] *,
+html[data-theme="light"] button[class*="bg-[#1C252C]"] *,
+.light button[class*="bg-[#1C252C]"] * {
   color: #FFFFFF !important;
 }
 
 /* 4. High-contrast text on light surfaces across dashboards and cards */
-.theme-light .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not(button[class*="bg-brand-"] *):not(button[class*="bg-indigo-"] *):not(button[class*="bg-blue-"] *):not(button[class*="bg-rose-"] *):not(button[class*="bg-emerald-"] *):not(a[class*="bg-brand-"] *):not(a[class*="bg-blue-"] *):not(a[class*="bg-indigo-"] *):not(button[class*="bg-gradient-to-"] *):not(a[class*="bg-gradient-to-"] *):not([class*="bg-brand-6"]):not([class*="bg-indigo-6"]):not([class*="bg-blue-6"]):not([class*="bg-rose-6"]),
-html[data-theme="light"] .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not(button[class*="bg-brand-"] *):not(button[class*="bg-indigo-"] *):not(button[class*="bg-blue-"] *):not(button[class*="bg-rose-"] *):not(button[class*="bg-emerald-"] *):not(a[class*="bg-brand-"] *):not(a[class*="bg-blue-"] *):not(a[class*="bg-indigo-"] *):not(button[class*="bg-gradient-to-"] *):not(a[class*="bg-gradient-to-"] *):not([class*="bg-brand-6"]):not([class*="bg-indigo-6"]):not([class*="bg-blue-6"]):not([class*="bg-rose-6"]),
-.light .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not(button[class*="bg-brand-"] *):not(button[class*="bg-indigo-"] *):not(button[class*="bg-blue-"] *):not(button[class*="bg-rose-"] *):not(button[class*="bg-emerald-"] *):not(a[class*="bg-brand-"] *):not(a[class*="bg-blue-"] *):not(a[class*="bg-indigo-"] *):not(button[class*="bg-gradient-to-"] *):not(a[class*="bg-gradient-to-"] *):not([class*="bg-brand-6"]):not([class*="bg-indigo-6"]):not([class*="bg-blue-6"]):not([class*="bg-rose-6"]) {
+.theme-light .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not(.report-card-btn):not(.report-card-btn *):not(button[class*="bg-[#1C252C]"]):not(button[class*="bg-[#1C252C]"] *):not(button[class*="bg-brand-"] *):not(button[class*="bg-indigo-"] *):not(button[class*="bg-blue-"] *):not(button[class*="bg-rose-"] *):not(button[class*="bg-emerald-"] *):not(a[class*="bg-brand-"] *):not(a[class*="bg-blue-"] *):not(a[class*="bg-indigo-"] *):not(button[class*="bg-gradient-to-"] *):not(a[class*="bg-gradient-to-"] *):not([class*="bg-brand-6"]):not([class*="bg-indigo-6"]):not([class*="bg-blue-6"]):not([class*="bg-rose-6"]),
+html[data-theme="light"] .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not(.report-card-btn):not(.report-card-btn *):not(button[class*="bg-[#1C252C]"]):not(button[class*="bg-[#1C252C]"] *):not(button[class*="bg-brand-"] *):not(button[class*="bg-indigo-"] *):not(button[class*="bg-blue-"] *):not(button[class*="bg-rose-"] *):not(button[class*="bg-emerald-"] *):not(a[class*="bg-brand-"] *):not(a[class*="bg-blue-"] *):not(a[class*="bg-indigo-"] *):not(button[class*="bg-gradient-to-"] *):not(a[class*="bg-gradient-to-"] *):not([class*="bg-brand-6"]):not([class*="bg-indigo-6"]):not([class*="bg-blue-6"]):not([class*="bg-rose-6"]),
+.light .text-white:not(.text-always-white):not([data-theme-preserve="true"]):not([data-theme-preserve="true"] *):not(.report-card-btn):not(.report-card-btn *):not(button[class*="bg-[#1C252C]"]):not(button[class*="bg-[#1C252C]"] *):not(button[class*="bg-brand-"] *):not(button[class*="bg-indigo-"] *):not(button[class*="bg-blue-"] *):not(button[class*="bg-rose-"] *):not(button[class*="bg-emerald-"] *):not(a[class*="bg-brand-"] *):not(a[class*="bg-blue-"] *):not(a[class*="bg-indigo-"] *):not(button[class*="bg-gradient-to-"] *):not(a[class*="bg-gradient-to-"] *):not([class*="bg-brand-6"]):not([class*="bg-indigo-6"]):not([class*="bg-blue-6"]):not([class*="bg-rose-6"]) {
   color: #0F172A !important;
 }
 
@@ -454,8 +510,95 @@ html[data-theme="light"] .text-indigo-300:not([data-theme-preserve="true"] *):no
 
 .theme-light .text-brand-400:not([data-theme-preserve="true"] *):not(button[class*="bg-brand-6"] *),
 html[data-theme="light"] .text-brand-400:not([data-theme-preserve="true"] *):not(button[class*="bg-brand-6"] *),
-.light .text-brand-400:not([data-theme-preserve="true"] *):not(button[class*="bg-brand-6"] *) {
+.light .text-brand-400:not([data-theme-preserve="true"] *):not(button[class*="bg-brand-6"] *),
+.theme-light .text-brand-300:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-brand-6"] *):not(button[class*="bg-indigo-6"] *):not(button[class*="bg-gradient-to-"] *),
+html[data-theme="light"] .text-brand-300:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-brand-6"] *):not(button[class*="bg-indigo-6"] *):not(button[class*="bg-gradient-to-"] *),
+.light .text-brand-300:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-brand-6"] *):not(button[class*="bg-indigo-6"] *):not(button[class*="bg-gradient-to-"] *),
+.theme-light .text-brand-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-brand-6"] *):not(button[class*="bg-gradient-to-"] *),
+html[data-theme="light"] .text-brand-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-brand-6"] *):not(button[class*="bg-gradient-to-"] *),
+.light .text-brand-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-brand-6"] *):not(button[class*="bg-gradient-to-"] *) {
   color: #4338CA !important;
+}
+
+/* Pale accent text that was chosen for dark panels becomes readable once those panels turn light */
+.theme-light .text-cyan-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-cyan-6"] *):not(button[class*="bg-gradient-to-"] *),
+html[data-theme="light"] .text-cyan-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-cyan-6"] *):not(button[class*="bg-gradient-to-"] *),
+.light .text-cyan-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-cyan-6"] *):not(button[class*="bg-gradient-to-"] *),
+.theme-light .text-cyan-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-cyan-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-cyan-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+.theme-light .text-sky-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-sky-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-sky-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.theme-light .text-teal-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-teal-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-teal-200:not([data-theme-preserve="true"] *):not(.text-always-white) {
+  color: #0E7490 !important;
+}
+
+.theme-light .text-indigo-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-indigo-6"] *),
+html[data-theme="light"] .text-indigo-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-indigo-6"] *),
+.light .text-indigo-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-indigo-6"] *),
+.theme-light .text-indigo-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-indigo-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-indigo-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+.theme-light .text-violet-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-violet-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-violet-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.theme-light .text-violet-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-violet-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-violet-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+.theme-light .text-purple-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-purple-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-purple-200:not([data-theme-preserve="true"] *):not(.text-always-white) {
+  color: #5B21B6 !important;
+}
+
+.theme-light .text-emerald-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-emerald-6"] *),
+html[data-theme="light"] .text-emerald-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-emerald-6"] *),
+.light .text-emerald-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-emerald-6"] *),
+.theme-light .text-emerald-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-emerald-100:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-emerald-100:not([data-theme-preserve="true"] *):not(.text-always-white) {
+  color: #047857 !important;
+}
+
+.theme-light .text-rose-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-rose-6"] *),
+html[data-theme="light"] .text-rose-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-rose-6"] *),
+.light .text-rose-200:not([data-theme-preserve="true"] *):not(.text-always-white):not(button[class*="bg-rose-6"] *),
+.theme-light .text-pink-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-pink-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-pink-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.theme-light .text-fuchsia-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-fuchsia-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-fuchsia-200:not([data-theme-preserve="true"] *):not(.text-always-white) {
+  color: #9D174D !important;
+}
+
+.theme-light .text-amber-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+html[data-theme="light"] .text-amber-200:not([data-theme-preserve="true"] *):not(.text-always-white),
+.light .text-amber-200:not([data-theme-preserve="true"] *):not(.text-always-white) {
+  color: #B45309 !important;
+}
+
+/* Panels painted only in a dark colour follow the light theme, while scrims stay dark */
+.theme-light .bg-slate-900:not([data-theme-preserve="true"]),
+html[data-theme="light"] .bg-slate-900:not([data-theme-preserve="true"]),
+.light .bg-slate-900:not([data-theme-preserve="true"]),
+.theme-light .bg-slate-800:not([data-theme-preserve="true"]),
+html[data-theme="light"] .bg-slate-800:not([data-theme-preserve="true"]),
+.light .bg-slate-800:not([data-theme-preserve="true"]),
+.theme-light .bg-slate-900\/90:not([data-theme-preserve="true"]),
+html[data-theme="light"] .bg-slate-900\/90:not([data-theme-preserve="true"]),
+.light .bg-slate-900\/90:not([data-theme-preserve="true"]),
+.theme-light .bg-slate-900\/95:not([data-theme-preserve="true"]),
+html[data-theme="light"] .bg-slate-900\/95:not([data-theme-preserve="true"]),
+.light .bg-slate-900\/95:not([data-theme-preserve="true"]),
+.theme-light .bg-slate-800\/90:not([data-theme-preserve="true"]),
+html[data-theme="light"] .bg-slate-800\/90:not([data-theme-preserve="true"]),
+.light .bg-slate-800\/90:not([data-theme-preserve="true"]) {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
 }
 
 .theme-light .text-purple-400:not([data-theme-preserve="true"] *),
@@ -873,8 +1016,16 @@ button, [role="button"], a, input[type="button"], input[type="submit"] {
   transition: transform 0.1s ease, box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 
-button:active:not(:disabled), [role="button"]:active:not(:disabled), a:active {
+button:active:not(:disabled):not(.get-started-trigger), [role="button"]:active:not(:disabled), a:active {
   transform: scale(0.98);
+}
+
+button.get-started-trigger,
+button.get-started-trigger:hover,
+button.get-started-trigger:focus,
+button.get-started-trigger:active {
+  transform: translateX(-50%);
+  transition: box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 
 /* =========================================================================
@@ -960,6 +1111,9 @@ main a[class*="rounded-3xl"][class*="bg-surface-dark"]::before {
   -webkit-mask: 
     linear-gradient(#fff 0 0) content-box, 
     linear-gradient(#fff 0 0);
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
@@ -1033,6 +1187,24 @@ main a[class*="rounded-3xl"][class*="bg-surface-dark"]:hover {
 
 .animate-fade-in {
   animation: fadeIn 0.2s ease-out forwards;
+}
+
+@keyframes tabPreview {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-tab-preview {
+  animation: tabPreview 0.35s ease-out;
+}
+
+@keyframes tabEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-tab-enter {
+  animation: tabEnter 0.4s ease-out;
 }
 
 /* Waving Hand Animation */
@@ -1436,6 +1608,9 @@ input.login-glowing-input-light::placeholder {
   -webkit-mask: 
     linear-gradient(#fff 0 0) content-box, 
     linear-gradient(#fff 0 0);
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
@@ -1578,6 +1753,323 @@ input.login-glowing-input-light::placeholder {
     rgba(0, 0, 0, 0.03) 80%,
     rgba(0, 0, 0, 0) 100%
   );
+}
+
+/* =========================================================================
+   LOGIN — card rim. The campus scene is the same component as the landing page.
+   ========================================================================= */
+
+@property --login-rim-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes login-rim-drift {
+  from {
+    --login-rim-angle: 0deg;
+  }
+  to {
+    --login-rim-angle: 360deg;
+  }
+}
+
+@keyframes login-rim-lap {
+  from {
+    --login-rim-angle: 0deg;
+  }
+  to {
+    --login-rim-angle: 360deg;
+  }
+}
+
+@keyframes login-sign-in-pulse-light {
+  0% {
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.3);
+  }
+  42% {
+    box-shadow:
+      0 0 0 2px rgba(24, 226, 236, 0.9),
+      0 0 26px rgba(24, 226, 236, 0.5),
+      0 10px 24px rgba(37, 99, 235, 0.28);
+  }
+  100% {
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.3);
+  }
+}
+
+@keyframes login-sign-in-pulse-dark {
+  0% {
+    box-shadow: 0 10px 24px rgba(19, 200, 217, 0.35);
+  }
+  42% {
+    box-shadow:
+      0 0 0 2px #18e2ec,
+      0 0 32px rgba(24, 226, 236, 0.7),
+      0 12px 28px rgba(19, 200, 217, 0.45);
+  }
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(24, 226, 236, 0.45),
+      0 10px 26px rgba(19, 200, 217, 0.4);
+  }
+}
+
+.login-card-rim {
+  position: absolute;
+  inset: 0;
+  border-radius: 32px;
+  pointer-events: none;
+  z-index: 40;
+}
+
+@supports ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+  .login-card-rim {
+    padding: 1.5px;
+    background: conic-gradient(
+      from var(--login-rim-angle),
+      rgba(24, 226, 236, 0) 0deg,
+      rgba(24, 226, 236, 0) 286deg,
+      rgba(24, 226, 236, 0.18) 318deg,
+      #18e2ec 342deg,
+      #13c8d9 354deg,
+      rgba(24, 226, 236, 0) 360deg
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+  }
+
+  .login-card-rim--light.login-card-rim--quiet {
+    opacity: 0.32;
+    animation: login-rim-drift 56s linear infinite;
+  }
+
+  .login-card-rim--dark.login-card-rim--quiet {
+    opacity: 0.5;
+    animation: login-rim-drift 56s linear infinite;
+  }
+
+  .login-card-rim--light.login-card-rim--lap {
+    opacity: 0.88;
+    animation: login-rim-lap 1.9s cubic-bezier(0.22, 0.7, 0.2, 1) 1 forwards;
+  }
+
+  .login-card-rim--dark.login-card-rim--lap {
+    opacity: 1;
+    animation: login-rim-lap 1.9s cubic-bezier(0.22, 0.7, 0.2, 1) 1 forwards;
+  }
+
+  .login-card-rim--stopped {
+    opacity: 0;
+    animation: none;
+  }
+}
+
+.login-sign-in-pulse {
+  transition-property: transform, background-color, border-color, color, opacity;
+}
+
+.login-sign-in-pulse.login-sign-in--light {
+  animation: login-sign-in-pulse-light 1.15s ease-out 1;
+}
+
+.login-sign-in-pulse.login-sign-in--dark {
+  animation: login-sign-in-pulse-dark 1.15s ease-out 1 forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-card-rim--quiet,
+  .login-card-rim--lap,
+  .login-card-rim--stopped {
+    animation: none !important;
+  }
+
+  @supports ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+    .login-card-rim--light.login-card-rim--quiet,
+    .login-card-rim--dark.login-card-rim--quiet,
+    .login-card-rim--light.login-card-rim--lap,
+    .login-card-rim--dark.login-card-rim--lap {
+      animation: none !important;
+      --login-rim-angle: 0deg;
+      background: #18e2ec;
+    }
+
+    .login-card-rim--light.login-card-rim--quiet {
+      opacity: 0.34;
+    }
+
+    .login-card-rim--dark.login-card-rim--quiet {
+      opacity: 0.48;
+    }
+
+    .login-card-rim--light.login-card-rim--lap {
+      opacity: 0.62;
+    }
+
+    .login-card-rim--dark.login-card-rim--lap {
+      opacity: 0.8;
+    }
+
+    .login-card-rim--stopped {
+      opacity: 0;
+      background: transparent;
+    }
+  }
+
+  .login-sign-in-pulse.login-sign-in--light,
+  .login-sign-in-pulse.login-sign-in--dark {
+    animation: none;
+  }
+
+  .login-sign-in-pulse.login-sign-in--light {
+    box-shadow:
+      0 0 0 1px rgba(24, 226, 236, 0.4),
+      0 10px 22px rgba(37, 99, 235, 0.28);
+  }
+
+  .login-sign-in-pulse.login-sign-in--dark {
+    box-shadow:
+      0 0 0 1px rgba(24, 226, 236, 0.55),
+      0 10px 24px rgba(19, 200, 217, 0.4);
+  }
+}
+
+/* Shared glass fields for registration, recovery, and school forms.
+   Card stays translucent; focused fields solidify so typed text stays clear. */
+.portal-glass {
+  background: rgba(255, 255, 255, 0.82) !important;
+  border-color: rgba(255, 255, 255, 0.86) !important;
+  color: #0f172a;
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.16);
+}
+
+html.dark .portal-glass {
+  background: rgba(2, 6, 23, 0.78) !important;
+  border-color: rgba(255, 255, 255, 0.24) !important;
+  color: #ffffff;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+html.light .portal-scene .bg-slate-950:not(input):not(select):not(textarea),
+html.light .portal-scene .bg-slate-900:not(input):not(select):not(textarea),
+html.light .portal-scene .bg-slate-800:not(input):not(select):not(textarea),
+html.light .portal-scene .bg-surface-dark:not(input):not(select):not(textarea),
+html.light .portal-scene .bg-surface-darker:not(input):not(select):not(textarea),
+html.light .portal-scene .bg-slate-50:not(input):not(select):not(textarea),
+html.light .portal-scene .bg-white\/5,
+html.light .portal-scene .bg-white\/10 {
+  background-color: rgba(255, 255, 255, 0.62) !important;
+  border-color: rgba(15, 23, 42, 0.14);
+}
+
+html.dark .portal-scene .bg-slate-950:not(input):not(select):not(textarea),
+html.dark .portal-scene .bg-slate-900:not(input):not(select):not(textarea),
+html.dark .portal-scene .bg-slate-800:not(input):not(select):not(textarea),
+html.dark .portal-scene .bg-surface-dark:not(input):not(select):not(textarea),
+html.dark .portal-scene .bg-surface-darker:not(input):not(select):not(textarea),
+html.dark .portal-scene .bg-slate-50:not(input):not(select):not(textarea) {
+  background-color: rgba(0, 0, 0, 0.42) !important;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Titles sitting on the campus photo stay light in both modes. */
+.portal-scene .portal-hero :is(h1, h2, h3, .text-white, span.font-display, span.uppercase) {
+  color: #ffffff !important;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.75);
+}
+
+.portal-scene .portal-hero :is(p, .text-slate-300, .text-slate-400) {
+  color: #e2e8f0 !important;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.65);
+}
+
+/* Inside the glass card, theme colors keep typed values readable. */
+html.light .portal-glass :is(h1, h2, h3, p, label, span, .text-white, .text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400, .text-slate-500, .text-slate-600, .text-slate-700) {
+  color: #0f172a !important;
+  text-shadow: none;
+}
+
+html.dark .portal-glass :is(h1, h2, h3, .text-white) {
+  color: #ffffff;
+  text-shadow: none;
+}
+
+html.dark .portal-glass :is(p, label, .text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400) {
+  color: #e2e8f0;
+  text-shadow: none;
+}
+
+html.light .portal-glass :is(.text-cyan-300, .text-cyan-400, .text-blue-300, .text-blue-400, .text-brand-400) {
+  color: #0e7490;
+}
+
+html.light .portal-glass :is(.text-amber-300, .text-amber-400) {
+  color: #b45309;
+}
+
+html.light .portal-glass :is(.bg-blue-600, .bg-amber-600, .bg-emerald-600, .bg-brand-500, .bg-brand-600, .from-blue-600, .from-emerald-600, .from-cyan-500, .bg-cyan-500, .bg-indigo-600),
+html.light .portal-glass :is(.bg-blue-600, .bg-amber-600, .bg-emerald-600, .bg-brand-500, .bg-brand-600, .from-blue-600, .from-emerald-600, .from-cyan-500, .bg-cyan-500, .bg-indigo-600) :is(span, .text-white) {
+  color: #ffffff !important;
+}
+
+html.light .portal-scene :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]) {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  color: #0f172a !important;
+  border-color: rgba(15, 23, 42, 0.24) !important;
+  caret-color: #0f172a;
+}
+
+html.light .portal-scene :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):focus {
+  background-color: #ffffff !important;
+  border-color: #2563eb !important;
+}
+
+html.dark .portal-scene :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]) {
+  background-color: rgba(0, 0, 0, 0.72) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.36) !important;
+  caret-color: #ffffff;
+}
+
+html.dark .portal-scene :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):focus {
+  background-color: rgba(0, 0, 0, 0.88) !important;
+  border-color: #67e8f9 !important;
+}
+
+html.light .portal-scene :is(input, textarea)::placeholder {
+  color: #64748b !important;
+}
+
+html.dark .portal-scene :is(input, textarea)::placeholder {
+  color: #94a3b8 !important;
+}
+
+html.light .portal-scene option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+html.dark .portal-scene option {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+html.light .portal-scene input:-webkit-autofill {
+  -webkit-text-fill-color: #0f172a !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+}
+
+html.dark .portal-scene input:-webkit-autofill {
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.88) inset !important;
 }
 
 

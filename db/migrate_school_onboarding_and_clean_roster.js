@@ -1,13 +1,11 @@
 const db = require('./db');
-const bcrypt = require('bcryptjs');
-
 /**
  * Migration & Schema Initialization for:
  * 1. Secured School Applications Table (Principal Registration & Accreditation)
  * 2. School-Specific Subjects, Streams, and Home Languages
  * 3. Colleague / Staff Invites Table (Teachers & Coaches)
  * 4. Dynamic Classes & Homeroom Teacher Linking
- * 5. Clean 2-Per-Role Production Testing Roster (Zero hardcoded percentages/fake reports)
+ * 5. Demo roster password resets are disabled
  */
 async function migrateSchoolOnboardingAndCleanRoster() {
   console.log('[MIGRATION] Starting School Onboarding Schema & Clean Roster Setup...');
@@ -66,6 +64,7 @@ async function migrateSchoolOnboardingAndCleanRoster() {
       ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS declined_reason TEXT;
       ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS created_school_id INTEGER REFERENCES schools(id) ON DELETE SET NULL;
       ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS password_hash TEXT;
+      ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS logo_stored_name VARCHAR(80);
     `);
 
     // 2. Add School-Specific Offerings & SACE Columns to Schools Table
@@ -99,248 +98,193 @@ async function migrateSchoolOnboardingAndCleanRoster() {
 
       ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS assigned_classes TEXT[] DEFAULT '{}';
       ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS sports_coached TEXT[] DEFAULT '{}';
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS id_number VARCHAR(50);
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS qualifications VARCHAR(255);
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS experience_years INTEGER;
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS confirmed_subjects TEXT[] DEFAULT '{}';
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS confirmed_grades INTEGER[] DEFAULT '{}';
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS confirmed_classes TEXT[] DEFAULT '{}';
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS approval_token VARCHAR(64);
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS approved_by INTEGER;
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP;
+      ALTER TABLE staff_invites ADD COLUMN IF NOT EXISTS declined_reason TEXT;
+      ALTER TABLE staff_invites DROP CONSTRAINT IF EXISTS staff_invites_status_check;
     `);
 
-    // 4. Ensure classes has school_id and room_number
+    // 4. Ensure classes has school_id and room_number.
+    // The column is added without a default school. A missing school id is not assigned.
     await db.query(`
-      ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id INTEGER REFERENCES schools(id) DEFAULT 1;
+      ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id INTEGER;
       ALTER TABLE classes ADD COLUMN IF NOT EXISTS room_number VARCHAR(50);
+      ALTER TABLE classes ALTER COLUMN school_id DROP DEFAULT;
+    `);
+    const { ensureColumns } = require('../public/src/services/principalActivation');
+    await ensureColumns(db);
+    const classOrphans = await db.query(`
+      SELECT COUNT(*)::int AS total
+      FROM classes c
+      WHERE c.school_id IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM schools s WHERE s.id = c.school_id)
+    `);
+    const orphanClasses = classOrphans.rows[0].total;
+    const classForeignKey = await db.query(
+      `SELECT 1 FROM pg_constraint WHERE conname = 'classes_school_id_fkey'`
+    );
+    if (!classForeignKey.rows.length) {
+      if (orphanClasses === 0) {
+        await db.query(`
+          ALTER TABLE classes
+          ADD CONSTRAINT classes_school_id_fkey
+          FOREIGN KEY (school_id) REFERENCES schools(id)
+          ON DELETE RESTRICT
+        `);
+      } else {
+        // PostgreSQL NOT VALID checks every new or updated row and leaves the
+        // existing orphaned rows untouched until VALIDATE CONSTRAINT is run.
+        await db.query(`
+          ALTER TABLE classes
+          ADD CONSTRAINT classes_school_id_fkey
+          FOREIGN KEY (school_id) REFERENCES schools(id)
+          ON DELETE RESTRICT
+          NOT VALID
+        `);
+        console.warn(`[MIGRATION] Kept ${orphanClasses} classes that point at a missing school. New classes cannot use a missing school.`);
+      }
+    }
+    await db.query(`
+      ALTER TABLE classes ADD COLUMN IF NOT EXISTS ownership_quarantine BOOLEAN NOT NULL DEFAULT FALSE;
+      ALTER TABLE classes ADD COLUMN IF NOT EXISTS ownership_quarantine_reason TEXT;
+    `);
+    const quarantined = await db.query(`
+      UPDATE classes c
+      SET ownership_quarantine = TRUE,
+          ownership_quarantine_reason = 'The school id on this class is not in the schools table. The original school was not identified, so the class was not assigned to another school.'
+      WHERE c.school_id IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM schools s WHERE s.id = c.school_id)
+        AND c.ownership_quarantine = FALSE
+      RETURNING id
+    `);
+    if (quarantined.rows.length) {
+      console.warn(`[MIGRATION] Quarantined ${quarantined.rows.length} classes whose school could not be identified. They were not deleted or reassigned.`);
+    }
+    await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_set_at TIMESTAMPTZ');
+    await db.query(`
+      DO $$
+      DECLARE constraint_name text;
+      BEGIN
+        FOR constraint_name IN
+          SELECT conname FROM pg_constraint
+          WHERE conrelid = 'school_applications'::regclass
+            AND contype = 'c'
+            AND pg_get_constraintdef(oid) ILIKE '%status%'
+        LOOP
+          EXECUTE format('ALTER TABLE school_applications DROP CONSTRAINT %I', constraint_name);
+        END LOOP;
+      END $$;
+      ALTER TABLE school_applications ADD CONSTRAINT school_applications_status_check
+        CHECK (status IN ('pending_review', 'under_review', 'approved', 'declined', 'withdrawn'));
+      ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ;
+      ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS withdrawn_at TIMESTAMPTZ;
+      ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS legal_hold BOOLEAN NOT NULL DEFAULT FALSE;
+      ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS legal_hold_reason TEXT;
+      ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS investigation_hold BOOLEAN NOT NULL DEFAULT FALSE;
+      ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS investigation_hold_reason TEXT;
+      ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS privacy_request_open BOOLEAN NOT NULL DEFAULT FALSE;
+      ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS privacy_request_note TEXT;
+    `);
+    await db.query(`
+      UPDATE school_applications
+      SET last_activity_at = COALESCE(updated_at, created_at, NOW())
+      WHERE last_activity_at IS NULL
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS retention_policy (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        automatic_actions_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        pending_days INTEGER NOT NULL DEFAULT 90,
+        declined_months INTEGER NOT NULL DEFAULT 12,
+        approved_after_activation_days INTEGER NOT NULL DEFAULT 90,
+        withdrawn_days INTEGER NOT NULL DEFAULT 30,
+        abandoned_days INTEGER NOT NULL DEFAULT 90,
+        policy_note TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    await db.query(`
+      INSERT INTO retention_policy (
+        id, automatic_actions_enabled, pending_days, declined_months,
+        approved_after_activation_days, withdrawn_days, abandoned_days, policy_note
+      ) VALUES (
+        1, FALSE, 90, 12, 90, 30, 90,
+        'Provisionally adopted Geleza SA operational periods. These are not statutory POPIA deadlines. Automatic deletion and anonymisation stay disabled until the privacy notice has received the required review and approval.'
+      )
+      ON CONFLICT (id) DO NOTHING
+    `);
+    await db.query(`
+      UPDATE retention_policy
+      SET policy_note = 'Provisionally adopted Geleza SA operational periods. These are not statutory POPIA deadlines. Automatic deletion and anonymisation stay disabled until the privacy notice has received the required review and approval.',
+          updated_at = NOW()
+      WHERE id = 1
+        AND automatic_actions_enabled = FALSE
+        AND policy_note IS DISTINCT FROM 'Provisionally adopted Geleza SA operational periods. These are not statutory POPIA deadlines. Automatic deletion and anonymisation stay disabled until the privacy notice has received the required review and approval.'
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS application_payment_grants (
+        application_id INTEGER PRIMARY KEY REFERENCES applications(id) ON DELETE CASCADE,
+        otp_hash VARCHAR(64),
+        otp_expires_at TIMESTAMPTZ,
+        otp_attempts INTEGER NOT NULL DEFAULT 0,
+        access_hash VARCHAR(64),
+        access_expires_at TIMESTAMPTZ,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS sensitive_email_queue (
+        id SERIAL PRIMARY KEY,
+        kind VARCHAR(40) NOT NULL,
+        recipient_hash VARCHAR(64) NOT NULL,
+        body TEXT,
+        expires_at TIMESTAMPTZ NOT NULL,
+        delivered_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
     `);
 
-    console.log('[MIGRATION] Tables & schema verified. Establishing clean 2-per-role accounts...');
+    console.log('[MIGRATION] Schema verified. Demo roster password resets are disabled.');
 
-    // 5. Clean 2-per-role Testing Roster Setup
-    const defaultPassword = 'password123';
-    const defaultHash = await bcrypt.hash(defaultPassword, 10);
-    const superadminPass = await bcrypt.hash('#Makola#$5$', 10);
-
-    // Ensure roles exist
-    const rolesRes = await db.query('SELECT id, name FROM roles');
-    const roleMap = {};
-    rolesRes.rows.forEach(r => { roleMap[r.name] = r.id; });
-    const adminRoleId = roleMap['admin'] || 1;
-    const parentRoleId = roleMap['parent'] || 2;
-    const learnerRoleId = roleMap['learner'] || 3;
-    const teacherRoleId = roleMap['teacher'] || 4;
-
-    // A. 2 Geleza Executive / Admins
-    // Executive 1: Tshepho Letlalo Makula (SuperAdmin)
-    await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
-      VALUES ('admin@gelezasa.co.za', $1, $2, NULL, TRUE, 'Tshepho Letlalo', 'Makula', '0209205494088', '0692606618', 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        is_superadmin = TRUE,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname;
-    `, [superadminPass, adminRoleId]);
-
-    // Executive 2: Executive Director (Geleza SA Operations)
-    await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
-      VALUES ('exec@gelezasa.co.za', $1, $2, NULL, TRUE, 'Geleza Executive', 'Director', '8001015099088', '0123730000', 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        is_superadmin = TRUE,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname;
-    `, [defaultHash, adminRoleId]);
-
-    const rosterSchools = await db.query('SELECT id FROM schools WHERE id IN (2, 3)');
-    if (rosterSchools.rows.length < 2) {
-      console.log('[MIGRATION] No seeded schools. A principal registers a school before a school roster is created.');
+    const duplicateEmis = await db.query(`
+      SELECT emis_number
+      FROM schools
+      WHERE emis_number IS NOT NULL AND btrim(emis_number) <> ''
+      GROUP BY emis_number
+      HAVING COUNT(*) > 1
+    `);
+    if (duplicateEmis.rows.length === 0) {
+      await db.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS schools_emis_number_unique
+        ON schools (emis_number)
+        WHERE emis_number IS NOT NULL AND btrim(emis_number) <> ''
+      `);
     } else {
-    // B. 2 School Principals (Showing Multi-School Isolation between School 3 and School 2)
-    // Principal 1: Makgoka High School (School 3)
-    await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
-      VALUES ('principal@makgoka.co.za', $1, $2, 3, FALSE, 'K. E.', 'Molepo', '8005200494082', '0152660022', 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        school_id = 3,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname;
-    `, [defaultHash, adminRoleId]);
-
-    // Principal 2: Mountainview Senior Secondary (School 2)
-    await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
-      VALUES ('principal@mountainview.co.za', $1, $2, 2, FALSE, 'M. S.', 'Phasha', '7803155494081', '0152671100', 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        school_id = 2,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname;
-    `, [defaultHash, adminRoleId]);
-
-    // C. 2 Teachers (Each assigned to their school, class, and subjects)
-    // Teacher 1: Mr. Thabang Maetane (Makgoka High School - Science Stream & Class Teacher for 10A)
-    const t1UserRes = await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
-      VALUES ('teacher.science@gelezasa.co.za', $1, $2, 3, FALSE, 'Thabang', 'Maetane', '0208285930086', '0827637087', 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        school_id = 3,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname
-      RETURNING id;
-    `, [defaultHash, teacherRoleId]);
-    const teacher1Id = t1UserRes.rows[0].id;
-
-    await db.query(`
-      INSERT INTO employees (user_id, full_name, surname, department_id, subjects, subject_codes, grades_taught, classes_taught, school_id, phone, email)
-      VALUES ($1, 'Thabang', 'Maetane', 2, ARRAY['Physical Sciences','Life Sciences','Mathematics'], ARRAY['PHSC10','LFSC10','MATH10S'], ARRAY[10,11], ARRAY['10A'], 3, '0827637087', 'teacher.science@gelezasa.co.za')
-      ON CONFLICT (user_id) DO UPDATE SET
-        subjects = EXCLUDED.subjects,
-        subject_codes = EXCLUDED.subject_codes,
-        grades_taught = EXCLUDED.grades_taught,
-        classes_taught = EXCLUDED.classes_taught,
-        school_id = 3;
-    `, [teacher1Id]);
-
-    // Teacher 2: Ms. Minenhle Dlungwane (Mountainview High School - Commerce Stream & Class Teacher for 10B)
-    const t2UserRes = await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country)
-      VALUES ('teacher.commerce@gelezasa.co.za', $1, $2, 2, FALSE, 'Minenhle', 'Dlungwane', '0205101032085', '0711943962', 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        school_id = 2,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname
-      RETURNING id;
-    `, [defaultHash, teacherRoleId]);
-    const teacher2Id = t2UserRes.rows[0].id;
-
-    await db.query(`
-      INSERT INTO employees (user_id, full_name, surname, department_id, subjects, subject_codes, grades_taught, classes_taught, school_id, phone, email)
-      VALUES ($1, 'Minenhle', 'Dlungwane', 2, ARRAY['Accounting','Business Studies','Economics'], ARRAY['ACC10','BUSS10','ECON10'], ARRAY[10,11], ARRAY['10B'], 2, '0711943962', 'teacher.commerce@gelezasa.co.za')
-      ON CONFLICT (user_id) DO UPDATE SET
-        subjects = EXCLUDED.subjects,
-        subject_codes = EXCLUDED.subject_codes,
-        grades_taught = EXCLUDED.grades_taught,
-        classes_taught = EXCLUDED.classes_taught,
-        school_id = 2;
-    `, [teacher2Id]);
-
-    // D. Dynamic Classes Setup & Homeroom Link
-    await db.query(`
-      INSERT INTO classes (name, grade, stream, homeroom_teacher_id, school_id)
-      VALUES 
-        ('10A', 10, 'Science', $1, 3),
-        ('10B', 10, 'Commerce', $2, 2)
-      ON CONFLICT (name) DO UPDATE SET
-        stream = EXCLUDED.stream,
-        homeroom_teacher_id = EXCLUDED.homeroom_teacher_id,
-        school_id = EXCLUDED.school_id;
-    `, [teacher1Id, teacher2Id]);
-
-    const class10ARes = await db.query(`SELECT id FROM classes WHERE name = '10A'`);
-    const class10BRes = await db.query(`SELECT id FROM classes WHERE name = '10B'`);
-    const class10AId = class10ARes.rows[0]?.id;
-    const class10BId = class10BRes.rows[0]?.id;
-
-    // E. 2 Parents
-    // Parent 1: Mrs. Sarah Walters (Makgoka High School)
-    const p1UserRes = await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country, parent_type)
-      VALUES ('parent.walters@gelezasa.co.za', $1, $2, 3, FALSE, 'Sarah', 'Walters', '7905150099081', '0820000003', 'South Africa', 'Mother')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        school_id = 3,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname
-      RETURNING id;
-    `, [defaultHash, parentRoleId]);
-    const parent1Id = p1UserRes.rows[0].id;
-
-    // Parent 2: Mr. Matome Modiba (Mountainview High School)
-    const p2UserRes = await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, phone, country, parent_type)
-      VALUES ('parent.modiba@gelezasa.co.za', $1, $2, 2, FALSE, 'Matome', 'Modiba', '7608125099082', '0820000004', 'South Africa', 'Father')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        school_id = 2,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname
-      RETURNING id;
-    `, [defaultHash, parentRoleId]);
-    const parent2Id = p2UserRes.rows[0].id;
-
-    // F. 2 Learners (Each strictly linked to their Parent, Class Teacher, and Subjects)
-    // Learner 1: Lerato Walters (Grade 10A Science, Makgoka High)
-    const l1UserRes = await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, dob, gender, phone, country)
-      VALUES ('learner.walters@gelezasa.co.za', $1, $2, 3, FALSE, 'Lerato', 'Walters', '0901014089081', '2009-01-01', 'Female', '0820000010', 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        school_id = 3,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname
-      RETURNING id;
-    `, [defaultHash, learnerRoleId]);
-    const learner1UserId = l1UserRes.rows[0].id;
-
-    const child1Res = await db.query(`
-      INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, home_language, school_id, subjects)
-      VALUES (
-        $1, 'Lerato', 'Walters', $2, 'GSA-MKG-001', 10, $3, 'Science', 'Sepedi Home Language', 3,
-        ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Sepedi Home Language', 'Life Orientation']
-      )
-      ON CONFLICT (learner_user_id) DO UPDATE SET
-        parent_id = EXCLUDED.parent_id,
-        class_id = EXCLUDED.class_id,
-        school_id = EXCLUDED.school_id,
-        stream = EXCLUDED.stream,
-        home_language = EXCLUDED.home_language,
-        subjects = EXCLUDED.subjects
-      RETURNING id;
-    `, [learner1UserId, parent1Id, class10AId]);
-    const child1Id = child1Res.rows[0].id;
-
-    await db.query(`
-      INSERT INTO parent_children (parent_id, child_id, relationship, is_primary)
-      VALUES ($1, $2, 'Mother', TRUE)
-      ON CONFLICT (parent_id, child_id) DO NOTHING;
-    `, [parent1Id, child1Id]);
-
-    // Learner 2: Karabo Modiba (Grade 10B Commerce, Mountainview High)
-    const l2UserRes = await db.query(`
-      INSERT INTO users (email, password_hash, role_id, school_id, is_superadmin, full_name, surname, id_number, dob, gender, phone, country)
-      VALUES ('learner.modiba@gelezasa.co.za', $1, $2, 2, FALSE, 'Karabo', 'Modiba', '0905061234567', '2009-05-06', 'Male', '0820000020', 'South Africa')
-      ON CONFLICT (email) DO UPDATE SET
-        role_id = EXCLUDED.role_id,
-        school_id = 2,
-        full_name = EXCLUDED.full_name,
-        surname = EXCLUDED.surname
-      RETURNING id;
-    `, [defaultHash, learnerRoleId]);
-    const learner2UserId = l2UserRes.rows[0].id;
-
-    const child2Res = await db.query(`
-      INSERT INTO children (learner_user_id, full_name, surname, parent_id, learner_number, grade, class_id, stream, home_language, school_id, subjects)
-      VALUES (
-        $1, 'Karabo', 'Modiba', $2, 'GSA-MTV-002', 10, $3, 'Commerce', 'isiZulu Home Language', 2,
-        ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'isiZulu Home Language', 'Life Orientation']
-      )
-      ON CONFLICT (learner_user_id) DO UPDATE SET
-        parent_id = EXCLUDED.parent_id,
-        class_id = EXCLUDED.class_id,
-        school_id = EXCLUDED.school_id,
-        stream = EXCLUDED.stream,
-        home_language = EXCLUDED.home_language,
-        subjects = EXCLUDED.subjects
-      RETURNING id;
-    `, [learner2UserId, parent2Id, class10BId]);
-    const child2Id = child2Res.rows[0].id;
-
-    await db.query(`
-      INSERT INTO parent_children (parent_id, child_id, relationship, is_primary)
-      VALUES ($1, $2, 'Father', TRUE)
-      ON CONFLICT (parent_id, child_id) DO NOTHING;
-    `, [parent2Id, child2Id]);
-
+      console.warn('[MIGRATION] Skipped unique EMIS index because duplicate school EMIS values already exist.');
     }
-    console.log('[MIGRATION] Demo roster checked. Existing passwords were left unchanged.');
+    const openDuplicates = await db.query(`
+      SELECT emis_number
+      FROM school_applications
+      WHERE status IN ('pending_review', 'under_review')
+      GROUP BY emis_number
+      HAVING COUNT(*) > 1
+    `);
+    if (openDuplicates.rows.length === 0) {
+      await db.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS school_applications_open_emis_unique
+        ON school_applications (emis_number)
+        WHERE status IN ('pending_review', 'under_review')
+      `);
+    } else {
+      console.warn('[MIGRATION] Skipped open-application EMIS index because duplicate pending applications already exist.');
+    }
 
   } catch (err) {
     console.error('[MIGRATION ERROR] Failed to run school onboarding migration:', err.message);

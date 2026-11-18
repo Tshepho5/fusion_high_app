@@ -184,23 +184,92 @@ exports.getMySubjectsOverview = async (req, res) => {
         let totalAvgSum = 0;
         let validAvgCount = 0;
 
+        let learnerClassName = `${learner.grade || 10}A`;
+        let classTeacherFormatted = 'To Be Assigned';
+        let classTeacherEmail = null;
+        try {
+            let classRes = null;
+            if (learner.class_id) {
+                classRes = await db.query(
+                    `SELECT c.id, c.name as class_name, 
+                            COALESCE(u_ht.full_name || ' ' || u_ht.surname, u_at.full_name || ' ' || u_at.surname) as class_teacher_name,
+                            COALESCE(u_ht.email, u_at.email) as class_teacher_email
+                     FROM classes c
+                     LEFT JOIN users u_ht ON c.homeroom_teacher_id = u_ht.id
+                     LEFT JOIN users u_at ON c.assigned_teacher_id = u_at.id
+                     WHERE c.id = $1 LIMIT 1`,
+                    [learner.class_id]
+                );
+            }
+            if (!classRes || classRes.rows.length === 0) {
+                classRes = await db.query(
+                    `SELECT c.id, c.name as class_name, 
+                            COALESCE(u_ht.full_name || ' ' || u_ht.surname, u_at.full_name || ' ' || u_at.surname) as class_teacher_name,
+                            COALESCE(u_ht.email, u_at.email) as class_teacher_email
+                     FROM classes c
+                     LEFT JOIN users u_ht ON c.homeroom_teacher_id = u_ht.id
+                     LEFT JOIN users u_at ON c.assigned_teacher_id = u_at.id
+                     WHERE c.grade = $1 AND (c.stream = $2 OR c.stream = 'General')
+                     ORDER BY c.id ASC LIMIT 1`,
+                    [learner.grade || 10, learner.stream || 'General']
+                );
+            }
+            if (classRes && classRes.rows.length > 0) {
+                learnerClassName = classRes.rows[0].class_name || learnerClassName;
+                classTeacherFormatted = classRes.rows[0].class_teacher_name?.trim() || classTeacherFormatted;
+                classTeacherEmail = classRes.rows[0].class_teacher_email || null;
+                if (!learner.class_id && classRes.rows[0].id && learner.id) {
+                    await db.query(`UPDATE children SET class_id = $1 WHERE id = $2`, [classRes.rows[0].id, learner.id]).catch(() => {});
+                }
+            }
+        } catch (_) {}
+
         for (const subjName of subjectsList) {
             let teacherFormatted = 'To Be Assigned';
             try {
+                // 1. Direct match in teacher_assignments by subject, grade, and class
                 let teacherRes = await db.query(
                     `SELECT u.full_name, u.surname 
-                     FROM employees e 
-                     JOIN users u ON e.user_id = u.id 
-                     WHERE EXISTS (
-                         SELECT 1 FROM unnest(COALESCE(e.subjects, ARRAY[]::TEXT[])) s 
-                         WHERE s ILIKE $1 OR $1 ILIKE s
-                     )
-                     AND ($2 = ANY(COALESCE(e.grades_taught, ARRAY[]::INT[])) OR ARRAY_LENGTH(e.grades_taught, 1) IS NULL OR e.grades_taught = '{}')
+                     FROM teacher_assignments ta
+                     JOIN users u ON ta.teacher_id = u.id 
+                     WHERE (ta.subject_name ILIKE $1 OR $1 ILIKE ta.subject_name)
+                       AND (ta.grade_level = $2 OR $2 IS NULL)
+                       AND ($3::int IS NULL OR ta.class_id = $3 OR ta.class_name ILIKE $4)
                      LIMIT 1`,
-                    [`%${subjName}%`, learner.grade || 10]
-                );
+                    [`%${subjName}%`, learner.grade || 10, learner.class_id || null, `%${learnerClassName}%`]
+                ).catch(() => ({ rows: [] }));
 
-                if (teacherRes.rows.length === 0) {
+                // 2. Direct match in teacher_assignments by subject and grade
+                if (!teacherRes || teacherRes.rows.length === 0) {
+                    teacherRes = await db.query(
+                        `SELECT u.full_name, u.surname 
+                         FROM teacher_assignments ta
+                         JOIN users u ON ta.teacher_id = u.id 
+                         WHERE (ta.subject_name ILIKE $1 OR $1 ILIKE ta.subject_name)
+                           AND (ta.grade_level = $2 OR $2 IS NULL)
+                         LIMIT 1`,
+                        [`%${subjName}%`, learner.grade || 10]
+                    ).catch(() => ({ rows: [] }));
+                }
+
+                // 3. Match in employees table by subjects and grades_taught
+                if (!teacherRes || teacherRes.rows.length === 0) {
+                    teacherRes = await db.query(
+                        `SELECT u.full_name, u.surname 
+                         FROM employees e 
+                         JOIN users u ON e.user_id = u.id 
+                         WHERE EXISTS (
+                             SELECT 1 FROM unnest(COALESCE(e.subjects, ARRAY[]::TEXT[])) s 
+                             WHERE s ILIKE $1 OR $1 ILIKE s
+                         )
+                         AND ($2 = ANY(COALESCE(e.grades_taught, ARRAY[]::INT[])) OR ARRAY_LENGTH(e.grades_taught, 1) IS NULL OR e.grades_taught = '{}')
+                         LIMIT 1`,
+                        [`%${subjName}%`, learner.grade || 10]
+                    ).catch(() => ({ rows: [] }));
+                }
+
+                // 4. Fallback match in employees table by subjects array
+                if (!teacherRes || teacherRes.rows.length === 0) {
                     teacherRes = await db.query(
                         `SELECT u.full_name, u.surname 
                          FROM employees e 
@@ -211,10 +280,10 @@ exports.getMySubjectsOverview = async (req, res) => {
                          )
                          LIMIT 1`,
                         [`%${subjName}%`]
-                    );
+                    ).catch(() => ({ rows: [] }));
                 }
 
-                if (teacherRes.rows[0]) {
+                if (teacherRes && teacherRes.rows[0]) {
                     const fn = teacherRes.rows[0].full_name || '';
                     const sn = teacherRes.rows[0].surname || '';
                     teacherFormatted = `${fn.trim()} ${sn.trim()}`.trim() || 'To Be Assigned';
@@ -338,6 +407,10 @@ exports.getMySubjectsOverview = async (req, res) => {
         } catch (_) {}
 
         res.json({
+            class_name: learnerClassName,
+            class_teacher: classTeacherFormatted,
+            class_teacher_name: classTeacherFormatted,
+            class_teacher_email: classTeacherEmail,
             enrolled_subjects_count: subjectsList.length,
             upcoming_assessments_count: totalPending || 2,
             assignments_due_count: totalPending,
@@ -1800,7 +1873,10 @@ function mapLearnerSubjectQuery(raw) {
     if (s.includes('acc')) return 'Accounting';
     if (s.includes('bus')) return 'Business Studies';
     if (s.includes('econ')) return 'Economics';
-    if (s.includes('eng')) return 'English FAL';
+    if (s.includes('eng')) {
+        if (s.includes('home') || s.includes('hl')) return 'English Home Language';
+        return 'English FAL';
+    }
     if (s.includes('lit')) return 'Mathematical Literacy';
     if (s.includes('tour')) return 'Tourism';
     if (s.includes('geog')) return 'Geography';
@@ -1835,13 +1911,24 @@ exports.getSubjectResources = async (req, res) => {
         const userId = req.user.id;
         const { subject, grade: queryGrade, resource_type, search } = req.query;
 
-        // Fetch learner's actual enrolled grade, stream, and home language if user is a learner
+        // Fetch learner's actual enrolled grade, stream, home language, and class_id
         let dbGrade = null;
         let homeLanguage = null;
+        let learnerClassId = null;
         if (req.user && req.user.role === 'learner') {
             const child = await getOrLinkLearnerChild(req.user);
             dbGrade = child?.grade;
             homeLanguage = child?.home_language;
+            learnerClassId = child?.class_id;
+        } else if (req.user && req.user.role === 'parent' && req.query.child_id) {
+            try {
+                const childRes = await db.query('SELECT grade, home_language, class_id FROM children WHERE id = $1', [req.query.child_id]);
+                if (childRes.rows[0]) {
+                    dbGrade = childRes.rows[0].grade;
+                    homeLanguage = childRes.rows[0].home_language;
+                    learnerClassId = childRes.rows[0].class_id;
+                }
+            } catch (e) {}
         }
 
         // Prioritize explicit query grade, then database enrolled grade, fallback to 10
@@ -1862,11 +1949,31 @@ exports.getSubjectResources = async (req, res) => {
                 OR $3 ILIKE '%' || t.subject || '%'
                 OR t.subject ILIKE '%' || $3 || '%'
                 OR ($1 = '%' AND t.grade = $2)
+                OR (LOWER(t.subject) LIKE '%math%' AND LOWER($3) LIKE '%math%' AND LOWER(t.subject) NOT LIKE '%lit%' AND LOWER($3) NOT LIKE '%lit%')
+                OR (LOWER(t.subject) LIKE '%physic%' AND LOWER($3) LIKE '%physic%')
+                OR (LOWER(t.subject) LIKE '%english%' AND LOWER($3) LIKE '%english%')
+                OR (LOWER(t.subject) LIKE '%life sc%' AND LOWER($3) LIKE '%life sc%')
+                OR (LOWER(t.subject) LIKE '%economic%' AND LOWER($3) LIKE '%economic%')
+                OR (LOWER(t.subject) LIKE '%account%' AND LOWER($3) LIKE '%account%')
+                OR (LOWER(t.subject) LIKE '%business%' AND LOWER($3) LIKE '%business%')
             )`,
             `t.grade = $2`
         ];
         let params = [`%${mappedSubj}%`, targetGrade, rawSubj];
         let pIndex = 4;
+
+        // If user is a learner or parent, only show published resources
+        if (!req.user || (req.user.role !== 'teacher' && req.user.role !== 'admin')) {
+            whereClauses.push(`(t.is_published = TRUE OR t.is_published IS NULL)`);
+        }
+
+        // Class isolation: Learner sees class-specific resources OR grade-wide resources (class_id IS NULL)
+        const targetClassId = req.query.class_id ? parseInt(req.query.class_id, 10) : learnerClassId;
+        if (targetClassId) {
+            whereClauses.push(`(t.class_id IS NULL OR t.class_id = $${pIndex})`);
+            params.push(targetClassId);
+            pIndex++;
+        }
 
         if (resource_type && resource_type !== 'all') {
             whereClauses.push(`t.resource_type = $${pIndex}`);
@@ -1875,7 +1982,7 @@ exports.getSubjectResources = async (req, res) => {
         }
 
         if (search) {
-            whereClauses.push(`(t.title ILIKE $${pIndex} OR t.file_name ILIKE $${pIndex} OR t.description ILIKE $${pIndex})`);
+            whereClauses.push(`(t.title ILIKE $${pIndex} OR t.file_name ILIKE $${pIndex} OR t.description ILIKE $${pIndex} OR c.name ILIKE $${pIndex})`);
             params.push(`%${search}%`);
             pIndex++;
         }
@@ -1886,6 +1993,9 @@ exports.getSubjectResources = async (req, res) => {
                 t.subject, 
                 t.grade, 
                 t.stream,
+                t.class_id,
+                c.name AS class_name,
+                COALESCE(t.is_published, true) AS is_published,
                 COALESCE(t.resource_type, 'past_paper') AS resource_type,
                 COALESCE(t.title, t.subject || ' Grade ' || COALESCE(t.grade, $2) || ' ' || COALESCE(t.resource_type, 'Resource')) AS title,
                 t.description,
@@ -1899,6 +2009,7 @@ exports.getSubjectResources = async (req, res) => {
                 COALESCE(u.surname, '(CAPS Archive)') AS teacher_surname
             FROM textbooks t
             LEFT JOIN users u ON t.teacher_id::text = u.id::text
+            LEFT JOIN classes c ON t.class_id = c.id
             WHERE ${whereClauses.join(' AND ')}
             ORDER BY t.year DESC NULLS LAST, t.upload_date DESC NULLS LAST, t.id DESC
             LIMIT 200

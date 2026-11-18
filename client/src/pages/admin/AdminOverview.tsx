@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { adminService } from '../../services/api';
+import { adminService, schoolRegistrationService } from '../../services/api';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { AdminOverviewSkeleton } from '../../components/admin/AdminOverviewSkeleton';
 import { Modal } from '../../components/common/Modal';
@@ -7,6 +7,16 @@ import { FavoriteModulesSection } from '../../components/common/FavoriteModulesS
 import { HomeGreeting } from '../../components/layout/WorkspaceChrome';
 import { MasterAdminExecutiveHub } from '../../components/admin/MasterAdminExecutiveHub';
 import { SchoolModulePreferences } from '../../components/admin/SchoolModulePreferences';
+import {
+  readModuleList,
+  TEACHER_MODULES,
+  LEARNER_MODULES,
+  LEARNER_CHOICE_MODULES,
+  getModuleIcon,
+  defaultTeacherModules,
+  defaultLearnerModules,
+  modulesReceivedByLearners,
+} from '../../utils/schoolModules';
 import {
   Users,
   GraduationCap,
@@ -42,12 +52,103 @@ import {
   Sparkles,
   Layers,
   Filter,
-  UserCheck
+  User,
+  UserCheck,
+  MapPin,
+  School,
+  Globe,
+  RefreshCw,
+  ExternalLink,
+  Shield,
+  Tag,
+  Phone,
+  Mail,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useSchool } from '../../context/SchoolContext';
+import { useSchool, SchoolProfile, DEFAULT_SCHOOLS } from '../../context/SchoolContext';
+import { Subject3DCoverFlow } from '../../components/subject/Subject3DCoverFlow';
 
-export type SubjectViewMode = 'carousel' | 'grid' | 'compact' | 'list';
+export type SubjectViewMode = '3d-flow' | 'carousel' | 'grid' | 'compact' | 'list';
+
+/**
+ * Returns clean list of offered subjects for any registered school.
+ */
+export const getSchoolOfferedSubjects = (school: SchoolProfile): string[] => {
+  let list: string[] = [];
+  if (Array.isArray(school.offered_subjects)) {
+    list = school.offered_subjects.filter(Boolean);
+  } else if (typeof school.offered_subjects === 'string') {
+    try {
+      const parsed = JSON.parse(school.offered_subjects);
+      if (Array.isArray(parsed)) list = parsed.filter(Boolean);
+      else list = school.offered_subjects.split(',').map(s => s.trim()).filter(Boolean);
+    } catch {
+      list = school.offered_subjects.split(',').map(s => s.trim()).filter(Boolean);
+    }
+  }
+  return list;
+};
+
+export const getSchoolOfferedStreams = (school: SchoolProfile): string[] => {
+  let list: string[] = [];
+  if (Array.isArray(school.offered_streams)) {
+    list = school.offered_streams.filter(Boolean);
+  } else if (typeof school.offered_streams === 'string') {
+    try {
+      const parsed = JSON.parse(school.offered_streams);
+      if (Array.isArray(parsed)) list = parsed.filter(Boolean);
+      else list = school.offered_streams.split(',').map(s => s.trim()).filter(Boolean);
+    } catch {
+      list = school.offered_streams.split(',').map(s => s.trim()).filter(Boolean);
+    }
+  }
+  return list;
+};
+
+export const getSchoolOfferedLanguages = (school: SchoolProfile): string[] => {
+  let list: string[] = [];
+  if (Array.isArray(school.offered_languages)) {
+    list = school.offered_languages.filter(Boolean);
+  } else if (typeof school.offered_languages === 'string') {
+    try {
+      const parsed = JSON.parse(school.offered_languages);
+      if (Array.isArray(parsed)) list = parsed.filter(Boolean);
+      else list = school.offered_languages.split(',').map(s => s.trim()).filter(Boolean);
+    } catch {
+      list = school.offered_languages.split(',').map(s => s.trim()).filter(Boolean);
+    }
+  }
+  return list;
+};
+
+export const categorizeSchoolSubjects = (subjects: string[]) => {
+  const categories: Record<string, string[]> = {
+    'STEM & Sciences': [],
+    'Commerce & Management': [],
+    'Languages & Literacy': [],
+    'Humanities & Social': [],
+    'Technical & Vocational': []
+  };
+
+  subjects.forEach(sub => {
+    const s = sub.toLowerCase();
+    if (s.includes('math') || s.includes('physic') || s.includes('chem') || s.includes('natural science') || s.includes('tech science') || s.includes('life science') || s.includes('bio') || s.includes('information tech') || s.includes('cat') || s.includes('computer')) {
+      categories['STEM & Sciences'].push(sub);
+    } else if (s.includes('account') || s.includes('business') || s.includes('econom') || s.includes('ems') || s.includes('finance')) {
+      categories['Commerce & Management'].push(sub);
+    } else if (s.includes('english') || s.includes('afrikaans') || s.includes('zulu') || s.includes('xhosa') || s.includes('sepedi') || s.includes('sotho') || s.includes('tswana') || s.includes('venda') || s.includes('tsonga') || s.includes('swati') || s.includes('ndebele') || s.includes('language') || s.includes('fal') || s.includes('hl')) {
+      categories['Languages & Literacy'].push(sub);
+    } else if (s.includes('history') || s.includes('geograph') || s.includes('social science') || s.includes('tourism') || s.includes('life orient') || s.includes('religion')) {
+      categories['Humanities & Social'].push(sub);
+    } else {
+      categories['Technical & Vocational'].push(sub);
+    }
+  });
+
+  return categories;
+};
 
 /**
  * Returns a high-definition cover image reflecting the subject's academic field.
@@ -149,13 +250,14 @@ interface AdminOverviewProps {
 
 export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) => {
   const { user } = useAuth();
-  const { currentSchool } = useSchool();
+  const { currentSchool, schoolsList, setSchoolById, refreshSchools } = useSchool();
+  const isSuperAdmin = Boolean(user?.is_superadmin || (user as any)?.role_name === 'superadmin');
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const metricsCarouselRef = useRef<HTMLDivElement>(null);
   const subjectsCarouselRef = useRef<HTMLDivElement>(null);
 
-  // Subject Exploration Controls
+  // Subject Exploration Controls (For School Admin)
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [subjectSearch, setSubjectSearch] = useState<string>('');
@@ -165,6 +267,31 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
 
   // Selected Subject for "View More" Command Center Modal
   const [viewMoreSubject, setViewMoreSubject] = useState<SchoolSubjectItem | null>(null);
+
+  // Registered Schools Exploration Controls (For Geleza SA Platform Admin)
+  const [schoolsViewMode, setSchoolsViewMode] = useState<SubjectViewMode>(() => {
+    return (localStorage.getItem('admin_schools_view_mode') as SubjectViewMode) || 'grid';
+  });
+  const [schoolSearchQuery, setSchoolSearchQuery] = useState<string>('');
+  const [selectedSchoolProvince, setSelectedSchoolProvince] = useState<string>('all');
+  const [selectedSchoolCircuit, setSelectedSchoolCircuit] = useState<string>('all');
+  const [selectedSchoolForCurriculum, setSelectedSchoolForCurriculum] = useState<SchoolProfile | null>(null);
+  const [schoolDossierTab, setSchoolDossierTab] = useState<'modules' | 'subjects' | 'configure'>('modules');
+  const [isRefreshingSchools, setIsRefreshingSchools] = useState<boolean>(false);
+  const [expandedSchoolIds, setExpandedSchoolIds] = useState<Record<number, boolean>>({});
+
+  const toggleSchoolExpand = (schoolId: number) => {
+    setExpandedSchoolIds(prev => ({ ...prev, [schoolId]: !prev[schoolId] }));
+  };
+
+  const handleSetSchoolsViewMode = (mode: SubjectViewMode) => {
+    setSchoolsViewMode(mode);
+    try {
+      localStorage.setItem('admin_schools_view_mode', mode);
+    } catch {
+      // ignore
+    }
+  };
 
   const handleSetSubjectsViewMode = (mode: SubjectViewMode) => {
     setSubjectsViewMode(mode);
@@ -189,19 +316,46 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
 
   // Raw API subjects state
   const [apiSubjects, setApiSubjects] = useState<any[]>([]);
+  const [pendingSchoolApps, setPendingSchoolApps] = useState<any[]>([]);
+
+  const handleRefreshSchools = async () => {
+    setIsRefreshingSchools(true);
+    try {
+      await refreshSchools();
+      const appsRes = await schoolRegistrationService.getAllApplications().catch(() => []);
+      const rows = Array.isArray(appsRes) ? appsRes : (appsRes?.applications || []);
+      setPendingSchoolApps(rows.filter((a: any) => {
+        const s = (a.status || '').toLowerCase();
+        return s === 'pending' || s === 'pending_review' || s === 'under_review' || s === 'awaiting_review';
+      }));
+    } catch (err) {
+      console.warn('Failed to refresh registered schools network:', err);
+    } finally {
+      setIsRefreshingSchools(false);
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
+    refreshSchools().catch(() => {});
     Promise.allSettled([
       adminService.getOverviewStats(),
-      adminService.getSubjectsSummary()
+      adminService.getSubjectsSummary(),
+      schoolRegistrationService.getAllApplications().catch(() => [])
     ])
-      .then(([statsRes, subjectsRes]) => {
+      .then(([statsRes, subjectsRes, appsRes]) => {
         if (statsRes.status === 'fulfilled') {
           setStats(statsRes.value);
         }
         if (subjectsRes.status === 'fulfilled' && subjectsRes.value?.subjects) {
           setApiSubjects(subjectsRes.value.subjects);
+        }
+        if (appsRes.status === 'fulfilled') {
+          const rows = Array.isArray(appsRes.value) ? appsRes.value : (appsRes.value?.applications || []);
+          setPendingSchoolApps(rows.filter((a: any) => {
+            const s = (a.status || '').toLowerCase();
+            return s === 'pending' || s === 'pending_review' || s === 'under_review' || s === 'awaiting_review';
+          }));
         }
       })
       .catch((err) => {
@@ -314,8 +468,57 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
       return Number.isFinite(parsed) ? parsed : null;
     };
 
+    // Filter strictly by the subjects the principal has actually chosen for this school
+    const offeredSubjects = currentSchool && currentSchool.id !== 0
+      ? getSchoolOfferedSubjects(currentSchool)
+      : [];
+
+    let subjectSourceList = rawList;
+    if (offeredSubjects.length > 0) {
+      const lowerOffered = offeredSubjects.map(s => s.toLowerCase().trim());
+      subjectSourceList = rawList.filter(item => {
+        const itemName = item.name.toLowerCase().trim();
+        return lowerOffered.some(off => 
+          itemName === off ||
+          itemName.includes(off) ||
+          off.includes(itemName)
+        );
+      });
+
+      // Dynamically accommodate any offered subject selected by the principal not present in rawList
+      const gradesToPopulate = [8, 9, 10, 11, 12];
+      offeredSubjects.forEach(offName => {
+        const lower = offName.toLowerCase().trim();
+        const hasMatch = subjectSourceList.some(f => f.name.toLowerCase().trim() === lower || f.name.toLowerCase().includes(lower) || lower.includes(f.name.toLowerCase()));
+        if (!hasMatch) {
+          const codeSub = offName.replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase() || 'SUB';
+          gradesToPopulate.forEach(gr => {
+            let cat: 'stem' | 'commerce' | 'humanities' | 'languages' | 'technical' = 'stem';
+            if (lower.includes('acc') || lower.includes('bus') || lower.includes('eco')) cat = 'commerce';
+            else if (lower.includes('eng') || lower.includes('afr') || lower.includes('zul') || lower.includes('sepedi') || lower.includes('sotho') || lower.includes('lang')) cat = 'languages';
+            else if (lower.includes('geo') || lower.includes('hist') || lower.includes('tour')) cat = 'humanities';
+            else if (lower.includes('lo') || lower.includes('orient') || lower.includes('agri') || lower.includes('tech')) cat = 'technical';
+
+            subjectSourceList.push({
+              id: `offered-${codeSub.toLowerCase()}-g${gr}`,
+              name: offName,
+              code: `CAPS-${codeSub}-G${gr}`,
+              grade: gr,
+              category: cat,
+              stream: 'Curriculum Stream',
+              teacher_name: '',
+              learner_count: 0,
+              average_mark: null,
+              pass_rate: null,
+              status: 'Active'
+            });
+          });
+        }
+      });
+    }
+
     // Catalog names stay. Invented averages, pass rates, class sizes, and teacher names do not.
-    const catalog: SchoolSubjectItem[] = rawList.map((subject) => ({
+    const catalog: SchoolSubjectItem[] = subjectSourceList.map((subject) => ({
       ...subject,
       teacher_name: '',
       learner_count: 0,
@@ -362,7 +565,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
     }
 
     return catalog;
-  }, [apiSubjects]);
+  }, [apiSubjects, currentSchool]);
 
   // Filtered list based on Grade, Category, and Search
   const filteredSubjects = useMemo(() => {
@@ -389,6 +592,50 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
     });
   }, [masterSubjects, selectedGrade, selectedCategory, subjectSearch]);
 
+  // Registered schools only (active verified partner campuses on Geleza SA)
+  const registeredSchools = useMemo(() => {
+    const raw = (Array.isArray(schoolsList) && schoolsList.length > 0) ? schoolsList : DEFAULT_SCHOOLS;
+    const filtered = raw.filter(s => s && s.id !== 0 && s.is_active !== false && String(s.is_active) !== 'false');
+    if (filtered.length > 0) return filtered;
+    return DEFAULT_SCHOOLS.filter(s => s && s.id !== 0);
+  }, [schoolsList]);
+
+  const filteredRegisteredSchools = useMemo(() => {
+    return registeredSchools.filter(s => {
+      const q = schoolSearchQuery.toLowerCase().trim();
+      const offeredSubs = getSchoolOfferedSubjects(s).map(sub => sub.toLowerCase());
+      const matchesSearch = !q ||
+        s.name.toLowerCase().includes(q) ||
+        (s.emis_number || '').toLowerCase().includes(q) ||
+        (s.principal_name || '').toLowerCase().includes(q) ||
+        (s.circuit || '').toLowerCase().includes(q) ||
+        (s.district || '').toLowerCase().includes(q) ||
+        (s.province || '').toLowerCase().includes(q) ||
+        offeredSubs.some(sub => sub.includes(q));
+
+      const matchesProvince = selectedSchoolProvince === 'all' || s.province === selectedSchoolProvince;
+      const matchesCircuit = selectedSchoolCircuit === 'all' || s.circuit === selectedSchoolCircuit;
+
+      return matchesSearch && matchesProvince && matchesCircuit;
+    });
+  }, [registeredSchools, schoolSearchQuery, selectedSchoolProvince, selectedSchoolCircuit]);
+
+  const schoolProvinces = useMemo(() => {
+    const set = new Set<string>();
+    registeredSchools.forEach(s => {
+      if (s.province) set.add(s.province);
+    });
+    return Array.from(set);
+  }, [registeredSchools]);
+
+  const schoolCircuits = useMemo(() => {
+    const set = new Set<string>();
+    registeredSchools.forEach(s => {
+      if (s.circuit) set.add(s.circuit);
+    });
+    return Array.from(set);
+  }, [registeredSchools]);
+
   if (loading) return <AdminOverviewSkeleton />;
 
   const totalLearners = stats?.enrolled_learners !== undefined 
@@ -400,14 +647,15 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
   const totalClasses = stats?.total_classes !== undefined 
     ? Number(stats.total_classes) 
     : (stats?.classes !== undefined ? Number(stats.classes) : 0);
-  const overallAttendance = stats?.overall_attendance !== undefined && stats.overall_attendance !== null 
-    ? `${stats.overall_attendance}%` 
-    : (stats?.attendance_rate !== undefined && stats.attendance_rate !== null ? `${stats.attendance_rate}%` : '0%');
+  const rawAttendance = stats?.overall_attendance !== undefined && stats.overall_attendance !== null 
+    ? Number(stats.overall_attendance) 
+    : (stats?.attendance_rate !== undefined && stats.attendance_rate !== null ? Number(stats.attendance_rate) : 0);
+  const overallAttendance = rawAttendance > 0 ? `${rawAttendance}%` : 'Awaiting Data Capture';
 
   const metricCards = [
-    { title: 'Enrolled Learners', value: totalLearners, sub: 'Active CAPS Students', icon: GraduationCap, color: 'text-indigo-400', tab: 'users' },
-    { title: 'Teaching Staff', value: totalTeachers, sub: 'Subject Specialists', icon: Briefcase, color: 'text-cyan-400', tab: 'users' },
-    { title: 'Class Units', value: totalClasses, sub: 'Grade 8-12 Rooms', icon: BookOpen, color: 'text-emerald-400', tab: 'timetable' },
+    { title: 'Enrolled Learners', value: totalLearners > 0 ? totalLearners : 'No records yet', sub: 'Active CAPS Students', icon: GraduationCap, color: 'text-indigo-400', tab: 'users' },
+    { title: 'Teaching Staff', value: totalTeachers > 0 ? totalTeachers : 'No records yet', sub: 'Subject Specialists', icon: Briefcase, color: 'text-cyan-400', tab: 'users' },
+    { title: 'Class Units', value: totalClasses > 0 ? totalClasses : 'No records yet', sub: 'Grade 8-12 Rooms', icon: BookOpen, color: 'text-emerald-400', tab: 'timetable' },
     { title: 'School Attendance', value: overallAttendance, sub: 'Daily Average', icon: CalendarCheck, color: 'text-amber-400', tab: 'marks' },
   ];
 
@@ -436,12 +684,672 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
   return (
     <div className="space-y-8 animate-fade-in text-slate-900 dark:text-slate-100 pb-16">
       <HomeGreeting />
-      <SchoolModulePreferences />
+
+      {/* Pending School Admissions Alert Banner */}
+      {pendingSchoolApps.length > 0 && (
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/5 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-fade-in">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="p-2.5 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+              <Building2 className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                  Admissions Action Required
+                </span>
+                <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                  {pendingSchoolApps.length} School Registration{pendingSchoolApps.length > 1 ? 's' : ''} Awaiting Review
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                <strong className="text-slate-900 dark:text-white">{pendingSchoolApps[0].school_name}</strong> (Principal {pendingSchoolApps[0].principal_first_name || pendingSchoolApps[0].principal_name} {pendingSchoolApps[0].principal_surname}) registered their campus and is awaiting formal admission.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigateTab('school-admissions')}
+            className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow-md shadow-amber-500/20 flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer"
+          >
+            <span>Review & Admit School</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* ========================================================================= */}
-      {/* 1. SCHOOL CURRICULUM SUBJECTS & GRADE EXPLORATION                         */}
+      {/* 1. GELEZA SA SUPERADMIN vs SCHOOL ADMIN OVERVIEW SPACE                     */}
       {/* ========================================================================= */}
-      <section className="space-y-4 rounded-3xl bg-slate-100 dark:bg-surface-darker border border-slate-300 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden transition-colors">
+      {isSuperAdmin ? (
+        /* ========================================================================= */
+        /* GELEZA SA PLATFORM ADMIN: REGISTERED PARTNER SCHOOLS DIRECTORY            */
+        /* (In place of flat subjects: Only registered schools, with subjects inside)*/
+        /* ========================================================================= */
+        <section className="space-y-4 rounded-3xl bg-slate-100 dark:bg-surface-darker border border-slate-300 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden transition-colors">
+          {/* Header */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#168BFF]/10 border border-[#168BFF]/30 text-[#168BFF] text-xs font-bold">
+                <Building2 className="w-3.5 h-3.5 text-[#168BFF]" />
+                <span>Geleza SA Executive Governance • Institutional Network</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black font-display text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+                <span>Registered Partner Schools Directory</span>
+                <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                  {registeredSchools.length} Verified {registeredSchools.length === 1 ? 'Campus' : 'Campuses'}
+                </span>
+              </h2>
+            </div>
+
+            {/* Controls: Search, View Mode, Refresh */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Search */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={schoolSearchQuery}
+                  onChange={(e) => setSchoolSearchQuery(e.target.value)}
+                  placeholder="Search school, EMIS, province, or subject..."
+                  className="pl-8 pr-3 py-1.5 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#168BFF] transition-all w-52 sm:w-64"
+                />
+              </div>
+
+              {/* View Mode Switcher */}
+              <div className="flex items-center p-1 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => handleSetSchoolsViewMode('grid')}
+                  className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                    schoolsViewMode === 'grid'
+                      ? 'bg-[#168BFF] text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                  }`}
+                  title="Grid View"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline text-[11px]">Grid</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSetSchoolsViewMode('compact')}
+                  className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                    schoolsViewMode === 'compact'
+                      ? 'bg-[#168BFF] text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                  }`}
+                  title="Compact View"
+                >
+                  <Grid3X3 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline text-[11px]">Compact</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSetSchoolsViewMode('list')}
+                  className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                    schoolsViewMode === 'list'
+                      ? 'bg-[#168BFF] text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                  }`}
+                  title="Detailed List View"
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline text-[11px]">List</span>
+                </button>
+              </div>
+
+              {/* Refresh Button */}
+              <button
+                type="button"
+                onClick={handleRefreshSchools}
+                disabled={isRefreshingSchools}
+                className="p-2 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-[#168BFF] transition-all shadow-sm cursor-pointer"
+                title="Sync Schools Network"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingSchools ? 'animate-spin text-purple-600' : ''}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Filter Pills (Provinces & Circuits) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            <button
+              onClick={() => setSelectedSchoolProvince('all')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                selectedSchoolProvince === 'all'
+                  ? 'bg-[#168BFF] text-white shadow-sm'
+                  : 'bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-[#168BFF] dark:hover:text-white'
+              }`}
+            >
+              All Provinces ({registeredSchools.length})
+            </button>
+            {schoolProvinces.map(prov => (
+              <button
+                key={prov}
+                onClick={() => setSelectedSchoolProvince(prov)}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                  selectedSchoolProvince === prov
+                    ? 'bg-[#168BFF] text-white shadow-sm'
+                    : 'bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-[#168BFF] dark:hover:text-white'
+                }`}
+              >
+                {prov}
+              </button>
+            ))}
+          </div>
+
+          {/* Incoming Schools Alert (if pending applications exist) */}
+          {pendingSchoolApps.length > 0 && (
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping shrink-0" />
+                <span className="font-bold text-amber-900 dark:text-amber-200">
+                  {pendingSchoolApps.length} New Incoming School {pendingSchoolApps.length === 1 ? 'Registration' : 'Registrations'} Awaiting Geleza SA Accreditation
+                </span>
+                <span className="hidden md:inline text-slate-500 dark:text-slate-400">
+                  • Once approved, new schools will immediately appear in this space with their offered subjects.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigateTab('school-admissions')}
+                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-all shadow-sm flex items-center gap-1 shrink-0 self-start sm:self-auto cursor-pointer"
+              >
+                <span>Accredit Incoming Schools</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Registered Schools Output Rendering */}
+          {filteredRegisteredSchools.length === 0 ? (
+            <div className="p-8 sm:p-12 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-[#168BFF]/15 text-[#168BFF] border border-purple-500/30 flex items-center justify-center mx-auto">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                {schoolSearchQuery ? 'No Registered Schools Match Filter' : 'No Schools Registered Yet'}
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto">
+                {schoolSearchQuery
+                  ? 'Try adjusting your search query, province filter, or subject name.'
+                  : 'Schools register through the public registration portal and appear here immediately once accredited by Geleza SA Executives.'}
+              </p>
+              {pendingSchoolApps.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('school-admissions')}
+                  className="px-4 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-bold text-xs transition-all shadow-md inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>Review {pendingSchoolApps.length} Pending School Applications</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* VIEW MODE 1: GRID VIEW */}
+              {schoolsViewMode === 'grid' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {filteredRegisteredSchools.map((school) => {
+                    const offeredSubjects = getSchoolOfferedSubjects(school);
+                    const offeredStreams = getSchoolOfferedStreams(school);
+                    const isExpanded = Boolean(expandedSchoolIds[school.id]);
+                    const displayedSubjects = isExpanded ? offeredSubjects : offeredSubjects.slice(0, 6);
+                    const remainingCount = offeredSubjects.length - 6;
+                    const teacherModIds = readModuleList(school.teacher_modules) ?? defaultTeacherModules();
+                    const learnerModIds = readModuleList(school.learner_modules) ?? defaultLearnerModules();
+                    const totalActiveMods = teacherModIds.length + learnerModIds.length;
+
+                    return (
+                      <div
+                        key={school.id}
+                        className="rounded-3xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-[#168BFF]/50 transition-all shadow-sm hover:shadow-lg flex flex-col justify-between overflow-hidden group"
+                      >
+                        {/* School Card Top Banner */}
+                        <div
+                          className="p-5 border-b border-slate-200 dark:border-white/10 relative overflow-hidden"
+                          style={{
+                            background: `linear-gradient(135deg, ${school.primary_color || '#4f46e5'}20 0%, ${school.secondary_color || '#06b6d4'}15 100%)`
+                          }}
+                        >
+                          <div className="flex items-start justify-between gap-3 relative z-10">
+                            <div className="flex items-center gap-3">
+                              {/* Logo / Emblem */}
+                              <div
+                                className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-white text-lg shadow-md shrink-0 border border-white/20 overflow-hidden"
+                                style={{ backgroundColor: school.primary_color || '#4f46e5' }}
+                              >
+                                {school.logo_url ? (
+                                  <img src={school.logo_url} alt={school.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <span>{school.name.slice(0, 2).toUpperCase()}</span>
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <h3 className="text-base font-black text-slate-900 dark:text-white truncate">
+                                  {school.name}
+                                </h3>
+                                <p className="text-xs text-slate-600 dark:text-slate-300 italic truncate">
+                                  {school.motto || 'Excellence in Education'}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shrink-0 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              Active
+                            </span>
+                          </div>
+
+                          {/* Location & EMIS badges */}
+                          <div className="flex items-center gap-1.5 flex-wrap mt-3 pt-3 border-t border-black/5 dark:border-white/10 text-[11px] text-slate-600 dark:text-slate-300">
+                            {school.province && (
+                              <span className="px-2 py-0.5 rounded-md bg-white/80 dark:bg-black/30 border border-slate-300 dark:border-white/10 font-semibold flex items-center gap-1">
+                                <MapPin className="w-3 h-3 text-purple-500" />
+                                {school.province}
+                              </span>
+                            )}
+                            {school.circuit && (
+                              <span className="px-2 py-0.5 rounded-md bg-white/80 dark:bg-black/30 border border-slate-300 dark:border-white/10 font-semibold">
+                                Circuit: {school.circuit}
+                              </span>
+                            )}
+                            {school.emis_number && (
+                              <span className="px-2 py-0.5 rounded-md bg-white/80 dark:bg-black/30 border border-slate-300 dark:border-white/10 font-mono font-bold text-slate-700 dark:text-slate-300">
+                                EMIS: {school.emis_number}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* School Body: Macro Metrics */}
+                        <div className="p-5 space-y-4 flex-1">
+                          {/* 3 Metric Pills */}
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5 text-center">
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Learners</span>
+                              <span className="text-base font-extrabold font-mono text-slate-900 dark:text-white">
+                                {school.enrolled_learners_count || 0}
+                              </span>
+                            </div>
+                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5 text-center">
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Staff</span>
+                              <span className="text-base font-extrabold font-mono text-slate-900 dark:text-white">
+                                {school.staff_count || 0}
+                              </span>
+                            </div>
+                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5 text-center">
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Classes</span>
+                              <span className="text-base font-extrabold font-mono text-slate-900 dark:text-white">
+                                {school.classes_count || 0}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Principal & Curriculum */}
+                          <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-500 dark:text-slate-400">Principal:</span>
+                              <span className="font-bold text-slate-900 dark:text-white">
+                                {school.principal_name || 'Principal unassigned'}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-500 dark:text-slate-400">Curriculum:</span>
+                              <span className="font-bold text-[#168BFF]">
+                                {school.curriculum_type || 'CAPS (DBE)'} ({school.grade_range || 'Grades 8 - 12'})
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Streams Badges */}
+                          <div className="space-y-1.5 pt-2 border-t border-slate-200 dark:border-white/10">
+                            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                              Academic Streams Offered:
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {offeredStreams.map((st, i) => (
+                                <span
+                                  key={i}
+                                  className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#168BFF]/10 text-[#168BFF] border border-[#168BFF]/30"
+                                >
+                                  {st}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Active Campus Modules Preview with Icons */}
+                          <div className="p-3.5 rounded-2xl bg-cyan-500/5 dark:bg-cyan-950/20 border border-cyan-500/20 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-black text-cyan-950 dark:text-cyan-200 flex items-center gap-1.5">
+                                <Layers className="w-3.5 h-3.5 text-cyan-500" />
+                                <span>Active Modules ({totalActiveMods})</span>
+                              </span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
+                                {teacherModIds.length} Staff • {learnerModIds.length} Learner
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-1.5">
+                              {teacherModIds.slice(0, 4).map((modId) => {
+                                const Icon = getModuleIcon(modId);
+                                const opt = TEACHER_MODULES.find(m => m.id === modId);
+                                return (
+                                  <span
+                                    key={modId}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-white dark:bg-surface-dark border border-cyan-500/20 text-slate-800 dark:text-slate-200 shadow-2xs"
+                                    title={`Staff Tool: ${opt?.label || modId}`}
+                                  >
+                                    <Icon className="w-3 h-3 text-cyan-500 shrink-0" />
+                                    <span className="truncate max-w-[105px]">{opt?.label || modId}</span>
+                                  </span>
+                                );
+                              })}
+                              {learnerModIds.slice(0, 3).map((modId) => {
+                                const Icon = getModuleIcon(modId);
+                                const opt = LEARNER_MODULES.find(m => m.id === modId);
+                                return (
+                                  <span
+                                    key={modId}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-white dark:bg-surface-dark border border-purple-500/20 text-slate-800 dark:text-slate-200 shadow-2xs"
+                                    title={`Learner Tool: ${opt?.label || modId}`}
+                                  >
+                                    <Icon className="w-3 h-3 text-purple-500 shrink-0" />
+                                    <span className="truncate max-w-[105px]">{opt?.label || modId}</span>
+                                  </span>
+                                );
+                              })}
+                              {totalActiveMods > 7 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedSchoolForCurriculum(school);
+                                    setSchoolDossierTab('modules');
+                                  }}
+                                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 hover:underline cursor-pointer"
+                                >
+                                  +{totalActiveMods - 7} more
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* ========================================================= */}
+                          {/* SUBJECTS THIS SCHOOL OFFERS (Crucial Request Implementation) */}
+                          {/* ========================================================= */}
+                          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                                <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+                                <span>Offered Subjects ({offeredSubjects.length})</span>
+                              </span>
+                              {offeredSubjects.length > 6 && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleSchoolExpand(school.id)}
+                                  className="text-[11px] font-bold text-[#168BFF] hover:underline flex items-center gap-0.5 cursor-pointer"
+                                >
+                                  <span>{isExpanded ? 'Show Less' : `+${remainingCount} More`}</span>
+                                  {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Subjects Pills Grid */}
+                            <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto scrollbar-thin">
+                              {displayedSubjects.map((subName, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 shadow-2xs hover:border-indigo-500/40 transition-colors"
+                                >
+                                  {subName}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Card Footer Actions */}
+                        <div className="p-4 bg-slate-50 dark:bg-surface-darker border-t border-slate-200 dark:border-white/10 flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedSchoolForCurriculum(school);
+                              setSchoolDossierTab('modules');
+                            }}
+                            className="flex-1 py-2 px-3 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-bold text-xs transition-all shadow-md shadow-[#168BFF]/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Layers className="w-3.5 h-3.5" />
+                            <span>Inspect School & Modules</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSchoolById(school.id);
+                              onNavigateTab('users');
+                            }}
+                            className="py-2 px-3 rounded-xl bg-white dark:bg-surface-dark hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-300 dark:border-white/15 text-slate-700 dark:text-slate-300 font-bold text-xs transition-all flex items-center gap-1 cursor-pointer"
+                            title="Manage School Roster & Users"
+                          >
+                            <Users className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Roster</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* VIEW MODE 2: COMPACT TILES */}
+              {schoolsViewMode === 'compact' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {filteredRegisteredSchools.map((school) => {
+                    const offeredSubjects = getSchoolOfferedSubjects(school);
+                    const teacherModIds = readModuleList(school.teacher_modules) ?? defaultTeacherModules();
+                    const learnerModIds = readModuleList(school.learner_modules) ?? defaultLearnerModules();
+                    const totalActiveMods = teacherModIds.length + learnerModIds.length;
+
+                    return (
+                      <div
+                        key={school.id}
+                        onClick={() => {
+                          setSelectedSchoolForCurriculum(school);
+                          setSchoolDossierTab('modules');
+                        }}
+                        className="p-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-[#168BFF]/50 transition-all shadow-sm hover:shadow-md cursor-pointer space-y-3 group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm"
+                            style={{ backgroundColor: school.primary_color || '#4f46e5' }}
+                          >
+                            {school.logo_url ? (
+                              <img src={school.logo_url} alt={school.name} className="w-full h-full object-cover rounded-xl" />
+                            ) : (
+                              school.name.slice(0, 2).toUpperCase()
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-xs font-black text-slate-900 dark:text-white truncate group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors">
+                              {school.name}
+                            </h4>
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400 block truncate">
+                              {school.province || 'National'} • {school.circuit || 'General'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-200 dark:border-white/10">
+                          <span className="font-bold text-cyan-700 dark:text-cyan-300 flex items-center gap-1">
+                            <Layers className="w-3 h-3 text-cyan-500" />
+                            {totalActiveMods} Modules
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md font-bold bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-[10px]">
+                            {offeredSubjects.length} Subjects
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* VIEW MODE 3: DETAILED LIST VIEW */}
+              {schoolsViewMode === 'list' && (
+                <div className="space-y-3">
+                  {filteredRegisteredSchools.map((school) => {
+                    const offeredSubjects = getSchoolOfferedSubjects(school);
+                    const teacherModIds = readModuleList(school.teacher_modules) ?? defaultTeacherModules();
+                    const learnerModIds = readModuleList(school.learner_modules) ?? defaultLearnerModules();
+                    const totalActiveMods = teacherModIds.length + learnerModIds.length;
+
+                    return (
+                      <div
+                        key={school.id}
+                        className="p-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-[#168BFF]/50 transition-all shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 group"
+                      >
+                        <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+                          <div
+                            className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-base shrink-0 shadow-md"
+                            style={{ backgroundColor: school.primary_color || '#4f46e5' }}
+                          >
+                            {school.logo_url ? (
+                              <img src={school.logo_url} alt={school.name} className="w-full h-full object-cover rounded-2xl" />
+                            ) : (
+                              school.name.slice(0, 2).toUpperCase()
+                            )}
+                          </div>
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-sm font-black text-slate-900 dark:text-white truncate">
+                                {school.name}
+                              </h4>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                                Verified
+                              </span>
+                              <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
+                                EMIS: {school.emis_number || 'N/A'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">
+                              {school.province || 'National'} • Circuit: {school.circuit || 'General'} • Principal: {school.principal_name || 'Unassigned'}
+                            </p>
+
+                            {/* Active modules preview */}
+                            <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                              <span className="text-[11px] font-bold text-cyan-700 dark:text-cyan-300 flex items-center gap-1">
+                                <Layers className="w-3 h-3 text-cyan-500" />
+                                Modules ({totalActiveMods}):
+                              </span>
+                              {teacherModIds.slice(0, 3).map((modId) => {
+                                const Icon = getModuleIcon(modId);
+                                const opt = TEACHER_MODULES.find(m => m.id === modId);
+                                return (
+                                  <span
+                                    key={modId}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-cyan-500/10 text-cyan-800 dark:text-cyan-200"
+                                  >
+                                    <Icon className="w-2.5 h-2.5 text-cyan-500" />
+                                    <span>{opt?.label || modId}</span>
+                                  </span>
+                                );
+                              })}
+                              {learnerModIds.slice(0, 2).map((modId) => {
+                                const Icon = getModuleIcon(modId);
+                                const opt = LEARNER_MODULES.find(m => m.id === modId);
+                                return (
+                                  <span
+                                    key={modId}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#168BFF]/10 text-[#168BFF]"
+                                  >
+                                    <Icon className="w-2.5 h-2.5 text-purple-500" />
+                                    <span>{opt?.label || modId}</span>
+                                  </span>
+                                );
+                              })}
+                              {totalActiveMods > 5 && (
+                                <span className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400">
+                                  +{totalActiveMods - 5} more
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Offered subjects preview */}
+                            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                                Subjects ({offeredSubjects.length}):
+                              </span>
+                              {offeredSubjects.slice(0, 4).map((sub, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-white/10 text-slate-800 dark:text-slate-200"
+                                >
+                                  {sub}
+                                </span>
+                              ))}
+                              {offeredSubjects.length > 4 && (
+                                <span className="text-[10px] font-bold text-[#168BFF]">
+                                  +{offeredSubjects.length - 4} more
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between lg:justify-end gap-3 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-200 dark:border-white/10">
+                          <div className="text-right hidden sm:block">
+                            <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                              {school.enrolled_learners_count || 0} Learners
+                            </span>
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                              {school.staff_count || 0} Staff • {school.classes_count || 0} Classes
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedSchoolForCurriculum(school);
+                                setSchoolDossierTab('modules');
+                              }}
+                              className="px-3.5 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                            >
+                              <Layers className="w-3.5 h-3.5" />
+                              <span>Inspect School & Modules</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSchoolById(school.id);
+                                onNavigateTab('users');
+                              }}
+                              className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors cursor-pointer"
+                            >
+                              Roster
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      ) : (
+        /* ========================================================================= */
+        /* SCHOOL ADMIN / PRINCIPAL: SCHOOL CURRICULUM SUBJECTS & GRADE EXPLORATION  */
+        /* (Preserved view: school admin sees their own school's curriculum subjects)*/
+        /* ========================================================================= */
+        <section className="space-y-4 rounded-3xl bg-slate-100 dark:bg-surface-darker border border-slate-300 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden transition-colors">
         
         {/* Section Top Header with Title and View Mode Switcher */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -465,7 +1373,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 value={subjectSearch}
                 onChange={(e) => setSubjectSearch(e.target.value)}
                 placeholder="Search subject or educator..."
-                className="pl-8 pr-3 py-1.5 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all w-44 sm:w-56"
+                className="pl-8 pr-3 py-1.5 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#168BFF] transition-all w-44 sm:w-56"
               />
             </div>
 
@@ -473,10 +1381,24 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
             <div className="flex items-center p-1 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 shadow-sm">
               <button
                 type="button"
+                onClick={() => handleSetSubjectsViewMode('3d-flow')}
+                className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                  subjectsViewMode === '3d-flow'
+                    ? 'bg-[#168BFF] text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                }`}
+                title="3D Perspective Flow View"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[11px]">3D Flow</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => handleSetSubjectsViewMode('carousel')}
                 className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                   subjectsViewMode === 'carousel'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-[#168BFF] text-white shadow-sm'
                     : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
                 }`}
                 title="Carousel View"
@@ -490,7 +1412,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 onClick={() => handleSetSubjectsViewMode('grid')}
                 className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                   subjectsViewMode === 'grid'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-[#168BFF] text-white shadow-sm'
                     : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
                 }`}
                 title="Standard Grid"
@@ -504,7 +1426,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 onClick={() => handleSetSubjectsViewMode('compact')}
                 className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                   subjectsViewMode === 'compact'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-[#168BFF] text-white shadow-sm'
                     : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
                 }`}
                 title="Compact Tiles"
@@ -518,7 +1440,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 onClick={() => handleSetSubjectsViewMode('list')}
                 className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                   subjectsViewMode === 'list'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-[#168BFF] text-white shadow-sm'
                     : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
                 }`}
                 title="List View"
@@ -534,7 +1456,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 <button
                   type="button"
                   onClick={() => scrollSubjectsCarousel(-1)}
-                  className="p-2 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm active:scale-95 cursor-pointer"
+                  className="p-2 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-[#168BFF]/50 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm active:scale-95 cursor-pointer"
                   title="Scroll Left"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -542,7 +1464,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                 <button
                   type="button"
                   onClick={() => scrollSubjectsCarousel(1)}
-                  className="p-2 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm active:scale-95 cursor-pointer"
+                  className="p-2 rounded-xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-[#168BFF]/50 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm active:scale-95 cursor-pointer"
                   title="Scroll Right"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -561,7 +1483,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 selectedGrade === g.id
                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-indigo-500/25'
-                  : 'bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white hover:border-indigo-500/40'
+                  : 'bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-[#168BFF] dark:hover:text-white hover:border-indigo-500/40'
               }`}
             >
               {g.label}
@@ -577,8 +1499,8 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
               onClick={() => setSelectedCategory(c.id)}
               className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer ${
                 selectedCategory === c.id
-                  ? 'bg-indigo-600 text-white shadow-sm border border-indigo-500'
-                  : 'bg-white dark:bg-surface-dark text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-white/10 hover:border-indigo-500/40 hover:text-indigo-600 dark:hover:text-white'
+                  ? 'bg-[#168BFF] text-white shadow-sm border border-indigo-500'
+                  : 'bg-white dark:bg-surface-dark text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-white/10 hover:border-indigo-500/40 hover:text-[#168BFF] dark:hover:text-white'
               }`}
             >
               {c.label}
@@ -595,6 +1517,26 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
           </div>
         ) : (
           <>
+            {/* View Mode: 3D Perspective Flow */}
+            {subjectsViewMode === '3d-flow' && (
+              <Subject3DCoverFlow
+                subjects={filteredSubjects}
+                role="principal"
+                onOpenSubject={(sub) => setViewMoreSubject(sub)}
+                onAction={(action, sub) => {
+                  if (action === 'marks') {
+                    onNavigateTab('marks', { subject: sub.name, grade: sub.grade });
+                  } else if (action === 'reports') {
+                    onNavigateTab('reports', { subject: sub.name, grade: sub.grade });
+                  } else {
+                    setViewMoreSubject(sub);
+                  }
+                }}
+                title="School Subjects 3D Intelligence Flow"
+                subtitle={`Interactive 3D Perspective Review for ${currentSchool?.name || 'Academic Network'} • Tap Expand to inspect educator allocation and curriculum metrics.`}
+              />
+            )}
+
             {/* View Mode 1: Horizontal Carousel */}
             {subjectsViewMode === 'carousel' && (
               <div
@@ -606,7 +1548,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   return (
                     <div
                       key={sub.id}
-                      className="min-w-[320px] max-w-[350px] shrink-0 snap-start rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group overflow-hidden animated-border-card"
+                      className="min-w-[320px] max-w-[350px] shrink-0 snap-start rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-[#168BFF]/50 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group overflow-hidden animated-border-card"
                     >
                       {/* Subject Background Picture Banner */}
                       <div className="relative h-32 w-full overflow-hidden bg-slate-900">
@@ -621,7 +1563,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                         {/* Top Badges */}
                         <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-600 text-white shadow-sm">
+                            <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-[#168BFF] text-white shadow-sm">
                               Grade {sub.grade}
                             </span>
                             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/70 text-cyan-300 border border-cyan-500/40 backdrop-blur-md">
@@ -634,17 +1576,22 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           </span>
                         </div>
 
-                        {/* Bottom Banner Title */}
-                        <div className="absolute bottom-2 inset-x-3">
+                        {/* Bottom Banner Title with high contrast frosted container */}
+                        <div data-theme-preserve="true" className="absolute bottom-2 inset-x-2.5 p-2.5 rounded-xl bg-slate-950/85 backdrop-blur-md border border-white/20 shadow-lg">
                           <h3
                             onClick={() => setViewMoreSubject(sub)}
-                            className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors cursor-pointer truncate drop-shadow-md"
+                            style={{ color: '#FFFFFF' }}
+                            className="!text-white font-black text-sm md:text-base group-hover:!text-cyan-300 transition-colors cursor-pointer truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] tracking-tight leading-snug"
                             title={`Inspect ${sub.name}`}
                           >
                             {sub.name}
                           </h3>
-                          <p className="text-[11px] text-slate-200 font-medium truncate">
-                            {sub.teacher_name || 'Educator not assigned'}
+                          <p 
+                            style={{ color: '#67E8F9' }}
+                            className="!text-cyan-300 font-bold text-xs truncate mt-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] flex items-center gap-1.5"
+                          >
+                            <User className="w-3.5 h-3.5 shrink-0 text-cyan-400" />
+                            <span>{sub.teacher_name || 'Educator not assigned'}</span>
                           </p>
                         </div>
                       </div>
@@ -709,7 +1656,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   return (
                     <div
                       key={sub.id}
-                      className="rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group overflow-hidden animated-border-card"
+                      className="rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-[#168BFF]/50 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group overflow-hidden animated-border-card"
                     >
                       {/* Subject Background Picture Banner */}
                       <div className="relative h-32 w-full overflow-hidden bg-slate-900">
@@ -724,7 +1671,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                         {/* Top Badges */}
                         <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-600 text-white shadow-sm">
+                            <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-[#168BFF] text-white shadow-sm">
                               Grade {sub.grade}
                             </span>
                             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/70 text-cyan-300 border border-cyan-500/40 backdrop-blur-md">
@@ -737,17 +1684,22 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           </span>
                         </div>
 
-                        {/* Bottom Banner Title */}
-                        <div className="absolute bottom-2 inset-x-3">
+                        {/* Bottom Banner Title with high contrast frosted container */}
+                        <div data-theme-preserve="true" className="absolute bottom-2 inset-x-2.5 p-2.5 rounded-xl bg-slate-950/85 backdrop-blur-md border border-white/20 shadow-lg">
                           <h3
                             onClick={() => setViewMoreSubject(sub)}
-                            className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors cursor-pointer truncate drop-shadow-md"
+                            style={{ color: '#FFFFFF' }}
+                            className="!text-white font-black text-sm md:text-base group-hover:!text-cyan-300 transition-colors cursor-pointer truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] tracking-tight leading-snug"
                             title={`Inspect ${sub.name}`}
                           >
                             {sub.name}
                           </h3>
-                          <p className="text-[11px] text-slate-200 font-medium truncate">
-                            {sub.teacher_name || 'Educator not assigned'}
+                          <p 
+                            style={{ color: '#67E8F9' }}
+                            className="!text-cyan-300 font-bold text-xs truncate mt-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] flex items-center gap-1.5"
+                          >
+                            <User className="w-3.5 h-3.5 shrink-0 text-cyan-400" />
+                            <span>{sub.teacher_name || 'Educator not assigned'}</span>
                           </p>
                         </div>
                       </div>
@@ -813,7 +1765,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     <div
                       key={sub.id}
                       onClick={() => setViewMoreSubject(sub)}
-                      className="rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm hover:shadow-md cursor-pointer group overflow-hidden flex flex-col justify-between animated-border-card"
+                      className="rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-[#168BFF]/50 transition-all shadow-sm hover:shadow-md cursor-pointer group overflow-hidden flex flex-col justify-between animated-border-card"
                     >
                       <div className="relative h-20 w-full overflow-hidden bg-slate-900">
                         <img
@@ -854,7 +1806,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                   return (
                     <div
                       key={sub.id}
-                      className="p-3 sm:px-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 transition-all shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 group animated-border-card"
+                      className="p-3 sm:px-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-[#168BFF]/50 transition-all shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 group animated-border-card"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 relative bg-slate-900">
@@ -907,7 +1859,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           </button>
                           <button
                             onClick={() => setViewMoreSubject(sub)}
-                            className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                            className="px-3 py-1.5 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                             title="Open Subject Operations"
                           >
                             <Eye className="w-3.5 h-3.5" />
@@ -923,6 +1875,17 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
           </>
         )}
       </section>
+    )}
+
+      {/* Campus Active Modules for School Admin */}
+      {!isSuperAdmin && currentSchool?.id > 0 && (
+        <div className="space-y-4">
+          <SchoolModulePreferences
+            school={currentSchool}
+            onSaved={refreshSchools}
+          />
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 3. FAVORITE MODULES SECTION (QUICK ACCESS FOR ADMIN)                     */}
@@ -1019,7 +1982,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     setViewMoreSubject(null);
                     onNavigateTab('marks', { subject: target.name, grade: target.grade });
                   }}
-                  className="p-3 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-indigo-500/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
+                  className="p-3 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-[#168BFF]/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
                 >
                   <div className="w-10 h-10 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <FileSpreadsheet className="w-5 h-5" />
@@ -1165,9 +2128,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     setViewMoreSubject(null);
                     onNavigateTab('inter-school', { subject: target.name });
                   }}
-                  className="p-3 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-purple-500/50 hover:bg-purple-50/50 dark:hover:bg-purple-500/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
+                  className="p-3 rounded-2xl bg-white dark:bg-surface-dark border border-slate-300 dark:border-white/10 hover:border-[#168BFF]/50 hover:bg-purple-50/50 dark:hover:bg-[#168BFF]/10 transition-all cursor-pointer shadow-sm flex items-center gap-3 text-left group"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="w-10 h-10 rounded-xl bg-[#168BFF]/15 text-[#168BFF] border border-purple-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Trophy className="w-5 h-5" />
                   </div>
                   <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors block truncate">
@@ -1207,6 +2170,416 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
               </button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 6. GELEZA SA ACCREDITED SCHOOL DOSSIER, MODULES & CURRICULUM MODAL         */}
+      {/* ========================================================================= */}
+      {selectedSchoolForCurriculum && (
+        <Modal
+          isOpen={!!selectedSchoolForCurriculum}
+          onClose={() => setSelectedSchoolForCurriculum(null)}
+          title={`Campus Dossier & Modules • ${selectedSchoolForCurriculum.name}`}
+          maxWidth="4xl"
+        >
+          {(() => {
+            const school = selectedSchoolForCurriculum;
+            const allSubjects = getSchoolOfferedSubjects(school);
+            const allStreams = getSchoolOfferedStreams(school);
+            const allLanguages = getSchoolOfferedLanguages(school);
+            const categorized = categorizeSchoolSubjects(allSubjects);
+
+            const teacherModIds = readModuleList(school.teacher_modules) ?? defaultTeacherModules();
+            const learnerModIds = readModuleList(school.learner_modules) ?? defaultLearnerModules();
+            const activeTeacherModules = TEACHER_MODULES.filter(m => teacherModIds.includes(m.id));
+            const receivedByLearners = modulesReceivedByLearners(teacherModIds);
+            const activeLearnerOnlyModules = LEARNER_CHOICE_MODULES.filter(m => learnerModIds.includes(m.id));
+            const totalActiveModules = activeTeacherModules.length + activeLearnerOnlyModules.length;
+
+            return (
+              <div className="space-y-6 text-slate-900 dark:text-white">
+                {/* Header Brand Bar */}
+                <div
+                  className="p-5 -mt-2 -mx-2 sm:-mx-4 rounded-2xl relative overflow-hidden border border-slate-200 dark:border-white/10"
+                  style={{
+                    background: `linear-gradient(135deg, ${school.primary_color || '#4f46e5'}25 0%, ${school.secondary_color || '#06b6d4'}15 100%)`
+                  }}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+                    <div className="flex items-center gap-3.5">
+                      <div
+                        className="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-white text-xl shadow-md shrink-0 border border-white/20 overflow-hidden"
+                        style={{ backgroundColor: school.primary_color || '#4f46e5' }}
+                      >
+                        {school.logo_url ? (
+                          <img src={school.logo_url} alt={school.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{school.name.slice(0, 2).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                            {school.name}
+                          </h3>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                            Accredited Partner
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 italic">
+                          {school.motto || 'Excellence in Education'}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          {school.province || 'National'} • Circuit: {school.circuit || 'General'} • EMIS: <span className="font-mono">{school.emis_number || 'N/A'}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="text-xs text-slate-500 dark:text-slate-400 block">Enrolled Learners</span>
+                      <span className="text-2xl font-black font-mono text-[#168BFF]">
+                        {school.enrolled_learners_count || 0}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3 Nav Tabs */}
+                <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-surface-dark border border-slate-200 dark:border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setSchoolDossierTab('modules')}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      schoolDossierTab === 'modules'
+                        ? 'bg-[#168BFF] text-white shadow-sm'
+                        : 'text-slate-700 dark:text-slate-300 hover:text-[#168BFF] dark:hover:text-white'
+                    }`}
+                  >
+                    <Layers className="w-4 h-4" />
+                    <span>Active Modules ({totalActiveModules})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSchoolDossierTab('subjects')}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      schoolDossierTab === 'subjects'
+                        ? 'bg-[#168BFF] text-white shadow-sm'
+                        : 'text-slate-700 dark:text-slate-300 hover:text-[#168BFF] dark:hover:text-white'
+                    }`}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>Curriculum & Subjects ({allSubjects.length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSchoolDossierTab('configure')}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      schoolDossierTab === 'configure'
+                        ? 'bg-[#168BFF] text-white shadow-sm'
+                        : 'text-slate-700 dark:text-slate-300 hover:text-[#168BFF] dark:hover:text-white'
+                    }`}
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                    <span>Configure Modules</span>
+                  </button>
+                </div>
+
+                {/* TAB 1: ACTIVE CAMPUS MODULES ACCORDING TO WHAT THIS SCHOOL HAS SELECTED */}
+                {schoolDossierTab === 'modules' && (
+                  <div className="space-y-6">
+                    {/* Notice bar */}
+                    <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <Layers className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                        <div>
+                          <p className="text-xs font-bold text-slate-900 dark:text-white">
+                            Active Tools for {school.name}
+                          </p>
+                          <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                            Only these modules with their icons are activated and accessible to staff and learners for this specific campus.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSchoolDossierTab('configure')}
+                        className="px-3.5 py-1.5 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-bold text-xs transition-all shadow-sm flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer"
+                      >
+                        <SlidersHorizontal className="w-3.5 h-3.5" />
+                        <span>Customize Modules</span>
+                      </button>
+                    </div>
+
+                    {/* Section 1: Modules for Teachers */}
+                    <div className="space-y-3">
+                      <div className="pb-1 border-b border-slate-200 dark:border-white/10">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <FileSpreadsheet className="w-4 h-4 text-cyan-500" />
+                          <span>Modules for Teachers ({activeTeacherModules.length} Active)</span>
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Attendance, conduct, leave, parent meetings, and the lesson studio stay with teachers. When teachers send marks, homework, notices, or a timetable, learners receive that automatically.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {activeTeacherModules.map((mod) => {
+                          const Icon = mod.icon || getModuleIcon(mod.id);
+                          return (
+                            <div
+                              key={mod.id}
+                              className="p-3 rounded-2xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/10 flex items-center justify-between gap-3 shadow-2xs hover:border-cyan-500/40 transition-colors"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-8 h-8 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                                  <Icon className="w-4 h-4" />
+                                </div>
+                                <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                  {mod.label}
+                                </span>
+                              </div>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1 shrink-0">
+                                <Check className="w-3 h-3 text-emerald-500" />
+                                <span>Active</span>
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Section 2: Learners receive these */}
+                    <div className="space-y-3 pt-2">
+                      <div className="pb-1 border-b border-slate-200 dark:border-white/10">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <Users className="w-4 h-4 text-purple-500" />
+                          <span>Learners receive these ({receivedByLearners.length})</span>
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          These are on because the matching teacher module is on. They are not a separate choice.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {receivedByLearners.map((mod) => {
+                          const Icon = mod.icon || getModuleIcon(mod.id);
+                          return (
+                            <span
+                              key={mod.id}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#168BFF]/10 text-[#168BFF] border border-[#168BFF]/30"
+                            >
+                              <Icon className="w-3.5 h-3.5 text-[#168BFF]" />
+                              <span>{mod.label}</span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Section 3: Modules for learners only */}
+                    <div className="space-y-3 pt-2">
+                      <div className="pb-1 border-b border-slate-200 dark:border-white/10">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <GraduationCap className="w-4 h-4 text-amber-500" />
+                          <span>Modules for learners only ({activeLearnerOnlyModules.length} Active)</span>
+                        </h4>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {activeLearnerOnlyModules.map((mod) => {
+                          const Icon = mod.icon || getModuleIcon(mod.id);
+                          return (
+                            <div
+                              key={mod.id}
+                              className="p-3 rounded-2xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/10 flex items-center justify-between gap-3 shadow-2xs hover:border-amber-500/40 transition-colors"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center shrink-0">
+                                  <Icon className="w-4 h-4" />
+                                </div>
+                                <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                  {mod.label}
+                                </span>
+                              </div>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1 shrink-0">
+                                <Check className="w-3 h-3 text-amber-500" />
+                                <span>Learner Active</span>
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 2: CURRICULUM & OFFERED SUBJECTS */}
+                {schoolDossierTab === 'subjects' && (
+                  <div className="space-y-6">
+                    {/* Institutional & Curriculum Metadata */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Curriculum Framework</span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">
+                          {school.curriculum_type || 'CAPS (DBE)'}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Grade Range</span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">
+                          {school.grade_range || 'Grades 8 - 12'}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Principal / Lead</span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white truncate block">
+                          {school.principal_name || 'Unassigned'}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/5">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">Total Subjects</span>
+                        <span className="text-xs font-black font-mono text-indigo-600 dark:text-indigo-400">
+                          {allSubjects.length} Registered
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Offered Academic Streams */}
+                    <div className="space-y-2">
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 block flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-purple-500" />
+                        <span>Academic Streams Offered by {school.name}</span>
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {allStreams.map((stream, idx) => (
+                          <span
+                            key={idx}
+                            className="px-3 py-1 rounded-xl text-xs font-bold bg-[#168BFF]/10 text-[#168BFF] border border-[#168BFF]/30 flex items-center gap-1.5"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-purple-500" />
+                            <span>{stream}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Categorized Offered Subjects */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-white/10">
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                          <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+                          <span>Subjects Taught at this Campus ({allSubjects.length})</span>
+                        </span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                          DBE / CAPS Compliant
+                        </span>
+                      </div>
+
+                      <div className="space-y-4 max-h-80 overflow-y-auto pr-1 scrollbar-thin">
+                        {Object.entries(categorized).map(([catName, subs]) => {
+                          if (subs.length === 0) return null;
+                          return (
+                            <div key={catName} className="space-y-2">
+                              <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-[#168BFF]" />
+                                <span>{catName}</span>
+                                <span className="text-[10px] text-slate-500 font-normal">({subs.length})</span>
+                              </h4>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {subs.map((sub, sIdx) => (
+                                  <div
+                                    key={sIdx}
+                                    className="p-2.5 rounded-xl bg-slate-50 dark:bg-surface-darker border border-slate-200 dark:border-white/10 flex items-center justify-between gap-2 shadow-2xs"
+                                  >
+                                    <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                      {sub}
+                                    </span>
+                                    <span className="text-[10px] px-2 py-0.5 rounded-md font-mono bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 shrink-0">
+                                      CAPS Gr {school.grade_range || '8-12'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Languages of Instruction */}
+                    <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-white/10">
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-cyan-500" />
+                        <span>Languages of Learning and Teaching (LOLT) & Additional Languages</span>
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {allLanguages.map((lang, lIdx) => (
+                          <span
+                            key={lIdx}
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20"
+                          >
+                            {lang}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 3: CONFIGURE MODULES FOR THIS SCHOOL */}
+                {schoolDossierTab === 'configure' && (
+                  <div className="space-y-4">
+                    <SchoolModulePreferences
+                      school={school}
+                      onSaved={async () => {
+                        await handleRefreshSchools();
+                        const updated = schoolsList.find(s => s.id === school.id);
+                        if (updated) setSelectedSchoolForCurriculum(updated);
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Modal Footer Actions */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-slate-200 dark:border-white/10">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSchoolById(school.id);
+                        setSelectedSchoolForCurriculum(null);
+                        onNavigateTab('users');
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-bold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      <span>Switch Context to {school.name}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedSchoolForCurriculum(null);
+                        onNavigateTab('command-center');
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 text-slate-800 dark:text-slate-200 font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Building2 className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Command Center</span>
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSchoolForCurriculum(null)}
+                    className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-900 dark:text-white font-bold text-xs transition-colors cursor-pointer self-end sm:self-auto"
+                  >
+                    Close Dossier
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </Modal>
       )}
 

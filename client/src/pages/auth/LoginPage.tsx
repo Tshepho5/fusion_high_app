@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { FusionAppIcon } from '../../components/common/FusionAppIcon';
+import { GelezaSplashWaves } from '../../components/landing/GelezaSplashWaves';
+import { CAMPUS_WEATHER_FALLBACK, cachedForecast, projectWeather, startCampusForecast, type CampusWeather, type ForecastPayload } from '../../utils/campusWeather';
 import {
   Lock,
   Mail,
@@ -13,16 +15,17 @@ import {
   Check,
   Sun,
   Moon,
-  UserPlus,
   AlertCircle,
-  ShieldCheck
+  ShieldCheck,
+  Fingerprint
 } from 'lucide-react';
-import { systemControlService } from '../../services/api';
+import { startAuthentication, browserSupportsWebAuthn, platformAuthenticatorIsAvailable } from '@simplewebauthn/browser';
+import { authService } from '../../services/api';
 import { describeLoginFailure } from '../../utils/loginFeedback';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, establishSession } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   const isLight = theme === 'light';
@@ -34,42 +37,165 @@ export const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [regLocked, setRegLocked] = useState(false);
+  const [accountReady, setAccountReady] = useState(false);
+  const [checkingAccount, setCheckingAccount] = useState(false);
+  const [fingerprintSupported, setFingerprintSupported] = useState(false);
+  const [fingerprintAvailable, setFingerprintAvailable] = useState(false);
+  const [fingerprintBusy, setFingerprintBusy] = useState(false);
+  const forecastRef = useRef<ForecastPayload | null>(cachedForecast());
+  const [weather, setWeather] = useState<CampusWeather>(() => {
+    const cached = forecastRef.current;
+    return cached ? projectWeather(cached) : CAMPUS_WEATHER_FALLBACK;
+  });
+
+  useEffect(() => {
+    const apply = (payload: ForecastPayload) => {
+      forecastRef.current = payload;
+      setWeather(projectWeather(payload));
+    };
+    let stop = startCampusForecast(apply);
+    const timer = window.setInterval(() => {
+      stop();
+      stop = startCampusForecast(apply);
+    }, 10 * 60 * 1000);
+    return () => {
+      stop();
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!browserSupportsWebAuthn()) return;
+    setFingerprintSupported(true);
+    platformAuthenticatorIsAvailable()
+      .then((ready) => {
+        if (!cancelled) setFingerprintAvailable(ready);
+      })
+      .catch(() => {
+        if (!cancelled) setFingerprintAvailable(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     try {
       sessionStorage.removeItem('logout_reason');
     } catch (_) {}
-
-    // Check registration lock status
-    systemControlService.getPortalLocks().then((res: any) => {
-      const controls = res?.controls || res;
-      let regControl = null;
-      if (Array.isArray(controls)) {
-        regControl = controls.find((c: any) => c.control_id === 'user_registration' || c.id === 'user_registration');
-      } else if (controls && typeof controls === 'object') {
-        regControl = controls.user_registration;
-      }
-      if (regControl && regControl.is_locked) {
-        setRegLocked(true);
-      }
-    }).catch(e => console.warn('Could not check registration lock status:', e));
   }, []);
+
+  // Keyboard Barrier on Login Page
+  useEffect(() => {
+    // Global Keydown Barrier on Login Page:
+    // Intercepts & disables special hotkeys and key-driven navigation outside inputs
+    const handleKeyDownBarrier = (e: KeyboardEvent) => {
+      const activeElement = document.activeElement as HTMLElement | null;
+      const isInputFocused =
+        activeElement &&
+        (activeElement.tagName === 'INPUT' ||
+          activeElement.tagName === 'TEXTAREA' ||
+          activeElement.isContentEditable);
+
+      // Block backspace outside of text fields (prevents browser back navigation)
+      if (e.key === 'Backspace' && !isInputFocused) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      // Block Alt + Left / Alt + Right (browser history back / forward navigation keys)
+      if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      // If authentication is actively running (loading), block all submission/navigation keys
+      if (loading) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+      }
+
+      // If Ctrl or Meta (Cmd) is pressed:
+      if (e.ctrlKey || e.metaKey) {
+        const key = e.key.toLowerCase();
+        // Allow standard text editing keystrokes ONLY inside active input fields
+        const isEditingKey = isInputFocused && ['c', 'v', 'x', 'a', 'z', 'y'].includes(key);
+        if (!isEditingKey) {
+          // Block any special shortcut (e.g. Ctrl+K, Ctrl+M, Ctrl+P, Ctrl+D, Ctrl+H, etc.)
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation?.();
+          return;
+        }
+      }
+
+      // Block Function keys (F1 - F12) that might trigger browser or custom actions
+      if (/^F\d+$/.test(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    };
+
+    // Attach in capture phase to intercept before any child or global listener
+    window.addEventListener('keydown', handleKeyDownBarrier, { capture: true });
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDownBarrier, { capture: true });
+    };
+  }, [loading]);
+
+  const confirmAccount = async (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setAccountReady(true);
+      return true;
+    }
+    setCheckingAccount(true);
+    try {
+      const result = await authService.checkLoginAccount(trimmed);
+      if (result?.exists) {
+        setAccountReady(true);
+        setFieldErrors((prev) => {
+          const next = { ...prev };
+          delete next.identifier;
+          return next;
+        });
+        return true;
+      }
+      // If server explicitly confirms no account exists, we can show a hint but do not lock the form
+      setAccountReady(true);
+      return true;
+    } catch (_err: any) {
+      // Network/offline resilience: never lock out user on pre-check failures
+      setAccountReady(true);
+      return true;
+    } finally {
+      setCheckingAccount(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newFieldErrors: Record<string, string> = {};
 
-    if (!identifier.trim()) {
-      newFieldErrors.identifier = 'Please enter your email or learner ID.';
-    }
-    if (!password.trim()) {
-      newFieldErrors.password = 'Please enter your password.';
+    const trimmedId = identifier.trim();
+    const trimmedPass = password.trim();
+
+    if (!trimmedId) {
+      setFieldErrors((prev) => ({ ...prev, identifier: 'Please enter your email or learner ID.' }));
+      setError('Please enter your email or learner ID before submitting.');
+      return;
     }
 
-    if (Object.keys(newFieldErrors).length > 0) {
-      setFieldErrors(newFieldErrors);
-      setError('Please resolve the errors highlighted below.');
+    if (!trimmedPass) {
+      setFieldErrors((prev) => ({ ...prev, password: 'Please enter your password.' }));
+      setError('Please enter your password.');
       return;
     }
 
@@ -78,65 +204,92 @@ export const LoginPage: React.FC = () => {
     setFieldErrors({});
 
     try {
-      const trimmedId = identifier.trim();
       const credentials = {
         email: trimmedId,
         identifier: trimmedId,
         learnerNumber: trimmedId,
-        password,
+        password: trimmedPass,
+        rememberMe,
       };
 
-      const { role } = await login(credentials, { remember: rememberMe });
-      if (!role) {
+      const session = await login(credentials);
+      if (!session?.data?.token || typeof session.data.token !== 'string' || !session.role) {
         setError('This account has no portal role assigned. Ask the school office to finish setup.');
         return;
       }
-      navigate(`/dashboard/${role}`);
+      navigate(`/dashboard/${session.role}`);
     } catch (err: any) {
       console.error('Login error:', err);
+      const code = err.response?.data?.code;
       const failure = describeLoginFailure(err);
-      setError(failure.message);
-      setFieldErrors(
-        failure.blameFields
-          ? {
-              identifier: 'Please verify your registered email or learner ID.',
-              password: 'Password may be incorrect or account is unauthorized.',
-            }
-          : {}
-      );
+      const msg = failure.message;
+
+      if (!failure.blameFields) {
+        setFieldErrors({});
+        setError(msg);
+      } else if (code === 'account_not_found') {
+        setFieldErrors({ identifier: msg });
+        setError(msg);
+      } else if (code === 'password_incorrect') {
+        setFieldErrors({ password: msg });
+        setError('The email or learner ID is recognized, but the password is incorrect.');
+      } else {
+        setError(msg);
+        setFieldErrors({
+          identifier: 'Please verify your registered email or learner ID.',
+          password: 'Password may be incorrect or account is unauthorized.',
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const handleFingerprintLogin = async () => {
+    setFingerprintBusy(true);
+    setError(null);
+    setFieldErrors({});
+    try {
+      const started = await authService.fingerprintLoginOptions();
+      const assertion = await startAuthentication({ optionsJSON: started.options });
+      const data = await authService.fingerprintLoginVerify({
+        challengeId: started.challengeId,
+        response: assertion,
+      });
+      const session = await establishSession(data, rememberMe);
+      if (!session?.data?.token || typeof session.data.token !== 'string' || !session.role) {
+        setError('This account has no portal role assigned. Ask the school office to finish setup.');
+        return;
+      }
+      navigate(`/dashboard/${session.role}`);
+    } catch (err: any) {
+      const cancelled = err?.name === 'NotAllowedError' || err?.code === 'ERROR_CEREMONY_ABORTED';
+      const message = cancelled
+        ? 'Fingerprint sign-in was cancelled. Email and password are still here.'
+        : err?.response?.data?.error ||
+          'Fingerprint sign-in is not turned on for this device. Sign in with email and password, then enable the scanner in Settings.';
+      setError(message);
+    } finally {
+      setFingerprintBusy(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen relative flex flex-col justify-between overflow-x-hidden font-sans">
-      {/* ================= 1. FULLSCREEN PHOTO BACKGROUND ================= */}
-      <div className="fixed inset-0 z-0">
-        <img
-          src="/assets/fusion-login-bg.jpg"
-          alt="Fusion High School Campus & Learners"
-          className="w-full h-full object-cover object-center scale-[1.01] transition-transform duration-1000"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src = '/assets/landing-bg.png';
-          }}
-        />
-        {/* Dynamic Film Overlay: crystal bright in light mode, cinematic evening in dark mode */}
-        <div
-          className={`absolute inset-0 transition-colors duration-500 ${
-            isLight
-              ? 'bg-gradient-to-b from-sky-950/20 via-black/10 to-black/35 backdrop-blur-[0.5px]'
-              : 'bg-gradient-to-b from-slate-950/65 via-black/50 to-black/80 backdrop-blur-[1.5px]'
-          }`}
-        />
-      </div>
+    <div className="min-h-screen relative flex flex-col justify-between overflow-x-hidden select-none font-sans bg-[#f6f1e6] dark:bg-[#07080d]">
+      <GelezaSplashWaves weather={weather} />
 
       {/* ================= 2. TOP HEADER (REMAINS VISIBLE) ================= */}
       <header className="relative z-30 flex items-center justify-between px-4 sm:px-8 md:px-12 pt-5 pb-3 max-w-7xl mx-auto w-full">
         {/* Back to Home Navigation Pill */}
         <Link
           to="/"
+          onClick={(e) => {
+            if (loading) e.preventDefault();
+          }}
+          tabIndex={loading ? -1 : 0}
           className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold shadow-lg backdrop-blur-md transition-all active:scale-95 border ${
+            loading ? 'opacity-50 pointer-events-none cursor-not-allowed' : ''
+          } ${
             isLight
               ? 'bg-white/80 hover:bg-white text-slate-900 border-white/70 shadow-black/10'
               : 'bg-black/40 hover:bg-black/60 text-white border-white/25 shadow-black/30'
@@ -197,7 +350,7 @@ export const LoginPage: React.FC = () => {
             className={`absolute -inset-2 rounded-[38px] blur-2xl pointer-events-none opacity-50 transition-colors duration-500 ${
               isLight
                 ? 'bg-gradient-to-r from-sky-400/20 via-blue-500/15 to-amber-300/20'
-                : 'bg-gradient-to-r from-cyan-500/25 via-blue-600/20 to-purple-600/25'
+                : 'bg-gradient-to-r from-[#168BFF]/20 via-[#0878E8]/10 to-[#168BFF]/20'
             }`}
           />
 
@@ -209,6 +362,16 @@ export const LoginPage: React.FC = () => {
                 : 'bg-slate-950/20 hover:bg-slate-950/30 border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.45)] ring-1 ring-white/10 text-white'
             }`}
           >
+            <div
+              className={`login-card-rim ${
+                fieldErrors.identifier
+                  ? 'login-card-rim--stopped'
+                  : accountReady
+                    ? 'login-card-rim--lap'
+                    : 'login-card-rim--quiet'
+              } ${isLight ? 'login-card-rim--light' : 'login-card-rim--dark'}`}
+              aria-hidden="true"
+            />
             {/* Header: Crest Icon & Portal Title */}
             <div className="text-center flex flex-col items-center space-y-1.5">
               <div className="relative group flex items-center justify-center my-1">
@@ -294,13 +457,17 @@ export const LoginPage: React.FC = () => {
                     aria-describedby={fieldErrors.identifier ? 'login-identifier-error' : undefined}
                     onChange={(e) => {
                       setIdentifier(e.target.value);
-                      if (fieldErrors.identifier) {
-                        setFieldErrors(prev => {
-                          const updated = { ...prev };
-                          delete updated.identifier;
-                          return updated;
-                        });
-                      }
+                      setAccountReady(false);
+                      setError(null);
+                      setFieldErrors((prev) => {
+                        const updated = { ...prev };
+                        delete updated.identifier;
+                        delete updated.password;
+                        return updated;
+                      });
+                    }}
+                    onBlur={() => {
+                      if (identifier.trim()) confirmAccount(identifier);
                     }}
                     placeholder="Enter email or learner ID (e.g. 1001)"
                     required
@@ -344,6 +511,7 @@ export const LoginPage: React.FC = () => {
                     value={password}
                     aria-invalid={fieldErrors.password ? true : undefined}
                     aria-describedby={fieldErrors.password ? 'login-password-error' : undefined}
+                    disabled={loading}
                     onChange={(e) => {
                       setPassword(e.target.value);
                       if (fieldErrors.password) {
@@ -357,7 +525,7 @@ export const LoginPage: React.FC = () => {
                     placeholder="Enter your password"
                     required
                     autoComplete="current-password"
-                    className={`w-full pl-11 pr-12 py-3.5 rounded-2xl text-xs sm:text-sm font-bold backdrop-blur-md border transition-all focus:outline-none focus:ring-2 shadow-xs ${
+                    className={`w-full h-[52px] pl-11 pr-12 rounded-2xl text-xs sm:text-sm font-bold backdrop-blur-md border transition-colors focus:outline-none focus:ring-2 shadow-xs disabled:cursor-not-allowed disabled:opacity-60 ${
                       fieldErrors.password
                         ? 'border-rose-500 ring-2 ring-rose-500/20'
                         : isLight
@@ -365,20 +533,20 @@ export const LoginPage: React.FC = () => {
                         : 'bg-black/35 hover:bg-black/45 focus:bg-black/55 border-white/25 text-white placeholder:text-slate-400 focus:ring-cyan-400 focus:border-cyan-300'
                     }`}
                   />
-                  {/* View Password Toggle Icon (Fixed position inside placeholder) */}
                   <button
                     type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => setShowPassword((visible) => !visible)}
-                    className={`absolute right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 flex items-center justify-center rounded-lg cursor-pointer transition-colors ${
+                    disabled={loading}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => setShowPassword((current) => !current)}
+                    className={`absolute top-0 right-1 z-10 flex h-[52px] w-10 items-center justify-center rounded-lg ${
                       isLight
-                        ? 'text-[#0F172A] hover:text-[#0F172A] hover:bg-white/70'
+                        ? 'text-[#0F172A] hover:bg-white/70'
                         : 'text-slate-300 hover:text-white hover:bg-white/10'
-                    }`}
+                    } disabled:cursor-not-allowed disabled:opacity-40`}
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                     title={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+                    {showPassword ? <EyeOff className="h-4 w-4 shrink-0" /> : <Eye className="h-4 w-4 shrink-0" />}
                   </button>
                 </div>
                 {fieldErrors.password && (
@@ -449,13 +617,15 @@ export const LoginPage: React.FC = () => {
                 disabled={loading}
                 aria-busy={loading}
                 className={`w-full py-3.5 px-6 rounded-full font-black text-sm transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 mt-2 border shadow-lg ${
+                  accountReady && !fieldErrors.identifier ? 'login-sign-in-pulse' : ''
+                } ${
                   isLight
-                    ? 'bg-blue-600 hover:bg-blue-700 text-always-white border-blue-500/40 shadow-blue-600/30'
-                    : 'bg-gradient-to-r from-cyan-400 via-sky-500 to-blue-600 hover:from-cyan-300 hover:to-sky-400 text-slate-950 border-cyan-200 shadow-cyan-500/40'
+                    ? 'login-sign-in--light bg-[#168BFF] hover:bg-[#0878E8] text-white border-[#168BFF]/40 shadow-[#168BFF]/30'
+                    : 'login-sign-in--dark bg-[#168BFF] hover:bg-[#0878E8] text-white border-[#168BFF]/60 shadow-[#168BFF]/40'
                 }`}
               >
                 {loading ? (
-                  <div className={`w-4 h-4 border-2 border-t-transparent rounded-full animate-spin ${isLight ? 'border-white' : 'border-slate-950'}`} />
+                  <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin" />
                 ) : (
                   <>
                     <ShieldCheck className="w-4 h-4" />
@@ -464,51 +634,33 @@ export const LoginPage: React.FC = () => {
                   </>
                 )}
               </button>
+
+              {fingerprintSupported && !fingerprintAvailable && (
+                <p className={`text-[11px] text-center font-semibold ${isLight ? 'text-slate-700' : 'text-white/80'}`}>
+                  Turn on this device’s fingerprint scanner in its settings to use fingerprint sign-in.
+                </p>
+              )}
+
+              {fingerprintAvailable && (
+                <button
+                  type="button"
+                  onClick={handleFingerprintLogin}
+                  disabled={loading || fingerprintBusy}
+                  className={`w-full py-3 px-6 rounded-full font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 border ${
+                    isLight
+                      ? 'bg-white/80 text-slate-900 border-white/70 hover:bg-white'
+                      : 'bg-black/35 text-white border-white/25 hover:bg-black/50'
+                  }`}
+                >
+                  {fingerprintBusy ? (
+                    <div className={`w-4 h-4 border-2 border-t-transparent rounded-full animate-spin ${isLight ? 'border-slate-900' : 'border-white'}`} />
+                  ) : (
+                    <Fingerprint className="w-4 h-4" />
+                  )}
+                  <span>Sign in with fingerprint</span>
+                </button>
+              )}
             </form>
-
-            {/* OR Divider */}
-            <div className="relative my-5 text-center">
-              <div className="absolute inset-0 flex items-center">
-                <div className={`w-full border-t ${isLight ? 'border-slate-300/80' : 'border-white/20'}`} />
-              </div>
-              <span
-                className={`relative px-3 text-[10px] font-black uppercase tracking-widest rounded-full border backdrop-blur-md ${
-                  isLight
-                    ? 'bg-white/80 text-[#0F172A] border-white/80'
-                    : 'bg-black/50 text-cyan-300 border-white/20'
-                }`}
-              >
-                OR
-              </span>
-            </div>
-
-            {/* Secondary Register Pill Button (Indicates lock state if executive locked) */}
-            {regLocked ? (
-              <div
-                role="status"
-                className="w-full py-3 px-6 rounded-full border backdrop-blur-md font-bold text-xs flex items-center justify-center gap-2 shadow-xs bg-amber-500/10 border-amber-500/30 text-amber-200"
-              >
-                <Lock className="w-3.5 h-3.5 text-amber-400" />
-                <span>New registration is locked by the school office.</span>
-              </div>
-            ) : (
-              <Link
-                to="/register"
-                className={`w-full py-3 px-6 rounded-full border backdrop-blur-md font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.98] ${
-                  isLight
-                    ? 'bg-white/55 hover:bg-white/70 border-white/70 text-[#0F172A]'
-                    : 'bg-black/35 hover:bg-black/50 border-white/25 text-white'
-                }`}
-              >
-                <UserPlus className={`w-3.5 h-3.5 ${isLight ? 'text-[#0F172A]' : 'text-cyan-300'}`} />
-                <span>
-                  Need a new account?{' '}
-                  <span className={`underline font-extrabold ml-0.5 ${isLight ? 'text-[#1D4ED8]' : 'text-cyan-300'}`}>
-                    Apply / Register Here
-                  </span>
-                </span>
-              </Link>
-            )}
           </div>
         </div>
       </main>

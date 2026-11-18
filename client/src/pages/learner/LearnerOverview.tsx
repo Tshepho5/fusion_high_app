@@ -44,13 +44,16 @@ import {
   Search,
   Filter,
   SlidersHorizontal,
-  Image as ImageIcon
+  Image as ImageIcon,
+  BrainCircuit
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
 import { getSubjectMetadata } from '../../utils/subjectImages';
+import { Subject3DCoverFlow } from '../../components/subject/Subject3DCoverFlow';
+import { LearnerAIQuizModal } from '../../components/learner/LearnerAIQuizModal';
 
-export type SubjectViewMode = 'carousel' | 'visual' | 'grid' | 'compact' | 'list';
+export type SubjectViewMode = '3d-flow' | 'carousel' | 'visual' | 'grid' | 'compact' | 'list';
 
 interface LearnerOverviewProps {
   onNavigateTab: (tabId: string, subjectName?: string) => void;
@@ -81,16 +84,21 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
   const [assignments, setAssignments] = useState<any[]>([]);
   const [performance, setPerformance] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isQuizModalOpen, setIsQuizModalOpen] = useState<boolean>(false);
+  const [classInfo, setClassInfo] = useState<{ className: string; classTeacher: string }>({
+    className: '10A',
+    classTeacher: 'To Be Assigned'
+  });
 
-  // Subject Presentation Mode (Carousel / Visual Cards / Grid / Compact / List)
+  // Subject Presentation Mode (3D Flow / Carousel / Visual Cards / Grid / Compact / List)
   const [subjectViewMode, setSubjectViewMode] = useState<SubjectViewMode>(() => {
     try {
       const saved = localStorage.getItem('learner_subject_view_mode');
-      if (saved === 'carousel' || saved === 'visual' || saved === 'grid' || saved === 'compact' || saved === 'list') {
-        return saved;
+      if (saved === '3d-flow' || saved === 'carousel' || saved === 'visual' || saved === 'grid' || saved === 'compact' || saved === 'list') {
+        return saved as SubjectViewMode;
       }
     } catch {}
-    return 'carousel';
+    return '3d-flow';
   });
   const [subjectCategoryFilter, setSubjectCategoryFilter] = useState<string>('all');
   const [subjectSearchQuery, setSubjectSearchQuery] = useState<string>('');
@@ -172,10 +180,26 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
           learnerService.getGradesOverview().catch(() => learnerService.getProgress())
         ]);
 
-        if (profData.status === 'fulfilled') setProfile(profData.value);
+        let currentClassName = user?.academic?.class_name || (user?.grade ? `${user.grade}A` : '10A');
+        let currentClassTeacher = user?.academic?.class_teacher_name || user?.academic?.class_teacher || 'To Be Assigned';
+
+        if (profData.status === 'fulfilled') {
+          const pVal = profData.value;
+          setProfile(pVal);
+          if (pVal?.class_name || pVal?.academic?.class_name) {
+            currentClassName = pVal?.class_name || pVal?.academic?.class_name;
+          }
+          if (pVal?.class_teacher || pVal?.class_teacher_name || pVal?.academic?.class_teacher_name) {
+            currentClassTeacher = pVal?.class_teacher || pVal?.class_teacher_name || pVal?.academic?.class_teacher_name;
+          }
+        }
         
         if (subjData.status === 'fulfilled') {
           const val = subjData.value;
+          if (val?.class_name) currentClassName = val.class_name;
+          if (val?.class_teacher || val?.class_teacher_name) {
+            currentClassTeacher = val.class_teacher || val.class_teacher_name;
+          }
           let subList: any[] = [];
           if (val && Array.isArray(val.subjects)) {
             subList = val.subjects;
@@ -196,6 +220,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
             });
           setSubjects(formatted);
         }
+        setClassInfo({ className: currentClassName, classTeacher: currentClassTeacher });
 
         if (annData.status === 'fulfilled') {
           const list = Array.isArray(annData.value) ? annData.value : annData.value?.announcements || [];
@@ -283,6 +308,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
     <div className="space-y-6 animate-fade-in text-slate-100 pb-20">
       <HomeGreeting />
 
+
       {/* 1. ENROLLED SUBJECTS HUB - CUSTOMIZABLE PRESENTATION & PICTURES */}
       <section className="space-y-4">
         {/* Section Header with Title & View Mode Selectors */}
@@ -291,27 +317,49 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
             <div className="w-10 h-10 rounded-2xl bg-brand-500/15 border border-brand-500/30 text-brand-400 flex items-center justify-center shadow-sm">
               <BookOpen className="w-5 h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg md:text-xl xl:text-2xl font-bold font-display text-white tracking-tight">
-                  My Enrolled Subjects
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500/20 text-brand-300 border border-brand-500/30">
-                  {filteredSubjects.length} of {displaySubjects.length}
-                </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg md:text-xl xl:text-2xl font-bold font-display text-white tracking-tight">
+                    My Enrolled Subjects
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500/20 text-brand-300 border border-brand-500/30">
+                    {filteredSubjects.length} of {displaySubjects.length}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-300">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-medium">
+                    <span>Class:</span>
+                    <strong className="text-white font-bold">{classInfo.className}</strong>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-800/80 text-slate-300 border border-white/10 font-medium">
+                    <span>Class Teacher:</span>
+                    <strong className="text-white font-bold">{classInfo.classTeacher}</strong>
+                  </span>
+                </div>
               </div>
-            </div>
           </div>
 
-          {/* View Mode Switcher (Carousel / Visual Hero Cards / Grid / Compact / List) */}
+          {/* View Mode Switcher (3D Flow / Carousel / Visual Hero Cards / Grid / Compact / List) */}
           <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
-            <div className="flex items-center gap-1 p-1 bg-[#EDF4F7] dark:bg-[#0A121A] rounded-2xl border border-slate-200/90 dark:border-[#1B2E3D]">
+            <div className="flex items-center gap-1 p-1 bg-[#F4F6F8] dark:bg-[#111821] rounded-2xl border border-[#C7D1DC] dark:border-[#2C3948]">
+              <button
+                onClick={() => handleSetSubjectViewMode('3d-flow')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  subjectViewMode === '3d-flow'
+                    ? 'bg-[#168BFF] text-white shadow-xs'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
+                }`}
+                title="3D Perspective Flow View"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">3D Flow</span>
+              </button>
               <button
                 onClick={() => handleSetSubjectViewMode('carousel')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   subjectViewMode === 'carousel'
-                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-[#168BFF] text-white shadow-xs'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Horizontal Carousel View"
               >
@@ -322,8 +370,8 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 onClick={() => handleSetSubjectViewMode('visual')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   subjectViewMode === 'visual'
-                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-[#168BFF] text-white shadow-xs'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Visual Showcase with Subject Pictures"
               >
@@ -334,8 +382,8 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 onClick={() => handleSetSubjectViewMode('grid')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   subjectViewMode === 'grid'
-                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-[#168BFF] text-white shadow-xs'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Responsive Grid"
               >
@@ -346,8 +394,8 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 onClick={() => handleSetSubjectViewMode('compact')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   subjectViewMode === 'compact'
-                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-[#168BFF] text-white shadow-xs'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Compact Tiles"
               >
@@ -358,8 +406,8 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 onClick={() => handleSetSubjectViewMode('list')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   subjectViewMode === 'list'
-                    ? 'bg-[#13C8D9] text-[#0A121A] shadow-xs'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-[#168BFF] text-white shadow-xs'
+                    : 'text-slate-500 hover:text-[#168BFF] hover:bg-[#168BFF]/10 dark:text-slate-400 dark:hover:text-[#168BFF]'
                 }`}
                 title="Detailed List"
               >
@@ -374,7 +422,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 <button
                   type="button"
                   onClick={() => scrollSubjectCarousel(-1)}
-                  className="p-2 rounded-xl bg-white dark:bg-[#0A121A] border border-slate-200/90 dark:border-[#1B2E3D] text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-[#13C8D9]/50 transition-all shadow-xs active:scale-95 cursor-pointer"
+                  className="p-2 rounded-xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-[#168BFF]/50 transition-all shadow-xs active:scale-95 cursor-pointer"
                   title="Scroll Left"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -382,7 +430,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 <button
                   type="button"
                   onClick={() => scrollSubjectCarousel(1)}
-                  className="p-2 rounded-xl bg-white dark:bg-[#0A121A] border border-slate-200/90 dark:border-[#1B2E3D] text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-[#13C8D9]/50 transition-all shadow-xs active:scale-95 cursor-pointer"
+                  className="p-2 rounded-xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white hover:border-[#168BFF]/50 transition-all shadow-xs active:scale-95 cursor-pointer"
                   title="Scroll Right"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -402,8 +450,8 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                 onClick={() => setSubjectCategoryFilter(cat.id)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
                   subjectCategoryFilter === cat.id
-                    ? 'bg-[#13C8D9] text-[#0A121A] border-[#13C8D9] shadow-xs'
-                    : 'bg-[#EDF4F7] dark:bg-[#121F2C] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5 border-slate-200/60 dark:border-[#1B2E3D]'
+                    ? 'bg-[#168BFF] text-white border-[#168BFF] shadow-xs'
+                    : 'bg-[#F4F6F8] dark:bg-[#171F29] text-slate-700 dark:text-slate-300 hover:text-[#168BFF] dark:hover:text-[#168BFF] hover:bg-[#168BFF]/10 hover:border-[#168BFF]/50 border-[#C7D1DC] dark:border-[#2C3948]'
                 }`}
               >
                 {cat.label}
@@ -419,10 +467,36 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
               value={subjectSearchQuery}
               onChange={(e) => setSubjectSearchQuery(e.target.value)}
               placeholder="Find subject..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-[#EDF4F7] dark:bg-[#0A121A] border border-slate-200/90 dark:border-[#1B2E3D] text-xs text-[#1C252C] dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#13C8D9] transition-all"
+              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] text-xs text-[#101820] dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#168BFF] transition-all"
             />
           </div>
         </div>
+
+        {/* ========================================================================= */}
+        {/* VIEW MODE: 3D PERSPECTIVE COVER FLOW (CINEMATIC ROTATING VIEW)           */}
+        {/* ========================================================================= */}
+        {subjectViewMode === '3d-flow' && (
+          <Subject3DCoverFlow
+            subjects={filteredSubjects}
+            role="learner"
+            onOpenSubject={(sub) => onNavigateTab('subjects', safeString(sub.name))}
+            onAction={(action, sub) => {
+              const name = safeString(sub.name);
+              const grade = safeNumber(sub.grade, 10);
+              if (action === 'resources' || action === 'past-papers') {
+                openResourcesModal(name, grade);
+              } else if (action === 'ai-tutor') {
+                onNavigateTab('ai-tutor');
+              } else if (action === 'marks') {
+                onNavigateTab('performance');
+              } else {
+                onNavigateTab('subjects', name);
+              }
+            }}
+            title="CAPS Curriculum 3D Flow"
+            subtitle="Interactive 3D Perspective Experience • Click Expand to enter subject workspace"
+          />
+        )}
 
         {/* ========================================================================= */}
         {/* VIEW MODE 0: HORIZONTAL SCROLLING CAROUSEL WITH PICTURE HERO CARDS       */}
@@ -470,9 +544,6 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                         {meta.categoryLabel || 'CAPS Subject'}
                       </span>
                       <div className="flex items-center gap-1.5">
-                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-black/60 text-white backdrop-blur-md border border-white/10">
-                          Grade {grade}
-                        </span>
                         {assignmentsDue > 0 && (
                           <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-500/80 text-white backdrop-blur-md flex items-center gap-1 shadow-sm">
                             <FileText className="w-3 h-3" />
@@ -522,22 +593,22 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                       <div className="grid grid-cols-3 gap-1.5">
                         <button
                           onClick={() => openResourcesModal(name, grade)}
-                          className="px-2 py-1.5 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-300 hover:text-white text-[11px] font-semibold border border-white/5 transition-colors text-center cursor-pointer"
+                          className="px-2 py-1.5 rounded-xl bg-white hover:bg-[#168BFF]/10 text-slate-800 hover:text-[#168BFF] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-slate-100 dark:hover:text-[#168BFF] text-[11px] font-semibold border border-[#C7D1DC] hover:border-[#168BFF]/50 dark:border-[#2C3948] dark:border-white/10 transition-colors text-center cursor-pointer"
                           title="Textbooks & Notes"
                         >
                           Resources
                         </button>
                         <button
                           onClick={() => onNavigateTab('ai-tutor')}
-                          className="px-2 py-1.5 rounded-xl bg-surface-darker hover:bg-cyan-500/20 text-cyan-300 hover:text-cyan-200 text-[11px] font-semibold border border-cyan-500/20 transition-colors text-center flex items-center justify-center gap-1 cursor-pointer"
-                          title="Ask AI Tutor"
+                          className="px-2 py-1.5 rounded-xl bg-white hover:bg-[#168BFF]/10 text-[#168BFF] hover:text-[#0878E8] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-[#168BFF] text-[11px] font-semibold border border-[#168BFF]/30 hover:border-[#168BFF]/60 transition-colors text-center flex items-center justify-center gap-1 cursor-pointer"
+                          title="Ask Tutor"
                         >
-                          <Bot className="w-3 h-3 text-cyan-400" />
-                          <span>AI Tutor</span>
+                          <BookOpen className="w-3 h-3 text-cyan-400" />
+                          <span>Tutor</span>
                         </button>
                         <button
                           onClick={() => onNavigateTab('performance')}
-                          className="px-2 py-1.5 rounded-xl bg-surface-darker hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 text-[11px] font-semibold border border-emerald-500/20 transition-colors text-center cursor-pointer"
+                          className="px-2 py-1.5 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white text-[11px] font-semibold border border-transparent transition-colors text-center cursor-pointer"
                           title="View Marks"
                         >
                           Marks
@@ -611,9 +682,6 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                         {meta.categoryLabel || 'CAPS Subject'}
                       </span>
                       <div className="flex items-center gap-1.5">
-                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-black/60 text-white backdrop-blur-md border border-white/10">
-                          Grade {grade}
-                        </span>
                         {assignmentsDue > 0 && (
                           <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-500/80 text-white backdrop-blur-md flex items-center gap-1 shadow-sm">
                             <FileText className="w-3 h-3" />
@@ -663,22 +731,22 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                       <div className="grid grid-cols-3 gap-1.5">
                         <button
                           onClick={() => openResourcesModal(name, grade)}
-                          className="px-2 py-1.5 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-300 hover:text-white text-[11px] font-semibold border border-white/5 transition-colors text-center cursor-pointer"
+                          className="px-2 py-1.5 rounded-xl bg-white hover:bg-[#168BFF]/10 text-slate-800 hover:text-[#168BFF] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-slate-100 dark:hover:text-[#168BFF] text-[11px] font-semibold border border-[#C7D1DC] hover:border-[#168BFF]/50 dark:border-[#2C3948] dark:border-white/10 transition-colors text-center cursor-pointer"
                           title="Textbooks & Notes"
                         >
                           Resources
                         </button>
                         <button
                           onClick={() => onNavigateTab('ai-tutor')}
-                          className="px-2 py-1.5 rounded-xl bg-surface-darker hover:bg-cyan-500/20 text-cyan-300 hover:text-cyan-200 text-[11px] font-semibold border border-cyan-500/20 transition-colors text-center flex items-center justify-center gap-1 cursor-pointer"
-                          title="Ask AI Tutor"
+                          className="px-2 py-1.5 rounded-xl bg-white hover:bg-[#168BFF]/10 text-[#168BFF] hover:text-[#0878E8] dark:bg-white/5 dark:hover:bg-[#168BFF]/15 dark:text-[#168BFF] text-[11px] font-semibold border border-[#168BFF]/30 hover:border-[#168BFF]/60 transition-colors text-center flex items-center justify-center gap-1 cursor-pointer"
+                          title="Ask Tutor"
                         >
-                          <Bot className="w-3 h-3 text-cyan-400" />
-                          <span>AI Tutor</span>
+                          <BookOpen className="w-3 h-3 text-cyan-400" />
+                          <span>Tutor</span>
                         </button>
                         <button
                           onClick={() => onNavigateTab('performance')}
-                          className="px-2 py-1.5 rounded-xl bg-surface-darker hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 text-[11px] font-semibold border border-emerald-500/20 transition-colors text-center cursor-pointer"
+                          className="px-2 py-1.5 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white text-[11px] font-semibold border border-transparent transition-colors text-center cursor-pointer"
                           title="View Marks"
                         >
                           Marks
@@ -831,9 +899,6 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-mono text-cyan-400">{code}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-slate-400">
-                          Grade {grade}
-                        </span>
                       </div>
                       <h3
                         onClick={() => onNavigateTab('subjects', name)}
@@ -852,7 +917,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                     </div>
                     <button
                       onClick={() => openResourcesModal(name, grade)}
-                      className="px-2.5 py-1.5 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-300 text-xs font-medium border border-white/5 cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-cyan-500/15 text-slate-800 hover:text-cyan-700 dark:bg-white/5 dark:hover:bg-cyan-500/15 dark:text-slate-100 dark:hover:text-[#168BFF] text-xs font-medium border border-slate-200 hover:border-cyan-500/50 dark:border-white/10 cursor-pointer"
                     >
                       Resources
                     </button>
@@ -894,7 +959,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
           >
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div className="flex items-center gap-2">
-                <BookMarked className="w-5 h-5 text-indigo-400" />
+                <BookMarked className="w-5 h-5 text-cyan-400" />
                 <div>
                   <h3 className="text-base font-bold text-white">
                     {safeString(selectedResourceSubject.name)} Resources
@@ -912,13 +977,13 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
             <div className="flex-1 overflow-y-auto space-y-2.5 custom-scrollbar pr-1">
               {loadingResources ? (
                 <div className="py-8 text-center text-slate-400 text-xs">
-                  <LoadingSpinner text="Fetching study materials..." />
+                  <LoadingSpinner text="Retrieving subject study materials..." />
                 </div>
               ) : resourceList && resourceList.length > 0 ? (
                 resourceList.map((res, i) => (
                   <div
                     key={i}
-                    className="p-3.5 rounded-2xl bg-surface-darker border border-white/5 hover:border-indigo-500/30 transition-all flex items-center justify-between gap-3"
+                    className="p-3.5 rounded-2xl bg-surface-darker border border-white/5 hover:border-cyan-500/30 transition-all flex items-center justify-between gap-3"
                   >
                     <div className="space-y-0.5">
                       <h4 className="text-xs font-bold text-white">{safeString(res.title || res.file_name, 'Study Material')}</h4>
@@ -929,7 +994,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
                         href={res.file_path}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors shrink-0 flex items-center gap-1"
+                        className="px-3 py-1.5 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-semibold text-xs transition-colors shrink-0 flex items-center gap-1"
                       >
                         <span>Open</span>
                         <ExternalLink className="w-3 h-3" />
@@ -957,6 +1022,13 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
           </div>
         </div>
       )}
+
+      {/* Geleza AI Practice Quiz Modal */}
+      <LearnerAIQuizModal
+        isOpen={isQuizModalOpen}
+        onClose={() => setIsQuizModalOpen(false)}
+        initialGrade={profile?.grade || 10}
+      />
 
     </div>
   );

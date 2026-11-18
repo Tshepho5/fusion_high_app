@@ -79,15 +79,12 @@ function calculateAge(dobString) {
   return age;
 }
 
-// Global state flags for scenario validation
-let isLanguageCompatible = true;
-let isEnrolledLearnerVerified = false;
-
 // Regex rules
 const NAME_PATTERN = /^[A-Za-z\s\-']+$/;
 const PHONE_PATTERN = /^(\+27|0)[0-9]{9}$/;
 
 // DOM Initialization
+let isEnrolledLearnerVerified = false;
 async function guardAdmissionWindow() {
   try {
     const res = await fetch(`${API_BASE}/api/system/portal-locks`);
@@ -112,11 +109,10 @@ async function guardAdmissionWindow() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  await guardAdmissionWindow();
   initSchoolSelector();
-  initLanguageOfferingCheck();
+  guardAdmissionWindow();
   initEnrolledLearnerLookup();
-  initPaymentMethodSelector();
+  initPaymentChoices();
   initRealtimeInputEnforcement();
   initStepper();
   initIDAutofill();
@@ -143,15 +139,22 @@ function initSchoolSelector() {
 
   function updateSchoolDisplay() {
     const selectedOpt = schoolSelect.options[schoolSelect.selectedIndex];
-    if (!selectedOpt || !selectedOpt.value) return;
+    if (!selectedOpt || !selectedOpt.value) {
+      if (emisTag) emisTag.textContent = 'Awaiting school';
+      if (circuitText) circuitText.textContent = '📍 Geleza SA Approved Schools Network';
+      if (mottoText) mottoText.textContent = '';
+      if (brandBadge) brandBadge.textContent = '⚡ Geleza SA Admissions';
+      if (portalTitle) portalTitle.textContent = 'Learner Admission Application';
+      return;
+    }
     const schoolName = selectedOpt.textContent.split('(')[0].trim();
-    const emis = selectedOpt.getAttribute('data-emis') || '911220001';
-    const circuit = selectedOpt.getAttribute('data-circuit') || 'Polokwane Central Circuit';
-    const motto = selectedOpt.getAttribute('data-motto') || 'Innovate, Lead, Transform';
+    const emis = selectedOpt.getAttribute('data-emis') || '';
+    const circuit = selectedOpt.getAttribute('data-circuit') || '';
+    const motto = selectedOpt.getAttribute('data-motto') || '';
 
-    if (emisTag) emisTag.textContent = `EMIS ${emis}`;
-    if (circuitText) circuitText.textContent = `📍 Circuit: ${circuit} • Limpopo DBE`;
-    if (mottoText) mottoText.textContent = `"${motto}"`;
+    if (emisTag) emisTag.textContent = emis ? `EMIS ${emis}` : 'Registered School';
+    if (circuitText) circuitText.textContent = circuit ? `📍 Circuit: ${circuit}` : '📍 Geleza SA Approved School';
+    if (mottoText) mottoText.textContent = motto ? `"${motto}"` : '';
     if (brandBadge) brandBadge.textContent = `⚡ ${schoolName} Admissions`;
     if (portalTitle) portalTitle.textContent = `${schoolName} Learner Admissions`;
   }
@@ -172,129 +175,111 @@ function initSchoolSelector() {
   }
   updateSchoolDisplay();
 
-  // Load fresh schools directory from API
-  fetch(`${API_BASE}/api/schools`)
-    .then(res => res.json())
-    .then(schools => {
-      if (Array.isArray(schools) && schools.length > 0) {
-        const currentVal = schoolSelect.value;
-        schoolSelect.innerHTML = '';
-        schools.forEach(s => {
-          const opt = document.createElement('option');
-          opt.value = s.id;
-          opt.setAttribute('data-slug', s.slug);
-          opt.setAttribute('data-emis', s.emis_number || '');
-          opt.setAttribute('data-circuit', s.circuit || '');
-          opt.setAttribute('data-motto', s.motto || '');
-          opt.textContent = `${s.name} (${s.circuit || 'Limpopo'})`;
-          if (String(s.id) === String(currentVal) || (targetSchool && (s.slug === targetSchool || String(s.id) === targetSchool))) {
-            opt.selected = true;
+  function showLoadingSchools() {
+    schoolSelect.innerHTML = '';
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.disabled = true;
+    opt.selected = true;
+    opt.textContent = '⏳ Loading registered partner schools...';
+    schoolSelect.appendChild(opt);
+    if (emisTag) emisTag.textContent = 'Connecting...';
+    if (circuitText) circuitText.textContent = '📍 Loading registered schools...';
+    if (brandBadge) brandBadge.textContent = '⚡ Geleza SA Admissions';
+  }
+
+  function showNoSchools() {
+    schoolSelect.innerHTML = '';
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.disabled = true;
+    opt.selected = true;
+    opt.textContent = 'No approved school registered yet';
+    schoolSelect.appendChild(opt);
+    if (emisTag) emisTag.textContent = 'Awaiting registration';
+    if (circuitText) circuitText.textContent = 'Registered schools will automatically appear here once onboarded.';
+    if (mottoText) mottoText.textContent = '';
+    if (brandBadge) brandBadge.textContent = '⚡ Geleza SA Admissions';
+    if (portalTitle) portalTitle.textContent = 'Learner Admission Application';
+  }
+
+  showLoadingSchools();
+
+  const loadSchoolsData = async () => {
+    let schools = null;
+    const endpoints = [
+      `${API_BASE}/api/schools`,
+      '/api/schools',
+      'https://fusion-high-backend.onrender.com/api/schools'
+    ];
+
+    for (const ep of endpoints) {
+      try {
+        const res = await fetch(ep, { cache: 'no-cache' });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            schools = data;
+            break;
           }
-          schoolSelect.appendChild(opt);
-        });
-        updateSchoolDisplay();
-      }
-    })
-    .catch(err => console.warn('Using static school dropdown defaults:', err));
-}
+        }
+      } catch (_) {}
+    }
 
-/**
- * School Home Language Offering Verification & Referrals Engine
- */
-function initLanguageOfferingCheck() {
-  const schoolSelect = document.getElementById('school_id');
-  const homeLangSelect = document.getElementById('home_language');
-  const banner = document.getElementById('language-referral-banner');
-  const bankInfoBox = document.getElementById('school-bank-info-box');
-
-  async function checkLanguageOffer() {
-    if (!schoolSelect || !homeLangSelect || !banner) return;
-    const schoolId = schoolSelect.value;
-    const homeLang = homeLangSelect.value;
-
-    if (!schoolId || !homeLang) {
-      banner.style.display = 'none';
-      banner.innerHTML = '';
-      isLanguageCompatible = true;
+    if (!schools || schools.length === 0) {
+      showNoSchools();
       return;
     }
 
-    try {
-      const res = await fetch(`${API_BASE}/api/schools/check-language?school_id=${encodeURIComponent(schoolId)}&language=${encodeURIComponent(homeLang)}`);
-      const data = await res.json();
-
-      if (data && data.banking_details && bankInfoBox) {
-        const b = data.banking_details;
-        bankInfoBox.innerHTML = `
-          <div><strong>Bank:</strong> ${b.bank_name || 'First National Bank (FNB)'}</div>
-          <div><strong>Account Name:</strong> ${b.account_holder || data.school_name}</div>
-          <div><strong>Account Number:</strong> <span style="font-family:monospace; color:#38bdf8; font-weight:700;">${b.account_number || '62849102841'}</span></div>
-          <div><strong>Branch Code:</strong> ${b.branch_code || '250655'} (${b.account_type || 'Cheque / Current'})</div>
-          <div><strong>Standard Application Fee:</strong> R${(b.application_fee || 250).toFixed(2)}</div>
-        `;
+    const currentVal = schoolSelect.value;
+    schoolSelect.innerHTML = '';
+    schools.forEach((s, idx) => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.setAttribute('data-slug', s.slug || '');
+      opt.setAttribute('data-emis', s.emis_number || '');
+      opt.setAttribute('data-circuit', s.circuit || '');
+      opt.setAttribute('data-motto', s.motto || '');
+      opt.textContent = s.name;
+      if (
+        String(s.id) === String(currentVal) ||
+        (targetSchool && (s.slug === targetSchool || String(s.id) === targetSchool)) ||
+        (!currentVal && idx === 0)
+      ) {
+        opt.selected = true;
       }
+      schoolSelect.appendChild(opt);
+    });
+    updateSchoolDisplay();
+  };
 
-      if (data.is_offered === false) {
-        isLanguageCompatible = false;
-        banner.style.display = 'block';
-        const referralsList = (data.referrals || []).map(r => `
-          <button type="button" class="btn btn-secondary switch-school-btn" data-school-id="${r.id}" style="padding: 6px 12px; font-size: 11px; background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8; color: #e0f2fe; border-radius: 6px; cursor: pointer; font-weight: 600;">
-            🏛️ Switch to ${r.name} (${r.circuit || r.district})
-          </button>
-        `).join('');
-
-        banner.innerHTML = `
-          <div style="padding: 14px 16px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 10px; color: #fca5a5;">
-            <div style="display:flex; align-items:flex-start; gap:8px;">
-              <span style="font-size:1.2rem; flex-shrink:0;">⚠️</span>
-              <div>
-                <strong style="color:#fee2e2;">Notice: ${data.school_name} does NOT offer ${data.language} as an official Home Language.</strong>
-                <p style="margin: 6px 0 10px 0; font-size: 12px; color: #cbd5e1; line-height: 1.5;">
-                  The system verified this school's official curriculum profile. ${data.school_name} does not offer ${data.language}. Please choose a supported Home Language or transfer your application to one of the following partner high schools that provide ${data.language}:
-                </p>
-                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px;">
-                  ${referralsList || '<span style="font-size:11px; color:#94a3b8;">No registered partner schools offering this language were found.</span>'}
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-
-        banner.querySelectorAll('.switch-school-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const newSchoolId = btn.getAttribute('data-school-id');
-            if (newSchoolId && schoolSelect) {
-              schoolSelect.value = newSchoolId;
-              schoolSelect.dispatchEvent(new Event('change'));
-              setTimeout(checkLanguageOffer, 100);
-            }
-          });
-        });
-
-      } else {
-        isLanguageCompatible = true;
-        banner.style.display = 'block';
-        banner.innerHTML = `
-          <div style="padding: 8px 12px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 8px; color: #6ee7b7; font-size: 12px; display: flex; align-items: center; gap: 6px;">
-            <span>✓</span>
-            <span><strong>${data.language} (Home Language)</strong> is officially offered and supported at ${data.school_name}.</span>
-          </div>
-        `;
-        clearFieldError('home_language');
-      }
-
-    } catch (err) {
-      console.warn('Language offering check failed:', err);
-    }
-  }
-
-  if (schoolSelect) schoolSelect.addEventListener('change', checkLanguageOffer);
-  if (homeLangSelect) homeLangSelect.addEventListener('change', checkLanguageOffer);
+  loadSchoolsData().catch(err => {
+    console.warn('School list fetch error:', err);
+    showNoSchools();
+  });
 }
 
-/**
- * Enrolled Learner Lookup Engine (Scenario 3)
- */
+function initPaymentChoices() {
+  const hidden = document.getElementById('payment_method_input');
+  const payNow = document.getElementById('pay_now_input');
+  if (hidden) hidden.value = 'fee_waived';
+  if (payNow) payNow.value = 'false';
+
+  const cardNow = document.getElementById('payment-choice-card-now');
+  const cardLater = document.getElementById('payment-choice-card-later');
+  const paintChoice = (value) => {
+    if (cardNow) cardNow.classList.toggle('payment-choice-card--active', value === 'pay_now');
+    if (cardLater) cardLater.classList.toggle('payment-choice-card--active', value === 'eft_later');
+  };
+  document.querySelectorAll('input[name="payment_choice_radio"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      if (hidden && radio.checked) hidden.value = radio.value;
+      if (radio.checked) paintChoice(radio.value);
+    });
+    if (radio.checked) paintChoice(radio.value);
+  });
+}
+
 function initEnrolledLearnerLookup() {
   const radioNew = document.getElementById('enrollment_status_new');
   const radioExisting = document.getElementById('enrollment_status_existing');
@@ -305,12 +290,28 @@ function initEnrolledLearnerLookup() {
   const spinner = document.getElementById('lookup-verify-spinner');
   const resultBanner = document.getElementById('enrolled-child-status-banner');
 
+  function setNewLearnerFormVisible(visible) {
+    const details = document.getElementById('new-learner-details');
+    if (!details) return;
+    details.style.display = visible ? '' : 'none';
+    details.querySelectorAll('input, select, textarea').forEach((el) => {
+      if (visible) {
+        if (el.dataset.wasRequired === 'true') el.setAttribute('required', 'required');
+      } else if (el.required) {
+        el.dataset.wasRequired = 'true';
+        el.removeAttribute('required');
+      }
+    });
+  }
+
   function updateStatusDisplay() {
     if (radioExisting && radioExisting.checked) {
       if (lookupBox) lookupBox.style.display = 'block';
+      setNewLearnerFormVisible(false);
       if (scenarioInput) scenarioInput.value = 'existing_learner';
     } else {
       if (lookupBox) lookupBox.style.display = 'none';
+      setNewLearnerFormVisible(true);
       if (scenarioInput) scenarioInput.value = 'new';
       if (existingLearnerIdInput) existingLearnerIdInput.value = '';
       if (resultBanner) resultBanner.style.display = 'none';
@@ -331,16 +332,15 @@ function initEnrolledLearnerLookup() {
   if (btnVerify) {
     btnVerify.addEventListener('click', async () => {
       const schoolSelect = document.getElementById('school_id');
-      const schoolId = schoolSelect ? schoolSelect.value : 1;
-      const learnerNo = (document.getElementById('lookup_learner_number')?.value || '').trim();
+      const schoolId = schoolSelect ? schoolSelect.value : '';
       const idNum = (document.getElementById('lookup_id_number')?.value || '').trim();
       const firstName = (document.getElementById('lookup_first_name')?.value || '').trim();
       const surname = (document.getElementById('lookup_surname')?.value || '').trim();
 
-      if (!learnerNo || idNum.replace(/\D/g, '').length !== 13 || !firstName || !surname) {
+      if (idNum.replace(/\D/g, '').length !== 13 || !firstName || !surname) {
         if (resultBanner) {
           resultBanner.style.display = 'block';
-          resultBanner.innerHTML = `<div style="padding:10px; background:rgba(239,68,68,0.2); border:1px solid #ef4444; border-radius:8px; color:#fca5a5;">Enter the official learner number, the 13-digit ID, the first name, and the surname. All four must match the enrolled learner.</div>`;
+          resultBanner.innerHTML = `<div style="padding:10px; background:rgba(239,68,68,0.2); border:1px solid #ef4444; border-radius:8px; color:#fca5a5;">Enter the 13-digit ID, the first name, and the surname. All three must match the enrolled learner.</div>`;
         }
         return;
       }
@@ -354,106 +354,54 @@ function initEnrolledLearnerLookup() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             school_id: schoolId,
-            learner_number: learnerNo,
             id_number: idNum,
             first_name: firstName,
             surname: surname
           })
         });
-
         const data = await res.json();
         if (spinner) spinner.style.display = 'none';
-
         if (res.ok && data.found && data.child) {
           isEnrolledLearnerVerified = true;
           if (existingLearnerIdInput) existingLearnerIdInput.value = data.child.id;
-          
           if (resultBanner) {
             resultBanner.style.display = 'block';
-            resultBanner.innerHTML = `
-              <div style="padding: 12px 14px; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; border-radius: 8px; color: #6ee7b7;">
-                <strong>✓ Enrolled Student Verified:</strong> ${data.child.full_name} ${data.child.surname} (Grade ${data.child.grade}, Ref: ${data.child.learner_number || data.child.id}).
-                <div style="margin-top: 4px; font-size: 11px; color: #cbd5e1;">Child details have been pre-filled and locked below. Please complete parent details and payment options to link this learner.</div>
-              </div>
-            `;
+            resultBanner.innerHTML = `<div style="padding:12px 14px; background:rgba(16,185,129,0.2); border:1px solid #10b981; border-radius:8px; color:#6ee7b7;"><strong>Enrolled learner verified:</strong> ${data.child.full_name} ${data.child.surname} (Grade ${data.child.grade}).</div>`;
           }
-
           const fnEl = document.getElementById('first_name');
           const snEl = document.getElementById('surname');
           const grEl = document.getElementById('grade_applied');
-          if (fnEl) { fnEl.value = data.child.full_name; fnEl.setAttribute('readonly', 'true'); clearFieldError('first_name'); }
-          if (snEl) { snEl.value = data.child.surname; snEl.setAttribute('readonly', 'true'); clearFieldError('surname'); }
-          if (grEl && data.child.grade) { grEl.value = String(data.child.grade); grEl.dispatchEvent(new Event('change')); clearFieldError('grade_applied'); }
-
+          const idEl = document.getElementById('id_number');
+          const langEl = document.getElementById('home_language');
+          const addressEl = document.getElementById('physical_address');
+          if (fnEl) { fnEl.value = data.child.full_name; fnEl.setAttribute('readonly', 'true'); }
+          if (snEl) { snEl.value = data.child.surname; snEl.setAttribute('readonly', 'true'); }
+          if (idEl) {
+            idEl.value = idNum.replace(/\D/g, '');
+            idEl.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+          if (grEl && data.child.grade) { grEl.value = String(data.child.grade); grEl.dispatchEvent(new Event('change')); }
+          if (langEl && data.child.home_language) langEl.value = data.child.home_language;
+          if (addressEl && !addressEl.value.trim()) {
+            addressEl.value = data.child.physical_address || 'Recorded at the school';
+          }
         } else {
           isEnrolledLearnerVerified = false;
           if (existingLearnerIdInput) existingLearnerIdInput.value = '';
           if (resultBanner) {
             resultBanner.style.display = 'block';
-            resultBanner.innerHTML = `
-              <div style="padding: 12px 14px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; border-radius: 8px; color: #fca5a5;">
-                <strong>❌ Enrolled Learner Not Found:</strong> ${data.error || 'No enrolled student found matching these credentials at this school.'}
-                <div style="margin-top: 4px; font-size: 11px; color: #cbd5e1;">If your child is not yet registered or enrolled at this school, please switch above to "No - New learner admission application".</div>
-              </div>
-            `;
+            resultBanner.innerHTML = `<div style="padding:12px 14px; background:rgba(239,68,68,0.2); border:1px solid #ef4444; border-radius:8px; color:#fca5a5;">${data.error || 'No enrolled learner matched those four details.'}</div>`;
           }
         }
       } catch (err) {
         if (spinner) spinner.style.display = 'none';
         if (resultBanner) {
           resultBanner.style.display = 'block';
-          resultBanner.innerHTML = `<div style="padding:10px; background:rgba(239,68,68,0.2); border:1px solid #ef4444; border-radius:8px; color:#fca5a5;">Server verification error: ${err.message}</div>`;
+          resultBanner.innerHTML = `<div style="padding:10px; background:rgba(239,68,68,0.2); border:1px solid #ef4444; border-radius:8px; color:#fca5a5;">The school record could not be checked.</div>`;
         }
       }
     });
   }
-}
-
-/**
- * Payment Method Selection Engine (Pay Now vs. EFT with 7-Day Deadline)
- */
-function initPaymentMethodSelector() {
-  const radioNow = document.getElementById('pay_choice_now');
-  const radioLater = document.getElementById('pay_choice_later');
-  const cardNow = document.getElementById('payment-choice-card-now');
-  const cardLater = document.getElementById('payment-choice-card-later');
-  const payNowDetails = document.getElementById('pay-now-details-card');
-  const payLaterDetails = document.getElementById('pay-later-details-card');
-  const paymentMethodInput = document.getElementById('payment_method_input');
-  const payNowInput = document.getElementById('pay_now_input');
-
-  function updatePaymentDisplay() {
-    if (radioNow && radioNow.checked) {
-      if (cardNow) {
-        cardNow.style.borderColor = '#6366f1';
-        cardNow.style.background = 'rgba(30, 41, 59, 0.7)';
-      }
-      if (cardLater) {
-        cardLater.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-        cardLater.style.background = 'rgba(30, 41, 59, 0.4)';
-      }
-      if (payNowDetails) payNowDetails.style.display = 'block';
-      if (payLaterDetails) payLaterDetails.style.display = 'none';
-      if (paymentMethodInput) paymentMethodInput.value = 'card';
-      if (payNowInput) payNowInput.value = 'false';
-    } else {
-      if (cardLater) {
-        cardLater.style.borderColor = '#f59e0b';
-        cardLater.style.background = 'rgba(30, 41, 59, 0.7)';
-      }
-      if (cardNow) {
-        cardNow.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-        cardNow.style.background = 'rgba(30, 41, 59, 0.4)';
-      }
-      if (payNowDetails) payNowDetails.style.display = 'none';
-      if (payLaterDetails) payLaterDetails.style.display = 'block';
-      if (paymentMethodInput) paymentMethodInput.value = 'eft';
-      if (payNowInput) payNowInput.value = 'false';
-    }
-  }
-
-  if (radioNow) radioNow.addEventListener('change', updatePaymentDisplay);
-  if (radioLater) radioLater.addEventListener('change', updatePaymentDisplay);
 }
 
 /**
@@ -693,6 +641,72 @@ function goToStep(step) {
 }
 
 /**
+ * Helper to get clean human labels for form fields
+ */
+function getFieldLabel(field) {
+  const labels = {
+    school_id: 'Target High School',
+    first_name: 'Learner First Name',
+    surname: 'Learner Surname',
+    id_number: 'Learner ID / Passport',
+    dob: 'Date of Birth',
+    gender: 'Gender',
+    citizenship: 'Citizenship',
+    grade_applied: 'Grade Applied For',
+    home_language: 'Official Home Language',
+    physical_address: 'Learner Physical Address',
+    learner_phone: 'Learner Phone',
+    learner_email: 'Learner Email',
+    primary_parent_name: 'Primary Parent Name',
+    primary_parent_surname: 'Primary Parent Surname',
+    primary_parent_relationship: 'Parent Relationship',
+    primary_parent_id_number: 'Parent ID / Passport',
+    primary_parent_phone: 'Parent Mobile Phone',
+    primary_parent_email: 'Parent Email Address',
+    primary_parent_address: 'Parent Physical Address',
+    secondary_parent_name: 'Secondary Parent Name',
+    secondary_parent_surname: 'Secondary Parent Surname',
+    secondary_parent_phone: 'Secondary Parent Phone',
+    secondary_parent_email: 'Secondary Parent Email',
+    previous_school: 'Previous School Name',
+    learner_id_doc: 'Learner ID Copy / Smart Card',
+    birth_certificate: 'Birth Certificate Document',
+    parent_id_doc: 'Parent Certified ID Copy',
+    proof_of_residence: 'Proof of Residence'
+  };
+  return labels[field] || (field ? field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Form Field');
+}
+
+/**
+ * Global Modal Dialog Trigger
+ */
+function showModal(type, title, message) {
+  const modal = document.getElementById('resultModal');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalIcon = document.getElementById('modalIcon');
+  const modalBody = document.getElementById('modalBody');
+  const modalRef = document.getElementById('modalRef');
+  const modalCta = document.getElementById('modalCta');
+
+  if (!modal) return;
+
+  if (type === 'error') {
+    modalIcon.innerHTML = `<svg style="width:48px;height:48px;color:#ef4444;margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`;
+  } else if (type === 'success') {
+    modalIcon.innerHTML = `<svg style="width:52px;height:52px;color:#10b981;margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+  } else {
+    modalIcon.innerHTML = 'ℹ️';
+  }
+
+  modalTitle.textContent = title || 'Notice';
+  modalBody.innerHTML = `<div style="color: #fca5a5; font-size: 0.92rem; line-height: 1.6;">${message || ''}</div>`;
+  if (modalRef) modalRef.style.display = 'none';
+  if (modalCta) modalCta.style.display = 'none';
+
+  modal.classList.add('active');
+}
+
+/**
  * Step Validation
  */
 function validateStep(step) {
@@ -700,20 +714,21 @@ function validateStep(step) {
   let firstInvalidElement = null;
 
   if (step === 1) {
-    // 0. Enrolled Learner Verification check (Scenario 3)
-    const isExistingRadio = document.getElementById('enrollment_status_existing');
-    if (isExistingRadio && isExistingRadio.checked && !isEnrolledLearnerVerified) {
-      showError('lookup_learner_number', 'Please verify your enrolled child before proceeding.');
-      if (!firstInvalidElement) firstInvalidElement = document.getElementById('lookup_learner_number');
+    const schoolSelect = document.getElementById('school_id');
+    if (schoolSelect && (!schoolSelect.value || schoolSelect.value === '')) {
+      showError('school_id', 'Please choose the target secondary school.');
+      if (!firstInvalidElement) firstInvalidElement = schoolSelect;
       isValid = false;
     }
 
-    // 0. Language Compatibility Check
-    if (!isLanguageCompatible) {
-      showError('home_language', 'This school does not offer your chosen Home Language. Please select another language or switch schools.');
-      if (!firstInvalidElement) firstInvalidElement = document.getElementById('home_language');
-      isValid = false;
-    }
+    const isExistingRadio = document.getElementById('enrollment_status_existing');
+    if (isExistingRadio && isExistingRadio.checked) {
+      if (!isEnrolledLearnerVerified) {
+        showError('lookup_id_number', 'Verify the enrolled learner before continuing. The 13-digit ID, first name, and surname must match.');
+        if (!firstInvalidElement) firstInvalidElement = document.getElementById('lookup_id_number');
+        isValid = false;
+      }
+    } else {
 
     const firstName = document.getElementById('first_name');
     const surname = document.getElementById('surname');
@@ -723,32 +738,20 @@ function validateStep(step) {
     const phone = document.getElementById('learner_phone');
     const dob = document.getElementById('dob');
 
-    if (!firstName.value.trim()) {
-      showError('first_name', 'Please enter a valid first name (letters only).');
-      if (!firstInvalidElement) firstInvalidElement = firstName;
-      isValid = false;
-    } else if (/\d/.test(firstName.value)) {
-      showError('first_name', 'Numbers are not allowed in this field. Please use letters only.');
+    if (!firstName.value.trim() || !NAME_PATTERN.test(firstName.value.trim())) {
+      showError('first_name', 'Please enter a valid first name (letters only, no numbers).');
       if (!firstInvalidElement) firstInvalidElement = firstName;
       isValid = false;
     }
 
-    if (!surname.value.trim()) {
-      showError('surname', 'Please enter a valid surname (letters only).');
-      if (!firstInvalidElement) firstInvalidElement = surname;
-      isValid = false;
-    } else if (/\d/.test(surname.value)) {
-      showError('surname', 'Numbers are not allowed in this field. Please use letters only.');
+    if (!surname.value.trim() || !NAME_PATTERN.test(surname.value.trim())) {
+      showError('surname', 'Please enter a valid surname (letters only, no numbers).');
       if (!firstInvalidElement) firstInvalidElement = surname;
       isValid = false;
     }
 
     const cleanId = (idNumber.value || '').replace(/\D/g, '');
-    if (/[a-zA-Z]/.test(idNumber.value || '')) {
-      showError('id_number', 'Letters and words are not allowed in this field. Numbers only.');
-      if (!firstInvalidElement) firstInvalidElement = idNumber;
-      isValid = false;
-    } else if (!cleanId || cleanId.length !== 13) {
+    if (!cleanId || cleanId.length !== 13) {
       showError('id_number', 'Please enter a complete 13-digit South African ID number.');
       if (!firstInvalidElement) firstInvalidElement = idNumber;
       isValid = false;
@@ -780,22 +783,17 @@ function validateStep(step) {
       isValid = false;
     }
 
-    if (!address.value.trim() || address.value.trim().length < 6) {
+    if (!address.value.trim() || address.value.trim().length < 4) {
       showError('physical_address', 'Please provide a complete physical residential address.');
       if (!firstInvalidElement) firstInvalidElement = address;
       isValid = false;
     }
 
-    if (phone.value.trim()) {
-      if (/[a-zA-Z]/.test(phone.value)) {
-        showError('learner_phone', 'Letters and words are not allowed in this field. Numbers only.');
-        if (!firstInvalidElement) firstInvalidElement = phone;
-        isValid = false;
-      } else if (!PHONE_PATTERN.test(phone.value.trim().replace(/[\s-]/g, ''))) {
-        showError('learner_phone', 'Invalid phone number. Must start with +27 or 0, followed by 9 digits.');
-        if (!firstInvalidElement) firstInvalidElement = phone;
-        isValid = false;
-      }
+    if (phone.value.trim() && !PHONE_PATTERN.test(phone.value.trim().replace(/[\s\-\(\)\.]/g, ''))) {
+      showError('learner_phone', 'Invalid phone number. Must start with +27 or 0, followed by 9 digits.');
+      if (!firstInvalidElement) firstInvalidElement = phone;
+      isValid = false;
+    }
     }
   }
 
@@ -823,12 +821,13 @@ function validateStep(step) {
       if (!firstInvalidElement) firstInvalidElement = pRel;
       isValid = false;
     }
-    if (!pId.value.trim() || pId.value.trim().length < 6) {
-      showError('primary_parent_id_number', 'Please enter a valid parent ID number (numbers only).');
+    const cleanPId = (pId.value || '').replace(/\D/g, '');
+    if (!cleanPId || cleanPId.length < 6) {
+      showError('primary_parent_id_number', 'Please enter a valid parent ID number (at least 6 digits).');
       if (!firstInvalidElement) firstInvalidElement = pId;
       isValid = false;
     }
-    const cleanPhone = (pPhone.value || '').replace(/[\s-]/g, '');
+    const cleanPhone = (pPhone.value || '').replace(/[\s\-\(\)\.]/g, '');
     if (!cleanPhone || !PHONE_PATTERN.test(cleanPhone)) {
       showError('primary_parent_phone', 'Phone must start with +27 or 0 followed by 9 digits.');
       if (!firstInvalidElement) firstInvalidElement = pPhone;
@@ -839,10 +838,36 @@ function validateStep(step) {
       if (!firstInvalidElement) firstInvalidElement = pEmail;
       isValid = false;
     }
-    if (!pAddress.value.trim() || pAddress.value.trim().length < 6) {
+    if (!pAddress.value.trim() || pAddress.value.trim().length < 4) {
       showError('primary_parent_address', 'Primary parent physical address is required.');
       if (!firstInvalidElement) firstInvalidElement = pAddress;
       isValid = false;
+    }
+
+    // Secondary parent check
+    const hasSecParent = document.getElementById('has_secondary_parent');
+    if (hasSecParent && hasSecParent.checked) {
+      const sName = document.getElementById('secondary_parent_name');
+      const sPhone = document.getElementById('secondary_parent_phone');
+      const sEmail = document.getElementById('secondary_parent_email');
+      if (sName && sName.value.trim() && !NAME_PATTERN.test(sName.value.trim())) {
+        showError('secondary_parent_name', 'Secondary parent name must only contain letters.');
+        if (!firstInvalidElement) firstInvalidElement = sName;
+        isValid = false;
+      }
+      if (sPhone && sPhone.value.trim()) {
+        const cleanSPhone = sPhone.value.trim().replace(/[\s\-\(\)\.]/g, '');
+        if (!PHONE_PATTERN.test(cleanSPhone)) {
+          showError('secondary_parent_phone', 'Secondary parent phone must start with +27 or 0 followed by 9 digits.');
+          if (!firstInvalidElement) firstInvalidElement = sPhone;
+          isValid = false;
+        }
+      }
+      if (sEmail && sEmail.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sEmail.value.trim())) {
+        showError('secondary_parent_email', 'Please enter a valid secondary parent email.');
+        if (!firstInvalidElement) firstInvalidElement = sEmail;
+        isValid = false;
+      }
     }
   }
 
@@ -864,41 +889,41 @@ function validateStep(step) {
     const birthCertDoc = document.getElementById('birth_certificate');
     const parentIdDoc = document.getElementById('parent_id_doc');
     const proofResDoc = document.getElementById('proof_of_residence');
-    const reportCardDoc = document.getElementById('report_card');
-    const gradeVal = parseInt(document.getElementById('grade_applied').value, 10);
 
-    // 16+ Strict SA ID requirement vs Under 16 Birth Certificate
-    if (age !== null && age >= 16) {
-      if (!learnerIdDoc.files || learnerIdDoc.files.length === 0) {
-        showModal('error', 'Document Required', `Learner is ${age} years old (16+). South African law requires an official ID Document (Smart ID Card or Green Book), not a Birth Certificate.`);
-        const cardLearnerId = document.getElementById('card-learner-id');
-        cardLearnerId.scrollIntoView({ behavior: 'smooth' });
-        shakeElement(cardLearnerId);
-        return false;
-      }
-    } else {
-      if ((!birthCertDoc.files || birthCertDoc.files.length === 0) && (!learnerIdDoc.files || learnerIdDoc.files.length === 0)) {
-        showModal('error', 'Document Required', `Learner is under 16 years old. An official Birth Certificate is required.`);
-        const cardBirthCert = document.getElementById('card-birth-cert');
-        cardBirthCert.scrollIntoView({ behavior: 'smooth' });
-        shakeElement(cardBirthCert);
-        return false;
-      }
-    }
+    // Either Learner Smart Card / Green Book ID OR Birth Certificate is accepted
+    const hasLearnerDoc = (learnerIdDoc && learnerIdDoc.files && learnerIdDoc.files.length > 0) ||
+                          (birthCertDoc && birthCertDoc.files && birthCertDoc.files.length > 0);
 
-    if (!parentIdDoc.files || parentIdDoc.files.length === 0) {
-      showModal('error', 'Document Required', 'Parent / Legal Guardian certified ID document is required.');
-      const cardParentId = document.getElementById('card-parent-id');
-      cardParentId.scrollIntoView({ behavior: 'smooth' });
-      shakeElement(cardParentId);
+    if (!hasLearnerDoc) {
+      const msg = (age !== null && age >= 16)
+        ? `Official ID Document (Smart ID Card / Green Book) or certified Birth Certificate is required for the learner.`
+        : `Official Birth Certificate or ID Document is required for the learner.`;
+      showModal('error', 'Document Required', msg);
+      const card = (age !== null && age >= 16) ? document.getElementById('card-learner-id') : document.getElementById('card-birth-cert');
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth' });
+        shakeElement(card);
+      }
       return false;
     }
 
-    if (!proofResDoc.files || proofResDoc.files.length === 0) {
+    if (!parentIdDoc || !parentIdDoc.files || parentIdDoc.files.length === 0) {
+      showModal('error', 'Document Required', 'Parent / Legal Guardian certified ID copy is required.');
+      const cardParentId = document.getElementById('card-parent-id');
+      if (cardParentId) {
+        cardParentId.scrollIntoView({ behavior: 'smooth' });
+        shakeElement(cardParentId);
+      }
+      return false;
+    }
+
+    if (!proofResDoc || !proofResDoc.files || proofResDoc.files.length === 0) {
       showModal('error', 'Document Required', 'Proof of Residential Address (< 3 months old) is required.');
       const cardProofRes = document.getElementById('card-proof-residence');
-      cardProofRes.scrollIntoView({ behavior: 'smooth' });
-      shakeElement(cardProofRes);
+      if (cardProofRes) {
+        cardProofRes.scrollIntoView({ behavior: 'smooth' });
+        shakeElement(cardProofRes);
+      }
       return false;
     }
   }
@@ -1085,30 +1110,112 @@ function updateAgeRequirementUI(dobString) {
  */
 function initGradeAndStream() {
   const gradeSelect = document.getElementById('grade_applied');
+  const yearSelect = document.getElementById('academic_year');
+  const schoolSelect = document.getElementById('school_id');
   const streamGroup = document.getElementById('stream-selection-group');
+  const additionalGroup = document.getElementById('additional-language-group');
   const streamSelect = document.getElementById('stream');
+  const streamIdInput = document.getElementById('academic_stream_id');
   const homeLangSelect = document.getElementById('home_language');
+  const additionalSelect = document.getElementById('first_additional_language');
   const gradeCapacityNotice = document.getElementById('grade-capacity-indicator');
-  const streamHint = document.getElementById('stream-compulsory-hint');
+  const emptyState = document.getElementById('streams-empty-state');
+  const packageReview = document.getElementById('subject-package-review');
+  const policyHint = document.getElementById('language-policy-hint');
+  let publishedStreams = [];
 
-  function updateStreamHint() {
-    const lang = (homeLangSelect && homeLangSelect.value) ? homeLangSelect.value : 'Selected Home Language';
-    const stream = streamSelect ? streamSelect.value : 'Science';
-    if (streamHint) {
-      streamHint.innerHTML = `Compulsory Core: English FAL, <strong>${lang} (Home Language)</strong>, Life Orientation + ${stream} Electives.`;
+  if (yearSelect && !yearSelect.options.length) {
+    const now = new Date();
+    const start = now.getMonth() >= 9 ? now.getFullYear() + 1 : now.getFullYear();
+    for (let year = start; year <= start + 1; year += 1) {
+      const option = document.createElement('option');
+      option.value = String(year);
+      option.textContent = String(year);
+      yearSelect.appendChild(option);
     }
   }
 
+  function fillSelect(select, rows, placeholder) {
+    if (!select) return;
+    const current = select.value;
+    select.innerHTML = '';
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = placeholder;
+    select.appendChild(blank);
+    rows.forEach((row) => {
+      const option = document.createElement('option');
+      option.value = row.value;
+      option.textContent = row.label;
+      select.appendChild(option);
+    });
+    if ([...select.options].some((option) => option.value === current)) select.value = current;
+  }
+
+  function renderPackage() {
+    const stream = publishedStreams.find((item) => String(item.id) === String(streamSelect && streamSelect.value));
+    if (streamIdInput) streamIdInput.value = stream ? String(stream.id) : '';
+    if (!packageReview) return;
+    if (!stream || !homeLangSelect.value || !additionalSelect.value) {
+      packageReview.textContent = 'Select both languages and a stream to see the seven-subject package.';
+      return;
+    }
+    const subjects = [
+      `${homeLangSelect.value} Home Language`,
+      `${additionalSelect.value} First Additional Language`,
+      stream.mathematics,
+      'Life Orientation',
+      ...stream.electives
+    ];
+    packageReview.innerHTML = `<strong>${subjects.length} subjects:</strong> ${subjects.join(' · ')}`;
+  }
+
+  async function loadPublishedStreams() {
+    const grade = parseInt(gradeSelect && gradeSelect.value, 10);
+    const fet = grade >= 10;
+    if (streamGroup) streamGroup.style.display = fet ? 'block' : 'none';
+    if (additionalGroup) additionalGroup.style.display = fet ? 'block' : 'none';
+    if (!fet) return;
+    const schoolId = schoolSelect && schoolSelect.value;
+    const year = yearSelect && yearSelect.value;
+    publishedStreams = [];
+    fillSelect(streamSelect, [], 'Select a published stream');
+    if (!schoolId || !year) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/schools/${encodeURIComponent(schoolId)}/published-streams?year=${encodeURIComponent(year)}&grade=${grade}`);
+      const data = await response.json();
+      const homes = (data.languages || []).filter((row) => row.level === 'Home Language');
+      const additionals = (data.languages || []).filter((row) => row.level === 'First Additional Language');
+      fillSelect(homeLangSelect, homes.map((row) => ({ value: row.language, label: row.language })), 'Select Official Home Language');
+      fillSelect(additionalSelect, additionals.map((row) => ({ value: row.language, label: row.language })), 'Select a First Additional Language');
+      const required = additionals.find((row) => row.required);
+      if (policyHint) {
+        policyHint.textContent = required ? `This school requires ${required.language} First Additional Language.` : '';
+      }
+      publishedStreams = data.streams || [];
+      fillSelect(streamSelect, publishedStreams.map((stream) => ({
+        value: String(stream.id),
+        label: `${stream.name}: ${stream.mathematics}; ${stream.electives.join(', ')}`
+      })), 'Select a published stream');
+      if (emptyState) emptyState.style.display = data.empty ? 'block' : 'none';
+    } catch (_) {
+      if (emptyState) {
+        emptyState.style.display = 'block';
+        emptyState.textContent = 'Subject streams have not yet been made available by this school. Please contact the school for assistance.';
+      }
+    }
+    renderPackage();
+  }
+
+  [gradeSelect, yearSelect, schoolSelect].forEach((element) => {
+    if (element) element.addEventListener('change', loadPublishedStreams);
+  });
+  [homeLangSelect, additionalSelect, streamSelect].forEach((element) => {
+    if (element) element.addEventListener('change', renderPackage);
+  });
   if (gradeSelect) {
     gradeSelect.addEventListener('change', () => {
       const grade = parseInt(gradeSelect.value, 10);
-      if (grade >= 10) {
-        if (streamGroup) streamGroup.style.display = 'block';
-        updateStreamHint();
-      } else {
-        if (streamGroup) streamGroup.style.display = 'none';
-      }
-
       if (gradeCapacityNotice && gradeCapacities[grade]) {
         const gInfo = gradeCapacities[grade];
         gradeCapacityNotice.innerHTML = `Grade ${grade} capacity: <strong>${gInfo.availableSpace} spots remaining</strong> (< 30 learners per class limit)`;
@@ -1116,19 +1223,6 @@ function initGradeAndStream() {
       } else if (gradeCapacityNotice) {
         gradeCapacityNotice.style.display = 'none';
       }
-    });
-  }
-
-  if (homeLangSelect) {
-    homeLangSelect.addEventListener('change', () => {
-      clearFieldError('home_language');
-      updateStreamHint();
-    });
-  }
-
-  if (streamSelect) {
-    streamSelect.addEventListener('change', () => {
-      updateStreamHint();
     });
   }
 }
@@ -1285,7 +1379,20 @@ function initFormSubmission() {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      if (!validateStep(1) || !validateStep(2) || !validateStep(3) || !validateStep(4)) {
+      if (!validateStep(1)) {
+        goToStep(1);
+        return;
+      }
+      if (!validateStep(2)) {
+        goToStep(2);
+        return;
+      }
+      if (!validateStep(3)) {
+        goToStep(3);
+        return;
+      }
+      if (!validateStep(4)) {
+        goToStep(4);
         return;
       }
 
@@ -1339,7 +1446,23 @@ function handleSubmissionResult(result) {
 
   if (!modal) return;
 
-  if (result.status === 'approved') {
+  if (result.status === 'submitted' || result.status === 'pending' || (result.success && result.status !== 'approved' && result.status !== 'waitlisted' && result.status !== 'action_required')) {
+    modalIcon.innerHTML = `<svg style="width:52px;height:52px;color:#10b981;margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+    modalTitle.textContent = 'Application Submitted Successfully!';
+    modalBody.innerHTML = `
+      ${result.message || 'Your admission application and supporting documents have been received and accepted.'}
+      <br><br>
+      Your application is now <strong>awaiting review and approval</strong> by the school administration. You will receive an official notification via email once your application has been reviewed.
+    `;
+    modalRef.innerHTML = `
+      <div>Application Ref: <strong>${result.applicationNumber || ''}</strong></div>
+      <div style="margin-top: 6px; color: #38bdf8; font-weight: 700;">Status: Awaiting School Approval</div>
+    `;
+    modalRef.style.display = 'block';
+    modalCta.style.display = 'inline-block';
+    modalCta.textContent = 'Return to Home';
+    modalCta.href = '/';
+  } else if (result.status === 'approved') {
     modalIcon.innerHTML = '🎉';
     modalTitle.textContent = 'Application Approved!';
     modalBody.innerHTML = `
@@ -1380,49 +1503,65 @@ function handleSubmissionResult(result) {
     modalRef.innerHTML = `Application Ref: <strong>${result.applicationNumber}</strong>`;
     modalRef.style.display = 'block';
     modalCta.style.display = 'none';
-  } else if (result.success || result.status === 'pending' || result.status === 'submitted') {
-    modalIcon.innerHTML = '📨';
-    modalTitle.textContent = 'Application Submitted Successfully!';
-    
-    let feeHtml = '';
-    if (result.application_fee_status === 'paid') {
-      feeHtml = `
-        <div style="margin-top: 14px; padding: 12px 16px; background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; border-radius: 10px; color: #6ee7b7; font-size: 13px; text-align: left;">
-          <strong>✓ Application Fee (R250.00): Paid & Verified</strong>
-          <div style="font-size: 11px; color: #cbd5e1; margin-top: 4px;">An official payment receipt has been dispatched to your email. Your application has been fast-tracked for school admin review.</div>
+  } else {
+    // Validation or Submission Failure Handler
+    modalIcon.innerHTML = `<svg style="width:48px;height:48px;color:#ef4444;margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`;
+    modalTitle.textContent = 'Validation Notice';
+
+    const fieldErrors = Array.isArray(result.errors) ? result.errors : (Array.isArray(result.issues) ? result.issues : []);
+
+    if (fieldErrors.length > 0) {
+      let firstErrorField = null;
+      fieldErrors.forEach(err => {
+        if (err.field) {
+          showError(err.field, err.message);
+          if (!firstErrorField) firstErrorField = err.field;
+        }
+      });
+
+      const errItemsHtml = fieldErrors.map(err => {
+        const label = getFieldLabel(err.field);
+        return `<li style="margin-bottom: 6px;"><strong>${label}:</strong> ${err.message}</li>`;
+      }).join('');
+
+      modalBody.innerHTML = `
+        <div style="text-align: left; margin-bottom: 10px; color: #f87171; font-weight: 700;">
+          Please correct the highlighted ${fieldErrors.length} item${fieldErrors.length > 1 ? 's' : ''} on the form:
+        </div>
+        <ul style="text-align: left; margin: 8px 0 14px; padding-left: 20px; color: #fca5a5; font-size: 0.88rem; line-height: 1.5;">
+          ${errItemsHtml}
+        </ul>
+        <div style="font-size: 0.82rem; color: #94a3b8; margin-top: 10px;">
+          Click "Close" to jump directly to the field needing attention.
         </div>
       `;
+
+      // Navigate to the step containing the first invalid field
+      if (firstErrorField) {
+        const el = document.getElementById(firstErrorField);
+        if (el) {
+          const stepCard = el.closest('.form-step-card');
+          if (stepCard && stepCard.id) {
+            const stepNum = parseInt(stepCard.id.replace('step-', ''), 10);
+            if (!isNaN(stepNum)) {
+              goToStep(stepNum);
+              setTimeout(() => {
+                el.focus();
+                shakeElement(el);
+              }, 400);
+            }
+          }
+        }
+      }
     } else {
-      const b = result.banking_details || {};
-      feeHtml = `
-        <div style="margin-top: 14px; padding: 14px 16px; background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; border-radius: 10px; color: #fde68a; font-size: 12px; text-align: left;">
-          <strong style="color: #fbbf24; font-size: 13px;">🏦 Application Fee: Pending Payment (R250.00)</strong>
-          <div style="margin-top: 6px; color: #f1f5f9; line-height: 1.5;">
-            An email with full banking details has been sent to your inbox. Please complete payment within <strong>7 days</strong> using reference: <strong style="color:#38bdf8;">${result.applicationNumber}</strong>.
-            <br>
-            A payment reminder will be automatically emailed <strong>3 days</strong> before the due date.
-          </div>
-          <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(245,158,11,0.4); font-family: monospace; font-size: 11.5px; color: #e2e8f0;">
-            Bank: ${b.bank_name || 'FNB'} | Acc: ${b.account_number || '62849102841'} | Branch: ${b.branch_code || '250655'}
-          </div>
+      const errorMsg = result.error || result.message || 'Please verify that all required information across Steps 1 to 4 is complete and correct.';
+      modalBody.innerHTML = `
+        <div style="color: #fca5a5; font-size: 0.92rem; line-height: 1.6; padding: 4px 0;">
+          ${errorMsg}
         </div>
       `;
     }
 
-    modalBody.innerHTML = `
-      ${result.message || 'Your learner admission application has been received and logged.'}
-      ${feeHtml}
-      <p style="margin-top: 14px; font-size: 12px; color: #94a3b8;">
-        Once the school administrator reviews and approves the application, you will receive an acceptance notice and link to pay the registration fee and finalize class allocation.
-      </p>
-    `;
-    modalRef.innerHTML = `Application Ref: <strong>${result.applicationNumber}</strong>`;
-    modalRef.style.display = 'block';
-    modalCta.style.display = 'none';
-  } else {
-    modalIcon.innerHTML = `<svg style="width:48px;height:48px;color:#ef4444;margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`;
-    modalTitle.textContent = 'Validation Notice';
-    modalBody.innerHTML = result.error || 'Please correct errors on the form.';
     modalRef.style.display = 'none';
     modalCta.style.display = 'none';
   }

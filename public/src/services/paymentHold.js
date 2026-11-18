@@ -72,9 +72,19 @@ function describe(method, school, amount, reference) {
   };
 }
 
+function publicBank(school) {
+  const bank = realBank(school);
+  if (!bank) return { has_bank_account: false, account_hint: null };
+  return {
+    has_bank_account: true,
+    account_hint: `******${bank.account_number.slice(-4)}`
+  };
+}
+
 module.exports = {
   METHOD_LABELS,
   normaliseMethod,
   realBank,
+  publicBank,
   describe
 };

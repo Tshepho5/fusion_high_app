@@ -2,11 +2,61 @@ const db = require('../../../db/db');
 const NotificationService = require('../services/notificationService');
 const emailService = require('../services/emailService');
 
+let seatingSchemaChecked = false;
+async function ensureExamSeatingSchema() {
+  if (seatingSchemaChecked) return;
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS exam_sessions (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255),
+        subject VARCHAR(150),
+        grade INTEGER NOT NULL,
+        stream VARCHAR(50) DEFAULT 'All',
+        term VARCHAR(50) DEFAULT 'Term 3 2026',
+        exam_date DATE NOT NULL,
+        start_time VARCHAR(20) NOT NULL,
+        end_time VARCHAR(20) NOT NULL,
+        venue VARCHAR(150) DEFAULT 'Main Examination Hall',
+        total_rows INTEGER DEFAULT 10,
+        total_cols INTEGER DEFAULT 6,
+        total_desks INTEGER DEFAULT 60,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      ALTER TABLE exam_sessions ADD COLUMN IF NOT EXISTS title VARCHAR(255);
+      ALTER TABLE exam_sessions ADD COLUMN IF NOT EXISTS stream VARCHAR(50) DEFAULT 'All';
+      ALTER TABLE exam_sessions ADD COLUMN IF NOT EXISTS term VARCHAR(50) DEFAULT 'Term 3 2026';
+      ALTER TABLE exam_sessions ADD COLUMN IF NOT EXISTS total_rows INTEGER DEFAULT 10;
+      ALTER TABLE exam_sessions ADD COLUMN IF NOT EXISTS total_cols INTEGER DEFAULT 6;
+      ALTER TABLE exam_sessions ADD COLUMN IF NOT EXISTS total_desks INTEGER DEFAULT 60;
+
+      CREATE TABLE IF NOT EXISTS exam_seating_allocations (
+        id SERIAL PRIMARY KEY,
+        session_id INTEGER NOT NULL REFERENCES exam_sessions(id) ON DELETE CASCADE,
+        child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+        desk_number VARCHAR(20) NOT NULL,
+        attendance_status VARCHAR(30) DEFAULT 'present',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      ALTER TABLE exam_seating_allocations ADD COLUMN IF NOT EXISTS row_num INTEGER DEFAULT 1;
+      ALTER TABLE exam_seating_allocations ADD COLUMN IF NOT EXISTS col_num INTEGER DEFAULT 1;
+      ALTER TABLE exam_seating_allocations ADD COLUMN IF NOT EXISTS candidate_number VARCHAR(50);
+      ALTER TABLE exam_seating_allocations ADD COLUMN IF NOT EXISTS attendance_status VARCHAR(30) DEFAULT 'present';
+    `);
+    seatingSchemaChecked = true;
+  } catch (e) {
+    console.error('[EXAM SEATING] Schema check warning:', e.message);
+  }
+}
+
 /**
  * Admin/Teacher: Create an Exam Session
  */
 exports.createSession = async (req, res) => {
   try {
+    await ensureExamSeatingSchema();
     const { title, subject, grade, stream = 'All', term = 'Term 3 2026', exam_date, start_time, end_time, venue = 'Main Examination Hall', total_rows = 10, total_cols = 6 } = req.body;
 
     if (!title || !grade || !exam_date || !start_time || !end_time) {
@@ -37,6 +87,7 @@ exports.createSession = async (req, res) => {
  */
 exports.getSessions = async (req, res) => {
   try {
+    await ensureExamSeatingSchema();
     const { grade } = req.query;
     let query = `
       SELECT s.*, 
