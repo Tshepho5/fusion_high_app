@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 /**
  * Integrity checks for the lesson-planning migration.
  * Schema corrections are applied. Row probes run inside a transaction and roll back.

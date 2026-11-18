@@ -4,6 +4,38 @@ const { getAuth } = require('firebase-admin/auth');
 const { getStorage } = require('firebase-admin/storage');
 const path = require('path');
 const fs = require('fs');
+const { assertFirebaseTestAllowed, isTestProcess } = require('../lib/testSafety');
+
+if (isTestProcess()) {
+  const decision = assertFirebaseTestAllowed();
+  if (decision.mode === 'mock') {
+    module.exports = {
+      app: null,
+      db: null,
+      firestore: null,
+      auth: null,
+      storage: null,
+      bucket: null,
+      mocked: true
+    };
+    return;
+  }
+  const emulatorApp = getApps().length
+    ? getApps()[0]
+    : initializeApp({ projectId: decision.projectId });
+  const emulatorDb = getFirestore(emulatorApp);
+  const emulatorAuth = getAuth(emulatorApp);
+  const emulatorStorage = getStorage(emulatorApp);
+  module.exports = {
+    app: emulatorApp,
+    db: emulatorDb,
+    firestore: emulatorDb,
+    auth: emulatorAuth,
+    storage: emulatorStorage,
+    bucket: emulatorStorage.bucket()
+  };
+  return;
+}
 
 let serviceAccount = null;
 

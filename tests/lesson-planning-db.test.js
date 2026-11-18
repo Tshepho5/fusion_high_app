@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 /**
  * Database round-trip for lesson planning.
  * Inserts inside a transaction and rolls back, so no lesson rows are kept.

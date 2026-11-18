@@ -4,6 +4,7 @@ if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder('ipv4first');
 }
 const nodemailer = require('nodemailer');
+const { refuseExternalService } = require('../../../lib/testSafety');
 
 const tls = require('tls');
 const net = require('net');
@@ -91,6 +92,7 @@ function googleRelayAccepted(parsed) {
 }
 
 function sendViaDirectTls({ user, pass, to, subject, html, replyTo, fromName = 'Geleza SA' }) {
+  refuseExternalService('email');
   return new Promise((resolve, reject) => {
     const socket = tls.connect(465, 'smtp.gmail.com', { servername: 'smtp.gmail.com' });
     let step = 0;
@@ -288,6 +290,7 @@ function createBaseEmailTemplate({ preheader, title, subtitle, contentHtml, ctaT
 let pooledTransporter = null;
 
 function getTransporter() {
+  refuseExternalService('email');
   const user = getSmtpUser();
   const pass = getSmtpPass();
   return nodemailer.createTransport({
@@ -304,6 +307,7 @@ function getTransporter() {
 }
 
 function httpsJson(url, { method = 'POST', headers = {}, body = '' } = {}) {
+  refuseExternalService('email');
   const https = require('https');
   return new Promise((resolve, reject) => {
     const req = https.request(url, { method, headers }, (res) => {

@@ -19,6 +19,11 @@ let db: Firestore | null = null;
 let storage: FirebaseStorage | null = null;
 let auth: Auth | null = null;
 
+const runtimeMode = String(env.MODE || env.NODE_ENV || '');
+if (runtimeMode === 'test' && firebaseConfig.projectId === 'fusion-high-app' && env.VITE_FIREBASE_EMULATOR !== 'true') {
+  throw new Error('Refusing to initialise the production Firebase project fusion-high-app during tests.');
+}
+
 try {
   app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   db = getFirestore(app);

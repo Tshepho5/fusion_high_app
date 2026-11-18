@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 /**
  * Exercises the running registration API, then deletes any probe application it created.
  */

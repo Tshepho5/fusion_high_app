@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const path = require('path');
 const db = require('../db/db');
 const jwt = require('jsonwebtoken');

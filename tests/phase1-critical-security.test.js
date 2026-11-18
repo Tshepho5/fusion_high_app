@@ -1,4 +1,5 @@
 'use strict';
+require('./safety/blockLiveEffects');
 
 const { describe, test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
@@ -76,6 +77,8 @@ before(async () => {
   assert.equal(existing.rows.length, 0);
   await adminClient.query(`CREATE DATABASE ${testDb}`);
 
+  process.env.GELEZA_TEST_MODE = '1';
+  process.env.GELEZA_TEST_DATABASE = testDb;
   process.env.DATABASE_URL = `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password || '')}@${host}:${port}/${testDb}`;
   assert.ok(process.env.DATABASE_URL.endsWith(`/${testDb}`));
   assert.equal(process.env.DATABASE_URL.includes('/FUSION_DB'), false);

@@ -1,4 +1,5 @@
 'use strict';
+require('./safety/blockLiveEffects');
 
 const { describe, test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
@@ -106,6 +107,8 @@ describe('school academic streams', () => {
     });
     await adminClient.connect();
     await adminClient.query(`CREATE DATABASE ${testDb}`);
+    process.env.GELEZA_TEST_MODE = '1';
+    process.env.GELEZA_TEST_DATABASE = testDb;
     process.env.DATABASE_URL = `postgresql://${encodeURIComponent(process.env.DB_USER || 'postgres')}:${encodeURIComponent(process.env.DB_PASSWORD || '')}@${host}:${process.env.DB_PORT || 5432}/${testDb}`;
     db = require('../db/db');
     const connected = await db.query('SELECT current_database() AS name');

@@ -2,15 +2,13 @@ const express = require('express');
 const router = express.Router();
 const systemController = require('../controller/systemController');
 const { auth } = require('../../../authMiddleware');
+const db = require('../../../db/db');
+const { createEnforceDatabaseSuperadmin } = require('../../../lib/authoritativeAccess');
 
-const requireMasterAdmin = (req, res, next) => {
-  if (!req.user?.is_superadmin) {
-    return res.status(403).json({
-      error: 'Access restricted to a master administrator.'
-    });
-  }
-  next();
-};
+const requireMasterAdmin = createEnforceDatabaseSuperadmin(
+  (text, params) => db.query(text, params),
+  'Access restricted to a master administrator.'
+);
 
 // 1. Portal Access Locks (Public read, Master Admin write)
 router.get('/portal-locks', systemController.getPortalLocks);

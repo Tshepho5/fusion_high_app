@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { validateRegistration, validSaId } = require('../public/src/services/schoolRegistrationRules');

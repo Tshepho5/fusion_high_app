@@ -6,6 +6,8 @@ const schoolController = require('../controller/schoolController');
 const academicStreamController = require('../controller/academicStreamController');
 const schoolLogo = require('../services/schoolLogo');
 const { auth, requireRole } = require('../../../authMiddleware');
+const db = require('../../../db/db');
+const { createEnforceDatabaseSuperadmin } = require('../../../lib/authoritativeAccess');
 
 const logoUpload = multer({
   storage: multer.memoryStorage(),
@@ -33,10 +35,10 @@ function acceptLogo(req, res, next) {
 
 router.post('/apply', registrationLimiter, acceptLogo, schoolController.applySchool);
 
-const canReviewSchoolRegistrations = (req, res, next) => {
-  if (req.user?.is_superadmin) return next();
-  return res.status(403).json({ error: 'Only Geleza SA platform administrators can review school admissions and registrations.' });
-};
+const canReviewSchoolRegistrations = createEnforceDatabaseSuperadmin(
+  (text, params) => db.query(text, params),
+  'Only Geleza SA platform administrators can review school admissions and registrations.'
+);
 
 router.get('/applications/retention-dry-run', auth, canReviewSchoolRegistrations, schoolController.retentionDryRun);
 router.get('/applications/all', auth, canReviewSchoolRegistrations, schoolController.getSchoolApplications);

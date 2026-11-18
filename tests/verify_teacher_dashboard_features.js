@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 

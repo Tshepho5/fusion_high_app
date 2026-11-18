@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const ai = require('../public/src/services/aiTutorService');
 
 console.log('--- Testing Subject Purity: Life Sciences ---');

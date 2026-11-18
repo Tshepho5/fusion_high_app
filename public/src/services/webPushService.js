@@ -1,5 +1,6 @@
 const db = require('../../../db/db');
 const webpush = require('web-push');
+const { refuseExternalService } = require('../../../lib/testSafety');
 
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@gelezasa.co.za';
 
@@ -138,6 +139,7 @@ class WebPushService {
   }
 
   static async notifyUsers({ userIds, notificationIds = [], title, message, type, targetTab }) {
+    refuseExternalService('push');
     const kind = alertKind(type, targetTab);
     if (!kind || !userIds || userIds.length === 0) return;
 

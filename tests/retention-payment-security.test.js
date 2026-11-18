@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 /**
  * Retention dry-run, payment verification, invitation queue, and class quarantine.
  * Probe rows are removed afterward. Existing schools, users, and classes are not deleted.

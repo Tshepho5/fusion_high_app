@@ -1,3 +1,4 @@
+require('./safety/blockLiveEffects');
 const db = require('../db/db');
 
 async function inspect() {
