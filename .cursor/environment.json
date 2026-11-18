@@ -1,0 +1,21 @@
+{
+  "name": "Fusion High App",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "ports": [
+    { "name": "vite", "port": 3000 },
+    { "name": "api", "port": 4000 }
+  ],
+  "terminals": [
+    {
+      "name": "API logs",
+      "command": "touch /tmp/fusion-api.log && tail -F /tmp/fusion-api.log",
+      "description": "Express API log. The start script runs the server on port 4000."
+    },
+    {
+      "name": "Vite logs",
+      "command": "touch /tmp/fusion-vite.log && tail -F /tmp/fusion-vite.log",
+      "description": "Vite dev server log. The start script runs the client on port 3000."
+    }
+  ]
+}
