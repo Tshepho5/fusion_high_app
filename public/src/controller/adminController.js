@@ -5,6 +5,7 @@ const applicationService = require('../services/applicationService');
 const { rejectNameDigits } = require('../services/lettersOnly');
 const NotificationService = require('../services/notificationService');
 const { ensureDatabaseSchema } = require('../../../db/schemaEnsurer');
+const capsAudit = require('../services/capsAssessmentAudit');
 
 /**
  * Resolves the target school tenant ID from query, header, or user token.
@@ -2064,128 +2065,6 @@ exports.generateReport = async (req, res) => {
 };
 
 /**
- * Fetches data for the Academics Dashboard overview section.
- */
-exports.getAcademicOverview = async (req, res) => {
-    try {
-        let upcomingEventsRes = { rows: [] };
-        try {
-            upcomingEventsRes = await db.query(`
-                SELECT 
-                    id, 
-                    title, 
-                    date, 
-                    time, 
-                    grade_target 
-                FROM events 
-                WHERE date >= CURRENT_DATE 
-                ORDER BY date ASC 
-                LIMIT 4;
-            `);
-        } catch (e) {
-            upcomingEventsRes = { rows: [] };
-        }
-
-        const [
-            classesOverviewRes,
-            statsRes,
-            recentActivitiesRes,
-            topClassesRes,
-            subjectPerfRes
-        ] = await Promise.all([
-            // 1. Class Overview Table (Class, Teacher, Learners count, Subjects count)
-            db.query(`
-                SELECT 
-                    c.id,
-                    c.name AS class_name,
-                    c.grade,
-                    COALESCE(u.full_name || ' ' || u.surname, 'Staff Teacher') AS teacher_name,
-                    (SELECT COUNT(*) FROM children ch WHERE ch.class_id = c.id) AS learners_count,
-                    (SELECT COUNT(*) FROM subjects s WHERE s.grade = c.grade) AS subjects_count
-                FROM classes c
-                LEFT JOIN users u ON c.homeroom_teacher_id = u.id
-                ORDER BY c.grade ASC, c.name ASC
-                LIMIT 10;
-            `),
-
-            // 2. Summary Stats (Total Classes, Total Subjects, Total Learners, Avg Pass Rate)
-            db.query(`
-                SELECT
-                    (SELECT COUNT(*) FROM classes) AS total_classes,
-                    (SELECT COUNT(*) FROM subjects) AS total_subjects,
-                    (SELECT COUNT(*) FROM children) AS total_learners,
-                    (SELECT COALESCE(ROUND(AVG(grade)), 78) FROM progress) AS avg_pass_rate;
-            `),
-
-            // 3. Recent Academic Activities (Announcements / Marks / Exams)
-            db.query(`
-                SELECT 
-                    id, 
-                    title, 
-                    content, 
-                    created_at 
-                FROM announcements 
-                ORDER BY created_at DESC 
-                LIMIT 5;
-            `),
-
-            // 4. Top Performing Classes
-            db.query(`
-                SELECT 
-                    c.name AS class_name,
-                    COALESCE(ROUND(AVG(p.grade)), 80) AS avg_mark,
-                    COALESCE(ROUND((COUNT(CASE WHEN p.grade >= 50 THEN 1 END) * 100.0) / NULLIF(COUNT(*), 0)), 88) AS pass_rate,
-                    (SELECT COUNT(*) FROM children ch WHERE ch.class_id = c.id) AS learner_count
-                FROM classes c
-                LEFT JOIN children ch ON ch.class_id = c.id
-                LEFT JOIN progress p ON p.child_id = ch.id
-                GROUP BY c.id, c.name
-                ORDER BY avg_mark DESC
-                LIMIT 5;
-
-            `),
-
-            // 5. Subject Performance Overview
-            db.query(`
-                SELECT 
-                    s.name AS subject_name,
-                    COALESCE(ROUND(AVG(p.grade)), 75) AS avg_mark
-                FROM subjects s
-                LEFT JOIN progress p ON LOWER(p.subject) = LOWER(s.name)
-                GROUP BY s.name
-                ORDER BY avg_mark DESC
-                LIMIT 6;
-            `)
-        ]);
-
-        res.json({
-            classes_overview: classesOverviewRes.rows,
-            summary: statsRes.rows[0] || { total_classes: 0, total_subjects: 0, total_learners: 0, avg_pass_rate: 78 },
-            recent_activities: recentActivitiesRes.rows,
-            top_classes: topClassesRes.rows,
-            subject_performance: subjectPerfRes.rows.length ? subjectPerfRes.rows : [
-                { subject_name: 'Mathematics', avg_mark: 92 },
-                { subject_name: 'Science', avg_mark: 85 },
-                { subject_name: 'English', avg_mark: 78 },
-                { subject_name: 'History', avg_mark: 74 },
-                { subject_name: 'Geography', avg_mark: 71 },
-                { subject_name: 'Computer Science', avg_mark: 69 }
-            ],
-            upcoming_events: upcomingEventsRes.rows.length ? upcomingEventsRes.rows : [
-                { id: 1, title: 'Midyear Exams Begin', date: '2026-05-15', time: '08:00 AM', grade_target: 'All Grades' },
-                { id: 2, title: 'Science Fair', date: '2026-05-20', time: '09:00 AM', grade_target: 'Grade 10 - 12' },
-                { id: 3, title: 'Parent-Teacher Meeting', date: '2026-05-25', time: '02:00 PM', grade_target: 'All Grades' },
-                { id: 4, title: 'Term 2 Begins', date: '2026-06-01', time: '08:00 AM', grade_target: 'All Grades' }
-            ]
-        });
-
-    } catch (err) {
-        console.error('Error fetching academic overview:', err);
-        res.status(500).json({ error: 'Failed to fetch academic overview from database.' });
-    }
-};
-
-/**
  * Gets all admissions applications with filtering.
  */
 exports.getAllAdmissions = async (req, res) => {
@@ -2434,160 +2313,80 @@ exports.inspectAdmissionDocOCR = async (req, res) => {
 };
 
 /**
- * Retrieves school-wide academic assessment audits, SBA compliance, mark schedules, and teacher moderation logs.
+ * School-scoped CAPS assessment audits. Figures come from marks and progress rows.
+ * A missing mark is left unscored. An unmoderated schedule is not compliant.
  */
 exports.getAcademicOverview = async (req, res) => {
     try {
         const schoolId = getTargetSchoolId(req);
-        const { grade, subject, term } = req.query;
-
-        // Fetch school-wide assessment progress records
-        let query = `
-            SELECT p.id, p.child_id, p.subject, p.grade as score, p.date, p.term, p.notes,
-                   c.full_name as student_name, c.surname as student_surname, c.learner_number, c.grade as learner_grade, c.stream,
-                   COALESCE(cl.name, 'Grade ' || c.grade || 'A') as class_name
-            FROM progress p
-            JOIN children c ON p.child_id = c.id
-            LEFT JOIN classes cl ON c.class_id = cl.id
-            WHERE (c.school_id = $1 OR (c.school_id IS NULL AND $1 = 1))
-        `;
-        const params = [schoolId];
-
-        if (grade && grade !== 'all' && !isNaN(parseInt(grade, 10))) {
-            params.push(parseInt(grade, 10));
-            query += ` AND c.grade = $${params.length}`;
+        if (!schoolId) {
+            return res.status(403).json({ error: 'This account is not assigned to a school.' });
         }
-        if (subject && subject !== 'all' && subject.trim() !== '') {
-            params.push(`%${subject.trim()}%`);
-            query += ` AND p.subject ILIKE $${params.length}`;
-        }
-        if (term && term !== 'all' && term.trim() !== '') {
-            params.push(`%${term.trim()}%`);
-            query += ` AND p.term ILIKE $${params.length}`;
-        }
-
-        query += ` ORDER BY p.date DESC, p.id DESC`;
-
-        const progressRes = await db.query(query, params);
-
-        // Fetch distinct subjects available in database
-        const subjectsRes = await db.query(`SELECT DISTINCT name FROM subjects ORDER BY name ASC`);
-        const allSubjects = subjectsRes.rows.map(r => r.name);
-
-        // Calculate overall SBA metrics
-        const allScores = progressRes.rows.map(r => parseFloat(r.score)).filter(s => !isNaN(s));
-        const totalAssessments = progressRes.rows.length;
-        const avgScore = allScores.length > 0 ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 74;
-        const passedCount = allScores.filter(s => s >= 50).length;
-        const passRate = allScores.length > 0 ? Math.round((passedCount / allScores.length) * 100) : 85;
-
-        // Distribution of CAPS Levels
-        const levelsDist = { level7: 0, level6: 0, level5: 0, level4: 0, level3: 0, level2: 0, level1: 0 };
-        allScores.forEach(s => {
-            if (s >= 80) levelsDist.level7++;
-            else if (s >= 70) levelsDist.level6++;
-            else if (s >= 60) levelsDist.level5++;
-            else if (s >= 50) levelsDist.level4++;
-            else if (s >= 40) levelsDist.level3++;
-            else if (s >= 30) levelsDist.level2++;
-            else levelsDist.level1++;
+        const filters = capsAudit.readAuditFilters(req.query);
+        const marksSql = capsAudit.marksQuery(schoolId, filters);
+        const progressSql = capsAudit.progressQuery(schoolId, filters);
+        const [marksRes, progressRes, moderationRows, offeringRes] = await Promise.all([
+            db.query(marksSql.sql, marksSql.params),
+            db.query(progressSql.sql, progressSql.params),
+            capsAudit.listModeration(schoolId),
+            db.query(
+                `SELECT DISTINCT subject_name
+                 FROM school_subject_offerings
+                 WHERE school_id = $1 AND is_active = TRUE
+                 ORDER BY subject_name ASC`,
+                [schoolId]
+            ).catch(() => ({ rows: [] }))
+        ]);
+        const audit = capsAudit.assembleAudit({
+            markRows: marksRes.rows,
+            progressRows: progressRes.rows,
+            moderationRows,
+            offeringNames: offeringRes.rows.map((row) => row.subject_name),
+            termScope: filters.termScope
         });
-
-        // Subject mark schedules aggregated
-        const subjectSchedulesMap = {};
-        progressRes.rows.forEach(r => {
-            const subj = r.subject || 'General';
-            if (!subjectSchedulesMap[subj]) {
-                subjectSchedulesMap[subj] = {
-                    subject: subj,
-                    grade: r.learner_grade || 10,
-                    assessments_count: 0,
-                    total_score_sum: 0,
-                    learners: [],
-                    moderation_status: 'Approved',
-                    moderated_by: 'Academic Department Head',
-                    last_updated: r.date
-                };
-            }
-            subjectSchedulesMap[subj].assessments_count += 1;
-            subjectSchedulesMap[subj].total_score_sum += parseFloat(r.score) || 0;
-            
-            const scoreNum = parseFloat(r.score) || 0;
-            const capsLevel = scoreNum >= 80 ? 'Level 7 (Outstanding)' : (scoreNum >= 70 ? 'Level 6 (Meritorious)' : (scoreNum >= 60 ? 'Level 5 (Substantial)' : (scoreNum >= 50 ? 'Level 4 (Adequate)' : (scoreNum >= 40 ? 'Level 3 (Moderate)' : (scoreNum >= 30 ? 'Level 2 (Elementary)' : 'Level 1 (Not Achieved)')))));
-
-            subjectSchedulesMap[subj].learners.push({
-                id: r.id,
-                child_id: r.child_id,
-                learner_name: `${r.student_name} ${r.student_surname}`,
-                learner_number: r.learner_number || `2026-00${r.child_id}`,
-                grade: r.learner_grade,
-                class_name: r.class_name,
-                task_title: r.notes || `${subj} Term Assessment`,
-                term: r.term || 'Term 3 2026',
-                score: Math.round(scoreNum),
-                caps_level: capsLevel,
-                date: r.date
-            });
-        });
-
-        const subjectSchedules = Object.values(subjectSchedulesMap).map(s => ({
-            ...s,
-            average_mark: s.assessments_count > 0 ? Math.round(s.total_score_sum / s.assessments_count) : 0,
-            pass_rate: s.learners.length > 0 ? Math.round((s.learners.filter(l => l.score >= 50).length / s.learners.length) * 100) : 100
-        }));
-
-        res.json({
-            success: true,
-            summary: {
-                total_assessments_recorded: totalAssessments,
-                school_average_mark: avgScore,
-                sba_pass_rate: passRate,
-                compliance_rate: 98,
-                levels_distribution: levelsDist,
-                total_subjects_audited: subjectSchedules.length
-            },
-            subjects: allSubjects.length > 0 ? allSubjects : ['Mathematics', 'Physical Sciences', 'Life Sciences', 'Accounting', 'English FAL', 'Geography', 'History', 'Business Studies'],
-            subject_schedules: subjectSchedules,
-            records: progressRes.rows.map(r => ({
-                id: r.id,
-                child_id: r.child_id,
-                learner_name: `${r.student_name} ${r.student_surname}`,
-                learner_number: r.learner_number || `2026-00${r.child_id}`,
-                grade: r.learner_grade,
-                stream: r.stream || 'General',
-                class_name: r.class_name,
-                subject: r.subject,
-                score: Math.round(parseFloat(r.score) || 0),
-                term: r.term || 'Term 3 2026',
-                task_title: r.notes || `${r.subject} Assessment`,
-                date: r.date,
-                moderation_status: 'Approved'
-            }))
-        });
-
+        res.json({ success: true, ...audit });
     } catch (err) {
         console.error('Error fetching academic assessment audits:', err);
-        res.status(500).json({ error: 'Failed to retrieve academic assessment audits: ' + err.message });
+        res.status(500).json({ error: 'Failed to retrieve academic assessment audits.' });
     }
 };
 
 /**
- * Handles administrator sign-off or moderation update for an assessment schedule.
+ * Records an administrator moderation decision for one subject and grade.
+ * The school comes from the signed-in account, not from the request body.
  */
 exports.moderateAssessmentBatch = async (req, res) => {
     try {
-        const { subject, grade, status, feedback } = req.body;
-
+        const schoolId = getTargetSchoolId(req);
+        if (!schoolId) {
+            return res.status(403).json({ error: 'This account is not assigned to a school.' });
+        }
+        const userName = [req.user && req.user.full_name, req.user && req.user.surname].filter(Boolean).join(' ').trim()
+            || (req.user && req.user.email)
+            || '';
+        const saved = await capsAudit.saveModeration({
+            schoolId,
+            subject: req.body && req.body.subject,
+            grade: req.body && req.body.grade,
+            termLabel: req.body && req.body.term && req.body.term !== 'all' ? req.body.term : '',
+            status: req.body && req.body.status,
+            feedback: req.body && req.body.feedback,
+            userId: req.user && req.user.id,
+            userName
+        });
         res.json({
             success: true,
-            message: `SBA Mark Schedule for ${subject || 'Selected Subject'} (Grade ${grade || 10}) has been updated to "${(status || 'Approved').toUpperCase()}".`,
-            status: status || 'Approved',
-            moderated_by: req.user.email,
-            moderated_at: new Date().toISOString()
+            message: `SBA mark schedule for ${req.body.subject} (Grade ${req.body.grade}) is now ${saved.status}.`,
+            status: saved.status,
+            moderated_by: userName,
+            moderated_at: saved.moderated_at
         });
     } catch (err) {
-        console.error('Error moderating assessment batch:', err);
-        res.status(500).json({ error: 'Failed to moderate assessment schedule.' });
+        const status = err.status || 500;
+        if (status >= 500) console.error('Error moderating assessment batch:', err);
+        res.status(status).json({
+            error: status === 400 ? err.message : 'Failed to moderate the assessment schedule.'
+        });
     }
 };
 

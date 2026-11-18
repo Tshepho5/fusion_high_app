@@ -8,26 +8,20 @@ import { ReportCardStudio } from './ReportCardStudio';
 import {
   FileSpreadsheet,
   Search,
-  Filter,
   CheckCircle2,
   AlertCircle,
   Download,
-  Printer,
   ShieldCheck,
   TrendingUp,
   Award,
   BookOpen,
   GraduationCap,
-  Users,
   Check,
-  RefreshCw,
-  Eye,
-  SlidersHorizontal,
-  ChevronDown
+  RefreshCw
 } from 'lucide-react';
 
 interface AcademicRecord {
-  id: number;
+  id: string | number;
   child_id: number;
   learner_name: string;
   learner_number: string;
@@ -35,43 +29,80 @@ interface AcademicRecord {
   stream: string;
   class_name: string;
   subject: string;
-  score: number;
-  term: string;
+  score: number | null;
+  term: string | null;
   task_title: string;
-  date: string;
+  date: string | null;
+  caps_level?: string | null;
   moderation_status?: string;
+}
+
+interface AuditSummary {
+  total_assessments_recorded: number;
+  scored_assessments: number;
+  school_average_mark: number | null;
+  sba_pass_rate: number | null;
+  compliance_rate: number | null;
+  levels_distribution: {
+    level7: number;
+    level6: number;
+    level5: number;
+    level4: number;
+    level3: number;
+    level2: number;
+    level1: number;
+  };
 }
 
 interface SubjectSchedule {
   subject: string;
   grade: number;
   assessments_count: number;
-  average_mark: number;
-  pass_rate: number;
+  average_mark: number | null;
+  pass_rate: number | null;
   moderation_status: string;
+  compliant?: boolean;
   moderated_by: string;
-  last_updated: string;
-  learners: Array<{
-    id: number;
-    child_id: number;
-    learner_name: string;
-    learner_number: string;
-    grade: number;
-    class_name: string;
-    task_title: string;
-    term: string;
-    score: number;
-    caps_level: string;
-    date: string;
-  }>;
+  last_updated: string | null;
+  feedback?: string;
+}
+
+const LEVEL_CARDS = [
+  { key: 'level7', label: 'Level 7 (80-100%)', caption: 'Outstanding', tone: 'text-emerald-800 dark:text-emerald-300 border-emerald-700/30 bg-emerald-500/10' },
+  { key: 'level6', label: 'Level 6 (70-79%)', caption: 'Meritorious', tone: 'text-cyan-800 dark:text-cyan-300 border-cyan-700/30 bg-cyan-500/10' },
+  { key: 'level5', label: 'Level 5 (60-69%)', caption: 'Substantial', tone: 'text-indigo-800 dark:text-indigo-300 border-indigo-700/30 bg-indigo-500/10' },
+  { key: 'level4', label: 'Level 4 (50-59%)', caption: 'Adequate', tone: 'text-blue-800 dark:text-blue-300 border-blue-700/30 bg-blue-500/10' },
+  { key: 'level3', label: 'Level 3 (40-49%)', caption: 'Moderate', tone: 'text-amber-800 dark:text-amber-300 border-amber-700/30 bg-amber-500/10' },
+  { key: 'level2', label: 'Level 2 (30-39%)', caption: 'Elementary', tone: 'text-orange-800 dark:text-orange-300 border-orange-700/30 bg-orange-500/10' },
+  { key: 'level1', label: 'Level 1 (0-29%)', caption: 'Not Achieved', tone: 'text-rose-800 dark:text-rose-300 border-rose-700/30 bg-rose-500/10' }
+] as const;
+
+function formatPercent(value: number | null | undefined) {
+  return value === null || value === undefined || Number.isNaN(Number(value)) ? '—' : `${value}%`;
+}
+
+function formatDate(value: string | null) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-ZA', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function moderationVariant(status: string): 'emerald' | 'amber' | 'rose' | 'slate' {
+  const clean = (status || '').toLowerCase();
+  if (clean === 'approved' || clean === 'verified') return 'emerald';
+  if (clean === 'discrepancy flagged') return 'rose';
+  if (clean === 'under review') return 'amber';
+  return 'slate';
 }
 
 export const AcademicAssessmentAudits: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<'subjects' | 'report-cards' | 'audits'>('subjects');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [data, setData] = useState<{
-    summary: any;
+    summary: AuditSummary;
     subjects: string[];
     subject_schedules: SubjectSchedule[];
     records: AcademicRecord[];
@@ -81,28 +112,40 @@ export const AcademicAssessmentAudits: React.FC = () => {
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [selectedTerm, setSelectedTerm] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Moderation Modal
+  const [appliedSearch, setAppliedSearch] = useState('');
+
   const [moderationModalOpen, setModerationModalOpen] = useState(false);
   const [activeSubjectForModeration, setActiveSubjectForModeration] = useState<SubjectSchedule | null>(null);
   const [moderationStatus, setModerationStatus] = useState<string>('Approved');
-  const [moderationFeedback, setModerationFeedback] = useState<string>('SBA marks verified against CAPS assessment guidelines and authenticated.');
+  const [moderationFeedback, setModerationFeedback] = useState('');
   const [savingModeration, setSavingModeration] = useState(false);
+  const [moderationError, setModerationError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const filtersActive = selectedGrade !== 'all' || selectedSubject !== 'all' || selectedTerm !== 'all' || appliedSearch.length > 0;
 
   const fetchAudits = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     else setRefreshing(true);
+    setLoadError(null);
 
     try {
       const res = await adminService.getAcademicOverview({
         grade: selectedGrade !== 'all' ? selectedGrade : undefined,
         subject: selectedSubject !== 'all' ? selectedSubject : undefined,
-        term: selectedTerm !== 'all' ? selectedTerm : undefined
+        term: selectedTerm !== 'all' ? selectedTerm : undefined,
+        search: appliedSearch || undefined
       });
-      setData(res);
+      setData({
+        summary: res.summary,
+        subjects: Array.isArray(res.subjects) ? res.subjects : [],
+        subject_schedules: Array.isArray(res.subject_schedules) ? res.subject_schedules : [],
+        records: Array.isArray(res.records) ? res.records : []
+      });
     } catch (err: any) {
       console.error('Failed to load academic assessment audits:', err);
+      if (showLoading) setData(null);
+      setLoadError(err?.response?.data?.error || 'The assessment records could not be loaded.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -110,133 +153,108 @@ export const AcademicAssessmentAudits: React.FC = () => {
   };
 
   useEffect(() => {
+    const timer = window.setTimeout(() => setAppliedSearch(searchQuery.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
     if (activeSubTab === 'audits') {
       fetchAudits();
     }
-  }, [activeSubTab, selectedGrade, selectedSubject, selectedTerm]);
+  }, [activeSubTab, selectedGrade, selectedSubject, selectedTerm, appliedSearch]);
 
   const handleOpenModeration = (sched: SubjectSchedule) => {
     setActiveSubjectForModeration(sched);
-    setModerationStatus(sched.moderation_status || 'Approved');
+    setModerationStatus(sched.moderation_status && sched.moderation_status !== 'Not moderated' ? sched.moderation_status : 'Under Review');
+    setModerationFeedback(sched.feedback || '');
+    setModerationError(null);
     setModerationModalOpen(true);
   };
 
   const handleSaveModeration = async () => {
     if (!activeSubjectForModeration) return;
     setSavingModeration(true);
+    setModerationError(null);
     try {
       await adminService.moderateBatch({
         subject: activeSubjectForModeration.subject,
         grade: activeSubjectForModeration.grade,
+        term: selectedTerm !== 'all' ? selectedTerm : '',
         status: moderationStatus,
         feedback: moderationFeedback
       });
 
-      setToastMessage(`SBA Mark Schedule for ${activeSubjectForModeration.subject} marked as ${moderationStatus.toUpperCase()}`);
+      setToastMessage(`${activeSubjectForModeration.subject} Grade ${activeSubjectForModeration.grade} marked as ${moderationStatus}`);
       setModerationModalOpen(false);
       fetchAudits(false);
-      setTimeout(() => setToastMessage(null), 4000);
+      window.setTimeout(() => setToastMessage(null), 4000);
     } catch (err: any) {
-      console.error('Moderation error:', err);
+      setModerationError(err?.response?.data?.error || 'The moderation decision could not be saved.');
     } finally {
       setSavingModeration(false);
     }
   };
 
   const handleExportCSV = () => {
-    if (!data || !data.records || data.records.length === 0) return;
-    const headers = ['Learner ID', 'Learner Name', 'Grade', 'Class', 'Subject', 'Term', 'Task Title', 'Score (%)', 'CAPS Level', 'Date'];
-    const rows = filteredRecords.map(r => {
-      const lvl = r.score >= 80 ? 'Level 7' : (r.score >= 70 ? 'Level 6' : (r.score >= 60 ? 'Level 5' : (r.score >= 50 ? 'Level 4' : (r.score >= 40 ? 'Level 3' : (r.score >= 30 ? 'Level 2' : 'Level 1')))));
-      return [
-        `"${r.learner_number}"`,
-        `"${r.learner_name}"`,
-        r.grade,
-        `"${r.class_name}"`,
-        `"${r.subject}"`,
-        `"${r.term}"`,
-        `"${r.task_title}"`,
-        r.score,
-        `"${lvl}"`,
-        `"${new Date(r.date).toLocaleDateString('en-ZA')}"`
-      ];
-    });
+    if (!data || data.records.length === 0) return;
+    const headers = ['Learner number', 'Learner name', 'Grade', 'Class', 'Subject', 'Term', 'Task title', 'Score (%)', 'CAPS level', 'Moderation', 'Date'];
+    const rows = data.records.map((record) => [
+      `"${(record.learner_number || '').replace(/"/g, '""')}"`,
+      `"${(record.learner_name || '').replace(/"/g, '""')}"`,
+      record.grade ?? '',
+      `"${(record.class_name || '').replace(/"/g, '""')}"`,
+      `"${(record.subject || '').replace(/"/g, '""')}"`,
+      `"${(record.term || '').replace(/"/g, '""')}"`,
+      `"${(record.task_title || '').replace(/"/g, '""')}"`,
+      record.score === null || record.score === undefined ? '' : record.score,
+      `"${(record.caps_level || '').replace(/"/g, '""')}"`,
+      `"${(record.moderation_status || 'Not moderated').replace(/"/g, '""')}"`,
+      `"${formatDate(record.date)}"`
+    ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `CAPS_Assessment_Audit_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.href = URL.createObjectURL(blob);
+    link.download = `CAPS_Assessment_Audit_Report_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
+    URL.revokeObjectURL(link.href);
   };
 
-  const filteredRecords = (data?.records || []).filter(r => {
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchName = r.learner_name.toLowerCase().includes(q);
-      const matchNum = (r.learner_number || '').toLowerCase().includes(q);
-      const matchSub = (r.subject || '').toLowerCase().includes(q);
-      if (!matchName && !matchNum && !matchSub) return false;
-    }
-    return true;
-  });
+  const summary = data?.summary;
+  const records = data?.records || [];
 
-  const getCapsBadge = (score: number) => {
-    if (score >= 80) return <Badge variant="emerald" size="sm">Level 7 (80-100%)</Badge>;
-    if (score >= 70) return <Badge variant="cyan" size="sm">Level 6 (70-79%)</Badge>;
-    if (score >= 60) return <Badge variant="indigo" size="sm">Level 5 (60-69%)</Badge>;
-    if (score >= 50) return <Badge variant="amber" size="sm">Level 4 (50-59%)</Badge>;
-    if (score >= 40) return <Badge variant="rose" size="sm">Level 3 (40-49%)</Badge>;
-    return <Badge variant="rose" size="sm">Level 1-2 (&lt;40%)</Badge>;
-  };
-
-  const summary = data?.summary || {
-    total_assessments_recorded: 14,
-    school_average_mark: 78,
-    sba_pass_rate: 88,
-    compliance_rate: 98,
-    levels_distribution: { level7: 5, level6: 4, level5: 3, level4: 2, level3: 0, level2: 0, level1: 0 }
-  };
+  const tabClass = (active: boolean, activeTone: string) =>
+    `flex items-center gap-2 px-4 py-2.5 rounded-xl font-extrabold text-xs transition-all shrink-0 border ${
+      active
+        ? `${activeTone} text-white shadow-sm`
+        : 'text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 border-transparent'
+    }`;
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
-      {/* Sub-Navigation Switcher */}
-      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-surface-dark border border-white/10 shadow-sm overflow-x-auto custom-scrollbar">
+    <div className="space-y-6 animate-fade-in pb-12 text-[var(--text-primary)]">
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-[var(--card-background)] border border-[var(--border-color)] shadow-sm overflow-x-auto custom-scrollbar">
         <button
           onClick={() => setActiveSubTab('subjects')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-extrabold text-xs transition-all shrink-0 ${
-            activeSubTab === 'subjects'
-              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-glow-blue border border-blue-400/40'
-              : 'text-slate-300 hover:text-white hover:bg-white/5 border border-transparent'
-          }`}
+          className={tabClass(activeSubTab === 'subjects', 'bg-blue-700 border-blue-800')}
         >
-          <BookOpen className="w-4 h-4 text-cyan-300" />
+          <BookOpen className="w-4 h-4" />
           <span>School Curriculum & Subjects (Grades 8 - 12)</span>
         </button>
-
         <button
           onClick={() => setActiveSubTab('report-cards')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-extrabold text-xs transition-all shrink-0 ${
-            activeSubTab === 'report-cards'
-              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-glow-emerald border border-emerald-400/40'
-              : 'text-slate-300 hover:text-white hover:bg-white/5 border border-transparent'
-          }`}
+          className={tabClass(activeSubTab === 'report-cards', 'bg-emerald-700 border-emerald-800')}
         >
-          <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
+          <FileSpreadsheet className="w-4 h-4" />
           <span>CAPS Report Card Studio & Holding %</span>
         </button>
-
         <button
           onClick={() => setActiveSubTab('audits')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-extrabold text-xs transition-all shrink-0 ${
-            activeSubTab === 'audits'
-              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-glow-indigo border border-purple-400/40'
-              : 'text-slate-300 hover:text-white hover:bg-white/5 border border-transparent'
-          }`}
+          className={tabClass(activeSubTab === 'audits', 'bg-purple-700 border-purple-800')}
         >
-          <ShieldCheck className="w-4 h-4 text-purple-300" />
+          <ShieldCheck className="w-4 h-4" />
           <span>SBA Mark Audits & Moderation</span>
         </button>
       </div>
@@ -251,423 +269,365 @@ export const AcademicAssessmentAudits: React.FC = () => {
 
       {activeSubTab === 'audits' && (
         loading ? (
-          <LoadingSpinner text="Loading Academic Assessment & SBA Audits..." />
+          <LoadingSpinner text="Loading assessment records..." />
         ) : (
           <div className="space-y-6">
-            {/* Toast Notification */}
             {toastMessage && (
-              <div className="fixed top-5 right-5 z-50 p-4 rounded-2xl bg-emerald-500/90 text-white font-bold text-xs shadow-2xl flex items-center gap-2 border border-emerald-400/30 animate-bounce">
+              <div className="fixed top-5 right-5 z-50 p-4 rounded-2xl bg-emerald-700 text-white font-bold text-xs shadow-2xl flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-white" />
                 <span>{toastMessage}</span>
               </div>
             )}
 
-      {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-950/70 via-surface-dark to-surface-dark border border-emerald-500/20 p-6 shadow-xl">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-glow-emerald shrink-0">
-              <FileSpreadsheet className="w-7 h-7" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl md:text-2xl font-black font-display text-white tracking-tight">
-                  Academic Assessment & SBA Audits
-                </h2>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/30">
-                  DBE CAPS VERIFIED
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <button
-              onClick={() => fetchAudits(false)}
-              disabled={refreshing}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-bold transition-colors"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-              <span>Refresh Records</span>
-            </button>
-            <button
-              onClick={handleExportCSV}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md transition-all active:scale-95"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Export CSV Report</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* KPI Metrics Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
-        <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 space-y-1">
-          <p className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1.5">
-            <Award className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Total Captured Marks</span>
-          </p>
-          <p className="text-2xl font-black font-mono text-white">
-            {summary.total_assessments_recorded || 14}
-          </p>
-          <p className="text-[10px] text-indigo-300 font-semibold">Real assessment rows</p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 space-y-1">
-          <p className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1.5">
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-            <span>School Average Score</span>
-          </p>
-          <p className="text-2xl font-black font-mono text-emerald-400">
-            {summary.school_average_mark || 78}%
-          </p>
-          <p className="text-[10px] text-emerald-300 font-semibold">Across all grades (10-12)</p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 space-y-1">
-          <p className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1.5">
-            <GraduationCap className="w-3.5 h-3.5 text-cyan-400" />
-            <span>SBA Pass Rate (≥50%)</span>
-          </p>
-          <p className="text-2xl font-black font-mono text-cyan-400">
-            {summary.sba_pass_rate || 88}%
-          </p>
-          <p className="text-[10px] text-cyan-300 font-semibold">Bachelor / Diploma track</p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 space-y-1">
-          <p className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-            <span>Moderation Compliance</span>
-          </p>
-          <p className="text-2xl font-black font-mono text-amber-400">
-            {summary.compliance_rate || 98}%
-          </p>
-          <p className="text-[10px] text-amber-300 font-semibold">District SBA Standard</p>
-        </div>
-      </div>
-
-      {/* CAPS Achievement Levels Distribution */}
-      <div className="p-5 rounded-3xl bg-surface-dark border border-white/10 space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold font-display uppercase tracking-wider text-slate-300 flex items-center gap-2">
-            <Award className="w-4 h-4 text-emerald-400" />
-            <span>CAPS Achievement Level Breakdown</span>
-          </h3>
-          <span className="text-[11px] text-slate-400">Official DBE 7-Level Scale</span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 text-center text-xs">
-          <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-            <p className="text-[10px] font-bold text-emerald-400">Level 7 (80-100%)</p>
-            <p className="text-lg font-extrabold font-mono text-white mt-0.5">{summary.levels_distribution?.level7 || 0}</p>
-            <p className="text-[9px] text-slate-400">Outstanding</p>
-          </div>
-          <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
-            <p className="text-[10px] font-bold text-cyan-400">Level 6 (70-79%)</p>
-            <p className="text-lg font-extrabold font-mono text-white mt-0.5">{summary.levels_distribution?.level6 || 0}</p>
-            <p className="text-[9px] text-slate-400">Meritorious</p>
-          </div>
-          <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-            <p className="text-[10px] font-bold text-indigo-400">Level 5 (60-69%)</p>
-            <p className="text-lg font-extrabold font-mono text-white mt-0.5">{summary.levels_distribution?.level5 || 0}</p>
-            <p className="text-[9px] text-slate-400">Substantial</p>
-          </div>
-          <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20">
-            <p className="text-[10px] font-bold text-blue-400">Level 4 (50-59%)</p>
-            <p className="text-lg font-extrabold font-mono text-white mt-0.5">{summary.levels_distribution?.level4 || 0}</p>
-            <p className="text-[9px] text-slate-400">Adequate</p>
-          </div>
-          <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
-            <p className="text-[10px] font-bold text-amber-400">Level 3 (40-49%)</p>
-            <p className="text-lg font-extrabold font-mono text-white mt-0.5">{summary.levels_distribution?.level3 || 0}</p>
-            <p className="text-[9px] text-slate-400">Moderate</p>
-          </div>
-          <div className="p-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20">
-            <p className="text-[10px] font-bold text-orange-400">Level 2 (30-39%)</p>
-            <p className="text-lg font-extrabold font-mono text-white mt-0.5">{summary.levels_distribution?.level2 || 0}</p>
-            <p className="text-[9px] text-slate-400">Elementary</p>
-          </div>
-          <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
-            <p className="text-[10px] font-bold text-rose-400">Level 1 (0-29%)</p>
-            <p className="text-lg font-extrabold font-mono text-white mt-0.5">{summary.levels_distribution?.level1 || 0}</p>
-            <p className="text-[9px] text-slate-400">Not Achieved</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Subject Moderation Schedules Cards */}
-      {data?.subject_schedules && data.subject_schedules.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold font-display uppercase tracking-wider text-slate-300 flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-cyan-400" />
-              <span>Subject SBA Moderation Batches</span>
-            </h3>
-            <span className="text-[11px] text-slate-400">Click to moderate or review schedule</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {data.subject_schedules.map(sched => (
-              <div
-                key={`${sched.subject}-${sched.grade}`}
-                className="p-4 rounded-2xl bg-surface-dark border border-white/10 hover:border-emerald-500/40 transition-all space-y-2.5 shadow-sm flex flex-col justify-between"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-white truncate">{sched.subject}</h4>
-                    <Badge variant={sched.moderation_status === 'Approved' ? 'emerald' : 'amber'} size="sm">
-                      {sched.moderation_status}
-                    </Badge>
-                  </div>
-                  <p className="text-[10px] text-slate-400 font-mono">
-                    Grade {sched.grade} • {sched.assessments_count} Assessments Logged
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs py-1 border-t border-b border-white/5">
-                  <div>
-                    <p className="text-[10px] text-slate-400">Average Mark</p>
-                    <p className="text-sm font-extrabold font-mono text-emerald-400">{sched.average_mark}%</p>
+            <div className="rounded-3xl bg-[var(--card-background)] border border-[var(--border-color)] p-6 shadow-sm">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-700/30 flex items-center justify-center text-emerald-700 dark:text-emerald-300 shrink-0">
+                    <FileSpreadsheet className="w-7 h-7" />
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-400">Pass Rate</p>
-                    <p className="text-sm font-extrabold font-mono text-cyan-400">{sched.pass_rate}%</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-xl md:text-2xl font-black font-display text-[var(--text-primary)] tracking-tight">
+                        Academic Assessment & SBA Audits
+                      </h2>
+                      <span className="px-2.5 py-0.5 rounded-full bg-[var(--accent-soft)] text-[var(--text-primary)] font-mono text-[10px] font-bold border border-[var(--border-color)]">
+                        DBE CAPS
+                      </span>
+                    </div>
+                    <p className="text-xs text-[var(--text-secondary)] mt-1">
+                      Figures are calculated from this school's captured assessment records.
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-[9.5px] text-slate-400 truncate">
-                    Moderator: {sched.moderated_by || 'Academic Head'}
-                  </span>
+                <div className="flex items-center gap-2.5 flex-wrap">
                   <button
-                    onClick={() => handleOpenModeration(sched)}
-                    className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/20 text-[10px] font-bold transition-all"
+                    onClick={() => fetchAudits(false)}
+                    disabled={refreshing}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[var(--input-background)] hover:bg-[var(--accent-soft)] text-[var(--text-primary)] border border-[var(--border-color)] text-xs font-bold transition-colors"
                   >
-                    Moderate
+                    <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                    <span>Refresh Records</span>
+                  </button>
+                  <button
+                    onClick={handleExportCSV}
+                    disabled={records.length === 0}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-extrabold text-xs shadow-md transition-all"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Export CSV Report</span>
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+            </div>
 
-      {/* Filter & Search Bar */}
-      <div className="p-4 rounded-2xl bg-surface-dark border border-white/10 flex flex-col md:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
-          {/* Grade Selector */}
-          <select
-            value={selectedGrade}
-            onChange={(e) => setSelectedGrade(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-surface-darker border border-white/10 text-xs font-semibold text-white focus:ring-2 focus:ring-emerald-500"
-          >
-            <option value="all">All Grades (8-12)</option>
-            <option value="8">Grade 8</option>
-            <option value="9">Grade 9</option>
-            <option value="10">Grade 10</option>
-            <option value="11">Grade 11</option>
-            <option value="12">Grade 12</option>
-          </select>
+            {loadError && (
+              <div className="rounded-2xl border border-rose-700/40 bg-rose-500/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-2 text-rose-800 dark:text-rose-200">
+                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <p className="text-sm font-semibold">{loadError}</p>
+                </div>
+                <button
+                  onClick={() => fetchAudits(data === null)}
+                  className="px-3 py-2 rounded-xl bg-rose-700 text-white text-xs font-bold"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
 
-          {/* Subject Selector */}
-          <select
-            value={selectedSubject}
-            onChange={(e) => setSelectedSubject(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-surface-darker border border-white/10 text-xs font-semibold text-white focus:ring-2 focus:ring-emerald-500"
-          >
-            <option value="all">All Subjects</option>
-            {(data?.subjects || []).map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+            {summary && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
+                <StatCard icon={<Award className="w-3.5 h-3.5 text-indigo-700 dark:text-indigo-300" />} label="Total captured marks" value={String(summary.total_assessments_recorded)} note="Assessment rows for this school" />
+                <StatCard icon={<TrendingUp className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />} label="School average score" value={formatPercent(summary.school_average_mark)} note={summary.scored_assessments ? `From ${summary.scored_assessments} scored rows` : 'No scored assessments'} />
+                <StatCard icon={<GraduationCap className="w-3.5 h-3.5 text-cyan-700 dark:text-cyan-300" />} label="SBA pass rate (≥50%)" value={formatPercent(summary.sba_pass_rate)} note="Scored assessments at Level 4 or above" />
+                <StatCard icon={<ShieldCheck className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300" />} label="Moderation compliance" value={formatPercent(summary.compliance_rate)} note="Approved or verified schedules only" />
+              </div>
+            )}
 
-          {/* Term Selector */}
-          <select
-            value={selectedTerm}
-            onChange={(e) => setSelectedTerm(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-surface-darker border border-white/10 text-xs font-semibold text-white focus:ring-2 focus:ring-emerald-500"
-          >
-            <option value="all">All Terms</option>
-            <option value="Term 1">Term 1</option>
-            <option value="Term 2">Term 2</option>
-            <option value="Term 3">Term 3</option>
-          </select>
-        </div>
-
-        {/* Search */}
-        <div className="relative w-full md:w-72">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search learner name or ID..."
-            className="w-full pl-9 pr-3 py-2 rounded-xl bg-surface-darker border border-white/10 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-emerald-500"
-          />
-        </div>
-      </div>
-
-      {/* Main Mark Sheet Audit Table */}
-      <div className="rounded-3xl bg-surface-dark border border-white/10 overflow-hidden shadow-xl">
-        <div className="p-4 border-b border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider font-display">
-              Official Learner Mark Schedules ({filteredRecords.length} Records)
-            </h3>
-          </div>
-          <span className="text-[11px] text-slate-400 font-mono">
-            DBE Master Register
-          </span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-surface-darker/60 text-slate-400 border-b border-white/10 uppercase font-mono text-[10px]">
-              <tr>
-                <th className="py-3 px-4">Learner</th>
-                <th className="py-3 px-3">Grade & Class</th>
-                <th className="py-3 px-3">Subject</th>
-                <th className="py-3 px-3">Task Title</th>
-                <th className="py-3 px-3">Term</th>
-                <th className="py-3 px-3">Score</th>
-                <th className="py-3 px-3">CAPS Achievement</th>
-                <th className="py-3 px-3">Date</th>
-                <th className="py-3 px-4 text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {filteredRecords.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-400">
-                    No assessment records match the selected filters.
-                  </td>
-                </tr>
-              ) : (
-                filteredRecords.map((r, idx) => (
-                  <tr key={r.id || idx} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="py-3 px-4">
-                      <div>
-                        <p className="font-bold text-white leading-tight">{r.learner_name}</p>
-                        <p className="text-[10px] text-cyan-300 font-mono">Learner ID: {r.learner_number}</p>
+            {summary && (
+              <div className="p-5 rounded-3xl bg-[var(--card-background)] border border-[var(--border-color)] space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-xs font-bold font-display uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-2">
+                    <Award className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
+                    <span>CAPS achievement level breakdown</span>
+                  </h3>
+                  <span className="text-[11px] text-[var(--text-secondary)]">DBE 7-level scale</span>
+                </div>
+                {summary.scored_assessments === 0 ? (
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    Achievement levels appear after a scored assessment is captured. A blank mark is not counted as zero.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 text-center text-xs">
+                    {LEVEL_CARDS.map((level) => (
+                      <div key={level.key} className={`p-2.5 rounded-xl border ${level.tone}`}>
+                        <p className="text-[10px] font-bold">{level.label}</p>
+                        <p className="text-lg font-extrabold font-mono text-[var(--text-primary)] mt-0.5">
+                          {summary.levels_distribution?.[level.key] ?? 0}
+                        </p>
+                        <p className="text-[9px] text-[var(--text-secondary)]">{level.caption}</p>
                       </div>
-                    </td>
-                    <td className="py-3 px-3 font-mono text-slate-300">
-                      Grade {r.grade} ({r.class_name})
-                    </td>
-                    <td className="py-3 px-3 font-bold text-slate-200">
-                      {r.subject}
-                    </td>
-                    <td className="py-3 px-3 text-slate-300 truncate max-w-[150px]">
-                      {r.task_title}
-                    </td>
-                    <td className="py-3 px-3 font-mono text-slate-400">
-                      {r.term}
-                    </td>
-                    <td className="py-3 px-3 font-mono font-extrabold text-sm">
-                      <span className={r.score >= 50 ? 'text-emerald-400' : 'text-rose-400'}>
-                        {r.score}%
-                      </span>
-                    </td>
-                    <td className="py-3 px-3">
-                      {getCapsBadge(r.score)}
-                    </td>
-                    <td className="py-3 px-3 text-[10px] font-mono text-slate-400">
-                      {new Date(r.date).toLocaleDateString('en-ZA', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
-                        <Check className="w-3 h-3" />
-                        <span>Verified</span>
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* SBA Batch Moderation Modal */}
-      {moderationModalOpen && activeSubjectForModeration && (
-        <Modal
-          isOpen={moderationModalOpen}
-          onClose={() => setModerationModalOpen(false)}
-          title={`SBA Moderation Sign-Off: ${activeSubjectForModeration.subject} (Grade ${activeSubjectForModeration.grade})`}
-          maxWidth="lg"
-        >
-          <div className="space-y-4 text-xs">
-            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 space-y-1">
-              <p className="font-bold flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4" />
-                <span>Executive Curriculum Moderation</span>
-              </p>
-              <p className="text-[11px] text-slate-300">
-                Sign off marks captured by subject educators. This locks the marks schedule for term report generation.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-surface-darker border border-white/5">
-              <div>
-                <p className="text-slate-400 text-[10px]">Average Mark</p>
-                <p className="text-base font-bold font-mono text-emerald-400">{activeSubjectForModeration.average_mark}%</p>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div>
-                <p className="text-slate-400 text-[10px]">Total Assessments</p>
-                <p className="text-base font-bold font-mono text-white">{activeSubjectForModeration.assessments_count}</p>
+            )}
+
+            {data?.subject_schedules && data.subject_schedules.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold font-display uppercase tracking-wider text-[var(--text-primary)] flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-cyan-700 dark:text-cyan-300" />
+                    <span>Subject SBA moderation batches</span>
+                  </h3>
+                  <span className="text-[11px] text-[var(--text-secondary)]">Schedules stay unmoderated until they are signed off</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {data.subject_schedules.map((sched) => (
+                    <div
+                      key={`${sched.subject}-${sched.grade}`}
+                      className="p-4 rounded-2xl bg-[var(--card-background)] border border-[var(--border-color)] space-y-2.5 shadow-sm flex flex-col justify-between"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className="text-xs font-bold text-[var(--text-primary)] truncate">{sched.subject}</h4>
+                          <Badge variant={moderationVariant(sched.moderation_status)} size="sm">
+                            {sched.moderation_status}
+                          </Badge>
+                        </div>
+                        <p className="text-[10px] text-[var(--text-secondary)] font-mono">
+                          Grade {sched.grade} • {sched.assessments_count} assessments logged
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs py-1 border-t border-b border-[var(--border-color)]">
+                        <div>
+                          <p className="text-[10px] text-[var(--text-secondary)]">Average mark</p>
+                          <p className="text-sm font-extrabold font-mono text-emerald-800 dark:text-emerald-300">{formatPercent(sched.average_mark)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-[var(--text-secondary)]">Pass rate</p>
+                          <p className="text-sm font-extrabold font-mono text-cyan-800 dark:text-cyan-300">{formatPercent(sched.pass_rate)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 pt-1">
+                        <span className="text-[10px] text-[var(--text-secondary)] truncate">
+                          {sched.moderated_by ? `Moderator: ${sched.moderated_by}` : 'Not yet moderated'}
+                        </span>
+                        <button
+                          onClick={() => handleOpenModeration(sched)}
+                          className="px-2.5 py-1 rounded-lg bg-[var(--accent-soft)] text-[var(--text-primary)] border border-[var(--border-color)] text-[10px] font-bold"
+                        >
+                          Moderate
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="p-4 rounded-2xl bg-[var(--card-background)] border border-[var(--border-color)] flex flex-col md:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+                <select value={selectedGrade} onChange={(e) => setSelectedGrade(e.target.value)} className="px-3 py-2 rounded-xl bg-[var(--input-background)] border border-[var(--border-color)] text-xs font-semibold text-[var(--text-primary)] focus:ring-2 focus:ring-emerald-600">
+                  <option value="all">All Grades (8-12)</option>
+                  <option value="8">Grade 8</option>
+                  <option value="9">Grade 9</option>
+                  <option value="10">Grade 10</option>
+                  <option value="11">Grade 11</option>
+                  <option value="12">Grade 12</option>
+                </select>
+                <select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} className="px-3 py-2 rounded-xl bg-[var(--input-background)] border border-[var(--border-color)] text-xs font-semibold text-[var(--text-primary)] focus:ring-2 focus:ring-emerald-600">
+                  <option value="all">All Subjects</option>
+                  {(data?.subjects || []).map((subject) => (
+                    <option key={subject} value={subject}>{subject}</option>
+                  ))}
+                </select>
+                <select value={selectedTerm} onChange={(e) => setSelectedTerm(e.target.value)} className="px-3 py-2 rounded-xl bg-[var(--input-background)] border border-[var(--border-color)] text-xs font-semibold text-[var(--text-primary)] focus:ring-2 focus:ring-emerald-600">
+                  <option value="all">All Terms</option>
+                  <option value="Term 1">Term 1</option>
+                  <option value="Term 2">Term 2</option>
+                  <option value="Term 3">Term 3</option>
+                  <option value="Term 4">Term 4</option>
+                </select>
+              </div>
+              <div className="relative w-full md:w-72">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search learner name or number..."
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-[var(--input-background)] border border-[var(--border-color)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:ring-2 focus:ring-emerald-600"
+                />
               </div>
             </div>
 
-            <div>
-              <label className="block text-slate-300 font-bold mb-1">Moderation Status</label>
-              <select
-                value={moderationStatus}
-                onChange={(e) => setModerationStatus(e.target.value)}
-                className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-white focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="Approved">Approved (SBA Standard Met)</option>
-                <option value="Verified">Verified & Signed Off</option>
-                <option value="Under Review">Under Review (Requires Re-check)</option>
-                <option value="Discrepancy Flagged">Discrepancy Flagged</option>
-              </select>
+            <div className="rounded-3xl bg-[var(--card-background)] border border-[var(--border-color)] overflow-hidden shadow-sm">
+              <div className="p-4 border-b border-[var(--border-color)] flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
+                  <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider font-display">
+                    Learner mark schedules ({records.length} records)
+                  </h3>
+                </div>
+                <span className="text-[11px] text-[var(--text-secondary)] font-mono">School register</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[var(--surface-background)] text-[var(--text-secondary)] border-b border-[var(--border-color)] uppercase font-mono text-[10px]">
+                    <tr>
+                      <th className="py-3 px-4">Learner</th>
+                      <th className="py-3 px-3">Grade & class</th>
+                      <th className="py-3 px-3">Subject</th>
+                      <th className="py-3 px-3">Task title</th>
+                      <th className="py-3 px-3">Term</th>
+                      <th className="py-3 px-3">Score</th>
+                      <th className="py-3 px-3">CAPS achievement</th>
+                      <th className="py-3 px-3">Date</th>
+                      <th className="py-3 px-4 text-right">Moderation</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border-color)]">
+                    {records.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="py-10 px-6 text-center">
+                          <p className="text-sm font-semibold text-[var(--text-primary)]">
+                            {filtersActive ? 'No assessment records match these filters.' : 'No assessment records have been captured yet.'}
+                          </p>
+                          <p className="text-xs text-[var(--text-secondary)] mt-1 max-w-md mx-auto">
+                            {filtersActive
+                              ? 'Change the grade, subject, term, or learner search to see other captured marks.'
+                              : 'Subject teachers capture marks in the mark book. This audit stays empty until those records exist.'}
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      records.map((record) => (
+                        <tr key={record.id} className="hover:bg-black/[0.03] dark:hover:bg-white/[0.04]">
+                          <td className="py-3 px-4">
+                            <p className="font-bold text-[var(--text-primary)] leading-tight">{record.learner_name}</p>
+                            <p className="text-[10px] text-cyan-800 dark:text-cyan-300 font-mono">
+                              {record.learner_number ? `Learner number: ${record.learner_number}` : 'Learner number not assigned'}
+                            </p>
+                          </td>
+                          <td className="py-3 px-3 font-mono text-[var(--text-secondary)]">
+                            Grade {record.grade}{record.class_name ? ` (${record.class_name})` : ''}
+                          </td>
+                          <td className="py-3 px-3 font-bold text-[var(--text-primary)]">{record.subject}</td>
+                          <td className="py-3 px-3 text-[var(--text-secondary)] truncate max-w-[150px]">{record.task_title}</td>
+                          <td className="py-3 px-3 font-mono text-[var(--text-secondary)]">{record.term || '—'}</td>
+                          <td className="py-3 px-3 font-mono font-extrabold text-sm">
+                            <span className={record.score === null || record.score === undefined ? 'text-[var(--text-secondary)]' : record.score >= 50 ? 'text-emerald-800 dark:text-emerald-300' : 'text-rose-800 dark:text-rose-300'}>
+                              {formatPercent(record.score)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            {record.caps_level ? <Badge variant={record.score !== null && record.score >= 50 ? 'emerald' : 'rose'} size="sm">{record.caps_level}</Badge> : <span className="text-[var(--text-secondary)]">Not scored</span>}
+                          </td>
+                          <td className="py-3 px-3 text-[10px] font-mono text-[var(--text-secondary)]">{formatDate(record.date)}</td>
+                          <td className="py-3 px-4 text-right">
+                            <Badge variant={moderationVariant(record.moderation_status || 'Not moderated')} size="sm">
+                              {record.moderation_status === 'Approved' || record.moderation_status === 'Verified' ? <Check className="w-3 h-3" /> : null}
+                              <span>{record.moderation_status || 'Not moderated'}</span>
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-slate-300 font-bold mb-1">Moderation Feedback & Remarks</label>
-              <textarea
-                rows={3}
-                value={moderationFeedback}
-                onChange={(e) => setModerationFeedback(e.target.value)}
-                className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
-              <button
-                type="button"
-                onClick={() => setModerationModalOpen(false)}
-                className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold transition-colors"
+            {moderationModalOpen && activeSubjectForModeration && (
+              <Modal
+                isOpen={moderationModalOpen}
+                onClose={() => setModerationModalOpen(false)}
+                title={`SBA moderation: ${activeSubjectForModeration.subject} (Grade ${activeSubjectForModeration.grade})`}
+                maxWidth="lg"
               >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={savingModeration}
-                onClick={handleSaveModeration}
-                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold shadow-glow-emerald transition-all"
-              >
-                {savingModeration ? 'Saving Sign-Off...' : 'Approve & Lock Schedule'}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
+                <div className="space-y-4 text-xs text-[var(--text-primary)]">
+                  <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-700/30 space-y-1">
+                    <p className="font-bold flex items-center gap-1.5 text-emerald-800 dark:text-emerald-200">
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>Curriculum moderation</span>
+                    </p>
+                    <p className="text-[11px] text-[var(--text-secondary)]">
+                      Sign off the marks captured for this subject and grade. An unsigned schedule is not counted as compliant.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-[var(--input-background)] border border-[var(--border-color)]">
+                    <div>
+                      <p className="text-[var(--text-secondary)] text-[10px]">Average mark</p>
+                      <p className="text-base font-bold font-mono text-emerald-800 dark:text-emerald-300">{formatPercent(activeSubjectForModeration.average_mark)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[var(--text-secondary)] text-[10px]">Total assessments</p>
+                      <p className="text-base font-bold font-mono text-[var(--text-primary)]">{activeSubjectForModeration.assessments_count}</p>
+                    </div>
+                  </div>
+                  {moderationError && (
+                    <p className="text-rose-700 dark:text-rose-300 font-semibold">{moderationError}</p>
+                  )}
+                  <div>
+                    <label className="block text-[var(--text-primary)] font-bold mb-1">Moderation status</label>
+                    <select
+                      value={moderationStatus}
+                      onChange={(e) => setModerationStatus(e.target.value)}
+                      className="w-full rounded-xl bg-[var(--input-background)] border border-[var(--border-color)] px-3 py-2.5 text-[var(--text-primary)] focus:ring-2 focus:ring-emerald-600"
+                    >
+                      <option value="Approved">Approved</option>
+                      <option value="Verified">Verified</option>
+                      <option value="Under Review">Under review</option>
+                      <option value="Discrepancy Flagged">Discrepancy flagged</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[var(--text-primary)] font-bold mb-1">Remarks</label>
+                    <textarea
+                      rows={3}
+                      value={moderationFeedback}
+                      onChange={(e) => setModerationFeedback(e.target.value)}
+                      className="w-full rounded-xl bg-[var(--input-background)] border border-[var(--border-color)] px-3 py-2 text-[var(--text-primary)] focus:ring-2 focus:ring-emerald-600"
+                    />
+                  </div>
+                  <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-color)]">
+                    <button
+                      type="button"
+                      onClick={() => setModerationModalOpen(false)}
+                      className="px-4 py-2.5 rounded-xl bg-[var(--input-background)] text-[var(--text-primary)] border border-[var(--border-color)] font-bold"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={savingModeration}
+                      onClick={handleSaveModeration}
+                      className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold disabled:opacity-60"
+                    >
+                      {savingModeration ? 'Saving...' : 'Save moderation'}
+                    </button>
+                  </div>
+                </div>
+              </Modal>
+            )}
           </div>
         )
       )}
     </div>
   );
 };
+
+function StatCard({ icon, label, value, note }: { icon: React.ReactNode; label: string; value: string; note: string }) {
+  return (
+    <div className="p-4 rounded-2xl bg-[var(--card-background)] border border-[var(--border-color)] space-y-1">
+      <p className="text-[10px] uppercase font-bold text-[var(--text-secondary)] flex items-center gap-1.5">
+        {icon}
+        <span>{label}</span>
+      </p>
+      <p className="text-2xl font-black font-mono text-[var(--text-primary)]">{value}</p>
+      <p className="text-[10px] text-[var(--text-secondary)] font-semibold">{note}</p>
+    </div>
+  );
+}
