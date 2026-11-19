@@ -1,5 +1,5 @@
 const db = require('../../../db/db');
-const { resolveSchoolId, canDecideApplication } = require('../services/schoolScope');
+const { resolveSchoolId, canDecideApplication, directoryScope } = require('../services/schoolScope');
 const emailService = require('../services/emailService');
 const applicationService = require('../services/applicationService');
 const { rejectNameDigits } = require('../services/lettersOnly');
@@ -771,6 +771,8 @@ exports.getAllSchoolAdmins = async (req, res) => {
         return res.status(403).json({ error: 'Forbidden: Only the Main Administrator can view the global SubAdmins list.' });
     }
     try {
+        const scope = directoryScope(req);
+        const executivesOnly = scope.mode === 'executives';
         const query = `
             SELECT 
                 u.id,
@@ -779,19 +781,27 @@ exports.getAllSchoolAdmins = async (req, res) => {
                 u.surname,
                 u.phone,
                 u.school_id,
-                u.is_superadmin,
+                COALESCE(u.is_superadmin, FALSE) AS is_superadmin,
                 u.created_at,
                 s.name AS school_name,
                 s.slug AS school_slug,
                 s.circuit AS school_circuit,
                 s.province AS school_province
             FROM users u
-            JOIN roles r ON (u.role_id::text = r.id::text)
+            LEFT JOIN roles r ON (u.role_id::text = r.id::text)
             LEFT JOIN schools s ON (u.school_id::text = s.id::text)
-            WHERE r.name = 'admin'
-            ORDER BY u.is_superadmin DESC, s.name ASC, u.surname ASC;
+            WHERE (
+                $1::boolean = TRUE
+                AND COALESCE(u.is_superadmin, FALSE) = TRUE
+            ) OR (
+                $1::boolean = FALSE
+                AND COALESCE(u.is_superadmin, FALSE) = FALSE
+                AND LOWER(COALESCE(r.name, '')) = 'admin'
+                AND u.school_id = $2
+            )
+            ORDER BY u.surname ASC, u.full_name ASC;
         `;
-        const { rows } = await db.query(query);
+        const { rows } = await db.query(query, [executivesOnly, scope.schoolId]);
         res.json({ success: true, admins: rows });
     } catch (err) {
         console.error('Error fetching school admins:', err);
@@ -804,7 +814,11 @@ exports.getAllSchoolAdmins = async (req, res) => {
  */
 exports.getAllParents = async (req, res) => {
     try {
-        const schoolId = getTargetSchoolId(req);
+        const scope = directoryScope(req);
+        if (scope.mode === 'executives' || !scope.schoolId) {
+            return res.json({ parents: [] });
+        }
+        const schoolId = scope.schoolId;
         const query = `
             SELECT 
                 u.id, 
@@ -832,7 +846,9 @@ exports.getAllParents = async (req, res) => {
             JOIN roles r ON u.role_id = r.id
             LEFT JOIN parent_children pc ON pc.parent_id = u.id
             LEFT JOIN children c ON pc.child_id = c.id
-            WHERE r.name = 'parent' AND (u.school_id = $1 OR c.school_id = $1)
+            WHERE r.name = 'parent'
+              AND COALESCE(u.is_superadmin, FALSE) = FALSE
+              AND (u.school_id = $1 OR c.school_id = $1)
             GROUP BY u.id
             ORDER BY u.created_at DESC;
         `;
@@ -1003,7 +1019,9 @@ exports.createLearner = async (req, res) => {
  */
 exports.getAllEmployees = async (req, res) => {
     try {
-        const schoolId = getTargetSchoolId(req);
+        const scope = directoryScope(req);
+        if (scope.mode === 'executives' || !scope.schoolId) return res.json([]);
+        const schoolId = scope.schoolId;
         const query = `
             SELECT 
                 e.id AS employee_id,
@@ -1026,6 +1044,7 @@ exports.getAllEmployees = async (req, res) => {
             LEFT JOIN departments d ON e.department_id = d.id
             LEFT JOIN employee_roles er ON e.employee_role_id = er.id
             WHERE u.school_id = $1
+              AND COALESCE(u.is_superadmin, FALSE) = FALSE
             ORDER BY u.surname, u.full_name;
         `;
         const { rows } = await db.query(query, [schoolId]);
@@ -1041,7 +1060,9 @@ exports.getAllEmployees = async (req, res) => {
  */
 exports.getAllLearners = async (req, res) => {
     try {
-        const schoolId = getTargetSchoolId(req);
+        const scope = directoryScope(req);
+        if (scope.mode === 'executives' || !scope.schoolId) return res.json([]);
+        const schoolId = scope.schoolId;
         const query = `
             SELECT 
                 c.id, 
@@ -1064,7 +1085,8 @@ exports.getAllLearners = async (req, res) => {
             LEFT JOIN users u ON c.learner_user_id = u.id
             LEFT JOIN classes cl ON c.class_id = cl.id
             LEFT JOIN users p ON c.parent_id = p.id
-            WHERE c.school_id = $1 OR u.school_id = $1
+            WHERE (c.school_id = $1 OR u.school_id = $1)
+              AND COALESCE(u.is_superadmin, FALSE) = FALSE
             ORDER BY c.grade, c.surname, c.full_name;
         `;
         const { rows } = await db.query(query, [schoolId]);
@@ -1731,13 +1753,20 @@ exports.createBehaviorIncident = async (req, res) => {
  */
 exports.getAllUsers = async (req, res) => {
     try {
-        const schoolId = getTargetSchoolId(req);
-        const query = `SELECT u.id, u.full_name, u.surname, u.email, u.phone, u.profile_picture_path, r.name as role, u.created_at 
-                       FROM users u 
-                       JOIN roles r ON u.role_id = r.id 
-                       WHERE (u.school_id = $1 OR (u.school_id IS NULL AND $1 = 1))
-                       ORDER BY u.created_at DESC`;
-        const { rows } = await db.query(query, [schoolId]);
+        const scope = directoryScope(req);
+        const query = scope.mode === 'executives'
+            ? `SELECT u.id, u.full_name, u.surname, u.email, u.phone, u.profile_picture_path, COALESCE(r.name, 'admin') as role, u.created_at
+               FROM users u
+               LEFT JOIN roles r ON u.role_id::text = r.id::text
+               WHERE COALESCE(u.is_superadmin, FALSE) = TRUE
+               ORDER BY u.surname, u.full_name`
+            : `SELECT u.id, u.full_name, u.surname, u.email, u.phone, u.profile_picture_path, r.name as role, u.created_at
+               FROM users u
+               JOIN roles r ON u.role_id::text = r.id::text
+               WHERE u.school_id = $1
+                 AND COALESCE(u.is_superadmin, FALSE) = FALSE
+               ORDER BY u.created_at DESC`;
+        const { rows } = await db.query(query, scope.mode === 'executives' ? [] : [scope.schoolId]);
         res.json(rows);
     } catch (err) {
         console.error('Error fetching all users:', err.message);
@@ -1754,14 +1783,28 @@ exports.getUsersByRole = async (req, res) => {
         return res.status(400).json({ error: 'Invalid role specified.' });
     }
     try {
-        const schoolId = getTargetSchoolId(req);
+        const scope = directoryScope(req);
+        if (scope.mode === 'executives') {
+            const { rows } = await db.query(
+                `SELECT u.id, u.full_name, u.surname, u.email, u.phone, u.profile_picture_path, COALESCE(r.name, 'admin') as role, u.created_at
+                 FROM users u
+                 LEFT JOIN roles r ON u.role_id::text = r.id::text
+                 WHERE COALESCE(u.is_superadmin, FALSE) = TRUE
+                   AND (LOWER(COALESCE(r.name, '')) = LOWER($1) OR LOWER(u.role_id::text) = LOWER($1))
+                 ORDER BY u.surname, u.full_name`,
+                [role]
+            );
+            return res.json(rows);
+        }
+        if (!scope.schoolId) return res.json([]);
         const query = `SELECT u.id, u.full_name, u.surname, u.email, u.phone, u.profile_picture_path, r.name as role, u.created_at 
                        FROM users u 
-                       JOIN roles r ON u.role_id = r.id 
+                       JOIN roles r ON u.role_id::text = r.id::text
                        WHERE (r.name = $1 OR LOWER(u.role_id::text) = LOWER($1))
-                         AND (u.school_id = $2 OR (u.school_id IS NULL AND $2 = 1))
+                         AND u.school_id = $2
+                         AND COALESCE(u.is_superadmin, FALSE) = FALSE
                        ORDER BY u.created_at DESC`;
-        const { rows } = await db.query(query, [role, schoolId]);
+        const { rows } = await db.query(query, [role, scope.schoolId]);
         res.json(rows);
     } catch (err) {
         console.error(`Error fetching users by role ${role}:`, err.message);

@@ -45,6 +45,14 @@ api.interceptors.request.use((config) => {
   if (activeSchoolId) {
     config.headers['x-school-id'] = activeSchoolId;
   }
+  try {
+    const storedUser = readAuthValue('user', [localStorage, sessionStorage]);
+    const signedIn = storedUser ? JSON.parse(storedUser) : null;
+    if (signedIn && signedIn.is_superadmin) {
+      const workspace = sessionStorage.getItem('geleza_school_workspace');
+      config.headers['x-geleza-directory'] = workspace ? 'school' : 'platform';
+    }
+  } catch (_) {}
   // When sending FormData, delete Content-Type so Axios/browser sets multipart boundary correctly
   if (config.data instanceof FormData) {
     if (config.headers) {

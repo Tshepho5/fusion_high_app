@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { adminService, parentApplicationService, classStaffService } from '../../services/api';
 import { useSchool } from '../../context/SchoolContext';
@@ -176,9 +176,15 @@ interface RecycleBinItem {
 
 export const AdminUsers: React.FC = () => {
   const [, setSearchParams] = useSearchParams();
-  const { currentSchool, schoolsList } = useSchool();
+  const { currentSchool, schoolsList, workspaceSchoolId } = useSchool();
   const { user: currentUser } = useAuth();
   const isSuperAdmin = Boolean(currentUser?.is_superadmin);
+  const insideSchool = Boolean(
+    isSuperAdmin
+    && workspaceSchoolId
+    && Number(currentSchool?.id) === Number(workspaceSchoolId)
+  );
+  const platformDirectory = isSuperAdmin && !insideSchool;
 
   const [activeTab, setActiveTab] = useState<'employees' | 'learners' | 'parents' | 'parent-applications' | 'admissions' | 'admins' | 'all' | 'recycle-bin'>('employees');
   
@@ -363,6 +369,21 @@ export const AdminUsers: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      if (platformDirectory) {
+        const adminsData = await adminService.getSchoolAdmins();
+        const aList = adminsData?.admins || (Array.isArray(adminsData) ? adminsData : []);
+        const executives = aList.filter((admin: { is_superadmin?: boolean }) => admin.is_superadmin === true);
+        setSchoolAdmins(executives);
+        setUsers([]);
+        setEmployees([]);
+        setLearners([]);
+        setParents([]);
+        setAdmissions([]);
+        setParentApplications([]);
+        setStaffInvites([]);
+        setRecycleBinItems([]);
+        return;
+      }
       const [usersData, empData, lrnData, metaData, admData, parentsData, adminsData, parentAppsData, staffInvitesData, recycleBinData] = await Promise.allSettled([
         adminService.getUsers(),
         adminService.getEmployees(),
@@ -409,9 +430,13 @@ export const AdminUsers: React.FC = () => {
     }
   };
 
+  const directoryMode = useRef(platformDirectory);
   useEffect(() => {
+    if (platformDirectory) setActiveTab('admins');
+    else if (isSuperAdmin && directoryMode.current) setActiveTab('employees');
+    directoryMode.current = platformDirectory;
     fetchData();
-  }, [currentSchool?.id, isSuperAdmin]);
+  }, [currentSchool?.id, isSuperAdmin, workspaceSchoolId, platformDirectory]);
 
   // Handle Create School Admin (SubAdmin) - Main Admin Only
   const handleCreateSchoolAdmin = async (e: React.FormEvent) => {
@@ -893,7 +918,12 @@ export const AdminUsers: React.FC = () => {
     (u.role || '').toLowerCase().includes(q)
   );
 
-  const filteredSchoolAdmins = schoolAdmins.filter(a =>
+  const directoryAdmins = schoolAdmins.filter((admin) => (
+    platformDirectory
+      ? admin.is_superadmin === true
+      : admin.is_superadmin !== true && Number(admin.school_id) === Number(currentSchool?.id)
+  ));
+  const filteredSchoolAdmins = directoryAdmins.filter(a =>
     `${a.full_name} ${a.surname || ''}`.toLowerCase().includes(q) ||
     (a.email || '').toLowerCase().includes(q) ||
     (a.school_name || '').toLowerCase().includes(q) ||
@@ -1036,14 +1066,18 @@ export const AdminUsers: React.FC = () => {
         <div>
           <h2 className="text-xl md:text-2xl font-extrabold font-display text-white tracking-tight flex items-center gap-2">
             <Users className="w-6 h-6 text-brand-400" />
-            School Directory & Multi-Tenant Access
+            {platformDirectory
+              ? 'Geleza SA Executives'
+              : insideSchool
+                ? `${currentSchool.name} User Directory`
+                : 'School Directory'}
           </h2>
         </div>
 
         {/* Primary Action Buttons */}
         <div className="flex flex-wrap items-center gap-3">
           {/* Main Admin Only: Appoint SubAdmin for any School */}
-          {isSuperAdmin && (
+          {platformDirectory && (
             <button
               onClick={() => setIsAddAdminModalOpen(true)}
               className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-surface-darker hover:bg-white/10 text-white font-bold text-xs border border-white/10 transition-colors"
@@ -1054,6 +1088,7 @@ export const AdminUsers: React.FC = () => {
             </button>
           )}
 
+          {!platformDirectory && (<>
           <button
             onClick={() => setIsAddEmployeeModalOpen(true)}
             className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-300 font-bold text-xs border border-white/10 transition-colors"
@@ -1087,6 +1122,7 @@ export const AdminUsers: React.FC = () => {
             <FileSpreadsheet className="w-4 h-4" />
             <span>Import SA-SAMS CSV</span>
           </button>
+          </>)}
         </div>
       </div>
 
@@ -1118,10 +1154,11 @@ export const AdminUsers: React.FC = () => {
               }`}
             >
               <Shield className="w-3.5 h-3.5" />
-              <span>School Admins ({schoolAdmins.length})</span>
+              <span>{platformDirectory ? `Geleza SA Executives (${directoryAdmins.length})` : `School Admins (${directoryAdmins.length})`}</span>
             </button>
           )}
 
+          {!platformDirectory && (<>
           <button
             onClick={() => setActiveTab('employees')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -1220,6 +1257,7 @@ export const AdminUsers: React.FC = () => {
               </span>
             )}
           </button>
+          </>)}
         </div>
 
         {/* Search Field */}
@@ -2011,7 +2049,11 @@ export const AdminUsers: React.FC = () => {
               </tbody>
             </table>
             {filteredSchoolAdmins.length === 0 && (
-              <div className="p-8 text-center text-slate-400 text-xs">No School Administrators found matching your search query.</div>
+              <div className="p-8 text-center text-slate-400 text-xs">
+                {platformDirectory
+                  ? 'No Geleza SA executives are registered yet.'
+                  : 'No administrators for this school match your search.'}
+              </div>
             )}
           </div>
         ) : activeTab === 'all' ? (

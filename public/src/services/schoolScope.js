@@ -31,4 +31,20 @@ function canDecideApplication(user, applicationSchoolId) {
   return own === applicationSchool;
 }
 
-module.exports = { resolveSchoolId, canDecideApplication };
+/**
+ * The Geleza SA home directory lists platform executives.
+ * A school directory is used only after a superadmin opens that school,
+ * or for a principal, and then it is only their own school.
+ */
+function directoryScope(req) {
+  if (!req.user || req.user.is_superadmin !== true) {
+    return { mode: 'school', schoolId: resolveSchoolId(req) };
+  }
+  const requested = String((req.headers && req.headers['x-geleza-directory']) || '').toLowerCase();
+  if (requested === 'school') {
+    return { mode: 'school', schoolId: resolveSchoolId(req) };
+  }
+  return { mode: 'executives', schoolId: null };
+}
+
+module.exports = { resolveSchoolId, canDecideApplication, directoryScope };
